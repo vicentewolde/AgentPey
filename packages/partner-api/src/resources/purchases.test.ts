@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createPurchaseRequestSchema,
   purchaseResourceSchema,
+  toPurchaseResource,
   venueIdSchema,
 } from "./purchases.js";
 
@@ -123,5 +124,91 @@ describe("purchaseResourceSchema", () => {
 
   it("refuses an outcome outside the two this route can produce", () => {
     expect(purchaseResourceSchema.safeParse({ ...settled, outcome: "pending" }).success).toBe(false);
+  });
+});
+
+/**
+ * T84. The purchase route stores `{ resource_url, resource }`, where
+ * `resource` is the merchant's own body. This used to read the delivery id and
+ * receipt hash off the top level, where nothing wrote them, and linked the
+ * artifact to the paid x402 route, which answers `402` — so every SignalDesk
+ * delivery in the deployed pilot showed no id, no receipt, and a link that
+ * asked for payment again.
+ */
+describe("toPurchaseResource delivery", () => {
+  const PAID_ROUTE = "https://agentpey-signaldesk.onrender.com/api/x402/market-brief?pair=XLM%2FUSDC";
+
+  function stored(resource: unknown, resourceUrl: unknown = PAID_ROUTE) {
+    return {
+      id: PURCHASE,
+      tenantId: TENANT,
+      agentId: AGENT,
+      outcome: "settled" as const,
+      code: null,
+      reason: null,
+      venue: VENUE,
+      productId: "signaldesk:market-brief-xlm-usdc",
+      quantity: 1,
+      intentId: "8b0851b3-94e9-45b0-ba36-d6e9e32541d2",
+      total: "0.2500000",
+      asset: "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      payTo: "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
+      transactionHash: "b".repeat(64),
+      delivery: { resource_url: resourceUrl, resource },
+      createdAt: new Date("2026-09-13T19:11:27.624Z"),
+    };
+  }
+
+  /** The body SignalDesk actually released for tx 8894085a… in the pilot. */
+  const SIGNALDESK_BODY = {
+    ok: true,
+    delivery_id: "01M2E2WZBRT9TVVWNRFX3D6Y2A",
+    product_id: "signaldesk:market-brief-xlm-usdc",
+    artifact_url: "https://agentpey-signaldesk.onrender.com/deliveries/01M2E2WZBRT9TVVWNRFX3D6Y2A",
+    artifact_hash: "4d896029c49d87c1ad4c202790e87a4945bbad7341a13cf7e8d433ee735bdb27",
+    receipt_hash: "547622d88434fc47310e32638bb8314f4de366da390779528ada48568ea20b5d",
+    delivered_at: "2026-09-13T19:11:27.608Z",
+  };
+
+  it("reads the delivery id, receipt hash and artifact link out of the merchant's body", () => {
+    const { delivery } = toPurchaseResource(stored(SIGNALDESK_BODY));
+
+    expect(delivery?.delivery_id).toBe("01M2E2WZBRT9TVVWNRFX3D6Y2A");
+    expect(delivery?.receipt_hash).toBe("547622d88434fc47310e32638bb8314f4de366da390779528ada48568ea20b5d");
+    expect(delivery?.artifact_url).toBe("https://agentpey-signaldesk.onrender.com/deliveries/01M2E2WZBRT9TVVWNRFX3D6Y2A");
+  });
+
+  it("never links the artifact to the paid route, which would ask for payment again", () => {
+    const { delivery } = toPurchaseResource(stored({ ok: true }));
+
+    expect(delivery?.artifact_url).toBeNull();
+  });
+
+  /** C-79: a merchant that returns only the resource body is not broken. */
+  it("keeps every field null for a merchant that sends none of them, without throwing", () => {
+    const { delivery } = toPurchaseResource(stored("plain resource body"));
+
+    expect(delivery).toMatchObject({ delivery_id: null, artifact_url: null, receipt_hash: null });
+  });
+
+  it("drops a malformed field instead of making the whole read throw", () => {
+    const { delivery } = toPurchaseResource(stored({ ...SIGNALDESK_BODY, receipt_hash: "not-a-hash", delivery_id: 42 }));
+
+    expect(delivery?.receipt_hash).toBeNull();
+    expect(delivery?.delivery_id).toBeNull();
+    expect(delivery?.artifact_url).toBe(SIGNALDESK_BODY.artifact_url);
+  });
+
+  it("refuses an artifact link to another origin, to a script, or with embedded credentials", () => {
+    for (const artifact_url of [
+      "https://attacker.example/deliveries/01M2E2WZBRT9TVVWNRFX3D6Y2A",
+      "https://agentpey-signaldesk.onrender.com.attacker.example/d",
+      "javascript:alert(1)",
+      "https://agentpey-signaldesk.onrender.com@attacker.example/d",
+      "https://user:pass@agentpey-signaldesk.onrender.com/d",
+    ]) {
+      const { delivery } = toPurchaseResource(stored({ ...SIGNALDESK_BODY, artifact_url }));
+      expect(delivery?.artifact_url, artifact_url).toBeNull();
+    }
   });
 });

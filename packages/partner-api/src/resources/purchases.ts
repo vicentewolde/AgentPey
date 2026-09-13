@@ -159,6 +159,62 @@ export type PurchaseDelivery = z.infer<typeof purchaseDeliverySchema>;
 const EXPLORER_PREFIX = "https://stellar.expert/explorer/testnet/tx/";
 
 /**
+ * The three delivery facts a merchant may put in the body it releases.
+ * Loose on purpose: the body is the merchant's, carries other fields, and a
+ * merchant that sends none of these is not broken (`C-79`).
+ */
+const merchantDeliveryFieldsSchema = z.object({
+  delivery_id: z.unknown().optional(),
+  artifact_url: z.unknown().optional(),
+  receipt_hash: z.unknown().optional(),
+});
+
+/**
+ * The delivery as `/v1` shows it, read out of what the purchase route stored:
+ * `{ resource_url, resource }`, where `resource` is the merchant's own body.
+ *
+ * T84: this used to read `delivery_id` and `receipt_hash` off the top level,
+ * where nothing ever wrote them, and used `resource_url` — the paid x402 route,
+ * which answers `402` — as the artifact link. Every SignalDesk delivery in the
+ * deployed pilot showed up with no id, no receipt and a link that asked for
+ * payment again.
+ *
+ * Each field is kept only if it is well formed, and dropped to `null` if not:
+ * the body is third-party data, and one malformed field must not make a whole
+ * activity read throw. The artifact link must also be an http(s) URL on the
+ * same origin as the resource that was paid for — a merchant can point a buyer
+ * at its own deliveries, not at another site under a link this platform
+ * renders as "what you bought".
+ */
+function deliveryFrom(delivery: Readonly<Record<string, unknown>>): PurchaseDelivery {
+  const fields = merchantDeliveryFieldsSchema.safeParse(delivery.resource);
+  const body = fields.success ? fields.data : {};
+
+  const deliveryId = purchaseDeliverySchema.shape.delivery_id.safeParse(body.delivery_id ?? null);
+  const receiptHash = purchaseDeliverySchema.shape.receipt_hash.safeParse(body.receipt_hash ?? null);
+
+  return {
+    delivery_id: deliveryId.success ? deliveryId.data : null,
+    artifact_url: sameOriginHttpUrl(body.artifact_url, delivery.resource_url),
+    receipt_hash: receiptHash.success ? receiptHash.data : null,
+    resource: delivery.resource,
+  };
+}
+
+function sameOriginHttpUrl(candidate: unknown, paidResource: unknown): string | null {
+  if (typeof candidate !== "string" || typeof paidResource !== "string") return null;
+  try {
+    const url = new URL(candidate);
+    const paid = new URL(paidResource);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.username !== "" || url.password !== "") return null;
+    return url.origin === paid.origin ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A stored purchase as `/v1` hands it back.
  *
  * `explorer_url` is derived from the transaction hash rather than stored: a
@@ -200,15 +256,7 @@ export function toPurchaseResource(record: {
     pay_to: record.payTo,
     transaction_hash: record.transactionHash,
     explorer_url: record.transactionHash === null ? null : `${EXPLORER_PREFIX}${record.transactionHash}`,
-    delivery:
-      delivery === null
-        ? null
-        : {
-            delivery_id: (delivery.delivery_id as string | undefined) ?? null,
-            artifact_url: (delivery.resource_url as string | undefined) ?? null,
-            receipt_hash: (delivery.receipt_hash as string | undefined) ?? null,
-            resource: delivery.resource,
-          },
+    delivery: delivery === null ? null : deliveryFrom(delivery),
     created_at: record.createdAt.toISOString(),
   });
 }

@@ -303,7 +303,13 @@ const settlingPurchase: ExecutePurchase = async () => ({
   payTo: "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K",
   transactionHash: "b".repeat(64),
   resourceUrl: "https://signaldesk.example/api/x402/market-brief",
-  resource: { title: "XLM/USDC demo brief" },
+  // Shaped like the body SignalDesk releases: the delivery facts live inside it.
+  resource: {
+    ok: true,
+    delivery_id: "01M2E2WZBRT9TVVWNRFX3D6Y2A",
+    artifact_url: "https://signaldesk.example/deliveries/01M2E2WZBRT9TVVWNRFX3D6Y2A",
+    receipt_hash: "c".repeat(64),
+  },
 });
 
 function baseRequest(overrides: Partial<Parameters<typeof routePartnerRequest>[0]> = {}) {
@@ -698,7 +704,13 @@ describe("routePartnerRequest — POST /v1/purchases", () => {
     const data = (result.body as { data: { outcome: string; transaction_hash: string; explorer_url: string; delivery: unknown } }).data;
     expect(data.outcome).toBe("settled");
     expect(data.explorer_url).toBe(`https://stellar.expert/explorer/testnet/tx/${"b".repeat(64)}`);
-    expect(data.delivery).toMatchObject({ artifact_url: "https://signaldesk.example/api/x402/market-brief" });
+    // T84: the link is the merchant's delivery, not the paid route — which
+    // answers 402 and is what this assertion used to (wrongly) pin.
+    expect(data.delivery).toMatchObject({
+      delivery_id: "01M2E2WZBRT9TVVWNRFX3D6Y2A",
+      artifact_url: "https://signaldesk.example/deliveries/01M2E2WZBRT9TVVWNRFX3D6Y2A",
+      receipt_hash: "c".repeat(64),
+    });
   });
 
   it("answers 201 for a refusal too — a Mandate saying no is this system working", async () => {
