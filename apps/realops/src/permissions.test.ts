@@ -25,6 +25,19 @@ const TARGETS: PilotTargets = {
 const PERMISSIONS: AgentPermissions = { perTx: "0.30", perDay: "0.60", validForDays: 30 };
 
 describe("translatePermissions", () => {
+  /**
+   * `PURCHASE_ACTION` is copied from `checkScope`'s own `INTENT_CREATE_ACTION`
+   * (`apps/agent/src/scope`), not imported — RealOps is a partner and builds
+   * from the published contract (`examples/cloudops-partner-integration.md`:
+   * `actions: [..., "intent:create"]`), not an internal import. A copy that
+   * drifts from the real value is invisible until a real Mandate gets
+   * rejected with `ScopeActionNotAllowed` on its first purchase — which is
+   * exactly what happened before this test existed.
+   */
+  it("proposes the one action checkScope actually requires", () => {
+    expect(PURCHASE_ACTION).toBe("intent:create");
+  });
+
   it("builds a grant that matches the published schema", () => {
     const { grant } = translatePermissions("market_brief", PERMISSIONS, TARGETS, NOW);
 

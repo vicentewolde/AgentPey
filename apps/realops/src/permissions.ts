@@ -74,8 +74,23 @@ export interface TranslatedPermissions {
   readonly controls: readonly ExplainedControl[];
 }
 
-/** The single action the pilot's agents are authorised for. */
-export const PURCHASE_ACTION = "purchase";
+/**
+ * The single action the pilot's agents are authorised for.
+ *
+ * Must be `checkScope`'s own `INTENT_CREATE_ACTION` (`apps/agent/src/scope`),
+ * the one action string every real Mandate needs — documented for partners
+ * in `examples/cloudops-partner-integration.md` (`actions: ["catalog:read",
+ * "intent:create"]`). This was `"purchase"`, a name invented for this file
+ * that never matched what enforcement actually checks: every real
+ * consent-session mandate signed through F9 was rejected at the first
+ * purchase attempt with `ScopeActionNotAllowed: this credential does not
+ * permit "intent:create"` — found running the flow end to end with a real
+ * signed Mandate, not by reading. RealOps does not import `apps/agent`
+ * (a partner builds from the published contract, not an internal import,
+ * `C-75`'s precedent), so the value is copied here rather than imported —
+ * and has to stay copied correctly.
+ */
+export const PURCHASE_ACTION = "intent:create";
 export const CURRENCY = "USDC";
 
 /**

@@ -4,7 +4,7 @@ import { createAgentPeyClient } from "./agentpey.js";
 import type { ProposedGrant } from "./permissions.js";
 
 const GRANT: ProposedGrant = {
-  actions: ["purchase"],
+  actions: ["intent:create"],
   venues: ["signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF"],
   assets: ["USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA"],
   products: ["signaldesk:market-brief-xlm-usdc"],
