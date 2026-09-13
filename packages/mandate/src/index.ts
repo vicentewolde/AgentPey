@@ -8,6 +8,7 @@
 export {
   AGENTPAY_MANDATE_TYPE,
   agentPayMandateSchema,
+  grantToScope,
   mandateGrantSchema,
   mandateSubjectSchema,
   type AgentPayMandate,

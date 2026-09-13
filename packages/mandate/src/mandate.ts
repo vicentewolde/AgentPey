@@ -23,6 +23,7 @@ import {
   credentialStatusSchema,
   scopeSchema,
   stellarDidSchema,
+  type Scope,
 } from "@agentpass/core";
 import { StrKey } from "@stellar/stellar-sdk/base";
 import { z } from "zod";
@@ -112,3 +113,23 @@ export const agentPayMandateSchema = z.strictObject({
 export type AgentPayMandate = z.infer<typeof agentPayMandateSchema>;
 export type MandateSubject = z.infer<typeof mandateSubjectSchema>;
 export type MandateGrant = z.infer<typeof mandateGrantSchema>;
+
+/**
+ * The credential's `scope` from a grant — everything `mandateGrantSchema`
+ * adds on top of `scopeSchema` (`payTo`, `products`) stripped back off.
+ *
+ * One function, not a destructuring statement copied into every caller that
+ * builds a credential from a proposed grant: `mandateGrantSchema` picked up
+ * `products` in T73 after `payTo` (`M-14`) already existed, and the one place
+ * in `apps/web` that did this by hand kept excluding only `payTo` — every
+ * consent-session wallet-anchor then failed `InvalidCredential: payload does
+ * not match the AgentPass schema`, because `scopeSchema` is a `strictObject`
+ * and does not know `products`. Found running the real flow with a real
+ * wallet, not by reading. A grant with a third optional field added later and
+ * forgotten here would fail loudly the same way; centralising the stripping
+ * means there is exactly one place to update, not one per caller.
+ */
+export function grantToScope(grant: MandateGrant): Scope {
+  const { payTo: _payTo, products: _products, ...scope } = grant;
+  return scope;
+}

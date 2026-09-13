@@ -50,6 +50,7 @@ import { createDirectory, type ConsentSessionRecord, type Directory, type Mandat
 import {
   agentPayMandateSchema,
   anchorMandate,
+  grantToScope,
   mandateChallengeMessage,
   mandateGrantSchema,
   prepareWalletAnchor,
@@ -702,9 +703,10 @@ async function startConsentSession(consentSessionId: string): Promise<StartConse
   // into a real Mandate, so it is the point that has to be sure.
   const grant = mandateGrantSchema.parse(session.grant);
   // The credential's `scope` is a plain `Scope` — it cannot carry `payTo`
-  // (`M-14`) — so it gets the grant minus that field; the Mandate gets the
-  // grant exactly as the partner proposed it.
-  const { payTo: _payTo, ...scopeOnly } = grant;
+  // (`M-14`) or `products` (`C-75`) — so it gets the grant minus both, via
+  // `grantToScope`; the Mandate gets the grant exactly as the partner
+  // proposed it.
+  const scopeOnly = grantToScope(grant);
 
   const { credential, mandate: mandateDocument } = buildSessionDocuments({
     issuerAddress: issuer.publicKey(),
