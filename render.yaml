@@ -154,5 +154,10 @@ services:
       # ReturnUrlNotAllowed (which is the allowlist working, not a bug).
       - key: REALOPS_AGENTPEY_API_KEY
         sync: false
+      # The web service's Render name predates the P-11 rename (2026-09-11)
+      # and was never renamed on Render's side ("Render, pendiente del
+      # usuario" in that entry) — its host still spells "agentpay", not
+      # "agentpey". Verified live: agentpay-web.onrender.com answers,
+      # agentpey-web.onrender.com does not (x-render-routing: no-server).
       - key: AGENTPEY_BASE_URL
-        value: https://agentpey-web.onrender.com
+        value: https://agentpay-web.onrender.com
