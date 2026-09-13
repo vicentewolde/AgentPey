@@ -213,11 +213,23 @@ export function createAgentPeyClient(config: AgentPeyConfig): AgentPeyClient {
     },
 
     async createConsentSession(input) {
+      // `ProposedGrant` carries `validFrom`/`validUntil` inside the grant
+      // object because the review screen needs them there to show "hasta
+      // cuándo vale" next to the rest of what will be signed. But
+      // `mandateGrantSchema` (`packages/mandate`) is a `strictObject` with no
+      // such fields — the validity window is a sibling of `grant` in the
+      // wire request, not part of it (`createConsentSessionRequestSchema`).
+      // Sending `input.grant` verbatim smuggles two extra keys into a strict
+      // schema and AgentPey refuses the whole request with `InvalidArguments`.
+      // Found by running the real flow end to end, not by reading: no test
+      // here ever builds the actual wire body, only the fake client's
+      // in-memory `ProposedGrant`.
+      const { validFrom: _validFrom, validUntil, ...grant } = input.grant;
       const result = await call("POST", "/v1/consent_sessions", {
         body: {
           tenant_id: input.tenantId,
-          grant: input.grant,
-          valid_until: input.grant.validUntil,
+          grant,
+          valid_until: validUntil,
           return_url: input.returnUrl,
         },
         idempotencyKey: input.idempotencyKey,
