@@ -455,7 +455,9 @@ export async function executeTenantPurchase(
     intentId: intentResult.intent_id,
     total: intentResult.total_amount,
     asset: intentResult.asset,
-    payTo: receipt.payer,
+    // The payee the challenge named and reconcileTerms checked against the
+    // Mandate — not `receipt.payer`, which is who paid (the tenant's rail).
+    payTo: receipt.payTo,
     transactionHash: receipt.transaction,
     resourceUrl,
     resource: receipt.resourceBody,

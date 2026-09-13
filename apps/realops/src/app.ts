@@ -24,6 +24,7 @@ import { randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
+import { z } from "zod";
 
 import {
   agentKindSchema,
@@ -55,6 +56,14 @@ import {
 import { translatePermissions, type PilotTargets } from "./permissions.js";
 
 export const SESSION_COOKIE = "realops_session";
+
+/**
+ * The per-form purchase key a page embeds (`pages.ts`). Validated because it
+ * comes from the browser and ends up inside an `Idempotency-Key` header; a
+ * form that lacks one (a page cached from before T84) falls back to a fresh
+ * key, which is the old behaviour rather than a refusal.
+ */
+const requestKeySchema = z.uuid();
 
 /** How the magic link reaches the person. */
 export interface MagicLinkDelivery {
@@ -453,6 +462,14 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
 
+      // One key per rendered form, not per attempt (C-98, amended in T84). The
+      // form carries a key minted when the page was drawn, so sending the same
+      // form again — a double click, a resubmit after a timeout — replays the
+      // purchase AgentPey already made instead of paying a second time. Asking
+      // again from a fresh page is still a new purchase, which is what C-98
+      // protects; the daily limit is still what bounds it.
+      const requestKey = requestKeySchema.safeParse(form.get("request_key"));
+
       try {
         await config.agentpey.purchase({
           tenantId: agent.tenantId,
@@ -460,12 +477,23 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           productId: config.targets.products[kind][0]!,
           quantity,
           routeParams: routeParamsFor(kind, pair, account.externalRef),
-          // A fresh key per request: this is a person asking for something new,
-          // not a retry. Re-asking is a second purchase, which is what they
-          // meant, and the daily limit is what stops it from being unbounded.
-          idempotencyKey: `buy-${agent.id}-${randomUUID()}`,
+          idempotencyKey: `buy-${agent.id}-${requestKey.success ? requestKey.data : randomUUID()}`,
         });
       } catch (error) {
+        // A timeout is not a failure to buy: AgentPey may still be settling the
+        // payment. Saying "could not reach" here is what made people retry and
+        // pay twice in the deployed pilot (T84).
+        if (isAgentPassError(error) && error.details.timedOut === true) {
+          sendHtml(
+            response,
+            504,
+            errorPage(
+              504,
+              "AgentPey todavía no confirmó la compra y puede haberse completado. Revisá Mis servicios antes de volver a pedirla.",
+            ),
+          );
+          return;
+        }
         // A refusal is a `201` and lands on the page below. Reaching here means
         // the request itself failed, which is a different thing and says so.
         sendHtml(response, 502, errorPage(502, messageFor(error)));

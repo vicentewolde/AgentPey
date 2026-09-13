@@ -14,6 +14,8 @@
  * asks for it on every page, and the way to guarantee "every" is to make it
  * impossible to render a page without it.
  */
+import { randomUUID } from "node:crypto";
+
 import type { PurchaseResource, TenantActivity } from "./agentpey.js";
 import type { AgentConfig, Account, AgentKind } from "./accounts.js";
 import { FALLBACK_CHOICES } from "./instruction.js";
@@ -404,6 +406,7 @@ export function servicesPage(input: ServicesInput): string {
     signable.length === 0
       ? '<p class="card">Todavía no tenés ningún agente con permiso firmado. <a href="/agentes">Empezá por ahí</a>.</p>'
       : `<form class="card" method="post" action="/instruccion">
+    <input type="hidden" name="request_key" value="${randomUUID()}">
     <label for="instruction">Decile qué comprar</label>
     <input id="instruction" name="instruction" required maxlength="500" placeholder="compra el informe XLM/USDC">
     <button type="submit">Pedirlo</button>
@@ -453,7 +456,7 @@ export function notRecognisedPage(reason: string, instruction: string): string {
     pediste. Elegí una de las dos:</p>
     ${FALLBACK_CHOICES.map(
       (choice) =>
-        `<form method="post" action="/instruccion" style="display:inline"><input type="hidden" name="kind" value="${escape(choice.kind)}"><button type="submit">${escape(choice.label)}</button></form>`,
+        `<form method="post" action="/instruccion" style="display:inline"><input type="hidden" name="request_key" value="${randomUUID()}"><input type="hidden" name="kind" value="${escape(choice.kind)}"><button type="submit">${escape(choice.label)}</button></form>`,
     ).join("\n    ")}
   </div>
 `,

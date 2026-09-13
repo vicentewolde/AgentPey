@@ -136,7 +136,10 @@ export interface BazaarPaymentReceipt {
   readonly settled: boolean;
   /** The Stellar transaction hash, when the bazaar's settlement response carries one. */
   readonly transaction: string | undefined;
+  /** Who paid — the agent's account or the tenant's `policy_rail`. */
   readonly payer: string | undefined;
+  /** Who was paid: the challenge's `payTo`, the one reconciled against the Mandate before signing. */
+  readonly payTo: string | undefined;
   readonly network: string;
   readonly amount: string | undefined;
   readonly errorReason: string | undefined;
@@ -229,6 +232,7 @@ export async function executeBazaarPayment(
     settled: true,
     transaction: settlement.transaction,
     payer: settlement.payer,
+    payTo: terms.payTo,
     network: settlement.network,
     amount: settlement.amount,
     errorReason: settlement.errorReason,

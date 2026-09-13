@@ -109,8 +109,22 @@ export interface TenantActivity {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+/**
+ * How long a purchase is given. Not the default: a tenant's first purchase
+ * deploys and funds its `policy_rail`, asks the merchant for the invoice, pays
+ * and waits for settlement on testnet — measured at 20–40 s in the deployed
+ * pilot (T84). At 15 s RealOps told people "no se pudo hablar con AgentPey"
+ * while AgentPey went on to settle the payment.
+ */
+export const PURCHASE_TIMEOUT_MS = 120_000;
+
 function failed(message: string, details: Record<string, unknown>, cause?: unknown): AgentPassError {
   return new AgentPassError("NetworkError", message, { cause, details });
+}
+
+/** `AbortSignal.timeout` rejects with a `TimeoutError`; some runtimes surface it as `AbortError`. */
+function isTimeout(error: unknown): boolean {
+  return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
 }
 
 export interface AgentPeyClient {
@@ -158,7 +172,7 @@ export function createAgentPeyClient(config: AgentPeyConfig): AgentPeyClient {
   async function call<T>(
     method: string,
     path: string,
-    options: { readonly body?: unknown; readonly idempotencyKey?: string } = {},
+    options: { readonly body?: unknown; readonly idempotencyKey?: string; readonly timeoutMs?: number } = {},
   ): Promise<{ readonly status: number; readonly body: unknown }> {
     const headers: Record<string, string> = { authorization: `Bearer ${config.apiKey}` };
     if (options.body !== undefined) headers["content-type"] = "application/json";
@@ -170,9 +184,13 @@ export function createAgentPeyClient(config: AgentPeyConfig): AgentPeyClient {
         method,
         headers,
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: AbortSignal.timeout(options.timeoutMs ?? timeoutMs),
       });
     } catch (error) {
+      // A timeout is not "AgentPey is unreachable": the request may still be
+      // running there, and for a purchase it may still settle. Callers need to
+      // tell the two apart to say the truth to a person.
+      if (isTimeout(error)) throw failed("AgentPey no respondió a tiempo", { path, timedOut: true }, error);
       throw failed("no se pudo hablar con AgentPey", { path }, error);
     }
 
@@ -180,6 +198,8 @@ export function createAgentPeyClient(config: AgentPeyConfig): AgentPeyClient {
     try {
       parsed = await response.json();
     } catch (error) {
+      // The abort can also land while the body is still arriving.
+      if (isTimeout(error)) throw failed("AgentPey no respondió a tiempo", { path, timedOut: true }, error);
       throw failed("AgentPey no respondió JSON", { path, status: response.status }, error);
     }
     return { status: response.status, body: parsed };
@@ -257,6 +277,7 @@ export function createAgentPeyClient(config: AgentPeyConfig): AgentPeyClient {
           ...(input.routeParams === undefined ? {} : { route_params: input.routeParams }),
         },
         idempotencyKey: input.idempotencyKey,
+        timeoutMs: PURCHASE_TIMEOUT_MS,
       });
       // `201` for both outcomes, so `unwrap` returns the refusal too and the
       // caller reads `outcome` instead of catching.

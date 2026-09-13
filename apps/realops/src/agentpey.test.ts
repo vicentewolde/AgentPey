@@ -1,6 +1,69 @@
+import { isAgentPassError } from "@agentpass/core";
 import { describe, expect, it } from "vitest";
 
-import { createAgentPeyClient } from "./agentpey.js";
+import { createAgentPeyClient, PURCHASE_TIMEOUT_MS } from "./agentpey.js";
+
+/**
+ * A timeout is not "AgentPey is unreachable". In the deployed pilot a purchase
+ * took 20–40 s, RealOps gave up at 15 s and said "no se pudo hablar con
+ * AgentPey", and AgentPey settled the payment anyway (T84). The client has to
+ * tell the two apart, and give a purchase long enough to finish.
+ */
+describe("timeouts", () => {
+  const timeoutError = () => Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" });
+
+  it("marks a timed-out call as timedOut, distinct from an unreachable AgentPey", async () => {
+    const client = createAgentPeyClient({
+      baseUrl: "https://agentpey.example",
+      apiKey: "ap_test_x",
+      fetchImpl: async () => {
+        throw timeoutError();
+      },
+    });
+
+    const error = await client.readActivity("ptn_x:tenant1").catch((caught: unknown) => caught);
+
+    expect(isAgentPassError(error) && error.details.timedOut).toBe(true);
+  });
+
+  it("does not mark a refused connection as timedOut", async () => {
+    const client = createAgentPeyClient({
+      baseUrl: "https://agentpey.example",
+      apiKey: "ap_test_x",
+      fetchImpl: async () => {
+        throw new TypeError("fetch failed");
+      },
+    });
+
+    const error = await client.readActivity("ptn_x:tenant1").catch((caught: unknown) => caught);
+
+    expect(isAgentPassError(error)).toBe(true);
+    expect(isAgentPassError(error) && error.details.timedOut).toBeFalsy();
+  });
+
+  it("gives a purchase its own, longer timeout", async () => {
+    let signal: AbortSignal | undefined;
+    const client = createAgentPeyClient({
+      baseUrl: "https://agentpey.example",
+      apiKey: "ap_test_x",
+      timeoutMs: 15_000,
+      fetchImpl: async (_url, init) => {
+        signal = init!.signal ?? undefined;
+        return new Response(JSON.stringify({ ok: false, code: "Stop", message: "stop" }), { status: 400 });
+      },
+    });
+
+    await client
+      .purchase({ tenantId: "ptn_x:tenant1", venue: "v", productId: "p", quantity: 1, idempotencyKey: "k" })
+      .catch(() => undefined);
+
+    expect(PURCHASE_TIMEOUT_MS).toBeGreaterThanOrEqual(60_000);
+    // The signal is a timeout signal and not already aborted; its duration is
+    // not observable, so the constant above is what pins the value.
+    expect(signal).toBeDefined();
+    expect(signal!.aborted).toBe(false);
+  });
+});
 import type { ProposedGrant } from "./permissions.js";
 
 const GRANT: ProposedGrant = {

@@ -200,15 +200,79 @@ describe("asking for a purchase", () => {
     expect(params.account).not.toContain("@");
   });
 
-  it("uses a fresh idempotency key per request — asking twice is two purchases", async () => {
-    const cookie = await readyAgent("dos@ejemplo.cl");
-    const before = agentpey.purchases.length;
+  /**
+   * C-98 as amended in T84: one key per rendered form, not per attempt. In the
+   * deployed pilot a purchase outlived RealOps' timeout, the person was told
+   * it failed, and a resubmit would have paid again under a fresh key.
+   */
+  describe("idempotency, one key per rendered form", () => {
+    async function formKey(cookie: string): Promise<string> {
+      const html = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
+      const match = /name="request_key" value="([^"]+)"/.exec(html);
+      expect(match).not.toBeNull();
+      return match![1]!;
+    }
 
-    await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
-    await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
+    it("sending the same form twice asks with the same key, so AgentPey replays instead of paying again", async () => {
+      const cookie = await readyAgent("reenvio@ejemplo.cl");
+      const key = await formKey(cookie);
+      const before = agentpey.purchases.length;
 
-    const [first, second] = agentpey.purchases.slice(before);
-    expect(first!.idempotencyKey).not.toBe(second!.idempotencyKey);
+      const fields = { instruction: "compra el informe XLM/USDC", request_key: key };
+      await fetch(`${baseUrl}/instruccion`, form(fields, cookie));
+      await fetch(`${baseUrl}/instruccion`, form(fields, cookie));
+
+      const [first, second] = agentpey.purchases.slice(before);
+      expect(first!.idempotencyKey).toBe(second!.idempotencyKey);
+      expect(first!.idempotencyKey).toContain(key);
+    });
+
+    it("asking again from a fresh page is a new purchase", async () => {
+      const cookie = await readyAgent("dos@ejemplo.cl");
+      const before = agentpey.purchases.length;
+
+      await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC", request_key: await formKey(cookie) }, cookie));
+      await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC", request_key: await formKey(cookie) }, cookie));
+
+      const [first, second] = agentpey.purchases.slice(before);
+      expect(first!.idempotencyKey).not.toBe(second!.idempotencyKey);
+    });
+
+    it("still buys from a form that predates the key, and ignores a key that is not a uuid", async () => {
+      const cookie = await readyAgent("viejo@ejemplo.cl");
+      const before = agentpey.purchases.length;
+
+      await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
+      await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC", request_key: "x\r\ninjected" }, cookie));
+
+      const [first, second] = agentpey.purchases.slice(before);
+      expect(first).toBeDefined();
+      expect(second!.idempotencyKey).not.toContain("injected");
+    });
+
+    it("the fallback buttons carry a key too", async () => {
+      const cookie = await readyAgent("botones@ejemplo.cl");
+
+      const html = await (await fetch(`${baseUrl}/instruccion`, form({ instruction: "hola" }, cookie))).text();
+
+      expect(html).toMatch(/name="request_key" value="[0-9a-f-]{36}"/);
+    });
+  });
+
+  it("on a timeout, says the purchase may have completed instead of saying it failed", async () => {
+    const cookie = await readyAgent("lento@ejemplo.cl");
+    const { AgentPassError } = await import("@agentpass/core");
+    agentpey.answerWith(
+      new AgentPassError("NetworkError", "AgentPey no respondió a tiempo", { details: { path: "/v1/purchases", timedOut: true } }),
+    );
+
+    const response = await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
+
+    expect(response.status).toBe(504);
+    const html = await response.text();
+    expect(html).toContain("puede haberse completado");
+    expect(html).not.toContain("no se pudo hablar");
+    agentpey.answerWith(settled());
   });
 
   it("refuses to buy for a kind the person has no signed permission for", async () => {
