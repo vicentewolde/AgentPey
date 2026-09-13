@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-12 · **Último hito cerrado:** T83 (revocación hospedada) · **Fase 6: en curso**
+**Fecha:** 2026-09-13 · **Último hito cerrado:** T84 (despliegue público y primera compra de punta a punta) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -125,7 +125,15 @@ ahora (T82, `C-97` a `C-100`). Y el círculo cierra: se puede **revocar**, desde
 una página del dominio de AgentPey y firmando con la propia wallet. RealOps no
 puede revocar por nadie, ni aunque quisiera, y lo dice — la autoridad para
 cortar un permiso está en el contrato de Stellar, que rechaza una revocación
-que no venga firmada por quien lo firmó (T83, `C-101`).
+que no venga firmada por quien lo firmó (T83, `C-101`). Y el piloto está en
+internet, funcionando de verdad: los tres servicios corren en Render y una
+persona real contrató un agente, lo firmó con su propia wallet, le pidió el
+informe, y AgentPey lo pagó en testnet y SignalDesk lo entregó, con recibo
+firmado y la entrega abierta desde "Mis servicios". Llegar ahí destapó ocho
+defectos que las pruebas no veían porque vivían en los bordes entre servicios
+—el más serio, que a la persona se le decía que una compra había fallado
+mientras se pagaba, y reintentar la pagaba otra vez—, y los ocho quedaron
+cerrados (T84, `C-102` a `C-107`).
 
 ### Progreso
 
@@ -178,6 +186,7 @@ que no venga firmada por quien lo firmó (T83, `C-101`).
 | T81 | F9: lista blanca de URLs de retorno por partner (la última brecha de seguridad del plan) + RealOps ↔ `/v1` hasta el Mandato firmado | ✅ cerrado 2026-09-12 |
 | T82 | F9: la compra desde RealOps y "Mis servicios" — entregas con recibo y enlace al pago, y rechazos traducidos a castellano sin inventar | ✅ cerrado 2026-09-12 |
 | T83 | F9: revocación hospedada en `/revocar/{id}`, firmada con la wallet del principal — divulgación mínima antes de la prueba | ✅ cerrado 2026-09-12 |
+| T84 | F9: despliegue público de los tres servicios y primera compra real de punta a punta con la wallet del usuario — ocho defectos de borde entre servicios, encontrados en producción y cerrados; caso de aceptación 1 cumplido | ✅ cerrado 2026-09-13 |
 
 ---
 
@@ -3419,3 +3428,72 @@ transacción que falla con un error incomprensible de la cadena.
 los diez casos de aceptación**. Con T83 cierra el caso 6 (mandato vencido,
 revocado y credencial revocada) del lado del mecanismo; falta ejercitarlo de
 punta a punta contra testnet.
+
+---
+
+## T84 · Despliegue público y primera compra de punta a punta — cerrado 2026-09-13
+
+**Qué quedó funcionando, en palabras simples.**
+
+**El piloto está en internet y una persona real lo usó de punta a punta.** Entró
+a RealOps, contrató un agente, lo firmó con su propia wallet en el sitio de
+AgentPey, le pidió "comprá el informe XLM/USDC", y el informe llegó: AgentPey
+pagó 0.25 USDC de testnet, SignalDesk los cobró, firmó el recibo y entregó.
+Desde "Mis servicios" se abre el informe, se ve el número de entrega y el
+recibo, y el enlace al pago en Stellar. Es el **caso de aceptación 1**, cumplido
+en producción y no en una simulación.
+
+**El plan decía que T84 era la suite de los diez casos. No lo fue, y está bien
+que no.** Al desplegar, el recorrido real se rompió en ocho lugares distintos
+que ninguna prueba veía, porque todos vivían en el borde entre dos servicios, y
+las pruebas cubrían esos bordes con imitaciones. Correr la suite antes de
+arreglarlos habría medido fallas de conexión en vez del producto. La suite pasa
+a T85.
+
+**Los ocho defectos, de menos a más grave para una persona:**
+
+- La web tenía otro nombre en Render que el que el repo creía (`agentpay-web`,
+  sin renombrar desde `P-11`), así que RealOps apuntaba a un servidor que no
+  existe.
+- RealOps mandaba la vigencia del permiso adentro del permiso, y AgentPey
+  rechazaba la invitación a firmar (`C-102`).
+- AgentPey metía el permiso por producto en la credencial del agente, que no lo
+  admite, y la firma fallaba en el último paso (`C-102`).
+- RealOps pedía una acción con un nombre inventado (`purchase`), así que toda
+  compra se rechazaba aunque el permiso estuviera firmado (`C-103`).
+- La web se caía cuando la base de datos cortaba una conexión ociosa, y Render
+  la reiniciaba (`C-104`).
+- "Mis servicios" tardaba 73 segundos, porque cada lectura abría una conexión
+  nueva a la base y nunca la cerraba (`C-105`).
+- "Ver lo que compraste" llevaba a la ruta de pago, que pedía pagar de nuevo, en
+  vez de a la entrega (`C-107`).
+- **El más serio:** a la persona se le decía "no se pudo hablar con AgentPey"
+  mientras la compra se pagaba igual, y reintentar la pagaba otra vez (`C-106`).
+
+**Y uno que introduje yo:** el arreglo de las conexiones metió un carácter
+invisible en el código que hacía que Git tratara ese archivo como binario. Se
+vio al mergear y se corrigió en el mismo hito.
+
+**Evidencia técnica.**
+
+- Compra final: tx `437ee6eb…a165`, ledger 4663538, 0.25 USDC del rail del tenant
+  a `GB4D4PLL…GYOOF`; recibo firmado por SignalDesk con la misma transacción y la
+  misma cuenta; "Mis servicios" responde en 1,2 s.
+- `pay_to` registra al cobrador desde `e8ce369`; las compras anteriores conservan
+  la dirección del rail, sin reescribir historial.
+- Con el pool compartido, los nueve tests de integración del vault contra
+  Supabase pasan, incluidas las carreras del tope diario de T61 y T66.
+- **1248 tests verdes** (eran 1225), `typecheck` y `build` limpios.
+- 5 de los 20 rails patrocinados se consumieron en estas pruebas. Siete tenants
+  de diagnóstico quedaron en producción, sin compras ni rail
+  (`evidencia/T84.md` § 6).
+- Commits: `8d0ac1f`, `45aaa93`, `c1f7615`, `5263e5b`, `7bbfa7b`, `e8ce369`,
+  `e841dff`, `16cf7da`, `8e708e0`.
+
+**Decisiones nuevas:** `C-102` a `C-107`. **Enmendada:** `C-98`, con la clave de
+idempotencia por formulario, a pedido del usuario.
+
+**Qué sigue.** **T85: la suite de los casos 2 a 10** contra los servicios
+desplegados. Anotado sin construir: `Cache-Control: no-store` en RealOps
+(propuesto), el conflicto de idempotencia al reapretar "Firmar" en el mismo
+agente, y rotar el secreto del partner de RealOps, que pasó por el chat.

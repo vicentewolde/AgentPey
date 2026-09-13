@@ -3759,8 +3759,15 @@ dos formas aceptadas y las dos rechazadas (`S…` y basura).
 
 ---
 
-### C-98 · T82: la instrucción elige el producto, y nada más · `Vigente`
-**Fecha:** 2026-09-12
+### C-98 · T82: la instrucción elige el producto, y nada más · `Enmendada en T84`
+**Fecha:** 2026-09-12 · **Enmendada el 2026-09-13** — ver `C-106`
+
+> **Lo que cambió (T84), a pedido del usuario.** La clave de idempotencia ya
+> no es nueva **por pedido** sino **por formulario**: la página la genera al
+> dibujarse. Reenviar el mismo formulario reutiliza la compra ya hecha; pedir
+> de nuevo desde una página nueva sigue siendo otra compra, que es lo que esta
+> decisión protege. El motivo fue un incidente real del piloto desplegado,
+> contado en `C-106`. Lo demás de esta decisión sigue igual.
 
 Cuando la persona escribe "compra el informe", lo único que sale de leer esa
 frase es **un tipo de producto y una cantidad**. El comercio, el precio, el
@@ -3880,3 +3887,207 @@ transacción que no le compra nada es hacerle perder el tiempo.
 absoluta desde el query string sería exactamente la redirección abierta que
 `C-95` existe para prevenir, y esta página no la reintroduce por la puerta de
 atrás.
+
+---
+
+### C-102 · T84: lo que cruza un borde tiene exactamente la forma del esquema que lo recibe · `Vigente`
+**Fecha:** 2026-09-13
+
+Dos defectos del mismo tipo, los dos encontrados corriendo el recorrido real
+contra los servicios desplegados, y ninguno por una prueba:
+
+- **RealOps mandaba la vigencia dentro del grant.** `ProposedGrant` lleva
+  `validFrom`/`validUntil` adentro porque la pantalla de revisión los muestra
+  junto a lo que se firma; `mandateGrantSchema` es estricto y no los conoce, y
+  la vigencia viaja como campo hermano (`valid_until`). Toda firma desde el
+  RealOps desplegado respondía `InvalidArguments`. Se quitan antes de mandar.
+- **La credencial heredaba `products`.** `startConsentSession` armaba el
+  `scope` de la credencial quitando **solo** `payTo` del grant. T73 agregó
+  `products` (`C-75`) y ese lugar no se actualizó; `scopeSchema` también es
+  estricto, así que toda firma de un grant con producto terminaba en
+  `InvalidCredential`.
+
+**La decisión: lo que un grant agrega sobre `scopeSchema` se quita en un solo
+lugar.** `grantToScope` vive en `@agentpey/mandate`, junto al esquema que
+define esos campos extra. Si mañana el grant gana un tercer campo opcional, hay
+un lugar para actualizar y no uno por cada código que arme una credencial.
+
+**Por qué ninguna prueba lo vio.** Las pruebas de RealOps usaban un cliente de
+AgentPey falso que nunca construía el cuerpo HTTP, y ninguna prueba de la web
+emitía una credencial desde un grant con producto. Las dos pruebas nuevas
+fallan si vuelve a pasar: una captura el cuerpo real que sale del cliente, la
+otra valida contra `scopeSchema` lo que devuelve `grantToScope`.
+
+**Alternativa descartada:** hacer `scopeSchema` permisivo (`passthrough`). Habría
+arreglado el síntoma aflojando justamente el esquema que protege qué afirma una
+credencial firmada.
+
+---
+
+### C-103 · T84: RealOps propone `intent:create`, copiado del contrato publicado y fijado por una prueba · `Vigente`
+**Fecha:** 2026-09-13
+
+RealOps proponía `actions: ["purchase"]`, un nombre inventado en su propio
+archivo. `checkScope` y `checkMandate` exigen una sola acción fija,
+`INTENT_CREATE_ACTION = "intent:create"`, que la guía pública de partners ya
+documentaba. **Toda compra de todo Mandato firmado desde F9 se habría
+rechazado**, con `ScopeActionNotAllowed` o `MandateActionNotAllowed` según qué
+capa mirara primero.
+
+**RealOps sigue copiando el valor en vez de importarlo.** Es un partner y
+construye desde el contrato publicado, no desde `apps/agent` (el mismo
+criterio de `C-75`). Lo que cambia es que la copia está fijada por una prueba
+sobre el valor literal: las pruebas existentes comparaban la constante contra
+sí misma, y por eso nunca vieron que estaba mal.
+
+**Un Mandato firmado con la acción vieja no se corrige.** Está anclado; el
+camino es contratar un agente nuevo y volver a firmar.
+
+---
+
+### C-104 · T84: todo pool de Postgres escucha `error`; los tiempos de espera no se tocan de pasada · `Vigente`
+**Fecha:** 2026-09-13
+
+Ninguno de los seis `pg.Pool` del repo escuchaba el evento `error`. `pg` emite
+por ahí una conexión ociosa que el servidor corta, y en Node un `error` sin
+oyente mata el proceso. El pooler de Supabase corta conexiones ociosas: la web
+se caía, Render la reiniciaba (cerca de un minuto en plan Free), y quien pedía
+algo en esa ventana recibía la página de error de Render o esperaba hasta
+rendirse.
+
+**Primero se diagnosticó mal**, como arranque en frío del plan Free. La
+hipótesis cayó cuando falló con los tres servicios recién despertados, y la
+causa se confirmó reproduciéndola contra la base real: sin oyente el proceso
+termina con `Unhandled 'error' event`; con oyente registra el error, sigue vivo
+y la próxima consulta abre otra conexión.
+
+**La decisión: cada pool registra `error` con el logger que ya usa su archivo,
+y nada más.** No cambia la respuesta de ningún pedido.
+
+**Descartado a propósito:** ajustar `connectionTimeoutMillis`,
+`idleTimeoutMillis` o el tamaño de los pools en el mismo cambio. Cambiaría
+cuándo se rinde una llamada en el camino de pago, que es la clase de cambio que
+`C-86` dice que no se hace de pasada.
+
+---
+
+### C-105 · T84: un pool de vault por proceso y base; compartirlo no cambia el enforcement · `Vigente`
+**Fecha:** 2026-09-13 · **Decidido por el usuario, entre tres opciones**
+
+"Mis servicios" tardaba **73 s** para un tenant con Mandato y rail, contra 0,4 s
+para uno vacío, y RealOps espera 15. Cada `createPostgresMandateVault` abría su
+propio `Pool` y nadie lo cerraba; la web arma un vault por pedido (dos por
+lectura de actividad, uno por compra), y las conexiones se apilaban contra el
+pooler compartido por los tres servicios. Medido contra la base del piloto:
+tres vaults dejaban cuatro conexiones ociosas más, a unos 2 s cada una.
+
+**La decisión: un pool por proceso y por base, compartido por todos los vaults,
+con la tabla creada una vez.** Medido igual después: el segundo y el tercer
+vault tardan unos 0,2 s y no queda conexión colgada.
+
+**Por qué no cambia el control del tope diario.** `withOwnLock` toma el lock
+consultivo dentro de una transacción, sobre un cliente pedido solo para esa
+sección. Dos vaults, del mismo tenant o no, siguen usando dos conexiones y
+siguen serializando sobre el lock de la base, igual que con dos pools. Y nada
+dentro del trabajo de `atomically` pide un segundo cliente mientras el lock
+está tomado: `LocalPolicyRail.authorise()` usa solo el cliente bloqueado, y
+`withVault` registra un rechazo después de que la sección terminó. Un pedido
+anidado es lo único que podría hacer que un pool compartido y acotado se
+esperara a sí mismo, y no hay ninguno. Los nueve tests de integración contra
+Supabase pasan, incluidas las dos carreras del tope diario (T61, T66).
+
+**Dos detalles que no son de forma.** La clave del pool incluye el certificado
+de la base: un pool abierto con TLS verificado no puede servir a uno que no
+verifica, ni al revés. Y una inicialización fallida no queda guardada: el
+próximo vault lo vuelve a intentar en vez de heredar un pool roto por toda la
+vida del proceso.
+
+**Alternativas descartadas:** cerrar el pool al terminar cada pedido (corta la
+fuga pero cada lectura sigue pagando ~2 s de conexión) y darle más tiempo a
+RealOps (tapa el síntoma y deja la fuga).
+
+**Nota de honestidad:** la primera versión de este cambio metió un byte nulo
+literal en el código fuente, como separador de la clave. Funcionaba, pero Git
+pasó a tratar el archivo como binario, y así los cambios del vault quedaban
+imposibles de revisar. Se corrigió en el mismo hito, con la clave armada en
+JSON.
+
+---
+
+### C-106 · T84: la compra tiene su propio tiempo de espera, un timeout no es "no se pudo hablar", y la clave es por formulario · `Vigente`
+**Fecha:** 2026-09-13 · **Decidido por el usuario** · Enmienda `C-98`
+
+**El incidente.** En el piloto desplegado, RealOps le mostró a la persona "no
+se pudo hablar con AgentPey" después de cada compra, mientras el directorio
+guardaba cuatro compras **liquidadas**, cada una verificable en la red. RealOps
+esperaba 15 s; la primera compra de un tenant despliega y fondea su rail, pide
+la factura, paga y espera la liquidación, y eso tardó entre 20 y 40 s. AgentPey
+no se detiene cuando quien pidió corta, así que el pago terminaba igual. Y con
+una clave de idempotencia nueva por pedido (`C-98`), **un reintento habría
+pagado otra vez**.
+
+**La decisión, en tres partes que van juntas:**
+
+1. **La compra tiene su propio tiempo de espera, 120 s.** Las demás llamadas
+   siguen en 15 s.
+2. **Un timeout se reporta distinto de "no hay conexión"** (`timedOut` en los
+   detalles del error), y la página dice la verdad: la compra puede haberse
+   completado, y hay que revisar "Mis servicios" antes de volver a pedirla.
+3. **Una clave por formulario, no por intento.** El formulario, y también los
+   dos botones de respaldo, llevan un uuid generado al dibujar la página.
+   Reenviar el mismo formulario le devuelve la compra que AgentPey ya hizo;
+   pedir de nuevo desde una página nueva sigue siendo otra compra. Un
+   formulario sin clave, de una página guardada de antes, cae a una clave
+   nueva, que es el comportamiento anterior; y una clave que no es uuid se
+   ignora, porque viene del navegador y termina adentro de un header.
+
+**Por qué no alcanzaba solo con subir el tiempo.** Una espera larga baja la
+probabilidad del error, pero no cambia qué pasa cuando igual se agota: la
+persona vuelve a apretar y paga dos veces. La clave por formulario es lo que
+hace inofensivo ese reintento.
+
+**Alternativa descartada:** una clave fija por agente, como la invitación de
+firma (`C-96`). Haría que pedir el informe dos veces a propósito devolviera
+siempre la primera compra, justo lo que `C-98` quería evitar.
+
+**Mismo hito, arreglo de dato:** `pay_to` guardaba `receipt.payer`, que es quién
+pagó (el rail del tenant), en vez del cobrador. El dinero había ido a la cuenta
+correcta; el registro decía otra cosa. `BazaarPaymentReceipt` ahora lleva el
+`payTo` que `reconcileTerms` comparó contra el Mandato antes de firmar. Las
+compras anteriores al arreglo conservan el dato viejo: no se reescribe el
+historial.
+
+---
+
+### C-107 · T84: la entrega se lee del cuerpo del comercio, campo por campo, y el enlace no sale del origen pagado · `Vigente`
+**Fecha:** 2026-09-13
+
+En "Mis servicios", toda entrega de SignalDesk aparecía sin número de entrega,
+sin recibo, y con "Ver lo que compraste" apuntando a la ruta paga x402, que
+responde `402` y le pide a la persona que pague de nuevo. SignalDesk sí mandaba
+los tres datos: la ruta de compra guarda `{ resource_url, resource }`, y
+`toPurchaseResource` los buscaba en el nivel de arriba en vez de adentro de
+`resource`.
+
+**La decisión: cada dato de la entrega sale del cuerpo del comercio, validado
+por separado, y un dato mal formado queda en `null`.** El cuerpo es de un
+tercero, y un solo campo roto no puede hacer que falle la lectura entera de la
+actividad de un tenant. Se lee al momento de responder: no hay migración, y las
+compras ya hechas se ven bien sin tocarlas.
+
+**El enlace tiene una regla más.** Tiene que ser `http(s)`, sin credenciales
+embebidas, y del **mismo origen** que la ruta que se pagó. Un comercio puede
+mandar a quien le compró a sus propias entregas; no puede usar un enlace que
+RealOps muestra como "lo que compraste" para mandarla a otro sitio. Hay pruebas
+para otro dominio, un dominio que empieza igual, `javascript:`, y los dos trucos
+de credenciales en el host.
+
+**La ruta paga ya no se usa como enlace de respaldo.** Para un comercio que no
+manda `artifact_url` el enlace queda en `null`: esa ruta no puede entregar nada
+sin un segundo pago, y ofrecerla como "lo que compraste" era la falla misma.
+Sigue en pie `C-79`: un comercio que no manda estos datos no está roto.
+
+**Anotado, sin construir:** después del despliegue la persona siguió viendo el
+`402` en una pestaña vieja. RealOps no manda `Cache-Control`, así que el
+navegador puede mostrar una copia anterior de una página con datos de la
+persona. Propuesto `no-store`, a decidir.

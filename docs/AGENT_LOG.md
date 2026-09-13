@@ -4846,3 +4846,81 @@ falta ejercitarlo de punta a punta contra testnet. Del lado del usuario sigue
 todo lo anotado: crear el partner de RealOps, su key en Render, **registrar su
 origen de retorno**, comprar `agentpey.com`, instancia Starter de
 `agentpey-web`.
+
+---
+
+## 2026-09-13 (21) — main / cc/t84-*
+
+Agente: Claude Code
+
+Qué: **T84**, el despliegue público de los tres servicios y la primera compra
+real de punta a punta, hecha por el usuario con su propia wallet contra
+producción. Mergeado `cc/t83-hosted-revocation` antes de empezar. Sin delegar
+nada a Codex.
+
+**Desviación del plan, registrada:** T84 iba a ser la suite de los diez casos.
+El recorrido real se rompió en ocho bordes entre servicios que la suite no
+cubría (usaba dobles), y correr la suite antes de arreglarlos habría medido
+fallas de conexión. La suite pasa a T85.
+
+**Lo desplegado.** La web ya existía como `agentpay-web.onrender.com` (con "a",
+nunca renombrada en Render desde `P-11`); SignalDesk se creó con el nombre
+exacto de `venues.json`; RealOps ya estaba. El usuario creó el partner
+(`ptn_01M2DPVEA88Q99SKWTGBDE3YK4`), cargó la key y registró el origen de
+retorno. `DATABASE_URL` faltaba en RealOps.
+
+**Los ocho defectos y sus commits**, cada rama mergeada con confirmación
+explícita:
+
+1. Host equivocado en `render.yaml` → `45aaa93`.
+2. La vigencia viajaba dentro del grant (`InvalidArguments`) → `8d0ac1f`, `C-102`.
+3. `products` se colaba en la credencial (`InvalidCredential`) → `c1f7615`,
+   `grantToScope`, `C-102`.
+4. RealOps proponía `purchase` en vez de `intent:create` → `5263e5b`, `C-103`.
+5. Ningún `pg.Pool` escuchaba `error`, y una conexión ociosa cortada mataba el
+   proceso → `7bbfa7b`, `C-104`. **Primero lo diagnostiqué mal** como arranque
+   en frío; lo descartó que fallara con los tres servicios calientes, y lo
+   confirmó una reproducción contra la base real.
+6. Compra pagada mostrada como fallida, con riesgo de doble pago; `pay_to`
+   guardaba al pagador → `e8ce369`, `C-106`, enmienda de `C-98` aprobada por el
+   usuario.
+7. Fuga de un pool por vault; "Mis servicios" en 73 s → `e841dff`, `C-105`
+   (opción A, elegida por el usuario). **Ese commit metió un byte nulo literal**
+   en `postgres-vault.ts` y Git pasó a verlo binario; corregido en `16cf7da`.
+8. La entrega se leía del lugar equivocado y el enlace pedía pagar otra vez →
+   `8e708e0`, `C-107`.
+
+Además, operativo: la key del partner quedó cortada en Render (`…Rc` en vez de
+`…Rc-0`), y reapretar "Firmar" en el mismo agente dio `IdempotencyKeyConflict`.
+
+Verificado: compra final tx `437ee6eb…a165`, ledger 4663538, 0.25 USDC a
+SignalDesk; recibo firmado por SignalDesk con la misma transacción; "Mis
+servicios" en 1,2 s; el usuario abrió el informe desde "Ver lo que compraste".
+**1248 tests** (eran 1225), `typecheck` y `build` limpios, y los nueve tests de
+integración del vault contra Supabase.
+
+Por qué: el piloto tiene que funcionar para una persona externa en producción,
+y cada uno de estos defectos lo impedía o, peor, le mentía sobre lo que pasó
+con su plata.
+
+Documentación tocada: `DECISIONES.md` (`C-102` a `C-107`, `C-98` marcada como
+enmendada), `BITACORA.md` (T84 + tabla + estado actual), `evidencia/T84.md`
+(nuevo). `AGENTS.md` no se tocó: no repite ninguna de las decisiones que
+cambiaron. Archivos de código: `apps/realops/src/{agentpey,app,pages,
+permissions,server}.ts` y sus tests, `apps/web/src/{server,tenant-purchase,
+pending-write-store,wallet-session-store}.ts`, `apps/web/src/partner-routes.test.ts`,
+`apps/agent/src/payment/x402.ts`, `apps/signaldesk/src/server.ts`,
+`packages/mandate/src/{mandate,index}.ts` y `mandate.test.ts`,
+`packages/vault/src/postgres-vault.ts` y su test,
+`packages/directory/src/directory.ts` y `directory.tls.test.ts`,
+`packages/partner-api/src/resources/purchases.ts` y su test, `render.yaml`.
+
+Pendiente: **mergear `cc/t84-cierre`** (espera confirmación). Siguiente hito
+**T85**: la suite de los casos 2 a 10 contra los servicios desplegados.
+Anotado sin construir: `Cache-Control: no-store` en RealOps (propuesto, sin
+aprobar), el conflicto de idempotencia al reapretar "Firmar", y rotar el
+secreto del partner de RealOps, que pasó por el chat. Datos de diagnóstico en
+producción: siete tenants `rop_diag*`/`rop_warmup*` y tres consent sessions
+pendientes que vencen solas. Consumidos en pruebas: 5 de los 20 rails
+patrocinados. Del lado del usuario sigue: pagar Starter (arranques en frío de
+~60 s en Free), comprar `agentpey.com`.
