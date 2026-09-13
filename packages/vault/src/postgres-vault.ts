@@ -78,6 +78,10 @@ export async function createPostgresMandateVault(options: PostgresMandateVaultOp
         ? { rejectUnauthorized: false }
         : { ca: postgresCa, rejectUnauthorized: true },
   });
+  // An idle client the server drops is emitted here; unlistened, it crashes the process.
+  pool.on("error", (error) => {
+    console.error(`[vault] idle Postgres client failed: ${error.message}`);
+  });
 
   try {
     await pool.query(CREATE_TABLE_SQL);

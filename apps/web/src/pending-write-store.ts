@@ -56,6 +56,8 @@ export async function createPostgresPendingWriteStore(
         ? { rejectUnauthorized: false }
         : { ca: postgresCa, rejectUnauthorized: true },
   });
+  // An idle client the server drops is emitted here; unlistened, it crashes the process.
+  pool.on("error", (error) => logError("[pending-write-store] idle Postgres client failed", error));
 
   try {
     await pool.query(CREATE_TABLE_SQL);

@@ -79,6 +79,10 @@ async function buildStore(): Promise<{ store: RealOpsStore; client?: SqlClient }
     connectionString,
     ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: false },
   });
+  // An idle client the server drops is emitted here; unlistened, it crashes the process.
+  pool.on("error", (error) => {
+    process.stderr.write(`RealOps: idle Postgres client failed: ${error.message}\n`);
+  });
   for (const statement of REALOPS_SCHEMA_SQL) await pool.query(statement);
   return { store: createPostgresStore(pool), client: pool };
 }

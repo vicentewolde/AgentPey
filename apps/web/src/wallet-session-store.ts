@@ -155,6 +155,8 @@ export async function createPostgresWalletSessionStore(
         ? { rejectUnauthorized: false }
         : { ca: postgresCa, rejectUnauthorized: true },
   });
+  // An idle client the server drops is emitted here; unlistened, it crashes the process.
+  pool.on("error", (error) => logError("[wallet-session-store] idle Postgres client failed", error));
 
   try {
     await pool.query(CREATE_TABLES_SQL);

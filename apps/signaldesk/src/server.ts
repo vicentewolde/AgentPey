@@ -38,6 +38,10 @@ async function buildStore(env: Map<string, string>): Promise<SignalDeskStore> {
     connectionString,
     ssl: connectionString.includes("localhost") ? undefined : { rejectUnauthorized: false },
   });
+  // An idle client the server drops is emitted here; unlistened, it crashes the process.
+  pool.on("error", (error) => {
+    process.stderr.write(`SignalDesk: idle Postgres client failed: ${error.message}\n`);
+  });
   for (const statement of SIGNALDESK_SCHEMA_SQL) await pool.query(statement);
   return createPostgresStore(pool);
 }

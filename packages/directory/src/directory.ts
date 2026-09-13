@@ -509,6 +509,10 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
         : { ca: postgresCa, rejectUnauthorized: true }),
     max: options.maxConnections ?? 10,
   });
+  // An idle client the server drops is emitted here; unlistened, it crashes the process.
+  pool.on("error", (error) => {
+    console.error(`[directory] idle Postgres client failed: ${error.message}`);
+  });
 
   try {
     for (const statement of DIRECTORY_SCHEMA_SQL) await pool.query(statement);

@@ -7,11 +7,17 @@ interface PoolOptions {
 }
 
 const pools = vi.hoisted((): PoolOptions[] => []);
+const errorListeners = vi.hoisted(() => ({ count: 0 }));
 
 vi.mock("pg", () => ({
   Pool: class {
     constructor(options: PoolOptions) {
       pools.push(options);
+    }
+
+    on(event: string) {
+      if (event === "error") errorListeners.count += 1;
+      return this;
     }
 
     async query() {
@@ -28,8 +34,24 @@ const originalPostgresCa = process.env.POSTGRES_CA_CERT;
 
 afterEach(() => {
   pools.length = 0;
+  errorListeners.count = 0;
   if (originalPostgresCa === undefined) delete process.env.POSTGRES_CA_CERT;
   else process.env.POSTGRES_CA_CERT = originalPostgresCa;
+});
+
+describe("createDirectory idle-client errors", () => {
+  /**
+   * `pg` emits a dropped idle connection as an `error` event on the pool, and
+   * an unlistened `error` event kills the Node process. Against Supabase's
+   * pooler that took the whole web service down mid-flow in the pilot; see
+   * the T84 evidence for the reproduction against the real database.
+   */
+  it("listens for pool errors, so a dropped idle connection cannot crash the process", async () => {
+    const directory = await createDirectory({ connectionString: "postgres://test" });
+
+    expect(errorListeners.count).toBe(1);
+    await directory.close();
+  });
 });
 
 describe("createDirectory TLS", () => {
