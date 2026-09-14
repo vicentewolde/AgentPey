@@ -1,11 +1,44 @@
+# T86 — one Render service for the whole pilot. `agentpey.com`,
+# `realops.agentpey.com` and `signaldesk.agentpey.com` all point here, and
+# `apps/gateway` spawns `apps/web`, `apps/realops` and `apps/signaldesk` as
+# three separate OS processes, forwarding each request by its `Host` header.
+#
+# Before T86 these were three services (`agentpey-web`, `agentpey-realops`,
+# `agentpey-signaldesk`), and keeping all three warm meant three Starter plans.
+# What that separation bought is kept, not given up: SignalDesk is only credible
+# as a merchant that cannot reach into AgentPey's authorisation if it holds
+# none of AgentPey's keys (`C-88`). Render gives one service one set of
+# variables, so every secret below lands in the gateway's environment — and
+# `apps/gateway/src/hosts.ts` (`envKeys`) is the list of which ones each child
+# is actually handed. A key added here and not there reaches no app.
 services:
   - type: web
-    name: agentpey-web
+    # Matches the service's name in the dashboard, where it was created by hand
+    # before this file described it.
+    name: AgentPey
     runtime: node
-    plan: free
+    # Starter, not Free: a demo cannot open on a cold start, and one warm plan
+    # for three apps is the point of this service.
+    plan: starter
     region: oregon
     buildCommand: corepack enable && corepack prepare pnpm@11.24.0 --activate && pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm --filter @agentpey/web run start
+    startCommand: pnpm --filter @agentpey/gateway run start
+    # No healthCheckPath, on purpose. Render's check does not arrive with any of
+    # the three hostnames below, and the gateway answers an unknown host with a
+    # 404 rather than guessing an app — so a health check path would fail every
+    # deploy while all three apps were fine.
+    #
+    # Every hostname here must also be in the gateway's host map
+    # (`apps/gateway/src/server.ts`); one missing there is a 404, not a fallback.
+    # `www.agentpey.com` is not listed: Render adds it with the apex and
+    # redirects it to `agentpey.com`, so the gateway never sees it.
+    domains:
+      - agentpey.com
+      - realops.agentpey.com
+      # Must match the `baseUrl` of the `signaldesk` row in
+      # apps/agent/src/catalog/venues.json: a venue is resolved by origin, so a
+      # different hostname is a different venue and is refused.
+      - signaldesk.agentpey.com
     envVars:
       # pnpm@11.24.0 (pinned via packageManager in package.json) requires
       # Node >=22.13 to run under Corepack — 22.11.0 makes Corepack crash
@@ -24,8 +57,18 @@ services:
       # last failure.
       - key: COREPACK_INTEGRITY_KEYS
         value: ""
-      # Secrets — set these in the Render dashboard after the first deploy.
-      # Never committed, never filled in here.
+
+      # ---- Shared ----------------------------------------------------------
+      # The pilot's one Postgres, the only name all three apps are handed. Each
+      # still reads only its own tables (`realops_*`, `signaldesk_*`, and
+      # AgentPey's). Without it the MandateVault has nowhere durable to write
+      # (T33: the old JSONL file lived on Render's ephemeral disk).
+      - key: DATABASE_URL
+        sync: false
+
+      # ---- AgentPey (apps/web, agentpey.com) --------------------------------
+      # Secrets — set these in the Render dashboard. Never committed, never
+      # filled in here.
       - key: ISSUER_SECRET_KEY
         sync: false
       - key: AGENT_SECRET_KEY
@@ -33,25 +76,14 @@ services:
       - key: AGENT_REGISTRY_CONTRACT_ID
         sync: false
       # T35 — signs `register_issuer` when a connected wallet anchors its
-      # first Mandate (ensureWalletIsRegisteredIssuer). Same admin key
-      # deploy:registry already uses locally; missing here is exactly why
-      # a wallet-signed session fails at "Iniciar sesión" with
+      # first Mandate (ensureWalletIsRegisteredIssuer). Missing here is exactly
+      # why a wallet-signed session fails at "Iniciar sesión" with
       # "ADMIN_SECRET_KEY is missing".
       - key: ADMIN_SECRET_KEY
         sync: false
-      # T33 — a Postgres connection string (e.g. Supabase). Required: without
-      # it the MandateVault has nowhere durable to write, which is exactly
-      # the bug this hito fixes (the old JSONL file lived on Render's
-      # ephemeral disk and was wiped on every redeploy).
-      - key: DATABASE_URL
-        sync: false
       # F4/T40 — the master seed each tenant's own derived Stellar identity
-      # comes from (`@agentpey/tenancy`). Required for any wallet session:
-      # without it, `MASTER_MNEMONIC is missing` at "Iniciar sesión", the
-      # same class of omission `ADMIN_SECRET_KEY` already taught (T35). Not
-      # generated or set by this commit — this line only reserves the name
-      # Render will prompt for; the actual value is set in the dashboard,
-      # once, and never regenerated (`.env.example`'s comment explains why).
+      # comes from (`@agentpey/tenancy`). Set once in the dashboard and never
+      # regenerated (`.env.example`'s comment explains why).
       - key: MASTER_MNEMONIC
         sync: false
       - key: BAZAAR_BASE_URL
@@ -60,20 +92,15 @@ services:
       # in deployments/testnet.json and shown as `pagador` on the live demo
       # itself. Migrated once already (see AGENT_LOG.md, 2026-09-12): the
       # rail this pointed to since T31 predates T57's `principal`/`withdraw`/
-      # `set_owner` — funds sent to it could never come back out. Redeployed
-      # from the current wasm (same one T58's per-tenant rails use, see
-      # POLICY_RAIL_WASM_HASH below), owned by the agent, with
-      # ADMIN_PUBLIC_KEY as principal. The old contract
-      # (CCGAGRLVERK2A6PVQNU6YY62ANWNSFO32DM6OMFLRNLVHYJBLLON4G3I) is
-      # abandoned with whatever symbolic testnet balance it held — not worth
-      # recovering, and it never could be without this exact migration.
+      # `set_owner` — funds sent to it could never come back out. The old
+      # contract (CCGAGRLVERK2A6PVQNU6YY62ANWNSFO32DM6OMFLRNLVHYJBLLON4G3I) is
+      # abandoned with whatever symbolic testnet balance it held.
       - key: POLICY_RAIL_CONTRACT_ID
         value: CANSQJH7KPQTBUXPA42BBWZGZRKLWQZUFVF3SLQOUWKHEX4L3JP7YEDA
       # Not a secret either — the wasm hash of `contracts/policy-rail`'s
-      # current source (T57, `principal`/`withdraw`/`set_owner`), already
-      # uploaded to testnet. `ensureTenantPolicyRail` (F6/T58) instantiates a
-      # new rail per wallet-connected tenant from this same wasm, without
-      # re-uploading it — one upload, many `createCustomContract` calls.
+      # current source (T57), already uploaded to testnet.
+      # `ensureTenantPolicyRail` (F6/T58) instantiates a new rail per
+      # wallet-connected tenant from this same wasm, without re-uploading it.
       - key: POLICY_RAIL_WASM_HASH
         value: 8690d1f5ce18e6ef6209a400918d095450c01d7a8621ac795f404e11ea7e3175
       # T77 — the public address of the sponsoring reserve (the public key of
@@ -82,82 +109,52 @@ services:
       # read-only surface from needing a signing key.
       - key: RESERVE_ADDRESS
         value: GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K
+      # No PUBLIC_BASE_URL: apps/web infers its own origin from the request's
+      # Host header, which the gateway forwards unchanged (proxy.ts).
 
-  # T79 — SignalDesk, the pilot's merchant. Deliberately its own service with
-  # its own keys: if the merchant AgentPey pays could reach into AgentPey's
-  # authorisation, the pilot would be proving nothing. The free plan is fine
-  # here — a cold start costs a buyer a slow first request, not a failed
-  # payment, and AgentPey can ping it awake.
-  #
-  # Its host must match the `baseUrl` of the `signaldesk` row in
-  # apps/agent/src/catalog/venues.json: a venue is resolved by origin, so a
-  # different hostname is a different venue and is refused.
-  - type: web
-    name: agentpey-signaldesk
-    runtime: node
-    plan: free
-    region: oregon
-    buildCommand: corepack enable && corepack prepare pnpm@11.24.0 --activate && pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm --filter @agentpey/signaldesk run start
-    envVars:
-      - key: NODE_VERSION
-        value: 22.14.0
-      - key: COREPACK_INTEGRITY_KEYS
-        value: ""
-      # The merchant's own secrets. Set in the Render dashboard, never here.
-      - key: SIGNALDESK_SECRET_KEY
-        sync: false
-      - key: SIGNALDESK_FACILITATOR_SECRET
-        sync: false
-      # Its own tables (`signaldesk_*`) — same Postgres instance as AgentPey
-      # only because the pilot has one. It reads no AgentPey table.
-      - key: DATABASE_URL
-        sync: false
-      - key: SIGNALDESK_PUBLIC_URL
-        value: https://agentpey-signaldesk.onrender.com
-
-  # T80 — RealOps, the pilot's agent platform. It holds no Stellar key and
-  # cannot authorise a payment; from T81 its only credential is an AgentPey
-  # /v1 API key. Free plan: a cold start costs a visitor a slow first page.
-  - type: web
-    name: agentpey-realops
-    runtime: node
-    plan: free
-    region: oregon
-    buildCommand: corepack enable && corepack prepare pnpm@11.24.0 --activate && pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm --filter @agentpey/realops run start
-    envVars:
-      - key: NODE_VERSION
-        value: 22.14.0
-      - key: COREPACK_INTEGRITY_KEYS
-        value: ""
-      # Its own tables (`realops_*`). The email lives here and nowhere else.
-      - key: DATABASE_URL
-        sync: false
-      # Without this, magic links are shown on screen and the address is NOT
-      # verified — the page says so. Set it once agentpey.com is verified.
-      - key: RESEND_API_KEY
-        sync: false
+      # ---- RealOps (apps/realops, realops.agentpey.com) ---------------------
+      # T80 — the pilot's agent platform. It holds no Stellar key and cannot
+      # authorise a payment; from T81 its only credential is an AgentPey /v1
+      # API key.
+      #
+      # Also the origin AgentPey sends a person back to after signing, so it
+      # must be registered as a return origin for RealOps' partner
+      # (`pnpm run partner:return-origins`), or signing fails with
+      # ReturnUrlNotAllowed and RealOps shows a 502.
       - key: REALOPS_PUBLIC_URL
-        value: https://agentpey-realops.onrender.com
+        value: https://realops.agentpey.com
+      # T81 — the partner key RealOps asks with. Mint it with
+      # `pnpm run partner:create`.
+      - key: REALOPS_AGENTPEY_API_KEY
+        sync: false
+      # RealOps calls AgentPey at its public address, not the internal port:
+      # AgentPey builds consent links from the Host it is called with, and a
+      # link to 127.0.0.1 would be no use to the person holding it.
+      - key: AGENTPEY_BASE_URL
+        value: https://agentpey.com
+      # Links to the merchant on RealOps' pages.
       - key: SIGNALDESK_PUBLIC_URL
-        value: https://agentpey-signaldesk.onrender.com
+        value: https://signaldesk.agentpey.com
       - key: PILOT_VENUE_ID
         value: signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF
       - key: PILOT_ASSET_ID
         value: USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
       - key: PILOT_PAY_TO
         value: GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF
-      # T81 — the partner key RealOps asks with. Mint it with
-      # `pnpm run partner:create`, and register this service's own origin as a
-      # return origin for that partner, or the signature flow is refused with
-      # ReturnUrlNotAllowed (which is the allowlist working, not a bug).
-      - key: REALOPS_AGENTPEY_API_KEY
+      # Without this, magic links are shown on screen and the address is NOT
+      # verified — the page says so. Optional, like the sender below
+      # (`RealOps <no-reply@agentpey.com>` when unset).
+      - key: RESEND_API_KEY
         sync: false
-      # The web service's Render name predates the P-11 rename (2026-09-11)
-      # and was never renamed on Render's side ("Render, pendiente del
-      # usuario" in that entry) — its host still spells "agentpay", not
-      # "agentpey". Verified live: agentpay-web.onrender.com answers,
-      # agentpey-web.onrender.com does not (x-render-routing: no-server).
-      - key: AGENTPEY_BASE_URL
-        value: https://agentpay-web.onrender.com
+      - key: REALOPS_MAIL_FROM
+        sync: false
+
+      # ---- SignalDesk (apps/signaldesk, signaldesk.agentpey.com) ------------
+      # T79 — the pilot's merchant. Its own keys, handed to no other app.
+      - key: SIGNALDESK_SECRET_KEY
+        sync: false
+      - key: SIGNALDESK_FACILITATOR_SECRET
+        sync: false
+      # SIGNALDESK_PUBLIC_URL is declared once, under RealOps above: one Render
+      # service has one value per name, and both apps are handed it. SignalDesk
+      # builds the delivery and receipt links it returns from it.

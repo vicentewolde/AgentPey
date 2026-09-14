@@ -22,38 +22,27 @@ faucet). Opens on `http://localhost:8787` (override with `PORT=...`).
 
 ## Deploy it somewhere public (Render)
 
-This is a stateful, long-running Node process (an in-memory demo session),
-not a serverless function — it needs a platform that keeps one process
-alive, not one that spins up isolated invocations per request. Render's
-free web-service tier fits.
+This is a stateful, long-running Node process, not a serverless function —
+it needs a platform that keeps one process alive, not one that spins up
+isolated invocations per request.
 
-**What's already prepared in this repo:**
-- `render.yaml` at the repo root — a Render Blueprint. Build command
-  (`corepack enable && corepack prepare pnpm@11.24.0 --activate && pnpm
-  install --frozen-lockfile && pnpm build`) and start command (`pnpm
-  --filter @agentpey/web run start`) are both verified locally against the
-  exact commands Render will run.
-- `apps/web/package.json`'s `start` script (identical to `dev` — this app
-  has no separate production build; `tsx` runs the TypeScript directly).
+**Since T86 it is not deployed on its own.** `render.yaml` at the repo root
+describes one Render service, `AgentPey`, whose start command
+(`pnpm --filter @agentpey/gateway run start`) runs this app, `apps/realops`
+and `apps/signaldesk` as three child processes behind one port, routed by
+hostname: this app answers `agentpey.com`. See `apps/gateway/README.md` for how
+the three are kept apart, and `render.yaml` for every variable and why it is
+there.
 
 **What you have to do yourself — deliberately not automated:**
 
-1. Push this repo (or your fork) to GitHub if it isn't already.
-2. In the Render dashboard: **New → Blueprint**, connect the repo. Render
-   reads `render.yaml` and proposes the `agentpay-web` service.
-3. Before the first deploy finishes settling, or right after, open the
-   service's **Environment** tab and set these — Render never asks for them
-   during the Blueprint step because `render.yaml` marks them `sync: false`:
-   - `ISSUER_SECRET_KEY` — from your local `.env.local`.
-   - `AGENT_SECRET_KEY` — from your local `.env.local`.
-   - `AGENT_REGISTRY_CONTRACT_ID` — from your local `.env.local`.
-
-   Copy these from your own `.env.local`, paste them into Render's own form
-   yourself. Nothing in this repo, and nothing Claude Code does, ever
-   transmits them anywhere.
-4. Deploy. Render gives you a public URL
-   (`https://agentpay-web-xxxx.onrender.com` by default, or whatever name
-   you pick) — that's what you hand out.
+1. Every variable `render.yaml` marks `sync: false` is a secret Render never
+   asks for during a Blueprint sync: set it in the service's **Environment**
+   tab. Copy the values from your own `.env.local` and paste them into
+   Render's form yourself. Nothing in this repo, and nothing Claude Code does,
+   ever transmits them anywhere.
+2. A variable added to `render.yaml` reaches no app until it is also listed
+   for that app in `apps/gateway/src/hosts.ts` (`envKeys`).
 
 **No access control, on purpose.** Anyone with the link can click every
 button, including "Comprar" — each click is a real (if tiny, ~0.001 USDC)
