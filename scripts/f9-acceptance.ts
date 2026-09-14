@@ -801,6 +801,7 @@ async function setupPersona(
   const agentId = await hireAgent(persona, kind, `T85 ${persona.id} ${kind}`, limits);
   const signed = await signAgent(persona, agentId);
   const tenantId = await tenantOf(externalRef);
+  railOwners.push({ persona, tenantId });
   record.note("persona", {
     email: persona.email,
     wallet: persona.wallet.publicKey(),
@@ -1088,6 +1089,19 @@ async function personaC(): Promise<void> {
     record.note("realops", { status: asked.status, location: asked.location, ms: asked.ms, body: isRedirect(asked) ? undefined : asked.text.slice(0, 400) });
     record.note("purchases", fresh);
     record.note("perDayAfter", after.per_day);
+    // The first run's 8b never reached payment: the merchant refused the
+    // request before quoting, for a reason unrelated to the empty rail, and the
+    // case looked like it passed. This makes that mistake fail out loud.
+    record.check(
+      checkThat(
+        "el intento llegó hasta el pago (el comercio no lo rechazó antes de cotizar)",
+        fresh[0] !== undefined &&
+          fresh[0].code !== "MerchantRejectedRequest" &&
+          !(fresh[0].reason ?? "").includes("did not answer with a 402"),
+        "rechazo al pagar con el rail vacío",
+        fresh[0] === undefined ? "(ninguno)" : `${fresh[0].code ?? "-"}: ${fresh[0].reason ?? "-"}`,
+      ),
+    );
     record.check(checkThat("no se liquidó ninguna compra", fresh.every((purchase) => purchase.outcome !== "settled"), "ninguna liquidada", summarise(fresh)));
     record.check(checkThat("no hay entrega nueva", fresh.every((purchase) => !purchase.delivery?.delivery_id), "sin entrega", summarise(fresh)));
     record.check(checkThat("el intento quedó registrado como rechazo", fresh.length === 1 && fresh[0]?.outcome === "refused", "1 rechazada", summarise(fresh)));
@@ -1296,6 +1310,29 @@ async function runDay2(): Promise<void> {
   });
 }
 
+/** Every persona that went through `setupPersona` — the only ones whose tenant can own a sponsored rail. */
+const railOwners: { readonly persona: Persona; readonly tenantId: string }[] = [];
+
+/**
+ * D6, decided with the user after the first run left 0.75 USDC stranded in a
+ * rail whose principal key had already been discarded: before the run ends,
+ * every rail the suite made is emptied back into the reserve, signed by its own
+ * principal while that key still exists. Nothing is written down to do it later.
+ */
+async function emptyRails(): Promise<void> {
+  if (railOwners.length === 0) return;
+  await runCase("Z", "Limpieza: devolver a la reserva el saldo de los rails de la corrida", null, async (record) => {
+    const reserve = required("RESERVE_ADDRESS");
+    for (const { persona, tenantId } of railOwners) {
+      const activity = await activityOf(tenantId);
+      if (activity.rail === null || Number(activity.rail.balance) === 0) continue;
+      const transaction = await withdrawRail(activity.rail.contract_id, persona.wallet, reserve, activity.rail.balance);
+      record.note(`rail-${persona.id}`, { contractId: activity.rail.contract_id, amount: activity.rail.balance, transaction });
+      record.check(await onChainCheck(`rail de ${persona.id}: ${activity.rail.balance} USDC devueltos a la reserva`, transaction));
+    }
+  });
+}
+
 // ---- Main -------------------------------------------------------------------
 
 const args = parseAcceptanceArgs(process.argv.slice(2));
@@ -1315,6 +1352,7 @@ if (args.phase === "day1") {
   if (wants("A")) await personaA();
   if (wants("F")) await prepareDay2();
   if (expiring !== undefined) await finishExpiring(expiring);
+  await emptyRails();
   await runCase("5", "Factura 402 con precio distinto", null, async (record) => {
     record.check(
       declared(
