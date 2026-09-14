@@ -246,7 +246,7 @@ async function handlePaidRoute(
       throw new MerchantError("InvalidRequest", 400, `pair must be ${SUPPORTED_PAIR}`);
     }
   } else if (!accountSchema.safeParse(url.searchParams.get("account")).success) {
-    throw new MerchantError("InvalidRequest", 400, "account must be a Stellar classic account");
+    throw new MerchantError("InvalidRequest", 400, "account must be a Stellar classic account or an opaque platform reference");
   }
 
   const signature = paymentHeaderSchema.safeParse(request.headers["payment-signature"]);
@@ -390,7 +390,7 @@ export function createSignalDeskServer(input: SignalDeskConfig, options: StartOp
 
         if (request.method === "GET" && pathname === "/api/credits") {
           const account = accountSchema.safeParse(url.searchParams.get("account"));
-          if (!account.success) throw new MerchantError("InvalidRequest", 400, "account must be a Stellar classic account");
+          if (!account.success) throw new MerchantError("InvalidRequest", 400, "account must be a Stellar classic account or an opaque platform reference");
           // Read-only, on purpose: there is no route on this service that moves
           // a balance from one account to another, because there is no such
           // operation to expose.

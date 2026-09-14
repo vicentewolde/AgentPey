@@ -64,8 +64,9 @@ function product(
  * and it is the right one well beyond this pilot.
  *
  * The AI credits are an **entitlement, not an asset**: a row in SignalDesk's
- * own database tied to one Stellar address, with no transfer operation
- * anywhere in this service. That is a structural choice, not a policy one. A
+ * own database tied to one holder — a Stellar address, or the opaque reference
+ * a platform knows its user by (see {@link accountSchema}) — with no transfer
+ * operation anywhere in this service. That is a structural choice, not a policy one. A
  * transferable "credit" would be an issuance, and issuance is on the far side
  * of the line this project keeps closed.
  */
@@ -84,7 +85,7 @@ export const PRODUCTS = [
     id: "signaldesk:ai-credits-1000",
     name: "1000 creditos de IA",
     description:
-      "Mil creditos de producto acreditados a una direccion Stellar. No es un token, no es transferible, y solo sirve dentro de SignalDesk.",
+      "Mil creditos de producto acreditados a quien compra: una direccion Stellar o la referencia opaca con que su plataforma lo identifica. No es un token, no es transferible, y solo sirve dentro de SignalDesk.",
     price: "0.10",
     path: "/api/x402/ai-credits",
     query: "?account={account}",
@@ -101,9 +102,25 @@ export const CREDITS_PER_PURCHASE = 1000;
 /** Artefacts are kept for this long, and the catalogue page says so. */
 export const ARTIFACT_RETENTION_DAYS = 90;
 
-export const accountSchema = z
-  .string()
-  .regex(/^G[A-Z2-7]{55}$/, "expected a Stellar classic account");
+/**
+ * Who a credits balance belongs to: a Stellar classic account, or an opaque
+ * reference a platform knows its user by — `<prefix>_<ulid>`, like RealOps'
+ * `rop_…`.
+ *
+ * The second shape exists because T85 found the credits product unbuyable
+ * from the pilot's own platform: RealOps sends the reference AgentPey knows the
+ * person by (`C-98`), deliberately never anything personal, and this schema
+ * refused it with a `400`. Accepting a wallet address instead would have handed
+ * SignalDesk a stable identifier of the person's wallet, which is exactly what
+ * `C-98` keeps from it.
+ *
+ * Still closed, on purpose: a ULID has no `@`, no spaces and no free text, so an
+ * email, a phone number or a name cannot pass as a reference.
+ */
+export const accountSchema = z.union([
+  z.string().regex(/^G[A-Z2-7]{55}$/, "expected a Stellar classic account"),
+  z.string().regex(/^[a-z][a-z0-9]{1,15}_[0-9A-HJKMNP-TV-Z]{26}$/, "expected an opaque reference like rop_<ulid>"),
+]);
 
 export const pairSchema = z.literal(SUPPORTED_PAIR);
 

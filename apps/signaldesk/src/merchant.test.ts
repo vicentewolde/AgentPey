@@ -108,6 +108,24 @@ describe("the paid routes", () => {
     expect((await badPair.json()) as { code: string }).toMatchObject({ code: "InvalidRequest" });
   });
 
+  /**
+   * T85, found against production: RealOps credits a purchase to the opaque
+   * reference AgentPey knows the person by (`C-98`), never to anything
+   * personal, and this route refused it with a 400 — so the credits product
+   * could not be bought from the pilot's own platform at all. It has to quote
+   * that request, and still refuse anything that is neither an account nor an
+   * opaque reference, an email included.
+   */
+  it("quotes a credits request for an opaque platform reference, and still refuses an email", async () => {
+    const opaque = await fetch(`${baseUrl}/api/x402/ai-credits?account=rop_01M2ERCZRRHJWRSHXQEWPCWYQS`);
+    const email = await fetch(`${baseUrl}/api/x402/ai-credits?account=${encodeURIComponent("persona@example.com")}`);
+    const lookalike = await fetch(`${baseUrl}/api/x402/ai-credits?account=rop_not-a-ulid`);
+
+    expect(opaque.status).toBe(402);
+    expect(email.status).toBe(400);
+    expect(lookalike.status).toBe(400);
+  });
+
   it("refuses a payment header that is not an x402 payload, without touching the network", async () => {
     const response = await fetch(`${baseUrl}/api/x402/market-brief?pair=XLM/USDC`, {
       headers: { "payment-signature": "bm90LWFuLXg0MDItcGF5bG9hZA==" },
