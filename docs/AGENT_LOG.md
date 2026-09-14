@@ -4990,10 +4990,11 @@ Pendiente:
   --phase=day2`. Mandato de F: `mdt_01M2ERGYQEDFRVYQ3MMW28R44H`. El estado vive en
   `.f9-acceptance/day2-state.json` (no versionado, sin secretos): **correrlo desde
   esta misma carpeta**.
-- **Mergear la documentación de T85** (espera confirmación).
-- Hito aparte para `C-113`.
-- Sin aprobar: código propio para "el rail no tiene saldo" (hoy llega como
-  `NetworkError` y RealOps dice "puede estar caído").
+- Documentación del día 1 mergeada a `main` con confirmación del usuario. La
+  rama `cc/t85-acceptance-suite` sigue viva hasta cerrar el día 2.
+- Hito aparte para `C-113`. Por decisión del usuario incluye también un código
+  propio para "el rail no tiene saldo" (hoy llega como `NetworkError` y RealOps
+  dice "puede estar caído").
 - Consumidos: 9 de 20 rails; reserva en 32.684 USDC. Datos de prueba en
   producción: cuentas `t85-*@example.test` con sus tenants.
 - Sigue de antes: `Cache-Control: no-store`, `IdempotencyKeyConflict` al

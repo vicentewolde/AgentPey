@@ -4283,3 +4283,11 @@ falla en la consulta previa, antes de gastar el rail. El gasto de la intención
 se sigue registrando igual, porque se autoriza antes de esa consulta. El chequeo
 "el gasto del día no cuenta un pago que no ocurrió" del caso 8b va a seguir
 fallando, y así queda documentado.
+
+**En el mismo hito, decidido por el usuario: el rail vacío.** En la segunda
+corrida, una compra con el rail sin saldo no pagó ni entregó nada, que es lo
+correcto. Pero el rechazo llegó como `NetworkError` ("simulating the transfer
+from policy_rail failed"), y RealOps le dijo a la persona "No se pudo hablar con
+el comercio. Puede estar caído". El caso 8 del brief pide un mensaje
+comprensible. Un código propio para "el rail no tiene saldo" toca el mismo
+camino de pago del rail que liberar el gasto, así que van juntos.

@@ -3576,6 +3576,7 @@ un día. Ya está firmado; se prueba después del 2026-09-15 a las 01:29 UTC con
 
 **Decisiones nuevas:** `C-108` a `C-113`.
 
-**Anotado sin construir:** el rail vacío llega como `NetworkError` y RealOps dice
-"puede estar caído" (propuesto un código propio, sin aprobar); liberar el gasto de
-intenciones no pagadas (`C-113`); más los pendientes que siguen desde T84.
+**Anotado sin construir, para un hito propio (`C-113`):** liberar el gasto de
+intenciones no pagadas, y un código propio para el rail vacío, que hoy llega como
+`NetworkError` y RealOps dice "puede estar caído". Van juntos por decisión del
+usuario. Más los pendientes que siguen desde T84.
