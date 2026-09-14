@@ -39,6 +39,16 @@ narrativo de esas piezas, y un error ahí (una clave mal manejada, un límite
 aflojado, un fondo mal enrutado) no es recuperable de la misma forma que un
 test roto.
 
+**El reparto de claves entre las apps desplegadas, desde 2026-09-14 (T86):**
+no modifiques `apps/gateway/src/hosts.ts` (en particular `envKeys`),
+`apps/gateway/src/env-filter.ts` ni `render.yaml` sin que el usuario o Claude
+Code lo pidan explícitamente. Las tres apps del piloto corren en un solo
+servicio de Render, que tiene un único juego de variables con todos los
+secretos. Esos archivos deciden qué claves recibe cada app. Agregar una clave
+de AgentPey a la lista de SignalDesk, por ejemplo, rompería en la práctica la
+separación que hace creíble al comercio (`C-88`, `C-114`), aunque ningún código
+importe del otro lado. Es gestión de claves, dentro de `P-10`.
+
 **F9 (piloto externo público), desde 2026-09-12:** no inicies código ni
 diseño de F9 por tu cuenta — ni RealOps Agent, ni SignalDesk, ni el catálogo
 de descubrimiento, ni nada que toque `POST /v1/purchases`. Claude Code es
