@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-13 · **Último hito cerrado:** T84 (despliegue público y primera compra de punta a punta) · **Fase 6: en curso**
+**Fecha:** 2026-09-13 · **Último hito cerrado:** T84 (despliegue público y primera compra de punta a punta) · **En curso:** T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -133,7 +133,15 @@ firmado y la entrega abierta desde "Mis servicios". Llegar ahí destapó ocho
 defectos que las pruebas no veían porque vivían en los bordes entre servicios
 —el más serio, que a la persona se le decía que una compra había fallado
 mientras se pagaba, y reintentar la pagaba otra vez—, y los ocho quedaron
-cerrados (T84, `C-102` a `C-107`).
+cerrados (T84, `C-102` a `C-107`). Y los casos de aceptación ya se prueban
+solos, contra el piloto de verdad: un programa hace de persona, con una wallet
+de prueba, y recorre los casos 2 a 10. Su primera corrida encontró cinco
+defectos más —los créditos no se podían comprar desde RealOps, una cuenta con
+dos agentes nunca compraba con el segundo, y tres rechazos decían otra cosa que
+lo que pasaba—, que quedaron cerrados; la segunda dio 88 chequeos bien y uno
+mal, el de un intento no pagado que cuenta contra el tope diario, que es una
+decisión de la Fase 3 y quedó para un hito propio (T85, `C-108` a `C-113`).
+Falta el Mandato vencido firmado desde RealOps, que se prueba al día siguiente.
 
 ### Progreso
 
@@ -187,6 +195,7 @@ cerrados (T84, `C-102` a `C-107`).
 | T82 | F9: la compra desde RealOps y "Mis servicios" — entregas con recibo y enlace al pago, y rechazos traducidos a castellano sin inventar | ✅ cerrado 2026-09-12 |
 | T83 | F9: revocación hospedada en `/revocar/{id}`, firmada con la wallet del principal — divulgación mínima antes de la prueba | ✅ cerrado 2026-09-12 |
 | T84 | F9: despliegue público de los tres servicios y primera compra real de punta a punta con la wallet del usuario — ocho defectos de borde entre servicios, encontrados en producción y cerrados; caso de aceptación 1 cumplido | ✅ cerrado 2026-09-13 |
+| T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | 🟡 día 1 cerrado 2026-09-13 · día 2 (Mandato vencido desde RealOps) después del 2026-09-15 01:29 UTC |
 
 ---
 
@@ -3497,3 +3506,76 @@ idempotencia por formulario, a pedido del usuario.
 desplegados. Anotado sin construir: `Cache-Control: no-store` en RealOps
 (propuesto), el conflicto de idempotencia al reapretar "Firmar" en el mismo
 agente, y rotar el secreto del partner de RealOps, que pasó por el chat.
+
+---
+
+## T85 · La suite de aceptación contra lo desplegado — día 1 cerrado 2026-09-13, día 2 pendiente
+
+**Qué quedó funcionando, en palabras simples.**
+
+**Los casos de aceptación del piloto se prueban solos, contra el piloto de
+verdad.** Un programa hace de persona: entra a RealOps, contrata agentes, los
+firma con una wallet de prueba —las mismas llamadas que hace la página con
+Freighter—, pide compras, revoca, y lee "Mis servicios". En cada paso anota qué
+esperaba, qué pasó, y si la persona recibió una frase que se entiende. Lo que no
+se puede provocar contra servicios públicos (una factura con otro precio, otro
+activo u otra cuenta cobradora, o un catálogo caído) no se da por aprobado: se
+dice "declarado" y se nombran los tests que lo cubren.
+
+**La primera corrida encontró cinco defectos que ninguna prueba veía**, todos en
+el borde entre servicios, igual que en T84:
+
+- **Los créditos de IA no se podían comprar desde RealOps.** SignalDesk pedía
+  una dirección Stellar como titular, y RealOps manda a propósito un código
+  opaco que no dice quién es la persona. Ahora SignalDesk acepta ese código
+  (`C-109`).
+- **Una cuenta con los dos agentes nunca compraba con el segundo:** AgentPey
+  usaba siempre el primer permiso firmado. Ahora usa el que incluye el producto
+  pedido (`C-111`).
+- **Revocar, dejar vencer o revocar la credencial daban mensajes que no decían
+  eso**, uno de ellos en inglés crudo ("no tool named create_purchase_intent").
+  Ahora cada uno dice lo que pasó (`C-111`).
+- **Cuando el comercio rechazaba el pedido, a la persona se le decía "puede
+  estar caído"**, y para entonces ya se había gastado un rail patrocinado. Ahora
+  AgentPey le pide la factura al comercio antes de tocar el rail, y un rechazo
+  del comercio se llama por su nombre (`C-110`).
+- **Un intento que no se pagó cuenta igual contra el tope diario.** Esto no es
+  un descuido: es una decisión de la Fase 3 (`M-15`) que prefiere contar de más.
+  Cambiarla toca el control del gasto, así que queda para un hito aparte
+  (`C-113`).
+
+**Y uno que era mío.** Al proponer los arreglos dije que no había una decisión
+escrita sobre ese último punto. La había. Lo corregí antes de construir nada, y
+el usuario lo pasó a un hito propio con el dato completo.
+
+**La segunda corrida, con los arreglos desplegados: 88 chequeos bien y uno
+mal**, el esperado. Los créditos se compran y se entregan, la cuenta con dos
+agentes compra con los dos, y cada rechazo dice lo que es. Y la suite ya no deja
+plata varada: al terminar, devuelve a la reserva el saldo de cada rail que creó
+(`C-112`). La primera corrida, antes de eso, dejó 0.75 USDC de testnet que nadie
+puede recuperar.
+
+**Lo que falta de T85:** el Mandato vencido firmado desde RealOps, cuyo mínimo es
+un día. Ya está firmado; se prueba después del 2026-09-15 a las 01:29 UTC con
+`--phase=day2`.
+
+**Evidencia técnica.**
+
+- Primera corrida `01M2ER214WCB4C6ECB6NRQQQS9`: 80 ✓ · 11 ✗ · 4 declarados.
+  Segunda `01M2EVSSGHT79V0EYDRT4JXPYB`: **88 ✓ · 1 ✗ · 4 declarados**.
+- Créditos: tx `045c582c…e43f`, entrega `01M2EVYZ3566GPRSAEY5032X93`, acreditados a
+  `rop_01M2EVXK8JEFHCY0SGHJSM5B18`. Dos agentes: tx `4fc45038…4115`.
+- Revocado `MandateRevoked`, vencido `MandateExpired`, credencial revocada
+  `CredentialRevoked` (revocación on-chain con el CLI de la Fase 1, tx
+  `9fd77d75…2cc3`).
+- Crédito patrocinado: 5 → 9 de 20 rails; reserva 34.134 → 32.684 USDC, con cada
+  movimiento cuadrado en `evidencia/T85.md` § 5.
+- **1276 tests verdes** (eran 1248), `typecheck` y `build` limpios.
+- Commits: `a9d242d` (la suite), `09b6905` (SignalDesk), `88ddc51` (la compra),
+  `31f132b` (limpieza de rails).
+
+**Decisiones nuevas:** `C-108` a `C-113`.
+
+**Anotado sin construir:** el rail vacío llega como `NetworkError` y RealOps dice
+"puede estar caído" (propuesto un código propio, sin aprobar); liberar el gasto de
+intenciones no pagadas (`C-113`); más los pendientes que siguen desde T84.

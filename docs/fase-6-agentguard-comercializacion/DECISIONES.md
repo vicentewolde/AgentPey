@@ -4091,3 +4091,195 @@ Sigue en pie `C-79`: un comercio que no manda estos datos no está roto.
 `402` en una pestaña vieja. RealOps no manda `Cache-Control`, así que el
 navegador puede mostrar una copia anterior de una página con datos de la
 persona. Propuesto `no-store`, a decidir.
+
+---
+
+### C-108 · T85: la suite de aceptación hace de persona contra lo desplegado, y lo que no puede forzar lo declara · `Vigente`
+**Fecha:** 2026-09-13 · **Enfoque aprobado por el usuario antes de construirlo**
+
+`scripts/f9-acceptance.ts` (`pnpm run acceptance:f9`) recorre los casos 2 a 10
+del brief § 7 contra los tres servicios de Render, no contra copias locales:
+`venues.json` resuelve SignalDesk por su origen público exacto, y T84 mostró que
+los defectos que importan viven en los bordes entre servicios, justo donde las
+pruebas usan dobles.
+
+**Hace de persona, no de partner.** Todo lo que haría una persona pasa por las
+páginas de RealOps (entrar, contratar, firmar, pedir, leer "Mis servicios") y
+por las mismas rutas de consentimiento y revocación que llaman `consent.html` y
+`revocar.html`. Una `Keypair` de testnet creada en cada corrida reemplaza a
+Freighter: firma SEP-53 y firma las transacciones. La key del partner de RealOps
+se usa directamente **solo** para lo que representa a una plataforma pidiendo lo
+que no debe: otro comercio, otro producto, un Mandato ya vencido. Es la regla
+"RealOps pide, AgentPey decide", ejercida desde el lado que pide.
+
+**Lo que no prueba, dicho en la propia evidencia.** No corre el JavaScript de
+las páginas; corre las rutas que ese JavaScript llama. Esa mitad la cubren el
+recorrido del usuario con Freighter en T84 y la prueba con una persona externa
+de `PILOTO-F9.md` § 10.
+
+**Lo no forzable se reporta como `declarado`, nunca como aprobado.** Una
+factura con otro precio, otro activo u otro `payTo`, y un catálogo caído,
+necesitarían un interruptor de falla dentro de servicios públicos, descartado en
+T84. Cada uno cita los tests que lo cubren.
+
+**Tres decisiones del usuario, tomadas junto con el enfoque:**
+
+1. **Credencial revocada:** no existe un camino de producto para revocar la
+   credencial de un tenant (`directory.revokeCredential` no tiene quien la
+   llame). La suite la revoca on-chain con el CLI de la Fase 1 y la clave del
+   emisor, como lo haría un operador, y lo declara así.
+2. **Rail sin saldo:** la wallet dueña del permiso retira el saldo de su propio
+   rail **a la reserva** (`withdraw`, T57). No hace falta trustline y el crédito
+   patrocinado vuelve.
+3. **Mandato vencido por dos caminos:** por `/v1`, con vigencia de minutos, en
+   la misma corrida; y desde RealOps, cuyo mínimo es un día, con
+   `--phase=day2`. Esa fase se niega a correr antes de que el Mandato venza,
+   sin tocar ningún servicio.
+
+**Las claves de las wallets de prueba no se escriben en ningún lado.** Por eso
+la corrida vacía sus rails antes de terminar (`C-112`). La evidencia cruda va a
+`.f9-acceptance/` (no versionado), con los secretos redactados, y se pasa a
+mano a `evidencia/T85.md`.
+
+**Alternativas descartadas:** automatizar Freighter en un navegador (no se
+puede sin instalar la extensión y aprobar a mano cada firma) y correr la suite
+contra servicios locales (no habría visto ninguno de los defectos de `C-109` y
+`C-110`).
+
+---
+
+### C-109 · T85: los créditos se acreditan a la referencia opaca que manda la plataforma, y SignalDesk la acepta · `Vigente`
+**Fecha:** 2026-09-13 · **Decidido por el usuario (D1)**
+
+**El defecto, encontrado por la suite en producción.** Los créditos de IA no se
+podían comprar desde RealOps. `C-98` hace que RealOps acredite la compra a
+`rop_<ulid>`, la referencia con que AgentPey conoce a la persona, justamente
+para no mandar nada personal. El `accountSchema` de SignalDesk (T79) aceptaba
+solo una dirección `G…`, así que cada pedido de créditos recibía un `400` antes
+de que el comercio cotizara. Las dos decisiones chocaban, y ninguna prueba lo
+veía: la de RealOps fijaba `rop_` y la de SignalDesk usaba una `G…`.
+
+**La decisión: SignalDesk acepta como titular una dirección Stellar o una
+referencia opaca `<prefijo>_<ulid>`.** `C-98` queda intacta.
+
+**Alternativa descartada:** que RealOps mande la dirección de la wallet de la
+persona. Le daría al comercio un identificador estable de esa wallet, que es
+exactamente lo que `C-98` le niega. Y RealOps ni siquiera la conoce.
+
+**Sigue cerrado a propósito:** un ULID no tiene `@`, espacios ni texto libre,
+así que un correo o un nombre no pasan por referencia. Hay una prueba para el
+correo y otra para algo que empieza con `rop_` sin ser un ULID.
+
+---
+
+### C-110 · T85: se pide la factura antes de desplegar el rail, y un comercio que rechaza no es un comercio caído · `Vigente`
+**Fecha:** 2026-09-13 · **Decidido por el usuario (D2)** · toca el flujo de fondos (`P-10`)
+
+**Lo que pasó.** Cuando SignalDesk rechazó el pedido de créditos, a la persona
+se le dijo "No se pudo hablar con el comercio. Puede estar caído", que es falso
+y que invitaba a reintentar algo que iba a fallar siempre. Y el rechazo llegó
+**después** de que se desplegara y fondeara con 1 USDC el rail patrocinado del
+tenant, para una compra que nunca iba a cotizarse.
+
+**La decisión, en dos partes:**
+
+1. **Un `4xx` distinto de `402` en la ruta paga es `MerchantRejectedRequest`**,
+   con el status y el comienzo del cuerpo del comercio. `NetworkError` queda
+   para lo que de verdad es de red: no hay respuesta, o llega un status que no
+   es `402` ni `4xx`. RealOps tiene frase propia para el código nuevo.
+2. **`tenant-purchase` le pide la factura al comercio (`requestPaymentChallenge`)
+   antes de tocar el rail.** No se autoriza ni se firma nada en ese paso: la
+   factura se vuelve a pedir y se concilia contra el Mandato en el paso de pago,
+   igual que antes.
+
+**Lo que no cambia:** el orden de las capas de autorización de `C-78`. Esto
+agrega una lectura antes de gastar; no mueve ninguna decisión.
+
+**Alternativa descartada:** pasar la respuesta ya pedida al paso de pago para
+no pedirla dos veces. Habría cambiado la firma de `executeBazaarPayment`, que es
+el camino de pago, para ahorrar un `GET` sin efectos.
+
+---
+
+### C-111 · T85: el Mandato se elige por producto, y cuando no hay uno activo se dice por qué · `Vigente`
+**Fecha:** 2026-09-13 · **Decidido por el usuario (D3 y D5)**
+
+La suite encontró tres defectos en el mismo lugar: cómo `tenant-purchase` pasa
+de "este tenant" a "este Mandato".
+
+- **Una cuenta con los dos agentes nunca compraba con el segundo.** Un tenant
+  tiene un solo agente AgentPey (`ensureTenantAgent`), y RealOps firma un
+  Mandato por producto. La compra tomaba el primer Mandato activo, así que los
+  créditos se pedían con el Mandato del informe y se rechazaban con
+  `MandateProductNotAllowed`.
+- **Revocado y vencido decían "no hay Mandato".** `listActiveMandates` descarta
+  esas filas antes de que alguien pueda decir por qué, así que la persona leía
+  `MandateNotFound` y la frase cruda en inglés.
+- **Una credencial revocada decía `UnknownTool`.** `createAgent` no lanza ante
+  una credencial revocada on-chain: le retiene la herramienta de compra y
+  guarda el motivo. La compra ignoraba ese motivo y llamaba igual a la
+  herramienta que no estaba.
+
+**La decisión:**
+
+- **Se usa el Mandato activo más nuevo que nombra el producto.** Si ninguno lo
+  nombra, se pasa igual uno activo, para que el rechazo lo dé `checkMandate` con
+  su propio código. Este módulo **elige, no decide**: nunca convierte "ningún
+  Mandato cubre ese producto" en un rechazo propio.
+- **Sin Mandato activo, el historial del agente dice cuál de las tres pasó:**
+  `MandateRevoked`, `MandateExpired` o `MandateNotYetValid`. `MandateNotFound`
+  queda para cuando de verdad no hay nada firmado.
+- **Se lee en voz alta el motivo que `createAgent` ya guardaba.** La herramienta
+  sigue retenida exactamente igual; solo cambia qué se le dice a la persona.
+
+**Por qué ninguna prueba lo vio.** Los tests de `tenant-purchase` le daban al
+agente un único Mandato y nunca miraban qué pasa con uno que dejó de estar
+activo. Ahora hay pruebas para las tres cosas.
+
+**Alternativa descartada:** crear un agente AgentPey por agente de RealOps.
+Habría cambiado la identidad de tenant de T40 y la custodia del rail, para
+arreglar lo que es una elección entre filas.
+
+---
+
+### C-112 · T85: la suite vacía sus rails antes de terminar, y el caso de rail vacío falla si nunca llegó a pagar · `Vigente`
+**Fecha:** 2026-09-13 · **Decidido por el usuario (D6)**
+
+La primera corrida dejó **0.75 USDC de testnet varados** en el rail de una
+persona de prueba, porque la clave de su wallet se descartó al terminar, y
+`withdraw` solo lo puede firmar el principal. La decisión: antes de cerrar, la
+suite retira a la reserva el saldo de cada rail que creó, firmado por su
+principal mientras la clave todavía existe. No se guarda ninguna clave para
+hacerlo después.
+
+**Y un chequeo que hacía falta.** El caso 8b de la primera corrida pareció
+funcionar, pero nunca llegó al pago: el comercio había rechazado el pedido
+antes, por el defecto de `C-109`. Ahora el caso falla si el rechazo vino del
+comercio antes de cotizar y no del pago con el rail vacío.
+
+---
+
+### C-113 · T85: el gasto de una intención que no se pagó sigue contando, y liberarlo queda para un hito aparte · `Vigente`
+**Fecha:** 2026-09-13 · **Decidido por el usuario** · no enmienda `M-15` todavía
+
+**Lo que encontró la suite.** Dos intentos de compra que no se pagaron subieron
+el gasto del día de 0.10 a 0.20. `LocalPolicyRail.authorise()` registra el gasto
+**al autorizar la intención** y nada lo libera si el pago no ocurre.
+
+**No es un descuido: es `M-15`.** La decisión de la Fase 3 dice que se registra
+al autorizar y no al pagar, porque contar de más una compra que no ocurrió deja
+todo cerrado y contar de menos no. Al proponer el arreglo (D4) se dijo que no
+había decisión escrita; era un error, y se corrigió antes de construir nada.
+
+**La decisión: por ahora, no se cambia.** Liberar el gasto solo cuando el pago
+nunca llegó a firmarse sería compatible con el motivo de `M-15`, pero toca el
+enforcement de `perDay` y el vault. MandateVault es una cadena de hashes a la
+que solo se agrega, así que "liberar" es un asiento nuevo dentro del mismo lock,
+no un borrado. Merece un hito propio con su revisión, no ir de pasada al final
+de T85.
+
+**Lo que mitiga mientras tanto:** con `C-110`, un comercio que rechaza el pedido
+falla en la consulta previa, antes de gastar el rail. El gasto de la intención
+se sigue registrando igual, porque se autoriza antes de esa consulta. El chequeo
+"el gasto del día no cuenta un pago que no ocurrió" del caso 8b va a seguir
+fallando, y así queda documentado.

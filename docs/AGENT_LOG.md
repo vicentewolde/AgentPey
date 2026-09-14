@@ -4924,3 +4924,79 @@ producción: siete tenants `rop_diag*`/`rop_warmup*` y tres consent sessions
 pendientes que vencen solas. Consumidos en pruebas: 5 de los 20 rails
 patrocinados. Del lado del usuario sigue: pagar Starter (arranques en frío de
 ~60 s en Free), comprar `agentpey.com`.
+
+---
+
+## 2026-09-13 (22) — main / cc/t85-acceptance-suite
+
+Agente: Claude Code
+
+Qué: **T85, día 1.** La suite de los casos de aceptación 2 a 10 contra los tres
+servicios de Render, dos corridas, y los arreglos de lo que encontró la
+primera. Sin delegar nada a Codex.
+
+**La suite** (`scripts/f9-acceptance.ts`, `pnpm run acceptance:f9`, `C-108`):
+hace de persona contra las páginas de RealOps y las rutas que llaman
+`consent.html` y `revocar.html`, con una `Keypair` de testnet en lugar de
+Freighter. Usa la key del partner directamente solo para lo que representa a una
+plataforma pidiendo lo que no debe. Lo no forzable (caso 5, activo y `payTo`
+distintos, catálogo caído) se declara con los tests que lo cubren. Enfoque
+aprobado por el usuario antes de construirlo, con tres decisiones suyas:
+credencial revocada con el CLI de la Fase 1 y la clave del emisor, retiro del
+rail a la reserva, y Mandato vencido tanto por `/v1` como desde RealOps al día
+siguiente.
+
+**Primera corrida** `01M2ER214WCB4C6ECB6NRQQQS9`: 80 ✓ · 11 ✗ · 4 declarados.
+Defectos, todos en bordes entre servicios:
+
+1. Créditos imposibles de comprar desde RealOps: SignalDesk exigía `G…` y
+   RealOps manda `rop_…` (`C-98`) → `09b6905`, `C-109`.
+2. Cuenta con dos agentes: el segundo nunca compraba → `88ddc51`, `C-111`.
+3. Revocado y vencido decían `MandateNotFound` → `88ddc51`, `C-111`.
+4. Credencial revocada decía `UnknownTool` → `88ddc51`, `C-111`.
+5. Un 4xx del comercio decía "puede estar caído" y llegaba después de fondear el
+   rail → `88ddc51`, `C-110`.
+6. El gasto de una intención no pagada cuenta contra el tope diario: es `M-15`,
+   deliberado. **Diferido a un hito aparte** por el usuario (`C-113`).
+
+**Error mío, registrado:** al proponer el arreglo 6 dije que no había decisión
+escrita sobre registrar el gasto al autorizar. Existía (`M-15`). Lo corregí antes
+de construir nada y el usuario volvió a decidir con el dato completo.
+
+Además (`C-112`, `31f132b`): la primera corrida dejó 0.75 USDC varados en un rail
+cuya clave de principal ya no existía, y su caso 8b pareció bueno sin haber
+llegado a pagar. La suite ahora vacía sus rails a la reserva al terminar, y 8b
+falla si el comercio rechazó antes de cotizar.
+
+**Segunda corrida**, tras merge y push confirmados (`1869a27..31f132b`) y
+despliegue verificado con sondas: `01M2EVSSGHT79V0EYDRT4JXPYB`, **88 ✓ · 1 ✗ · 4
+declarados**. La falla es la de `C-113`. Créditos: tx `045c582c…e43f`. Dos
+agentes: tx `4fc45038…4115`.
+
+Por qué: el criterio de salida de F9 es que una persona externa recorra sola los
+casos, y cada uno de estos defectos lo impedía o le mentía sobre lo que pasó.
+
+Documentación tocada: `DECISIONES.md` (`C-108` a `C-113`), `BITACORA.md` (T85,
+tabla, estado actual), `evidencia/T85.md` (nuevo). `AGENTS.md` no se tocó: nombra
+`perDay` y SignalDesk como zonas que no se delegan, y no repite ninguna decisión
+que haya cambiado. Código: `apps/signaldesk/src/{catalog,merchant}.ts`,
+`apps/agent/src/payment/x402.ts`, `apps/agent/src/index.ts`,
+`packages/core/src/errors.ts`, `apps/web/src/tenant-purchase.ts`,
+`apps/realops/src/refusals.ts`, sus tests, y `scripts/f9-acceptance.ts` con
+`scripts/lib/f9-acceptance.ts`. **1276 tests** (eran 1248).
+
+Pendiente:
+- **Día 2**, después de 2026-09-15 01:29 UTC: `pnpm run acceptance:f9 --
+  --phase=day2`. Mandato de F: `mdt_01M2ERGYQEDFRVYQ3MMW28R44H`. El estado vive en
+  `.f9-acceptance/day2-state.json` (no versionado, sin secretos): **correrlo desde
+  esta misma carpeta**.
+- **Mergear la documentación de T85** (espera confirmación).
+- Hito aparte para `C-113`.
+- Sin aprobar: código propio para "el rail no tiene saldo" (hoy llega como
+  `NetworkError` y RealOps dice "puede estar caído").
+- Consumidos: 9 de 20 rails; reserva en 32.684 USDC. Datos de prueba en
+  producción: cuentas `t85-*@example.test` con sus tenants.
+- Sigue de antes: `Cache-Control: no-store`, `IdempotencyKeyConflict` al
+  reapretar "Firmar", rotar la key del partner de RealOps, tenants de
+  diagnóstico de T84, `createX402Catalog` sin timeout, `buy()` clásico. Del lado
+  del usuario: Starter en Render y `agentpey.com`.
