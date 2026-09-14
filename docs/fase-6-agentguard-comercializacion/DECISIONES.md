@@ -4291,3 +4291,120 @@ from policy_rail failed"), y RealOps le dijo a la persona "No se pudo hablar con
 el comercio. Puede estar caído". El caso 8 del brief pide un mensaje
 comprensible. Un código propio para "el rail no tiene saldo" toca el mismo
 camino de pago del rail que liberar el gasto, así que van juntos.
+
+---
+
+### C-114 · T86: los tres servicios del piloto pasan a uno solo, sin dejar de ser tres procesos · `Vigente`
+**Fecha:** 2026-09-14 · **Decidido por el usuario** (un servicio, un plan Starter, `agentpey.com`) · el diseño del gateway, de Claude Code
+
+**El problema.** El piloto corría en tres servicios de Render en plan Free:
+`agentpay-web`, `agentpey-realops` y `agentpey-signaldesk`. Tener los tres sin
+arranque en frío en una demo costaba tres planes Starter.
+
+**La decisión del usuario:** comprar `agentpey.com` (en Vercel Domains), servir
+las tres apps bajo ese dominio (`agentpey.com`, `realops.agentpey.com`,
+`signaldesk.agentpey.com`) y pagar **un solo** Starter.
+
+**Cómo se hace sin perder `C-88`.** La credibilidad de SignalDesk como comercio
+depende de que no tenga ninguna clave de AgentPey: claves, proceso y tablas
+propios. Juntar las tres apps en un proceso habría roto eso en la práctica,
+aunque ningún código importara del otro lado. Por eso existe
+`@agentpey/gateway` (`apps/gateway`):
+
+- **Tres procesos de verdad.** El gateway arranca `apps/web`, `apps/realops` y
+  `apps/signaldesk` como procesos hijo, cada uno en su puerto interno, y recién
+  abre el puerto público cuando los tres responden.
+- **Cada hijo recibe solo sus variables.** Render le da un único juego de
+  variables a un servicio, así que todos los secretos llegan al gateway.
+  `hosts.ts` (`envKeys`) dice cuáles recibe cada app y `env-filter.ts` copia
+  solo esas. SignalDesk no ve `AGENT_SECRET_KEY` ni `MASTER_MNEMONIC`, y las
+  otras dos no ven `SIGNALDESK_SECRET_KEY`. Una variable que se agrega en
+  Render y no en `envKeys` no le llega a ninguna app.
+- **Ruteo por `Host`, exacto.** Un mapa fijo de dominio a app. Un dominio que no
+  está en el mapa recibe `404`, nunca "el más parecido": un chequeo por prefijo
+  (`realops.`) lo pasaría `realops.atacante.example`. Es el mismo error que
+  `C-109` cerró en el titular de los créditos.
+- **El `Host` original viaja sin cambios** (`proxy.ts`), así que `apps/web`
+  sigue deduciendo su propio origen del pedido, igual que antes.
+- **Si un hijo muere, se cae el servicio entero** y Render lo reinicia. No hay
+  un reintento propio: sería una segunda política de reinicio, además de la de
+  Render.
+
+**Alternativas descartadas por el usuario:**
+- **Vercel como host.** No calza con servidores Node de proceso largo: las tres
+  apps guardan estado en memoria entre pedidos y se ejecutan como scripts, no
+  como funciones.
+- **Un Starter y dos Free.** Dos de las tres apps seguirían arrancando en frío
+  en una demo.
+
+**Alternativa descartada en el diseño:** importar las tres apps en un solo
+proceso. Sus `server.ts` son scripts que se ejecutan al cargarse (`await` de
+nivel superior, `listen` como efecto), no funciones que se puedan llamar tres
+veces. Y un solo proceso tendría un solo `process.env` con todos los secretos.
+
+---
+
+### C-115 · T86: `agentpey.com` es el dominio canónico, y el servicio no tiene health check · `Vigente`
+**Fecha:** 2026-09-14 · **Decidido por el usuario** (sin `www`) · lo demás, verificado en producción
+
+- **`agentpey.com` sirve; `www.agentpey.com` redirige a `agentpey.com`.** Es el
+  nombre que usa toda la documentación. La primera vez Render emparejó los dos
+  al revés: `agentpey.com` redirigía a `www`, y el gateway, que no conoce `www`,
+  respondía `404`. El usuario decidió sacar el `www` en lugar de agregarlo al
+  mapa del gateway. Sacarlo se llevó el par entero, y al volver a agregar
+  `agentpey.com` Render propuso la dirección correcta. `www` no está en el mapa
+  del gateway porque nunca llega hasta él.
+- **DNS en Vercel:** `A @ 216.24.57.1` y tres `CNAME` (`www`, `realops`,
+  `signaldesk`) a `agentpey.onrender.com`.
+- **Sin `healthCheckPath`.** El chequeo de Render no llega con ninguno de los
+  tres dominios, y el gateway contesta `404` a un dominio desconocido: un health
+  check haría fallar cada deploy con las tres apps funcionando. Render igual
+  detecta el puerto abierto.
+- **RealOps llama a AgentPey por su dirección pública** (`AGENTPEY_BASE_URL =
+  https://agentpey.com`), no por `127.0.0.1:4101`. AgentPey arma los enlaces de
+  firma con el `Host` con que lo llaman, y un enlace a una dirección interna no
+  le sirve a la persona que lo recibe.
+
+**Alternativa descartada por el usuario:** dejar `www.agentpey.com` como
+canónico y agregarlo al mapa del gateway. Habría contradicho el nombre que usa
+toda la documentación del piloto.
+
+---
+
+### C-116 · T86: la mudanza convive con los servicios viejos hasta que corra el día 2 de T85 · `Vigente`
+**Fecha:** 2026-09-14 · **Decidido por el usuario** (cada cambio en producción, confirmado antes de hacerlo)
+
+El día 2 de T85 corre contra los tres servicios viejos y no puede correr antes
+del 2026-09-15 a las 01:29 UTC. Por eso lo viejo y lo nuevo conviven, sobre la
+misma base de datos:
+
+- **El servicio `AgentPey` despliega desde `cc/t86-single-service-gateway`**, y
+  los tres viejos, desde `main`. La rama no se mergea antes del día 2.
+- **`venues.json` resuelve SignalDesk en `signaldesk.agentpey.com` solo en la
+  rama.** Un venue se resuelve por origen: sin este cambio, la primera compra
+  por los dominios nuevos se pagó al SignalDesk viejo. El id del venue
+  (`signaldesk:GB4D…`) no cambió, así que los Mandatos ya firmados siguen
+  nombrando el mismo comercio.
+- **El partner de RealOps tiene los dos orígenes de retorno:**
+  `https://agentpey-realops.onrender.com` y `https://realops.agentpey.com`. Sin
+  el nuevo, firmar desde `realops.agentpey.com` falla y RealOps muestra un
+  `502`. El viejo se saca cuando se den de baja los servicios viejos.
+- **`render.yaml` describe el servicio único** (`name: AgentPey`, igual que en
+  el panel), con los tres dominios y exactamente las variables de `envKeys`.
+  Comprobado leyendo el archivo contra `APP_TARGETS`: no falta ninguna, no sobra
+  ninguna, no hay repetidas.
+- **El merge necesita su propia revisión.** El Blueprint `AgentPey` de Render
+  administra los tres servicios viejos y **se sincroniza solo desde `main`**.
+  Mergear dispararía una sincronización. Render nunca borra un servicio al
+  sincronizar, así que los tres viejos quedarían sin administrar, pero seguirían
+  andando. Lo que no se sabe es si el Blueprint adopta el servicio `AgentPey`
+  creado a mano o crea otro, que se cobraría aparte. Antes de mergear: apagar el
+  Auto Sync, mergear, y sincronizar a mano mirando lo que propone Render.
+- **`scripts/f9-acceptance.ts` sigue apuntando por defecto a los servicios
+  viejos**, a propósito, hasta que corra el día 2. Para probar lo nuevo se usan
+  `F9_WEB_URL`, `F9_REALOPS_URL` y `F9_SIGNALDESK_URL` en `.env.local`, y se
+  sacan al terminar.
+
+**Alternativa descartada:** pasar todo de una vez, apuntando `main` y los
+servicios viejos a los dominios nuevos. El día 2 habría corrido contra otro
+despliegue que el del día 1, y T85 habría medido la mudanza, no el producto.

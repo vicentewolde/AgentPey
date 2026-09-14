@@ -5001,3 +5001,63 @@ Pendiente:
   reapretar "Firmar", rotar la key del partner de RealOps, tenants de
   diagnóstico de T84, `createX402Catalog` sin timeout, `buy()` clásico. Del lado
   del usuario: Starter en Render y `agentpey.com`.
+
+## 2026-09-14 (23) — cc/t86-single-service-gateway (sin mergear)
+
+Agente: Claude Code
+
+Qué: **T86.** Las tres apps del piloto pasan a un solo servicio de Render,
+`AgentPey` (Starter), bajo `agentpey.com`, `realops.agentpey.com` y
+`signaldesk.agentpey.com`. Sin delegar nada a Codex.
+
+- **`@agentpey/gateway`** (`77eb7ce`, `C-114`): arranca `apps/web`,
+  `apps/realops` y `apps/signaldesk` como tres procesos hijo, les pasa a cada
+  uno solo sus variables (`hosts.ts` → `envKeys`) y rutea por `Host` con un mapa
+  exacto. 18 tests nuevos.
+- **Render y DNS** (`C-115`): el servicio despliega desde esta rama. Los
+  registros DNS están en Vercel (`A @ 216.24.57.1`, `CNAME` a
+  `agentpey.onrender.com`). `agentpey.com` es el canónico y `www` redirige hacia
+  él. El primer par de Render salió al revés; el usuario decidió sacar `www`, y
+  hubo que volver a agregar `agentpey.com`.
+- **Transición** (`C-116`): `venues.json` apunta a `signaldesk.agentpey.com`
+  solo en la rama (`c648311`). El partner de RealOps tiene los dos orígenes de
+  retorno, confirmado por el usuario. `render.yaml` describe el servicio único
+  (`cd8287a`).
+- **Compra real por los dominios nuevos:** corrida
+  `01M2G9QNKGW5NZ68MYVCQNT36C`, 20 ✓ · 1 ✗ (`C-113`) · 1 declarado. Cotizó y
+  cobró el SignalDesk nuevo (entrega `01M2G9S1ZMMF6XAM9KTT9A46HS`, ledger
+  4675484).
+
+Por qué: tener tres servicios sin arranque en frío costaba tres Starter, y el
+usuario compró `agentpey.com` para servir el piloto con su propia marca.
+
+Errores míos, registrados en `evidencia/T86.md` § 8:
+- Corrompí una línea de `.env.local` al agregar las `F9_*_URL`. Arreglado.
+- **Imprimí `REALOPS_AGENTPEY_API_KEY` y `SIGNALDESK_FACILITATOR_SECRET` en la
+  conversación. Hay que rotar los dos.**
+- Dije que los dominios costaban USD 0,75/mes; son USD 0,25/mes.
+
+Documentación tocada: `DECISIONES.md` (`C-114` a `C-116`), `BITACORA.md` (T86,
+tabla, estado actual), `evidencia/T86.md` (nuevo), `apps/web/README.md` (sección
+de deploy). **`AGENTS.md` no se tocó.** Queda propuesto agregar que
+`apps/gateway/src/hosts.ts` (`envKeys`) y `render.yaml` son reparto de claves, y
+por eso no se delegan (`P-10`). Espera la decisión del usuario. **1294 tests**,
+`typecheck` y `build` limpios.
+
+Pendiente:
+- **No mergear antes del día 2 de T85** (después de 2026-09-15 01:29 UTC,
+  `pnpm run acceptance:f9 -- --phase=day2`, sin `F9_*_URL` en `.env.local`).
+- **Antes del merge:** apagar el Auto Sync del Blueprint `AgentPey`
+  (`exs-dacurkqjnfac738sqk90`, administra los tres servicios viejos desde
+  `main`), mergear con confirmación del usuario, y sincronizar a mano mirando si
+  adopta el servicio `AgentPey` o crea otro.
+- Rotar `REALOPS_AGENTPEY_API_KEY` y `SIGNALDESK_FACILITATOR_SECRET`. El
+  segundo, después del día 2.
+- Después del día 2: dar de baja `agentpay-web`, `agentpey-realops` y
+  `agentpey-signaldesk`; sacar `https://agentpey-realops.onrender.com` de los
+  orígenes de retorno; pasar a los dominios nuevos los valores por defecto de
+  `scripts/f9-acceptance.ts` y de `apps/realops/src/server.ts`.
+- Anotado sin construir: que los hijos escuchen solo en `127.0.0.1` (Render ve
+  `4101`–`4103`); que el `catch` de `/agentes/{id}/firmar` en RealOps escriba
+  en el log (el `502` no dejó rastro); medir la memoria del Starter con tráfico
+  real.

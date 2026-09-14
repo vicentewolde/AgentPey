@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-13 · **Último hito cerrado:** T84 (despliegue público y primera compra de punta a punta) · **En curso:** T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
+**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, sin mergear hasta el día 2 de T85) · **En curso:** T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -142,6 +142,12 @@ lo que pasaba—, que quedaron cerrados; la segunda dio 88 chequeos bien y uno
 mal, el de un intento no pagado que cuenta contra el tope diario, que es una
 decisión de la Fase 3 y quedó para un hito propio (T85, `C-108` a `C-113`).
 Falta el Mandato vencido firmado desde RealOps, que se prueba al día siguiente.
+Y el piloto ya tiene nombre propio: `agentpey.com`, `realops.agentpey.com` y
+`signaldesk.agentpey.com` corren en un solo servicio de Render en vez de tres,
+pagando un plan en vez de tres, y siguen siendo tres programas separados, cada
+uno con solo sus propias claves. Una compra real por los dominios nuevos se pagó
+y se entregó de punta a punta, con el comercio nuevo (T86, `C-114` a `C-116`).
+La mudanza convive con los servicios viejos hasta que corra el día 2 de T85.
 
 ### Progreso
 
@@ -196,6 +202,7 @@ Falta el Mandato vencido firmado desde RealOps, que se prueba al día siguiente.
 | T83 | F9: revocación hospedada en `/revocar/{id}`, firmada con la wallet del principal — divulgación mínima antes de la prueba | ✅ cerrado 2026-09-12 |
 | T84 | F9: despliegue público de los tres servicios y primera compra real de punta a punta con la wallet del usuario — ocho defectos de borde entre servicios, encontrados en producción y cerrados; caso de aceptación 1 cumplido | ✅ cerrado 2026-09-13 |
 | T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | 🟡 día 1 cerrado 2026-09-13 · día 2 (Mandato vencido desde RealOps) después del 2026-09-15 01:29 UTC |
+| T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · sin mergear hasta el día 2 de T85 y la revisión del Blueprint |
 
 ---
 
@@ -3580,3 +3587,83 @@ un día. Ya está firmado; se prueba después del 2026-09-15 a las 01:29 UTC con
 intenciones no pagadas, y un código propio para el rail vacío, que hoy llega como
 `NetworkError` y RealOps dice "puede estar caído". Van juntos por decisión del
 usuario. Más los pendientes que siguen desde T84.
+
+---
+
+## T86 · Un solo servicio bajo `agentpey.com` — cerrado 2026-09-14, sin mergear
+
+**Qué quedó funcionando, en palabras simples.**
+
+**El piloto tiene dirección propia y se paga una vez.** RealOps está en
+`realops.agentpey.com`, SignalDesk en `signaldesk.agentpey.com` y AgentPey en
+`agentpey.com`. Antes eran tres servicios con direcciones de Render, y tenerlos a
+los tres sin arranque en frío costaba tres planes. Ahora es uno solo, y los tres
+responden al instante.
+
+**Siguen siendo tres programas separados, no uno.** Esto era lo que no se podía
+perder. SignalDesk vale como comercio independiente porque no tiene ninguna
+clave de AgentPey (`C-88`). Un programa nuevo y chico, el gateway, arranca los
+tres por separado, le da a cada uno solo sus propias claves, y le pasa cada
+visita al que corresponde según la dirección escrita. Una dirección que no
+conoce recibe "no existe", nunca "la más parecida" (`C-114`).
+
+**Una compra real pasó entera por los dominios nuevos.** Una persona de prueba
+entró a `realops.agentpey.com`, firmó en `agentpey.com`, compró créditos de IA,
+AgentPey pagó en testnet, y el SignalDesk nuevo cobró y entregó, con el recibo
+en su propio dominio.
+
+**Llegar ahí destapó cuatro cosas, ninguna visible en las pruebas:**
+
+- **Render emparejó `www` al revés**: `agentpey.com` mandaba a `www`, que nadie
+  atendía. El usuario decidió sacar `www`. Eso se llevó también `agentpey.com`
+  por unos minutos, y al volver a agregarlo Render lo emparejó bien (`C-115`).
+- **Firmar desde el dominio nuevo daba error.** AgentPey solo devuelve a la
+  persona a direcciones que el partner tiene registradas, y
+  `realops.agentpey.com` no lo estaba. Con confirmación del usuario se agregó,
+  conservando la vieja.
+- **La primera compra le pagó al SignalDesk viejo**, porque el catálogo lo
+  seguía buscando en su dirección de Render. Se corrigió en esta rama, y la
+  segunda compra la cobró el nuevo (`C-116`).
+- **El `render.yaml` describía tres servicios.** Ahora describe uno, y se
+  comprobó que sus variables sean exactamente las que el gateway reparte.
+
+**Por qué no está mergeado.** Los tres servicios viejos siguen andando, sobre la
+misma base de datos: el día 2 de T85 corre contra ellos y no puede ser antes del
+2026-09-15. Y el Blueprint de Render que los administra se sincroniza solo
+desde `main`, así que mergear necesita apagar eso antes y mirar qué propone
+Render (`C-116`).
+
+**Tres errores míos.** Rompí una línea de `.env.local` al agregar las URLs de
+prueba, y la primera corrida salió mal por eso. Al diagnosticarlo imprimí las
+últimas líneas del archivo, y **dos secretos quedaron visibles en la
+conversación**: la key del partner de RealOps y el secreto del facilitador de
+SignalDesk. Hay que rotar los dos. Y le dije al usuario que los dominios
+costaban USD 0,75/mes: son USD 0,25/mes.
+
+**Evidencia técnica.**
+
+- Servicio `AgentPey` (`srv-dak04lgjo6nc73fh4qm0`), 0.5 CPU y 512 MB, Oregon,
+  desplegando desde `cc/t86-single-service-gateway`, sin health check.
+- Log del deploy: `gateway: all three apps are up`, con el mapa
+  `agentpey.com -> web`, `realops.agentpey.com -> realops`,
+  `signaldesk.agentpey.com -> signaldesk`.
+- DNS en Vercel: `A @ 216.24.57.1` y tres `CNAME` a `agentpey.onrender.com`.
+  Estado final: `200` en los tres dominios, y `301` de `www` a `agentpey.com`.
+- Compra con el comercio nuevo: corrida `01M2G9QNKGW5NZ68MYVCQNT36C`, **20 ✓ ·
+  1 ✗ (`C-113`) · 1 declarado**. Mandato `mdt_01M2G9R98RBYRT93P0HS7BKB4Q`
+  (ledger 4675479), pago en el ledger 4675484, entrega
+  `01M2G9S1ZMMF6XAM9KTT9A46HS` en `signaldesk.agentpey.com`. Rails de las
+  corridas vaciados a la reserva.
+- **1294 tests verdes** (eran 1276), `typecheck` y `build` limpios.
+- Commits: `77eb7ce` (gateway), `c648311` (`venues.json`), `cd8287a`
+  (`render.yaml`).
+
+**Decisiones nuevas:** `C-114` a `C-116`.
+
+**Pendiente:** correr el día 2 de T85; antes del merge, apagar el Auto Sync del
+Blueprint; rotar los dos secretos; dar de baja los servicios viejos y su origen
+de retorno; pasar a los dominios nuevos los valores por defecto de la suite y de
+RealOps.
+
+**Anotado sin construir:** que los hijos escuchen solo en `127.0.0.1`; que el
+error al firmar en RealOps quede en el log; medir la memoria con tráfico real.
