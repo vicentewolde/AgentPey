@@ -13,7 +13,7 @@
   {
     "slug": "signaldesk",
     "address": "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-    "baseUrl": "https://agentpey-signaldesk.onrender.com",
+    "baseUrl": "https://signaldesk.agentpey.com",
     "assets": [
       {
         "code": "USDC",
