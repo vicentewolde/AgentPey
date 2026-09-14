@@ -1082,11 +1082,13 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
   // `consent.html` itself is T52, not this hito: until it exists, visiting
   // a real consent_url 404s here exactly like any other missing file — the
   // backend behind it is already complete and verified without a browser.
+  // `/` is the landing page, and the live wallet demo moved to `/sign`.
+  // `/landing` stays as an alias, so links shared before the swap keep working.
   const relative =
-    pathname === "/"
-      ? "/index.html"
-      : pathname === "/landing"
-        ? "/landing.html"
+    pathname === "/" || pathname === "/landing"
+      ? "/landing.html"
+      : pathname === "/sign"
+        ? "/index.html"
         : pathname.startsWith("/consent/")
           ? "/consent.html"
           : // T83: hosted revocation, same single-page shape as consent — the

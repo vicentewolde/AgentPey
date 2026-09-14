@@ -246,10 +246,11 @@ pnpm run demo:pay-real -- --payer=policy-rail
 
 `pnpm run web` puts both behind buttons, alongside the MandateVault log that
 records every decision and anchors each payment on chain. It is deployed live
-at [agentpay-web.onrender.com](https://agentpay-web.onrender.com) — the
-public URL still carries the project's old name; the service itself, the
-repo, and everything on the page already say AgentPey (see
-[ROADMAP.md](ROADMAP.md) if that mismatch looks odd).
+at [agentpey.com](https://agentpey.com) (the wallet demo is at
+[agentpey.com/sign](https://agentpey.com/sign)), alongside the F9 pilot's
+platform at [realops.agentpey.com](https://realops.agentpey.com) and its
+merchant at [signaldesk.agentpey.com](https://signaldesk.agentpey.com) — three
+apps on one Render service, see `apps/gateway/README.md`.
 
 Phase 6 turns the pilot into something a third party can integrate: a
 partner gets an API key (`pnpm run partner:create`), calls `/v1` to create

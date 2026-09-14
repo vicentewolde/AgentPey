@@ -99,12 +99,17 @@
 <script src="https://unpkg.com/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
 
 <main class="wrap">
-  <header class="top">
-    <p class="eyebrow">AgentPey</p>
-    <h1 class="hero">Revocar un permiso</h1>
+  <div class="top">
+    <a class="mark" href="/">AgentPey</a>
+    <span class="network">Stellar Testnet</span>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow">Revocación</p>
+    <h1>Revocar un permiso</h1>
     <p class="intro">Revocar corta la autorizaci&oacute;n desde afuera del agente: no importa qu&eacute; le digan
     al agente despu&eacute;s, sin Mandato v&aacute;lido no puede pagar nada.</p>
-    <p class="network">Stellar Testnet &middot; <span id="session-id" class="session-id"></span></p>
+    <p class="session-id">Mandato <span id="session-id"></span></p>
   </header>
 
   <p id="page-notice" class="notice" hidden></p>

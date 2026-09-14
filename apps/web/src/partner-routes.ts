@@ -106,7 +106,7 @@ export interface PartnerRouteRequest {
   readonly idempotencyKeyHeader: string | undefined;
   readonly body: unknown;
   readonly directory: PartnerRoutesDirectory;
-  /** This deployment's own origin, e.g. `https://agentpay-web.onrender.com` — used to build a `consent_url`. Only read by `POST /v1/consent_sessions`. */
+  /** This deployment's own origin, e.g. `https://agentpey.com` — used to build a `consent_url`. Only read by `POST /v1/consent_sessions`. */
   readonly baseUrl: string;
   /** Runs one purchase. Only read by `POST /v1/purchases`. */
   readonly executePurchase: ExecutePurchase;

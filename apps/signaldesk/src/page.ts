@@ -18,45 +18,86 @@ export interface PageInput {
   readonly discoveryPath: string;
 }
 
+/**
+ * The pilot's one visual identity (T86, decided by the user): AgentPey's paper,
+ * ink, green accent and Instrument Serif + Inter. Copied rather than imported —
+ * SignalDesk shares no code with AgentPey, only a look.
+ *
+ * Only the catalogue uses it. The delivered artefacts in `artifacts.ts` keep
+ * their own markup on purpose: they render deterministically and their hash is
+ * inside the signed receipt, so restyling them would make every past delivery
+ * stop matching its receipt.
+ */
+export const SIGNALDESK_STYLE = `
+  :root {
+    color-scheme: light;
+    --paper: #fbfaf8; --paper-2: #f2f0ea; --card: #ffffff;
+    --ink: #0f1211; --ink-2: #434946; --ink-3: #707875; --rule: #e3e0d9; --accent: #0a7a56;
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px;
+         line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  main { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px 72px; }
+  a { color: var(--accent); }
+  .top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px 20px; padding: 28px 0 0; }
+  .mark { color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .tagline { color: var(--ink-3); font-size: 12.5px; font-weight: 400; margin-left: 4px; }
+  .network { color: var(--ink-3); font-size: 13px; }
+  .hero { padding: clamp(30px, 6vw, 54px) 0 28px; }
+  .eyebrow { margin: 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  h1 { margin: 12px 0 0; font-family: var(--serif); font-weight: 400; font-size: clamp(2.25rem, 7vw, 3.1rem);
+       line-height: 1.05; letter-spacing: -0.02em; }
+  h2 { margin: 32px 0 10px; font-family: var(--serif); font-weight: 400; font-size: 1.6rem; line-height: 1.15; letter-spacing: -0.015em; }
+  .lede { max-width: 60ch; margin: 14px 0 0; color: var(--ink-2); }
+  .product { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px; margin-bottom: 14px; }
+  .product-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .product h2 { margin: 0 0 8px; }
+  .price { font-family: var(--mono); font-size: 15px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .price small { color: var(--ink-3); font-size: 12px; }
+  .product p { margin: 0 0 12px; color: var(--ink-2); }
+  .product p:last-child { margin-bottom: 0; }
+  code { font-family: var(--mono); background: var(--paper-2); padding: 2px 6px; border-radius: 5px; font-size: 12.5px; word-break: break-all; }
+  .meta { color: var(--ink-3); font-size: 13px; }
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 13.5px; }
+  footer p { margin: 0 0 10px; }
+  footer strong { color: var(--ink-2); font-weight: 600; }
+  @media (max-width: 520px) { main { padding: 0 20px 56px; } .product { padding: 18px; } }
+`;
+
 export function renderCatalogPage(input: PageInput): string {
   return `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SignalDesk</title>
-<style>
-  :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-          --bg: #fbfbf9; --fg: #1c1c1a; --muted: #6b6b63; --line: #e2e2dd; --card: #ffffff; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #16161a; --fg: #f2f2ef; --muted: #a3a39b; --line: #2e2e34; --card: #1e1e23; }
-  }
-  body { margin: 0; padding: 2.5rem 1.25rem; background: var(--bg); color: var(--fg); line-height: 1.6; }
-  main { max-width: 48rem; margin: 0 auto; }
-  h1 { margin: 0 0 .25rem; font-size: 1.9rem; letter-spacing: -.01em; }
-  .lede { color: var(--muted); margin: 0 0 2rem; }
-  .product { background: var(--card); border: 1px solid var(--line); border-radius: .75rem;
-             padding: 1.25rem 1.35rem; margin-bottom: 1rem; }
-  .product h2 { margin: 0 0 .35rem; font-size: 1.1rem; }
-  .price { float: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-  .product p { margin: 0 0 .75rem; color: var(--muted); }
-  code { background: color-mix(in srgb, var(--line) 60%, transparent); padding: .12rem .4rem;
-         border-radius: .3rem; font-size: .85em; word-break: break-all; }
-  .meta { font-size: .85rem; color: var(--muted); }
-  footer { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
-           font-size: .88rem; color: var(--muted); }
-  footer p { margin: 0 0 .6rem; }
-</style>
+<title>SignalDesk · comercio x402</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>${SIGNALDESK_STYLE}</style>
 </head>
 <body>
 <main>
-  <h1>SignalDesk</h1>
-  <p class="lede">Un comercio x402 sobre Stellar testnet. Cobra en USDC de prueba y entrega al liquidar, no antes.</p>
+  <div class="top">
+    <span class="mark">SignalDesk <span class="tagline">· comercio x402</span></span>
+    <span class="network">Stellar Testnet</span>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow">Catálogo</p>
+    <h1>Lo que vende SignalDesk</h1>
+    <p class="lede">Un comercio x402 sobre Stellar testnet. Cobra en USDC de prueba y entrega al liquidar, no antes.</p>
+  </header>
 
   ${PRODUCTS.map(
     (product) => `<article class="product">
-    <span class="price">${product.price} USDC</span>
-    <h2>${product.name}</h2>
+    <div class="product-head">
+      <h2>${product.name}</h2>
+      <span class="price">${product.price} USDC</span>
+    </div>
     <p>${product.description}</p>
     <p class="meta">
       <code>${product.id}</code><br>

@@ -433,7 +433,7 @@ en una compra real (`G-8` → `G-11`, arriba). 604 tests (589 + 15 nuevos),
 [`docs/fase-4-mandategate/BITACORA.md`](docs/fase-4-mandategate/BITACORA.md).
 
 `apps/web` está desplegado y público en
-[agentpay-web.onrender.com](https://agentpay-web.onrender.com/) — tres
+[agentpey.com](https://agentpey.com) — tres
 fallas reales de deploy (versión de Node bajo Corepack, y los secretos del
 servidor leídos solo de un archivo que no existe en Render) diagnosticadas
 y corregidas contra el log real, no supuestas. Sigue llamando

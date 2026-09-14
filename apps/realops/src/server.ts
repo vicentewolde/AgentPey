@@ -50,7 +50,7 @@ async function readEnv(): Promise<Map<string, string>> {
 const env = await readEnv();
 const port = Number(env.get("PORT") ?? 4040);
 const baseUrl = env.get("REALOPS_PUBLIC_URL") ?? `http://localhost:${port}`;
-const signalDeskUrl = env.get("SIGNALDESK_PUBLIC_URL") ?? "https://agentpey-signaldesk.onrender.com";
+const signalDeskUrl = env.get("SIGNALDESK_PUBLIC_URL") ?? "https://signaldesk.agentpey.com";
 
 /**
  * The venue, asset and payout the pilot's grants name. Read from configuration
@@ -121,7 +121,7 @@ const { store, client } = await buildStore();
  * failure.
  */
 const partnerKey = env.get("REALOPS_AGENTPEY_API_KEY");
-const agentpeyBaseUrl = env.get("AGENTPEY_BASE_URL") ?? "https://agentpey-web.onrender.com";
+const agentpeyBaseUrl = env.get("AGENTPEY_BASE_URL") ?? "https://agentpey.com";
 const agentpey =
   partnerKey === undefined || partnerKey === ""
     ? undefined

@@ -85,9 +85,9 @@ function required(name: string): string {
 }
 
 const trimSlash = (url: string): string => url.replace(/\/+$/, "");
-const WEB = trimSlash(env.get("F9_WEB_URL") ?? "https://agentpay-web.onrender.com");
-const REALOPS = trimSlash(env.get("F9_REALOPS_URL") ?? "https://agentpey-realops.onrender.com");
-const SIGNALDESK = trimSlash(env.get("F9_SIGNALDESK_URL") ?? "https://agentpey-signaldesk.onrender.com");
+const WEB = trimSlash(env.get("F9_WEB_URL") ?? "https://agentpey.com");
+const REALOPS = trimSlash(env.get("F9_REALOPS_URL") ?? "https://realops.agentpey.com");
+const SIGNALDESK = trimSlash(env.get("F9_SIGNALDESK_URL") ?? "https://signaldesk.agentpey.com");
 const HORIZON = "https://horizon-testnet.stellar.org";
 const RPC_URL = "https://soroban-testnet.stellar.org";
 const FRIENDBOT = "https://friendbot.stellar.org";

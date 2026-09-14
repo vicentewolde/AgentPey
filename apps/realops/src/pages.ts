@@ -31,51 +31,92 @@ export function escape(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+/**
+ * The pilot's one visual identity (T86, decided by the user): the same paper,
+ * ink, green accent and Instrument Serif + Inter that AgentPey's own pages use
+ * (`apps/web/public/consent.html`), so RealOps, AgentPey and SignalDesk read as
+ * one product. Copied, not imported: the three apps share no code, only a look.
+ */
 const STYLE = `
-  :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-          --bg: #fbfbf9; --fg: #1c1c1a; --muted: #6b6b63; --line: #e2e2dd; --card: #fff;
-          --accent: #2a5bd7; --warn: #8a5a00; --warnbg: #fdf3e0; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #16161a; --fg: #f2f2ef; --muted: #a3a39b; --line: #2e2e34; --card: #1e1e23;
-            --accent: #7aa2f7; --warn: #e0b062; --warnbg: #2a2313; }
+  :root {
+    color-scheme: light;
+    --paper: #fbfaf8; --paper-2: #f2f0ea; --card: #ffffff;
+    --ink: #0f1211; --ink-2: #434946; --ink-3: #707875; --rule: #e3e0d9;
+    --accent: #0a7a56; --accent-wash: #e9f3ee; --danger: #b3261e; --danger-wash: #fbeceb;
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 2.5rem 1.25rem 4rem; background: var(--bg); color: var(--fg); line-height: 1.6; }
-  main { max-width: 46rem; margin: 0 auto; }
-  h1 { font-size: 1.8rem; margin: 0 0 .3rem; letter-spacing: -.01em; }
-  h2 { font-size: 1.15rem; margin: 2rem 0 .75rem; }
-  .lede { color: var(--muted); margin: 0 0 2rem; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: .75rem;
-          padding: 1.25rem 1.35rem; margin-bottom: 1rem; }
-  label { display: block; font-weight: 600; margin: 1rem 0 .3rem; font-size: .92rem; }
-  input, textarea, select { width: 100%; padding: .6rem .7rem; font: inherit; color: inherit;
-          background: var(--bg); border: 1px solid var(--line); border-radius: .4rem; }
-  button, .button { display: inline-block; margin-top: 1.25rem; padding: .65rem 1.15rem; font: inherit;
-          font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: .4rem;
-          cursor: pointer; text-decoration: none; }
-  .secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
-  code, pre { background: color-mix(in srgb, var(--line) 55%, transparent); border-radius: .3rem; }
-  code { padding: .1rem .35rem; font-size: .85em; word-break: break-all; }
-  pre { padding: 1rem; overflow-x: auto; font-size: .82rem; line-height: 1.5; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { text-align: left; padding: .55rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-  .tag { display: inline-block; padding: .1rem .45rem; border-radius: .3rem; font-size: .72rem;
-         font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-  .tag-signed { background: #dceadd; color: #1d5228; }
-  .tag-onchain { background: #dae1f5; color: #1d3775; }
-  .tag-realops { background: #ece8e0; color: #5c5347; }
-  @media (prefers-color-scheme: dark) {
-    .tag-signed { background: #1d3a24; color: #9ed8ab; }
-    .tag-onchain { background: #1b2647; color: #a9bff0; }
-    .tag-realops { background: #2e2a22; color: #cbbfa8; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px;
+         line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  main { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px 72px; }
+  a { color: var(--accent); }
+
+  .top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;
+         gap: 6px 20px; padding: 28px 0 0; }
+  .mark { color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .tagline { color: var(--ink-3); font-size: 12.5px; font-weight: 400; margin-left: 4px; letter-spacing: 0; }
+  .nav { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; }
+  .nav a { color: var(--ink-3); font-size: 13px; text-decoration: none; }
+  .nav a:hover { color: var(--ink); }
+
+  .notice { margin: 28px 0 40px; padding: 11px 14px; border-left: 3px solid var(--rule); background: var(--paper-2);
+            color: var(--ink-2); font-size: 13.5px; }
+  .notice strong { color: var(--ink); font-weight: 600; }
+
+  h1 { margin: 0 0 10px; font-family: var(--serif); font-weight: 400; font-size: clamp(2.25rem, 7vw, 3.1rem);
+       line-height: 1.05; letter-spacing: -0.02em; }
+  h2 { margin: 36px 0 12px; font-family: var(--serif); font-weight: 400; font-size: 1.7rem; line-height: 1.15;
+       letter-spacing: -0.015em; }
+  h3 { margin: 0 0 8px; font-size: 1rem; font-weight: 600; }
+  .card h2, .card h3 { margin-top: 0; }
+  .lede { max-width: 60ch; margin: 0 0 32px; color: var(--ink-2); }
+  .meta { color: var(--ink-3); font-size: 13px; }
+
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px;
+          margin-bottom: 14px; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .error { border-left: 3px solid var(--danger); }
+
+  label { display: block; margin: 16px 0 6px; color: var(--ink-2); font-size: 14px; font-weight: 500; }
+  input, textarea, select { width: 100%; padding: 10px 12px; font: inherit; font-size: 15px; color: var(--ink);
+          background: var(--paper); border: 1px solid var(--rule); border-radius: 7px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+  button, .button { appearance: none; display: inline-block; margin-top: 20px; padding: 11px 18px;
+          font-family: var(--sans); font-size: 14px; font-weight: 500; color: var(--paper); background: var(--ink);
+          border: 1px solid var(--ink); border-radius: 7px; cursor: pointer; text-decoration: none;
+          transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+  button:hover, .button:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+  button:focus-visible, .button:focus-visible, .nav a:focus-visible, .mark:focus-visible {
+          outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+  .secondary, button.secondary, .button.secondary { background: transparent; color: var(--ink); border-color: var(--rule); }
+  .secondary:hover, button.secondary:hover, .button.secondary:hover { background: var(--paper-2); border-color: var(--ink-3); }
+
+  code, pre { font-family: var(--mono); background: var(--paper-2); border-radius: 5px; }
+  code { padding: 2px 6px; font-size: 12.5px; word-break: break-all; }
+  pre { padding: 14px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; border: 1px solid var(--rule); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px dashed var(--rule); vertical-align: top; }
+  th { color: var(--ink-3); font-size: 11.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+       border-bottom-style: solid; }
+
+  .tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 600;
+         letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+  .tag-signed { background: var(--accent-wash); color: var(--accent); }
+  .tag-onchain { background: #e8eef7; color: #1d3775; }
+  .tag-realops { background: var(--paper-2); color: var(--ink-2); }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 13.5px; }
+  footer strong { color: var(--ink-2); font-weight: 600; }
+
+  @media (max-width: 520px) {
+    main { padding: 0 20px 56px; }
+    .card { padding: 18px; }
   }
-  .notice { background: var(--warnbg); color: var(--warn); border-radius: .5rem;
-            padding: .85rem 1.1rem; font-size: .88rem; margin-bottom: 2rem; }
-  .error { border-left: 3px solid #c0392b; padding-left: .9rem; }
-  footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
-           font-size: .85rem; color: var(--muted); }
-  nav a { color: var(--accent); margin-right: 1rem; font-size: .9rem; }
 `;
 
 /** The notice every page carries, by construction. */
@@ -97,15 +138,20 @@ export function layout(input: LayoutInput): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escape(input.title)} · RealOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
 </head>
 <body>
 <main>
-  <nav>
-    <a href="/">RealOps</a>
-    ${input.signedIn === true ? '<a href="/agentes">Mis agentes</a><a href="/servicios">Mis servicios</a><a href="/salir">Salir</a>' : ""}
-    ${input.signalDeskUrl === undefined ? "" : `<a href="${escape(input.signalDeskUrl)}">SignalDesk</a>`}
-  </nav>
+  <div class="top">
+    <a class="mark" href="/">RealOps <span class="tagline">· plataforma de agentes</span></a>
+    <nav class="nav">
+      ${input.signedIn === true ? '<a href="/agentes">Mis agentes</a><a href="/servicios">Mis servicios</a><a href="/salir">Salir</a>' : ""}
+      ${input.signalDeskUrl === undefined ? "" : `<a href="${escape(input.signalDeskUrl)}">SignalDesk</a>`}
+    </nav>
+  </div>
   <p class="notice">${PILOT_NOTICE}</p>
   ${input.body}
   <footer>

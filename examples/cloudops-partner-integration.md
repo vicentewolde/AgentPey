@@ -27,7 +27,7 @@ Definí las variables de esta sesión. Reemplazá solo el valor de
 `AGENTPAY_API_KEY` por el secreto recibido:
 
 ```sh
-export AGENTPAY_BASE_URL="https://agentpay-web.onrender.com"
+export AGENTPAY_BASE_URL="https://agentpey.com"
 export AGENTPAY_API_KEY="ap_test_REPLACE_WITH_THE_SECRET_RECEIVED_ONCE"
 export VALID_UNTIL="$(node -e 'console.log(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())')"
 ```
