@@ -148,14 +148,58 @@ export interface BazaarPaymentReceipt {
 }
 
 /**
+ * Asks a paid resource for its `402` without paying anything, and says what
+ * came back.
+ *
+ * Split out of {@link executeBazaarPayment} so a caller can learn whether the
+ * venue will quote this request at all **before** it spends anything else on
+ * it — deploying and funding a tenant's rail, in F9. T85 found the order the
+ * other way round in production: SignalDesk refused a credits request with a
+ * `400` for its input, and a sponsored rail had already been deployed and
+ * funded for a purchase that was never going to be quoted.
+ *
+ * **A venue refusing the request is not a network failure.** A `4xx` other
+ * than `402` means the venue answered, read the request, and declined it —
+ * `MerchantRejectedRequest`, with the venue's status and the start of its
+ * body. Reporting it as `NetworkError` told a person "the merchant may be
+ * down, try again later" about a request that would fail identically forever.
+ *
+ * @throws AgentPassError `MerchantRejectedRequest` for a `4xx` other than `402`.
+ * @throws AgentPassError `NetworkError` for an unreachable resource, or any
+ * other status that is not `402`.
+ */
+export async function requestPaymentChallenge(resourceUrl: string, fetchImpl: typeof fetch = fetch): Promise<Response> {
+  let challenge: Response;
+  try {
+    challenge = await fetchImpl(resourceUrl);
+  } catch (error) {
+    throw networkError("could not reach the bazaar resource", { resourceUrl }, error);
+  }
+  if (challenge.status === 402) return challenge;
+
+  if (challenge.status >= 400 && challenge.status < 500) {
+    const body = await challenge.text().catch(() => "");
+    throw new AgentPassError("MerchantRejectedRequest", "the venue refused this request before quoting a price", {
+      details: { resourceUrl, status: challenge.status, body: body.slice(0, 300) },
+    });
+  }
+  throw networkError("the bazaar resource did not answer with a 402 payment challenge", {
+    resourceUrl,
+    status: challenge.status,
+  });
+}
+
+/**
  * Executes one real x402 payment: fetches `resourceUrl`, expects a `402`,
  * reconciles the real challenge against `input.intent` through
  * `deps.policyRail` (never signs anything the rail refuses), then signs and
  * sends the payment with `@x402/stellar` and retries the request.
  *
+ * @throws AgentPassError `MerchantRejectedRequest` when the venue refuses the
+ * request with a `4xx` before quoting (see {@link requestPaymentChallenge}).
  * @throws AgentPassError `NetworkError` for anything network-shaped: an
- * unreachable resource, a response that is not `402` on the first request,
- * or one that is not `2xx` after paying.
+ * unreachable resource, any other response that is not `402` on the first
+ * request, or one that is not `2xx` after paying.
  * @throws AgentPassError with the rail's own code (`ScopeAmountExceeded`,
  * `MandateDailyLimitExceeded`, `TermsAmountMismatch`, …) when the challenge
  * is not authorised — the same codes `create_purchase_intent` already raises.
@@ -166,18 +210,7 @@ export async function executeBazaarPayment(
 ): Promise<BazaarPaymentReceipt> {
   const fetchImpl = deps.fetchImpl ?? fetch;
 
-  let challenge: Response;
-  try {
-    challenge = await fetchImpl(input.resourceUrl);
-  } catch (error) {
-    throw networkError("could not reach the bazaar resource", { resourceUrl: input.resourceUrl }, error);
-  }
-  if (challenge.status !== 402) {
-    throw networkError("the bazaar resource did not answer with a 402 payment challenge", {
-      resourceUrl: input.resourceUrl,
-      status: challenge.status,
-    });
-  }
+  const challenge = await requestPaymentChallenge(input.resourceUrl, fetchImpl);
 
   const scheme =
     deps.payer === undefined

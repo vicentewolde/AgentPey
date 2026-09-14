@@ -52,6 +52,7 @@ import {
   fillRouteTemplate,
   getX402ServiceRoute,
   parseVenueId,
+  requestPaymentChallenge,
   toScaledAmount,
   verifyIntent,
   withVault,
@@ -121,7 +122,7 @@ export type TenantPurchaseOutcome = PurchaseSettled | PurchaseRefused;
  */
 export type TenantPurchaseDirectory = TenantAgentDirectory &
   TenantRailDirectory &
-  Pick<Directory, "findLatestCredential" | "listActiveMandates" | "findAgent">;
+  Pick<Directory, "findLatestCredential" | "listActiveMandates" | "listMandates" | "findAgent">;
 
 export interface TenantPurchaseDeps {
   readonly directory: TenantPurchaseDirectory;
@@ -140,6 +141,11 @@ export interface TenantPurchaseDeps {
   /** Defaults to `venues.json`. Injected so a test can register its own venue. */
   readonly registry?: VenueRegistry;
   readonly now?: Date;
+  /**
+   * How the venue is asked for its quote — before a rail is touched, and again
+   * during payment. Injected for tests; defaults to the global `fetch`.
+   */
+  readonly fetchImpl?: typeof fetch;
 }
 
 function refuse(
@@ -164,6 +170,104 @@ function refuse(
 function asRefusal(error: unknown, intentId?: string, agentId: string | null = null): PurchaseRefused {
   if (!isAgentPassError(error)) throw error;
   return refuse(error.code, error.message, error.details ?? {}, intentId, agentId);
+}
+
+/**
+ * Whether a stored Mandate names this product — read only to choose between
+ * rows, never to authorise anything. A document that does not parse names
+ * nothing here; if it is the row that ends up chosen, `mandateSourceFrom`
+ * still refuses it, typed. A grant with no `products` is not narrowed here
+ * either: whether that permits a product is `checkMandate`'s call.
+ */
+function namesProduct(record: MandateRecord, productId: string): boolean {
+  const parsed = agentPayMandateSchema.safeParse(record.document);
+  if (!parsed.success) return false;
+  const products = parsed.data.credentialSubject.grant.products;
+  return products === undefined || products.includes(productId);
+}
+
+/**
+ * Which of this agent's active Mandates a purchase goes through.
+ *
+ * T85 found the first version of this — "the first active Mandate of this
+ * agent" — wrong in production. A tenant has exactly one agent
+ * (`ensureTenantAgent`), and RealOps signs one Mandate per product for that
+ * tenant, so an account with a report agent and a credits agent bought credits
+ * through the report's Mandate every time, and was refused with
+ * `MandateProductNotAllowed`.
+ *
+ * **This chooses; it does not decide.** The newest active Mandate that names
+ * the product wins. When none names it, the first active one is still handed
+ * on, so `checkMandate` refuses it with its own code: this module never turns
+ * "no Mandate covers that product" into a refusal of its own making.
+ */
+export function selectMandateFor(
+  activeMandates: readonly MandateRecord[],
+  agentId: string,
+  productId: string,
+): MandateRecord | undefined {
+  const own = activeMandates.filter((row) => row.agentId === agentId);
+  return [...own].reverse().find((row) => namesProduct(row, productId)) ?? own[0];
+}
+
+export interface MissingMandate {
+  readonly code: "MandateRevoked" | "MandateExpired" | "MandateNotYetValid" | "MandateNotFound";
+  readonly reason: string;
+  readonly mandateId: string | null;
+}
+
+/**
+ * Why this agent has no active Mandate, read from its own history.
+ *
+ * `listActiveMandates` answers "is there one", and filters revoked and expired
+ * rows out to do it — so on its own this path could only ever say
+ * `MandateNotFound`. That is what a person read after revoking their Mandate,
+ * and again after it expired, when the suite ran against production (T85). The
+ * newest of this agent's Mandates for this product — or for anything, if none
+ * names it — says which of the three happened.
+ *
+ * @param agentMandates This agent's Mandates, any status, oldest first
+ * (`listMandates` orders by id, and ids are ULIDs).
+ */
+export function explainMissingMandate(
+  agentMandates: readonly MandateRecord[],
+  productId: string,
+  now: Date,
+): MissingMandate {
+  const forProduct = agentMandates.filter((row) => namesProduct(row, productId));
+  const candidates = forProduct.length > 0 ? forProduct : agentMandates;
+  const latest = candidates[candidates.length - 1];
+  const notFound = "this agent has no active mandate — nothing authorises a purchase";
+  if (latest === undefined) return { code: "MandateNotFound", reason: notFound, mandateId: null };
+  if (latest.revokedAt !== null) {
+    return { code: "MandateRevoked", reason: "the mandate that authorised this agent was revoked", mandateId: latest.id };
+  }
+  if (latest.validUntil.getTime() < now.getTime()) {
+    return { code: "MandateExpired", reason: "the mandate that authorised this agent has expired", mandateId: latest.id };
+  }
+  if (latest.validFrom.getTime() > now.getTime()) {
+    return { code: "MandateNotYetValid", reason: "the mandate that authorises this agent is not valid yet", mandateId: latest.id };
+  }
+  return { code: "MandateNotFound", reason: notFound, mandateId: latest.id };
+}
+
+/** The two startup checks `createAgent` keeps on the agent it returns. */
+export type AgentDocumentStates = Pick<Awaited<ReturnType<typeof createAgent>>, "credential" | "mandate">;
+
+/**
+ * Why the agent was not given `create_purchase_intent`, when it was not.
+ *
+ * `createAgent` does not throw for a credential revoked on chain or a Mandate
+ * that no longer verifies: it withholds the tool and keeps the reason in its
+ * state. This module used to ignore that state and invoke the tool anyway, so
+ * a credential the issuer had revoked reached a person as `UnknownTool` — "no
+ * tool named create_purchase_intent" (T85). The tool is still withheld exactly
+ * as before; this only reads out why.
+ */
+export function withheldBecause(agent: AgentDocumentStates): AgentPassError | undefined {
+  if (!agent.credential.usable) return agent.credential.problem;
+  if (agent.mandate !== undefined && !agent.mandate.usable) return agent.mandate.problem;
+  return undefined;
 }
 
 /**
@@ -318,13 +422,18 @@ export async function executeTenantPurchase(
   // consent signed for one of them is not consent for another. `checkMandate`
   // would catch it a layer later with `MandateAgentMismatch`, but a purchase
   // path should not hand the enforcement layer a document it already knows is
-  // the wrong one and hope.
-  const mandateRecord = activeMandates.find((row) => row.agentId === tenantAgent.instance.id);
+  // the wrong one and hope. Among this agent's own, the one that names the
+  // product goes first (`selectMandateFor`, T85).
+  const mandateRecord = selectMandateFor(activeMandates, agentId, request.productId);
   if (mandateRecord === undefined) {
+    // Nothing active — say whether it was revoked, expired, or never signed,
+    // instead of one code for all three (T85).
+    const history = (await deps.directory.listMandates(request.tenantId)).filter((row) => row.agentId === agentId);
+    const missing = explainMissingMandate(history, request.productId, now);
     return refuse(
-      "MandateNotFound",
-      "this agent has no active mandate — nothing authorises a purchase",
-      { tenantId: request.tenantId, agentId, otherActiveMandates: activeMandates.length },
+      missing.code,
+      missing.reason,
+      { tenantId: request.tenantId, agentId, mandateId: missing.mandateId, otherActiveMandates: activeMandates.length },
       undefined,
       agentId,
     );
@@ -363,6 +472,14 @@ export async function executeTenantPurchase(
     return asRefusal(error, undefined, agentId);
   }
 
+  // A credential or Mandate that failed its on-chain check leaves the agent
+  // without `create_purchase_intent`. Say why, rather than invoking a tool
+  // that is not there and reporting `UnknownTool` (T85).
+  const withheld = withheldBecause(agent);
+  if (withheld !== undefined) {
+    return refuse(withheld.code, withheld.message, withheld.details ?? {}, undefined, agentId);
+  }
+
   // 4. The intent. This is where `checkScope`, `checkMandate` — including the
   //    product allowlist of `C-75` — and `perDay` all run. The tool does not
   //    exist at all if the documents failed to verify, so reaching this line
@@ -396,6 +513,17 @@ export async function executeTenantPurchase(
     const route = await getX402ServiceRoute({ venueId, registry, baseUrl }, request.productId);
     requireRouteParams(route, request.routeParams ?? {});
     resourceUrl = fillRouteTemplate(baseUrl, route, request.routeParams ?? {});
+  } catch (error) {
+    return asRefusal(error, intentResult.intent_id, agentId);
+  }
+
+  // 6b. Ask the venue for its quote before anything is spent on this purchase
+  //     (D2, T85). In production a venue refused a request for its input only
+  //     after this tenant's sponsored rail had been deployed and funded for
+  //     it. Nothing is authorised or signed here — the challenge is fetched
+  //     again, and reconciled against the Mandate, in step 8.
+  try {
+    await requestPaymentChallenge(resourceUrl, deps.fetchImpl);
   } catch (error) {
     return asRefusal(error, intentResult.intent_id, agentId);
   }
@@ -442,7 +570,12 @@ export async function executeTenantPurchase(
     // would have quietly removed a check.
     const verified = await verifyIntent(intentResult.jws);
     receipt = await executeBazaarPayment(
-      { policyRail, signerSecret: tenantAgent.keypair.secret(), payer },
+      {
+        policyRail,
+        signerSecret: tenantAgent.keypair.secret(),
+        payer,
+        ...(deps.fetchImpl === undefined ? {} : { fetchImpl: deps.fetchImpl }),
+      },
       { resourceUrl, intent: verified.intent, scope, mandate: parsedMandate, venueId },
     );
   } catch (error) {

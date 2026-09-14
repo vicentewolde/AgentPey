@@ -277,6 +277,7 @@ export {
 export {
   executeBazaarPayment,
   fillRouteTemplate,
+  requestPaymentChallenge,
   toPaymentTerms,
   type BazaarPaymentReceipt,
   type ExecuteBazaarPaymentDeps,

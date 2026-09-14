@@ -76,6 +76,9 @@ describe("explainRefusal", () => {
       // case 9 — catalogue down or product missing
       "CatalogUnavailable",
       "ProductNotFound",
+      // reached a person untranslated when the suite ran against production (T85)
+      "MandateNotFound",
+      "MerchantRejectedRequest",
     ];
 
     for (const code of required) expect(EXPLAINED_CODES).toContain(code);

@@ -154,6 +154,20 @@ const EXPLANATIONS: Readonly<Record<string, ExplainedRefusal>> = {
     what: "El comercio respondió algo que AgentPey no pudo leer, así que no le pagó.",
     next: "Probá de nuevo en un rato.",
   },
+  MerchantRejectedRequest: {
+    what: "El comercio rechazó el pedido antes de cotizarlo, así que no se pagó nada.",
+    next: "Es un problema entre esta plataforma y el comercio, no tuyo. Ya quedó registrado.",
+  },
+
+  // --- Nothing signed to act with (found running the suite, T85) ------------
+  MandateNotFound: {
+    what: "Este agente no tiene un permiso firmado que esté vigente.",
+    next: "Firmá el permiso desde la pantalla de tu agente.",
+  },
+  CredentialNotFound: {
+    what: "Este agente todavía no tiene una credencial emitida.",
+    next: "Firmá el permiso desde la pantalla de tu agente: la credencial se emite en ese momento.",
+  },
 };
 
 /**

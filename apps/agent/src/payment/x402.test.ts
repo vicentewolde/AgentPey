@@ -235,6 +235,33 @@ describe("executeBazaarPayment", () => {
     expect(authorise).not.toHaveBeenCalled();
   });
 
+  /**
+   * T85, found against production: SignalDesk refused a credits request with a
+   * 400 for its input, and it reached a person as "no se pudo hablar con el
+   * comercio, puede estar caído" — about a request that would fail identically
+   * forever. A venue that read the request and declined it is not unreachable.
+   */
+  it("treats a 4xx from the venue as MerchantRejectedRequest, before touching PolicyRail", async () => {
+    const authorise = vi.fn();
+    const fetchImpl = fetchChallengeThen(
+      new Response(JSON.stringify({ ok: false, code: "InvalidRequest", message: "account must be a Stellar classic account" }), {
+        status: 400,
+      }),
+    );
+
+    try {
+      await executeBazaarPayment(
+        { policyRail: fakeRail(authorise), signerSecret: THROWAWAY_SECRET, fetchImpl },
+        { resourceUrl: RESOURCE_URL, intent: intentFor(), scope: scopeFor(), mandate: mandateFor(), venueId: BAZAAR_VENUE_ID },
+      );
+      expect.unreachable("expected executeBazaarPayment to throw");
+    } catch (error) {
+      expect(hasErrorCode(error, "MerchantRejectedRequest")).toBe(true);
+      expect(error).toMatchObject({ details: { status: 400 } });
+    }
+    expect(authorise).not.toHaveBeenCalled();
+  });
+
   it("wraps a network failure on the first request as NetworkError", async () => {
     const authorise = vi.fn();
     const fetchImpl = (async () => {

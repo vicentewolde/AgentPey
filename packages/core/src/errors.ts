@@ -50,6 +50,8 @@ export type AgentPassErrorCode =
   | "InvalidProduct"
   /** The catalogue has no product with the requested id. */
   | "ProductNotFound"
+  /** A venue answered a paid route with a `4xx` other than `402`: it read the request and declined to quote it. */
+  | "MerchantRejectedRequest"
   /** No tool by that name is in the agent's tool set — including because it was withheld. */
   | "UnknownTool"
   /** A tool call's arguments do not match that tool's input schema. */
