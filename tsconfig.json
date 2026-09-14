@@ -16,6 +16,7 @@
     { "path": "./apps/web" },
     { "path": "./apps/status-dashboard" },
     { "path": "./apps/signaldesk" },
-    { "path": "./apps/realops" }
+    { "path": "./apps/realops" },
+    { "path": "./apps/gateway" }
   ]
 }
