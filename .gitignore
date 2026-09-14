@@ -18,6 +18,9 @@ target/
 # demo artefact from the README walkthrough
 credential.jws
 
+# raw output of `pnpm run acceptance:f9` — public data only, curated into evidencia/ by hand
+.f9-acceptance/
+
 
 # os
 .DS_Store
