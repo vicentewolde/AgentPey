@@ -70,9 +70,10 @@ describe("createCookieJar", () => {
 
 describe("reading RealOps pages", () => {
   it("finds the on-screen sign-in link, unescaped", () => {
-    const html = '<p><a class="button" href="https://realops.example/entrar/tok_&amp;x">Entrar con el enlace</a></p>';
+    const html =
+      '<p><a class="button" href="https://realops.example/entrar/tok_&amp;x" data-magic-link><span data-tr="en">Sign in with the link</span></a></p>';
     expect(readOnScreenMagicLink(html)).toBe("https://realops.example/entrar/tok_&x");
-    expect(readOnScreenMagicLink("<p>Te mandamos un correo.</p>")).toBeUndefined();
+    expect(readOnScreenMagicLink('<p><a class="button" href="/entrar">Sign in</a></p>')).toBeUndefined();
   });
 
   it("finds the purchase form's request key", () => {
@@ -81,7 +82,7 @@ describe("reading RealOps pages", () => {
   });
 
   it("finds the stored Mandate id and the external reference", () => {
-    expect(readSignedMandateId("<p>✓ Firmado. Mandato <code>mdt_01M2EGQG5831T7BJVJMQKVTMSK</code>.</p>")).toBe(
+    expect(readSignedMandateId('<p>✓ Signed. Mandate <code data-mandate-id>mdt_01M2EGQG5831T7BJVJMQKVTMSK</code></p>')).toBe(
       "mdt_01M2EGQG5831T7BJVJMQKVTMSK",
     );
     expect(readExternalRef("Te identificamos ante AgentPey como <code>rop_01M2DPVEA88Q99SKWTGBDE3YK4</code>.")).toBe(

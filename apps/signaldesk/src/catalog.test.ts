@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { PRODUCTS, productById, productForPath, toAtomic } from "./catalog.js";
 import { artifactHash, renderCreditsStatement, renderMarketBrief } from "./artifacts.js";
-import { renderCatalogPage } from "./page.js";
+import { productCopy, renderCatalogPage } from "./page.js";
 
 const PAY_TO = "GBHD27INOTFHFPHVGQMKSW2EGRK3T6E47OHIVR7L44JGHWUJKXIZBXSR";
 
@@ -106,17 +106,30 @@ describe("the credits artefact", () => {
 describe("the human catalogue page", () => {
   const html = renderCatalogPage({ payTo: PAY_TO, discoveryPath: "/api/discovery/search" });
 
-  it("shows every product with the same price the network would charge", () => {
+  it("shows every product, in both languages, with the same price the network would charge", () => {
     for (const product of PRODUCTS) {
-      expect(html).toContain(product.name);
+      expect(html).toContain(productCopy(product).name.en);
+      expect(html).toContain(productCopy(product).name.es);
+      // Every product the catalogue sells has copy of its own, not the machine text as a fallback.
+      expect(productCopy(product).name.en).not.toBe(product.name);
       expect(html).toContain(`${product.price} USDC`);
     }
   });
 
-  it("states the retention period, the synthetic data and the non-transferability", () => {
-    expect(html).toContain("90 dias");
-    expect(html).toContain("Datos sinteticos");
+  it("states the retention period, the synthetic data and the non-transferability, in both languages", () => {
+    expect(html).toContain("90 days");
+    expect(html).toContain("90 días");
+    expect(html).toContain("Synthetic data");
+    expect(html).toContain("Datos sintéticos");
+    expect(html).toContain("not transferable");
     expect(html).toContain("no son transferibles");
+  });
+
+  it("opens in English, carries the switch, and writes no em dash", () => {
+    expect(html).toContain('<html lang="en"');
+    expect(html).toContain('data-set-lang="es"');
+    expect(html).toContain("Stellar Testnet · live");
+    expect(html).not.toContain("—");
   });
 
   it("publishes the key a receipt is verified with, and the venue identity", () => {

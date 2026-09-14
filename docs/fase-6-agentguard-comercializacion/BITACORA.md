@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, mergeado; servicios viejos borrados) · **En curso:** T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
+**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, mergeado; servicios viejos borrados) · **En curso:** T87 (piloto en inglés y español con el logo de AgentPey, listo en su rama, sin mergear) y T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -148,8 +148,10 @@ pagando un plan en vez de tres, y siguen siendo tres programas separados, cada
 uno con solo sus propias claves. Una compra real por los dominios nuevos se pagó
 y se entregó de punta a punta, con el comercio nuevo (T86, `C-114` a `C-116`).
 Los tres servicios viejos ya no existen, y las tres páginas comparten la misma
-identidad visual: `agentpey.com` abre la landing y la demo con wallet está en
-`agentpey.com/sign` (`C-117`).
+identidad visual: `agentpey.com` abre la landing (`C-117`). Y el piloto se lee en
+inglés o en español, con inglés por defecto, el logo de AgentPey junto al nombre
+en las tres apps y su ícono en la pestaña del navegador. La demo con wallet pasó
+de `/sign` a `agentpey.com/consent`, y `/sign` ya no existe (T87, `C-118`).
 
 ### Progreso
 
@@ -205,6 +207,7 @@ identidad visual: `agentpey.com` abre la landing y la demo con wallet está en
 | T84 | F9: despliegue público de los tres servicios y primera compra real de punta a punta con la wallet del usuario — ocho defectos de borde entre servicios, encontrados en producción y cerrados; caso de aceptación 1 cumplido | ✅ cerrado 2026-09-13 |
 | T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | 🟡 día 1 cerrado 2026-09-13 · día 2 (Mandato vencido desde RealOps) después del 2026-09-15 01:29 UTC |
 | T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · mergeado a `main` · servicios viejos borrados · identidad visual única (`C-117`) |
+| T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | 🟡 listo en `cc/pilot-bilingual-chrome` 2026-09-14 · sin mergear · espera revisión del usuario (`C-118`) |
 
 ---
 
@@ -3711,3 +3714,68 @@ los dominios nuevos. Pendientes, sin tocar: rotar los dos secretos, a pedido del
 usuario más adelante; poner `agentpey.com` como sitio del repo en GitHub
 (propuesto, espera respuesta); los números de la landing ("678 tests") están
 viejos.
+
+**Hecho después, el mismo día, por el usuario o con su confirmación:** el
+Blueprint `AgentPey` de Render quedó **desconectado**, sin borrar ningún
+servicio; el repo de GitHub tiene `https://agentpey.com` como sitio; y la landing
+muestra los números del momento, 1348 tests (1294 TypeScript + 54 Rust) y 212
+commits (`89e3c75`). Detalle en `evidencia/T86.md` § 10.
+
+---
+
+## T87 · El piloto en inglés y español, con el logo de AgentPey — listo 2026-09-14, sin mergear
+
+**Qué quedó funcionando, en palabras simples.**
+
+**Las tres páginas se leen en inglés o en español.** Abren en inglés, y arriba a
+la derecha hay un EN / ES. La elección se recuerda al pasar de `agentpey.com` a
+RealOps o a SignalDesk. Esto incluye la firma del Mandato y la revocación, que
+antes estaban solo en castellano, y las frases con que RealOps explica un
+rechazo.
+
+**AgentPey se reconoce en todas partes.** El logo está junto al nombre en las
+tres apps, y el ícono aparece en la pestaña del navegador en lugar de uno vacío.
+Las tres tienen la misma barra superior (logo, enlaces a las otras dos apps,
+EN / ES, GitHub), el mismo ancho que la landing y la insignia verde "Stellar
+Testnet · live".
+
+**`agentpey.com` explica qué es, y `/consent` es donde se firma.** "Watch it pay,
+live" lleva a `agentpey.com/consent`, la demo con wallet que antes estaba en
+`/sign`. `/sign` ya no existe. La firma que llega desde RealOps sigue en
+`/consent/{id}`, sin cambios.
+
+**El español es neutro.** Se reemplazó el voseo (firmá, podés, probá…) por "tú",
+se corrigieron los tildes que faltaban (sobre todo en SignalDesk y en la
+revocación) y no queda ningún "—" en los textos de las páginas.
+
+**RealOps entiende instrucciones en inglés.** Como la página abre en inglés, la
+frase de ejemplo es "buy the XLM/USDC market report", y RealOps la entiende. Esa
+lectura es la parte que puede equivocarse (`PILOTO-F9.md` § 4.1): ampliar su
+vocabulario no cambia qué se puede pagar.
+
+**Lo que no se tocó, a propósito:** las entregas de SignalDesk (su hash va en el
+recibo firmado, `C-117`), los textos que SignalDesk publica para agentes y en la
+factura `402`, y toda la lógica de firma, revocación, retorno y pago.
+
+**Una tensión, dicha y sin resolver.** `PILOTO-F9.md` § 1.3 pedía en cada página
+de RealOps un aviso que dijera también "datos de prueba, el proyecto puede
+borrarlos". La insignia solo dice testnet. Se propuso conservar esa frase en el
+pie; espera la decisión del usuario (`C-118`).
+
+**Cuidado con el día 2 de T85.** La suite ahora lee marcas nuevas en RealOps. El
+día 2 tiene que correr con el código y el despliegue alineados: desde `main`
+antes de mergear esto, o después de que esto esté desplegado. Nunca en medio.
+
+**Evidencia técnica.**
+
+- **1298 tests verdes** (eran 1294), `typecheck` y `build` limpios. Tests nuevos:
+  instrucciones en inglés, motivo de "no entendí" como clave, frases de rechazo
+  sin "—" ni voseo, y catálogo bilingüe.
+- Capturas a 1280 px de la landing, la demo, la firma, la revocación, RealOps
+  (inicio, agentes, revisión, servicios en inglés y español, "no entendí") y
+  SignalDesk. Sin desborde horizontal a 375 px. Detalle en `evidencia/T87.md`.
+- Rama `cc/pilot-bilingual-chrome`. Las páginas estáticas de `apps/web` las hizo
+  un subagente de Claude Code con una especificación escrita, y se revisaron
+  antes de cerrar.
+
+**Decisiones nuevas:** `C-118` (enmienda `C-117` en la ruta de la demo).

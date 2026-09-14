@@ -10,32 +10,30 @@
  * instruction is text a person typed; both are displayed and neither is ever
  * interpreted. `escape` is the only way either reaches the page.
  *
- * **The pilot notice is in the layout, not in each page.** `PILOTO-F9.md` § 1.3
- * asks for it on every page, and the way to guarantee "every" is to make it
- * impossible to render a page without it.
+ * **The chrome is in the layout, not in each page.** The top bar, the live
+ * testnet badge and the language switch are impossible to leave out of a page,
+ * because no page renders without `layout`.
+ *
+ * **Both languages ship in every page** (`copy.ts`). English shows by default;
+ * the switch in the top bar shows Spanish instead, and remembers it across the
+ * pilot's three domains.
  */
 import { randomUUID } from "node:crypto";
 
 import type { PurchaseResource, TenantActivity } from "./agentpey.js";
 import type { AgentConfig, Account, AgentKind } from "./accounts.js";
-import { FALLBACK_CHOICES } from "./instruction.js";
+import { bilingual, escape, tr, trHtml, type Bilingual } from "./copy.js";
+import { FALLBACK_CHOICES, type InstructionProblem } from "./instruction.js";
 import { explainRefusal } from "./refusals.js";
 import type { ExplainedControl, ProposedGrant } from "./permissions.js";
 
-export function escape(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
+export { escape } from "./copy.js";
 
 /**
  * The pilot's one visual identity (T86, decided by the user): the same paper,
- * ink, green accent and Instrument Serif + Inter that AgentPey's own pages use
- * (`apps/web/public/consent.html`), so RealOps, AgentPey and SignalDesk read as
- * one product. Copied, not imported: the three apps share no code, only a look.
+ * ink, green accent, Instrument Serif + Inter, width and top bar as AgentPey's
+ * landing (`apps/web/public/landing.html`), with the AgentPey icon next to the
+ * name. Copied, not imported: the three apps share no code, only a look.
  */
 const STYLE = `
   :root {
@@ -48,37 +46,58 @@ const STYLE = `
     --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  html[lang="en"] [data-tr="es"], html[lang="es"] [data-tr="en"] { display: none; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px;
          line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-  main { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px 72px; }
   a { color: var(--accent); }
+  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px; }
 
-  .top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;
-         gap: 6px 20px; padding: 28px 0 0; }
-  .mark { color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
-  .mark .tagline { color: var(--ink-3); font-size: 12.5px; font-weight: 400; margin-left: 4px; letter-spacing: 0; }
-  .nav { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; }
-  .nav a { color: var(--ink-3); font-size: 13px; text-decoration: none; }
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px;
+          font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo { width: 24px; height: 24px; flex: none; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 22px; }
+  .nav a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
   .nav a:hover { color: var(--ink); }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .apps { display: flex; align-items: center; gap: 16px; }
+  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .apps a:hover { color: var(--accent); }
+  .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
+  .gh:hover { color: var(--ink); }
+  .lang { display: flex; align-items: center; gap: 8px; }
+  .lang span { color: var(--rule); font-size: 11.5px; }
+  .mark:focus-visible, .nav a:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible {
+          outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
 
-  .notice { margin: 28px 0 40px; padding: 11px 14px; border-left: 3px solid var(--rule); background: var(--paper-2);
-            color: var(--ink-2); font-size: 13.5px; }
-  .notice strong { color: var(--ink); font-weight: 600; }
+  .page { padding: clamp(30px, 4.5vw, 52px) 0 64px; }
+  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11.5px; font-weight: 500;
+          letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: live-pulse 2s ease-out infinite; }
+  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
 
-  h1 { margin: 0 0 10px; font-family: var(--serif); font-weight: 400; font-size: clamp(2.25rem, 7vw, 3.1rem);
-       line-height: 1.05; letter-spacing: -0.02em; }
-  h2 { margin: 36px 0 12px; font-family: var(--serif); font-weight: 400; font-size: 1.7rem; line-height: 1.15;
-       letter-spacing: -0.015em; }
-  h3 { margin: 0 0 8px; font-size: 1rem; font-weight: 600; }
-  .card h2, .card h3 { margin-top: 0; }
-  .lede { max-width: 60ch; margin: 0 0 32px; color: var(--ink-2); }
-  .meta { color: var(--ink-3); font-size: 13px; }
+  h1 { margin: 18px 0 0; font-family: var(--serif); font-weight: 400; font-size: clamp(2.4rem, 5.6vw, 3.7rem);
+       line-height: 1.05; letter-spacing: -0.018em; max-width: 22ch; }
+  h2 { margin: 52px 0 16px; font-family: var(--serif); font-weight: 400; font-size: clamp(1.6rem, 3vw, 2.1rem);
+       line-height: 1.12; letter-spacing: -0.014em; }
+  h3 { margin: 0 0 8px; font-size: 1.02rem; font-weight: 600; letter-spacing: -0.005em; }
+  .card h2 { margin: 0 0 12px; font-size: 1.6rem; }
+  .lede { max-width: 62ch; margin: 18px 0 36px; color: var(--ink-2); font-size: clamp(1rem, 1.6vw, 1.12rem); }
+  .meta { color: var(--ink-3); font-size: 13.5px; }
 
-  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 24px;
-          margin-bottom: 14px; }
-  .card p:first-child { margin-top: 0; }
-  .card p:last-child { margin-bottom: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .split { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 24px 26px; min-width: 0; }
+  .card + .card, .card + .grid, .grid + .card, .split + .card, .card + .split { margin-top: 16px; }
+  .grid > *, .split > * { margin-top: 0; }
+  .card > :first-child { margin-top: 0; }
+  .card > :last-child { margin-bottom: 0; }
+  .card ol { padding-left: 1.2em; }
+  .card li + li { margin-top: 6px; }
   .error { border-left: 3px solid var(--danger); }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 20px; }
 
   label { display: block; margin: 16px 0 6px; color: var(--ink-2); font-size: 14px; font-weight: 500; }
   input, textarea, select { width: 100%; padding: 10px 12px; font: inherit; font-size: 15px; color: var(--ink);
@@ -90,213 +109,388 @@ const STYLE = `
           border: 1px solid var(--ink); border-radius: 7px; cursor: pointer; text-decoration: none;
           transition: background .18s ease, border-color .18s ease, transform .18s ease; }
   button:hover, .button:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
-  button:focus-visible, .button:focus-visible, .nav a:focus-visible, .mark:focus-visible {
-          outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+  button:focus-visible, .button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .secondary, button.secondary, .button.secondary { background: transparent; color: var(--ink); border-color: var(--rule); }
   .secondary:hover, button.secondary:hover, .button.secondary:hover { background: var(--paper-2); border-color: var(--ink-3); }
+  .lang button { appearance: none; background: none; border: 0; border-radius: 0; margin: 0; padding: 2px 1px;
+          font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+          color: var(--ink-3); cursor: pointer; transition: none; }
+  .lang button:hover { background: none; color: var(--ink-2); transform: none; }
+  html[lang="en"] .lang button[data-set-lang="en"], html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
 
   code, pre { font-family: var(--mono); background: var(--paper-2); border-radius: 5px; }
   code { padding: 2px 6px; font-size: 12.5px; word-break: break-all; }
-  pre { padding: 14px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; border: 1px solid var(--rule); }
+  pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-size: 12.5px; line-height: 1.55; border: 1px solid var(--rule); }
 
+  .table-wrap { overflow-x: auto; padding: 8px 14px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px dashed var(--rule); vertical-align: top; }
+  th, td { text-align: left; padding: 12px 10px; border-bottom: 1px dashed var(--rule); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
   th { color: var(--ink-3); font-size: 11.5px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
-       border-bottom-style: solid; }
+       border-bottom-style: solid; white-space: nowrap; }
 
   .tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 600;
          letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
   .tag-signed { background: var(--accent-wash); color: var(--accent); }
   .tag-onchain { background: #e8eef7; color: #1d3775; }
   .tag-realops { background: var(--paper-2); color: var(--ink-2); }
+  .tag-refused { background: var(--danger-wash); color: var(--danger); }
+  .signed { color: var(--accent); font-weight: 500; }
+  .head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 
-  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 13.5px; }
+  footer { border-top: 1px solid var(--rule); padding: 26px 0 48px; color: var(--ink-3); font-size: 13.5px; }
+  footer p { margin: 0; max-width: 72ch; }
   footer strong { color: var(--ink-2); font-weight: 600; }
 
   @media (max-width: 520px) {
-    main { padding: 0 20px 56px; }
+    .wrap { padding: 0 20px; }
     .card { padding: 18px; }
   }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 `;
 
-/** The notice every page carries, by construction. */
-const PILOT_NOTICE =
-  "Piloto sobre Stellar <strong>testnet</strong>. No hay dinero real en juego, los datos son de prueba, " +
-  "y el proyecto puede borrarlos.";
+/** Where the other two apps of the pilot live, for the top bar. */
+const PILOT_LINKS = { agentpey: "https://agentpey.com", signalDesk: "https://signaldesk.agentpey.com" } as const;
+
+const ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g fill="none" stroke="#171A1F" stroke-width="60">' +
+  '<path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g>' +
+  '<path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>';
+
+const LOGO = ICON_SVG.replace("<svg ", '<svg class="logo" aria-hidden="true" ');
+
+/** `logo agentpey/agentpey-icon-32.png`, for browsers that do not take an SVG favicon. */
+const ICON_PNG_32 =
+  "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC";
+
+const FAVICON =
+  `<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,${ICON_PNG_32}">\n` +
+  `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(ICON_SVG)}">`;
+
+const GITHUB_LINK =
+  '<a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">' +
+  '<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>' +
+  "<span>GitHub</span></a>";
+
+const LANG_BUTTONS =
+  '<div class="lang"><button type="button" data-set-lang="en" aria-pressed="true">EN</button>' +
+  '<span aria-hidden="true">/</span><button type="button" data-set-lang="es" aria-pressed="false">ES</button></div>';
+
+const LIVE_BADGE = `<p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span>${trHtml(
+  "Stellar Testnet · live",
+  "Stellar Testnet · en vivo",
+)}</p>`;
+
+/** Before paint: English unless the visitor chose Spanish on any of the pilot's domains. */
+const LANG_BOOT = String.raw`(function () {
+  var lang = "en";
+  try {
+    var match = document.cookie.match(/(?:^|; *)agentpey_lang=(en|es)/);
+    if (match) lang = match[1];
+    else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+  } catch (e) {}
+  document.documentElement.lang = lang;
+})();`;
+
+/** The EN/ES switch. Attributes that cannot hold markup carry data-*-en / data-*-es. */
+const LANG_SWITCH = String.raw`(function () {
+  var root = document.documentElement;
+  function apply(lang) {
+    root.lang = lang;
+    var title = root.getAttribute("data-title-" + lang);
+    if (title) document.title = title;
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+    var texts = document.querySelectorAll("[data-text-en]");
+    for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
+    var holders = document.querySelectorAll("[data-placeholder-en]");
+    for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+  }
+  var buttons = document.querySelectorAll("[data-set-lang]");
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener("click", function () {
+      var lang = this.getAttribute("data-set-lang");
+      var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+      try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+      try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+      apply(lang);
+    });
+  }
+  apply(root.lang === "es" ? "es" : "en");
+})();`;
+
+/** A form placeholder in both languages, English as the rendered default. */
+function placeholder(text: Bilingual): string {
+  return `placeholder="${escape(text.en)}" data-placeholder-en="${escape(text.en)}" data-placeholder-es="${escape(text.es)}"`;
+}
+
+/** An element that can only hold text (an `<option>`), in both languages. */
+function textAttributes(text: Bilingual): string {
+  return `data-text-en="${escape(text.en)}" data-text-es="${escape(text.es)}"`;
+}
 
 export interface LayoutInput {
-  readonly title: string;
+  readonly title: Bilingual;
   readonly body: string;
   readonly signedIn?: boolean;
-  readonly signalDeskUrl?: string;
 }
 
 export function layout(input: LayoutInput): string {
+  const nav =
+    input.signedIn === true
+      ? `<a href="/agentes">${tr(bilingual("My agents", "Mis agentes"))}</a>` +
+        `<a href="/servicios">${tr(bilingual("My services", "Mis servicios"))}</a>` +
+        `<a href="/salir">${tr(bilingual("Sign out", "Salir"))}</a>`
+      : `<a href="/entrar">${tr(bilingual("Sign in", "Entrar"))}</a>`;
+
   return `<!doctype html>
-<html lang="es">
+<html lang="en" data-title-en="${escape(input.title.en)} · RealOps" data-title-es="${escape(input.title.es)} · RealOps">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escape(input.title)} · RealOps</title>
+<title>${escape(input.title.en)} · RealOps</title>
+${FAVICON}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>${LANG_BOOT}</script>
 <style>${STYLE}</style>
 </head>
 <body>
-<main>
+<main class="wrap">
   <div class="top">
-    <a class="mark" href="/">RealOps <span class="tagline">· plataforma de agentes</span></a>
-    <nav class="nav">
-      ${input.signedIn === true ? '<a href="/agentes">Mis agentes</a><a href="/servicios">Mis servicios</a><a href="/salir">Salir</a>' : ""}
-      ${input.signalDeskUrl === undefined ? "" : `<a href="${escape(input.signalDeskUrl)}">SignalDesk</a>`}
-    </nav>
+    <a class="mark" href="/">${LOGO}<span>RealOps</span><span class="tagline">${trHtml("· agent platform", "· plataforma de agentes")}</span></a>
+    <nav class="nav">${nav}</nav>
+    <div class="utils">
+      <nav class="apps" aria-label="Pilot apps"><a href="${PILOT_LINKS.agentpey}">AgentPey</a><a href="${PILOT_LINKS.signalDesk}">SignalDesk</a></nav>
+      ${LANG_BUTTONS}
+      ${GITHUB_LINK}
+    </div>
   </div>
-  <p class="notice">${PILOT_NOTICE}</p>
+  <div class="page">
+  ${LIVE_BADGE}
   ${input.body}
+  </div>
   <footer>
-    <p>RealOps es la plataforma de agentes del piloto. <strong>No autoriza pagos</strong>: pide, y AgentPey decide.
-    Tu Mandato se firma siempre en el dominio de AgentPey, nunca aquí.</p>
+    <p>${trHtml(
+      "RealOps is the pilot's agent platform. <strong>It does not authorize payments</strong>: it asks, and AgentPey decides. Your Mandate is always signed on AgentPey's domain, never here.",
+      "RealOps es la plataforma de agentes del piloto. <strong>No autoriza pagos</strong>: pide, y AgentPey decide. Tu Mandato se firma siempre en el dominio de AgentPey, nunca aquí.",
+    )}</p>
   </footer>
 </main>
+<script>${LANG_SWITCH}</script>
 </body>
 </html>
 `;
 }
 
 export function homePage(signalDeskUrl: string): string {
+  const signalDesk = `<a href="${escape(signalDeskUrl)}">SignalDesk</a>`;
   return layout({
-    title: "Inicio",
-    signalDeskUrl,
+    title: bilingual("Home", "Inicio"),
     body: `
-  <h1>RealOps</h1>
-  <p class="lede">Contratá un agente, decidí exactamente qué puede gastar, y mirá cada compra —
-  y cada rechazo— con su prueba.</p>
+  <h1>${tr(bilingual("Hire an agent. Decide exactly what it can spend.", "Contrata un agente. Decide exactamente qué puede gastar."))}</h1>
+  <p class="lede">${tr(
+    bilingual(
+      "Every purchase, and every refusal, comes with its proof.",
+      "Cada compra, y cada rechazo, viene con su prueba.",
+    ),
+  )}</p>
 
-  <div class="card">
-    <h2 style="margin-top:0">Cómo funciona</h2>
-    <ol>
-      <li>Entrás con tu correo. Sin contraseña.</li>
-      <li>Elegís un agente y ponés sus límites.</li>
-      <li>Firmás el permiso con tu wallet, <strong>en el sitio de AgentPey</strong>, no acá.</li>
-      <li>Le das una instrucción. AgentPey decide si la deja pasar, y paga o rechaza.</li>
-    </ol>
-    <a class="button" href="/entrar">Entrar</a>
-  </div>
+  <div class="grid">
+    <div class="card">
+      <h2>${tr(bilingual("How it works", "Cómo funciona"))}</h2>
+      <ol>
+        <li>${tr(bilingual("Sign in with your email. No password.", "Entras con tu correo. Sin contraseña."))}</li>
+        <li>${tr(bilingual("Choose an agent and set its limits.", "Eliges un agente y defines sus límites."))}</li>
+        <li>${trHtml(
+          "Sign its permission with your wallet, <strong>on AgentPey's site</strong>, not here.",
+          "Firmas su permiso con tu wallet, <strong>en el sitio de AgentPey</strong>, no aquí.",
+        )}</li>
+        <li>${tr(
+          bilingual(
+            "Give it an instruction. AgentPey decides whether it goes through, then pays or refuses.",
+            "Le das una instrucción. AgentPey decide si la deja pasar, y paga o rechaza.",
+          ),
+        )}</li>
+      </ol>
+      <a class="button" href="/entrar">${tr(bilingual("Sign in", "Entrar"))}</a>
+    </div>
 
-  <div class="card">
-    <h2 style="margin-top:0">El comercio del piloto</h2>
-    <p>Los agentes compran en <a href="${escape(signalDeskUrl)}">SignalDesk</a>, un comercio x402 que existe
-    aparte y se puede abrir por su cuenta. Está enlazado acá justamente para que compruebes que los dos
-    servicios son distintos.</p>
+    <div class="card">
+      <h2>${tr(bilingual("The pilot's merchant", "El comercio del piloto"))}</h2>
+      <p>${trHtml(
+        `Agents buy from ${signalDesk}, an x402 merchant that runs separately and can be opened on its own. It is linked here precisely so you can check that the two services are different.`,
+        `Los agentes compran en ${signalDesk}, un comercio x402 que funciona aparte y se puede abrir por separado. Está enlazado aquí justamente para que compruebes que los dos servicios son distintos.`,
+      )}</p>
+      <p class="meta">${tr(
+        bilingual(
+          "RealOps never holds a key that can pay. It asks AgentPey, and AgentPey checks the request against the Mandate you signed.",
+          "RealOps nunca tiene una clave que pueda pagar. Le pide a AgentPey, y AgentPey revisa el pedido contra el Mandato que firmaste.",
+        ),
+      )}</p>
+    </div>
   </div>
 `,
   });
 }
 
-export function signInPage(options: { readonly error?: string } = {}): string {
+export function signInPage(options: { readonly error?: Bilingual } = {}): string {
   return layout({
-    title: "Entrar",
+    title: bilingual("Sign in", "Entrar"),
     body: `
-  <h1>Entrar</h1>
-  <p class="lede">Te mandamos un enlace de un solo uso. Dura 15 minutos.</p>
-  ${options.error === undefined ? "" : `<p class="card error">${escape(options.error)}</p>`}
-  <form class="card" method="post" action="/entrar">
-    <label for="email">Tu correo</label>
-    <input id="email" name="email" type="email" required autocomplete="email" placeholder="vos@ejemplo.cl">
-    <label for="alias">Cómo querés que te llamemos</label>
-    <input id="alias" name="alias" required autocomplete="nickname" placeholder="Vicente" maxlength="60">
-    <button type="submit">Mandame el enlace</button>
-  </form>
-  <p style="font-size:.88rem;color:var(--muted)">Tu correo se guarda solo acá. AgentPey nunca lo recibe:
-  te identifica con un código aleatorio que no dice nada de vos.</p>
+  <h1>${tr(bilingual("Sign in", "Entrar"))}</h1>
+  <p class="lede">${tr(bilingual("We send you a one-time link. It lasts 15 minutes.", "Te enviamos un enlace de un solo uso. Dura 15 minutos."))}</p>
+  ${options.error === undefined ? "" : `<p class="card error">${tr(options.error)}</p>`}
+  <div class="split">
+    <form class="card" method="post" action="/entrar">
+      <label for="email">${tr(bilingual("Your email", "Tu correo"))}</label>
+      <input id="email" name="email" type="email" required autocomplete="email" ${placeholder(bilingual("you@example.com", "tu@ejemplo.com"))}>
+      <label for="alias">${tr(bilingual("What should we call you", "Cómo quieres que te llamemos"))}</label>
+      <input id="alias" name="alias" required autocomplete="nickname" placeholder="Alex" maxlength="60">
+      <button type="submit">${tr(bilingual("Send me the link", "Envíame el enlace"))}</button>
+    </form>
+    <div class="card">
+      <h3>${tr(bilingual("Your email stays here", "Tu correo se queda aquí"))}</h3>
+      <p class="meta">${tr(
+        bilingual(
+          "Your email is stored only on RealOps. AgentPey never receives it: it identifies you with a random code that says nothing about you.",
+          "Tu correo se guarda solo en RealOps. AgentPey nunca lo recibe: te identifica con un código aleatorio que no dice nada de ti.",
+        ),
+      )}</p>
+    </div>
+  </div>
 `,
   });
 }
 
 export function linkSentPage(options: { readonly onScreenLink?: string }): string {
   return layout({
-    title: "Revisá tu correo",
+    title: bilingual("Check your email", "Revisa tu correo"),
     body: `
-  <h1>Revisá tu correo</h1>
-  <p class="lede">Si esa dirección tiene cuenta o la acabamos de crear, ahí va el enlace. Dura 15 minutos
-  y sirve una sola vez.</p>
+  <h1>${tr(bilingual("Check your email", "Revisa tu correo"))}</h1>
+  <p class="lede">${tr(
+    bilingual(
+      "If that address has an account, or we just created one, the link is on its way. It lasts 15 minutes and works only once.",
+      "Si esa dirección tiene cuenta o la acabamos de crear, ahí va el enlace. Dura 15 minutos y sirve una sola vez.",
+    ),
+  )}</p>
   ${
     options.onScreenLink === undefined
       ? ""
       : `<div class="card">
-    <p><strong>Modo piloto sin correo configurado.</strong> Todavía no hay proveedor de email, así que
-    el enlace se muestra acá. Esto significa que <em>no se está verificando</em> que el correo sea tuyo —
-    cuando el envío esté configurado, sí se verifica.</p>
-    <p><a class="button" href="${escape(options.onScreenLink)}">Entrar con el enlace</a></p>
+    <p>${trHtml(
+      "<strong>Pilot mode, no email provider configured.</strong> There is no email provider yet, so the link is shown here. This means it is <em>not verifying</em> that the email is yours. Once sending is configured, it will.",
+      "<strong>Modo piloto sin correo configurado.</strong> Todavía no hay proveedor de email, así que el enlace se muestra aquí. Esto significa que <em>no se está verificando</em> que el correo sea tuyo. Cuando el envío esté configurado, sí se verificará.",
+    )}</p>
+    <p><a class="button" href="${escape(options.onScreenLink)}" data-magic-link>${tr(bilingual("Sign in with the link", "Entrar con el enlace"))}</a></p>
   </div>`
   }
 `,
   });
 }
 
-const AGENT_COPY: Readonly<Record<AgentKind, { readonly name: string; readonly what: string }>> = {
+const AGENT_COPY: Readonly<Record<AgentKind, { readonly name: Bilingual; readonly what: Bilingual }>> = {
   market_brief: {
-    name: "Agente de informes de mercado",
-    what: "Compra el informe XLM/USDC en SignalDesk cuando se lo pedís. El informe es de datos sintéticos.",
+    name: bilingual("Market report agent", "Agente de informes de mercado"),
+    what: bilingual(
+      "Buys the XLM/USDC report from SignalDesk when you ask. The report uses synthetic data.",
+      "Compra el informe XLM/USDC en SignalDesk cuando se lo pides. El informe usa datos sintéticos.",
+    ),
   },
   ai_credits: {
-    name: "Agente de créditos de IA",
-    what: "Compra paquetes de 1000 créditos de producto en SignalDesk. Los créditos no son transferibles.",
+    name: bilingual("AI credits agent", "Agente de créditos de IA"),
+    what: bilingual(
+      "Buys packs of 1000 product credits from SignalDesk. The credits are not transferable.",
+      "Compra paquetes de 1000 créditos de producto en SignalDesk. Los créditos no son transferibles.",
+    ),
   },
 };
 
 export function agentsPage(account: Account, agents: readonly AgentConfig[]): string {
+  const alias = escape(account.alias);
   const rows =
     agents.length === 0
-      ? '<p class="card">Todavía no contrataste ningún agente.</p>'
-      : agents
-          .map(
-            (agent) => `<div class="card">
-    <h2 style="margin-top:0">${escape(agent.label)}</h2>
-    <p style="color:var(--muted);margin:0 0 .5rem">${escape(AGENT_COPY[agent.kind].name)}</p>
-    <p style="margin:0">Máximo por compra <strong>${escape(agent.permissions.perTx)} USDC</strong> ·
-    por día <strong>${escape(agent.permissions.perDay)} USDC</strong> ·
-    vigencia <strong>${agent.permissions.validForDays} días</strong></p>
-    <p style="margin:.75rem 0 0"><a href="/agentes/${escape(agent.id)}">Ver y firmar</a></p>
-  </div>`,
-          )
-          .join("\n  ");
+      ? `<p class="card">${tr(bilingual("You have not hired any agent yet.", "Todavía no has contratado ningún agente."))}</p>`
+      : `<div class="grid">
+    ${agents
+      .map((agent) => {
+        const days = String(agent.permissions.validForDays);
+        const perTx = escape(agent.permissions.perTx);
+        const perDay = escape(agent.permissions.perDay);
+        const status =
+          agent.mandateId === null
+            ? `<span class="tag tag-realops">${tr(bilingual("not signed", "sin firmar"))}</span>`
+            : `<span class="tag tag-signed">${tr(bilingual("signed", "firmado"))}</span>`;
+        return `<div class="card">
+      <div class="head-row"><h3>${escape(agent.label)}</h3>${status}</div>
+      <p class="meta">${tr(AGENT_COPY[agent.kind].name)}</p>
+      <p>${trHtml(
+        `Max per purchase <strong>${perTx} USDC</strong> · per day <strong>${perDay} USDC</strong> · valid for <strong>${days} days</strong>`,
+        `Máximo por compra <strong>${perTx} USDC</strong> · por día <strong>${perDay} USDC</strong> · vigencia <strong>${days} días</strong>`,
+      )}</p>
+      <p><a href="/agentes/${escape(agent.id)}">${tr(bilingual("View and sign →", "Ver y firmar →"))}</a></p>
+    </div>`;
+      })
+      .join("\n    ")}
+  </div>`;
 
   return layout({
-    title: "Mis agentes",
+    title: bilingual("My agents", "Mis agentes"),
     signedIn: true,
     body: `
-  <h1>Hola, ${escape(account.alias)}</h1>
-  <p class="lede">Un agente no puede hacer nada hasta que firmes su permiso con tu wallet.</p>
+  <h1>${trHtml(`Hi, ${alias}`, `Hola, ${alias}`)}</h1>
+  <p class="lede">${tr(
+    bilingual(
+      "An agent cannot do anything until you sign its permission with your wallet.",
+      "Un agente no puede hacer nada hasta que firmes su permiso con tu wallet.",
+    ),
+  )}</p>
   ${rows}
 
-  <h2>Contratar uno nuevo</h2>
+  <h2>${tr(bilingual("Hire a new one", "Contratar uno nuevo"))}</h2>
   <form class="card" method="post" action="/agentes">
-    <label for="kind">Qué agente</label>
-    <select id="kind" name="kind">
-      ${Object.entries(AGENT_COPY)
-        .map(([kind, copy]) => `<option value="${escape(kind)}">${escape(copy.name)}</option>`)
-        .join("\n      ")}
-    </select>
-    <label for="label">Cómo lo querés llamar</label>
-    <input id="label" name="label" required maxlength="60" placeholder="Mi agente de informes">
-    <label for="perTx">Máximo por compra (USDC)</label>
-    <input id="perTx" name="perTx" required value="0.30" inputmode="decimal">
-    <label for="perDay">Máximo por día (USDC)</label>
-    <input id="perDay" name="perDay" required value="0.60" inputmode="decimal">
-    <label for="validForDays">Vigencia (días)</label>
-    <input id="validForDays" name="validForDays" required value="30" inputmode="numeric">
-    <button type="submit">Configurar</button>
+    <div class="fields">
+      <div>
+        <label for="kind">${tr(bilingual("Which agent", "Qué agente"))}</label>
+        <select id="kind" name="kind">
+          ${Object.entries(AGENT_COPY)
+            .map(
+              ([kind, copy]) =>
+                `<option value="${escape(kind)}" ${textAttributes(copy.name)}>${escape(copy.name.en)}</option>`,
+            )
+            .join("\n          ")}
+        </select>
+      </div>
+      <div>
+        <label for="label">${tr(bilingual("What to call it", "Cómo quieres llamarlo"))}</label>
+        <input id="label" name="label" required maxlength="60" ${placeholder(bilingual("My report agent", "Mi agente de informes"))}>
+      </div>
+    </div>
+    <div class="fields">
+      <div>
+        <label for="perTx">${tr(bilingual("Max per purchase (USDC)", "Máximo por compra (USDC)"))}</label>
+        <input id="perTx" name="perTx" required value="0.30" inputmode="decimal">
+      </div>
+      <div>
+        <label for="perDay">${tr(bilingual("Max per day (USDC)", "Máximo por día (USDC)"))}</label>
+        <input id="perDay" name="perDay" required value="0.60" inputmode="decimal">
+      </div>
+      <div>
+        <label for="validForDays">${tr(bilingual("Validity (days)", "Vigencia (días)"))}</label>
+        <input id="validForDays" name="validForDays" required value="30" inputmode="numeric">
+      </div>
+    </div>
+    <button type="submit">${tr(bilingual("Set up", "Configurar"))}</button>
   </form>
 `,
   });
 }
 
-const ENFORCER_COPY: Readonly<Record<ExplainedControl["enforcedBy"], { readonly tag: string; readonly cls: string }>> = {
-  signed: { tag: "firmado", cls: "tag-signed" },
-  onchain: { tag: "on-chain", cls: "tag-onchain" },
-  realops: { tag: "RealOps", cls: "tag-realops" },
+const ENFORCER_COPY: Readonly<Record<ExplainedControl["enforcedBy"], { readonly tag: Bilingual; readonly cls: string }>> = {
+  signed: { tag: bilingual("signed", "firmado"), cls: "tag-signed" },
+  onchain: { tag: bilingual("on-chain", "on-chain"), cls: "tag-onchain" },
+  realops: { tag: bilingual("RealOps", "RealOps"), cls: "tag-realops" },
 };
 
 /**
@@ -311,38 +505,50 @@ export function reviewPage(
   revokeBaseUrl: string,
 ): string {
   return layout({
-    title: "Revisar el permiso",
+    title: bilingual("Review the permission", "Revisar el permiso"),
     signedIn: true,
     body: `
   <h1>${escape(agent.label)}</h1>
-  <p class="lede">Esto es exactamente lo que vas a firmar. La etiqueta de la derecha dice quién lo hace
-  cumplir: <strong>firmado</strong> lo verifica AgentPey contra tu Mandato, <strong>on-chain</strong> lo
-  revalida además el contrato en Stellar, y <strong>RealOps</strong> es solo de esta plataforma.</p>
+  <p class="lede">${trHtml(
+    "This is exactly what you are about to sign. The tag on the right says who enforces each item: <strong>signed</strong> is checked by AgentPey against your Mandate, <strong>on-chain</strong> is also revalidated by the contract on Stellar, and <strong>RealOps</strong> belongs to this platform only.",
+    "Esto es exactamente lo que vas a firmar. La etiqueta de la derecha dice quién lo hace cumplir: <strong>firmado</strong> lo verifica AgentPey contra tu Mandato, <strong>on-chain</strong> además lo revalida el contrato en Stellar, y <strong>RealOps</strong> es solo de esta plataforma.",
+  )}</p>
 
-  <table class="card" style="padding:.4rem .6rem">
-    <thead><tr><th>Permiso</th><th>Valor</th><th>Quién lo hace cumplir</th></tr></thead>
-    <tbody>
-      ${controls
-        .map(
-          (control) => `<tr>
-        <td><strong>${escape(control.label)}</strong><br><span style="color:var(--muted);font-size:.85rem">${escape(control.explanation)}</span></td>
-        <td><code>${escape(control.value)}</code></td>
-        <td><span class="tag ${ENFORCER_COPY[control.enforcedBy].cls}">${escape(ENFORCER_COPY[control.enforcedBy].tag)}</span></td>
-      </tr>`,
-        )
-        .join("\n      ")}
-    </tbody>
-  </table>
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>${tr(bilingual("Permission", "Permiso"))}</th><th>${tr(bilingual("Value", "Valor"))}</th><th>${tr(bilingual("Enforced by", "Quién lo hace cumplir"))}</th></tr></thead>
+      <tbody>
+        ${controls
+          .map(
+            (control) => `<tr>
+          <td><strong>${tr(control.label)}</strong><br><span class="meta">${tr(control.explanation)}</span></td>
+          <td><code>${escape(control.value)}</code></td>
+          <td><span class="tag ${ENFORCER_COPY[control.enforcedBy].cls}">${tr(ENFORCER_COPY[control.enforcedBy].tag)}</span></td>
+        </tr>`,
+          )
+          .join("\n        ")}
+      </tbody>
+    </table>
+  </div>
 
-  <h2>El permiso, literal</h2>
-  <p style="color:var(--muted);font-size:.9rem">Este es el objeto que se manda a AgentPey y que tu wallet
-  te va a mostrar antes de firmar. No hay nada más.</p>
-  <pre>${escape(JSON.stringify(grant, null, 2))}</pre>
-
-  <div class="card">
-    <p><strong>La firma ocurre en el sitio de AgentPey, no acá.</strong> Si alguna vez ves una pantalla
-    pidiéndote firmar un Mandato en el dominio de RealOps, no es nuestra.</p>
-    ${signState(agent, revokeBaseUrl)}
+  <h2>${tr(bilingual("The permission, literally", "El permiso, literal"))}</h2>
+  <div class="split">
+    <div>
+      <p class="meta" style="margin-top:0">${tr(
+        bilingual(
+          "This is the object sent to AgentPey, and the one your wallet shows you before signing. There is nothing else.",
+          "Este es el objeto que se envía a AgentPey y el que tu wallet te muestra antes de firmar. No hay nada más.",
+        ),
+      )}</p>
+      <pre>${escape(JSON.stringify(grant, null, 2))}</pre>
+    </div>
+    <div class="card">
+      <p>${trHtml(
+        "<strong>Signing happens on AgentPey's site, not here.</strong> If you ever see a screen asking you to sign a Mandate on RealOps' domain, it is not ours.",
+        "<strong>La firma ocurre en el sitio de AgentPey, no aquí.</strong> Si alguna vez ves una pantalla que te pide firmar un Mandato en el dominio de RealOps, no es nuestra.",
+      )}</p>
+      ${signState(agent, revokeBaseUrl)}
+    </div>
   </div>
 `,
   });
@@ -351,22 +557,32 @@ export function reviewPage(
 /** What the review card offers, given how far this agent has got. */
 function signState(agent: AgentConfig, revokeBaseUrl: string): string {
   if (agent.mandateId !== null) {
-    return `<p>✓ Firmado. Mandato <code>${escape(agent.mandateId)}</code>.</p>
-    <p><a href="/servicios">Ir a Mis servicios</a></p>
-    <p style="margin-top:1.25rem"><a class="button secondary" href="${escape(revokeBaseUrl)}/revocar/${escape(agent.mandateId)}?volver=/agentes/${escape(agent.id)}">Revocar este permiso</a></p>
-    <p style="color:var(--muted);font-size:.88rem">Revocar corta la autorización <strong>desde afuera del
-    agente</strong>: no importa qué le digan después, sin Mandato válido no puede pagar nada. Se hace en el
-    sitio de AgentPey y lo firmás con tu wallet — RealOps no puede revocar por vos, ni aunque quisiera.</p>`;
+    return `<p class="signed">✓ ${tr(bilingual("Signed.", "Firmado."))} ${tr(bilingual("Mandate", "Mandato"))} <code data-mandate-id>${escape(agent.mandateId)}</code></p>
+    <p><a href="/servicios">${tr(bilingual("Go to My services →", "Ir a Mis servicios →"))}</a></p>
+    <p><a class="button secondary" href="${escape(revokeBaseUrl)}/revocar/${escape(agent.mandateId)}?volver=/agentes/${escape(agent.id)}">${tr(bilingual("Revoke this permission", "Revocar este permiso"))}</a></p>
+    <p class="meta">${trHtml(
+      "Revoking cuts the authorization <strong>from outside the agent</strong>: whatever it is told afterwards, without a valid Mandate it cannot pay for anything. It happens on AgentPey's site and you sign it with your wallet. RealOps cannot revoke for you, even if it wanted to.",
+      "Revocar corta la autorización <strong>desde fuera del agente</strong>: no importa qué le digan después, sin un Mandato válido no puede pagar nada. Se hace en el sitio de AgentPey y lo firmas con tu wallet. RealOps no puede revocar por ti, aunque quisiera.",
+    )}</p>`;
   }
   if (agent.consentSessionId !== null) {
-    return `<p>Ya empezaste a firmar este permiso y no terminaste, o la invitación venció.</p>
-    <form method="post" action="/agentes/${escape(agent.id)}/firmar"><button type="submit">Reintentar la firma</button></form>`;
+    return `<p>${tr(
+      bilingual(
+        "You started signing this permission and did not finish, or the invitation expired.",
+        "Empezaste a firmar este permiso y no terminaste, o la invitación venció.",
+      ),
+    )}</p>
+    <form method="post" action="/agentes/${escape(agent.id)}/firmar"><button type="submit">${tr(bilingual("Retry signing", "Reintentar la firma"))}</button></form>`;
   }
   return `<form method="post" action="/agentes/${escape(agent.id)}/firmar">
-      <button type="submit">Firmar en AgentPey</button>
+      <button type="submit">${tr(bilingual("Sign on AgentPey", "Firmar en AgentPey"))}</button>
     </form>
-    <p style="color:var(--muted);font-size:.88rem">Te vamos a llevar al sitio de AgentPey para que conectes
-    tu wallet y firmes. Cuando termines, volvés acá.</p>`;
+    <p class="meta">${tr(
+      bilingual(
+        "We take you to AgentPey's site to connect your wallet and sign. When you finish, you come back here.",
+        "Te llevamos al sitio de AgentPey para que conectes tu wallet y firmes. Cuando termines, vuelves aquí.",
+      ),
+    )}</p>`;
 }
 
 export interface ServicesInput {
@@ -374,7 +590,7 @@ export interface ServicesInput {
   /** `null` when this instance has no AgentPey behind it, or the call failed. */
   readonly activity: TenantActivity | null;
   /** Why the activity is missing, if it is. */
-  readonly activityError?: string;
+  readonly activityError?: Bilingual;
   readonly agents: readonly AgentConfig[];
 }
 
@@ -382,19 +598,19 @@ export interface ServicesInput {
 function deliveryCard(purchase: PurchaseResource): string {
   const links: string[] = [];
   if (purchase.delivery?.artifact_url != null) {
-    links.push(`<a class="button" href="${escape(purchase.delivery.artifact_url)}">Ver lo que compraste</a>`);
+    links.push(`<a class="button" href="${escape(purchase.delivery.artifact_url)}">${tr(bilingual("See what you bought", "Ver lo que compraste"))}</a>`);
   }
   if (purchase.explorer_url !== null) {
-    links.push(`<a href="${escape(purchase.explorer_url)}">Ver el pago en Stellar</a>`);
+    links.push(`<a href="${escape(purchase.explorer_url)}">${tr(bilingual("See the payment on Stellar ↗", "Ver el pago en Stellar ↗"))}</a>`);
   }
 
   return `<div class="card">
-    <span class="tag tag-signed">entregado</span>
-    <h3 style="margin:.5rem 0 .25rem">${escape(purchase.product_id)}</h3>
-    <p style="margin:0 0 .5rem">${escape(purchase.total ?? "?")} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${escape(purchase.created_at)}</p>
-    <p class="meta" style="font-size:.85rem;color:var(--muted);margin:0 0 .75rem">
-      ${purchase.delivery?.delivery_id == null ? "" : `Entrega <code>${escape(purchase.delivery.delivery_id)}</code><br>`}
-      ${purchase.delivery?.receipt_hash == null ? "" : `Recibo <code>${escape(purchase.delivery.receipt_hash)}</code>`}
+    <span class="tag tag-signed">${tr(bilingual("delivered", "entregado"))}</span>
+    <h3 style="margin:10px 0 4px">${escape(purchase.product_id)}</h3>
+    <p style="margin:0 0 8px">${escape(purchase.total ?? "?")} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${escape(purchase.created_at)}</p>
+    <p class="meta" style="margin:0 0 4px">
+      ${purchase.delivery?.delivery_id == null ? "" : `${tr(bilingual("Delivery", "Entrega"))} <code>${escape(purchase.delivery.delivery_id)}</code><br>`}
+      ${purchase.delivery?.receipt_hash == null ? "" : `${tr(bilingual("Receipt", "Recibo"))} <code>${escape(purchase.delivery.receipt_hash)}</code>`}
     </p>
     ${links.join(" ")}
   </div>`;
@@ -404,32 +620,48 @@ function deliveryCard(purchase: PurchaseResource): string {
 function refusalCard(purchase: PurchaseResource): string {
   const explained = explainRefusal(purchase.code ?? "unknown", purchase.reason);
   return `<div class="card error">
-    <span class="tag tag-realops">rechazado</span>
-    <h3 style="margin:.5rem 0 .25rem">${escape(purchase.product_id)}</h3>
-    <p style="margin:0 0 .35rem"><strong>${escape(explained.what)}</strong></p>
-    ${explained.next === "" ? "" : `<p style="margin:0 0 .5rem">${escape(explained.next)}</p>`}
-    <p style="font-size:.85rem;color:var(--muted);margin:0">
-      ${escape(purchase.created_at)} · código <code>${escape(purchase.code ?? "unknown")}</code>
+    <span class="tag tag-refused">${tr(bilingual("refused", "rechazado"))}</span>
+    <h3 style="margin:10px 0 4px">${escape(purchase.product_id)}</h3>
+    <p style="margin:0 0 6px"><strong>${tr(explained.what)}</strong></p>
+    <p style="margin:0 0 8px">${tr(explained.next)}</p>
+    <p class="meta" style="margin:0">
+      ${escape(purchase.created_at)} · ${tr(bilingual("code", "código"))} <code>${escape(purchase.code ?? "unknown")}</code>
     </p>
   </div>`;
 }
 
 function spendingCard(activity: TenantActivity): string {
   if (activity.per_day === null && activity.rail === null) return "";
-  const perDay =
-    activity.per_day === null
-      ? ""
-      : `<p style="margin:0 0 .35rem">Hoy llevás gastado <strong>${escape(activity.per_day.spent_today)}</strong> de
-      <strong>${escape(activity.per_day.limit)} ${escape(activity.per_day.currency)}</strong>.
-      ${activity.per_day.near_limit ? "<strong>Estás cerca del tope.</strong>" : `Te quedan ${escape(activity.per_day.remaining)}.`}</p>`;
-  const rail =
-    activity.rail === null
-      ? ""
-      : `<p style="margin:0;font-size:.9rem;color:var(--muted)">Saldo del contrato que paga:
-      <strong>${escape(activity.rail.balance)} ${escape(activity.rail.asset)}</strong>.
-      ${activity.rail.sponsored ? "Es crédito de prueba que pone el piloto, no dinero tuyo." : ""}</p>`;
+  let perDay = "";
+  if (activity.per_day !== null) {
+    const spent = escape(activity.per_day.spent_today);
+    const limit = `${escape(activity.per_day.limit)} ${escape(activity.per_day.currency)}`;
+    const remaining = escape(activity.per_day.remaining);
+    perDay = `<p>${trHtml(
+      `Spent today: <strong>${spent}</strong> of <strong>${limit}</strong>.`,
+      `Hoy llevas gastado <strong>${spent}</strong> de <strong>${limit}</strong>.`,
+    )}
+      ${
+        activity.per_day.near_limit
+          ? `<strong>${tr(bilingual("You are close to the limit.", "Estás cerca del tope."))}</strong>`
+          : trHtml(`You have ${remaining} left.`, `Te quedan ${remaining}.`)
+      }</p>`;
+  }
+  let rail = "";
+  if (activity.rail !== null) {
+    const balance = `${escape(activity.rail.balance)} ${escape(activity.rail.asset)}`;
+    rail = `<p class="meta">${trHtml(
+      `Balance of the contract that pays: <strong>${balance}</strong>.`,
+      `Saldo del contrato que paga: <strong>${balance}</strong>.`,
+    )}
+      ${
+        activity.rail.sponsored
+          ? tr(bilingual("It is test credit provided by the pilot, not your money.", "Es crédito de prueba que pone el piloto, no dinero tuyo."))
+          : ""
+      }</p>`;
+  }
 
-  return `<div class="card">${perDay}${rail}</div>`;
+  return `<div class="card"><h3>${tr(bilingual("Daily limit", "Límite diario"))}</h3>${perDay}${rail}</div>`;
 }
 
 export function servicesPage(input: ServicesInput): string {
@@ -438,84 +670,116 @@ export function servicesPage(input: ServicesInput): string {
   const refused = (activity?.purchases ?? []).filter((purchase) => purchase.outcome === "refused");
   const signable = input.agents.filter((agent) => agent.mandateId !== null);
 
-  return layout({
-    title: "Mis servicios",
-    signedIn: true,
-    body: `
-  <h1>Mis servicios</h1>
-  <p class="lede">Todo lo que tu agente compró —y todo lo que intentó y le rechazaron— con su prueba.</p>
-
-  ${input.activityError === undefined ? "" : `<p class="card error">${escape(input.activityError)}</p>`}
-  ${activity === null ? "" : spendingCard(activity)}
-
-  ${
+  const ask =
     signable.length === 0
-      ? '<p class="card">Todavía no tenés ningún agente con permiso firmado. <a href="/agentes">Empezá por ahí</a>.</p>'
+      ? `<p class="card">${trHtml(
+          'You do not have any agent with a signed permission yet. <a href="/agentes">Start there</a>.',
+          'Todavía no tienes ningún agente con permiso firmado. <a href="/agentes">Empieza por ahí</a>.',
+        )}</p>`
       : `<form class="card" method="post" action="/instruccion">
     <input type="hidden" name="request_key" value="${randomUUID()}">
-    <label for="instruction">Decile qué comprar</label>
-    <input id="instruction" name="instruction" required maxlength="500" placeholder="compra el informe XLM/USDC">
-    <button type="submit">Pedirlo</button>
-    <p style="font-size:.88rem;color:var(--muted);margin:.75rem 0 0">RealOps interpreta la frase. Después
-    <strong>AgentPey decide</strong>: vuelve a resolver el comercio, pide él mismo la factura, y compara todo
-    contra lo que firmaste antes de pagar.</p>
-  </form>`
+    <label for="instruction" style="margin-top:0">${tr(bilingual("Tell it what to buy", "Dile qué comprar"))}</label>
+    <input id="instruction" name="instruction" required maxlength="500" ${placeholder(bilingual("buy the XLM/USDC market report", "compra el informe XLM/USDC"))}>
+    <button type="submit">${tr(bilingual("Ask for it", "Pedirlo"))}</button>
+    <p class="meta" style="margin:14px 0 0">${trHtml(
+      "RealOps interprets the sentence. Then <strong>AgentPey decides</strong>: it resolves the merchant again, requests the invoice itself, and checks everything against what you signed before paying.",
+      "RealOps interpreta la frase. Después <strong>AgentPey decide</strong>: vuelve a resolver el comercio, pide él mismo la factura y compara todo contra lo que firmaste antes de pagar.",
+    )}</p>
+  </form>`;
+
+  const spending = activity === null ? "" : spendingCard(activity);
+
+  return layout({
+    title: bilingual("My services", "Mis servicios"),
+    signedIn: true,
+    body: `
+  <h1>${tr(bilingual("My services", "Mis servicios"))}</h1>
+  <p class="lede">${tr(
+    bilingual(
+      "Everything your agent bought, and everything it tried and was refused, with its proof.",
+      "Todo lo que tu agente compró, y todo lo que intentó y le rechazaron, con su prueba.",
+    ),
+  )}</p>
+
+  ${input.activityError === undefined ? "" : `<p class="card error">${tr(input.activityError)}</p>`}
+  ${spending === "" ? ask : `<div class="split">${ask}${spending}</div>`}
+
+  <h2>${tr(bilingual("Deliveries", "Entregas"))}</h2>
+  ${
+    settled.length === 0
+      ? `<p class="card">${tr(bilingual("You have not bought anything yet.", "Todavía no has comprado nada."))}</p>`
+      : `<div class="grid">${settled.map(deliveryCard).join("\n  ")}</div>`
   }
 
-  <h2>Entregas</h2>
-  ${settled.length === 0 ? '<p class="card">Todavía no compraste nada.</p>' : settled.map(deliveryCard).join("\n  ")}
-
-  <h2>Rechazos</h2>
+  <h2>${tr(bilingual("Refusals", "Rechazos"))}</h2>
   ${
     refused.length === 0
-      ? '<p class="card">Ningún intento rechazado.</p>'
-      : `<p style="color:var(--muted);font-size:.9rem">Un rechazo no es una ausencia: queda guardado igual que
-      una compra, para que "¿por qué mi agente no compró esto?" tenga respuesta.</p>
-  ${refused.map(refusalCard).join("\n  ")}`
+      ? `<p class="card">${tr(bilingual("No refused attempts.", "Ningún intento rechazado."))}</p>`
+      : `<p class="meta">${tr(
+          bilingual(
+            'A refusal is not an absence: it is stored just like a purchase, so "why did my agent not buy this?" has an answer.',
+            'Un rechazo no es una ausencia: queda guardado igual que una compra, para que "¿por qué mi agente no compró esto?" tenga respuesta.',
+          ),
+        )}</p>
+  <div class="grid">${refused.map(refusalCard).join("\n  ")}</div>`
   }
 
-  <h2>Tu cuenta</h2>
+  <h2>${tr(bilingual("Your account", "Tu cuenta"))}</h2>
   <div class="card">
-    <p>Te identificamos ante AgentPey como <code>${escape(account.externalRef)}</code>. Ese código es
-    aleatorio: no se calcula a partir de tu correo, así que no se puede revertir.</p>
-    <form method="post" action="/cuenta/borrar" onsubmit="return confirm('¿Borrar tu correo y cerrar todas tus sesiones?')">
-      <button class="secondary" type="submit">Borrar mi cuenta</button>
+    <p>${trHtml(
+      `AgentPey knows you as <code>${escape(account.externalRef)}</code>. That code is random: it is not derived from your email, so it cannot be reversed.`,
+      `Ante AgentPey te identificamos como <code>${escape(account.externalRef)}</code>. Ese código es aleatorio: no se calcula a partir de tu correo, así que no se puede revertir.`,
+    )}</p>
+    <form method="post" action="/cuenta/borrar" onsubmit="return confirm(document.documentElement.lang === 'es' ? '¿Borrar tu correo y cerrar todas tus sesiones?' : 'Delete your email and close all your sessions?')">
+      <button class="secondary" type="submit">${tr(bilingual("Delete my account", "Borrar mi cuenta"))}</button>
     </form>
-    <p style="color:var(--muted);font-size:.88rem">Borra tu correo, tu alias y tus sesiones de RealOps.
-    <strong>No borra tu Mandato ni el registro de lo que pasó</strong>: son evidencia firmada y anclada en
-    una cadena pública, y borrarlos rompería la cadena de hashes que es el producto entero. Lo decimos
-    así, con todas las letras, porque es una tensión real y esconderla sería peor.</p>
+    <p class="meta">${trHtml(
+      "Deletes your email, your name and your RealOps sessions. <strong>It does not delete your Mandate or the record of what happened</strong>: they are signed evidence anchored on a public chain, and deleting them would break the hash chain that is the whole product. We say it plainly, because it is a real tension and hiding it would be worse.",
+      "Borra tu correo, tu alias y tus sesiones de RealOps. <strong>No borra tu Mandato ni el registro de lo que pasó</strong>: son evidencia firmada y anclada en una cadena pública, y borrarlos rompería la cadena de hashes que es todo el producto. Lo decimos así, con todas sus letras, porque es una tensión real y esconderla sería peor.",
+    )}</p>
   </div>
 `,
   });
 }
 
-export function notRecognisedPage(reason: string, instruction: string): string {
+const PROBLEM_COPY: Readonly<Record<InstructionProblem, Bilingual>> = {
+  empty: bilingual("You did not write an instruction", "No escribiste ninguna instrucción"),
+  too_long: bilingual("The instruction is too long", "La instrucción es demasiado larga"),
+  both_products: bilingual("The instruction asks for both products at once", "La instrucción pide los dos productos a la vez"),
+  no_product: bilingual("I did not recognize any product in the instruction", "No reconocí ningún producto en la instrucción"),
+  unknown_pair: bilingual("I only know XLM/USDC. Name the pair explicitly", "Solo conozco XLM/USDC. Indica el par explícitamente"),
+};
+
+export function notRecognisedPage(problem: InstructionProblem, instruction: string): string {
+  const read = `<code>${escape(instruction)}</code>`;
+  const reason = PROBLEM_COPY[problem];
   return layout({
-    title: "No entendí",
+    title: bilingual("Not understood", "No entendí"),
     signedIn: true,
     body: `
-  <h1>No entendí la instrucción</h1>
-  <p class="lede">${escape(reason)}. Leí esto: <code>${escape(instruction)}</code></p>
+  <h1>${tr(bilingual("I did not understand the instruction", "No entendí la instrucción"))}</h1>
+  <p class="lede">${trHtml(`${escape(reason.en)}. I read this: ${read}`, `${escape(reason.es)}. Leí esto: ${read}`)}</p>
   <div class="card">
-    <p><strong>No adivinamos.</strong> Un agente con permiso de gastar que adivina, compra lo que no le
-    pediste. Elegí una de las dos:</p>
+    <p>${trHtml(
+      "<strong>We do not guess.</strong> An agent with permission to spend that guesses buys what you did not ask for. Pick one of the two:",
+      "<strong>No adivinamos.</strong> Un agente con permiso para gastar que adivina, compra lo que no le pediste. Elige una de las dos:",
+    )}</p>
     ${FALLBACK_CHOICES.map(
       (choice) =>
-        `<form method="post" action="/instruccion" style="display:inline"><input type="hidden" name="request_key" value="${randomUUID()}"><input type="hidden" name="kind" value="${escape(choice.kind)}"><button type="submit">${escape(choice.label)}</button></form>`,
+        `<form method="post" action="/instruccion" style="display:inline-block;margin-right:10px"><input type="hidden" name="request_key" value="${randomUUID()}"><input type="hidden" name="kind" value="${escape(choice.kind)}"><button type="submit">${tr(choice.label)}</button></form>`,
     ).join("\n    ")}
   </div>
 `,
   });
 }
 
-export function errorPage(status: number, message: string): string {
+export function errorPage(status: number, message: Bilingual): string {
   return layout({
-    title: `Error ${status}`,
+    title: bilingual(`Error ${status}`, `Error ${status}`),
     body: `
   <h1>${status}</h1>
-  <p class="lede">${escape(message)}</p>
-  <p><a href="/">Volver al inicio</a></p>
+  <p class="lede">${tr(message)}</p>
+  <p><a href="/">${tr(bilingual("← Back to home", "← Volver al inicio"))}</a></p>
 `,
   });
 }

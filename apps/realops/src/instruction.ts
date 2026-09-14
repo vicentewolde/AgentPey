@@ -20,6 +20,7 @@
 import { AgentPassError } from "@agentpass/core";
 
 import { agentKindSchema, type AgentKind } from "./accounts.js";
+import { bilingual, type Bilingual } from "./copy.js";
 
 /** The one pair the pilot's brief covers. A closed dictionary, not a parser. */
 export const KNOWN_PAIRS = ["XLM/USDC"] as const;
@@ -44,7 +45,12 @@ function normalise(value: string): string {
     .trim();
 }
 
-const SPANISH_NUMBERS: Readonly<Record<string, number>> = {
+/**
+ * Small counts in words, in both languages the pages speak. Since the pilot
+ * switched to English by default, "buy two reports" is as ordinary a sentence
+ * as "compra dos informes".
+ */
+const NUMBER_WORDS: Readonly<Record<string, number>> = {
   un: 1,
   una: 1,
   uno: 1,
@@ -52,16 +58,22 @@ const SPANISH_NUMBERS: Readonly<Record<string, number>> = {
   tres: 3,
   cuatro: 4,
   cinco: 5,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
 };
 
 /**
  * Stems, matched as prefixes, so a plural or a diminutive does not need its
  * own entry — `informes` and `creditos` are the words people actually type,
  * and a vocabulary that only knew the singular refused perfectly ordinary
- * Spanish. (Found by a test, not by reading.)
+ * Spanish. (Found by a test, not by reading.) `report` also covers `reporte`,
+ * and `pack` covers `package`.
  */
-const BRIEF_STEMS = ["informe", "reporte", "brief", "mercado"];
-const CREDIT_STEMS = ["credito", "credit", "paquete"];
+const BRIEF_STEMS = ["informe", "report", "brief", "mercado", "market"];
+const CREDIT_STEMS = ["credito", "credit", "paquete", "pack"];
 /**
  * Two-letter words are matched exactly. A prefix rule on `ia` or `ai` would
  * claim half the dictionary, and a vocabulary that matches too much is the
@@ -76,19 +88,26 @@ function namesAny(tokens: readonly string[], stems: readonly string[], exact: re
 const MAX_INSTRUCTION_LENGTH = 500;
 const MAX_QUANTITY = 5;
 
-function notRecognised(reason: string, instruction: string): AgentPassError {
-  return new AgentPassError("InstructionNotUnderstood", reason, {
+/**
+ * Why a sentence was not understood, as a key the page turns into words in
+ * either language. The error message stays in English, for logs.
+ */
+export const INSTRUCTION_PROBLEMS = ["empty", "too_long", "both_products", "no_product", "unknown_pair"] as const;
+export type InstructionProblem = (typeof INSTRUCTION_PROBLEMS)[number];
+
+function notRecognised(problem: InstructionProblem, message: string, instruction: string): AgentPassError {
+  return new AgentPassError("InstructionNotUnderstood", message, {
     // The instruction is the person's own words, echoed back so the UI can
     // show what it read. It is not personal data and it is not interpreted
     // anywhere else — it never reaches a decision.
-    details: { instruction },
+    details: { instruction, problem },
   });
 }
 
 /** The quantity, if the sentence names one. Defaults to 1; never silently large. */
 function readQuantity(tokens: readonly string[]): number {
   for (const token of tokens) {
-    const word = SPANISH_NUMBERS[token];
+    const word = NUMBER_WORDS[token];
     if (word !== undefined) return word;
     if (/^\d{1,4}$/.test(token)) {
       const value = Number(token);
@@ -116,10 +135,10 @@ function readPair(normalised: string): string | undefined {
  */
 export function interpretInstruction(instruction: string): Interpretation {
   if (typeof instruction !== "string" || instruction.trim() === "") {
-    throw notRecognised("no escribiste ninguna instruccion", String(instruction));
+    throw notRecognised("empty", "the instruction is empty", String(instruction));
   }
   if (instruction.length > MAX_INSTRUCTION_LENGTH) {
-    throw notRecognised("la instruccion es demasiado larga", instruction.slice(0, 80));
+    throw notRecognised("too_long", "the instruction is too long", instruction.slice(0, 80));
   }
 
   const normalised = normalise(instruction);
@@ -131,12 +150,9 @@ export function interpretInstruction(instruction: string): Interpretation {
   // Both, or neither, is a sentence this cannot read. Picking one would be the
   // guess this module exists not to make.
   if (wantsBrief === wantsCredits) {
-    throw notRecognised(
-      wantsBrief
-        ? "la instruccion pide las dos cosas a la vez"
-        : "no reconoci ningun producto en la instruccion",
-      instruction,
-    );
+    throw wantsBrief
+      ? notRecognised("both_products", "the instruction asks for both products at once", instruction)
+      : notRecognised("no_product", "no product recognised in the instruction", instruction);
   }
 
   const quantity = readQuantity(tokens);
@@ -147,16 +163,13 @@ export function interpretInstruction(instruction: string): Interpretation {
 
   const pair = readPair(normalised);
   if (pair === undefined) {
-    throw notRecognised(
-      `solo se de ${KNOWN_PAIRS.join(", ")}; decime el par explicitamente`,
-      instruction,
-    );
+    throw notRecognised("unknown_pair", `only ${KNOWN_PAIRS.join(", ")} is known; the pair has to be named`, instruction);
   }
   return { kind: agentKindSchema.parse("market_brief"), quantity, pair };
 }
 
 /** What the UI offers when the sentence was not understood: the two products, as buttons. */
-export const FALLBACK_CHOICES: readonly { readonly kind: AgentKind; readonly label: string }[] = [
-  { kind: "market_brief", label: "Comprar el informe de mercado XLM/USDC" },
-  { kind: "ai_credits", label: "Comprar 1000 créditos de IA" },
+export const FALLBACK_CHOICES: readonly { readonly kind: AgentKind; readonly label: Bilingual }[] = [
+  { kind: "market_brief", label: bilingual("Buy the XLM/USDC market report", "Comprar el informe de mercado XLM/USDC") },
+  { kind: "ai_credits", label: bilingual("Buy 1000 AI credits", "Comprar 1000 créditos de IA") },
 ];

@@ -34,6 +34,27 @@ describe("interpretInstruction", () => {
     expect(interpretInstruction("compra 3 informes de XLM/USDC").quantity).toBe(3);
   });
 
+  /** The pages default to English, so the placeholder a person copies is English too. */
+  it("reads the same products in English", () => {
+    expect(interpretInstruction("buy the XLM/USDC market report")).toEqual({
+      kind: "market_brief",
+      quantity: 1,
+      pair: "XLM/USDC",
+    });
+    expect(interpretInstruction("I want two XLM/USDC reports").quantity).toBe(2);
+    expect(interpretInstruction("buy 1000 AI credits")).toEqual({ kind: "ai_credits", quantity: 1 });
+    expect(interpretInstruction("buy three credit packs")).toEqual({ kind: "ai_credits", quantity: 3 });
+  });
+
+  it("says why it did not understand, as a key the page puts into words", () => {
+    const problemOf = (instruction: string) => (refusalFor(instruction) as { details: { problem: string } }).details.problem;
+
+    expect(problemOf("")).toBe("empty");
+    expect(problemOf("hola que tal")).toBe("no_product");
+    expect(problemOf("buy the report and some credits")).toBe("both_products");
+    expect(problemOf("compra el informe de BTC/USD")).toBe("unknown_pair");
+  });
+
   /**
    * The rule this module exists for. An agent holding spending permission that
    * guesses, buys the wrong thing with real money.

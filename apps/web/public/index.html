@@ -1,19 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-title-en="AgentPey · live demo" data-title-es="AgentPey · demo en vivo">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AgentPey — live demo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · live demo</title>
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script>
-  /* Language: English by default; the stored choice (shared with /landing) is applied before paint. */
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
   (function () {
+    var lang = "en";
     try {
-      var saved = localStorage.getItem("agentpay-lang");
-      if (saved === "es") document.documentElement.lang = "es";
-    } catch (e) { /* storage blocked — English stays */ }
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
   })();
 </script>
 <style>
@@ -50,73 +55,44 @@
     text-rendering: optimizeLegibility;
   }
 
-  .wrap { width: 100%; max-width: 880px; margin: 0 auto; padding: 0 24px 80px; }
+  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px 80px; }
   @media (max-width: 480px) { .wrap { padding: 0 20px 64px; } }
 
   a { color: var(--accent); }
 
-  /* ---------- top bar ---------- */
-  .top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 26px 0 0;
-    flex-wrap: wrap;
-    gap: 6px 16px;
-  }
-  .mark { font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-left: 4px; letter-spacing: 0; }
-  .utils { display: flex; align-items: center; gap: 18px; }
-  .back { font-size: 13px; color: var(--ink-3); text-decoration: none; }
-  .back:hover { color: var(--ink); }
+  /* ---------- top bar (shared pilot chrome) ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo { width: 24px; height: 24px; flex: none; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 22px; }
+  .nav a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
+  .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .apps { display: flex; align-items: center; gap: 16px; }
+  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .apps a:hover { color: var(--accent); }
+  .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
+  .gh:hover { color: var(--ink); }
   .lang { display: flex; align-items: center; gap: 8px; }
-  .lang button {
-    appearance: none;
-    background: none;
-    border: 0;
-    padding: 2px 1px;
-    font-family: var(--sans);
-    font-size: 11.5px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-    cursor: pointer;
-  }
+  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
   .lang span { color: var(--rule); font-size: 11.5px; }
-  .lang button:hover { color: var(--ink-2); }
-  .lang button:focus-visible,
-  .back:focus-visible,
-  .btn:focus-visible,
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+  .lang button:hover { color: var(--ink-2); background: none; transform: none; }
   html[lang="en"] .lang button[data-set-lang="en"],
   html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
+  .mark:focus-visible, .nav a:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: live-pulse 2s ease-out infinite; }
+  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+  @media (max-width: 720px) { .nav { display: none; } }
+
+  .btn:focus-visible,
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
 
   /* ---------- hero ---------- */
   .hero { padding: clamp(28px, 4vw, 44px) 0 clamp(28px, 4vw, 40px); }
-  .eyebrow {
-    font-size: 11.5px;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .live-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 0 var(--accent);
-    animation: live-pulse 2s ease-out infinite;
-  }
-  @keyframes live-pulse {
-    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
-    100% { box-shadow: 0 0 0 6px transparent; }
-  }
   h1 {
     font-family: var(--serif);
     font-weight: 400;
@@ -265,35 +241,33 @@
 <div class="wrap">
   <div class="top">
     <a class="mark" href="/">
-      AgentPey
-      <span class="tagline">
-        <span data-tr="en">· live demo</span>
-        <span data-tr="es">· demo en vivo</span>
-      </span>
+      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
+      <span>AgentPey</span>
+      <span class="tagline"><span data-tr="en">· live demo</span><span data-tr="es">· demo en vivo</span></span>
     </a>
+    <nav class="nav">
+      <a href="/"><span data-tr="en">← Overview</span><span data-tr="es">← Resumen</span></a>
+    </nav>
     <div class="utils">
+      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
       <div class="lang">
         <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
         <span aria-hidden="true">/</span>
         <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
       </div>
-      <a class="back" href="/">
-        <span data-tr="en">← Overview</span>
-        <span data-tr="es">← Resumen</span>
+      <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span>GitHub</span>
       </a>
     </div>
   </div>
 
   <header class="hero">
-    <p class="eyebrow">
-      <span class="live-dot" aria-hidden="true"></span>
-      <span data-tr="en">Stellar Testnet — live</span>
-      <span data-tr="es">Stellar Testnet en vivo</span>
-    </p>
+    <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
     <h1>AgentPey</h1>
     <p class="sub">
-      <span data-tr="en">An agent that proves who operates it, what it can spend, and buys for real in a Stellar Bazaar on testnet.</span>
-      <span data-tr="es">Un agente que prueba quién lo opera, qué puede gastar, y compra de verdad en un Bazaar de Stellar en testnet.</span>
+      <span data-tr="en">An agent that proves who operates it and what it can spend, and buys for real at a Stellar bazaar on testnet.</span>
+      <span data-tr="es">Un agente que prueba quién lo opera y qué puede gastar, y compra de verdad en un bazaar de Stellar en testnet.</span>
     </p>
   </header>
 
@@ -305,12 +279,12 @@
         <span data-tr="es">Conectar wallet</span>
       </h2>
       <p class="lead">
-        <span data-tr="en">Sign a one-time message with Freighter to prove you control that Stellar account — no secret key ever leaves your wallet.</span>
-        <span data-tr="es">Firmá un mensaje de un solo uso con Freighter para probar que controlás esa cuenta de Stellar — ninguna llave secreta sale de tu wallet.</span>
+        <span data-tr="en">Sign a one-time message with Freighter to prove you control that Stellar account. No secret key ever leaves your wallet.</span>
+        <span data-tr="es">Firma un mensaje de un solo uso con Freighter para probar que controlas esa cuenta de Stellar. Ninguna llave secreta sale de tu wallet.</span>
       </p>
       <p class="plain">
         <span data-tr="en">This is real Web3 interaction: Freighter itself asks you to approve the signature, and the server checks it cryptographically against the address you claim.</span>
-        <span data-tr="es">Esto es interacción Web3 real: Freighter te pide aprobar la firma, y el servidor la verifica criptográficamente contra la dirección que decís tener.</span>
+        <span data-tr="es">Esto es interacción Web3 real: Freighter te pide aprobar la firma, y el servidor la verifica criptográficamente contra la dirección que dices tener.</span>
       </p>
       <div class="row">
         <button id="wallet-btn" class="btn">
@@ -332,7 +306,7 @@
       </h2>
       <p class="lead">
         <span data-tr="en">Read live from <code>stellar-bazaar-x402.vercel.app</code>.</span>
-        <span data-tr="es">Leído en vivo de <code>stellar-bazaar-x402.vercel.app</code>.</span>
+        <span data-tr="es">Leído en vivo desde <code>stellar-bazaar-x402.vercel.app</code>.</span>
       </p>
       <div id="products" class="products"><span data-tr="en">Loading…</span><span data-tr="es">Cargando…</span></div>
     </div>
@@ -347,11 +321,11 @@
       </h2>
       <p class="lead">
         <span data-tr="en">Issues an AgentPass credential and a Mandate, both signed and anchored on Stellar testnet, and starts the agent.</span>
-        <span data-tr="es">Emite una credencial AgentPass y un Mandato, ambos firmados y anclados en Stellar testnet, y arranca el agente.</span>
+        <span data-tr="es">Emite una credencial AgentPass y un Mandato, ambos firmados y anclados en Stellar testnet, e inicia el agente.</span>
       </p>
       <p class="plain">
         <span data-tr="en">The agent obtains its identity credential (who controls it) and its spending permit (how much it can buy), both signed and recorded on the Stellar blockchain.</span>
-        <span data-tr="es">El agente obtiene su credencial de identidad (quién lo controla) y su permiso de gasto (cuánto puede comprar), los dos firmados y grabados en la blockchain Stellar.</span>
+        <span data-tr="es">El agente obtiene su credencial de identidad (quién lo controla) y su permiso de gasto (cuánto puede comprar), ambos firmados y registrados en la blockchain de Stellar.</span>
       </p>
       <div class="row">
         <button id="start-btn" class="btn">
@@ -372,13 +346,13 @@
         <span data-tr="es">Comprar</span>
       </h2>
       <p class="lead">
-        <span data-tr="en">From the catalog, Swap Risk Quote has a real payment connected. The "Buy" button signs the intent and executes the real x402 payment.</span>
-        <span data-tr="es">Del catálogo Swap Risk Quote tiene un pago real conectado. El botón "Comprar" firma la intención y ejecuta el pago x402 de verdad.</span>
+        <span data-tr="en">In the catalog, Swap Risk Quote is wired to a real payment. The "Buy" button signs the intent and executes the x402 payment for real.</span>
+        <span data-tr="es">En el catálogo, Swap Risk Quote tiene un pago real conectado. El botón "Comprar" firma la intención y ejecuta el pago x402 de verdad.</span>
       </p>
       <input id="instruction" type="text" value="Comprame un Swap Risk Quote, por favor." />
       <p class="field-note">
         <span data-tr="en">This instruction has to stay in Spanish for now: the bazaar in use only understands Spanish.</span>
-        <span data-tr="es">Esta instrucción debe quedar en español por ahora: el bazaar utilizado solo entiende español.</span>
+        <span data-tr="es">Esta instrucción debe quedar en español por ahora: el bazaar que usamos solo entiende español.</span>
       </p>
       <div class="row">
         <button id="buy-rail-btn" class="btn" disabled>
@@ -387,7 +361,7 @@
         </button>
         <span class="hint">
           <span data-tr="en">Each click pays for real: 0.001 USDC per purchase.</span>
-          <span data-tr="es">Cada clic paga de verdad — 0.001 USDC por compra.</span>
+          <span data-tr="es">Cada clic paga de verdad: 0.001 USDC por compra.</span>
         </span>
       </div>
       <ul class="steps" id="buy-steps"></ul>
@@ -403,12 +377,12 @@
         <span data-tr="es">Revocar el Mandato</span>
       </h2>
       <p class="lead">
-        <span data-tr="en">Cancels the purchase permit from outside the agent. The credential stays active; it's a different authority being cancelled.</span>
-        <span data-tr="es">Cancela el permiso de compra desde afuera del agente. La credencial sigue activa, es una autoridad distinta la que se cancela.</span>
+        <span data-tr="en">Cancels the purchase permit from outside the agent. The credential stays active: what gets cancelled is a different authority.</span>
+        <span data-tr="es">Cancela el permiso de compra desde fuera del agente. La credencial sigue activa: lo que se cancela es otra autoridad.</span>
       </p>
       <p class="plain">
-        <span data-tr="en">The agent's permit gets cancelled from outside, instantly; the agent can't prevent it. That's the central guarantee of the whole project.</span>
-        <span data-tr="es">Se cancela el permiso al agente desde afuera al instante, el agente no lo puede evitar. Es la garantía central de todo el proyecto.</span>
+        <span data-tr="en">The agent's permit is cancelled from outside, instantly, and the agent can't prevent it. That's the central guarantee of the whole project.</span>
+        <span data-tr="es">El permiso del agente se cancela desde fuera, al instante, y el agente no puede evitarlo. Es la garantía central de todo el proyecto.</span>
       </p>
       <div class="row">
         <button id="revoke-btn" class="btn danger" disabled>
@@ -430,7 +404,7 @@
       </h2>
       <p class="lead">
         <span data-tr="en">Every authorization decision (granted or refused), and the on-chain anchor of every real payment. The chain and the status of each anchor are read live.</span>
-        <span data-tr="es">Cada decisión de autorización (aprobada o rechazada) y el anclaje on-chain de cada pago real. La cadena y el estado de cada anclaje se lee en vivo.</span>
+        <span data-tr="es">Cada decisión de autorización (aprobada o rechazada) y el anclaje on-chain de cada pago real. La cadena y el estado de cada anclaje se leen en vivo.</span>
       </p>
       <p class="plain">
         <span data-tr="en">The history of every decision and every payment, tamper-evident.</span>
@@ -452,56 +426,50 @@
 <script>
 /* ---------- language ---------- */
 var root = document.documentElement;
-var TITLES = { en: "AgentPey — live demo", es: "AgentPey — demo en vivo" };
-var langButtons = document.querySelectorAll("[data-set-lang]");
 
 function lang() { return root.lang === "es" ? "es" : "en"; }
 
-function applyLang(l) {
-  root.lang = l;
-  document.title = TITLES[l];
-  for (var i = 0; i < langButtons.length; i++) {
-    langButtons[i].setAttribute("aria-pressed", String(langButtons[i].dataset.setLang === l));
-  }
-}
-for (var i = 0; i < langButtons.length; i++) {
-  langButtons[i].addEventListener("click", function () {
-    var l = this.dataset.setLang;
-    applyLang(l);
-    try { localStorage.setItem("agentpay-lang", l); } catch (e) { /* storage blocked */ }
-    refreshDynamic();
-  });
-}
-applyLang(root.lang === "es" ? "es" : "en");
-
 /* Content built by JS (product cards, session facts, buy steps, vault
-   records, revoke facts) is rendered once from whatever language was active
-   at the time. Each loader below caches its last successful response so a
-   language switch can re-render already-fetched data instead of leaving it
-   stuck in the other language — without re-hitting a stateful endpoint
-   (buying or revoking again) just because someone clicked EN/ES. */
+   records, revoke facts, status lines) is rendered in whatever language was
+   active at the time. Each loader below caches its last successful response,
+   and every status line keeps a render function rather than a finished
+   string, so a language switch re-renders what the page already has instead
+   of leaving it stuck in the other language, without re-hitting a stateful
+   endpoint (buying or revoking again) just because someone clicked EN/ES. */
 var lastProducts = null;
+var productsMessage = null;
+var lastWalletAddress = null;
 var lastSession = null;
 var lastBuy = null;
 var lastVault = null;
 var lastRevoke = null;
+var statusState = {};
 
 function refreshDynamic() {
+  var snapshot = Object.assign({}, statusState);
   if (lastProducts) renderProducts(lastProducts);
+  else if (productsMessage) document.getElementById("products").textContent = productsMessage();
+  if (lastWalletAddress) setFacts(document.getElementById("wallet-facts"), [[t("factWalletAddress"), lastWalletAddress]]);
   if (lastSession) renderSessionFacts(lastSession);
   if (lastBuy) renderBuySteps(lastBuy);
   if (lastVault) renderVault(lastVault);
   if (lastRevoke) renderRevokeFacts(lastRevoke);
+  for (var id in snapshot) {
+    var el = document.getElementById(id);
+    if (el) setStatus(el, snapshot[id].ok, snapshot[id].render);
+  }
 }
+document.addEventListener("agentpey:lang", refreshDynamic);
 
 /* ---------- i18n dictionary for JS-generated content ---------- */
 var T = {
   loading: { en: "Loading…", es: "Cargando…" },
   catalogError: { en: "Could not read the catalog: ", es: "No se pudo leer el catálogo: " },
+  catalogUnavailable: { en: "catalog unavailable", es: "catálogo no disponible" },
   realPayment: { en: "real payment", es: "pago real" },
   issuing: { en: "Issuing credential and mandate on testnet…", es: "Emitiendo credencial y mandato en testnet…" },
   sessionActive: { en: "Session active.", es: "Sesión activa." },
-  sessionFailed: { en: "session start failed", es: "fallo al iniciar sesión" },
+  sessionFailed: { en: "Could not start the session", es: "No se pudo iniciar la sesión" },
   buying: { en: "Buying…", es: "Comprando…" },
   paymentExecuted: { en: "Real payment executed.", es: "Pago real ejecutado." },
   revoking: { en: "Revoking…", es: "Revocando…" },
@@ -509,34 +477,36 @@ var T = {
   chainOk: { en: "Chain intact ✓ (%n% records)", es: "Cadena íntegra ✓ (%n% registros)" },
   chainBroken: { en: "Chain broken at seq %n%", es: "Cadena rota en seq %n%" },
   coldStartHint: {
-    en: " The free-tier server can take up to a minute to answer the first time (it was \"asleep\") — it hasn't crashed, it's waking up.",
-    es: " El servidor gratuito puede tardar hasta un minuto en responder la primera vez (se estaba \"durmiendo\") — no se colgó, está despertando.",
+    en: " The free-tier server can take up to a minute to answer the first time (it was \"asleep\"). It hasn't crashed, it's waking up.",
+    es: " El servidor gratuito puede tardar hasta un minuto en responder la primera vez (estaba \"dormido\"). No falló, está despertando.",
   },
   factCredential: { en: "credential", es: "credencial" },
   factMandate: { en: "mandate", es: "mandato" },
   factStatus: { en: "status", es: "estado" },
-  factVenue: { en: "venue", es: "venue" },
+  factVenue: { en: "venue", es: "comercio" },
   factPerTx: { en: "perTx", es: "perTx" },
   factPerDay: { en: "perDay", es: "perDay" },
-  factTools: { en: "tools", es: "tools" },
+  factTools: { en: "tools", es: "herramientas" },
   factMandateRevoked: { en: "mandate revoked", es: "mandato revocado" },
   factTx: { en: "tx", es: "tx" },
   factCredentialLive: { en: "credential (live)", es: "credencial (en vivo)" },
   factWalletAddress: { en: "wallet address", es: "dirección de wallet" },
   walletMissing: {
     en: "Freighter not found. Install it from freighter.app and reload this page.",
-    es: "No se encontró Freighter. Instalalo desde freighter.app y recargá esta página.",
+    es: "No se encontró Freighter. Instálalo desde freighter.app y recarga esta página.",
   },
   walletRequesting: { en: "Requesting access…", es: "Pidiendo acceso…" },
-  walletSigning: { en: "Sign the message in Freighter…", es: "Firmá el mensaje en Freighter…" },
-  walletVerifying: { en: "Verifying signature…", es: "Verificando firma…" },
+  walletSigning: { en: "Sign the message in Freighter…", es: "Firma el mensaje en Freighter…" },
+  walletVerifying: { en: "Verifying signature…", es: "Verificando la firma…" },
   walletConnected: { en: "Wallet connected and verified.", es: "Wallet conectada y verificada." },
   walletFailed: { en: "Could not connect wallet: ", es: "No se pudo conectar la wallet: " },
   walletRejected: { en: "Connection cancelled in Freighter.", es: "Conexión cancelada en Freighter." },
-  walletSigningMandate: { en: "Sign the Mandate in Freighter…", es: "Firmá el Mandato en Freighter…" },
-  walletSigningAnchor: { en: "Sign the anchor transaction in Freighter…", es: "Firmá la transacción de anclaje en Freighter…" },
+  walletSigningMandate: { en: "Sign the Mandate in Freighter…", es: "Firma el Mandato en Freighter…" },
+  walletSigningAnchor: { en: "Sign the anchor transaction in Freighter…", es: "Firma la transacción de anclaje en Freighter…" },
   walletAnchoring: { en: "Anchoring on testnet…", es: "Anclando en testnet…" },
-  walletSigningRevoke: { en: "Sign the revoke transaction in Freighter…", es: "Firmá la transacción de revocación en Freighter…" },
+  walletSigningRevoke: { en: "Sign the revoke transaction in Freighter…", es: "Firma la transacción de revocación en Freighter…" },
+  noChallenge: { en: "no challenge received", es: "no se recibió el desafío" },
+  verificationFailed: { en: "verification failed", es: "la verificación falló" },
   identityCredential: { en: "credential (on-chain)", es: "credencial (en cadena)" },
   identityMandate: { en: "mandate (on-chain)", es: "mandato (en cadena)" },
   stateRevoked: { en: "revoked", es: "revocada" },
@@ -566,7 +536,21 @@ function t(key, vars) {
   return text;
 }
 
-/* Known label keys the backend's step list can emit (apps/web/src/server.ts) —
+/** An error whose text comes from the dictionary, so it can be re-rendered in the other language. */
+function i18nError(key, suffix) {
+  var error = new Error(t(key) + (suffix || ""));
+  error.i18nKey = key;
+  error.i18nSuffix = suffix || "";
+  return error;
+}
+
+function errorText(error) {
+  return function () {
+    return error && error.i18nKey ? t(error.i18nKey) + error.i18nSuffix : error.message;
+  };
+}
+
+/* Known label keys the backend's step list can emit (apps/web/src/server.ts),
    translated for display; the underlying data (hashes, URLs, ids) is
    language-agnostic and left untouched. */
 var STEP_LABEL_KEYS = {
@@ -618,8 +602,11 @@ function setFacts(el, entries) {
   el.hidden = false;
 }
 
+/** `message` is a string, or a function returning one (re-evaluated when the language changes). */
 function setStatus(el, ok, message) {
-  el.textContent = message;
+  const render = typeof message === "function" ? message : () => message;
+  statusState[el.id] = { ok: ok, render: render };
+  el.textContent = render();
   el.className = "status " + (ok ? "ok" : "err");
 }
 
@@ -660,18 +647,21 @@ function renderProducts(body) {
 
 async function loadProducts() {
   const el = document.getElementById("products");
-  const cancelHint = warnIfSlow((hint) => {
-    el.textContent = t("loading") + hint;
+  const cancelHint = warnIfSlow(() => {
+    productsMessage = () => t("loading") + t("coldStartHint");
+    el.textContent = productsMessage();
   });
   try {
     const { body } = await api("/api/products");
     cancelHint();
-    if (!body.ok) throw new Error(body.message ?? "no se pudo leer el catálogo");
+    if (!body.ok) throw body.message ? new Error(body.message) : i18nError("catalogUnavailable");
     lastProducts = body;
     renderProducts(body);
   } catch (error) {
     cancelHint();
-    el.textContent = t("catalogError") + error.message;
+    const detail = errorText(error);
+    productsMessage = () => t("catalogError") + detail();
+    el.textContent = productsMessage();
   }
 }
 
@@ -687,11 +677,11 @@ function renderSessionFacts(body) {
   ];
   if (body.walletAddress) facts.splice(2, 0, [t("factWalletAddress"), body.walletAddress]);
   setFacts(document.getElementById("session-facts"), facts);
-  setStatus(document.getElementById("session-status"), true, t("sessionActive"));
+  setStatus(document.getElementById("session-status"), true, () => t("sessionActive"));
 }
 
 /** Freighter's `signMessage` can return the signature as a base64 string or
-    as byte-array-like data (its own type union allows either) — normalise
+    as byte-array-like data (its own type union allows either). Normalise
     either shape to the base64 string the server's SEP-0053 check expects. */
 function signedMessageToBase64(signedMessage) {
   if (typeof signedMessage === "string") return signedMessage;
@@ -705,38 +695,38 @@ document.getElementById("wallet-btn").addEventListener("click", async () => {
   const btn = document.getElementById("wallet-btn");
   const status = document.getElementById("wallet-status");
   if (typeof freighterApi === "undefined") {
-    setStatus(status, false, t("walletMissing"));
+    setStatus(status, false, () => t("walletMissing"));
     return;
   }
   btn.disabled = true;
   try {
     // `requestAccess()` waits for a response from the extension's content
-    // script and never resolves or rejects if there is none — checked here
-    // first, since `isConnected()` answers quickly either way (found by
-    // testing this against a browser with no Freighter installed, not by
-    // reading its docs).
+    // script and never resolves or rejects if there is none, so presence is
+    // checked here first, since `isConnected()` answers quickly either way
+    // (found by testing this against a browser with no Freighter installed,
+    // not by reading its docs).
     const presence = await freighterApi.isConnected();
     if (!presence.isConnected) {
-      setStatus(status, false, t("walletMissing"));
+      setStatus(status, false, () => t("walletMissing"));
       return;
     }
 
-    setStatus(status, true, t("walletRequesting"));
+    setStatus(status, true, () => t("walletRequesting"));
     const access = await freighterApi.requestAccess();
     if (access.error) throw new Error(access.error);
     const address = access.address;
 
     const { body: challenge } = await api("/api/wallet/challenge", { method: "POST" });
-    if (!challenge.ok) throw new Error(challenge.message || "no challenge");
+    if (!challenge.ok) throw challenge.message ? new Error(challenge.message) : i18nError("noChallenge");
 
-    setStatus(status, true, t("walletSigning"));
+    setStatus(status, true, () => t("walletSigning"));
     const signed = await freighterApi.signMessage(challenge.message, {
       address: address,
       networkPassphrase: TESTNET_PASSPHRASE,
     });
     if (signed.error) throw new Error(signed.error);
 
-    setStatus(status, true, t("walletVerifying"));
+    setStatus(status, true, () => t("walletVerifying"));
     const { body: verified } = await api("/api/wallet/verify", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -746,12 +736,14 @@ document.getElementById("wallet-btn").addEventListener("click", async () => {
         signature: signedMessageToBase64(signed.signedMessage),
       }),
     });
-    if (!verified.ok) throw new Error(verified.message || "verification failed");
+    if (!verified.ok) throw verified.message ? new Error(verified.message) : i18nError("verificationFailed");
 
+    lastWalletAddress = verified.address;
     setFacts(document.getElementById("wallet-facts"), [[t("factWalletAddress"), verified.address]]);
-    setStatus(status, true, t("walletConnected"));
+    setStatus(status, true, () => t("walletConnected"));
   } catch (error) {
-    setStatus(status, false, t("walletFailed") + error.message);
+    const detail = errorText(error);
+    setStatus(status, false, () => t("walletFailed") + detail());
   } finally {
     btn.disabled = false;
   }
@@ -768,12 +760,12 @@ document.getElementById("wallet-btn").addEventListener("click", async () => {
  * submits to finish the session.
  */
 async function runWalletMandateFlow(pending, status) {
-  if (typeof freighterApi === "undefined") throw new Error(t("walletMissing"));
+  if (typeof freighterApi === "undefined") throw i18nError("walletMissing");
   const access = await freighterApi.requestAccess();
   if (access.error) throw new Error(access.error);
   const address = access.address;
 
-  setStatus(status, true, t("walletSigningMandate"));
+  setStatus(status, true, () => t("walletSigningMandate"));
   const signed = await freighterApi.signMessage(pending.challengeMessage, {
     address: address,
     networkPassphrase: TESTNET_PASSPHRASE,
@@ -785,22 +777,22 @@ async function runWalletMandateFlow(pending, status) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ signature: signedMessageToBase64(signed.signedMessage) }),
   });
-  if (!consent.ok) throw new Error(consent.message || t("sessionFailed"));
+  if (!consent.ok) throw consent.message ? new Error(consent.message) : i18nError("sessionFailed");
 
-  setStatus(status, true, t("walletSigningAnchor"));
+  setStatus(status, true, () => t("walletSigningAnchor"));
   const signedTx = await freighterApi.signTransaction(consent.xdr, {
     address: address,
     networkPassphrase: TESTNET_PASSPHRASE,
   });
   if (signedTx.error) throw new Error(signedTx.error);
 
-  setStatus(status, true, t("walletAnchoring"));
+  setStatus(status, true, () => t("walletAnchoring"));
   const { body: anchored } = await api("/api/session/wallet-anchor", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ requestId: consent.requestId, signedXdr: signedTx.signedTxXdr }),
   });
-  if (!anchored.ok) throw new Error(anchored.message || t("sessionFailed"));
+  if (!anchored.ok) throw anchored.message ? new Error(anchored.message) : i18nError("sessionFailed");
   return anchored;
 }
 
@@ -808,16 +800,17 @@ document.getElementById("start-btn").addEventListener("click", async () => {
   const btn = document.getElementById("start-btn");
   const status = document.getElementById("session-status");
   btn.disabled = true;
-  setStatus(status, true, t("issuing"));
-  const cancelHint = warnIfSlow((hint) => {
-    setStatus(status, true, t("issuing") + hint);
+  setStatus(status, true, () => t("issuing"));
+  const cancelHint = warnIfSlow(() => {
+    setStatus(status, true, () => t("issuing") + t("coldStartHint"));
   }, 20000);
   try {
     const { body } = await api("/api/session/start", { method: "POST" });
     cancelHint();
     if (!body.ok) {
       var detail = body.details && body.details.cause;
-      throw new Error((body.message ?? t("sessionFailed")) + (detail ? " — " + detail : ""));
+      var suffix = detail ? ": " + detail : "";
+      throw body.message ? new Error(body.message + suffix) : i18nError("sessionFailed", suffix);
     }
     const final = body.pending === "wallet-consent" ? await runWalletMandateFlow(body, status) : body;
     lastSession = final;
@@ -827,7 +820,7 @@ document.getElementById("start-btn").addEventListener("click", async () => {
     document.getElementById("vault-btn").disabled = false;
   } catch (error) {
     cancelHint();
-    setStatus(status, false, error.message);
+    setStatus(status, false, errorText(error));
   } finally {
     btn.disabled = false;
   }
@@ -856,7 +849,7 @@ function renderBuySteps(body) {
   }
   const status = document.getElementById("buy-status");
   if (body.ok) {
-    setStatus(status, true, t("paymentExecuted"));
+    setStatus(status, true, () => t("paymentExecuted"));
   } else {
     setStatus(status, false, body.code + ": " + body.message);
   }
@@ -869,7 +862,7 @@ async function runBuy(buttonId, payer) {
   const instruction = document.getElementById("instruction").value;
   btn.disabled = true;
   stepsEl.innerHTML = "";
-  setStatus(status, true, t("buying"));
+  setStatus(status, true, () => t("buying"));
   try {
     const { body } = await api("/api/session/buy", {
       method: "POST",
@@ -899,7 +892,7 @@ function renderVault(body) {
   setStatus(
     chainEl,
     body.chain.ok,
-    body.chain.ok ? t("chainOk", { n: body.records.length }) : t("chainBroken", { n: body.chain.brokenAtSeq }),
+    () => (body.chain.ok ? t("chainOk", { n: body.records.length }) : t("chainBroken", { n: body.chain.brokenAtSeq })),
   );
   for (const id of body.identity ?? []) {
     const li = document.createElement("li");
@@ -912,8 +905,8 @@ function renderVault(body) {
   for (const r of body.records) {
     const li = document.createElement("li");
     const label = r.kind === "granted" ? t("kindGranted") : r.kind === "refused" ? t("kindRefused") : r.kind === "anchored" ? t("kindAnchored") : r.kind;
-    let rest = r.intentId + " — " + r.detail;
-    if (r.kind === "anchored") rest += " — on-chain: " + r.onChainStatus;
+    let rest = r.intentId + " · " + r.detail;
+    if (r.kind === "anchored") rest += " · on-chain: " + r.onChainStatus;
     const b = document.createElement("b");
     b.textContent = "#" + r.seq + " " + label + ": ";
     li.append(b, document.createTextNode(rest));
@@ -923,7 +916,7 @@ function renderVault(body) {
 
 async function loadVault() {
   const chainEl = document.getElementById("vault-chain");
-  setStatus(chainEl, true, t("loading"));
+  setStatus(chainEl, true, () => t("loading"));
   try {
     const { body } = await api("/api/session/vault");
     if (!body.ok) throw new Error((body.code ?? "error") + ": " + body.message);
@@ -942,21 +935,21 @@ function renderRevokeFacts(body) {
     [t("factTx"), body.revokeTx],
     [t("factCredentialLive"), body.credentialStatus],
   ]);
-  setStatus(document.getElementById("revoke-status"), true, t("revoked"));
+  setStatus(document.getElementById("revoke-status"), true, () => t("revoked"));
 }
 
 /**
  * A wallet-anchored Mandate (T35) has no key on this server that can revoke
- * it — only the wallet, as the registered issuer, can sign the revoke
+ * it: only the wallet, as the registered issuer, can sign the revoke
  * transaction `/api/session/revoke` prepares. One more Freighter prompt,
  * then `/api/session/wallet-revoke-submit` finishes it.
  */
 async function runWalletRevokeFlow(pending, status) {
-  if (typeof freighterApi === "undefined") throw new Error(t("walletMissing"));
+  if (typeof freighterApi === "undefined") throw i18nError("walletMissing");
   const access = await freighterApi.requestAccess();
   if (access.error) throw new Error(access.error);
 
-  setStatus(status, true, t("walletSigningRevoke"));
+  setStatus(status, true, () => t("walletSigningRevoke"));
   const signedTx = await freighterApi.signTransaction(pending.xdr, {
     address: access.address,
     networkPassphrase: TESTNET_PASSPHRASE,
@@ -976,7 +969,7 @@ document.getElementById("revoke-btn").addEventListener("click", async () => {
   const btn = document.getElementById("revoke-btn");
   const status = document.getElementById("revoke-status");
   btn.disabled = true;
-  setStatus(status, true, t("revoking"));
+  setStatus(status, true, () => t("revoking"));
   try {
     const { body } = await api("/api/session/revoke", { method: "POST" });
     if (!body.ok) throw new Error((body.code ?? "error") + ": " + body.message);
@@ -984,12 +977,42 @@ document.getElementById("revoke-btn").addEventListener("click", async () => {
     lastRevoke = final;
     renderRevokeFacts(final);
   } catch (error) {
-    setStatus(status, false, error.message);
+    setStatus(status, false, errorText(error));
     btn.disabled = false;
   }
 });
 
 loadProducts();
+</script>
+
+<script>
+  /* EN/ES switch. Text lives in [data-tr] pairs; attributes that cannot hold markup carry data-*-en / data-*-es. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      var texts = document.querySelectorAll("[data-text-en]");
+      for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
+      var holders = document.querySelectorAll("[data-placeholder-en]");
+      for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
 </script>
 </body>
 </html>

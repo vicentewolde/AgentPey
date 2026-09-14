@@ -42,7 +42,8 @@ import {
   type RealOpsStore,
 } from "./accounts.js";
 import type { AgentPeyClient } from "./agentpey.js";
-import { SUPPORTED_PAIR, interpretInstruction } from "./instruction.js";
+import { bilingual, type Bilingual } from "./copy.js";
+import { INSTRUCTION_PROBLEMS, SUPPORTED_PAIR, interpretInstruction, type InstructionProblem } from "./instruction.js";
 import {
   agentsPage,
   errorPage,
@@ -138,19 +139,40 @@ async function readForm(request: IncomingMessage): Promise<URLSearchParams> {
   for await (const chunk of request) {
     size += (chunk as Buffer).length;
     // A sign-in form is a few hundred bytes. Anything larger is not a form.
-    if (size > 16_384) throw new AgentPassError("InvalidArguments", "el formulario es demasiado grande");
+    if (size > 16_384) throw new AgentPassError("InvalidArguments", "the form is too large");
     chunks.push(chunk as Buffer);
   }
   return new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
 }
 
 /** A message a person can read, from whatever went wrong talking to AgentPey. */
-function messageFor(error: unknown): string {
+function messageFor(error: unknown): Bilingual {
   if (isAgentPassError(error)) {
     const code = typeof error.details.code === "string" ? error.details.code : error.code;
-    return `AgentPey no aceptó la petición (${code}): ${error.message}`;
+    return bilingual(
+      `AgentPey did not accept the request (${code}): ${error.message}`,
+      `AgentPey no aceptó la petición (${code}): ${error.message}`,
+    );
   }
-  return "No pudimos hablar con AgentPey. Probá de nuevo en un momento.";
+  return bilingual(
+    "We could not reach AgentPey. Try again in a moment.",
+    "No pudimos hablar con AgentPey. Inténtalo de nuevo en un momento.",
+  );
+}
+
+const NOT_CONNECTED = bilingual(
+  "This instance is not connected to AgentPey yet.",
+  "Esta instancia todavía no está conectada a AgentPey.",
+);
+const NO_SUCH_AGENT = bilingual("That agent does not exist.", "Ese agente no existe.");
+const LINK_ALREADY_USED = bilingual(
+  "That link was already used. Links work only once.",
+  "Ese enlace ya se usó. Los enlaces sirven una sola vez.",
+);
+
+function problemOf(details: Readonly<Record<string, unknown>>): InstructionProblem {
+  const problem = details.problem;
+  return INSTRUCTION_PROBLEMS.find((known) => known === problem) ?? "no_product";
 }
 
 /**
@@ -204,7 +226,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       const email = emailSchema.safeParse(form.get("email"));
       const alias = aliasSchema.safeParse(form.get("alias"));
       if (!email.success || !alias.success) {
-        sendHtml(response, 400, signInPage({ error: "Revisá el correo y el alias." }));
+        sendHtml(response, 400, signInPage({ error: bilingual("Check the email and the name.", "Revisa el correo y el nombre.") }));
         return;
       }
 
@@ -231,10 +253,10 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       if (!check.ok) {
         const reason =
           check.reason === "expired"
-            ? "Ese enlace venció. Pedí uno nuevo."
+            ? bilingual("That link expired. Ask for a new one.", "Ese enlace venció. Pide uno nuevo.")
             : check.reason === "already-used"
-              ? "Ese enlace ya se usó. Los enlaces sirven una sola vez."
-              : "Ese enlace no existe.";
+              ? LINK_ALREADY_USED
+              : bilingual("That link does not exist.", "Ese enlace no existe.");
         sendHtml(response, 400, signInPage({ error: reason }));
         return;
       }
@@ -243,7 +265,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // tying it.
       const redeemed = await config.store.redeemMagicLink(tokenHash, now());
       if (!redeemed) {
-        sendHtml(response, 400, signInPage({ error: "Ese enlace ya se usó. Los enlaces sirven una sola vez." }));
+        sendHtml(response, 400, signInPage({ error: LINK_ALREADY_USED }));
         return;
       }
 
@@ -286,7 +308,17 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         validForDays: Number(form.get("validForDays") ?? Number.NaN),
       });
       if (!kind.success || !label.success || !permissions.success) {
-        sendHtml(response, 400, errorPage(400, "Revisá los límites: montos en USDC y vigencia en días."));
+        sendHtml(
+          response,
+          400,
+          errorPage(
+            400,
+            bilingual(
+              "Check the limits: amounts in USDC and validity in days.",
+              "Revisa los límites: montos en USDC y vigencia en días.",
+            ),
+          ),
+        );
         return;
       }
 
@@ -306,7 +338,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // the same posture `/v1` takes, so an id cannot be probed for existence.
       const agent = await config.store.findAgent(account.id, agentId);
       if (agent === undefined) {
-        sendHtml(response, 404, errorPage(404, "No existe ese agente."));
+        sendHtml(response, 404, errorPage(404, NO_SUCH_AGENT));
         return;
       }
       const translated = translatePermissions(agent.kind, agent.permissions, config.targets, now());
@@ -326,11 +358,11 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       const agentId = pathname.slice("/agentes/".length, -"/firmar".length);
       const agent = await config.store.findAgent(account.id, agentId);
       if (agent === undefined) {
-        sendHtml(response, 404, errorPage(404, "No existe ese agente."));
+        sendHtml(response, 404, errorPage(404, NO_SUCH_AGENT));
         return;
       }
       if (config.agentpey === undefined) {
-        sendHtml(response, 503, errorPage(503, "Esta instancia no está conectada a AgentPey todavía."));
+        sendHtml(response, 503, errorPage(503, NOT_CONNECTED));
         return;
       }
 
@@ -351,7 +383,17 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         await config.store.saveAgent({ ...agent, tenantId: tenant.id, consentSessionId: session.id });
 
         if (session.consent_url === null) {
-          sendHtml(response, 409, errorPage(409, "Esa invitación ya no está disponible. Probá de nuevo."));
+          sendHtml(
+            response,
+            409,
+            errorPage(
+              409,
+              bilingual(
+                "That invitation is no longer available. Try again.",
+                "Esa invitación ya no está disponible. Inténtalo de nuevo.",
+              ),
+            ),
+          );
           return;
         }
         redirect(response, session.consent_url);
@@ -370,7 +412,14 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       const agentId = pathname.slice("/agentes/".length, -"/volver".length);
       const agent = await config.store.findAgent(account.id, agentId);
       if (agent === undefined || agent.consentSessionId === null) {
-        sendHtml(response, 404, errorPage(404, "No hay ninguna firma pendiente para ese agente."));
+        sendHtml(
+          response,
+          404,
+          errorPage(
+            404,
+            bilingual("There is no pending signature for that agent.", "No hay ninguna firma pendiente para ese agente."),
+          ),
+        );
         return;
       }
       if (config.agentpey !== undefined) {
@@ -396,7 +445,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // same code that runs the authorisation (`@agentpey/activity`, C-81), so
       // the figure a person reads is the figure a purchase is checked against.
       let activity = null;
-      let activityError: string | undefined;
+      let activityError: Bilingual | undefined;
       if (config.agentpey !== undefined && tenantId !== null) {
         try {
           activity = await config.agentpey.readActivity(tenantId);
@@ -440,7 +489,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           pair = read.pair;
         } catch (error) {
           if (isAgentPassError(error) && error.code === "InstructionNotUnderstood") {
-            sendHtml(response, 200, notRecognisedPage(error.message, String(error.details.instruction ?? "")));
+            sendHtml(response, 200, notRecognisedPage(problemOf(error.details), String(error.details.instruction ?? "")));
             return;
           }
           throw error;
@@ -453,12 +502,18 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         sendHtml(
           response,
           409,
-          errorPage(409, "No tenés un agente con permiso firmado para eso. Configurá uno y firmalo primero."),
+          errorPage(
+            409,
+            bilingual(
+              "You do not have an agent with a signed permission for that. Set one up and sign it first.",
+              "No tienes un agente con permiso firmado para eso. Configura uno y fírmalo primero.",
+            ),
+          ),
         );
         return;
       }
       if (config.agentpey === undefined) {
-        sendHtml(response, 503, errorPage(503, "Esta instancia no está conectada a AgentPey todavía."));
+        sendHtml(response, 503, errorPage(503, NOT_CONNECTED));
         return;
       }
 
@@ -489,7 +544,10 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
             504,
             errorPage(
               504,
-              "AgentPey todavía no confirmó la compra y puede haberse completado. Revisá Mis servicios antes de volver a pedirla.",
+              bilingual(
+                "AgentPey has not confirmed the purchase yet, and it may have completed. Check My services before asking for it again.",
+                "AgentPey todavía no confirma la compra y puede haberse completado. Revisa Mis servicios antes de volver a pedirla.",
+              ),
             ),
           );
           return;
@@ -511,13 +569,22 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       return;
     }
 
-    sendHtml(response, 404, errorPage(404, "No hay nada en esa dirección."));
+    sendHtml(response, 404, errorPage(404, bilingual("There is nothing at that address.", "No hay nada en esta dirección.")));
   }
 
   return createServer((request, response) => {
     void handle(request, response).catch((error: unknown) => {
       const status = isAgentPassError(error) && error.code === "InvalidArguments" ? 400 : 500;
-      sendHtml(response, status, errorPage(status, status === 400 ? "Petición inválida." : "Algo falló de nuestro lado."));
+      sendHtml(
+        response,
+        status,
+        errorPage(
+          status,
+          status === 400
+            ? bilingual("Invalid request.", "Petición inválida.")
+            : bilingual("Something failed on our side.", "Algo falló de nuestro lado."),
+        ),
+      );
     });
   });
 }

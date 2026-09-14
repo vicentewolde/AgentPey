@@ -770,8 +770,8 @@ async function checkExplained(record: Recorder, persona: Persona | null, purchas
   if (persona === null || purchase === undefined || code === null) return;
   const page = await http("GET", `${REALOPS}/servicios`, { jar: persona.jar });
   const sentence = explainRefusal(code, purchase.reason).what;
-  const shows = pageSays(page.text, sentence) && pageSays(page.text, code);
-  record.check(checkThat("Mis servicios muestra la frase y el código", shows, `"${sentence}" + ${code}`, shows ? "se muestran" : "no aparecen"));
+  const shows = pageSays(page.text, sentence.en) && pageSays(page.text, sentence.es) && pageSays(page.text, code);
+  record.check(checkThat("Mis servicios muestra la frase y el código", shows, `"${sentence.es}" + ${code}`, shows ? "se muestran" : "no aparecen"));
 }
 
 async function wake(): Promise<void> {
@@ -853,7 +853,7 @@ async function personaB(): Promise<void> {
     record.check(
       checkThat(
         "RealOps no reconoce el producto y lo dice",
-        asked.status === 200 && pageSays(asked.text, "no reconoci ningun producto"),
+        asked.status === 200 && pageSays(asked.text, "No reconocí ningún producto"),
         "200 con el aviso",
         `${asked.status}`,
       ),

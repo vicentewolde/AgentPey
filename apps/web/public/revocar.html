@@ -1,12 +1,26 @@
 <!doctype html>
-<html lang="es">
+<html lang="en" data-title-en="AgentPey · Revoke a permission" data-title-es="AgentPey · Revocar un permiso">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AgentPey — revocar permiso</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · Revoke a permission</title>
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
 <style>
   :root {
     color-scheme: light;
@@ -27,6 +41,9 @@
 
   * { box-sizing: border-box; }
 
+  html[lang="en"] [data-tr="es"],
+  html[lang="es"] [data-tr="en"] { display: none; }
+
   body {
     margin: 0;
     background: var(--paper);
@@ -38,13 +55,35 @@
     text-rendering: optimizeLegibility;
   }
 
-  .wrap { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px 72px; }
-  .top { display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0 0; gap: 16px; }
-  .mark { color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
-  .network { color: var(--ink-3); font-size: 13px; }
+  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px 72px; }
 
+  /* ---------- top bar (shared pilot chrome) ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo { width: 24px; height: 24px; flex: none; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .apps { display: flex; align-items: center; gap: 16px; }
+  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .apps a:hover { color: var(--accent); }
+  .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
+  .gh:hover { color: var(--ink); }
+  .lang { display: flex; align-items: center; gap: 8px; }
+  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
+  .lang span { color: var(--rule); font-size: 11.5px; }
+  .lang button:hover { color: var(--ink-2); background: none; transform: none; }
+  html[lang="en"] .lang button[data-set-lang="en"],
+  html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
+  .mark:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: live-pulse 2s ease-out infinite; }
+  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+  /* ---------- page ---------- */
   .hero { padding: clamp(30px, 6vw, 54px) 0 32px; }
-  .eyebrow { margin: 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+  .kicker { margin: 22px 0 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
   h1 { margin: 12px 0 0; font-family: var(--serif); font-size: clamp(2.25rem, 7vw, 3.25rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; }
   .intro { max-width: 60ch; margin: 16px 0 0; color: var(--ink-2); }
   .session-id { margin: 16px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
@@ -53,23 +92,17 @@
   .panel:last-child { border-bottom: 1px solid var(--rule); }
   .panel-kicker { color: var(--ink-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
   h2 { margin: 6px 0 8px; font-family: var(--serif); font-size: 1.75rem; font-weight: 400; letter-spacing: -0.015em; line-height: 1.15; }
-  .lead { margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
+  .lead { max-width: 62ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
 
   .grant { margin: 0; }
-  .grant-row { display: grid; grid-template-columns: minmax(130px, 0.42fr) minmax(0, 1fr); gap: 16px; padding: 15px 0; border-top: 1px dashed var(--rule); }
+  .grant-row { display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 1fr); gap: 16px; padding: 15px 0; border-top: 1px dashed var(--rule); }
   .grant-row:first-child { border-top: 0; }
   .grant dt { color: var(--ink-3); font-size: 14px; }
-  .grant dd { margin: 0; min-width: 0; }
-  .values { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
-  .values li { border: 1px solid var(--rule); border-radius: 5px; background: var(--paper); color: var(--ink-2); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; padding: 4px 7px; }
-  .limits { display: grid; gap: 7px; }
-  .limit { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-bottom: 1px dashed var(--rule); padding-bottom: 7px; color: var(--ink-2); font-size: 14px; }
-  .limit:last-child { border-bottom: 0; padding-bottom: 0; }
-  .limit b { color: var(--ink); font-family: var(--mono); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; text-align: right; }
+  .grant dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
   .time-note { margin: 18px 0 0; color: var(--ink-3); font-size: 13px; }
   .time-note strong { color: var(--ink-2); font-weight: 500; }
 
-  .btn { appearance: none; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: var(--paper); cursor: pointer; font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 11px 18px; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
+  .btn { appearance: none; display: inline-block; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: var(--paper); cursor: pointer; font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 11px 18px; text-decoration: none; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
   .btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
   .btn:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-3); cursor: not-allowed; }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -82,15 +115,14 @@
   .notice { border-left: 3px solid var(--accent); background: var(--accent-wash); color: var(--ink-2); margin: 0; padding: 13px 15px; font-size: 14px; }
   .notice.err { border-color: var(--danger); background: var(--danger-wash); color: var(--danger); }
   .wallet-address { margin: 14px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
-  .result { margin: 0; }
-  .result-row { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
+  .result { margin: 14px 0 0; }
+  .result-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
   .result-row:first-child { border-top: 0; }
   .result dt { color: var(--ink-3); }
   .result dd { margin: 0; color: var(--ink); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 
   @media (max-width: 520px) {
     .wrap { padding: 0 20px 56px; }
-    .top { align-items: flex-start; flex-direction: column; gap: 3px; }
     .grant-row, .result-row { grid-template-columns: 1fr; gap: 5px; }
   }
 </style>
@@ -100,58 +132,83 @@
 
 <main class="wrap">
   <div class="top">
-    <a class="mark" href="/">AgentPey</a>
-    <span class="network">Stellar Testnet</span>
+    <a class="mark" href="/">
+      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
+      <span>AgentPey</span>
+      <span class="tagline"><span data-tr="en">· payment infrastructure for agents</span><span data-tr="es">· infraestructura de pagos para agentes</span></span>
+    </a>
+    <div class="utils">
+      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
+      <div class="lang">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+      </div>
+      <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
   </div>
 
   <header class="hero">
-    <p class="eyebrow">Revocación</p>
-    <h1>Revocar un permiso</h1>
-    <p class="intro">Revocar corta la autorizaci&oacute;n desde afuera del agente: no importa qu&eacute; le digan
-    al agente despu&eacute;s, sin Mandato v&aacute;lido no puede pagar nada.</p>
-    <p class="session-id">Mandato <span id="session-id"></span></p>
+    <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <p class="kicker"><span data-tr="en">Revocation</span><span data-tr="es">Revocación</span></p>
+    <h1><span data-tr="en">Revoke a permission</span><span data-tr="es">Revocar un permiso</span></h1>
+    <p class="intro">
+      <span data-tr="en">Revoking cuts the authorization from outside the agent: whatever the agent is told afterwards, without a valid Mandate it cannot pay for anything.</span>
+      <span data-tr="es">Revocar corta la autorización desde fuera del agente: no importa qué le digan al agente después, sin un Mandato válido no puede pagar nada.</span>
+    </p>
+    <p class="session-id"><span data-tr="en">Mandate</span><span data-tr="es">Mandato</span> <span id="session-id"></span></p>
   </header>
 
   <p id="page-notice" class="notice" hidden></p>
 
   <section id="state-panel" class="panel" hidden>
-    <p class="panel-kicker">01 &mdash; Qu&eacute; vas a revocar</p>
-    <h2 id="state-title">Permiso</h2>
+    <p class="panel-kicker"><span data-tr="en">01 · What you are about to revoke</span><span data-tr="es">01 · Qué vas a revocar</span></p>
+    <h2 id="state-title"><span data-tr="en">Permission</span><span data-tr="es">Permiso</span></h2>
     <p class="lead" id="state-lead"></p>
-    <p class="time-note"><strong>Vence:</strong> <span id="valid-until"></span></p>
+    <p class="time-note"><strong><span data-tr="en">Expires:</span><span data-tr="es">Vence:</span></strong> <span id="valid-until"></span></p>
   </section>
 
   <section id="wallet-panel" class="panel" hidden>
-    <p class="panel-kicker">02 &mdash; Verific&aacute; tu wallet</p>
-    <h2>Conect&aacute; la wallet que firm&oacute; este permiso</h2>
-    <p class="lead">Solo esa wallet puede revocarlo. No es una regla de esta p&aacute;gina: el contrato en
-    Stellar rechaza una revocaci&oacute;n que no venga firmada por ella.</p>
-    <div class="actions"><button id="wallet-btn" class="btn secondary" type="button">Conectar wallet</button></div>
+    <p class="panel-kicker"><span data-tr="en">02 · Verify your wallet</span><span data-tr="es">02 · Verifica tu wallet</span></p>
+    <h2><span data-tr="en">Connect the wallet that signed this permission</span><span data-tr="es">Conecta la wallet que firmó este permiso</span></h2>
+    <p class="lead">
+      <span data-tr="en">Only that wallet can revoke it. This is not a rule of this page: the contract on Stellar rejects any revocation that wallet did not sign.</span>
+      <span data-tr="es">Solo esa wallet puede revocarlo. No es una regla de esta página: el contrato en Stellar rechaza una revocación que no venga firmada por ella.</span>
+    </p>
+    <div class="actions"><button id="wallet-btn" class="btn secondary" type="button"><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button></div>
     <p id="wallet-status" class="status" role="status"></p>
     <p id="wallet-address" class="wallet-address" hidden></p>
   </section>
 
   <section id="detail-panel" class="panel" hidden>
-    <p class="panel-kicker">03 &mdash; Lo que este permiso autoriza hoy</p>
-    <h2>Antes de cortarlo</h2>
+    <p class="panel-kicker"><span data-tr="en">03 · What this permission authorizes today</span><span data-tr="es">03 · Lo que este permiso autoriza hoy</span></p>
+    <h2><span data-tr="en">Before you cut it off</span><span data-tr="es">Antes de cortarlo</span></h2>
     <dl id="grant" class="grant"></dl>
   </section>
 
   <section id="revoke-panel" class="panel" hidden>
-    <p class="panel-kicker">04 &mdash; Firm&aacute; la revocaci&oacute;n</p>
-    <h2>Revocar</h2>
-    <p class="lead">Freighter te va a pedir una aprobaci&oacute;n para escribir la revocaci&oacute;n en Stellar
-    Testnet. Despu&eacute;s de esto, el agente deja de poder pagar.</p>
-    <div class="actions"><button id="revoke-btn" class="btn" type="button">Revocar el permiso</button></div>
+    <p class="panel-kicker"><span data-tr="en">04 · Sign the revocation</span><span data-tr="es">04 · Firma la revocación</span></p>
+    <h2><span data-tr="en">Revoke</span><span data-tr="es">Revocar</span></h2>
+    <p class="lead">
+      <span data-tr="en">Freighter will ask you to approve writing the revocation to Stellar Testnet. After that, the agent can no longer pay.</span>
+      <span data-tr="es">Freighter te pedirá una aprobación para escribir la revocación en Stellar Testnet. Después de esto, el agente deja de poder pagar.</span>
+    </p>
+    <div class="actions"><button id="revoke-btn" class="btn" type="button"><span data-tr="en">Revoke the permission</span><span data-tr="es">Revocar el permiso</span></button></div>
     <p id="revoke-status" class="status" role="status"></p>
   </section>
 
   <section id="done-panel" class="panel" hidden>
-    <p class="panel-kicker">Completado</p>
-    <h2>Permiso revocado</h2>
-    <p class="notice">El Mandato qued&oacute; revocado en Stellar Testnet. El agente ya no puede pagar con &eacute;l.</p>
+    <p class="panel-kicker"><span data-tr="en">Done</span><span data-tr="es">Completado</span></p>
+    <h2><span data-tr="en">Permission revoked</span><span data-tr="es">Permiso revocado</span></h2>
+    <p class="notice">
+      <span data-tr="en">The Mandate is now revoked on Stellar Testnet. The agent can no longer pay with it.</span>
+      <span data-tr="es">El Mandato quedó revocado en Stellar Testnet. El agente ya no puede pagar con él.</span>
+    </p>
     <dl id="done-facts" class="result"></dl>
-    <p id="return-row" hidden><a id="return-link" class="btn secondary">Volver</a></p>
+    <p id="return-row" hidden><a id="return-link" class="btn secondary"><span data-tr="en">Back</span><span data-tr="es">Volver</span></a></p>
   </section>
 </main>
 
@@ -160,6 +217,58 @@ var mandateId = "";
 var apiPath = "";
 var walletAddress = "";
 var prepared = null;
+
+/* ---------- language ---------- */
+var T = {
+  walletMissing: { en: "Freighter was not found. Install it and reload the page.", es: "No encontramos Freighter. Instálalo y vuelve a cargar la página." },
+  walletWaiting: { en: "Waiting for Freighter…", es: "Esperando a Freighter…" },
+  walletVerified: { en: "Wallet verified.", es: "Wallet verificada." },
+  walletFailed: { en: "Could not verify the wallet.", es: "No se pudo verificar la wallet." },
+  waitingSignature: { en: "Waiting for your signature in Freighter…", es: "Esperando la firma en Freighter…" },
+  submitting: { en: "Sending the revocation to the network…", es: "Enviando la revocación a la red…" },
+  revokeFailed: { en: "Could not revoke.", es: "No se pudo revocar." },
+  missingId: { en: "The permission id is missing.", es: "Falta el identificador del permiso." },
+  loadFailed: { en: "Could not load the permission.", es: "No se pudo cargar el permiso." },
+  leadRevoked: { en: "This permission was already revoked. There is nothing to do.", es: "Este permiso ya estaba revocado. No hay nada que hacer." },
+  noticeRevoked: { en: "Already revoked.", es: "Ya estaba revocado." },
+  leadExpired: {
+    en: "This permission has already expired, so it authorizes nothing. Revoking it would change nothing.",
+    es: "Este permiso ya venció, así que no autoriza nada. Revocarlo no cambiaría nada.",
+  },
+  noticeExpired: { en: "Expired.", es: "Vencido." },
+  leadActive: {
+    en: "This permission is active. To see what it authorizes and revoke it, connect the wallet that signed it.",
+    es: "Este permiso está activo. Para ver qué autoriza y poder revocarlo, conecta la wallet que lo firmó.",
+  },
+  merchants: { en: "Merchants", es: "Comercios" },
+  products: { en: "Products", es: "Productos" },
+  assets: { en: "Assets", es: "Activos" },
+  perPurchase: { en: "Per purchase", es: "Por compra" },
+  perDay: { en: "Per day", es: "Por día" },
+  mandateHash: { en: "Mandate hash", es: "Hash del Mandato" },
+  transaction: { en: "Transaction", es: "Transacción" },
+};
+
+function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
+
+function t(key) {
+  var entry = T[key];
+  return entry ? entry[lang()] : key;
+}
+
+/* What the page already has, kept so a language switch re-renders it
+   instead of calling an endpoint again. Messages are stored as { key } from
+   the dictionary or { text } verbatim from the server, never rendered. */
+var lastState = null;
+var stateLeadKey = "";
+var lastMandate = null;
+var lastDone = null;
+var pageNotice = null;
+var statuses = {};
+
+function resolveMessage(message) {
+  return message.key ? t(message.key) : message.text;
+}
 
 async function api(path, options) {
   const res = await fetch(path, Object.assign({ headers: { "content-type": "application/json" } }, options || {}));
@@ -175,26 +284,40 @@ function toBase64Signature(signedMessage) {
   return btoa(binary);
 }
 
-function errorMessage(error, fallback) {
-  return error && error.body && error.body.message ? error.body.message : error && error.message ? error.message : fallback;
+function errorMessage(error, fallbackKey) {
+  if (error && error.body && error.body.message) return { text: error.body.message };
+  if (error && error.key) return { key: error.key };
+  if (error && error.message) return { text: error.message };
+  return { key: fallbackKey };
 }
 
-function setPageNotice(kind, text) {
+function paintPageNotice() {
   var el = document.getElementById("page-notice");
-  el.className = "notice " + (kind === "error" ? "err" : kind === "ok" ? "ok" : "");
-  el.textContent = text;
+  el.className = "notice " + (pageNotice.kind === "error" ? "err" : pageNotice.kind === "ok" ? "ok" : "");
+  el.textContent = resolveMessage(pageNotice.message);
   el.hidden = false;
 }
 
-function setStatus(id, kind, text) {
+function setPageNotice(kind, message) {
+  pageNotice = { kind: kind, message: message };
+  paintPageNotice();
+}
+
+function paintStatus(id) {
+  var state = statuses[id];
   var el = document.getElementById(id);
-  el.className = "status " + (kind === "error" ? "err" : kind === "ok" ? "ok" : "");
-  el.textContent = text;
+  el.className = "status " + (state.kind === "error" ? "err" : state.kind === "ok" ? "ok" : "");
+  el.textContent = resolveMessage(state.message);
+}
+
+function setStatus(id, kind, message) {
+  statuses[id] = { kind: kind, message: message };
+  paintStatus(id);
 }
 
 function formatDate(value) {
   var date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" });
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(lang() === "es" ? "es" : "en-US", { dateStyle: "long", timeStyle: "short" });
 }
 
 function row(label, value) {
@@ -213,28 +336,42 @@ function row(label, value) {
  * Before that the page knows nothing but whether it is live.
  */
 function renderGrant(mandate) {
+  lastMandate = mandate;
   var grant = mandate.grant || {};
   var el = document.getElementById("grant");
   el.innerHTML = "";
-  if (Array.isArray(grant.venues)) el.append(row("Comercios", grant.venues.join(", ")));
-  if (Array.isArray(grant.products)) el.append(row("Productos", grant.products.join(", ")));
-  if (Array.isArray(grant.assets)) el.append(row("Activos", grant.assets.join(", ")));
+  if (Array.isArray(grant.venues)) el.append(row(t("merchants"), grant.venues.join(", ")));
+  if (Array.isArray(grant.products)) el.append(row(t("products"), grant.products.join(", ")));
+  if (Array.isArray(grant.assets)) el.append(row(t("assets"), grant.assets.join(", ")));
   if (grant.limits) {
-    el.append(row("Por compra", grant.limits.perTx + " " + (grant.limits.currency || "")));
-    el.append(row("Por dia", grant.limits.perDay + " " + (grant.limits.currency || "")));
+    el.append(row(t("perPurchase"), grant.limits.perTx + " " + (grant.limits.currency || "")));
+    el.append(row(t("perDay"), grant.limits.perDay + " " + (grant.limits.currency || "")));
   }
-  el.append(row("Hash del Mandato", mandate.mandateHash));
+  el.append(row(t("mandateHash"), mandate.mandateHash));
   document.getElementById("detail-panel").hidden = false;
+}
+
+function renderDoneFacts(body) {
+  lastDone = body;
+  var facts = document.getElementById("done-facts");
+  facts.innerHTML = "";
+  facts.append(row(t("mandateHash"), body.mandateHash));
+  facts.append(row(t("transaction"), body.revokeTx));
+}
+
+function renderState() {
+  document.getElementById("valid-until").textContent = formatDate(lastState.validUntil);
+  document.getElementById("state-lead").textContent = stateLeadKey ? t(stateLeadKey) : "";
 }
 
 async function connectWallet() {
   var button = document.getElementById("wallet-btn");
   if (typeof freighterApi === "undefined") {
-    setStatus("wallet-status", "error", "No encontramos Freighter. Instalalo y volve a cargar la pagina.");
+    setStatus("wallet-status", "error", { key: "walletMissing" });
     return;
   }
   button.disabled = true;
-  setStatus("wallet-status", "", "Esperando a Freighter...");
+  setStatus("wallet-status", "", { key: "walletWaiting" });
 
   try {
     var presence = await freighterApi.isConnected();
@@ -268,11 +405,11 @@ async function connectWallet() {
     var addressEl = document.getElementById("wallet-address");
     addressEl.textContent = address;
     addressEl.hidden = false;
-    setStatus("wallet-status", "ok", "Wallet verificada.");
+    setStatus("wallet-status", "ok", { key: "walletVerified" });
     renderGrant(result.body.mandate);
     document.getElementById("revoke-panel").hidden = false;
   } catch (error) {
-    setStatus("wallet-status", "error", errorMessage(error, "No se pudo verificar la wallet."));
+    setStatus("wallet-status", "error", errorMessage(error, "walletFailed"));
     button.disabled = false;
   }
 }
@@ -280,7 +417,7 @@ async function connectWallet() {
 async function revoke() {
   var button = document.getElementById("revoke-btn");
   button.disabled = true;
-  setStatus("revoke-status", "", "Esperando la firma en Freighter...");
+  setStatus("revoke-status", "", { key: "waitingSignature" });
 
   try {
     var signed = await freighterApi.signTransaction(prepared.xdr, {
@@ -289,17 +426,14 @@ async function revoke() {
     });
     if (signed && signed.error) throw new Error(signed.error);
 
-    setStatus("revoke-status", "", "Enviando la revocacion a la red...");
+    setStatus("revoke-status", "", { key: "submitting" });
     var result = await api(apiPath + "/submit", {
       method: "POST",
       body: JSON.stringify({ requestId: prepared.requestId, signedXdr: signed.signedTxXdr || signed }),
     });
     if (!result.body.ok) throw { body: result.body };
 
-    var facts = document.getElementById("done-facts");
-    facts.innerHTML = "";
-    facts.append(row("Mandate hash", result.body.mandateHash));
-    facts.append(row("Transaccion", result.body.revokeTx));
+    renderDoneFacts(result.body);
 
     document.getElementById("wallet-panel").hidden = true;
     document.getElementById("detail-panel").hidden = true;
@@ -317,7 +451,7 @@ async function revoke() {
       document.getElementById("return-row").hidden = false;
     }
   } catch (error) {
-    setStatus("revoke-status", "error", errorMessage(error, "No se pudo revocar."));
+    setStatus("revoke-status", "error", errorMessage(error, "revokeFailed"));
     button.disabled = false;
   }
 }
@@ -325,7 +459,7 @@ async function revoke() {
 (async function start() {
   try {
     var part = location.pathname.split("/").filter(Boolean).pop();
-    if (!part) throw new Error("Falta el identificador del permiso.");
+    if (!part) throw { key: "missingId" };
     mandateId = decodeURIComponent(part);
     apiPath = "/api/revoke/" + encodeURIComponent(mandateId);
     document.getElementById("session-id").textContent = mandateId;
@@ -333,31 +467,71 @@ async function revoke() {
     var state = await api(apiPath);
     if (!state.body.ok) throw { body: state.body };
 
-    document.getElementById("valid-until").textContent = formatDate(state.body.validUntil);
+    lastState = state.body;
+    renderState();
     document.getElementById("state-panel").hidden = false;
 
     if (state.body.status === "revoked") {
-      document.getElementById("state-lead").textContent = "Este permiso ya estaba revocado. No hay nada que hacer.";
-      setPageNotice("ok", "Ya estaba revocado.");
+      stateLeadKey = "leadRevoked";
+      renderState();
+      setPageNotice("ok", { key: "noticeRevoked" });
       return;
     }
     if (state.body.status === "expired") {
-      document.getElementById("state-lead").textContent =
-        "Este permiso ya vencio, asi que no autoriza nada. Revocarlo no cambiaria nada.";
-      setPageNotice("", "Vencido.");
+      stateLeadKey = "leadExpired";
+      renderState();
+      setPageNotice("", { key: "noticeExpired" });
       return;
     }
 
-    document.getElementById("state-lead").textContent =
-      "Este permiso esta activo. Para ver que autoriza y poder revocarlo, conecta la wallet que lo firmo.";
+    stateLeadKey = "leadActive";
+    renderState();
     document.getElementById("wallet-panel").hidden = false;
   } catch (error) {
-    setPageNotice("error", errorMessage(error, "No se pudo cargar el permiso."));
+    setPageNotice("error", errorMessage(error, "loadFailed"));
   }
 })();
 
+document.addEventListener("agentpey:lang", function () {
+  if (lastState) renderState();
+  if (pageNotice) paintPageNotice();
+  for (var id in statuses) paintStatus(id);
+  if (lastMandate) renderGrant(lastMandate);
+  if (lastDone) renderDoneFacts(lastDone);
+});
+
 document.getElementById("wallet-btn").addEventListener("click", connectWallet);
 document.getElementById("revoke-btn").addEventListener("click", revoke);
+</script>
+
+<script>
+  /* EN/ES switch. Text lives in [data-tr] pairs; attributes that cannot hold markup carry data-*-en / data-*-es. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      var texts = document.querySelectorAll("[data-text-en]");
+      for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
+      var holders = document.querySelectorAll("[data-placeholder-en]");
+      for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
 </script>
 </body>
 </html>

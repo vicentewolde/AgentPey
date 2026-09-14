@@ -5104,3 +5104,44 @@ Pendiente:
 - Sin decidir: si desconectar el Blueprint `AgentPey`. Hoy está conectado, sin
   Auto Sync y sin servicios propios.
 - Los números de la landing ("678 tests", etc.) están viejos.
+
+## 2026-09-14 (25) — cc/pilot-bilingual-chrome (sin mergear)
+
+Agente: Claude Code (más un subagente de Claude Code para las cuatro páginas de
+`apps/web/public`, con especificación escrita y revisado). Nada delegado a Codex.
+
+Qué: **T87**, a pedido del usuario para la reunión con Stellar (`C-118`).
+- Las tres apps en inglés y español, inglés por defecto. La elección se guarda en
+  una cookie `agentpey_lang` compartida por `*.agentpey.com`. El servidor no elige
+  idioma: cada página trae los dos.
+- Logo de AgentPey junto al nombre y favicon en las tres apps; misma barra
+  superior (logo, las otras dos apps, EN/ES, GitHub), ancho de 1040 px e insignia
+  "Stellar Testnet · live".
+- `/consent` es la demo con wallet (antes `/sign`, que ahora da `404`);
+  `/consent/{id}` sin cambios. "Watch it pay, live" apunta a `/consent`.
+- Español neutro (tú), tildes corregidos y ningún "—" en texto visible.
+- RealOps: textos en `{ en, es }` (`copy.ts`), instrucciones en inglés,
+  motivo de "no entendí" como clave.
+- La suite lee `data-magic-link` y `data-mandate-id` en vez de frases.
+
+Por qué: el usuario muestra el piloto mañana y lo quiere legible para Stellar,
+con marca propia y sin rastros de texto regional o generado.
+
+Documentación tocada: `DECISIONES.md` (`C-118`, enmienda de `C-117`,
+actualización de `C-116` por el Blueprint desconectado), `BITACORA.md` (estado,
+fila y bloque de T87, agregado a T86), `evidencia/T86.md` § 10,
+`evidencia/T87.md` (nuevo), `README.md`. **`AGENTS.md` no necesita cambios.**
+**1298 tests**, `typecheck` y `build` limpios.
+
+Pendiente:
+- **Revisión y merge con confirmación del usuario.** Cada push a `main`
+  redespliega; conviene hacerlo esta noche y volver a mirar los cinco dominios.
+- **Día 2 de T85 con código y despliegue alineados:** desde `main` antes de
+  mergear esto, o después de que esto esté desplegado. Nunca en medio.
+- Probar en producción, con Freighter, `/consent`, `/consent/{id}` y
+  `/revocar/{id}` en los dos idiomas: las páginas de `apps/web` no tienen tests.
+- Sin decidir por el usuario: conservar en el pie de RealOps la frase "datos de
+  prueba, el proyecto puede borrarlos" (`PILOTO-F9.md` § 1.3).
+- La carpeta `logo agentpey/` quedó sin versionar en la raíz, tal como la dejó
+  el usuario.
+- Sigue igual: `C-113`, rotar los dos secretos y lo anotado sin construir en T86.

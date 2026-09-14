@@ -1077,17 +1077,17 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
 };
 
 async function serveStatic(pathname: string, res: ServerResponse): Promise<void> {
-  // `/consent/{id}` (T51's consent_url) has no file of its own — the id is
-  // read client-side from the URL path, same as any single-page route.
-  // `consent.html` itself is T52, not this hito: until it exists, visiting
-  // a real consent_url 404s here exactly like any other missing file — the
-  // backend behind it is already complete and verified without a browser.
-  // `/` is the landing page, and the live wallet demo moved to `/sign`.
-  // `/landing` stays as an alias, so links shared before the swap keep working.
+  // `/` is the landing page; `/landing` stays as an alias, so links shared
+  // before the swap keep working.
+  // `/consent` (exactly) is the live wallet demo, and `/consent/{id}` (T51's
+  // consent_url) is the hosted Mandate signing page, whose id is read
+  // client-side from the URL path. Decided by the user: the landing explains
+  // the product and `/consent` is where Mandates get signed, so the demo's old
+  // `/sign` route was removed and now 404s like any unknown path.
   const relative =
     pathname === "/" || pathname === "/landing"
       ? "/landing.html"
-      : pathname === "/sign"
+      : pathname === "/consent"
         ? "/index.html"
         : pathname.startsWith("/consent/")
           ? "/consent.html"

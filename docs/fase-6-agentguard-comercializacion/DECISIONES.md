@@ -4436,6 +4436,10 @@ Lo que se hizo el mismo día, con autorización del usuario para cada paso:
 
 Queda como estaba: el Blueprint sigue conectado, sin sincronizar.
 
+**Actualización, 2026-09-14, por el usuario:** el Blueprint `AgentPey` quedó
+desconectado. Ningún servicio se borró por eso; `AgentPey` sigue desplegando
+desde `main`.
+
 ---
 
 ### C-117 · T86: una sola identidad visual para las tres apps, la landing en `agentpey.com` y la demo en `/sign` · `Vigente`
@@ -4478,3 +4482,85 @@ que son tres empresas.
 **Alternativa descartada en la implementación:** un paquete común de estilos.
 Agregaba una dependencia de build a dos apps que hoy no comparten nada, para
 evitar duplicar unas cien líneas de CSS.
+
+**Enmienda, 2026-09-14, decidida por el usuario:** `/sign` deja de existir y la
+demo con wallet pasa a `/consent`. Ver `C-118`.
+
+---
+
+### C-118 · T87: el piloto en inglés y español, con el logo de AgentPey, y la demo en `/consent` · `Vigente`
+**Fecha:** 2026-09-14 · **Decidido por el usuario** (todo el pedido, antes de la reunión con Stellar) · la forma del cambio de idioma, de Claude Code
+
+**El pedido.** Para la reunión con Stellar, el usuario pidió:
+
+- el logo de AgentPey junto al nombre en todas las páginas, y el ícono en la
+  pestaña del navegador;
+- que `/sign` no exista, que `agentpey.com` sea la landing y que `/consent` sea
+  donde se firman los Mandatos, con "Watch it pay, live" llevando a `/consent`;
+- todas las páginas en inglés y español, inglés por defecto;
+- en la landing, enlaces a RealOps y SignalDesk;
+- el aviso "Piloto sobre Stellar testnet. No hay dinero real en juego…" de
+  RealOps reemplazado por la insignia de la landing, con el punto verde;
+- RealOps y SignalDesk con el mismo ancho que `agentpey.com`;
+- el español neutro latinoamericano, no rioplatense, y ningún "—" en los textos.
+
+**Lo que se le preguntó antes de construir:**
+
+1. **Qué muestra `/consent` sin id.** `/consent/{id}` ya era la página de firma a
+   la que manda RealOps. El usuario eligió que `/consent` exacto sea la demo con
+   wallet que estaba en `/sign`, y que `/consent/{id}` quede igual.
+2. **La insignia tenía un "—"** ("Stellar Testnet — live"). El usuario eligió
+   "Stellar Testnet · live" / "Stellar Testnet · en vivo".
+
+**La decisión:**
+
+- **Rutas de `apps/web`:** `/` y `/landing` → landing; `/consent` → demo;
+  `/consent/{id}` → firma hospedada; `/revocar/{id}` → revocación. `/sign`
+  responde `404`, como cualquier ruta desconocida.
+- **Una barra superior copiada en las tres apps:** ícono de AgentPey + nombre,
+  enlaces a las otras dos apps, EN/ES y GitHub. La landing no lleva el lema junto
+  al nombre porque, con sus cinco anclas, la barra no entraba en una fila.
+- **El favicon va dentro de cada página** (SVG y PNG de 32 px como `data:`). Así
+  no hace falta una ruta de archivos nueva en ninguna de las tres apps, y
+  RealOps y SignalDesk no dependen del dominio de AgentPey para su ícono.
+- **Las dos lenguas viajan en cada página** (`<span data-tr="en|es">`) y un
+  script previo al pintado muestra la elegida. La elección es una cookie
+  `agentpey_lang` con `domain=agentpey.com`, así que se recuerda entre los tres
+  subdominios. **El servidor nunca elige idioma:** la misma URL devuelve los
+  mismos bytes para todos, y RealOps no gana estado nuevo.
+- **RealOps:** los textos que cruzan módulos pasan a ser `{ en, es }`
+  (`copy.ts`): las frases de rechazo (`refusals.ts`), las etiquetas de permisos
+  (`permissions.ts`) y los errores de `app.ts`. `interpretInstruction` devuelve
+  el motivo como clave (`details.problem`) y la página lo pone en palabras.
+  **Entiende también instrucciones en inglés** ("buy the XLM/USDC market
+  report"), porque la página por defecto está en inglés. Es la capa que puede
+  equivocarse (`PILOTO-F9.md` § 4.1): ampliar su vocabulario no toca ninguna
+  autorización.
+- **SignalDesk:** el catálogo tiene textos propios en los dos idiomas. `PRODUCTS`
+  no cambia, porque su nombre y descripción son los del `ServiceCard` y el `402`.
+  Las entregas siguen sin tocarse (`C-117`).
+- **La suite de aceptación lee marcas estables, no frases:** `data-magic-link`
+  para el enlace de entrada y `data-mandate-id` para el Mandato guardado. La
+  frase de un rechazo se busca en los dos idiomas.
+
+**Una tensión, dicha al usuario y sin resolver:** `PILOTO-F9.md` § 1.3 (decisión
+del usuario, § 12) pedía en toda página de RealOps un aviso de piloto: testnet,
+sin dinero real, datos de prueba, y el proyecto puede borrarlos. La insignia dice
+lo primero y no lo demás. Se propuso conservar esa frase en el pie. Hasta que el
+usuario lo decida, queda solo la insignia, como pidió.
+
+**Orden obligatorio para el día 2 de T85.** Las marcas nuevas cambian lo que la
+suite lee de RealOps. El día 2 tiene que correr con el código y el despliegue
+alineados: o desde `main` antes de mergear esta rama, o después de que el
+despliegue de esta rama esté en producción. Nunca en medio.
+
+**Alternativas descartadas:**
+- **Elegir el idioma en el servidor** (cookie o `Accept-Language`). RealOps
+  tendría que leer la cookie en cada página, y una página cacheada podría volver
+  en el idioma de otra persona.
+- **Traducir con un diccionario en JavaScript en todas las páginas.** Una página
+  de RealOps sin JavaScript quedaría sin texto. Con los dos idiomas en el HTML,
+  sin JavaScript se lee en inglés.
+- **Servir el logo como archivo** (`/brand/…`). Habría que agregar tipos MIME y
+  una ruta en `apps/web`, y RealOps y SignalDesk dependerían de otro dominio para
+  su ícono.

@@ -19,6 +19,7 @@
 import { z } from "zod";
 
 import type { AgentKind, AgentPermissions } from "./accounts.js";
+import { bilingual, type Bilingual } from "./copy.js";
 
 /** Where the venue and asset come from. Not chosen in the UI: the pilot has one merchant. */
 export interface PilotTargets {
@@ -60,13 +61,13 @@ export type Enforcer = "signed" | "onchain" | "realops";
 
 export interface ExplainedControl {
   /** What the person set, in their words. */
-  readonly label: string;
+  readonly label: Bilingual;
   /** What it became in the grant. */
   readonly field: string;
   readonly value: string;
   readonly enforcedBy: Enforcer;
   /** One sentence a non-technical person can read. */
-  readonly explanation: string;
+  readonly explanation: Bilingual;
 }
 
 export interface TranslatedPermissions {
@@ -126,66 +127,84 @@ export function translatePermissions(
 
   const controls: ExplainedControl[] = [
     {
-      label: "Dónde puede comprar",
+      label: bilingual("Where it can buy", "Dónde puede comprar"),
       field: "venues",
       value: targets.venueId,
       enforcedBy: "signed",
-      explanation:
+      explanation: bilingual(
+        "AgentPey resolves the merchant against its own registry and refuses any other before making a single call to it.",
         "AgentPey resuelve el comercio contra su propio registro y rechaza cualquier otro antes de hacerle una sola llamada.",
+      ),
     },
     {
-      label: "Qué puede comprar",
+      label: bilingual("What it can buy", "Qué puede comprar"),
       field: "products",
       value: products.join(", "),
       enforcedBy: "signed",
-      explanation:
+      explanation: bilingual(
+        "The per-product permission is inside the Mandate you are about to sign: a different product is refused even from the same merchant.",
         "El permiso por producto va dentro del Mandato que vas a firmar: un producto distinto se rechaza aunque sea del mismo comercio.",
+      ),
     },
     {
-      label: "Con qué activo",
+      label: bilingual("Which asset", "Con qué activo"),
       field: "assets",
       value: targets.assetId,
       enforcedBy: "signed",
-      explanation: "Un pago en cualquier otro activo se rechaza, aunque el comercio lo ofrezca.",
+      explanation: bilingual(
+        "A payment in any other asset is refused, even if the merchant offers it.",
+        "Un pago en cualquier otro activo se rechaza, aunque el comercio lo ofrezca.",
+      ),
     },
     {
-      label: "A qué cuenta puede pagar",
+      label: bilingual("Which account it can pay", "A qué cuenta puede pagar"),
       field: "payTo",
       value: targets.payTo,
       enforcedBy: "signed",
-      explanation:
-        "AgentPey pide él mismo la factura al comercio y compara la cuenta cobradora contra esta antes de pagar.",
+      explanation: bilingual(
+        "AgentPey requests the invoice from the merchant itself and checks the receiving account against this one before paying.",
+        "AgentPey pide él mismo la factura al comercio y compara la cuenta que cobra con esta antes de pagar.",
+      ),
     },
     {
-      label: "Máximo por compra",
+      label: bilingual("Max per purchase", "Máximo por compra"),
       field: "limits.perTx",
       value: `${permissions.perTx} ${CURRENCY}`,
       enforcedBy: "onchain",
-      explanation:
+      explanation: bilingual(
+        "Signed, and revalidated by the contract on Stellar: even if everything else failed, the network would not let a larger amount through.",
         "Firmado y además revalidado por el contrato en Stellar: aunque todo lo demás fallara, la red no deja pasar un monto mayor.",
+      ),
     },
     {
-      label: "Máximo por día",
+      label: bilingual("Max per day", "Máximo por día"),
       field: "limits.perDay",
       value: `${permissions.perDay} ${CURRENCY}`,
       enforcedBy: "onchain",
-      explanation:
+      explanation: bilingual(
+        "Signed and revalidated by the contract. The day's spending is kept in the durable ledger, not in memory.",
         "Firmado y revalidado por el contrato. El gasto del día se lleva en el registro durable, no en memoria.",
+      ),
     },
     {
-      label: "Hasta cuándo vale",
+      label: bilingual("Valid until", "Hasta cuándo vale"),
       field: "validUntil",
       value: validUntil.toISOString(),
       enforcedBy: "signed",
-      explanation: "Pasada esa fecha el Mandato deja de autorizar, sin que nadie tenga que hacer nada.",
+      explanation: bilingual(
+        "After that date the Mandate stops authorizing, without anyone having to do anything.",
+        "Pasada esa fecha el Mandato deja de autorizar, sin que nadie tenga que hacer nada.",
+      ),
     },
     {
-      label: "Nombre del agente",
-      field: "—",
-      value: "solo para vos",
+      label: bilingual("Agent name", "Nombre del agente"),
+      field: "label",
+      value: "RealOps",
       enforcedBy: "realops",
-      explanation:
-        "Esto es una etiqueta de esta plataforma. No viaja al Mandato y no cambia lo que el agente puede hacer.",
+      explanation: bilingual(
+        "This is a label on this platform. It does not travel into the Mandate and does not change what the agent can do.",
+        "Es una etiqueta de esta plataforma. No viaja al Mandato y no cambia lo que el agente puede hacer.",
+      ),
     },
   ];
 

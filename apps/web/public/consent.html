@@ -1,12 +1,26 @@
 <!doctype html>
-<html lang="es">
+<html lang="en" data-title-en="AgentPey · Review consent" data-title-es="AgentPey · Revisar consentimiento">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AgentPey — revisar consentimiento</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · Review consent</title>
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
 <style>
   :root {
     color-scheme: light;
@@ -27,6 +41,9 @@
 
   * { box-sizing: border-box; }
 
+  html[lang="en"] [data-tr="es"],
+  html[lang="es"] [data-tr="en"] { display: none; }
+
   body {
     margin: 0;
     background: var(--paper);
@@ -38,13 +55,35 @@
     text-rendering: optimizeLegibility;
   }
 
-  .wrap { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 24px 72px; }
-  .top { display: flex; justify-content: space-between; align-items: baseline; padding: 28px 0 0; gap: 16px; }
-  .mark { color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
-  .network { color: var(--ink-3); font-size: 13px; }
+  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px 72px; }
 
+  /* ---------- top bar (shared pilot chrome) ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo { width: 24px; height: 24px; flex: none; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .apps { display: flex; align-items: center; gap: 16px; }
+  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .apps a:hover { color: var(--accent); }
+  .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
+  .gh:hover { color: var(--ink); }
+  .lang { display: flex; align-items: center; gap: 8px; }
+  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
+  .lang span { color: var(--rule); font-size: 11.5px; }
+  .lang button:hover { color: var(--ink-2); background: none; transform: none; }
+  html[lang="en"] .lang button[data-set-lang="en"],
+  html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
+  .mark:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: live-pulse 2s ease-out infinite; }
+  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+  /* ---------- page ---------- */
   .hero { padding: clamp(30px, 6vw, 54px) 0 32px; }
-  .eyebrow { margin: 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+  .kicker { margin: 22px 0 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
   h1 { margin: 12px 0 0; font-family: var(--serif); font-size: clamp(2.25rem, 7vw, 3.25rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; }
   .intro { max-width: 60ch; margin: 16px 0 0; color: var(--ink-2); }
   .session-id { margin: 16px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
@@ -53,23 +92,23 @@
   .panel:last-child { border-bottom: 1px solid var(--rule); }
   .panel-kicker { color: var(--ink-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
   h2 { margin: 6px 0 8px; font-family: var(--serif); font-size: 1.75rem; font-weight: 400; letter-spacing: -0.015em; line-height: 1.15; }
-  .lead { margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
+  .lead { max-width: 62ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
 
   .grant { margin: 0; }
-  .grant-row { display: grid; grid-template-columns: minmax(130px, 0.42fr) minmax(0, 1fr); gap: 16px; padding: 15px 0; border-top: 1px dashed var(--rule); }
+  .grant-row { display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 1fr); gap: 16px; padding: 15px 0; border-top: 1px dashed var(--rule); }
   .grant-row:first-child { border-top: 0; }
   .grant dt { color: var(--ink-3); font-size: 14px; }
   .grant dd { margin: 0; min-width: 0; }
   .values { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
   .values li { border: 1px solid var(--rule); border-radius: 5px; background: var(--paper); color: var(--ink-2); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; padding: 4px 7px; }
-  .limits { display: grid; gap: 7px; }
+  .limits { display: grid; gap: 7px; max-width: 560px; }
   .limit { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-bottom: 1px dashed var(--rule); padding-bottom: 7px; color: var(--ink-2); font-size: 14px; }
   .limit:last-child { border-bottom: 0; padding-bottom: 0; }
   .limit b { color: var(--ink); font-family: var(--mono); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; text-align: right; }
   .time-note { margin: 18px 0 0; color: var(--ink-3); font-size: 13px; }
   .time-note strong { color: var(--ink-2); font-weight: 500; }
 
-  .btn { appearance: none; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: var(--paper); cursor: pointer; font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 11px 18px; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
+  .btn { appearance: none; display: inline-block; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: var(--paper); cursor: pointer; font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 11px 18px; text-decoration: none; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
   .btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
   .btn:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-3); cursor: not-allowed; }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -82,15 +121,14 @@
   .notice { border-left: 3px solid var(--accent); background: var(--accent-wash); color: var(--ink-2); margin: 0; padding: 13px 15px; font-size: 14px; }
   .notice.err { border-color: var(--danger); background: var(--danger-wash); color: var(--danger); }
   .wallet-address { margin: 14px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
-  .result { margin: 0; }
-  .result-row { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
+  .result { margin: 14px 0 0; }
+  .result-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
   .result-row:first-child { border-top: 0; }
   .result dt { color: var(--ink-3); }
   .result dd { margin: 0; color: var(--ink); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 
   @media (max-width: 520px) {
     .wrap { padding: 0 20px 56px; }
-    .top { align-items: flex-start; flex-direction: column; gap: 3px; }
     .grant-row, .result-row { grid-template-columns: 1fr; gap: 5px; }
   }
 </style>
@@ -99,56 +137,90 @@
 <body>
 <main class="wrap">
   <div class="top">
-    <a class="mark" href="/">AgentPey</a>
-    <span class="network">Stellar Testnet</span>
+    <a class="mark" href="/">
+      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
+      <span>AgentPey</span>
+      <span class="tagline"><span data-tr="en">· payment infrastructure for agents</span><span data-tr="es">· infraestructura de pagos para agentes</span></span>
+    </a>
+    <div class="utils">
+      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
+      <div class="lang">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+      </div>
+      <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
   </div>
 
   <header class="hero">
-    <p class="eyebrow">Solicitud de consentimiento</p>
-    <h1>Revisá antes de firmar.</h1>
-    <p class="intro">Esta invitación propone los permisos que tendrá un agente. Revisá cada dato antes de conectar tu wallet y firmar el Mandato.</p>
+    <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <p class="kicker"><span data-tr="en">Consent request</span><span data-tr="es">Solicitud de consentimiento</span></p>
+    <h1><span data-tr="en">Review before you sign.</span><span data-tr="es">Revisa antes de firmar.</span></h1>
+    <p class="intro">
+      <span data-tr="en">This invitation proposes the permissions an agent will have. Check every detail before you connect your wallet and sign the Mandate.</span>
+      <span data-tr="es">Esta invitación propone los permisos que tendrá un agente. Revisa cada dato antes de conectar tu wallet y firmar el Mandato.</span>
+    </p>
     <p id="session-id" class="session-id" hidden></p>
   </header>
 
-  <p id="page-status" class="notice" role="status">Cargando la invitación…</p>
+  <p id="page-status" class="notice" role="status"><span data-tr="en">Loading the invitation…</span><span data-tr="es">Cargando la invitación…</span></p>
 
   <section id="grant-panel" class="panel" hidden>
-    <p class="panel-kicker">01 — Permisos propuestos</p>
-    <h2>Lo que autorizás</h2>
-    <p class="lead">Estos son los límites y destinos que el partner propuso. Al firmar, formarán parte del Mandato anclado en Stellar.</p>
+    <p class="panel-kicker"><span data-tr="en">01 · Proposed permissions</span><span data-tr="es">01 · Permisos propuestos</span></p>
+    <h2><span data-tr="en">What you authorize</span><span data-tr="es">Lo que autorizas</span></h2>
+    <p class="lead">
+      <span data-tr="en">These are the limits and destinations the partner proposed. Once you sign, they become part of the Mandate anchored on Stellar.</span>
+      <span data-tr="es">Estos son los límites y destinos que propuso el partner. Al firmar, formarán parte del Mandato anclado en Stellar.</span>
+    </p>
     <dl class="grant">
-      <div class="grant-row"><dt>Acciones</dt><dd><ul id="grant-actions" class="values"></ul></dd></div>
-      <div class="grant-row"><dt>Comercios</dt><dd><ul id="grant-venues" class="values"></ul></dd></div>
-      <div class="grant-row"><dt>Activos</dt><dd><ul id="grant-assets" class="values"></ul></dd></div>
-      <div class="grant-row"><dt>Límites</dt><dd id="grant-limits" class="limits"></dd></div>
-      <div id="pay-to-row" class="grant-row" hidden><dt>Se puede pagar a</dt><dd><ul id="grant-pay-to" class="values"></ul></dd></div>
+      <div class="grant-row"><dt><span data-tr="en">Actions</span><span data-tr="es">Acciones</span></dt><dd><ul id="grant-actions" class="values"></ul></dd></div>
+      <div class="grant-row"><dt><span data-tr="en">Merchants</span><span data-tr="es">Comercios</span></dt><dd><ul id="grant-venues" class="values"></ul></dd></div>
+      <div class="grant-row"><dt><span data-tr="en">Assets</span><span data-tr="es">Activos</span></dt><dd><ul id="grant-assets" class="values"></ul></dd></div>
+      <div class="grant-row"><dt><span data-tr="en">Limits</span><span data-tr="es">Límites</span></dt><dd id="grant-limits" class="limits"></dd></div>
+      <div id="pay-to-row" class="grant-row" hidden><dt><span data-tr="en">Can pay to</span><span data-tr="es">Se puede pagar a</span></dt><dd><ul id="grant-pay-to" class="values"></ul></dd></div>
     </dl>
-    <p class="time-note"><strong>Vigencia del Mandato:</strong> <span id="valid-until"></span><br /><strong>Esta invitación vence:</strong> <span id="expires-at"></span></p>
+    <p class="time-note">
+      <strong><span data-tr="en">Mandate validity:</span><span data-tr="es">Vigencia del Mandato:</span></strong> <span id="valid-until"></span><br />
+      <strong><span data-tr="en">This invitation expires:</span><span data-tr="es">Esta invitación vence:</span></strong> <span id="expires-at"></span>
+    </p>
   </section>
 
   <section id="wallet-panel" class="panel" hidden>
-    <p class="panel-kicker">02 — Verificá tu wallet</p>
-    <h2>Conectá la wallet principal</h2>
-    <p class="lead">Freighter te pedirá una firma de verificación. Esta firma no ejecuta una transacción ni otorga todavía el Mandato.</p>
-    <div class="actions"><button id="wallet-btn" class="btn secondary" type="button">Conectar wallet</button></div>
+    <p class="panel-kicker"><span data-tr="en">02 · Verify your wallet</span><span data-tr="es">02 · Verifica tu wallet</span></p>
+    <h2><span data-tr="en">Connect the principal wallet</span><span data-tr="es">Conecta la wallet principal</span></h2>
+    <p class="lead">
+      <span data-tr="en">Freighter will ask you for a verification signature. This signature does not run a transaction and does not grant the Mandate yet.</span>
+      <span data-tr="es">Freighter te pedirá una firma de verificación. Esta firma no ejecuta una transacción ni otorga todavía el Mandato.</span>
+    </p>
+    <div class="actions"><button id="wallet-btn" class="btn secondary" type="button"><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button></div>
     <p id="wallet-status" class="status" role="status"></p>
     <p id="wallet-address" class="wallet-address" hidden></p>
   </section>
 
   <section id="sign-panel" class="panel" hidden>
-    <p class="panel-kicker">03 — Firmá el Mandato</p>
-    <h2>Confirmá el consentimiento</h2>
-    <p class="lead">Freighter te pedirá dos aprobaciones: una firma del Mandato y otra para anclarlo en Stellar Testnet.</p>
-    <div class="actions"><button id="sign-btn" class="btn" type="button" disabled>Firmar Mandato</button></div>
+    <p class="panel-kicker"><span data-tr="en">03 · Sign the Mandate</span><span data-tr="es">03 · Firma el Mandato</span></p>
+    <h2><span data-tr="en">Confirm your consent</span><span data-tr="es">Confirma el consentimiento</span></h2>
+    <p class="lead">
+      <span data-tr="en">Freighter will ask for two approvals: one to sign the Mandate and one to anchor it on Stellar Testnet.</span>
+      <span data-tr="es">Freighter te pedirá dos aprobaciones: una para firmar el Mandato y otra para anclarlo en Stellar Testnet.</span>
+    </p>
+    <div class="actions"><button id="sign-btn" class="btn" type="button" disabled><span data-tr="en">Sign Mandate</span><span data-tr="es">Firmar Mandato</span></button></div>
     <p id="sign-status" class="status" role="status"></p>
   </section>
 
   <section id="success-panel" class="panel" hidden>
-    <p class="panel-kicker">Completado</p>
-    <h2>Mandato anclado</h2>
-    <p class="notice">Tu consentimiento fue firmado y anclado correctamente en Stellar Testnet.</p>
+    <p class="panel-kicker"><span data-tr="en">Done</span><span data-tr="es">Completado</span></p>
+    <h2><span data-tr="en">Mandate anchored</span><span data-tr="es">Mandato anclado</span></h2>
+    <p class="notice">
+      <span data-tr="en">Your consent was signed and anchored on Stellar Testnet.</span>
+      <span data-tr="es">Tu consentimiento se firmó y ancló correctamente en Stellar Testnet.</span>
+    </p>
     <dl id="success-facts" class="result"></dl>
-    <p id="return-row" hidden><a id="return-link" class="button">Volver</a></p>
+    <p id="return-row" hidden><a id="return-link" class="btn secondary"><span data-tr="en">Back</span><span data-tr="es">Volver</span></a></p>
   </section>
 </main>
 
@@ -168,6 +240,62 @@ var walletAddress = "";
  */
 var returnUrl = "";
 
+/* ---------- language ---------- */
+var T = {
+  walletMissing: {
+    en: "Freighter was not found. Install it from freighter.app and reload this page.",
+    es: "No se encontró Freighter. Instálalo desde freighter.app y recarga esta página.",
+  },
+  walletWaiting: { en: "Waiting for Freighter to connect your wallet…", es: "Esperando que Freighter conecte tu wallet…" },
+  walletSignVerify: { en: "Sign the verification message in Freighter…", es: "Firma el mensaje de verificación en Freighter…" },
+  walletVerifying: { en: "Verifying the signature…", es: "Verificando la firma…" },
+  walletConnectedLabel: { en: "Wallet connected: ", es: "Wallet conectada: " },
+  walletVerified: { en: "Wallet verified. You can now review and sign the Mandate.", es: "Wallet verificada. Ya puedes revisar y firmar el Mandato." },
+  walletFailed: { en: "Could not connect the wallet.", es: "No se pudo conectar la wallet." },
+  signMandate: { en: "Sign the Mandate in Freighter…", es: "Firma el Mandato en Freighter…" },
+  signAnchor: { en: "Sign the anchor transaction in Freighter…", es: "Firma la transacción de anclaje en Freighter…" },
+  anchoring: { en: "Anchoring the Mandate on Stellar Testnet…", es: "Anclando el Mandato en Stellar Testnet…" },
+  needWallet: { en: "Connect and verify your wallet before signing.", es: "Conecta y verifica tu wallet antes de firmar." },
+  preparing: { en: "Preparing the Mandate…", es: "Preparando el Mandato…" },
+  noPending: { en: "The server did not return a pending wallet signature.", es: "El servidor no devolvió una firma de wallet pendiente." },
+  signFailed: { en: "Could not sign the Mandate.", es: "No se pudo firmar el Mandato." },
+  missingId: { en: "The invitation id is missing.", es: "Falta el identificador de la invitación." },
+  reviewAll: { en: "Review every permission before you continue.", es: "Revisa todos los permisos antes de continuar." },
+  loadFailed: { en: "Could not load this invitation.", es: "No se pudo cargar esta invitación." },
+  invitation: { en: "Invitation ", es: "Invitación " },
+  completed: { en: "This invitation has already been signed.", es: "Esta invitación ya se firmó." },
+  expired: { en: "This invitation has expired.", es: "Esta invitación venció." },
+  cancelled: { en: "This invitation was cancelled.", es: "Esta invitación se canceló." },
+  unavailable: { en: "This invitation is no longer available.", es: "Esta invitación ya no está disponible." },
+  maxPerTx: { en: "Max per transaction", es: "Máximo por transacción" },
+  maxPerDay: { en: "Max per day", es: "Máximo por día" },
+  currency: { en: "Currency", es: "Moneda" },
+  mandateId: { en: "Mandate ID", es: "ID del Mandato" },
+  mandateHash: { en: "Mandate hash", es: "Hash del Mandato" },
+  transactionHash: { en: "Transaction hash", es: "Hash de la transacción" },
+  backTo: { en: "Back to ", es: "Volver a " },
+};
+
+function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
+
+function t(key) {
+  var entry = T[key];
+  return entry ? entry[lang()] : key;
+}
+
+/* What the page already has, kept so a language switch re-renders it
+   instead of calling an endpoint again. Status lines are stored as a message
+   ({ key } from the dictionary, or { text } verbatim from the server), never
+   as a rendered string. */
+var lastSession = null;
+var lastAnchored = null;
+var pageNotice = null;
+var statuses = {};
+
+function resolveMessage(message) {
+  return message.key ? t(message.key) : message.text;
+}
+
 async function api(path, options) {
   const res = await fetch(path, options);
   return { status: res.status, body: await res.json() };
@@ -184,19 +312,34 @@ function signedMessageToBase64(signedMessage) {
   return btoa(binary);
 }
 
-function messageFor(error, fallback) {
-  return error && error.body && error.body.message ? error.body.message : error && error.message ? error.message : fallback;
+function messageFor(error, fallbackKey) {
+  if (error && error.body && error.body.message) return { text: error.body.message };
+  if (error && error.key) return { key: error.key };
+  if (error && error.message) return { text: error.message };
+  return { key: fallbackKey };
+}
+
+function paintStatus(id) {
+  var state = statuses[id];
+  var el = document.getElementById(id);
+  el.textContent = resolveMessage(state.message);
+  el.className = "status " + (state.ok ? "ok" : "err");
 }
 
 function setStatus(el, ok, message) {
-  el.textContent = message;
-  el.className = "status " + (ok ? "ok" : "err");
+  statuses[el.id] = { ok: ok, message: message };
+  paintStatus(el.id);
+}
+
+function paintPageNotice() {
+  var el = document.getElementById("page-status");
+  el.textContent = resolveMessage(pageNotice.message);
+  el.className = "notice" + (pageNotice.kind === "error" ? " err" : "");
 }
 
 function setPageNotice(kind, message) {
-  var el = document.getElementById("page-status");
-  el.textContent = message;
-  el.className = "notice" + (kind === "error" ? " err" : "");
+  pageNotice = { kind: kind, message: message };
+  paintPageNotice();
 }
 
 function appendValues(el, values) {
@@ -210,16 +353,16 @@ function appendValues(el, values) {
 
 function formatTime(value) {
   var date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" });
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(lang() === "es" ? "es" : "en-US", { dateStyle: "long", timeStyle: "short" });
 }
 
 function renderLimits(limits) {
   var el = document.getElementById("grant-limits");
   el.innerHTML = "";
   var entries = [
-    ["Máximo por transacción", limits.perTx + " " + limits.currency],
-    ["Máximo por día", limits.perDay + " " + limits.currency],
-    ["Moneda", limits.currency],
+    [t("maxPerTx"), limits.perTx + " " + limits.currency],
+    [t("maxPerDay"), limits.perDay + " " + limits.currency],
+    [t("currency"), limits.currency],
   ];
   for (const [label, value] of entries) {
     const row = document.createElement("div");
@@ -234,7 +377,7 @@ function renderLimits(limits) {
 }
 
 function renderGrant(session) {
-  document.getElementById("session-id").textContent = "Invitación " + session.id;
+  document.getElementById("session-id").textContent = t("invitation") + session.id;
   document.getElementById("session-id").hidden = false;
   appendValues(document.getElementById("grant-actions"), session.grant.actions);
   appendValues(document.getElementById("grant-venues"), session.grant.venues);
@@ -249,19 +392,23 @@ function renderGrant(session) {
 }
 
 function showTerminalStatus(status) {
-  var messages = {
-    completed: "Esta invitación ya se firmó.",
-    expired: "Esta invitación venció.",
-    cancelled: "Esta invitación se canceló.",
+  var keys = {
+    completed: "completed",
+    expired: "expired",
+    cancelled: "cancelled",
   };
-  setPageNotice("error", messages[status] || "Esta invitación ya no está disponible.");
+  setPageNotice("error", { key: keys[status] || "unavailable" });
 }
 
-function renderSuccess(anchored) {
+function paintWalletAddress() {
+  document.getElementById("wallet-address").textContent = t("walletConnectedLabel") + walletAddress;
+}
+
+function renderSuccessDetails(anchored) {
   var facts = [
-    ["Mandate ID", anchored.mandateId],
-    ["Mandate hash", anchored.mandateHash],
-    ["Transaction hash", anchored.transactionHash],
+    [t("mandateId"), anchored.mandateId],
+    [t("mandateHash"), anchored.mandateHash],
+    [t("transactionHash"), anchored.transactionHash],
   ];
   var el = document.getElementById("success-facts");
   el.innerHTML = "";
@@ -275,6 +422,14 @@ function renderSuccess(anchored) {
     row.append(name, detail);
     el.append(row);
   }
+  if (returnUrl) {
+    document.getElementById("return-link").textContent = t("backTo") + new URL(returnUrl).host;
+  }
+}
+
+function renderSuccess(anchored) {
+  lastAnchored = anchored;
+  renderSuccessDetails(anchored);
   document.getElementById("wallet-panel").hidden = true;
   document.getElementById("sign-panel").hidden = true;
   document.getElementById("success-panel").hidden = false;
@@ -282,7 +437,6 @@ function renderSuccess(anchored) {
   if (returnUrl) {
     var link = document.getElementById("return-link");
     link.href = returnUrl;
-    link.textContent = "Volver a " + new URL(returnUrl).host;
     document.getElementById("return-row").hidden = false;
   }
 }
@@ -291,15 +445,15 @@ async function connectWallet() {
   var button = document.getElementById("wallet-btn");
   var status = document.getElementById("wallet-status");
   if (typeof freighterApi === "undefined") {
-    setStatus(status, false, "No se encontró Freighter. Instalalo desde freighter.app y recargá esta página.");
+    setStatus(status, false, { key: "walletMissing" });
     return;
   }
   button.disabled = true;
   try {
     const presence = await freighterApi.isConnected();
-    if (!presence.isConnected) throw new Error("No se encontró Freighter. Instalalo desde freighter.app y recargá esta página.");
+    if (!presence.isConnected) throw { key: "walletMissing" };
 
-    setStatus(status, true, "Esperando que Freighter conecte tu wallet…");
+    setStatus(status, true, { key: "walletWaiting" });
     const access = await freighterApi.requestAccess();
     if (access.error) throw new Error(access.error);
     const address = access.address;
@@ -307,14 +461,14 @@ async function connectWallet() {
     const { body: challenge } = await api("/api/wallet/challenge", { method: "POST" });
     if (!challenge.ok) throw { body: challenge };
 
-    setStatus(status, true, "Firmá el mensaje de verificación en Freighter…");
+    setStatus(status, true, { key: "walletSignVerify" });
     const signed = await freighterApi.signMessage(challenge.message, {
       address: address,
       networkPassphrase: TESTNET_PASSPHRASE,
     });
     if (signed.error) throw new Error(signed.error);
 
-    setStatus(status, true, "Verificando la firma…");
+    setStatus(status, true, { key: "walletVerifying" });
     const { body: verified } = await api(consentPath + "/wallet-verify", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -327,24 +481,24 @@ async function connectWallet() {
     if (!verified.ok) throw { body: verified };
 
     walletAddress = verified.address;
-    document.getElementById("wallet-address").textContent = "Wallet conectada: " + walletAddress;
+    paintWalletAddress();
     document.getElementById("wallet-address").hidden = false;
     document.getElementById("sign-btn").disabled = false;
-    setStatus(status, true, "Wallet verificada. Ya podés revisar y firmar el Mandato.");
+    setStatus(status, true, { key: "walletVerified" });
   } catch (error) {
-    setStatus(status, false, messageFor(error, "No se pudo conectar la wallet."));
+    setStatus(status, false, messageFor(error, "walletFailed"));
   } finally {
     button.disabled = false;
   }
 }
 
 async function runWalletMandateFlow(pending, status) {
-  if (typeof freighterApi === "undefined") throw new Error("No se encontró Freighter. Instalalo desde freighter.app y recargá esta página.");
+  if (typeof freighterApi === "undefined") throw { key: "walletMissing" };
   const access = await freighterApi.requestAccess();
   if (access.error) throw new Error(access.error);
   const address = access.address;
 
-  setStatus(status, true, "Firmá el Mandato en Freighter…");
+  setStatus(status, true, { key: "signMandate" });
   const signed = await freighterApi.signMessage(pending.challengeMessage, {
     address: address,
     networkPassphrase: TESTNET_PASSPHRASE,
@@ -358,14 +512,14 @@ async function runWalletMandateFlow(pending, status) {
   });
   if (!consent.ok) throw { body: consent };
 
-  setStatus(status, true, "Firmá la transacción de anclaje en Freighter…");
+  setStatus(status, true, { key: "signAnchor" });
   const signedTx = await freighterApi.signTransaction(consent.xdr, {
     address: address,
     networkPassphrase: TESTNET_PASSPHRASE,
   });
   if (signedTx.error) throw new Error(signedTx.error);
 
-  setStatus(status, true, "Anclando el Mandato en Stellar Testnet…");
+  setStatus(status, true, { key: "anchoring" });
   const { body: anchored } = await api(consentPath + "/wallet-anchor", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -379,19 +533,19 @@ async function signMandate() {
   var button = document.getElementById("sign-btn");
   var status = document.getElementById("sign-status");
   if (!walletAddress) {
-    setStatus(status, false, "Conectá y verificá tu wallet antes de firmar.");
+    setStatus(status, false, { key: "needWallet" });
     return;
   }
   button.disabled = true;
   try {
-    setStatus(status, true, "Preparando el Mandato…");
+    setStatus(status, true, { key: "preparing" });
     const { body: pending } = await api(consentPath + "/start", { method: "POST" });
     if (!pending.ok) throw { body: pending };
-    if (pending.pending !== "wallet-consent") throw new Error("El servidor no devolvió una firma de wallet pendiente.");
+    if (pending.pending !== "wallet-consent") throw { key: "noPending" };
     const anchored = await runWalletMandateFlow(pending, status);
     renderSuccess(anchored);
   } catch (error) {
-    setStatus(status, false, messageFor(error, "No se pudo firmar el Mandato."));
+    setStatus(status, false, messageFor(error, "signFailed"));
   } finally {
     button.disabled = false;
   }
@@ -400,7 +554,7 @@ async function signMandate() {
 async function loadConsentSession() {
   try {
     var pathPart = location.pathname.split("/").filter(Boolean).pop();
-    if (!pathPart) throw new Error("Falta el identificador de la invitación.");
+    if (!pathPart) throw { key: "missingId" };
     consentId = decodeURIComponent(pathPart);
     consentPath = "/api/consent/" + encodeURIComponent(consentId);
     const { body: session } = await api(consentPath);
@@ -408,23 +562,62 @@ async function loadConsentSession() {
 
     returnUrl = typeof session.returnUrl === "string" ? session.returnUrl : "";
 
+    lastSession = session;
     renderGrant(session);
     document.getElementById("grant-panel").hidden = false;
     if (session.status !== "pending") {
       showTerminalStatus(session.status);
       return;
     }
-    setPageNotice("success", "Revisá todos los permisos antes de continuar.");
+    setPageNotice("success", { key: "reviewAll" });
     document.getElementById("wallet-panel").hidden = false;
     document.getElementById("sign-panel").hidden = false;
   } catch (error) {
-    setPageNotice("error", messageFor(error, "No se pudo cargar esta invitación."));
+    setPageNotice("error", messageFor(error, "loadFailed"));
   }
 }
+
+document.addEventListener("agentpey:lang", function () {
+  if (lastSession) renderGrant(lastSession);
+  if (pageNotice) paintPageNotice();
+  for (var id in statuses) paintStatus(id);
+  if (walletAddress) paintWalletAddress();
+  if (lastAnchored) renderSuccessDetails(lastAnchored);
+});
 
 document.getElementById("wallet-btn").addEventListener("click", connectWallet);
 document.getElementById("sign-btn").addEventListener("click", signMandate);
 loadConsentSession();
+</script>
+
+<script>
+  /* EN/ES switch. Text lives in [data-tr] pairs; attributes that cannot hold markup carry data-*-en / data-*-es. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      var texts = document.querySelectorAll("[data-text-en]");
+      for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
+      var holders = document.querySelectorAll("[data-placeholder-en]");
+      for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
 </script>
 </body>
 </html>

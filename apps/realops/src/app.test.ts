@@ -57,9 +57,13 @@ async function signIn(email: string, alias: string): Promise<string> {
 }
 
 describe("the public pages", () => {
-  it("carries the testnet notice on every page, by construction", async () => {
+  it("carries the live testnet badge, both languages and the switch on every page, by construction", async () => {
     for (const path of ["/", "/entrar"]) {
-      expect(await (await fetch(`${baseUrl}${path}`)).text()).toContain("testnet");
+      const html = await (await fetch(`${baseUrl}${path}`)).text();
+      expect(html).toContain("Stellar Testnet · live");
+      expect(html).toContain("Stellar Testnet · en vivo");
+      expect(html).toContain('data-set-lang="es"');
+      expect(html).toContain('<html lang="en"');
     }
   });
 

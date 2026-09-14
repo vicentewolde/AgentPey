@@ -129,7 +129,7 @@ function capture(html: string, pattern: RegExp): string | undefined {
 
 /** The link `linkSentPage` shows when RealOps has no email provider configured. */
 export function readOnScreenMagicLink(html: string): string | undefined {
-  return capture(html, /<a class="button" href="([^"]+)">Entrar con el enlace<\/a>/);
+  return capture(html, /<a class="button" href="([^"]+)" data-magic-link>/);
 }
 
 /** The per-form idempotency key of the purchase form (`C-106`). */
@@ -139,7 +139,7 @@ export function readRequestKey(html: string): string | undefined {
 
 /** What the agent's review screen says once RealOps stored the Mandate. */
 export function readSignedMandateId(html: string): string | undefined {
-  return capture(html, /Firmado\. Mandato <code>(mdt_[0-9A-Z]+)<\/code>/);
+  return capture(html, /<code data-mandate-id>(mdt_[0-9A-Z]+)<\/code>/);
 }
 
 /** The opaque reference "Mis servicios" shows — what AgentPey knows the account as. */

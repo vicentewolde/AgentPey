@@ -209,7 +209,7 @@ describe("coming back from signing", () => {
     const agentId = await configureAgent(cookie);
 
     const before = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
-    expect(before).toContain("Todavía no tenés ningún agente con permiso firmado");
+    expect(before).toContain("Todavía no tienes ningún agente con permiso firmado");
     expect(before).not.toContain('name="instruction"');
 
     await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
@@ -233,7 +233,8 @@ describe("coming back from signing", () => {
     const html = await (await fetch(`${baseUrl}/agentes/${agentId}`, { headers: { cookie } })).text();
 
     expect(html).toContain("https://agentpey.example/revocar/mnd_01J7QW8VQEJPAXEPAYREALOPS09");
-    expect(html).toContain("RealOps no puede revocar por vos");
+    expect(html).toContain("RealOps no puede revocar por ti");
+    expect(html).toContain("RealOps cannot revoke for you");
   });
 
   it("404s a return for an agent that never started signing", async () => {

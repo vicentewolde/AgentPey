@@ -1,20 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-title-en="AgentPey · payment infrastructure for AI agents" data-title-es="AgentPey · infraestructura de pagos para agentes de IA">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AgentPey — payment infrastructure for AI agents on Stellar</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · payment infrastructure for AI agents</title>
 <meta name="description" content="AgentPey is payment infrastructure for AI agents: a provable identity, a spending limit Stellar enforces on-chain, and control you can pull from outside the agent. Live on Stellar testnet, paying real x402 charges." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script>
-  /* Language: English by default; the stored choice is applied before paint. */
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
   (function () {
+    var lang = "en";
     try {
-      var saved = localStorage.getItem("agentpay-lang");
-      if (saved === "es") document.documentElement.lang = "es";
-    } catch (e) { /* storage blocked — English stays */ }
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
   })();
 </script>
 <style>
@@ -36,7 +41,7 @@
     --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
     --gap: clamp(52px, 7.5vw, 92px);
-    /* theme tokens — a section becomes dark by adding .band, which redefines these */
+    /* theme tokens: a section becomes dark by adding .band, which redefines these */
     --fg: var(--ink);
     --fg-2: var(--ink-2);
     --fg-3: var(--ink-3);
@@ -65,48 +70,30 @@
 
   a { color: var(--accent); }
 
-  /* ---------- top bar ---------- */
-  .top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 26px 0 0;
-    flex-wrap: wrap;
-    gap: 6px 16px;
-  }
-  .mark { font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-left: 4px; letter-spacing: 0; }
-  .nav { display: flex; align-items: center; gap: 24px; }
+  /* ---------- top bar (shared pilot chrome) ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo { width: 24px; height: 24px; flex: none; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 22px; }
   .nav a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
-  .nav a:hover { color: var(--ink); }
-  @media (max-width: 720px) { .nav { display: none; } }
-  .utils { display: flex; align-items: center; gap: 18px; }
+  .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .apps { display: flex; align-items: center; gap: 16px; }
+  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .apps a:hover { color: var(--accent); }
   .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
   .gh:hover { color: var(--ink); }
   .lang { display: flex; align-items: center; gap: 8px; }
-  .lang button {
-    appearance: none;
-    background: none;
-    border: 0;
-    padding: 2px 1px;
-    font-family: var(--sans);
-    font-size: 11.5px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-    cursor: pointer;
-  }
+  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .lang span { color: var(--rule); font-size: 11.5px; }
-  .lang button:hover { color: var(--ink-2); }
-  .lang button { -webkit-tap-highlight-color: transparent; }
-  .lang button:focus-visible,
-  .nav a:focus-visible,
-  .gh:focus-visible,
-  .btn:focus-visible,
-  .verify:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 3px; border-radius: 3px; }
+  .lang button:hover { color: var(--ink-2); background: none; transform: none; }
   html[lang="en"] .lang button[data-set-lang="en"],
   html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
+  .mark:focus-visible, .nav a:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+  @media (max-width: 720px) { .nav { display: none; } }
+  .btn:focus-visible,
+  .verify:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 3px; border-radius: 3px; }
 
   /* ---------- hero ---------- */
   .hero { padding: clamp(32px, 4.5vw, 56px) 0 clamp(40px, 6vw, 64px); }
@@ -118,7 +105,7 @@
     color: var(--ink-3);
     margin: 0;
   }
-  .eyebrow.live { display: flex; align-items: center; gap: 8px; }
+  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; }
   .live-dot {
     width: 7px;
     height: 7px;
@@ -131,6 +118,7 @@
     0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-c) 55%, transparent); }
     100% { box-shadow: 0 0 0 6px transparent; }
   }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
   h1 {
     font-family: var(--serif);
     font-weight: 400;
@@ -439,13 +427,10 @@
 
 <div class="wrap">
   <div class="top">
-    <div class="mark">
-      AgentPey
-      <span class="tagline">
-        <span data-tr="en">· payment infrastructure for agents</span>
-        <span data-tr="es">· infraestructura de pagos para agentes</span>
-      </span>
-    </div>
+    <a class="mark" href="/">
+      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
+      <span>AgentPey</span>
+    </a>
     <nav class="nav">
       <a href="#activity"><span data-tr="en">Activity</span><span data-tr="es">Actividad</span></a>
       <a href="#how-it-works"><span data-tr="en">How it works</span><span data-tr="es">Cómo funciona</span></a>
@@ -454,6 +439,7 @@
       <a href="#status"><span data-tr="en">Status</span><span data-tr="es">Estado</span></a>
     </nav>
     <div class="utils">
+      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
       <div class="lang">
         <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
         <span aria-hidden="true">/</span>
@@ -467,11 +453,7 @@
   </div>
 
   <header class="hero">
-    <p class="eyebrow live">
-      <span class="live-dot" aria-hidden="true"></span>
-      <span data-tr="en">Stellar Testnet — live</span>
-      <span data-tr="es">Stellar Testnet en vivo</span>
-    </p>
+    <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
     <h1>
       <span data-tr="en">Payment infrastructure for AI agents: <em>control</em>, identity, and protection.</span>
       <span data-tr="es">Infraestructura de pagos para agentes de IA: <em>control</em>, identidad y protección.</span>
@@ -481,7 +463,7 @@
       <span data-tr="es">Una credencial firmada prueba que eres el dueño de tu agente. La red Stellar verifica que cada pago x402 esté autorizado y cumpla lo permitido.</span>
     </p>
     <div class="cta-row">
-      <a class="btn" href="/sign">
+      <a class="btn" href="/consent">
         <span data-tr="en">Watch it pay, live →</span>
         <span data-tr="es">Míralo pagar, en vivo →</span>
       </a>
@@ -495,8 +477,8 @@
       <div class="stat">
         <b id="stat-tests">1348</b>
         <span>
-          <span data-tr="en">tests, all green — 1294 TypeScript, 54 Rust</span>
-          <span data-tr="es">tests, todos en verde — 1294 TypeScript, 54 Rust</span>
+          <span data-tr="en">tests, all green: 1294 TypeScript, 54 Rust</span>
+          <span data-tr="es">tests, todos en verde: 1294 TypeScript, 54 Rust</span>
         </span>
       </div>
       <div class="stat">
@@ -579,7 +561,7 @@
       </div>
       <div class="feed-row">
         <div class="feed-main">
-          <span class="feed-k"><span data-tr="en">Mandate revoked, from outside the agent</span><span data-tr="es">Mandato revocado, desde afuera del agente</span></span>
+          <span class="feed-k"><span data-tr="en">Mandate revoked, from outside the agent</span><span data-tr="es">Mandato revocado, desde fuera del agente</span></span>
           <span class="feed-when" data-at="2026-09-07T01:14:42Z"></span>
         </div>
         <a class="verify" href="https://stellar.expert/explorer/testnet/tx/2b247331d3fa1b0768e0f65c94c1408e1f429d3a0c9b4b52c0804d7089081cfc" target="_blank" rel="noopener">
@@ -606,7 +588,7 @@
     </p>
     <h2 class="sh">
       <span data-tr="en">What actually happens when it pays for something.</span>
-      <span data-tr="es">Qué pasa en verdad cuando paga algo.</span>
+      <span data-tr="es">Qué pasa realmente cuando paga algo.</span>
     </h2>
 
     <div class="flow">
@@ -657,7 +639,7 @@
         <div>
           <h3>
             <span data-tr="en">It can't be talked out of its limit.</span>
-            <span data-tr="es">No se lo puede convencer de saltarse su límite.</span>
+            <span data-tr="es">Nadie puede convencerlo de saltarse su límite.</span>
           </h3>
           <p>
             <span data-tr="en">Feed an agent the right words and it'll believe almost anything. So the limit doesn't live in its instructions. It lives in a Soroban contract that checks the x402 charge while the payment is happening. The agent can be fooled. The network can't.</span>
@@ -671,7 +653,7 @@
         <div>
           <h3>
             <span data-tr="en">You can cut it off from outside.</span>
-            <span data-tr="es">Se lo puede cortar desde afuera.</span>
+            <span data-tr="es">Puedes cortarlo desde fuera.</span>
           </h3>
           <p>
             <span data-tr="en">Revoke the credential and the agent stops being able to pay immediately, without touching its code, without needing it to cooperate.</span>
@@ -792,7 +774,7 @@
           </h3>
           <p>
             <span data-tr="en">A fingerprint of the authorization is written to Stellar, permanently tied to the payment it approved. Anyone can check the two match, no need to trust whoever runs our server.</span>
-            <span data-tr="es">Una huella de la autorización queda escrita en Stellar, atada para siempre al pago que aprobó. Cualquiera puede comprobar que calzan sin tener que confiar en quien opera nuestro servidor.</span>
+            <span data-tr="es">Una huella de la autorización queda escrita en Stellar, atada para siempre al pago que aprobó. Cualquiera puede comprobar que coinciden sin tener que confiar en quien opera nuestro servidor.</span>
           </p>
         </div>
         <div class="tx">
@@ -812,7 +794,7 @@
   <section class="merchant" id="bazaar">
     <p class="eyebrow">
       <span data-tr="en">Where it already runs</span>
-      <span data-tr="es">Dónde ya corre</span>
+      <span data-tr="es">Dónde ya funciona</span>
     </p>
     <p class="big">
       <span data-tr="en">It already pays a real bazaar on Stellar.</span>
@@ -820,7 +802,7 @@
     </p>
     <p class="note">
       <span data-tr="en">The agent reads the bazaar's live catalog, puts together an offer that fits its budget, and pays through x402, the open payment protocol the store already speaks. Any store that speaks x402 can plug in the same way, no custom integration needed. That's because it's built on an open MCP protocol.</span>
-      <span data-tr="es">El agente lee el catálogo en vivo del bazaar, arma una oferta que entra en su presupuesto, y paga con x402, el protocolo abierto de pago que la tienda ya habla. Cualquier tienda que hable x402 se puede sumar de la misma forma, sin integración a medida. Gracias a que está construido sobre un protocolo MCP abierto.</span>
+      <span data-tr="es">El agente lee el catálogo en vivo del bazaar, arma una oferta que cabe en su presupuesto y paga con x402, el protocolo abierto de pago que la tienda ya habla. Cualquier tienda que hable x402 se puede sumar de la misma forma, sin integración a medida. Gracias a que está construido sobre un protocolo MCP abierto.</span>
     </p>
     <p class="src">
       <a href="https://stellar-bazaar-x402.vercel.app" target="_blank" rel="noopener">stellar-bazaar-x402.vercel.app</a>
@@ -832,7 +814,7 @@
   <section id="status">
     <p class="eyebrow">
       <span data-tr="en">Where it stands</span>
-      <span data-tr="es">En qué está</span>
+      <span data-tr="es">En qué punto está</span>
     </p>
     <h2 class="sh">
       <span data-tr="en">Five phases done.</span>
@@ -880,7 +862,7 @@
           <span data-tr="en">A scoring model that rates agents by their payment history</span>
           <span data-tr="es">Un modelo de scoring que califica a los agentes según su historial de pagos</span>
         </div>
-        <div class="st pending"><span data-tr="en">Not started</span><span data-tr="es">Sin arrancar</span></div>
+        <div class="st pending"><span data-tr="en">Not started</span><span data-tr="es">Sin iniciar</span></div>
       </div>
     </div>
   </section>
@@ -894,7 +876,7 @@
       <span data-tr="es">Mira cómo funciona.</span>
     </p>
     <div class="cta-row">
-      <a class="btn" href="/sign">
+      <a class="btn" href="/consent">
         <span data-tr="en">Open the live demo →</span>
         <span data-tr="es">Abrir la demo en vivo →</span>
       </a>
@@ -909,8 +891,8 @@
 <div class="wrap">
   <footer>
     <div>
-      <span data-tr="en">AgentPey — agentic payments on Stellar. Santiago, Chile.</span>
-      <span data-tr="es">AgentPey — pagos agénticos en Stellar. Santiago, Chile.</span>
+      <span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span>
+      <span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span>
     </div>
     <div>
       <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
@@ -922,16 +904,11 @@
 </div>
 
 <script>
-  /* The English ⇄ Spanish switch, plus the activity feed's relative timestamps. */
+  /* The activity feed's relative timestamps, re-rendered on every language switch. */
   (function () {
     var root = document.documentElement;
-    var titles = {
-      en: "AgentPey — payment infrastructure for AI agents on Stellar",
-      es: "AgentPey — infraestructura de pagos para agentes de IA en Stellar"
-    };
-    var buttons = document.querySelectorAll("[data-set-lang]");
 
-    /* Real, fixed timestamps (data-at) rendered as live relative time — the
+    /* Real, fixed timestamps (data-at) rendered as live relative time: the
        events themselves are a frozen snapshot, not a simulated live feed;
        only the "time ago" label keeps ticking, honestly, against the clock. */
     var ES_UNITS = { second: "segundo", minute: "minuto", hour: "hora", day: "día", month: "mes", year: "año" };
@@ -960,25 +937,39 @@
       }
     }
 
+    document.addEventListener("agentpey:lang", renderFeedTimes);
+    renderFeedTimes();
+    setInterval(renderFeedTimes, 30000);
+  })();
+</script>
+
+<script>
+  /* EN/ES switch. Text lives in [data-tr] pairs; attributes that cannot hold markup carry data-*-en / data-*-es. */
+  (function () {
+    var root = document.documentElement;
     function apply(lang) {
       root.lang = lang;
-      document.title = titles[lang];
-      for (var i = 0; i < buttons.length; i++) {
-        buttons[i].setAttribute("aria-pressed", String(buttons[i].dataset.setLang === lang));
-      }
-      renderFeedTimes();
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      var texts = document.querySelectorAll("[data-text-en]");
+      for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
+      var holders = document.querySelectorAll("[data-placeholder-en]");
+      for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
     }
-
+    var buttons = document.querySelectorAll("[data-set-lang]");
     for (var i = 0; i < buttons.length; i++) {
       buttons[i].addEventListener("click", function () {
-        var lang = this.dataset.setLang;
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
         apply(lang);
-        try { localStorage.setItem("agentpay-lang", lang); } catch (e) { /* storage blocked */ }
       });
     }
-
     apply(root.lang === "es" ? "es" : "en");
-    setInterval(renderFeedTimes, 30000);
   })();
 </script>
 

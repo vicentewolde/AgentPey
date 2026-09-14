@@ -110,8 +110,9 @@ describe("the enforcement labels", () => {
   it("is honest that the agent's name is only RealOps' business", () => {
     const label = controls.find((control) => control.enforcedBy === "realops");
 
-    expect(label?.label).toContain("Nombre");
-    expect(label?.explanation).toContain("no cambia lo que el agente puede hacer");
+    expect(label?.label.es).toContain("Nombre");
+    expect(label?.explanation.es).toContain("no cambia lo que el agente puede hacer");
+    expect(label?.explanation.en).toContain("does not change what the agent can do");
   });
 
   it("counts what is actually guaranteed", () => {
@@ -123,6 +124,6 @@ describe("the enforcement labels", () => {
 
   it("shows a value for every control, so nothing on screen is blank", () => {
     expect(controls.every((control) => control.value.trim() !== "")).toBe(true);
-    expect(controls.every((control) => control.explanation.trim() !== "")).toBe(true);
+    expect(controls.every((control) => control.explanation.en.trim() !== "" && control.explanation.es.trim() !== "")).toBe(true);
   });
 });

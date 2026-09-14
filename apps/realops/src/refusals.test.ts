@@ -6,27 +6,32 @@ describe("explainRefusal", () => {
   it("explains a refusal without using the word that caused it", () => {
     const explained = explainRefusal("MandateDailyLimitExceeded", "perDay exceeded");
 
-    expect(explained.what).toContain("tope");
-    expect(explained.what).not.toContain("MandateDailyLimitExceeded");
-    expect(explained.what).not.toContain("perDay");
+    expect(explained.what.es).toContain("tope");
+    expect(explained.what.en).toContain("limit");
+    for (const text of [explained.what.en, explained.what.es]) {
+      expect(text).not.toContain("MandateDailyLimitExceeded");
+      expect(text).not.toContain("perDay");
+    }
   });
 
   /**
    * Every explained refusal has to answer "what now?", because a person who
    * cannot tell whether to wait, re-sign, or do nothing will read the same
-   * message as "it is broken".
+   * message as "it is broken". In both languages the pages speak.
    */
-  it("tells the person what to do, for every code it claims to know", () => {
+  it("tells the person what to do, for every code it claims to know, in both languages", () => {
     for (const code of EXPLAINED_CODES) {
       const explained = explainRefusal(code, "whatever");
-      expect(explained.what.trim().length).toBeGreaterThan(10);
-      expect(explained.next.trim().length).toBeGreaterThan(10);
+      for (const text of [explained.what.en, explained.what.es, explained.next.en, explained.next.es]) {
+        expect(text.trim().length).toBeGreaterThan(10);
+      }
     }
   });
 
   it("says plainly when there is nothing for the person to do", () => {
     for (const code of ["TermsPayeeNotAllowed", "TermsAmountMismatch", "VenueNotRegistered"]) {
-      expect(explainRefusal(code, null).next).toContain("nada");
+      expect(explainRefusal(code, null).next.es).toContain("nada");
+      expect(explainRefusal(code, null).next.en).toContain("nothing");
     }
   });
 
@@ -36,17 +41,19 @@ describe("explainRefusal", () => {
    * describing a different failure.
    */
   it("falls back to the platform's own reason rather than inventing one", () => {
-    const explained = explainRefusal("SomeCodeFromTheFuture", "el registro dijo que no");
+    const explained = explainRefusal("SomeCodeFromTheFuture", "the registry said no");
 
-    expect(explained.what).toBe("el registro dijo que no");
-    expect(explained.next).toContain("SomeCodeFromTheFuture");
+    expect(explained.what).toEqual({ en: "the registry said no", es: "the registry said no" });
+    expect(explained.next.en).toContain("SomeCodeFromTheFuture");
+    expect(explained.next.es).toContain("SomeCodeFromTheFuture");
   });
 
   it("still says something when the platform sent no reason either", () => {
     const explained = explainRefusal("SomeCodeFromTheFuture", null);
 
-    expect(explained.what.length).toBeGreaterThan(0);
-    expect(explained.next).toContain("SomeCodeFromTheFuture");
+    expect(explained.what.en.length).toBeGreaterThan(0);
+    expect(explained.what.es.length).toBeGreaterThan(0);
+    expect(explained.next.en).toContain("SomeCodeFromTheFuture");
   });
 
   /**
@@ -87,11 +94,20 @@ describe("explainRefusal", () => {
   it("never leaves a message that reads like a crash", () => {
     for (const code of EXPLAINED_CODES) {
       const { what, next } = explainRefusal(code, "x");
-      for (const text of [what, next]) {
+      for (const text of [what.en, what.es, next.en, next.es]) {
         expect(text).not.toContain("undefined");
         expect(text).not.toContain("[object");
         expect(text).not.toContain("Error:");
       }
+    }
+  });
+
+  /** The pilot's copy rules (decided by the user for the Stellar meeting): no em dash, no voseo. */
+  it("writes without em dashes, and in neutral Spanish", () => {
+    for (const code of EXPLAINED_CODES) {
+      const { what, next } = explainRefusal(code, "x");
+      for (const text of [what.en, what.es, next.en, next.es]) expect(text).not.toContain("—");
+      for (const text of [what.es, next.es]) expect(text).not.toMatch(/\b(podés|querés|tenés|firmá|probá|usá|esperá|conectá)\b/);
     }
   });
 });
