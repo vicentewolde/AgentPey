@@ -4371,7 +4371,7 @@ toda la documentación del piloto.
 
 ---
 
-### C-116 · T86: la mudanza convive con los servicios viejos hasta que corra el día 2 de T85 · `Vigente`
+### C-116 · T86: la mudanza convive con los servicios viejos hasta que corra el día 2 de T85 · `Enmendada` (ver al final)
 **Fecha:** 2026-09-14 · **Decidido por el usuario** (cada cambio en producción, confirmado antes de hacerlo)
 
 El día 2 de T85 corre contra los tres servicios viejos y no puede correr antes
@@ -4408,3 +4408,73 @@ misma base de datos:
 **Alternativa descartada:** pasar todo de una vez, apuntando `main` y los
 servicios viejos a los dominios nuevos. El día 2 habría corrido contra otro
 despliegue que el del día 1, y T85 habría medido la mudanza, no el producto.
+
+**Enmienda, 2026-09-14, decidida por el usuario.** El usuario preguntó si hacía
+falta esperar, porque al día siguiente muestra el piloto en una reunión con
+Stellar y quería todo limpio antes. **No hacía falta.** El día 2 no depende de
+los servicios viejos: la cuenta de la persona F, su agente y su Mandato están en
+la base compartida, y la suite entra a RealOps y consulta AgentPey por `/v1` en
+cualquier despliegue. Lo único que no se puede adelantar es el vencimiento del
+Mandato. El código que prueba el día 2 es el mismo; el motivo de la
+"alternativa descartada" de arriba era más fuerte de lo necesario, y así se le
+dijo al usuario antes de que decidiera.
+
+Lo que se hizo el mismo día, con autorización del usuario para cada paso:
+
+- **Auto Sync del Blueprint `AgentPey`: `No`.** Antes de mergear, para que el
+  merge no dispare ninguna sincronización.
+- **Los tres servicios viejos, borrados** (`agentpey-web`, `agentpey-realops`,
+  `agentpey-signaldesk`). Render advierte que un servicio de un Blueprint puede
+  recrearse en una sincronización. Con Auto Sync apagado, y con `render.yaml` en
+  `main` describiendo solo `AgentPey`, una sincronización ya no los nombra.
+- **El origen `https://agentpey-realops.onrender.com` salió** de los orígenes de
+  retorno del partner de RealOps. Queda solo `https://realops.agentpey.com`.
+- **T86 mergeado a `main`** (fast-forward) y **el servicio `AgentPey` despliega
+  desde `main`**. La rama `cc/t86-single-service-gateway` se borró.
+- **`scripts/f9-acceptance.ts` y `apps/realops/src/server.ts` usan por defecto
+  los dominios nuevos.** El día 2 corre sin `F9_*_URL`.
+
+Queda como estaba: el Blueprint sigue conectado, sin sincronizar.
+
+---
+
+### C-117 · T86: una sola identidad visual para las tres apps, la landing en `agentpey.com` y la demo en `/sign` · `Vigente`
+**Fecha:** 2026-09-14 · **Decidido por el usuario** (identidad única, landing en la raíz, una ruta aparte para la demo) · la ruta `/sign`, sugerida por el usuario
+
+**El pedido.** Para la reunión con Stellar, el usuario pidió que las tres
+páginas se vean bien y con la misma experiencia. RealOps y SignalDesk tenían un
+estilo propio, oscuro con el tema del sistema, y AgentPey tenía otro, claro y
+editorial. `agentpey.com` abría la demo de la Fase 4 en vez de la landing.
+
+**Lo que se le planteó antes de decidir.** Las tres apps son, dentro del piloto,
+tres empresas distintas, y la página de firma de AgentPey le pide a la persona
+que desconfíe de un Mandato pedido en el dominio de RealOps. Si las tres se ven
+iguales, esa diferencia deja de verse; la frase de advertencia y el dominio en
+la barra siguen ahí. El usuario eligió igual una identidad única.
+
+**La decisión:**
+
+- **Una sola identidad: la de AgentPey.** Papel, tinta, acento verde,
+  Instrument Serif para títulos e Inter para el texto, igual que
+  `consent.html` y `landing.html`. RealOps (`apps/realops/src/pages.ts`) y el
+  catálogo de SignalDesk (`apps/signaldesk/src/page.ts`) la copian. **Se copia,
+  no se importa:** las apps no comparten código, y un paquete de estilos común
+  no aportaba nada para tres archivos. Cada página conserva su nombre en la
+  barra superior.
+- **`/` es la landing y la demo con wallet pasó a `/sign`.** `/landing` sigue
+  respondiendo, para que no se rompan los enlaces ya compartidos.
+- **Las entregas de SignalDesk no se tocaron, a propósito.** El informe y el
+  comprobante de créditos se renderizan de forma determinista, y su hash va
+  dentro del recibo firmado. Cambiarles el HTML haría que ninguna entrega pasada
+  coincida con su recibo. Se probó y se revirtió antes de commitear.
+- **`revocar.html`** usaba `.top`, pensado para una fila, con el título y el
+  texto adentro, y se veían uno al lado del otro. Ahora tiene la misma barra y
+  cabecera que `consent.html`.
+
+**Alternativa descartada por el usuario:** el mismo sistema con marcas
+distintas (nombre, logotipo y color de acento propios por app). Mantenía visible
+que son tres empresas.
+
+**Alternativa descartada en la implementación:** un paquete común de estilos.
+Agregaba una dependencia de build a dos apps que hoy no comparten nada, para
+evitar duplicar unas cien líneas de CSS.

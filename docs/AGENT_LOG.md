@@ -5061,3 +5061,46 @@ Pendiente:
   `4101`–`4103`); que el `catch` de `/agentes/{id}/firmar` en RealOps escriba
   en el log (el `502` no dejó rastro); medir la memoria del Starter con tráfico
   real.
+
+## 2026-09-14 (24) — main / cc/t86-closeout
+
+Agente: Claude Code
+
+Qué: **la limpieza de T86 y el diseño para la reunión del usuario con Stellar**
+(al día siguiente, a la tarde). **Reemplaza los "Pendiente" de la entrada (23)
+sobre esperar al día 2 y sobre el merge.**
+
+- **`C-116` enmendada, por el usuario:** el día 2 no necesita los servicios
+  viejos, porque su estado vive en la base. Auto Sync del Blueprint `AgentPey`
+  en `No`. Borrados `agentpey-web`, `agentpey-realops` y `agentpey-signaldesk`.
+  Origen de retorno viejo fuera. T86 mergeado a `main` (`3c73d14..9fa584e`), el
+  servicio `AgentPey` despliega desde `main` y la rama remota se borró.
+- **`C-117`, por el usuario:** una sola identidad visual (la de AgentPey) en
+  RealOps y el catálogo de SignalDesk. `/` es la landing, la demo con wallet
+  está en `/sign` y `/landing` queda como alias. `revocar.html` con la cabecera
+  arreglada. Las entregas de SignalDesk **no** se rediseñan, porque su hash va
+  en el recibo firmado.
+- **`AGENTS.md`** (`b79b76e`): el reparto de claves entre las apps no se delega.
+- La suite y RealOps usan por defecto los dominios nuevos. README, ROADMAP,
+  `.env.example` y la guía de partners dicen `agentpey.com`.
+
+Por qué: el usuario muestra el piloto a Stellar y pidió verlo limpio, funcionando
+y con las tres páginas iguales. No hace falta que esté todo testeado.
+
+Documentación tocada: `DECISIONES.md` (`C-116` enmendada, `C-117`),
+`BITACORA.md` (estado, fila y agregado de T86), `evidencia/T86.md` § 8 y § 9.
+**1294 tests**, `typecheck` y `build` limpios.
+
+Pendiente:
+- **Día 2 de T85**, hoy después de las 22:29 hora del usuario (2026-09-15 01:29
+  UTC), contra los dominios nuevos. Ya no hacen falta `F9_*_URL`:
+  `pnpm run acceptance:f9 -- --phase=day2`. Después: cerrar T85 en BITACORA y
+  `evidencia/T85.md`.
+- Confirmar que el deploy desde `main` (`dep-dak261ek1f9s73anjtl0`) terminó
+  bien.
+- Propuesto, espera respuesta: `agentpey.com` como sitio del repo en GitHub.
+- Más adelante, a pedido del usuario: rotar `REALOPS_AGENTPEY_API_KEY` y
+  `SIGNALDESK_FACILITATOR_SECRET`.
+- Sin decidir: si desconectar el Blueprint `AgentPey`. Hoy está conectado, sin
+  Auto Sync y sin servicios propios.
+- Los números de la landing ("678 tests", etc.) están viejos.

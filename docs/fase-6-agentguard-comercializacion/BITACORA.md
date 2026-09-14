@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, sin mergear hasta el día 2 de T85) · **En curso:** T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
+**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, mergeado; servicios viejos borrados) · **En curso:** T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -147,7 +147,9 @@ Y el piloto ya tiene nombre propio: `agentpey.com`, `realops.agentpey.com` y
 pagando un plan en vez de tres, y siguen siendo tres programas separados, cada
 uno con solo sus propias claves. Una compra real por los dominios nuevos se pagó
 y se entregó de punta a punta, con el comercio nuevo (T86, `C-114` a `C-116`).
-La mudanza convive con los servicios viejos hasta que corra el día 2 de T85.
+Los tres servicios viejos ya no existen, y las tres páginas comparten la misma
+identidad visual: `agentpey.com` abre la landing y la demo con wallet está en
+`agentpey.com/sign` (`C-117`).
 
 ### Progreso
 
@@ -202,7 +204,7 @@ La mudanza convive con los servicios viejos hasta que corra el día 2 de T85.
 | T83 | F9: revocación hospedada en `/revocar/{id}`, firmada con la wallet del principal — divulgación mínima antes de la prueba | ✅ cerrado 2026-09-12 |
 | T84 | F9: despliegue público de los tres servicios y primera compra real de punta a punta con la wallet del usuario — ocho defectos de borde entre servicios, encontrados en producción y cerrados; caso de aceptación 1 cumplido | ✅ cerrado 2026-09-13 |
 | T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | 🟡 día 1 cerrado 2026-09-13 · día 2 (Mandato vencido desde RealOps) después del 2026-09-15 01:29 UTC |
-| T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · sin mergear hasta el día 2 de T85 y la revisión del Blueprint |
+| T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · mergeado a `main` · servicios viejos borrados · identidad visual única (`C-117`) |
 
 ---
 
@@ -3667,3 +3669,45 @@ RealOps.
 
 **Anotado sin construir:** que los hijos escuchen solo en `127.0.0.1`; que el
 error al firmar en RealOps quede en el log; medir la memoria con tráfico real.
+
+### Después del cierre, el mismo día: limpieza y diseño para la reunión con Stellar
+
+**Qué quedó funcionando, en palabras simples.**
+
+**No quedan dos versiones del piloto.** El usuario muestra el proyecto a Stellar
+al día siguiente y pidió todo limpio antes. Esperar al día 2 de T85 resultó
+innecesario: esa prueba vive en la base de datos, no en los servicios viejos
+(`C-116`, enmendada). Así que se apagó la sincronización automática de Render,
+se borraron los tres servicios viejos, se sacó la dirección vieja de la lista
+de retorno de RealOps, T86 se mergeó a `main` y el servicio despliega desde ahí.
+
+**Las tres páginas se ven como un solo producto.** RealOps y el catálogo de
+SignalDesk usan ahora el mismo diseño que AgentPey. `agentpey.com` abre la
+landing, y la demo en la que se conecta la wallet y se firma pasó a
+`agentpey.com/sign` (`C-117`, decidido por el usuario).
+
+**Una cosa que no se rediseñó, a propósito.** Las entregas de SignalDesk van
+atadas a un recibo firmado que incluye su huella. Cambiarles el diseño habría
+dejado todas las entregas pasadas sin coincidir con su recibo, así que se
+revirtió antes de subirlo.
+
+**Evidencia técnica.**
+
+- Commit `9fa584e`: diseño, rutas (`/` landing, `/sign` demo, `/landing`
+  alias), cabecera de `revocar.html`, direcciones por defecto de la suite y de
+  RealOps, y README, ROADMAP, `.env.example` y la guía de partners con
+  `agentpey.com`. **1294 tests verdes**, `typecheck` y `build` limpios. La
+  primera corrida dio dos fallas en SignalDesk: el precio se había separado de
+  "USDC" y los tests buscan el texto entero. Se arregló el marcado.
+- En producción: `200` en `/`, `/sign`, `/landing`, RealOps y SignalDesk, con
+  capturas de cada página.
+- Commit `b79b76e`: `AGENTS.md` dice que el reparto de claves entre las apps no
+  se delega a Codex.
+- `main`: `3c73d14..9fa584e`. En Render quedan `AgentPey` y `project-radar`,
+  este último de otro proyecto.
+
+**Qué sigue.** El día 2 de T85, después de las 22:29 hora del usuario, contra
+los dominios nuevos. Pendientes, sin tocar: rotar los dos secretos, a pedido del
+usuario más adelante; poner `agentpey.com` como sitio del repo en GitHub
+(propuesto, espera respuesta); los números de la landing ("678 tests") están
+viejos.
