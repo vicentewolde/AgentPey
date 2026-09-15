@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, mergeado; servicios viejos borrados) · **En curso:** T87 (piloto en inglés y español con el logo de AgentPey, mergeado, falta verificar en producción) y T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
+**Fecha:** 2026-09-14 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`) y T87 (piloto en inglés y español, verificado en producción) · **Sigue:** el hito de `C-113`, decidido y sin arrancar · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -141,7 +141,8 @@ dos agentes nunca compraba con el segundo, y tres rechazos decían otra cosa que
 lo que pasaba—, que quedaron cerrados; la segunda dio 88 chequeos bien y uno
 mal, el de un intento no pagado que cuenta contra el tope diario, que es una
 decisión de la Fase 3 y quedó para un hito propio (T85, `C-108` a `C-113`).
-Falta el Mandato vencido firmado desde RealOps, que se prueba al día siguiente.
+Al día siguiente se probó lo que faltaba: un permiso de un día firmado desde
+RealOps, ya vencido, rechazó la compra con "tu permiso venció" y no pagó nada.
 Y el piloto ya tiene nombre propio: `agentpey.com`, `realops.agentpey.com` y
 `signaldesk.agentpey.com` corren en un solo servicio de Render en vez de tres,
 pagando un plan en vez de tres, y siguen siendo tres programas separados, cada
@@ -205,9 +206,9 @@ de `/sign` a `agentpey.com/consent`, y `/sign` ya no existe (T87, `C-118`).
 | T82 | F9: la compra desde RealOps y "Mis servicios" — entregas con recibo y enlace al pago, y rechazos traducidos a castellano sin inventar | ✅ cerrado 2026-09-12 |
 | T83 | F9: revocación hospedada en `/revocar/{id}`, firmada con la wallet del principal — divulgación mínima antes de la prueba | ✅ cerrado 2026-09-12 |
 | T84 | F9: despliegue público de los tres servicios y primera compra real de punta a punta con la wallet del usuario — ocho defectos de borde entre servicios, encontrados en producción y cerrados; caso de aceptación 1 cumplido | ✅ cerrado 2026-09-13 |
-| T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | 🟡 día 1 cerrado 2026-09-13 · día 2 (Mandato vencido desde RealOps) después del 2026-09-15 01:29 UTC |
+| T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | ✅ cerrado 2026-09-15 · día 2 (Mandato vencido desde RealOps): 8 ✓ · 0 ✗ |
 | T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · mergeado a `main` · servicios viejos borrados · identidad visual única (`C-117`) |
-| T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | 🟡 mergeado a `main` 2026-09-14 por pedido del usuario · falta verificar en producción (`C-118`) |
+| T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | ✅ cerrado 2026-09-14 · mergeado a `main` · verificado en producción (`C-118`) |
 
 ---
 
@@ -3521,7 +3522,7 @@ agente, y rotar el secreto del partner de RealOps, que pasó por el chat.
 
 ---
 
-## T85 · La suite de aceptación contra lo desplegado — día 1 cerrado 2026-09-13, día 2 pendiente
+## T85 · La suite de aceptación contra lo desplegado — cerrado 2026-09-15
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -3567,9 +3568,14 @@ plata varada: al terminar, devuelve a la reserva el saldo de cada rail que creó
 (`C-112`). La primera corrida, antes de eso, dejó 0.75 USDC de testnet que nadie
 puede recuperar.
 
-**Lo que falta de T85:** el Mandato vencido firmado desde RealOps, cuyo mínimo es
-un día. Ya está firmado; se prueba después del 2026-09-15 a las 01:29 UTC con
-`--phase=day2`.
+**Día 2, el 2026-09-15: el permiso vencido firmado desde RealOps también
+rechaza.** RealOps no deja firmar permisos de menos de un día, así que este caso
+solo se podía probar al día siguiente. La persona de prueba volvió a entrar, su
+agente seguía teniendo el mismo Mandato, y al pedir el informe AgentPey rechazó
+la compra con `MandateExpired`: no se pagó nada ni se creó un contrato de pago, y
+"Mis servicios" mostró "Tu permiso venció." junto al código. Corrió contra el
+despliegue que ya incluye T86 y T87. **8 chequeos bien, ninguno mal.** Con esto,
+los casos 2 a 10 quedan probados contra el piloto desplegado.
 
 **Evidencia técnica.**
 
@@ -3585,6 +3591,9 @@ un día. Ya está firmado; se prueba después del 2026-09-15 a las 01:29 UTC con
 - **1276 tests verdes** (eran 1248), `typecheck` y `build` limpios.
 - Commits: `a9d242d` (la suite), `09b6905` (SignalDesk), `88ddc51` (la compra),
   `31f132b` (limpieza de rails).
+- Día 2 `01M2HE7GTTGAH2F039VVY4HEPT` (2026-09-15, 02:27 UTC): **8 ✓ · 0 ✗**.
+  Compra rechazada `pur_01M2HE7PC2S4GKDBARX9JA58BG`, sin transacción, sin
+  entrega, sin rail. Detalle en `evidencia/T85.md` § 8.
 
 **Decisiones nuevas:** `C-108` a `C-113`.
 
@@ -3723,7 +3732,7 @@ commits (`89e3c75`). Detalle en `evidencia/T86.md` § 10.
 
 ---
 
-## T87 · El piloto en inglés y español, con el logo de AgentPey · mergeado 2026-09-14
+## T87 · El piloto en inglés y español, con el logo de AgentPey · cerrado 2026-09-14
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -3773,7 +3782,12 @@ día 2 corre después de que este despliegue esté en producción, nunca en medi
 - Capturas a 1280 px de la landing, la demo, la firma, la revocación, RealOps
   (inicio, agentes, revisión, servicios en inglés y español, "no entendí") y
   SignalDesk. Sin desborde horizontal a 375 px. Detalle en `evidencia/T87.md`.
-- Rama `cc/pilot-bilingual-chrome`. Las páginas estáticas de `apps/web` las hizo
+- **En producción** (`bf91eb7`, desplegado unos 105 s después del push): `200`
+  en `/`, `/consent`, `/landing`, RealOps y SignalDesk; `/sign` da `404`; `www`
+  redirige. La insignia, el EN / ES, el logo y el favicon están en las tres apps.
+  El día 2 de T85 corrió contra este despliegue. Sin probar todavía: firmar y
+  revocar con Freighter (`evidencia/T87.md` § 8).
+- Rama `cc/pilot-bilingual-chrome`, borrada al mergear. Las páginas estáticas de `apps/web` las hizo
   un subagente de Claude Code con una especificación escrita, y se revisaron
   antes de cerrar.
 

@@ -5147,3 +5147,43 @@ Pendiente:
 - La carpeta `logo agentpey/` quedó sin versionar en la raíz, tal como la dejó
   el usuario.
 - Sigue igual: `C-113`, rotar los dos secretos y lo anotado sin construir en T86.
+
+## 2026-09-15 (26) — main / cc/t85-day2-closeout
+
+Agente: Claude Code. Nada delegado a Codex.
+
+Qué:
+- **T87 mergeado y verificado en producción.** `main` `89e3c75..bf91eb7`
+  (fast-forward), rama borrada. Render desplegó en unos 105 s. En producción:
+  `200` en `/`, `/consent`, `/landing`, RealOps y SignalDesk; `/sign` da `404`;
+  `www` redirige; la insignia, el EN/ES, el logo y el favicon están presentes.
+  Decidido por el usuario antes del merge: el aviso de RealOps dice solo testnet
+  (`C-118`).
+- **Día 2 de T85, con confirmación del usuario:** corrida
+  `01M2HE7GTTGAH2F039VVY4HEPT`, 2026-09-15 02:27 UTC, contra `bf91eb7`, sin
+  `F9_*_URL`. **8 ✓ · 0 ✗.** El Mandato de F (`mdt_01M2ERGYQEDFRVYQ3MMW28R44H`)
+  rechazó con `MandateExpired`: sin transacción ni rail, y la frase aparece en
+  Mis servicios. Deja en producción la compra rechazada
+  `pur_01M2HE7PC2S4GKDBARX9JA58BG`. **T85 cerrado.**
+
+Por qué: era el último caso de aceptación pendiente, y la reunión con Stellar es
+esta tarde.
+
+Documentación tocada: `BITACORA.md` (estado, filas de T85 y T87, bloques de los
+dos), `evidencia/T85.md` § 6, § 7 y § 8 (nuevo), `evidencia/T87.md` § 8 (nuevo).
+Sin decisiones nuevas. Sin cambios de código desde `bf91eb7` (1298 tests,
+`typecheck` y `build` limpios en esa versión).
+
+Pendiente:
+- **Merge de esta rama, con confirmación del usuario.** Solo documentación, pero
+  cada push a `main` redespliega: mejor antes de la reunión y no durante.
+- Probar en producción, con Freighter, firmar en `/consent` y `/consent/{id}` y
+  revocar en `/revocar/{id}`, en los dos idiomas.
+- Hito de `C-113`: liberar el gasto de una intención no pagada y un código propio
+  para el rail sin saldo.
+- Rotar `REALOPS_AGENTPEY_API_KEY` y `SIGNALDESK_FACILITATOR_SECRET`, cuando lo
+  pida el usuario.
+- Anotado sin construir: hijos escuchando solo en `127.0.0.1`; log en el `catch`
+  de `POST /agentes/{id}/firmar`; medir la memoria del Starter con tráfico real.
+- Ramas `codex/*` sin mergear en `origin` (siete). `codex/vault-amount-tests`
+  roza MandateVault: no se mergea sin revisión.
