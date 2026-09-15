@@ -10,6 +10,7 @@ import {
 const TENANT = "ptn_01JB0000000000000000000000:01JB0000000000000000000001";
 const AGENT = "agt_01JB0000000000000000000002";
 const PURCHASE = "pur_01JB0000000000000000000003";
+const MANDATE = "mdt_01JB0000000000000000000004";
 const VENUE = "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F";
 
 function request(overrides: Record<string, unknown> = {}) {
@@ -74,6 +75,18 @@ describe("createPurchaseRequestSchema", () => {
   it("refuses a tenant id that is not one", () => {
     expect(createPurchaseRequestSchema.safeParse(request({ tenant_id: "usuario-42" })).success).toBe(false);
   });
+
+  /** T90: which of the tenant's Mandates to go through. Optional, and leaving it out is the only way to say "you choose". */
+  it("accepts a Mandate id, and still accepts a request without one", () => {
+    expect(createPurchaseRequestSchema.safeParse(request({ mandate_id: MANDATE })).success).toBe(true);
+    expect(createPurchaseRequestSchema.parse(request())).not.toHaveProperty("mandate_id");
+  });
+
+  it("refuses a mandate_id that is null, empty, or another kind of id", () => {
+    expect(createPurchaseRequestSchema.safeParse(request({ mandate_id: null })).success).toBe(false);
+    expect(createPurchaseRequestSchema.safeParse(request({ mandate_id: "" })).success).toBe(false);
+    expect(createPurchaseRequestSchema.safeParse(request({ mandate_id: AGENT })).success).toBe(false);
+  });
 });
 
 describe("purchaseResourceSchema", () => {
@@ -81,6 +94,7 @@ describe("purchaseResourceSchema", () => {
     id: PURCHASE,
     tenant_id: TENANT,
     agent_id: AGENT,
+    mandate_id: MANDATE,
     outcome: "settled" as const,
     code: null,
     reason: null,
@@ -122,6 +136,10 @@ describe("purchaseResourceSchema", () => {
     expect(purchaseResourceSchema.safeParse(withoutDelivery).success).toBe(false);
   });
 
+  it("accepts a purchase recorded before T90, which went through no named Mandate", () => {
+    expect(purchaseResourceSchema.safeParse({ ...settled, mandate_id: null }).success).toBe(true);
+  });
+
   it("refuses an outcome outside the two this route can produce", () => {
     expect(purchaseResourceSchema.safeParse({ ...settled, outcome: "pending" }).success).toBe(false);
   });
@@ -143,6 +161,7 @@ describe("toPurchaseResource delivery", () => {
       id: PURCHASE,
       tenantId: TENANT,
       agentId: AGENT,
+      mandateId: MANDATE,
       outcome: "settled" as const,
       code: null,
       reason: null,

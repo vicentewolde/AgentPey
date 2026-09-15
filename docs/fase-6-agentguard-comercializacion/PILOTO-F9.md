@@ -255,6 +255,9 @@ GET  /v1/tenants/{id}/activity  scope: vault:read
   **Un rechazo es `201`, no `4xx`**: que el Mandato diga que no es el sistema
   funcionando, no la petición estando mal formada. Un `4xx` se reserva para
   el partner que pidió mal (falta scope, tenant ajeno, cuerpo inválido).
+  **Enmienda T90 (`C-121`):** el cuerpo acepta `mandate_id` opcional, que elige
+  cuál de los Mandatos del tenant usa la compra y no autoriza nada; uno que no es
+  de ese tenant es `404 MandateNotFound`. La respuesta gana `mandate_id`.
 - `GET /v1/tenants/{id}/activity` — lo que § 6 del brief pide mostrar:
   mandato activo, permisos, compras, rechazos con razón, gasto del día contra
   `perDay`, saldo del rail. **Todo esto ya existe calculado**: es lo mismo que

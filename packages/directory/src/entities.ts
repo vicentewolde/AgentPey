@@ -272,6 +272,12 @@ export const purchaseRecordSchema = z.strictObject({
   tenantId: tenantIdSchema,
   /** `null` when the refusal happened before this tenant's agent was resolved. */
   agentId: agentIdSchema.nullable(),
+  /**
+   * The Mandate this purchase went through, whether the partner named it or
+   * the platform chose it (T90). `null` when the refusal happened before a
+   * Mandate was resolved, and for every row written before schema version 9.
+   */
+  mandateId: mandateIdSchema.nullable(),
   /** Which partner asked, so a purchase can never be read across the boundary. */
   partnerId: partnerIdSchema,
   outcome: z.enum(["settled", "refused"]),

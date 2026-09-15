@@ -4711,3 +4711,119 @@ agente compra cuando hay dos iguales.
 `POST https://agentpey.com/api/session/start` en producción. Eso emitió y ancló en
 testnet una credencial y un Mandato de demo, lo mismo que apretar "Start
 session". Se le dijo al usuario.
+
+---
+
+### C-121 · T90: la persona elige qué agente compra, y `mandate_id` elige el Mandato sin autorizar nada · `Vigente`
+**Fecha:** 2026-09-15 · **Decidido por el usuario** (elegir el agente, en `C-120`; y las siete preguntas del diseño) · la forma, de Claude Code
+
+**El problema, verificado en T89.** En RealOps una cuenta puede contratar dos
+agentes del mismo tipo, cada uno con su Mandato, y los dos comparten el tenant de
+AgentPey. RealOps tomaba el agente firmado más viejo y armaba con él la clave de
+idempotencia. AgentPey pagaba con el Mandato activo más nuevo que nombra el
+producto (`selectMandateFor`, `C-111`). `POST /v1/purchases` no tenía forma de
+nombrar ninguno.
+
+**Lo que encontré antes de construir, y se le dijo al usuario:**
+
+1. **Elegir el Mandato no separa el gasto del día.** `perDay` se cuenta por agente
+   de AgentPey (`spentOn(intent.agent)`, `policy-rail.ts`), y un tenant tiene uno.
+   El `perDay` del Mandato elegido se compara con todo lo que el agente gastó hoy,
+   por cualquiera de sus Mandatos. El rail también es uno por tenant, con su
+   `per_day` on-chain fijo.
+2. **La tarjeta "Hoy llevas gastado" de RealOps** muestra el Mandato activo más
+   nuevo del tenant, de cualquier producto (`activeMandate`,
+   `packages/activity`).
+3. **El SDK de partners no tiene compras**, y la guía terminaba en el Mandato.
+
+**Decisiones del usuario, con esas opciones a la vista:**
+
+| # | Pregunta | Decisión |
+|---|---|---|
+| 1 | ¿`mandate_id` en la respuesta, con su columna? | Sí |
+| 2 | ¿`404 MandateNotFound` o un código nuevo? | Reusar `MandateNotFound` |
+| 3 | ¿Cómo elige la persona? | Una página "¿Qué agente lo compra?" después de interpretar la frase |
+| 4 | ¿Clave de idempotencia? | `buy-${request_key}`, por formulario y sin el agente (lo recomendado; el diseño de T89 decía "con ese agente") |
+| 5 | ¿RealOps manda `mandate_id` siempre? | Sí, también con un solo agente |
+| 6 | ¿Guía y SDK? | Sección de compras en la guía; el SDK sin compras por ahora |
+| 7 | ¿Aviso del gasto compartido? | Sí, en la página de elección |
+
+**La forma:**
+
+- **Contrato de `/v1` (enmienda aditiva de T73).** `POST /v1/purchases` acepta
+  `mandate_id` opcional (`mdt_…`); `null` o mal formado es `400`. Sin él, nada
+  cambia. `PurchaseResource` gana `mandate_id` nullable: el Mandato por el que pasó
+  la compra, nombrado o elegido. Columna `directory_purchases.mandate_id`, esquema
+  del directorio versión 9; las filas viejas quedan en `null`.
+- **Primera cerradura, en la ruta.** Después de `requireOwnedTenant`,
+  `requireMandateOfTenant` exige que el Mandato sea **de ese tenant**, no solo del
+  partner. No existe, es de otro partner o es de otro tenant del mismo partner: el
+  mismo `404` con el mismo cuerpo, que solo repite el id recibido. No se llama al
+  puerto de compra ni se escribe fila. Un tenant ajeno sigue siendo
+  `TenantNotFound` antes de mirar el Mandato.
+- **Segunda cerradura, en el módulo.** `resolveNamedMandate` busca solo en
+  `listMandates(tenantId)` y además exige `tenantId` y `agentId` en la fila. Sin
+  respaldo nunca: revocado, vencido o sin empezar se rechaza con `MandateRevoked`,
+  `MandateExpired` o `MandateNotYetValid` aunque otro Mandato activo cubra la
+  compra. La ventana es la de `listActiveMandates`, con los dos bordes incluidos.
+  Un id ajeno no se escribe como "usado": el rechazo lleva `mandate_id: null`.
+- **Todo lo demás, igual (`B-25`).** `mandateSourceFrom`, la verificación
+  on-chain de `createAgent`, `withheldBecause`, `checkScope`, `checkMandate` (con
+  productos y agente), `perDay` en su sección crítica, `max_total`,
+  `reconcileTerms` y los límites del rail. Un Mandato nombrado que no cubre el
+  producto lo rechaza `checkMandate` con `MandateProductNotAllowed`. **Enmienda
+  `C-111`** solo en esto: con `mandate_id`, `selectMandateFor` no participa.
+- **RealOps.** Después de interpretar, los candidatos son los agentes de esa
+  cuenta del tipo pedido con Mandato firmado. Con uno, se compra directo. Con más
+  de uno y sin `agent_id`, se muestra la página de elección, que reenvía la misma
+  frase (o el mismo botón de producto), la misma `request_key` y el `agent_id`
+  elegido. Un `agent_id` que no está entre los candidatos (de otra cuenta, de otro
+  tipo, sin firmar) es `400` sin llamar a AgentPey. Siempre se manda el
+  `mandate_id` del agente que compra.
+- **Idempotencia (enmienda de lo propuesto en T89, no de `C-98`).** La clave es
+  `buy-${request_key}`. Elegir otro agente desde el mismo formulario manda la
+  misma clave con otro cuerpo, AgentPey responde `409 IdempotencyKeyConflict` y
+  RealOps dice "Ya pediste esto con otro agente". Con la clave por agente, ese
+  formulario habría hecho dos compras; es lo que `C-98`, enmendada en T84, quiere
+  evitar.
+- **En pantalla.** Las entregas y los rechazos de "Mis servicios" dicen qué
+  agente compró, leído del `mandate_id` que devuelve AgentPey. La página de
+  elección avisa que el gasto del día se suma entre los agentes.
+- **Guía.** `examples/cloudops-partner-integration.md` gana § 7 "Pedir una
+  compra"; errores pasa a § 8.
+
+**Lo que no cambia, a propósito, y queda escrito:**
+
+- **El gasto del día es del agente, no del Mandato.** Fijado por un test nuevo en
+  `policy-rail.test.ts`. Separarlo pediría un agente de AgentPey por agente de
+  RealOps: la alternativa que `C-111` descartó.
+- **El rail tiene el `principal` del primer Mandato que pagó.**
+  `ensureTenantPolicyRail` devuelve el rail existente sin mirar
+  `principalAddress` (`tenant-rail.ts:271-279`). Si dos agentes de una cuenta
+  se firmaran con wallets distintas, retiraría la del primero. Pasaba igual antes
+  de T90; no se tocó.
+- **La tarjeta de gasto** sigue mostrando el Mandato activo más nuevo del tenant.
+
+**Alternativas descartadas:**
+
+- **`agent_id` de AgentPey en el cuerpo.** Hay un agente por tenant: no distingue
+  nada.
+- **Una referencia al agente de RealOps.** AgentPey no conoce esos agentes;
+  pediría una tabla de mapeo.
+- **Un agente de AgentPey por agente de RealOps.** Separaría el gasto, pero cambia
+  la identidad y la custodia del rail (`C-111`).
+- **`POST /v1/mandates/{id}/purchases`.** Otra ruta y otra forma de contrato para
+  lo mismo.
+- **Un código nuevo para el Mandato ajeno.** `MandateNotFound` ya es lo que
+  responde `GET /v1/mandates/{id}`; el `201` refused `MandateNotFound` ("nada
+  firmado") se distingue por el status.
+- **Selector dentro del formulario, o "agente preferido" en Mis agentes.** El tipo
+  se sabe recién al interpretar la frase; y un preferido agrega estado que nadie
+  pidió.
+- **Clave por agente.** Ver arriba.
+
+**Anotado sin construir:** compras en `@agentpey/partner-sdk`; una tarjeta de
+gasto por agente.
+
+`AGENTS.md` sin cambios: T90 no cambia qué es delegable. `POST /v1/purchases` y la
+elección del Mandato ya estaban fuera del alcance de Codex.

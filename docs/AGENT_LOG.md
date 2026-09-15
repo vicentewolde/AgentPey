@@ -5272,3 +5272,46 @@ Pendiente:
 - Quitar las rutas `/api/session/*` de la demo, que ya no tienen página.
 - Siguen: firmar y revocar con Freighter en producción, `C-113`, rotar los dos
   secretos, lo anotado sin construir en T86.
+
+## 2026-09-15 (29) — main (T89 mergeado) / cc/t90-choose-agent (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex (autorización y contrato de `/v1`).
+
+Qué:
+- **T89 mergeado** (`185b382..0faa2bb`). Verificado en producción, solo con
+  lecturas: `/consent` y `/sign` dan `404`, y los dos botones de la landing van a
+  `https://realops.agentpey.com`. **Sin verificar:** la hora local en páginas con
+  sesión, porque abrir una sesión escribe en producción.
+- **T90** (`C-121`), con el diseño revisado y las siete respuestas del usuario:
+  - `POST /v1/purchases` acepta `mandate_id` opcional. Primera cerradura en la
+    ruta: el Mandato tiene que ser del tenant; si no, `404 MandateNotFound`
+    idéntico al de un id inexistente y ninguna fila. Segunda en
+    `resolveNamedMandate`: solo filas del tenant y del agente, y sin respaldo
+    (revocado, vencido o sin empezar se rechaza con su código). `checkMandate`,
+    `perDay`, `reconcileTerms` y el rail no cambian.
+  - `PurchaseResource.mandate_id` y columna `directory_purchases.mandate_id`
+    (directorio versión 9, `alter table … if not exists`).
+  - RealOps: página "¿Qué agente lo compra?" con más de un agente firmado del tipo;
+    `agent_id` validado contra la cuenta; `mandate_id` siempre; clave
+    `buy-${request_key}` (sin el agente) y `409` traducido; "Agente: …" en
+    entregas y rechazos.
+  - OpenAPI regenerado; guía de partners con § 7 "Pedir una compra".
+
+Documentación tocada: `DECISIONES.md` (`C-121`), `BITACORA.md` (estado, filas de
+T89 y T90, cierre de T89 en producción, bloque de T90), `evidencia/T90.md`
+(nuevo), `PILOTO-F9.md` § 3.3 (enmienda), `examples/cloudops-partner-integration.md`,
+`docs/api/openapi.yaml`. `AGENTS.md` sin cambios: T90 no cambia qué es
+delegable. **1344 tests**, `typecheck` y `build` limpios.
+
+Pendiente:
+- **Merge de `cc/t90-choose-agent`, con confirmación del usuario.** El push
+  redespliega. El directorio agrega la columna solo al arrancar
+  (`add column if not exists`). Después: pedir una compra con un agente en
+  RealOps, que escribe en producción y requiere confirmación.
+- Anotado sin construir: compras en `@agentpey/partner-sdk`; tarjeta de gasto por
+  agente (hoy muestra el Mandato activo más nuevo del tenant).
+- Riesgo registrado, sin cambiar: con dos agentes firmados por wallets distintas,
+  el rail conserva el `principal` del primero.
+- Siguen: la hora local de T89 en producción, firmar y revocar con Freighter en
+  producción, quitar `/api/session/*`, `C-113`, rotar los dos secretos, lo
+  anotado sin construir en T86.

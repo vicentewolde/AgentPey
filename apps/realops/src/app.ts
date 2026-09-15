@@ -46,6 +46,7 @@ import { bilingual, type Bilingual } from "./copy.js";
 import { INSTRUCTION_PROBLEMS, SUPPORTED_PAIR, interpretInstruction, type InstructionProblem } from "./instruction.js";
 import {
   agentsPage,
+  chooseAgentPage,
   errorPage,
   homePage,
   linkSentPage,
@@ -164,6 +165,14 @@ const NOT_CONNECTED = bilingual(
   "Esta instancia todavía no está conectada a AgentPey.",
 );
 const NO_SUCH_AGENT = bilingual("That agent does not exist.", "Ese agente no existe.");
+const CANNOT_BUY_THAT = bilingual(
+  "That agent cannot buy this. Choose again from My services.",
+  "Ese agente no puede comprar esto. Vuelve a elegir desde Mis servicios.",
+);
+const ALREADY_ASKED = bilingual(
+  "You already asked for this with another agent. Check My services before asking for it again.",
+  "Ya pediste esto con otro agente. Revisa Mis servicios antes de volver a pedirlo.",
+);
 const LINK_ALREADY_USED = bilingual(
   "That link was already used. Links work only once.",
   "Ese enlace ya se usó. Los enlaces sirven una sola vez.",
@@ -508,9 +517,14 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         }
       }
 
+      // Every agent of this account that could buy what was asked: the right
+      // kind, and a signed Mandate. Read from this account's own agents only;
+      // an `agent_id` from the form is looked up among these and nowhere else.
       const agents = await config.store.listAgents(account.id);
-      const agent = agents.find((candidate) => candidate.kind === kind && candidate.mandateId !== null);
-      if (agent === undefined || agent.tenantId === null) {
+      const candidates = agents.filter(
+        (candidate) => candidate.kind === kind && candidate.mandateId !== null && candidate.tenantId !== null,
+      );
+      if (candidates.length === 0) {
         sendHtml(
           response,
           409,
@@ -524,11 +538,6 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         );
         return;
       }
-      if (config.agentpey === undefined) {
-        sendHtml(response, 503, errorPage(503, NOT_CONNECTED));
-        return;
-      }
-
       // One key per rendered form, not per attempt (C-98, amended in T84). The
       // form carries a key minted when the page was drawn, so sending the same
       // form again — a double click, a resubmit after a timeout — replays the
@@ -537,16 +546,58 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // protects; the daily limit is still what bounds it.
       const requestKey = requestKeySchema.safeParse(form.get("request_key"));
 
+      // Which agent buys (T90, decided by the user). With one candidate there
+      // is nothing to choose. With more, the person chooses, and the choice
+      // page carries this same form's key, so choosing is still one form.
+      const chosenId = form.get("agent_id");
+      let agent = candidates[0]!;
+      if (chosenId !== null) {
+        const match = candidates.find((candidate) => candidate.id === chosenId);
+        if (match === undefined) {
+          sendHtml(response, 400, errorPage(400, CANNOT_BUY_THAT));
+          return;
+        }
+        agent = match;
+      } else if (candidates.length > 1) {
+        sendHtml(
+          response,
+          200,
+          chooseAgentPage({
+            agents: candidates,
+            kind,
+            ...(chosen.success ? { chosenKind: kind } : { instruction }),
+            requestKey: requestKey.success ? requestKey.data : randomUUID(),
+          }),
+        );
+        return;
+      }
+
+      if (config.agentpey === undefined) {
+        sendHtml(response, 503, errorPage(503, NOT_CONNECTED));
+        return;
+      }
+
       try {
         await config.agentpey.purchase({
-          tenantId: agent.tenantId,
+          tenantId: agent.tenantId!,
           venue: config.targets.venueId,
           productId: config.targets.products[kind][0]!,
           quantity,
           routeParams: routeParamsFor(kind, pair, account.externalRef),
-          idempotencyKey: `buy-${agent.id}-${requestKey.success ? requestKey.data : randomUUID()}`,
+          // Always the chosen agent's own Mandate, even when it is the only
+          // one: AgentPey then goes through exactly the permission this page
+          // says is buying, and a revoked one is refused rather than replaced.
+          mandateId: agent.mandateId!,
+          // The form, not the agent: choosing another agent from the same form
+          // is the same request with a different body, which AgentPey answers
+          // with `409` instead of making a second purchase (T90).
+          idempotencyKey: `buy-${requestKey.success ? requestKey.data : randomUUID()}`,
         });
       } catch (error) {
+        if (isAgentPassError(error) && error.details.code === "IdempotencyKeyConflict") {
+          sendHtml(response, 409, errorPage(409, ALREADY_ASKED));
+          return;
+        }
         // A timeout is not a failure to buy: AgentPey may still be settling the
         // payment. Saying "could not reach" here is what made people retry and
         // pay twice in the deployed pilot (T84).

@@ -73,10 +73,13 @@ export type ExecutePurchase = (request: {
   readonly quantity: number;
   readonly maxTotal?: string;
   readonly routeParams?: Readonly<Record<string, string | number>>;
+  /** Already checked to be one of `tenantId`'s own Mandates (T90). Chooses; never authorises. */
+  readonly mandateId?: string;
 }) => Promise<
   | {
       readonly kind: "settled";
       readonly agentId: string;
+      readonly mandateId: string;
       readonly intentId: string;
       readonly total: string;
       readonly asset: string;
@@ -88,6 +91,7 @@ export type ExecutePurchase = (request: {
   | {
       readonly kind: "refused";
       readonly agentId: string | null;
+      readonly mandateId: string | null;
       readonly code: string;
       readonly reason: string;
       readonly details: Readonly<Record<string, unknown>>;
@@ -191,6 +195,23 @@ async function requireOwnedMandate(directory: PartnerRoutesDirectory, mandateId:
   }
   const tenant = await directory.findTenant(mandate.tenantId);
   if (tenant === undefined || tenant.partnerId !== partnerId) {
+    throw new AgentPassError("MandateNotFound", "no mandate with that id", { details: { mandateId } });
+  }
+  return mandate;
+}
+
+/**
+ * A Mandate named in a purchase must belong to the purchase's own tenant (T90).
+ *
+ * Stricter than {@link requireOwnedMandate}, which only asks whether the
+ * partner owns it: a partner's Mandate for another of its tenants is not a
+ * Mandate this tenant's purchase may go through either. All three failures —
+ * no such id, another partner's, another tenant's — are the same `404` with the
+ * same body, which only repeats the id the caller sent.
+ */
+async function requireMandateOfTenant(directory: PartnerRoutesDirectory, mandateId: string, tenantId: string): Promise<MandateRecord> {
+  const mandate = await directory.findMandateById(mandateId);
+  if (mandate === undefined || mandate.tenantId !== tenantId) {
     throw new AgentPassError("MandateNotFound", "no mandate with that id", { details: { mandateId } });
   }
   return mandate;
@@ -381,6 +402,13 @@ async function handleCreatePurchase(input: PartnerRouteRequest, now: Date): Prom
   return respondOrCache(input.directory, auth.partnerId, input.idempotencyKeyHeader!, input.body, async () => {
     const request = parseBody(createPurchaseRequestSchema, input.body);
     await requireOwnedTenant(input.directory, request.tenant_id, auth.partnerId);
+    // After the tenant, so another partner's tenant is still a `TenantNotFound`
+    // that says nothing about the Mandate. A Mandate that is not this tenant's
+    // is a mistake in the request, not a decision about it: `404`, and no
+    // purchase row, exactly like a tenant that is not this partner's.
+    if (request.mandate_id !== undefined) {
+      await requireMandateOfTenant(input.directory, request.mandate_id, request.tenant_id);
+    }
 
     const result = await input.executePurchase({
       tenantId: request.tenant_id,
@@ -389,6 +417,7 @@ async function handleCreatePurchase(input: PartnerRouteRequest, now: Date): Prom
       quantity: request.quantity,
       maxTotal: request.max_total,
       routeParams: request.route_params,
+      ...(request.mandate_id === undefined ? {} : { mandateId: request.mandate_id }),
     });
 
     // Settled or refused, the attempt is recorded. A design that only stored
@@ -397,6 +426,7 @@ async function handleCreatePurchase(input: PartnerRouteRequest, now: Date): Prom
     const record = await input.directory.createPurchase({
       tenantId: request.tenant_id,
       agentId: result.agentId,
+      mandateId: result.mandateId,
       partnerId: auth.partnerId,
       outcome: result.kind,
       code: result.kind === "refused" ? result.code : null,

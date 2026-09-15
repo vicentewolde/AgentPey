@@ -197,6 +197,8 @@ export interface CreateConsentSessionInput {
 export interface CreatePurchaseInput {
   readonly tenantId: string;
   readonly agentId: string | null;
+  /** The Mandate the purchase went through; `null` if it was refused before one was resolved. */
+  readonly mandateId: string | null;
   readonly partnerId: string;
   readonly outcome: "settled" | "refused";
   readonly code: string | null;
@@ -351,6 +353,9 @@ function toPurchase(row: Record<string, unknown>): PurchaseRecord {
     id: row.id,
     tenantId: row.tenant_id,
     agentId: row.agent_id,
+    // `?? null`: a row read through a pool that predates version 9's column
+    // has no such key at all, and that is the same fact as a stored null.
+    mandateId: row.mandate_id ?? null,
     partnerId: row.partner_id,
     outcome: row.outcome,
     code: row.code,
@@ -1009,13 +1014,14 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
       const id = newId("purchase");
       const row = await one(
         `insert into directory_purchases
-           (id, tenant_id, agent_id, partner_id, outcome, code, reason, venue, product_id,
+           (id, tenant_id, agent_id, mandate_id, partner_id, outcome, code, reason, venue, product_id,
             quantity, intent_id, total, asset, pay_to, transaction_hash, delivery)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning *`,
         [
           id,
           input.tenantId,
           input.agentId,
+          input.mandateId,
           input.partnerId,
           input.outcome,
           input.code,

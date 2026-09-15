@@ -24,6 +24,7 @@ interface PurchaseCall {
   readonly productId: string;
   readonly quantity: number;
   readonly routeParams?: Readonly<Record<string, string | number>>;
+  readonly mandateId?: string;
   readonly idempotencyKey: string;
 }
 
@@ -50,6 +51,9 @@ function settled(overrides: Partial<PurchaseResource> = {}): PurchaseResource {
 
 function fakeAgentPey() {
   const purchases: PurchaseCall[] = [];
+  // One consent session per signature, and one Mandate per session, so two
+  // agents of the same account end up with two different Mandates (T90).
+  let consentSeq = 0;
   let activity: TenantActivity = {
     tenant_id: "ptn_x:tenant1",
     mandate: null,
@@ -65,22 +69,24 @@ function fakeAgentPey() {
       return { id: "ptn_x:tenant1", external_ref: externalRef };
     },
     async createConsentSession() {
+      consentSeq += 1;
+      const id = `cns_${String(consentSeq).padStart(26, "0")}`;
       return {
-        id: "cns_01J7QW8VQEJPAXEPAYBUY0001",
+        id,
         status: "pending",
-        consent_url: "https://agentpey.example/consent/cns_01J7QW8VQEJPAXEPAYBUY0001",
+        consent_url: `https://agentpey.example/consent/${id}`,
         return_url: null,
         mandate_id: null,
         expires_at: "2026-09-13T00:00:00.000Z",
       };
     },
-    async readConsentSession() {
+    async readConsentSession(id) {
       return {
-        id: "cns_01J7QW8VQEJPAXEPAYBUY0001",
+        id,
         status: "completed",
         consent_url: null,
         return_url: null,
-        mandate_id: "mnd_01J7QW8VQEJPAXEPAYBUY0009",
+        mandate_id: `mdt_${id.slice("cns_".length)}`,
         expires_at: "2026-09-13T00:00:00.000Z",
       };
     },
@@ -144,21 +150,43 @@ function form(fields: Record<string, string> = {}, cookie?: string): RequestInit
   };
 }
 
-/** Signs in, configures an agent of `kind`, and takes it all the way to signed. */
-async function readyAgent(email: string, kind: "market_brief" | "ai_credits" = "market_brief"): Promise<string> {
+async function signIn(email: string): Promise<string> {
   const before = sent.length;
   await fetch(`${baseUrl}/entrar`, form({ email, alias: "Tester" }));
   const link = sent[before]!.link.replace("http://127.0.0.1/", `${baseUrl}/`);
-  const cookie = (await fetch(link, { redirect: "manual" })).headers.get("set-cookie")!.split(";")[0]!;
+  return (await fetch(link, { redirect: "manual" })).headers.get("set-cookie")!.split(";")[0]!;
+}
 
+/** Configures an agent of `kind` for the signed-in account and, unless told not to, takes it to signed. */
+async function hireAgent(
+  cookie: string,
+  kind: "market_brief" | "ai_credits",
+  label = "Mi agente",
+  sign = true,
+): Promise<string> {
   const created = await fetch(
     `${baseUrl}/agentes`,
-    form({ kind, label: "Mi agente", perTx: "0.30", perDay: "0.60", validForDays: "30" }, cookie),
+    form({ kind, label, perTx: "0.30", perDay: "0.60", validForDays: "30" }, cookie),
   );
   const agentId = created.headers.get("location")!.slice("/agentes/".length);
-  await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
-  await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+  if (sign) {
+    await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
+    await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+  }
+  return agentId;
+}
+
+/** Signs in, configures an agent of `kind`, and takes it all the way to signed. */
+async function readyAgent(email: string, kind: "market_brief" | "ai_credits" = "market_brief"): Promise<string> {
+  const cookie = await signIn(email);
+  await hireAgent(cookie, kind);
   return cookie;
+}
+
+/** This account's agents as RealOps stored them, to read the Mandate each one was signed into. */
+async function agentsOf(email: string) {
+  const account = await store.findAccountByEmail(email);
+  return store.listAgents(account!.id);
 }
 
 describe("asking for a purchase", () => {
@@ -305,6 +333,157 @@ describe("asking for a purchase", () => {
 
     expect(response.status).toBe(502);
     agentpey.answerWith(settled());
+  });
+});
+
+/**
+ * T90, decided by the user: when more than one signed agent could buy what was
+ * asked, the person chooses, and AgentPey is told exactly which Mandate to go
+ * through. RealOps still authorises nothing: it names a Mandate, and AgentPey
+ * checks it is this tenant's and decides with it.
+ */
+describe("which agent buys", () => {
+  const BRIEF = "compra el informe XLM/USDC";
+
+  function choiceKey(html: string): string {
+    const match = /name="request_key" value="([^"]+)"/.exec(html);
+    expect(match).not.toBeNull();
+    return match![1]!;
+  }
+
+  it("with one signed agent, buys straight away, through that agent's own Mandate", async () => {
+    const email = "uno-solo@ejemplo.cl";
+    const cookie = await readyAgent(email);
+    const [agent] = await agentsOf(email);
+    const before = agentpey.purchases.length;
+
+    const response = await fetch(`${baseUrl}/instruccion`, form({ instruction: BRIEF }, cookie));
+
+    expect(response.status).toBe(302);
+    expect(agentpey.purchases[before]!.mandateId).toBe(agent!.mandateId);
+  });
+
+  it("an unsigned agent of the same kind does not make anyone choose", async () => {
+    const email = "sin-firmar@ejemplo.cl";
+    const cookie = await readyAgent(email);
+    await hireAgent(cookie, "market_brief", "Borrador", false);
+    const before = agentpey.purchases.length;
+
+    const response = await fetch(`${baseUrl}/instruccion`, form({ instruction: BRIEF }, cookie));
+
+    expect(response.status).toBe(302);
+    expect(agentpey.purchases.length).toBe(before + 1);
+  });
+
+  it("with two signed agents of the kind, asks which one, and asks AgentPey for nothing yet", async () => {
+    const cookie = await signIn("dos-agentes@ejemplo.cl");
+    const first = await hireAgent(cookie, "market_brief", "Informes A");
+    const second = await hireAgent(cookie, "market_brief", "Informes B");
+    await hireAgent(cookie, "ai_credits", "Créditos");
+    const key = "6f1c2f9e-7d0a-4c5b-9a55-0e7f0b7f3a11";
+    const before = agentpey.purchases.length;
+
+    const response = await fetch(`${baseUrl}/instruccion`, form({ instruction: BRIEF, request_key: key }, cookie));
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain("¿Qué agente lo compra?");
+    expect(html).toContain(`name="agent_id" value="${first}"`);
+    expect(html).toContain(`name="agent_id" value="${second}"`);
+    // Only agents that can buy this: the credits agent is not offered for a report.
+    expect(html.match(/name="agent_id"/g)).toHaveLength(2);
+    // The same form's key and sentence ride along with every choice.
+    expect(choiceKey(html)).toBe(key);
+    expect(html).toContain(`name="instruction" value="${BRIEF}"`);
+    expect(html).toContain("El gasto del día se suma entre tus agentes");
+    expect(agentpey.purchases.length).toBe(before);
+  });
+
+  it("buys through the chosen agent's Mandate, keyed by the form rather than the agent", async () => {
+    const email = "elige@ejemplo.cl";
+    const cookie = await signIn(email);
+    await hireAgent(cookie, "market_brief", "Informes A");
+    const second = await hireAgent(cookie, "market_brief", "Informes B");
+    const chosen = (await agentsOf(email)).find((agent) => agent.id === second)!;
+    const key = "0b5f8a8e-3c1d-4e2f-8a9b-1c2d3e4f5a6b";
+    const before = agentpey.purchases.length;
+
+    const response = await fetch(
+      `${baseUrl}/instruccion`,
+      form({ instruction: BRIEF, request_key: key, agent_id: second }, cookie),
+    );
+
+    expect(response.status).toBe(302);
+    const call = agentpey.purchases[before]!;
+    expect(call.mandateId).toBe(chosen.mandateId);
+    expect(call.idempotencyKey).toBe(`buy-${key}`);
+  });
+
+  it("choosing another agent from the same form sends the same key, and says so when AgentPey refuses it", async () => {
+    const email = "cambia@ejemplo.cl";
+    const cookie = await signIn(email);
+    const first = await hireAgent(cookie, "market_brief", "Informes A");
+    const second = await hireAgent(cookie, "market_brief", "Informes B");
+    const key = "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a";
+    const before = agentpey.purchases.length;
+
+    await fetch(`${baseUrl}/instruccion`, form({ instruction: BRIEF, request_key: key, agent_id: first }, cookie));
+    const { AgentPassError } = await import("@agentpass/core");
+    agentpey.answerWith(
+      new AgentPassError("CommandFailed", "this Idempotency-Key was already used with a different request body", {
+        details: { path: "/v1/purchases", status: 409, code: "IdempotencyKeyConflict" },
+      }),
+    );
+    const again = await fetch(`${baseUrl}/instruccion`, form({ instruction: BRIEF, request_key: key, agent_id: second }, cookie));
+    agentpey.answerWith(settled());
+
+    const [one, two] = agentpey.purchases.slice(before);
+    expect(one!.idempotencyKey).toBe(two!.idempotencyKey);
+    expect(one!.mandateId).not.toBe(two!.mandateId);
+    expect(again.status).toBe(409);
+    expect(await again.text()).toContain("Ya pediste esto con otro agente");
+  });
+
+  it("refuses an agent of another account, or of another kind, without asking AgentPey", async () => {
+    const strangerCookie = await signIn("ajeno@ejemplo.cl");
+    const strangers = await hireAgent(strangerCookie, "market_brief", "Ajeno");
+    const cookie = await signIn("propio@ejemplo.cl");
+    await hireAgent(cookie, "market_brief", "Informes A");
+    await hireAgent(cookie, "market_brief", "Informes B");
+    const credits = await hireAgent(cookie, "ai_credits", "Créditos");
+    const before = agentpey.purchases.length;
+
+    const foreign = await fetch(`${baseUrl}/instruccion`, form({ instruction: BRIEF, agent_id: strangers }, cookie));
+    const wrongKind = await fetch(`${baseUrl}/instruccion`, form({ instruction: BRIEF, agent_id: credits }, cookie));
+
+    expect(foreign.status).toBe(400);
+    expect(wrongKind.status).toBe(400);
+    expect(await wrongKind.text()).toContain("Ese agente no puede comprar esto");
+    expect(agentpey.purchases.length).toBe(before);
+  });
+
+  it("the product buttons carry the product through the choice, not a sentence", async () => {
+    const cookie = await signIn("botones-dos@ejemplo.cl");
+    await hireAgent(cookie, "market_brief", "Informes A");
+    await hireAgent(cookie, "market_brief", "Informes B");
+
+    const html = await (await fetch(`${baseUrl}/instruccion`, form({ kind: "market_brief" }, cookie))).text();
+
+    expect(html).toContain('name="kind" value="market_brief"');
+    expect(html).not.toContain('name="instruction"');
+  });
+
+  it("shows on each delivery which agent bought it", async () => {
+    const email = "quien-compro@ejemplo.cl";
+    const cookie = await signIn(email);
+    await hireAgent(cookie, "market_brief", "informes de la mañana");
+    const [agent] = await agentsOf(email);
+    agentpey.showActivity({ purchases: [settled({ mandate_id: agent!.mandateId })] });
+
+    const html = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
+    agentpey.showActivity({ purchases: [] });
+
+    expect(html).toContain("Agente: Informes de la mañana");
   });
 });
 

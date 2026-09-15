@@ -24,7 +24,7 @@
  */
 
 /** Bumped when the layout changes incompatibly. Mirrors the contracts' own convention. */
-export const DIRECTORY_SCHEMA_VERSION = 8;
+export const DIRECTORY_SCHEMA_VERSION = 9;
 
 export const DIRECTORY_SCHEMA_SQL: readonly string[] = [
   `create sequence if not exists directory_key_index_seq as bigint start with 0 minvalue 0`,
@@ -263,4 +263,14 @@ export const DIRECTORY_SCHEMA_SQL: readonly string[] = [
   // renders the redirect can trust the stored value without re-deriving the
   // allowlist. Null means "no redirect": the person stays on AgentPey.
   `alter table directory_consent_sessions add column if not exists return_url text`,
+
+  // Schema version 9 (T90): which Mandate a purchase went through.
+  //
+  // A tenant can hold several Mandates at once (one per agent a partner shows
+  // a person), and from T90 the partner may name the one to use. Storing it is
+  // what lets anyone check afterwards that the Mandate chosen was the Mandate
+  // used. Nullable: a refusal before any Mandate was resolved has none, and
+  // every row written before this column existed stays `null` rather than
+  // being back-filled with a guess.
+  `alter table directory_purchases add column if not exists mandate_id text references directory_mandates(id)`,
 ];

@@ -158,7 +158,64 @@ curl --fail-with-body --silent --show-error \
   --header "Authorization: Bearer $AGENTPAY_API_KEY" | jq .
 ```
 
-## 7. Errores y reintentos
+## 7. Pedir una compra
+
+Con un mandato firmado, CloudOps puede pedir una compra. Pedir no es
+autorizar: AgentPey vuelve a resolver el venue contra su propio registro, pide
+él mismo la factura 402 al comercio y compara precio, asset y `payTo` con el
+mandato firmado antes de pagar. La key necesita el scope `payments:authorize`
+para pedir y `payments:read` para leer la compra después.
+
+Un tenant puede tener varios mandatos a la vez, por ejemplo uno por cada
+agente que CloudOps le muestra al principal. `mandate_id` elige cuál usa esta
+compra. Es opcional: sin él, AgentPey usa el mandato activo más nuevo que
+nombra el producto.
+
+```sh
+export PURCHASE_IDEMPOTENCY_KEY="$(uuidgen)"
+PURCHASE_REQUEST="$(jq -cn \
+  --arg tenant_id "$TENANT_ID" \
+  --arg mandate_id "$MANDATE_ID" \
+  '{
+    tenant_id: $tenant_id,
+    venue: "mock-bazaar:CCL57L4ZQVQCGTQKGQMOAX7QDPEDW4LX2QSPBQMTMLB7BFQ7I3TM7F4A",
+    product_id: "REPLACE_WITH_THE_MERCHANT_PRODUCT_ID",
+    quantity: 1,
+    mandate_id: $mandate_id
+  }')"
+PURCHASE_JSON="$(curl --fail-with-body --silent --show-error \
+  --request POST "$AGENTPAY_BASE_URL/v1/purchases" \
+  --header "Authorization: Bearer $AGENTPAY_API_KEY" \
+  --header "Idempotency-Key: $PURCHASE_IDEMPOTENCY_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$PURCHASE_REQUEST")"
+printf '%s\n' "$PURCHASE_JSON" | jq .
+```
+
+La respuesta es `201` tanto si se pagó (`outcome: "settled"`) como si alguna
+capa lo rechazó (`outcome: "refused"`, con `code` y `reason`). `mandate_id` en
+la respuesta dice por qué mandato pasó la compra, se haya nombrado o no.
+
+Qué hace AgentPey con el `mandate_id` que nombraste:
+
+- **Solo elige.** El mandato nombrado decide igual que cualquier otro: si no
+  cubre el producto, el rechazo es `MandateProductNotAllowed`; si el monto
+  supera su `perTx`, lo rechaza su límite.
+- **Nunca cambia a otro mandato.** Si el nombrado está revocado, vencido o
+  todavía no empieza, la compra se rechaza con `MandateRevoked`,
+  `MandateExpired` o `MandateNotYetValid`, aunque otro mandato activo la
+  permitiría.
+- **Tiene que ser de ese tenant.** Un mandato que no existe, de otro partner o
+  de otro tenant tuyo responde `404 MandateNotFound`, siempre con el mismo
+  cuerpo, y no se registra ninguna compra.
+- **El gasto del día es del agente, no del mandato.** El `perDay` del mandato
+  elegido se compara con todo lo que el agente del tenant gastó hoy, por
+  cualquiera de sus mandatos.
+
+Si reintentás con la misma `Idempotency-Key` y otro `mandate_id`, el cuerpo es
+distinto y AgentPey responde `409 IdempotencyKeyConflict` sin comprar.
+
+## 8. Errores y reintentos
 
 Todas las respuestas de error usan este envelope:
 
@@ -175,7 +232,7 @@ Todas las respuestas de error usan este envelope:
 | 409 | `IdempotencyKeyConflict` | Se reutilizó una key dentro de 24 h con otro cuerpo. | Conservá el cuerpo original al reintentar; para otra operación generá otra key. |
 | 400 | `InvalidArguments` | El JSON o un parámetro requerido no respeta el esquema. | Corregí el campo señalado; todos los objetos son estrictos. |
 | 400 | `InvalidExternalRef` | `external_ref` no es opaco o contiene contenido no permitido. | Usá un identificador interno, estable y sin PII. |
-| 404 | `TenantNotFound`, `MandateNotFound`, `ConsentSessionNotFound` | El recurso no existe o pertenece a otro partner. | Confirmá el ID; no se distingue una pertenencia ajena de una ausencia. |
+| 404 | `TenantNotFound`, `MandateNotFound`, `ConsentSessionNotFound` | El recurso no existe o pertenece a otro partner. En `POST /v1/purchases`, `MandateNotFound` también cubre un `mandate_id` de otro tenant del mismo partner. | Confirmá el ID; no se distingue una pertenencia ajena de una ausencia. |
 | 410 | `ConsentSessionExpired` | El principal intenta iniciar o firmar una invitación vencida en el flujo público. | Creá una sesión nueva y entregá su nueva URL. En `GET /v1/consent_sessions/{id}` ese caso se expresa como `200` con `status: "expired"`. |
 | 409 | `ConsentSessionAlreadyCompleted` | Se intenta firmar de nuevo una invitación ya completada. | Consultá la sesión y usá su `mandate_id`; no abras una segunda firma. |
 | 404 | `NotFound` | Método o ruta `/v1` inexistente. | Usá las rutas de esta guía u OpenAPI. |

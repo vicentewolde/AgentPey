@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
   executeTenantPurchase,
   explainMissingMandate,
+  resolveNamedMandate,
   selectMandateFor,
   withheldBecause,
   type AgentDocumentStates,
@@ -430,5 +431,126 @@ describe("which Mandate a purchase goes through, and why there is none", () => {
     expect(withheldBecause({ credential: revokedCredential, mandate: undefined })?.code).toBe("CredentialRevoked");
     expect(withheldBecause({ credential: usable, mandate: revokedMandate })?.code).toBe("MandateRevoked");
     expect(withheldBecause({ credential: usable, mandate: undefined })).toBeUndefined();
+  });
+
+  /**
+   * T90. The partner names the Mandate, and the name only picks the row. Every
+   * test here is about what naming must *not* do: reach another tenant's row,
+   * reach another agent's, or quietly fall back to a Mandate nobody named.
+   */
+  describe("a Mandate the partner named (T90)", () => {
+    const OTHER_TENANT = "ptn_00000000000000000000000001:00000000000000000000000002";
+    const FIRST = "mdt_00000000000000000000000001";
+    const SECOND = "mdt_00000000000000000000000002";
+
+    it("goes through the named Mandate even when a newer one names the product", () => {
+      const older = signedFor([BRIEF], { id: FIRST });
+      const newer = signedFor([BRIEF], { id: SECOND });
+
+      expect(resolveNamedMandate([older, newer], TENANT, AGENT, older.id, NOW)).toEqual({ record: older });
+    });
+
+    it("hands on a named Mandate that does not cover the product, so checkMandate refuses it instead of another one being used", () => {
+      const report = signedFor([BRIEF], { id: FIRST });
+      const credits = signedFor([CREDITS], { id: SECOND });
+
+      expect(resolveNamedMandate([report, credits], TENANT, AGENT, report.id, NOW)).toEqual({ record: report });
+    });
+
+    it.each([
+      ["revoked", { revokedAt: new Date("2026-09-10T00:00:00.000Z") }, "MandateRevoked"],
+      ["expired", { validUntil: new Date("2026-09-10T00:00:00.000Z") }, "MandateExpired"],
+      ["not valid yet", { validFrom: new Date("2026-10-01T00:00:00.000Z") }, "MandateNotYetValid"],
+    ] as const)("refuses a named Mandate that is %s, though another active one covers the product", (_state, overrides, code) => {
+      const named = signedFor([BRIEF], { id: FIRST, ...overrides });
+      const active = signedFor([BRIEF], { id: SECOND });
+
+      expect(resolveNamedMandate([named, active], TENANT, AGENT, named.id, NOW)).toEqual({
+        missing: expect.objectContaining({ code, mandateId: named.id }),
+      });
+    });
+
+    it("is in force on the last instant of its window, the same edge listActiveMandates uses", () => {
+      const lastDay = signedFor([BRIEF], { id: FIRST, validUntil: NOW });
+
+      expect(resolveNamedMandate([lastDay], TENANT, AGENT, lastDay.id, NOW)).toEqual({ record: lastDay });
+    });
+
+    it("answers an id that is not among this tenant's Mandates exactly like one that never existed", () => {
+      const own = signedFor([BRIEF], { id: FIRST });
+
+      expect(resolveNamedMandate([own], TENANT, AGENT, "mdt_00000000000000000000000009", NOW)).toEqual({
+        missing: expect.objectContaining({ code: "MandateNotFound", mandateId: null }),
+      });
+    });
+
+    it("refuses another tenant's row even if a directory ever handed one over", () => {
+      const foreign = signedFor([BRIEF], { id: FIRST, tenantId: OTHER_TENANT });
+
+      expect(resolveNamedMandate([foreign], TENANT, AGENT, foreign.id, NOW)).toEqual({
+        missing: expect.objectContaining({ code: "MandateNotFound", mandateId: null }),
+      });
+    });
+
+    it("refuses a Mandate this tenant signed for another of its agents", () => {
+      const otherAgent = signedFor([BRIEF], { id: FIRST, agentId: "agt_00000000000000000000000009" });
+
+      expect(resolveNamedMandate([otherAgent], TENANT, AGENT, otherAgent.id, NOW)).toEqual({
+        missing: expect.objectContaining({ code: "MandateNotFound", mandateId: null }),
+      });
+    });
+
+    it("refuses the purchase with the named Mandate's reason instead of paying through the active one", async () => {
+      const named = signedFor([BRIEF], { id: FIRST, revokedAt: new Date("2026-09-10T00:00:00.000Z") });
+      const active = signedFor([BRIEF], { id: SECOND });
+
+      const outcome = await executeTenantPurchase(
+        { ...deps({ credential: fakeCredential(), mandates: [active], history: [named, active] }), now: NOW },
+        request({ mandateId: named.id }),
+      );
+
+      expect(outcome).toMatchObject({ kind: "refused", code: "MandateRevoked", mandateId: named.id });
+    });
+
+    it("looks the named id up among this tenant's Mandates only, and never records a foreign id as used", async () => {
+      const foreign = signedFor([BRIEF], { id: FIRST, tenantId: OTHER_TENANT });
+      const base = fakeDirectory({ credential: fakeCredential(), mandates: [], history: [foreign] });
+      const asked: string[] = [];
+      const directory = {
+        ...base,
+        async listMandates(tenantId: string) {
+          asked.push(tenantId);
+          return base.listMandates(tenantId);
+        },
+      } as TenantPurchaseDirectory;
+
+      const outcome = await executeTenantPurchase(
+        { ...deps({}), directory, now: NOW },
+        request({ mandateId: foreign.id }),
+      );
+
+      expect(asked).toEqual([TENANT]);
+      expect(outcome).toMatchObject({ kind: "refused", code: "MandateNotFound", mandateId: null });
+    });
+
+    /**
+     * The row handed to the decision layers is the named one. Made visible by
+     * giving it a document that does not parse: re-validation refuses it with
+     * its own hash, where without a name the newer, well-formed Mandate would
+     * have gone on and been stopped later, at the credential.
+     */
+    it("hands the named row to the decision layers, not the newer one that covers the product", async () => {
+      const named = fakeMandate({ id: FIRST, mandateHash: "1".repeat(64) });
+      const newer = signedFor([BRIEF], { id: SECOND, mandateHash: "2".repeat(64) });
+      const state = { credential: fakeCredential(), mandates: [named, newer] };
+
+      const chosen = await executeTenantPurchase({ ...deps(state), now: NOW }, request({ mandateId: named.id }));
+      expect(chosen).toMatchObject({ kind: "refused", code: "ConfigError", mandateId: named.id });
+      expect(chosen.kind === "refused" && chosen.details.mandateHash).toBe("1".repeat(64));
+
+      const unnamed = await executeTenantPurchase({ ...deps(state), now: NOW }, request());
+      expect(unnamed).toMatchObject({ kind: "refused", code: "ConfigError", mandateId: newer.id });
+      expect(unnamed.kind === "refused" && unnamed.details.mandateHash).toBeUndefined();
+    });
   });
 });

@@ -24,7 +24,7 @@
  * malformed". `4xx` is reserved for the partner getting the *request* wrong:
  * a missing scope, another partner's tenant, a body that does not parse.
  */
-import { agentIdSchema, purchaseIdSchema, tenantIdSchema } from "@agentpey/directory";
+import { agentIdSchema, mandateIdSchema, purchaseIdSchema, tenantIdSchema } from "@agentpey/directory";
 import { z } from "zod";
 
 export { purchaseIdSchema };
@@ -87,6 +87,22 @@ export const createPurchaseRequestSchema = z.strictObject({
    * against the signed Mandate like any other.
    */
   route_params: z.record(z.string().min(1), z.union([z.string(), z.number()])).optional(),
+  /**
+   * Which of this tenant's Mandates the purchase goes through. Added in T90,
+   * for a partner that shows a person two agents of the same kind and lets
+   * them choose which one buys.
+   *
+   * **It chooses; it never authorises** (`B-25`). The Mandate must belong to
+   * `tenant_id`, or the request is a `404 MandateNotFound` indistinguishable
+   * from an id that does not exist. Once chosen, every layer decides exactly
+   * as before: a named Mandate that is revoked, expired or not yet valid is
+   * refused with that code, one that does not cover the product is refused by
+   * `checkMandate`, and none of them ever falls back to another Mandate.
+   *
+   * Optional, not nullable: leaving it out is the one way to let the platform
+   * choose, as it did before this field existed.
+   */
+  mandate_id: mandateIdSchema.optional(),
 });
 
 export type CreatePurchaseRequest = z.infer<typeof createPurchaseRequestSchema>;
@@ -124,6 +140,12 @@ export const purchaseResourceSchema = z.strictObject({
   tenant_id: tenantIdSchema,
   /** `null` when the refusal happened before this tenant's agent was resolved. */
   agent_id: agentIdSchema.nullable(),
+  /**
+   * The Mandate this purchase went through, named by the partner or chosen by
+   * the platform (T90). `null` when the refusal happened before a Mandate was
+   * resolved, and for purchases recorded before this field existed.
+   */
+  mandate_id: mandateIdSchema.nullable(),
   outcome: purchaseOutcomeSchema,
   /**
    * The `AgentPassError` code of whichever layer refused — `MandateExpired`,
@@ -225,6 +247,7 @@ export function toPurchaseResource(record: {
   readonly id: string;
   readonly tenantId: string;
   readonly agentId: string | null;
+  readonly mandateId: string | null;
   readonly outcome: "settled" | "refused";
   readonly code: string | null;
   readonly reason: string | null;
@@ -244,6 +267,7 @@ export function toPurchaseResource(record: {
     id: record.id,
     tenant_id: record.tenantId,
     agent_id: record.agentId,
+    mandate_id: record.mandateId,
     outcome: record.outcome,
     code: record.code,
     reason: record.reason,

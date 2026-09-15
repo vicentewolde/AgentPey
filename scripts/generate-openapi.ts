@@ -240,7 +240,7 @@ const document = {
         operationId: "createPurchase",
         summary: "Ask an agent to buy something",
         description:
-          "Requires the payments:authorize scope. This is a request, not an authorisation: the platform re-resolves the venue against its own registry, fetches the merchant's 402 invoice itself, and compares price, asset and payTo against the signed Mandate before paying. A refusal by any of those layers is a 201 whose outcome is \"refused\", not a 4xx — 4xx is reserved for the request itself being wrong.",
+          "Requires the payments:authorize scope. This is a request, not an authorisation: the platform re-resolves the venue against its own registry, fetches the merchant's 402 invoice itself, and compares price, asset and payTo against the signed Mandate before paying. A refusal by any of those layers is a 201 whose outcome is \"refused\", not a 4xx — 4xx is reserved for the request itself being wrong. The optional mandate_id chooses which of the tenant's Mandates the purchase goes through and authorises nothing: a Mandate that is not this tenant's is a 404 MandateNotFound, identical to one that does not exist; a named Mandate that is revoked, expired, not yet valid or does not cover the product is a refusal with that code, never a fall back to another Mandate. The daily limit of the chosen Mandate is checked against everything the tenant's agent spent today.",
         security: bearerSecurity,
         parameters: [idempotencyKeyParameter],
         requestBody: {

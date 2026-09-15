@@ -654,8 +654,20 @@ export function localTime(iso: string): string {
   return `<time datetime="${escape(iso)}" data-local>${escape(fallback)}</time>`;
 }
 
+/**
+ * Which of this account's agents a purchase went through, read from the Mandate
+ * AgentPey says it used (T90). Empty when it cannot tell, for instance for a
+ * purchase made before AgentPey recorded the Mandate.
+ */
+function agentLine(purchase: PurchaseResource, agents: readonly AgentConfig[]): string {
+  const agent = purchase.mandate_id == null ? undefined : agents.find((candidate) => candidate.mandateId === purchase.mandate_id);
+  if (agent === undefined) return "";
+  const name = displayName(agent.label);
+  return `<p class="meta">${trHtml(`Agent: ${name}`, `Agente: ${name}`)}</p>`;
+}
+
 /** One purchase, settled — what the person actually got. */
-function deliveryCard(purchase: PurchaseResource): string {
+function deliveryCard(purchase: PurchaseResource, agents: readonly AgentConfig[]): string {
   const links: string[] = [];
   if (purchase.delivery?.artifact_url != null) {
     links.push(`<a class="button" href="${escape(purchase.delivery.artifact_url)}">${tr(bilingual("See what you bought", "Ver lo que compraste"))}</a>`);
@@ -667,6 +679,7 @@ function deliveryCard(purchase: PurchaseResource): string {
   return `<div class="card stack">
     <div><span class="tag tag-signed">${tr(bilingual("delivered", "entregado"))}</span></div>
     <h3>${escape(purchase.product_id)}</h3>
+    ${agentLine(purchase, agents)}
     <p>${formatAmount(purchase.total)} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${localTime(purchase.created_at)}</p>
     <p class="meta">
       ${purchase.delivery?.delivery_id == null ? "" : `${tr(bilingual("Delivery", "Entrega"))} <code>${escape(purchase.delivery.delivery_id)}</code><br>`}
@@ -677,11 +690,12 @@ function deliveryCard(purchase: PurchaseResource): string {
 }
 
 /** One purchase, refused — said in words the person can act on. */
-function refusalCard(purchase: PurchaseResource): string {
+function refusalCard(purchase: PurchaseResource, agents: readonly AgentConfig[]): string {
   const explained = explainRefusal(purchase.code ?? "unknown", purchase.reason);
   return `<div class="card error stack">
     <div><span class="tag tag-refused">${tr(bilingual("refused", "rechazado"))}</span></div>
     <h3>${escape(purchase.product_id)}</h3>
+    ${agentLine(purchase, agents)}
     <p><strong>${tr(explained.what)}</strong></p>
     <p>${tr(explained.next)}</p>
     <p class="meta push">
@@ -768,7 +782,7 @@ export function servicesPage(input: ServicesInput): string {
   ${
     settled.length === 0
       ? `<p class="card">${tr(bilingual("You have not bought anything yet.", "Todavía no has comprado nada."))}</p>`
-      : `<div class="grid">${settled.map(deliveryCard).join("\n  ")}</div>`
+      : `<div class="grid">${settled.map((purchase) => deliveryCard(purchase, input.agents)).join("\n  ")}</div>`
   }
 
   <h2>${tr(bilingual("Refusals", "Rechazos"))}</h2>
@@ -781,7 +795,7 @@ export function servicesPage(input: ServicesInput): string {
             'Un rechazo no es una ausencia: queda guardado igual que una compra, para que "¿por qué mi agente no compró esto?" tenga respuesta.',
           ),
         )}</p>
-  <div class="grid">${refused.map(refusalCard).join("\n  ")}</div>`
+  <div class="grid">${refused.map((purchase) => refusalCard(purchase, input.agents)).join("\n  ")}</div>`
   }
 
   <h2>${tr(bilingual("Your account", "Tu cuenta"))}</h2>
@@ -798,6 +812,76 @@ export function servicesPage(input: ServicesInput): string {
       "Borra tu correo, tu alias y tus sesiones de RealOps. <strong>No borra tu Mandato ni el registro de lo que pasó</strong>: son evidencia firmada y anclada en una cadena pública, y borrarlos rompería la cadena de hashes que es todo el producto. Lo decimos así, con todas sus letras, porque es una tensión real y esconderla sería peor.",
     )}</p>
   </div>
+`,
+  });
+}
+
+export interface ChooseAgentInput {
+  /** This account's agents that could buy what was asked. More than one, or there is nothing to choose. */
+  readonly agents: readonly AgentConfig[];
+  readonly kind: AgentKind;
+  /** The sentence as typed, sent again with the choice and read the same way (C-94). */
+  readonly instruction?: string;
+  /** Set instead of `instruction` when the person pressed a product button. */
+  readonly chosenKind?: AgentKind;
+  /** The key of the form that asked. Every choice sends it, so choosing stays one request. */
+  readonly requestKey: string;
+}
+
+/**
+ * "Which agent buys it?" (T90, decided by the user).
+ *
+ * Shown only when more than one signed agent of this account can buy what was
+ * asked. Each button sends the same request again, with the same key, plus the
+ * agent chosen; AgentPey then goes through that agent's Mandate and no other.
+ */
+export function chooseAgentPage(input: ChooseAgentInput): string {
+  const carried = `<input type="hidden" name="request_key" value="${escape(input.requestKey)}">${
+    input.chosenKind !== undefined
+      ? `<input type="hidden" name="kind" value="${escape(input.chosenKind)}">`
+      : `<input type="hidden" name="instruction" value="${escape(input.instruction ?? "")}">`
+  }`;
+
+  const cards = input.agents
+    .map((agent) => {
+      const perTx = formatAmount(agent.permissions.perTx);
+      const perDay = formatAmount(agent.permissions.perDay);
+      const hired = localTime(agent.createdAt.toISOString());
+      return `<form class="card stack" method="post" action="/instruccion">
+      ${carried}
+      <input type="hidden" name="agent_id" value="${escape(agent.id)}">
+      <div class="head-row"><h3>${displayName(agent.label)}</h3><span class="tag tag-signed">${tr(bilingual("signed", "firmado"))}</span></div>
+      <p>${trHtml(
+        `Max per purchase <strong>${perTx} USDC</strong> · per day <strong>${perDay} USDC</strong>`,
+        `Máximo por compra <strong>${perTx} USDC</strong> · por día <strong>${perDay} USDC</strong>`,
+      )}</p>
+      <p class="meta">${trHtml(`Hired ${hired}`, `Contratado ${hired}`)}</p>
+      <p class="push"><button type="submit">${tr(bilingual("Buy with this agent", "Comprar con este agente"))}</button></p>
+    </form>`;
+    })
+    .join("\n    ");
+
+  return layout({
+    title: bilingual("Which agent buys it?", "¿Qué agente lo compra?"),
+    signedIn: true,
+    body: `
+  <h1>${tr(bilingual("Which agent buys it?", "¿Qué agente lo compra?"))}</h1>
+  <p class="lede">${tr(
+    bilingual(
+      `You have more than one ${AGENT_COPY[input.kind].name.en.toLowerCase()} with a signed permission. AgentPey will use exactly the permission of the one you choose.`,
+      `Tienes más de un ${AGENT_COPY[input.kind].name.es.toLowerCase()} con permiso firmado. AgentPey usará exactamente el permiso del que elijas.`,
+    ),
+  )}</p>
+  <p class="meta">${tr(
+    bilingual(
+      "Spending today adds up across your agents: the daily limit of the one you choose is checked against everything your agents spent today.",
+      "El gasto del día se suma entre tus agentes: el límite diario del que elijas se compara con todo lo que tus agentes gastaron hoy.",
+    ),
+  )}</p>
+  <div class="grid">
+    ${cards}
+  </div>
+  <p><a href="/servicios">${tr(bilingual("← Back to My services", "← Volver a Mis servicios"))}</a></p>
 `,
   });
 }

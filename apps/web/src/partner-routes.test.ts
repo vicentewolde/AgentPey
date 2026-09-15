@@ -93,6 +93,7 @@ function createFakeDirectory(): FakeDirectory {
         id: `pur_0000000000000000000000000${purchaseSeq}`.slice(0, 30),
         tenantId: input.tenantId,
         agentId: input.agentId,
+        mandateId: input.mandateId,
         partnerId: input.partnerId,
         outcome: input.outcome,
         code: input.code,
@@ -294,9 +295,10 @@ beforeEach(() => {
 });
 
 /** A purchase port that settles — the default for tests not about refusals. */
-const settlingPurchase: ExecutePurchase = async () => ({
+const settlingPurchase: ExecutePurchase = async (request) => ({
   kind: "settled",
   agentId: "agt_00000000000000000000000001",
+  mandateId: request.mandateId ?? "mdt_00000000000000000000000001",
   intentId: "8b0851b3-94e9-45b0-ba36-d6e9e32541d2",
   total: "0.2500000",
   asset: "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
@@ -686,9 +688,10 @@ describe("routePartnerRequest — POST /v1/purchases", () => {
     return { tenant_id: tenantId, venue: VENUE, product_id: "signaldesk:market-brief-xlm-usdc", quantity: 1, ...overrides };
   }
 
-  const refusingPurchase: ExecutePurchase = async () => ({
+  const refusingPurchase: ExecutePurchase = async (request) => ({
     kind: "refused",
     agentId: "agt_00000000000000000000000001",
+    mandateId: request.mandateId ?? "mdt_00000000000000000000000001",
     code: "MandateProductNotAllowed",
     reason: "tu Mandato no permite este producto",
     details: { productId: "otro" },
@@ -862,6 +865,128 @@ describe("routePartnerRequest — POST /v1/purchases", () => {
     );
     expect(seen).toEqual({ pair: "XLM/USDC", amount: 100 });
   });
+
+  /**
+   * T90: `mandate_id` chooses which of the tenant's Mandates a purchase goes
+   * through. The route's whole job with it is to make sure it is this tenant's,
+   * and to say nothing else about it when it is not.
+   */
+  describe("naming the Mandate to go through (T90)", () => {
+    function post(body: unknown, key: string, executePurchase: ExecutePurchase = settlingPurchase) {
+      return routePartnerRequest(
+        baseRequest({ method: "POST", pathname: "/v1/purchases", body, idempotencyKeyHeader: key, executePurchase }),
+      );
+    }
+
+    function spy() {
+      const calls: Parameters<ExecutePurchase>[0][] = [];
+      const port: ExecutePurchase = async (request) => {
+        calls.push(request);
+        return settlingPurchase(request);
+      };
+      return { calls, port };
+    }
+
+    it("passes one of this tenant's own Mandates to the purchase port, and records it on the purchase", async () => {
+      const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+      const mandate = directory.seedMandate(tenant.id);
+      const { calls, port } = spy();
+
+      const result = await post(purchaseBody(tenant.id, { mandate_id: mandate.id }), "pur-t90-1", port);
+
+      expect(result.status).toBe(201);
+      expect(calls.map((call) => call.mandateId)).toEqual([mandate.id]);
+      expect((result.body as { data: { mandate_id: string } }).data.mandate_id).toBe(mandate.id);
+    });
+
+    it("records the Mandate a refusal went through, too", async () => {
+      const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+      const mandate = directory.seedMandate(tenant.id);
+
+      const result = await post(purchaseBody(tenant.id, { mandate_id: mandate.id }), "pur-t90-2", refusingPurchase);
+
+      expect((result.body as { data: { outcome: string; mandate_id: string } }).data).toMatchObject({
+        outcome: "refused",
+        mandate_id: mandate.id,
+      });
+    });
+
+    it("leaves the choice to the platform when no Mandate is named, as before T90", async () => {
+      const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+      const { calls, port } = spy();
+
+      await post(purchaseBody(tenant.id), "pur-t90-3", port);
+
+      expect(calls).toHaveLength(1);
+      expect("mandateId" in calls[0]!).toBe(false);
+    });
+
+    it("404s another partner's Mandate with the same body as one that does not exist, and never reaches the port", async () => {
+      const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+      const foreignTenant = directory.seedTenant({ partnerId: PARTNER_B });
+      const foreign = directory.seedMandate(foreignTenant.id);
+      const missing = newId("mandate");
+      const { calls, port } = spy();
+
+      const toForeign = await post(purchaseBody(tenant.id, { mandate_id: foreign.id }), "pur-t90-4", port);
+      const toMissing = await post(purchaseBody(tenant.id, { mandate_id: missing }), "pur-t90-5", port);
+
+      expect(toForeign.status).toBe(404);
+      expect(toMissing.status).toBe(404);
+      expect(toForeign.body).toMatchObject({ code: "MandateNotFound", details: { mandateId: foreign.id } });
+      // Identical apart from the id the caller sent: nothing says the foreign one exists.
+      expect(JSON.stringify(toForeign.body).replace(foreign.id, "ID")).toBe(JSON.stringify(toMissing.body).replace(missing, "ID"));
+      expect(calls).toHaveLength(0);
+    });
+
+    it("404s a Mandate of another tenant of the same partner, since it is not consent for this one", async () => {
+      const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+      const sibling = directory.seedTenant({ partnerId: PARTNER_A });
+      const siblings = directory.seedMandate(sibling.id);
+      const { calls, port } = spy();
+
+      const result = await post(purchaseBody(tenant.id, { mandate_id: siblings.id }), "pur-t90-6", port);
+
+      expect(result.status).toBe(404);
+      expect((result.body as { code: string }).code).toBe("MandateNotFound");
+      expect(calls).toHaveLength(0);
+    });
+
+    it("still answers TenantNotFound for another partner's tenant, before looking at the Mandate at all", async () => {
+      const foreignTenant = directory.seedTenant({ partnerId: PARTNER_B });
+      const foreign = directory.seedMandate(foreignTenant.id);
+
+      const result = await post(purchaseBody(foreignTenant.id, { mandate_id: foreign.id }), "pur-t90-7");
+
+      expect(result.status).toBe(404);
+      expect((result.body as { code: string }).code).toBe("TenantNotFound");
+    });
+
+    it("400s a mandate_id that is null or not a Mandate id, without reaching the port", async () => {
+      const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+      const { calls, port } = spy();
+
+      const asNull = await post(purchaseBody(tenant.id, { mandate_id: null }), "pur-t90-8", port);
+      const asTenant = await post(purchaseBody(tenant.id, { mandate_id: tenant.id }), "pur-t90-9", port);
+
+      expect(asNull.status).toBe(400);
+      expect(asTenant.status).toBe(400);
+      expect(calls).toHaveLength(0);
+    });
+
+    it("409s the same Idempotency-Key sent again with another Mandate, instead of buying through the second", async () => {
+      const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+      const first = directory.seedMandate(tenant.id);
+      const second = directory.seedMandate(tenant.id);
+      const { calls, port } = spy();
+
+      await post(purchaseBody(tenant.id, { mandate_id: first.id }), "pur-t90-10", port);
+      const again = await post(purchaseBody(tenant.id, { mandate_id: second.id }), "pur-t90-10", port);
+
+      expect(again.status).toBe(409);
+      expect(calls.map((call) => call.mandateId)).toEqual([first.id]);
+    });
+  });
 });
 
 describe("routePartnerRequest — GET /v1/purchases/{id}", () => {
@@ -870,6 +995,7 @@ describe("routePartnerRequest — GET /v1/purchases/{id}", () => {
     const record = await directory.createPurchase({
       tenantId: tenantB.id,
       agentId: null,
+      mandateId: null,
       partnerId: PARTNER_B,
       outcome: "refused",
       code: "VenueNotRegistered",

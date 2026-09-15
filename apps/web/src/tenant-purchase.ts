@@ -39,6 +39,12 @@
  *   Mandate by `reconcileTerms`.
  * - `maxTotal`, when the caller supplies one, can only ever refuse *earlier*
  *   than the Mandate would. It is a ceiling the partner sets on itself.
+ * - `mandateId`, when the caller supplies one (T90), picks which of this
+ *   tenant's Mandates is handed to the decision layers, and nothing else. It is
+ *   looked up only among this tenant's own rows, a named Mandate that is not in
+ *   force is refused with the reason it is not, and no named Mandate ever falls
+ *   back to another one. `checkMandate` and the limits decide exactly as they
+ *   would have for that Mandate chosen any other way (`B-25`).
  */
 import { AgentPassError, agentPassCredentialSchema, didToStellarAddress, isAgentPassError, type Scope } from "@agentpass/core";
 import {
@@ -85,12 +91,19 @@ export interface TenantPurchaseRequest {
    * asked for a parameter, and sending it an empty one is guessing.
    */
   readonly routeParams?: Readonly<Record<string, string | number>>;
+  /**
+   * Which of this tenant's Mandates to go through (T90). Chooses the row;
+   * authorises nothing. Absent, the Mandate is chosen by product (`C-111`).
+   */
+  readonly mandateId?: string;
 }
 
 export interface PurchaseSettled {
   readonly kind: "settled";
   /** The tenant's own agent row that acted — recorded with the purchase. */
   readonly agentId: string;
+  /** The Mandate the purchase went through. */
+  readonly mandateId: string;
   readonly intentId: string;
   readonly total: string;
   readonly asset: string;
@@ -105,6 +118,12 @@ export interface PurchaseRefused {
   readonly kind: "refused";
   /** `null` when the refusal happened before this tenant's agent was resolved. */
   readonly agentId: string | null;
+  /**
+   * The Mandate the purchase was going through when it was refused. `null`
+   * when no row of this tenant was resolved, which includes a named id that is
+   * not this tenant's: that id is never written back as if it had been used.
+   */
+  readonly mandateId: string | null;
   /** The typed code of whichever layer said no. */
   readonly code: string;
   readonly reason: string;
@@ -154,8 +173,9 @@ function refuse(
   details: Readonly<Record<string, unknown>> = {},
   intentId?: string,
   agentId: string | null = null,
+  mandateId: string | null = null,
 ): PurchaseRefused {
-  return { kind: "refused", agentId, code, reason, details, intentId };
+  return { kind: "refused", agentId, mandateId, code, reason, details, intentId };
 }
 
 /**
@@ -167,9 +187,9 @@ function refuse(
  * same clothes. The first is an answer; the second is an outage. Only a typed
  * `AgentPassError` becomes an answer.
  */
-function asRefusal(error: unknown, intentId?: string, agentId: string | null = null): PurchaseRefused {
+function asRefusal(error: unknown, intentId?: string, agentId: string | null = null, mandateId: string | null = null): PurchaseRefused {
   if (!isAgentPassError(error)) throw error;
-  return refuse(error.code, error.message, error.details ?? {}, intentId, agentId);
+  return refuse(error.code, error.message, error.details ?? {}, intentId, agentId, mandateId);
 }
 
 /**
@@ -249,6 +269,59 @@ export function explainMissingMandate(
     return { code: "MandateNotYetValid", reason: "the mandate that authorises this agent is not valid yet", mandateId: latest.id };
   }
   return { code: "MandateNotFound", reason: notFound, mandateId: latest.id };
+}
+
+export type NamedMandate = { readonly record: MandateRecord } | { readonly missing: MissingMandate };
+
+/**
+ * The Mandate a partner named, if it is one this agent may go through right
+ * now, or why it is not (T90).
+ *
+ * **This chooses; it does not decide**, exactly like {@link selectMandateFor}.
+ * Being named does not make a Mandate cover a product, a venue or an amount:
+ * the record returned here goes through `checkMandate` and the limits like any
+ * other. What this function adds is the other half of "you chose this one":
+ *
+ * - **Only this tenant's rows.** `tenantMandates` is `listMandates(tenantId)`,
+ *   and each row is checked against `tenantId` again anyway, so an id
+ *   belonging to anyone else is answered the same way as an id that never
+ *   existed. The route already refused it with a `404`; this is the second
+ *   lock, for a caller that is not the route.
+ * - **Only this agent's.** A tenant's Mandate signed for another agent is not
+ *   consent for this one.
+ * - **No fallback, ever.** A named Mandate that is revoked, expired or not yet
+ *   valid is refused with that code, even when another Mandate is active and
+ *   would cover the purchase. Quietly paying through a different one is what
+ *   choosing is meant to rule out.
+ *
+ * The window matches `listActiveMandates`: in force from `validFrom` to
+ * `validUntil`, both inclusive.
+ */
+export function resolveNamedMandate(
+  tenantMandates: readonly MandateRecord[],
+  tenantId: string,
+  agentId: string,
+  mandateId: string,
+  now: Date,
+): NamedMandate {
+  const record = tenantMandates.find((row) => row.id === mandateId && row.tenantId === tenantId && row.agentId === agentId);
+  if (record === undefined) {
+    return {
+      missing: { code: "MandateNotFound", reason: "this tenant has no mandate with that id for this agent", mandateId: null },
+    };
+  }
+  if (record.revokedAt !== null) {
+    return { missing: { code: "MandateRevoked", reason: "the mandate named for this purchase was revoked", mandateId: record.id } };
+  }
+  if (record.validUntil.getTime() < now.getTime()) {
+    return { missing: { code: "MandateExpired", reason: "the mandate named for this purchase has expired", mandateId: record.id } };
+  }
+  if (record.validFrom.getTime() > now.getTime()) {
+    return {
+      missing: { code: "MandateNotYetValid", reason: "the mandate named for this purchase is not valid yet", mandateId: record.id },
+    };
+  }
+  return { record };
 }
 
 /** The two startup checks `createAgent` keeps on the agent it returns. */
@@ -423,8 +496,31 @@ export async function executeTenantPurchase(
   // would catch it a layer later with `MandateAgentMismatch`, but a purchase
   // path should not hand the enforcement layer a document it already knows is
   // the wrong one and hope. Among this agent's own, the one that names the
-  // product goes first (`selectMandateFor`, T85).
-  const mandateRecord = selectMandateFor(activeMandates, agentId, request.productId);
+  // product goes first (`selectMandateFor`, T85) — unless the partner named
+  // one (T90), in which case it is that one or a refusal, never another.
+  let mandateRecord: MandateRecord | undefined;
+  if (request.mandateId !== undefined) {
+    const named = resolveNamedMandate(
+      await deps.directory.listMandates(request.tenantId),
+      request.tenantId,
+      agentId,
+      request.mandateId,
+      now,
+    );
+    if ("missing" in named) {
+      return refuse(
+        named.missing.code,
+        named.missing.reason,
+        { tenantId: request.tenantId, agentId, mandateId: request.mandateId },
+        undefined,
+        agentId,
+        named.missing.mandateId,
+      );
+    }
+    mandateRecord = named.record;
+  } else {
+    mandateRecord = selectMandateFor(activeMandates, agentId, request.productId);
+  }
   if (mandateRecord === undefined) {
     // Nothing active — say whether it was revoked, expired, or never signed,
     // instead of one code for all three (T85).
@@ -439,13 +535,15 @@ export async function executeTenantPurchase(
     );
   }
 
+  const mandateId = mandateRecord.id;
+
   let mandateSource: MandateSource;
   let scope: Scope;
   try {
     mandateSource = mandateSourceFrom(mandateRecord);
     scope = scopeFromCredential(credential);
   } catch (error) {
-    return asRefusal(error, undefined, agentId);
+    return asRefusal(error, undefined, agentId, mandateId);
   }
 
   // 3. The same engine `finishSession` builds, assembled per tenant. The
@@ -469,7 +567,7 @@ export async function executeTenantPurchase(
       now,
     });
   } catch (error) {
-    return asRefusal(error, undefined, agentId);
+    return asRefusal(error, undefined, agentId, mandateId);
   }
 
   // A credential or Mandate that failed its on-chain check leaves the agent
@@ -477,7 +575,7 @@ export async function executeTenantPurchase(
   // that is not there and reporting `UnknownTool` (T85).
   const withheld = withheldBecause(agent);
   if (withheld !== undefined) {
-    return refuse(withheld.code, withheld.message, withheld.details ?? {}, undefined, agentId);
+    return refuse(withheld.code, withheld.message, withheld.details ?? {}, undefined, agentId, mandateId);
   }
 
   // 4. The intent. This is where `checkScope`, `checkMandate` — including the
@@ -491,7 +589,7 @@ export async function executeTenantPurchase(
       quantity: request.quantity,
     })) as typeof intentResult;
   } catch (error) {
-    return asRefusal(error, undefined, agentId);
+    return asRefusal(error, undefined, agentId, mandateId);
   }
 
   // 5. The partner's own ceiling, if it set one. Only ever refuses earlier
@@ -503,6 +601,7 @@ export async function executeTenantPurchase(
       { total: intentResult.total_amount, maxTotal: request.maxTotal },
       intentResult.intent_id,
       agentId,
+      mandateId,
     );
   }
 
@@ -514,7 +613,7 @@ export async function executeTenantPurchase(
     requireRouteParams(route, request.routeParams ?? {});
     resourceUrl = fillRouteTemplate(baseUrl, route, request.routeParams ?? {});
   } catch (error) {
-    return asRefusal(error, intentResult.intent_id, agentId);
+    return asRefusal(error, intentResult.intent_id, agentId, mandateId);
   }
 
   // 6b. Ask the venue for its quote before anything is spent on this purchase
@@ -525,7 +624,7 @@ export async function executeTenantPurchase(
   try {
     await requestPaymentChallenge(resourceUrl, deps.fetchImpl);
   } catch (error) {
-    return asRefusal(error, intentResult.intent_id, agentId);
+    return asRefusal(error, intentResult.intent_id, agentId, mandateId);
   }
 
   // 7. Who pays: this tenant's own `policy_rail`, deployed and funded from
@@ -545,7 +644,7 @@ export async function executeTenantPurchase(
     const principalAddress = didToStellarAddress(parsedMandate.issuer);
     const agentInstance = await deps.directory.findAgent(tenantAgent.instance.id);
     if (agentInstance === undefined) {
-      return refuse("AgentNotFound", "this tenant has no agent row to own a rail", { tenantId: request.tenantId }, intentResult.intent_id, agentId);
+      return refuse("AgentNotFound", "this tenant has no agent row to own a rail", { tenantId: request.tenantId }, intentResult.intent_id, agentId, mandateId);
     }
     const contractId = await ensureTenantPolicyRail(
       deps.directory,
@@ -557,7 +656,7 @@ export async function executeTenantPurchase(
     );
     payer = { contractId, ownerSecret: tenantAgent.keypair.secret() };
   } catch (error) {
-    return asRefusal(error, intentResult.intent_id, agentId);
+    return asRefusal(error, intentResult.intent_id, agentId, mandateId);
   }
 
   // 8. The payment itself: the 402 challenge, `reconcileTerms` against the
@@ -579,12 +678,13 @@ export async function executeTenantPurchase(
       { resourceUrl, intent: verified.intent, scope, mandate: parsedMandate, venueId },
     );
   } catch (error) {
-    return asRefusal(error, intentResult.intent_id, agentId);
+    return asRefusal(error, intentResult.intent_id, agentId, mandateId);
   }
 
   return {
     kind: "settled",
     agentId: tenantAgent.instance.id,
+    mandateId,
     intentId: intentResult.intent_id,
     total: intentResult.total_amount,
     asset: intentResult.asset,

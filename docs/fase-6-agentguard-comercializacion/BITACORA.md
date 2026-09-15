@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-14 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`) y T87 (piloto en inglés y español, verificado en producción) y T88 (entrada directa a RealOps y páginas más anchas, verificado en producción) · **En curso:** T89 (rechazos, montos, hora local y botón en vivo; listo en su rama, sin mergear) · **Sigue:** T90 (elegir qué agente compra, decidido y sin arrancar) y el hito de `C-113` · **Fase 6: en curso**
+**Fecha:** 2026-09-15 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`), T87 (piloto en inglés y español), T88 (entrada directa a RealOps y páginas más anchas) y T89 (rechazos, montos, hora local y botón en vivo), los tres últimos verificados en producción · **En curso:** T90 (elegir qué agente compra; listo en `cc/t90-choose-agent`, sin mergear) · **Sigue:** el hito de `C-113` · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -213,7 +213,8 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · mergeado a `main` · servicios viejos borrados · identidad visual única (`C-117`) |
 | T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | ✅ cerrado 2026-09-14 · mergeado a `main` · verificado en producción (`C-118`) |
 | T88 | F9: sin proveedor de correo, RealOps deja entrar directo; páginas de hasta ~1208 px de contenido; tarjetas iguales y alineadas; pies de RealOps y SignalDesk a lo ancho; lema con mayúscula; nombres con mayúscula inicial | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382`) · verificado en producción (`C-119`) |
-| T89 | F9: todos los rechazos con una frase que se entiende y tabla generada de códigos; montos con 2–3 decimales; horas en la zona de quien mira; "Watch it pay, live" a RealOps y la demo de `/consent` quitada | 🟡 listo en `cc/t89-pilot-clarity` 2026-09-15 · sin mergear (`C-120`) |
+| T89 | F9: todos los rechazos con una frase que se entiende y tabla generada de códigos; montos con 2–3 decimales; horas en la zona de quien mira; "Watch it pay, live" a RealOps y la demo de `/consent` quitada | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382..0faa2bb`) · verificado en producción salvo la hora local (`C-120`) |
+| T90 | F9: la persona elige qué agente compra cuando tiene más de uno del mismo tipo; `POST /v1/purchases` acepta `mandate_id`, validado contra el tenant, que elige el Mandato sin autorizar nada; la compra dice por qué Mandato pasó | 🟡 listo en `cc/t90-choose-agent` 2026-09-15 · sin mergear (`C-121`) |
 
 ---
 
@@ -3866,7 +3867,7 @@ esa cuenta de prueba queda en la base.
 
 ---
 
-## T89 · Rechazos que se entienden, montos y horas legibles · listo 2026-09-15, sin mergear
+## T89 · Rechazos que se entienden, montos y horas legibles · cerrado 2026-09-15
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -3919,3 +3920,68 @@ permiso, así que va como hito propio, T90, con su revisión.
 
 **Decisiones nuevas:** `C-120` (enmienda `C-99` en el respaldo de un código
 desconocido y `C-118` en la ruta de la demo).
+
+**En producción, el mismo día.** Mergeado a `main` (`185b382..0faa2bb`). Revisado
+con lecturas, sin escribir nada: `agentpey.com/consent` y `agentpey.com/sign` dan
+`404`; "Watch it pay, live" y "Open the live pilot" llevan a
+`https://realops.agentpey.com`; RealOps responde `200`. **Sin verificar en
+producción:** las horas en hora local. Solo aparecen con una sesión abierta, y
+abrirla escribe una sesión en la base de producción; queda para cuando el usuario
+lo autorice. Lo fijan los tests de `pages.test.ts` y `public-pages.test.ts`.
+
+---
+
+## T90 · Elegir qué agente compra · listo 2026-09-15, sin mergear
+
+**Qué quedó funcionando, en palabras simples.**
+
+**Si tienes dos agentes que pueden comprar lo mismo, RealOps te pregunta cuál.**
+Por ejemplo, dos agentes de informes, cada uno con su permiso firmado. Al pedir el
+informe aparece "¿Qué agente lo compra?", con los límites de cada uno. Con un solo
+agente no aparece nada nuevo: se compra directo, como antes.
+
+**AgentPey paga con el permiso de ese agente, y con ningún otro.** Antes, RealOps
+anotaba el agente más viejo y AgentPey pagaba con el permiso más nuevo, así que los
+límites que aplicaban no eran los del agente que se veía. Ahora RealOps le dice a
+AgentPey exactamente qué permiso usar. Si ese permiso está revocado, vencido o no
+cubre lo pedido, la compra se rechaza y se explica por qué, aunque el otro agente
+sí podría comprarlo.
+
+**Nombrar un permiso no da permiso.** AgentPey comprueba que el permiso sea de esa
+misma cuenta. Uno de otra cuenta se trata igual que uno que no existe, sin decir si
+existe. Después, todo lo que decide si se paga (el permiso firmado, los límites, la
+factura del comercio) funciona exactamente igual que antes.
+
+**Elegir otro agente desde el mismo pedido no compra dos veces.** Si pides con uno,
+vuelves atrás y eliges el otro, AgentPey lo reconoce como el mismo pedido y no
+compra de nuevo; RealOps dice "Ya pediste esto con otro agente".
+
+**Cada entrega y cada rechazo dicen qué agente fue.** En "Mis servicios" aparece
+"Agente: …", leído del permiso con el que AgentPey dice que pagó.
+
+**Lo que no cambió, y la página lo dice.** El gasto del día se suma entre los
+agentes de la cuenta: el tope diario del agente elegido se compara con todo lo que
+tus agentes gastaron hoy.
+
+**Para quien integra AgentPey.** `POST /v1/purchases` acepta `mandate_id`, que es
+opcional. La guía de partners explica ahora cómo pedir una compra.
+
+**Evidencia técnica.**
+
+- `POST /v1/purchases` acepta `mandate_id`, opcional. La ruta exige que sea del
+  tenant, con `404 MandateNotFound` idéntico para ajeno e inexistente, y no escribe
+  fila. `resolveNamedMandate` vuelve a exigir tenant y agente y nunca cae a otro
+  Mandato. `PurchaseResource.mandate_id`, columna nueva (directorio versión 9).
+- RealOps: página de elección, `agent_id` validado contra los agentes de la cuenta,
+  `mandate_id` siempre, clave `buy-${request_key}` y el `409` traducido.
+- **1344 tests verdes** (eran 1312): 12 en `tenant-purchase`, 8 en
+  `partner-routes`, 3 en `purchases`, 1 en `policy-rail` (gasto compartido), 8 en
+  RealOps. `typecheck` y `build` limpios; `openapi.yaml` regenerado.
+- Confirmado al implementar: si una cuenta firmara sus dos agentes con wallets
+  distintas, el rail conserva el `principal` del primero (`tenant-rail.ts:271-279`).
+  Pasaba antes de T90; no se tocó.
+- Detalle en `evidencia/T90.md`.
+
+**Decisiones nuevas:** `C-121` (enmienda `C-111` cuando se nombra un Mandato, el
+contrato de T73 de forma aditiva, y lo propuesto en T89 sobre la clave de
+idempotencia).

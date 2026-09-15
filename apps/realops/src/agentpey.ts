@@ -62,6 +62,8 @@ export interface PurchaseDelivery {
 
 export interface PurchaseResource {
   readonly id: string;
+  /** The Mandate the purchase went through (T90). `null` for purchases before T90 and refusals before one was resolved. */
+  readonly mandate_id?: string | null;
   readonly outcome: "settled" | "refused";
   /** The typed code of whichever layer refused. `null` when settled. */
   readonly code: string | null;
@@ -159,6 +161,12 @@ export interface AgentPeyClient {
     readonly productId: string;
     readonly quantity: number;
     readonly routeParams?: Readonly<Record<string, string | number>>;
+    /**
+     * The Mandate of the agent the person chose (T90). AgentPey checks it is
+     * this tenant's and goes through exactly that one; it never widens what
+     * that Mandate permits.
+     */
+    readonly mandateId?: string;
     readonly idempotencyKey: string;
   }): Promise<PurchaseResource>;
   readActivity(tenantId: string): Promise<TenantActivity>;
@@ -275,6 +283,7 @@ export function createAgentPeyClient(config: AgentPeyConfig): AgentPeyClient {
           product_id: input.productId,
           quantity: input.quantity,
           ...(input.routeParams === undefined ? {} : { route_params: input.routeParams }),
+          ...(input.mandateId === undefined ? {} : { mandate_id: input.mandateId }),
         },
         idempotencyKey: input.idempotencyKey,
         timeoutMs: PURCHASE_TIMEOUT_MS,

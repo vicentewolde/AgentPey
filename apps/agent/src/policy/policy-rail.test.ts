@@ -338,6 +338,28 @@ describe("the daily limit, against both authorities (M-16)", () => {
     expect(second.code).toBe("ScopeDailyLimitExceeded");
   });
 
+  /**
+   * T90 lets a partner choose which of an agent's Mandates a purchase goes
+   * through. Choosing does not split the day's budget: the running total is
+   * the agent's, so each Mandate's `perDay` is checked against everything the
+   * agent spent today, through any of them. Pinned here so a change to that is
+   * a decision someone takes, not a side effect.
+   */
+  it("counts every Mandate of the same agent against one running total", async () => {
+    const { rail } = harness();
+    const scope = scopeFor();
+    const first = mandateFor({ limits: { perTx: "50.00", perDay: "100.00", currency: "USDC" } });
+    const second = mandateFor({ limits: { perTx: "50.00", perDay: "50.00", currency: "USDC" } });
+
+    const throughFirst = await rail.authorise({ intent: intentFor(), scope, mandate: first });
+    const throughSecond = await rail.authorise({ intent: intentFor(), scope, mandate: second });
+
+    expect(throughFirst.authorised).toBe(true);
+    if (throughSecond.authorised) expect.unreachable("expected a refusal");
+    expect(throughSecond.code).toBe("MandateDailyLimitExceeded");
+    expect(throughSecond.details).toMatchObject({ spentToday: "37.0000000", limit: "50.00" });
+  });
+
   it("lets the budget start again on the next UTC day", async () => {
     let today = new Date("2026-10-01T23:00:00.000Z");
     const { rail } = harness(() => today);
