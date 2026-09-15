@@ -5134,14 +5134,16 @@ fila y bloque de T87, agregado a T86), `evidencia/T86.md` § 10,
 **1298 tests**, `typecheck` y `build` limpios.
 
 Pendiente:
-- **Revisión y merge con confirmación del usuario.** Cada push a `main`
-  redespliega; conviene hacerlo esta noche y volver a mirar los cinco dominios.
-- **Día 2 de T85 con código y despliegue alineados:** desde `main` antes de
-  mergear esto, o después de que esto esté desplegado. Nunca en medio.
+- **Mergeado a `main` por pedido del usuario (2026-09-14, 23:22 hora del
+  usuario).** Falta confirmar el despliegue y volver a mirar los dominios
+  (`/sign` debe dar `404`, `/consent` la demo).
+- **Día 2 de T85 después de que este despliegue esté en producción**, nunca en
+  medio: la suite lee las marcas nuevas de RealOps. El Mandato de F ya venció.
 - Probar en producción, con Freighter, `/consent`, `/consent/{id}` y
   `/revocar/{id}` en los dos idiomas: las páginas de `apps/web` no tienen tests.
-- Sin decidir por el usuario: conservar en el pie de RealOps la frase "datos de
-  prueba, el proyecto puede borrarlos" (`PILOTO-F9.md` § 1.3).
+- Decidido por el usuario: el aviso de piloto de RealOps dice solo testnet,
+  sin "datos de prueba, el proyecto puede borrarlos" (`C-118`, enmienda
+  `PILOTO-F9.md` § 1.3).
 - La carpeta `logo agentpey/` quedó sin versionar en la raíz, tal como la dejó
   el usuario.
 - Sigue igual: `C-113`, rotar los dos secretos y lo anotado sin construir en T86.

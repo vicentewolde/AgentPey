@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, mergeado; servicios viejos borrados) · **En curso:** T87 (piloto en inglés y español con el logo de AgentPey, listo en su rama, sin mergear) y T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
+**Fecha:** 2026-09-14 · **Último hito cerrado:** T86 (un solo servicio bajo `agentpey.com`, mergeado; servicios viejos borrados) · **En curso:** T87 (piloto en inglés y español con el logo de AgentPey, mergeado, falta verificar en producción) y T85 (suite de aceptación: día 1 cerrado, día 2 pendiente) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -207,7 +207,7 @@ de `/sign` a `agentpey.com/consent`, y `/sign` ya no existe (T87, `C-118`).
 | T84 | F9: despliegue público de los tres servicios y primera compra real de punta a punta con la wallet del usuario — ocho defectos de borde entre servicios, encontrados en producción y cerrados; caso de aceptación 1 cumplido | ✅ cerrado 2026-09-13 |
 | T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | 🟡 día 1 cerrado 2026-09-13 · día 2 (Mandato vencido desde RealOps) después del 2026-09-15 01:29 UTC |
 | T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · mergeado a `main` · servicios viejos borrados · identidad visual única (`C-117`) |
-| T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | 🟡 listo en `cc/pilot-bilingual-chrome` 2026-09-14 · sin mergear · espera revisión del usuario (`C-118`) |
+| T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | 🟡 mergeado a `main` 2026-09-14 por pedido del usuario · falta verificar en producción (`C-118`) |
 
 ---
 
@@ -3723,7 +3723,7 @@ commits (`89e3c75`). Detalle en `evidencia/T86.md` § 10.
 
 ---
 
-## T87 · El piloto en inglés y español, con el logo de AgentPey — listo 2026-09-14, sin mergear
+## T87 · El piloto en inglés y español, con el logo de AgentPey · mergeado 2026-09-14
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -3757,14 +3757,13 @@ vocabulario no cambia qué se puede pagar.
 recibo firmado, `C-117`), los textos que SignalDesk publica para agentes y en la
 factura `402`, y toda la lógica de firma, revocación, retorno y pago.
 
-**Una tensión, dicha y sin resolver.** `PILOTO-F9.md` § 1.3 pedía en cada página
-de RealOps un aviso que dijera también "datos de prueba, el proyecto puede
-borrarlos". La insignia solo dice testnet. Se propuso conservar esa frase en el
-pie; espera la decisión del usuario (`C-118`).
+**El aviso de piloto dice solo testnet.** `PILOTO-F9.md` § 1.3 pedía en cada
+página de RealOps un aviso que dijera también "datos de prueba, el proyecto puede
+borrarlos". Se le propuso al usuario conservar esa frase en el pie, y decidió que
+decir testnet alcanza (`C-118`).
 
 **Cuidado con el día 2 de T85.** La suite ahora lee marcas nuevas en RealOps. El
-día 2 tiene que correr con el código y el despliegue alineados: desde `main`
-antes de mergear esto, o después de que esto esté desplegado. Nunca en medio.
+día 2 corre después de que este despliegue esté en producción, nunca en medio.
 
 **Evidencia técnica.**
 

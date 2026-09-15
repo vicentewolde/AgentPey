@@ -4543,16 +4543,18 @@ demo con wallet pasa a `/consent`. Ver `C-118`.
   para el enlace de entrada y `data-mandate-id` para el Mandato guardado. La
   frase de un rechazo se busca en los dos idiomas.
 
-**Una tensión, dicha al usuario y sin resolver:** `PILOTO-F9.md` § 1.3 (decisión
-del usuario, § 12) pedía en toda página de RealOps un aviso de piloto: testnet,
-sin dinero real, datos de prueba, y el proyecto puede borrarlos. La insignia dice
-lo primero y no lo demás. Se propuso conservar esa frase en el pie. Hasta que el
-usuario lo decida, queda solo la insignia, como pidió.
+**El aviso de piloto de RealOps pasa a ser solo "testnet". Decidido por el
+usuario.** `PILOTO-F9.md` § 1.3 (decisión del usuario, § 12) pedía en toda página
+de RealOps un aviso de piloto: testnet, sin dinero real, datos de prueba, y el
+proyecto puede borrarlos. La insignia dice lo primero y no lo demás. Se le
+propuso conservar el resto de la frase en el pie. El usuario decidió que decir
+testnet alcanza, así que queda solo la insignia. **Esto enmienda § 1.3 de
+`PILOTO-F9.md`** en ese punto.
 
 **Orden obligatorio para el día 2 de T85.** Las marcas nuevas cambian lo que la
 suite lee de RealOps. El día 2 tiene que correr con el código y el despliegue
-alineados: o desde `main` antes de mergear esta rama, o después de que el
-despliegue de esta rama esté en producción. Nunca en medio.
+alineados. El usuario pidió mergear primero, así que corre **después** de que
+este despliegue esté en producción, nunca en medio.
 
 **Alternativas descartadas:**
 - **Elegir el idioma en el servidor** (cookie o `Accept-Language`). RealOps
