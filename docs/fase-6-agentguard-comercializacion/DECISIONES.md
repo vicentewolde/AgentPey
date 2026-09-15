@@ -4629,3 +4629,85 @@ proveedor configurado vuelve el enlace de un solo uso por correo, sin cambios.
 - **Actualizar el nombre al entrar con un correo conocido.** Cualquiera que
   escriba ese correo podría renombrar la cuenta de otra persona.
 - **Párrafos a todo el ancho.** A 1208 px una línea pasa de 150 caracteres.
+
+---
+
+### C-120 · T89: rechazos que se entienden, montos y horas legibles, y el botón en vivo va a RealOps · `Vigente`
+**Fecha:** 2026-09-15 · **Decidido por el usuario** (botón, demo, montos, hora local, rechazos, elegir el agente) · la forma, de Claude Code
+
+**El pedido.** Montos con a lo más tres decimales; horas en la zona de quien
+mira y no en UTC; rechazos que se entiendan al leerlos, con una tabla de los
+códigos y lo que significan; que "Watch it pay, live" lleve a algo de AgentPey
+donde se vean las firmas, porque la demo de `/consent` ya no servía; y saber qué
+agente compra cuando hay dos iguales.
+
+**Lo que se encontró antes de construir:**
+
+1. **Rechazos en producción.** Consulta de solo lectura a `directory_purchases`
+   (sin imprimir la conexión): 14 códigos distintos. Tres no tenían frase
+   (`ScopeActionNotAllowed`, `MandateActionNotAllowed`, `UnknownTool`), así que la
+   persona leía el motivo en inglés de la plataforma junto al código.
+2. **Dos agentes del mismo tipo.** RealOps registra el agente firmado más viejo,
+   pero AgentPey paga con el Mandato activo **más nuevo** que nombra el producto
+   (`selectMandateFor`, `C-111`), porque los dos agentes de una cuenta comparten
+   tenant. Los límites que aplican son los del más nuevo, y nada deja elegir.
+3. **Las páginas de firma de AgentPey** (`/consent/{id}`, `/revocar/{id}`) solo
+   abren con una invitación que crea RealOps: no hay una página pública fija
+   donde ver una firma.
+
+**Decisiones del usuario, tomadas con esas opciones a la vista:**
+
+- **"Watch it pay, live" y "Open the live pilot" van a `realops.agentpey.com`**,
+  donde se contrata un agente y su Mandato se firma en AgentPey con Freighter.
+  **La demo de la Fase 4 se quita:** `apps/web/public/index.html` se borra, y
+  `/consent` y `/sign` responden `404`. Esto enmienda `C-118` en la ruta de la
+  demo. Las rutas `/api/session/*` que usaba la demo siguen en `server.ts` sin
+  página que las llame; quitarlas queda anotado.
+- **Elegir qué agente compra es un hito propio (T90), no construido:** RealOps
+  deja elegir el agente y `POST /v1/purchases` acepta un Mandato opcional, que
+  AgentPey usa solo para elegir la fila; `checkMandate` y los límites firmados
+  siguen decidiendo. Cambia el contrato congelado de `/v1` (T73) y el punto
+  donde AgentPey elige el Mandato, así que va con su propia revisión.
+
+**La forma:**
+
+- **Rechazos.** `refusals.ts` agrupa las frases por la capa que dice que no
+  (registro y catálogo, credencial, Mandato, intención, factura, dinero y red) y
+  cubre todos los códigos que puede devolver una compra: 56, antes 31.
+  **Enmienda `C-99`** en el caso de un código desconocido: en lugar de mostrar el
+  motivo en inglés como si fuera la explicación, se dice que la página todavía no
+  sabe explicarlo, y el motivo queda como detalle técnico. El código se muestra
+  en letra chica como "código técnico". `NetworkError` deja de decir "puede estar
+  caído el comercio" y dice lo que puede ser: comercio, red o contrato sin saldo.
+  El código propio para el rail vacío sigue en `C-113`.
+- **Tabla de códigos:** `CODIGOS-DE-RECHAZO.md`, generada desde `refusals.ts`
+  con `pnpm run docs:refusal-codes`. Un test falla si el archivo no coincide con
+  el código.
+- **Montos en RealOps:** entre dos y tres decimales (`0.5000000` → `0.50`,
+  `0.1234567` → `0.123`), solo al mostrar. **No en `/consent/{id}` ni en
+  `/revocar/{id}`**, ni en el permiso literal de RealOps: ahí se muestra lo que
+  se firma, y redondearlo haría que la pantalla dijera otra cosa que el
+  documento.
+- **Hora local.** RealOps escribe el momento en un `<time datetime>` con UTC de
+  respaldo, y el script de la página lo reescribe con la zona del navegador y su
+  abreviatura (por ejemplo "GMT-3"). `/consent/{id}` y `/revocar/{id}` ya usaban
+  la hora del navegador; ahora muestran también la zona. **Con campos
+  explícitos:** `toLocaleString` lanza un error si `timeZoneName` va junto con
+  `dateStyle`, y en `/consent/{id}` eso habría cortado la carga de la invitación.
+  Se encontró en la revisión visual, antes de commitear, y lo fija un test.
+
+**Alternativas descartadas:**
+- **Una página pública nueva con firmas recientes.** Útil, pero pide una ruta
+  nueva y decidir qué datos se muestran sin exponer a nadie; no llegaba a la
+  reunión.
+- **Detectar la zona horaria en el servidor.** El servidor no sabe dónde está
+  quien mira. El navegador sí.
+- **Quitar el código técnico de la vista.** Es lo que alguien de soporte o una
+  integración necesita para saber qué pasó; queda, pero chico y con su nombre.
+- **Un agente por tipo, o solo mostrar cuál compra.** Resolvían la confusión sin
+  dejar elegir, que es lo que el usuario pidió.
+
+**Nota de la sesión.** Para diagnosticar la demo se llamó una vez a
+`POST https://agentpey.com/api/session/start` en producción. Eso emitió y ancló en
+testnet una credencial y un Mandato de demo, lo mismo que apretar "Start
+session". Se le dijo al usuario.

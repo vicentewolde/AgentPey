@@ -246,8 +246,7 @@ pnpm run demo:pay-real -- --payer=policy-rail
 
 `pnpm run web` puts both behind buttons, alongside the MandateVault log that
 records every decision and anchors each payment on chain. It is deployed live
-at [agentpey.com](https://agentpey.com) (the wallet demo is at
-[agentpey.com/consent](https://agentpey.com/consent)), alongside the F9 pilot's
+at [agentpey.com](https://agentpey.com), alongside the F9 pilot's
 platform at [realops.agentpey.com](https://realops.agentpey.com) and its
 merchant at [signaldesk.agentpey.com](https://signaldesk.agentpey.com) — three
 apps on one Render service, see `apps/gateway/README.md`.

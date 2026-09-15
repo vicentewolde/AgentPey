@@ -40,12 +40,15 @@ describe("explainRefusal", () => {
    * degrade to the truth, awkwardly phrased, and never to a friendly sentence
    * describing a different failure.
    */
-  it("falls back to the platform's own reason rather than inventing one", () => {
+  it("says plainly it cannot explain an unknown code, and keeps the platform's reason as a detail", () => {
     const explained = explainRefusal("SomeCodeFromTheFuture", "the registry said no");
 
-    expect(explained.what).toEqual({ en: "the registry said no", es: "the registry said no" });
-    expect(explained.next.en).toContain("SomeCodeFromTheFuture");
-    expect(explained.next.es).toContain("SomeCodeFromTheFuture");
+    expect(explained.what.en).toContain("cannot explain yet");
+    expect(explained.what.es).toContain("todavía no sabe explicar");
+    for (const text of [explained.next.en, explained.next.es]) {
+      expect(text).toContain("SomeCodeFromTheFuture");
+      expect(text).toContain("the registry said no");
+    }
   });
 
   it("still says something when the platform sent no reason either", () => {
@@ -54,6 +57,32 @@ describe("explainRefusal", () => {
     expect(explained.what.en.length).toBeGreaterThan(0);
     expect(explained.what.es.length).toBeGreaterThan(0);
     expect(explained.next.en).toContain("SomeCodeFromTheFuture");
+    expect(explained.next.en).not.toContain("null");
+  });
+
+  /**
+   * Every code the pilot's production database held on 2026-09-15 (read-only
+   * query, T89). Three of them reached people untranslated before this.
+   */
+  it("explains every refusal code seen in production", () => {
+    const seen = [
+      "NetworkError",
+      "ScopeActionNotAllowed",
+      "MandateProductNotAllowed",
+      "ScopeVenueNotAllowed",
+      "MandateNotFound",
+      "MandateRevoked",
+      "ScopeDailyLimitExceeded",
+      "VenueNotRegistered",
+      "MandateExpired",
+      "ProductNotFound",
+      "ScopeAmountExceeded",
+      "MandateActionNotAllowed",
+      "CredentialRevoked",
+      "UnknownTool",
+    ];
+
+    for (const code of seen) expect(EXPLAINED_CODES).toContain(code);
   });
 
   /**

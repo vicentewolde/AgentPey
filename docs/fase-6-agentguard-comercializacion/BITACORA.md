@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-14 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`) y T87 (piloto en inglés y español, verificado en producción) · **En curso:** T88 (entrada directa a RealOps y páginas más anchas, listo en su rama, sin mergear) · **Sigue:** el hito de `C-113`, decidido y sin arrancar · **Fase 6: en curso**
+**Fecha:** 2026-09-14 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`) y T87 (piloto en inglés y español, verificado en producción) y T88 (entrada directa a RealOps y páginas más anchas, verificado en producción) · **En curso:** T89 (rechazos, montos, hora local y botón en vivo; listo en su rama, sin mergear) · **Sigue:** T90 (elegir qué agente compra, decidido y sin arrancar) y el hito de `C-113` · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -212,7 +212,8 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | ✅ cerrado 2026-09-15 · día 2 (Mandato vencido desde RealOps): 8 ✓ · 0 ✗ |
 | T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · mergeado a `main` · servicios viejos borrados · identidad visual única (`C-117`) |
 | T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | ✅ cerrado 2026-09-14 · mergeado a `main` · verificado en producción (`C-118`) |
-| T88 | F9: sin proveedor de correo, RealOps deja entrar directo; páginas de hasta ~1208 px de contenido; tarjetas iguales y alineadas; pies de RealOps y SignalDesk a lo ancho; lema con mayúscula; nombres con mayúscula inicial | 🟡 listo en `cc/t88-pilot-polish` 2026-09-15 · sin mergear · espera confirmación del usuario (`C-119`) |
+| T88 | F9: sin proveedor de correo, RealOps deja entrar directo; páginas de hasta ~1208 px de contenido; tarjetas iguales y alineadas; pies de RealOps y SignalDesk a lo ancho; lema con mayúscula; nombres con mayúscula inicial | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382`) · verificado en producción (`C-119`) |
+| T89 | F9: todos los rechazos con una frase que se entiende y tabla generada de códigos; montos con 2–3 decimales; horas en la zona de quien mira; "Watch it pay, live" a RealOps y la demo de `/consent` quitada | 🟡 listo en `cc/t89-pilot-clarity` 2026-09-15 · sin mergear (`C-120`) |
 
 ---
 
@@ -3799,7 +3800,7 @@ día 2 corre después de que este despliegue esté en producción, nunca en medi
 
 ---
 
-## T88 · Entrar directo a RealOps, y un piloto que usa la pantalla · listo 2026-09-15, sin mergear
+## T88 · Entrar directo a RealOps, y un piloto que usa la pantalla · cerrado 2026-09-15
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -3855,3 +3856,66 @@ códigos largos ya no se cortan en cualquier letra.
 
 **Decisiones nuevas:** `C-119` (enmienda `PILOTO-F9.md` § 1.3 en el enlace de un
 solo uso para el modo sin correo).
+
+**En producción, el mismo día.** Mergeado a `main` (`bf91eb7..185b382`), junto con
+el cierre de T85. Render desplegó en unos 105 s: `200` en `agentpey.com`,
+`/consent`, RealOps y SignalDesk; `/sign` da `404`; el lema, el ancho nuevo y las
+notas de SignalDesk están presentes. Entrar a RealOps con
+`t88-deploy-check@example.test` llevó directo a "Mis agentes" ("Hi, Deploy check");
+esa cuenta de prueba queda en la base.
+
+---
+
+## T89 · Rechazos que se entienden, montos y horas legibles · listo 2026-09-15, sin mergear
+
+**Qué quedó funcionando, en palabras simples.**
+
+**Cada rechazo dice qué pasó en palabras.** Revisando las compras rechazadas que
+hay en producción, tres tipos llegaban sin traducir, y la persona leía una frase
+técnica en inglés. Ahora todos los motivos por los que AgentPey puede rechazar
+una compra tienen su explicación, en inglés y español: qué pasó y qué se puede
+hacer. El código queda en letra chica como "código técnico", para quien tenga que
+investigar. Si algún día aparece uno nuevo, la página dice que todavía no sabe
+explicarlo, en lugar de mostrar el texto técnico como si fuera la explicación.
+
+**Hay una tabla de todos los códigos.** `CODIGOS-DE-RECHAZO.md` lista los 56
+códigos, agrupados por la parte del sistema que dice que no, con lo que ve la
+persona y lo que puede hacer. Se genera desde el mismo código que usa RealOps, y
+un test falla si alguien cambia una frase y no la tabla.
+
+**Los montos se leen.** En RealOps, "0.5000000 USDC" pasa a "0.50 USDC", y nunca
+se muestran más de tres decimales. En las páginas donde se firma o se revoca un
+permiso se muestra el valor exacto, porque ahí la pantalla tiene que decir lo
+mismo que el documento que se firma.
+
+**Las horas están en tu zona.** Las fechas de entregas, rechazos y vencimiento de
+permisos se muestran con la hora de donde estás, con la zona escrita (por ejemplo
+"GMT-3"), en lugar de UTC.
+
+**"Watch it pay, live" lleva a RealOps.** Ahí se contrata un agente, el permiso
+se firma en AgentPey con Freighter y se ve la compra. La demo vieja que estaba en
+`/consent` ya no existe.
+
+**Qué agente compra cuando hay dos iguales, y por qué no se construyó hoy.** Hoy
+no se puede elegir: AgentPey paga con el permiso firmado más nuevo para ese
+producto, aunque RealOps anote el agente más viejo. El usuario decidió que se
+pueda elegir. Eso cambia el contrato de `/v1` y la forma en que AgentPey escoge el
+permiso, así que va como hito propio, T90, con su revisión.
+
+**Evidencia técnica.**
+
+- Consulta de solo lectura a producción: 14 códigos distintos en
+  `directory_purchases`; 3 sin frase antes de este hito, todos cubiertos ahora (con
+  test).
+- Tests nuevos: `pages.test.ts` (montos y hora local), códigos vistos en
+  producción, respaldo de un código desconocido, tabla sincronizada, y
+  `public-pages.test.ts` para las páginas de firma.
+- **Un defecto propio, encontrado antes de commitear:** la primera versión de la
+  hora local combinaba dos opciones de fecha que el navegador rechaza con un
+  error. En RealOps las horas se habrían quedado en UTC; en la página de firma
+  del Mandato, el error habría cortado la carga de la invitación. Lo mostró la
+  captura de pantalla, se corrigió en los tres lugares y ahora lo fija un test.
+- Detalle y capturas en `evidencia/T89.md`.
+
+**Decisiones nuevas:** `C-120` (enmienda `C-99` en el respaldo de un código
+desconocido y `C-118` en la ruta de la demo).

@@ -1079,23 +1079,21 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
 async function serveStatic(pathname: string, res: ServerResponse): Promise<void> {
   // `/` is the landing page; `/landing` stays as an alias, so links shared
   // before the swap keep working.
-  // `/consent` (exactly) is the live wallet demo, and `/consent/{id}` (T51's
-  // consent_url) is the hosted Mandate signing page, whose id is read
-  // client-side from the URL path. Decided by the user: the landing explains
-  // the product and `/consent` is where Mandates get signed, so the demo's old
-  // `/sign` route was removed and now 404s like any unknown path.
+  // `/consent/{id}` (T51's consent_url) is the hosted Mandate signing page,
+  // whose id is read client-side from the URL path. The Phase 4 wallet demo
+  // that lived at `/sign` and then at `/consent` was removed (C-120, decided
+  // by the user): the landing's live button goes to RealOps, where a Mandate
+  // gets signed here for real. Both old paths 404 like any unknown path.
   const relative =
     pathname === "/" || pathname === "/landing"
       ? "/landing.html"
-      : pathname === "/consent"
-        ? "/index.html"
-        : pathname.startsWith("/consent/")
-          ? "/consent.html"
-          : // T83: hosted revocation, same single-page shape as consent — the
-            // mandate id is read client-side from the path.
-            pathname.startsWith("/revocar/")
-            ? "/revocar.html"
-            : pathname;
+      : pathname.startsWith("/consent/")
+        ? "/consent.html"
+        : // T83: hosted revocation, same single-page shape as consent — the
+          // mandate id is read client-side from the path.
+          pathname.startsWith("/revocar/")
+          ? "/revocar.html"
+          : pathname;
   const filePath = join(PUBLIC_DIR, relative);
   // No user input reaches this join beyond the URL pathname of a same-origin
   // GET, and every route below is fixed — but refuse a path that escapes

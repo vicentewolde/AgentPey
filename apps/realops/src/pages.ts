@@ -219,6 +219,16 @@ const LANG_SWITCH = String.raw`(function () {
     for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
     var holders = document.querySelectorAll("[data-placeholder-en]");
     for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+    var times = document.querySelectorAll("time[data-local]");
+    for (var m = 0; m < times.length; m++) {
+      var date = new Date(times[m].getAttribute("datetime"));
+      if (!isNaN(date.getTime())) {
+        // Explicit fields: Intl throws when a time zone name is combined with the date or time style shortcuts.
+        times[m].textContent = date.toLocaleString(lang === "es" ? "es" : "en-US", {
+          year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
+        });
+      }
+    }
   }
   var buttons = document.querySelectorAll("[data-set-lang]");
   for (var i = 0; i < buttons.length; i++) {
@@ -443,8 +453,8 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[]): st
     ${agents
       .map((agent) => {
         const days = String(agent.permissions.validForDays);
-        const perTx = escape(agent.permissions.perTx);
-        const perDay = escape(agent.permissions.perDay);
+        const perTx = formatAmount(agent.permissions.perTx);
+        const perDay = formatAmount(agent.permissions.perDay);
         const status =
           agent.mandateId === null
             ? `<span class="tag tag-realops">${tr(bilingual("not signed", "sin firmar"))}</span>`
@@ -549,7 +559,7 @@ export function reviewPage(
           .map(
             (control) => `<tr>
           <td><strong>${tr(control.label)}</strong><br><span class="meta">${tr(control.explanation)}</span></td>
-          <td><code>${escape(control.value)}</code></td>
+          <td>${control.field === "validUntil" ? localTime(control.value) : `<code>${escape(control.value)}</code>`}</td>
           <td><span class="tag ${ENFORCER_COPY[control.enforcedBy].cls}">${tr(ENFORCER_COPY[control.enforcedBy].tag)}</span></td>
         </tr>`,
           )
@@ -621,9 +631,27 @@ export interface ServicesInput {
   readonly agents: readonly AgentConfig[];
 }
 
-/** `2026-09-12T21:11:22.000Z` → `2026-09-12 21:11 UTC`: short enough to stay on one line in a card. */
-function shortTime(iso: string): string {
-  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) ? `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC` : iso;
+/**
+ * An amount for a person to read: at most three decimals, and at least two, so
+ * `0.5000000` reads `0.50` and `0.1234567` reads `0.123`. Display only; what
+ * AgentPey stores and checks keeps all seven decimals.
+ */
+export function formatAmount(value: string | null): string {
+  if (value === null) return "?";
+  const number = Number(value);
+  if (value.trim() === "" || !Number.isFinite(number)) return escape(value);
+  const fixed = number.toFixed(3);
+  return fixed.endsWith("0") ? fixed.slice(0, -1) : fixed;
+}
+
+/**
+ * A moment, shown in the visitor's own time zone. The server does not know
+ * where the visitor is, so it writes UTC and the page's script rewrites it with
+ * the browser's zone; without JavaScript the UTC time stays, labelled as such.
+ */
+export function localTime(iso: string): string {
+  const fallback = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) ? `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC` : iso;
+  return `<time datetime="${escape(iso)}" data-local>${escape(fallback)}</time>`;
 }
 
 /** One purchase, settled — what the person actually got. */
@@ -639,7 +667,7 @@ function deliveryCard(purchase: PurchaseResource): string {
   return `<div class="card stack">
     <div><span class="tag tag-signed">${tr(bilingual("delivered", "entregado"))}</span></div>
     <h3>${escape(purchase.product_id)}</h3>
-    <p>${escape(purchase.total ?? "?")} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${escape(shortTime(purchase.created_at))}</p>
+    <p>${formatAmount(purchase.total)} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${localTime(purchase.created_at)}</p>
     <p class="meta">
       ${purchase.delivery?.delivery_id == null ? "" : `${tr(bilingual("Delivery", "Entrega"))} <code>${escape(purchase.delivery.delivery_id)}</code><br>`}
       ${purchase.delivery?.receipt_hash == null ? "" : `${tr(bilingual("Receipt", "Recibo"))} <code>${escape(purchase.delivery.receipt_hash)}</code>`}
@@ -657,7 +685,7 @@ function refusalCard(purchase: PurchaseResource): string {
     <p><strong>${tr(explained.what)}</strong></p>
     <p>${tr(explained.next)}</p>
     <p class="meta push">
-      ${escape(shortTime(purchase.created_at))} · ${tr(bilingual("code", "código"))} <code>${escape(purchase.code ?? "unknown")}</code>
+      ${localTime(purchase.created_at)} · ${tr(bilingual("technical code", "código técnico"))} <code>${escape(purchase.code ?? "unknown")}</code>
     </p>
   </div>`;
 }
@@ -666,9 +694,9 @@ function spendingCard(activity: TenantActivity): string {
   if (activity.per_day === null && activity.rail === null) return "";
   let perDay = "";
   if (activity.per_day !== null) {
-    const spent = escape(activity.per_day.spent_today);
-    const limit = `${escape(activity.per_day.limit)} ${escape(activity.per_day.currency)}`;
-    const remaining = escape(activity.per_day.remaining);
+    const spent = formatAmount(activity.per_day.spent_today);
+    const limit = `${formatAmount(activity.per_day.limit)} ${escape(activity.per_day.currency)}`;
+    const remaining = `${formatAmount(activity.per_day.remaining)} ${escape(activity.per_day.currency)}`;
     perDay = `<p>${trHtml(
       `Spent today: <strong>${spent}</strong> of <strong>${limit}</strong>.`,
       `Hoy llevas gastado <strong>${spent}</strong> de <strong>${limit}</strong>.`,
@@ -681,7 +709,7 @@ function spendingCard(activity: TenantActivity): string {
   }
   let rail = "";
   if (activity.rail !== null) {
-    const balance = `${escape(activity.rail.balance)} ${escape(activity.rail.asset)}`;
+    const balance = `${formatAmount(activity.rail.balance)} ${escape(activity.rail.asset)}`;
     rail = `<p class="meta">${trHtml(
       `Balance of the contract that pays: <strong>${balance}</strong>.`,
       `Saldo del contrato que paga: <strong>${balance}</strong>.`,

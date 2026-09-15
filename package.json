@@ -29,6 +29,7 @@
     "check:sponsored-credit": "tsx --tsconfig tsconfig.scripts.json scripts/check-sponsored-credit.ts",
     "check:discovery": "tsx --tsconfig tsconfig.scripts.json scripts/check-discovery.ts",
     "acceptance:f9": "tsx --tsconfig tsconfig.scripts.json scripts/f9-acceptance.ts",
+    "docs:refusal-codes": "tsx --tsconfig tsconfig.scripts.json scripts/refusal-codes.ts",
     "realops": "pnpm --filter @agentpey/realops run dev",
     "signaldesk": "pnpm --filter @agentpey/signaldesk run dev",
     "signaldesk:setup": "tsx --tsconfig tsconfig.scripts.json scripts/signaldesk-setup.ts",

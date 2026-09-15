@@ -5224,3 +5224,51 @@ Pendiente:
 - Firmar y revocar con Freighter en producción.
 - Sigue igual: `C-113`, rotar los dos secretos, lo anotado sin construir en T86,
   las ramas `codex/*`.
+
+## 2026-09-15 (28) — main / cc/t89-pilot-clarity (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex.
+
+Qué:
+- **T88 mergeado y verificado en producción** (`bf91eb7..185b382`, junto con el
+  cierre de T85). La entrada directa a RealOps funciona: se probó con
+  `t88-deploy-check@example.test`, que queda en la base.
+- **T89** (`C-120`), a pedido del usuario:
+  - Todos los códigos de rechazo con frase (56, eran 31), agrupados por capa. Tres
+    llegaban sin traducir en producción. Un código desconocido ya no muestra el
+    motivo en inglés como explicación (enmienda `C-99`).
+  - Tabla generada `CODIGOS-DE-RECHAZO.md` (`pnpm run docs:refusal-codes`), con
+    test de sincronía.
+  - Montos de RealOps con 2–3 decimales. No en las páginas de firma, que muestran
+    el valor literal.
+  - Horas en la zona del navegador (`<time data-local>`); las páginas de firma
+    muestran también la zona.
+  - "Watch it pay, live" y "Open the live pilot" → `realops.agentpey.com`. La demo
+    de la Fase 4 se borró: `/consent` y `/sign` dan `404` (enmienda `C-118`).
+- **Encontrado y decidido, sin construir:** con dos agentes del mismo tipo,
+  RealOps anota el más viejo y AgentPey paga con el Mandato más nuevo. El usuario
+  quiere poder elegir: **T90**, que cambia `/v1/purchases` y `selectMandateFor`.
+
+Nota: para diagnosticar la demo se llamó una vez a `POST /api/session/start` en
+producción, que emitió y ancló una credencial y un Mandato de demo en testnet. Se
+le dijo al usuario.
+
+Error propio, encontrado antes de commitear: la hora local combinaba
+`timeZoneName` con `dateStyle`, que `toLocaleString` rechaza con un error. En
+`/consent/{id}` eso habría cortado la carga de la invitación. Corregido en los tres
+lugares y fijado con tests (`pages.test.ts`, `apps/web/src/public-pages.test.ts`).
+
+Documentación tocada: `DECISIONES.md` (`C-120`), `BITACORA.md` (estado, filas y
+bloques de T88 y T89), `evidencia/T89.md` (nuevo), `CODIGOS-DE-RECHAZO.md`
+(nuevo, generado), `README.md`. `AGENTS.md` sin cambios. **1312 tests**,
+`typecheck` y `build` limpios.
+
+Pendiente:
+- **Merge de `cc/t89-pilot-clarity`, con confirmación del usuario.**
+- **T90:** elegir qué agente compra. Diseño: `mandate_id` opcional en
+  `POST /v1/purchases`, validado contra el tenant; `selectMandateFor` lo usa solo
+  para elegir; RealOps muestra un selector cuando hay más de un agente del tipo.
+  Toca el contrato congelado de `/v1` y la elección del Mandato: con revisión.
+- Quitar las rutas `/api/session/*` de la demo, que ya no tienen página.
+- Siguen: firmar y revocar con Freighter en producción, `C-113`, rotar los dos
+  secretos, lo anotado sin construir en T86.
