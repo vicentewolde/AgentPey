@@ -1,5 +1,5 @@
 import type { AddressInfo } from "node:net";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createMemoryStore, type RealOpsStore } from "./accounts.js";
 import { SESSION_COOKIE, createRealOpsServer } from "./app.js";
@@ -74,8 +74,73 @@ describe("the public pages", () => {
   it("says the signature happens on AgentPey's domain, not here", async () => {
     const html = await (await fetch(baseUrl)).text();
 
-    expect(html).toContain("No autoriza pagos");
+    expect(html).toContain("RealOps no autoriza pagos");
+    expect(html).toContain("RealOps does not authorize payments");
     expect(html).toContain("dominio de AgentPey");
+  });
+});
+
+/**
+ * C-119, decided by the user: with no email provider the form signs the person
+ * straight in. The email is the account, so a known email reaches that account
+ * again, and the name typed the second time does not overwrite the first.
+ */
+describe("signing in without an email provider", () => {
+  const directServer = createRealOpsServer({
+    store: createMemoryStore(),
+    targets: TARGETS,
+    signalDeskUrl: "https://signaldesk.example",
+    agentpeyBaseUrl: "https://agentpey.example",
+    baseUrl: "http://127.0.0.1",
+    delivery: { mode: "onscreen" },
+    secureCookies: false,
+  });
+  let directUrl = "";
+
+  beforeAll(async () => {
+    await new Promise<void>((resolve) => directServer.listen(0, "127.0.0.1", resolve));
+    directUrl = `http://127.0.0.1:${(directServer.address() as AddressInfo).port}`;
+  });
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => directServer.close((error) => (error === undefined ? resolve() : reject(error))));
+  });
+
+  async function enter(email: string, alias: string): Promise<Response> {
+    return fetch(`${directUrl}/entrar`, form({ email, alias }));
+  }
+
+  it("lands on the person's agents with a session, and no email page in between", async () => {
+    const response = await enter("directo@ejemplo.cl", "vicente");
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/agentes");
+    const cookie = response.headers.get("set-cookie")!.split(";")[0]!;
+    const agents = await (await fetch(`${directUrl}/agentes`, { headers: { cookie } })).text();
+    // Shown with a capital, stored as typed.
+    expect(agents).toContain("Hi, Vicente");
+  });
+
+  it("reaches the same account for a known email, and keeps the first name", async () => {
+    const first = await enter("mismo@ejemplo.cl", "Ana");
+    const second = await enter("MISMO@ejemplo.cl", "Otra persona");
+
+    const pageFor = async (response: Response) =>
+      (await fetch(`${directUrl}/servicios`, { headers: { cookie: response.headers.get("set-cookie")!.split(";")[0]! } })).text();
+    const firstRef = /<code>(rop_[0-9A-Z]+)<\/code>/.exec(await pageFor(first))?.[1];
+    const secondPage = await pageFor(second);
+
+    expect(firstRef).toBeDefined();
+    expect(secondPage).toContain(firstRef!);
+    const agents = await (await fetch(`${directUrl}/agentes`, { headers: { cookie: second.headers.get("set-cookie")!.split(";")[0]! } })).text();
+    expect(agents).toContain("Hi, Ana");
+    expect(agents).not.toContain("Otra persona");
+  });
+
+  it("says on the sign-in page that the email is not confirmed yet", async () => {
+    const html = await (await fetch(`${directUrl}/entrar`)).text();
+
+    expect(html).toContain("does not confirm the email yet");
+    expect(html).toContain("todavía no confirma el correo");
   });
 });
 

@@ -61,7 +61,6 @@ import {
   parseAcceptanceArgs,
   personaEmail,
   readExternalRef,
-  readOnScreenMagicLink,
   readRequestKey,
   readSignedMandateId,
   redact,
@@ -347,26 +346,23 @@ async function fundWallet(wallet: Keypair): Promise<void> {
 const isRedirect = (result: HttpResult): boolean => result.status === 302;
 
 /** Signs in through the on-screen magic link. Returns the link, so case 10 can try to reuse it. */
-async function signIn(persona: Persona): Promise<string> {
-  const sent = await http("POST", `${REALOPS}/entrar`, {
+/**
+ * Without an email provider, RealOps signs a person straight in (C-119): the
+ * form answers with a session cookie and a redirect to their agents. A page
+ * instead of a redirect means it is sending email, which this suite cannot read.
+ */
+async function signIn(persona: Persona): Promise<void> {
+  const entered = await http("POST", `${REALOPS}/entrar`, {
     jar: persona.jar,
     form: { email: persona.email, alias: `Suite T85 ${persona.id}` },
   });
-  const link = readOnScreenMagicLink(sent.text);
-  if (link === undefined) {
+  if (!isRedirect(entered) || entered.location !== "/agentes" || persona.jar.header() === undefined) {
     throw new AgentPassError(
       "ConfigError",
-      "RealOps did not show the sign-in link on screen — it is sending email, which this suite cannot read",
-      { details: { status: sent.status } },
+      "RealOps did not sign the persona straight in — it may be sending email, which this suite cannot read",
+      { details: { status: entered.status } },
     );
   }
-  const redeemed = await http("GET", link, { jar: persona.jar });
-  if (!isRedirect(redeemed) || persona.jar.header() === undefined) {
-    throw new AgentPassError("CommandFailed", "the sign-in link did not start a RealOps session", {
-      details: { status: redeemed.status },
-    });
-  }
-  return link;
 }
 
 async function externalRefOf(persona: Persona): Promise<string> {
@@ -794,9 +790,9 @@ async function setupPersona(
   kind: AgentKind,
   limits: Limits,
   record: Recorder,
-): Promise<{ readonly externalRef: string; readonly agentId: string; readonly tenantId: string; readonly magicLink: string; readonly signed: Signed }> {
+): Promise<{ readonly externalRef: string; readonly agentId: string; readonly tenantId: string; readonly signed: Signed }> {
   await fundWallet(persona.wallet);
-  const magicLink = await signIn(persona);
+  await signIn(persona);
   const externalRef = await externalRefOf(persona);
   const agentId = await hireAgent(persona, kind, `T85 ${persona.id} ${kind}`, limits);
   const signed = await signAgent(persona, agentId);
@@ -822,7 +818,7 @@ async function setupPersona(
     ),
   );
   record.check(await onChainCheck("el anclaje está en la red", signed.anchorTx));
-  return { externalRef, agentId, tenantId, magicLink, signed };
+  return { externalRef, agentId, tenantId, signed };
 }
 
 /** B: a report agent with a 0.20 per-purchase cap. Never pays, so it never consumes a rail. */
@@ -1186,9 +1182,6 @@ async function personaA(): Promise<void> {
     a.jar.clear();
     const anonymous = await http("GET", `${REALOPS}/agentes`, { jar: a.jar });
     record.check(checkThat("sin sesión, RealOps pide entrar", isRedirect(anonymous) && anonymous.location === "/entrar", "302 → /entrar", `${anonymous.status} → ${anonymous.location ?? "-"}`));
-    const replayedLink = await http("GET", ctx.magicLink, { jar: a.jar });
-    record.check(checkThat("el enlace de entrada no sirve dos veces", replayedLink.status === 400 && pageSays(replayedLink.text, "ya se usó"), "400, ya se usó", String(replayedLink.status)));
-
     await signIn(a);
     const agentPage = await http("GET", `${REALOPS}/agentes/${ctx.agentId}`, { jar: a.jar });
     const storedMandate = readSignedMandateId(agentPage.text);

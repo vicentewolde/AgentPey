@@ -12,7 +12,6 @@ import {
   parseAcceptanceArgs,
   personaEmail,
   readExternalRef,
-  readOnScreenMagicLink,
   readRequestKey,
   readSignedMandateId,
   redact,
@@ -69,13 +68,6 @@ describe("createCookieJar", () => {
 });
 
 describe("reading RealOps pages", () => {
-  it("finds the on-screen sign-in link, unescaped", () => {
-    const html =
-      '<p><a class="button" href="https://realops.example/entrar/tok_&amp;x" data-magic-link><span data-tr="en">Sign in with the link</span></a></p>';
-    expect(readOnScreenMagicLink(html)).toBe("https://realops.example/entrar/tok_&x");
-    expect(readOnScreenMagicLink('<p><a class="button" href="/entrar">Sign in</a></p>')).toBeUndefined();
-  });
-
   it("finds the purchase form's request key", () => {
     const html = '<input type="hidden" name="request_key" value="6f1c2b1e-0000-4000-8000-000000000000">';
     expect(readRequestKey(html)).toBe("6f1c2b1e-0000-4000-8000-000000000000");

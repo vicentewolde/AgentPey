@@ -127,11 +127,6 @@ function capture(html: string, pattern: RegExp): string | undefined {
   return value === undefined ? undefined : unescapeHtml(value);
 }
 
-/** The link `linkSentPage` shows when RealOps has no email provider configured. */
-export function readOnScreenMagicLink(html: string): string | undefined {
-  return capture(html, /<a class="button" href="([^"]+)" data-magic-link>/);
-}
-
 /** The per-form idempotency key of the purchase form (`C-106`). */
 export function readRequestKey(html: string): string | undefined {
   return capture(html, /name="request_key" value="([^"]+)"/);

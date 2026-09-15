@@ -55,8 +55,8 @@
     text-rendering: optimizeLegibility;
   }
 
-  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px 80px; }
-  @media (max-width: 480px) { .wrap { padding: 0 20px 64px; } }
+  .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 56px) 80px; }
+  @media (max-width: 480px) { .wrap { padding-bottom: 64px; } }
 
   a { color: var(--accent); }
 
@@ -64,7 +64,8 @@
   .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
   .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
   .mark .logo { width: 24px; height: 24px; flex: none; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
+  @media (max-width: 560px) { .mark .tagline { display: none; } }
   .nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 22px; }
   .nav a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
   .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); }
@@ -106,7 +107,7 @@
     font-size: 1rem;
     line-height: 1.55;
     color: var(--ink-2);
-    max-width: 60ch;
+    max-width: 80ch;
   }
 
   /* ---------- numbered steps ---------- */
@@ -127,9 +128,9 @@
     margin: 0 0 10px;
     color: var(--ink);
   }
-  .mstep .lead { margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; color: var(--ink-2); max-width: 62ch; }
+  .mstep .lead { margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; color: var(--ink-2); max-width: 80ch; }
   .mstep .lead code, .mstep .plain code { font-family: var(--mono); font-size: 0.92em; background: var(--paper-2); padding: 1px 5px; border-radius: 4px; }
-  .mstep .plain { margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; color: var(--ink-2); max-width: 62ch; }
+  .mstep .plain { margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; color: var(--ink-2); max-width: 80ch; }
   @media (max-width: 560px) {
     .mstep { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   }
@@ -177,8 +178,10 @@
   .field-note { margin: 0 0 14px; font-size: 12px; color: var(--ink-3); }
 
   /* ---------- product cards ---------- */
-  .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 4px; }
+  .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); align-items: stretch; gap: 12px; margin-top: 4px; }
   .card {
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--rule);
     border-radius: 8px;
     padding: 14px 16px;
@@ -187,9 +190,10 @@
   .card.payable { border-color: var(--accent); }
   .card h3 { margin: 0 0 5px; font-size: 14.5px; font-weight: 600; color: var(--ink); }
   .card p { margin: 0 0 10px; color: var(--ink-3); font-size: 12.5px; line-height: 1.45; }
-  .card .price { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+  .card .price { margin-top: auto; font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
   .badge {
     display: inline-block;
+    align-self: flex-start;
     font-size: 10px;
     font-weight: 500;
     text-transform: uppercase;
@@ -243,7 +247,7 @@
     <a class="mark" href="/">
       <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
       <span>AgentPey</span>
-      <span class="tagline"><span data-tr="en">· live demo</span><span data-tr="es">· demo en vivo</span></span>
+      <span class="tagline"><span data-tr="en">Live demo</span><span data-tr="es">Demo en vivo</span></span>
     </a>
     <nav class="nav">
       <a href="/"><span data-tr="en">← Overview</span><span data-tr="es">← Resumen</span></a>

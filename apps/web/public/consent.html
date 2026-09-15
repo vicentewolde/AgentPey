@@ -55,13 +55,14 @@
     text-rendering: optimizeLegibility;
   }
 
-  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px 72px; }
+  .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 56px) 72px; }
 
   /* ---------- top bar (shared pilot chrome) ---------- */
   .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
   .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
   .mark .logo { width: 24px; height: 24px; flex: none; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
+  @media (max-width: 560px) { .mark .tagline { display: none; } }
   .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
   .apps { display: flex; align-items: center; gap: 16px; }
   .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
@@ -85,14 +86,14 @@
   .hero { padding: clamp(30px, 6vw, 54px) 0 32px; }
   .kicker { margin: 22px 0 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
   h1 { margin: 12px 0 0; font-family: var(--serif); font-size: clamp(2.25rem, 7vw, 3.25rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; }
-  .intro { max-width: 60ch; margin: 16px 0 0; color: var(--ink-2); }
+  .intro { max-width: 80ch; margin: 16px 0 0; color: var(--ink-2); }
   .session-id { margin: 16px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 
   .panel { border-top: 1px solid var(--rule); padding: 28px 0; }
   .panel:last-child { border-bottom: 1px solid var(--rule); }
   .panel-kicker { color: var(--ink-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
   h2 { margin: 6px 0 8px; font-family: var(--serif); font-size: 1.75rem; font-weight: 400; letter-spacing: -0.015em; line-height: 1.15; }
-  .lead { max-width: 62ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
+  .lead { max-width: 80ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
 
   .grant { margin: 0; }
   .grant-row { display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 1fr); gap: 16px; padding: 15px 0; border-top: 1px dashed var(--rule); }
@@ -128,7 +129,7 @@
   .result dd { margin: 0; color: var(--ink); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 
   @media (max-width: 520px) {
-    .wrap { padding: 0 20px 56px; }
+    .wrap { padding-bottom: 56px; }
     .grant-row, .result-row { grid-template-columns: 1fr; gap: 5px; }
   }
 </style>
@@ -140,7 +141,7 @@
     <a class="mark" href="/">
       <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
       <span>AgentPey</span>
-      <span class="tagline"><span data-tr="en">· payment infrastructure for agents</span><span data-tr="es">· infraestructura de pagos para agentes</span></span>
+      <span class="tagline"><span data-tr="en">Payment infrastructure for agents</span><span data-tr="es">Infraestructura de pagos para agentes</span></span>
     </a>
     <div class="utils">
       <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>

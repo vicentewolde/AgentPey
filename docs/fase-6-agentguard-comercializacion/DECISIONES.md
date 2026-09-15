@@ -4566,3 +4566,66 @@ este despliegue esté en producción, nunca en medio.
 - **Servir el logo como archivo** (`/brand/…`). Habría que agregar tipos MIME y
   una ruta en `apps/web`, y RealOps y SignalDesk dependerían de otro dominio para
   su ícono.
+
+---
+
+### C-119 · T88: sin proveedor de correo, RealOps deja entrar directo; y el piloto usa el ancho de la pantalla · `Vigente`
+**Fecha:** 2026-09-15 · **Decidido por el usuario** (entrar directo, diseño) · la forma, de Claude Code
+
+**El pedido.** Después de mirar el piloto desplegado en un Mac de 13 pulgadas, el
+usuario pidió: entrar a RealOps con correo y nombre sin pasar por "Revisa tu
+correo", porque agrega fricción; páginas más anchas, con fintual.cl como
+referencia; pies de página de RealOps y SignalDesk que ocupen el ancho; tarjetas
+del mismo tamaño y alineadas; el lema junto al logo con mayúscula inicial; sin
+"Entrar" en el centro de la barra de RealOps; y el nombre del agente con
+mayúscula.
+
+**Entrar directo, solo mientras no haya proveedor de correo.** Sin
+`RESEND_API_KEY`, `POST /entrar` abre la sesión y lleva a "Mis agentes". Con un
+proveedor configurado vuelve el enlace de un solo uso por correo, sin cambios.
+
+- **No baja la seguridad que había.** El modo sin correo mostraba el enlace en
+  pantalla a quien escribiera la dirección: tampoco comprobaba que el correo
+  fuera suyo, y la página ya lo decía. Saltarse esa página solo quita un clic.
+  La página de entrada lo sigue diciendo ("el piloto todavía no confirma el
+  correo").
+- **Lo que sí implica, dicho al usuario:** quien sepa el correo de una cuenta
+  entra a esa cuenta, ve sus agentes y compras, y puede pedir compras dentro de
+  lo que el Mandato ya firmado permite. No puede firmar, revocar ni pagar fuera
+  de ese Mandato: eso sigue ocurriendo en AgentPey, con la wallet. Antes de abrir
+  el piloto a personas externas conviene configurar el correo.
+- **El correo es la cuenta.** Entrar de nuevo con un correo conocido lleva a la
+  misma cuenta, y el nombre escrito esa vez no reemplaza al primero. Fijado por un
+  test.
+- **Enmienda `PILOTO-F9.md` § 1.3** en "enlace mágico: un solo uso, 15 minutos"
+  para el modo sin correo.
+- **La suite de aceptación** entra con el mismo `POST` y verifica la redirección
+  a `/agentes`. Se quitó el chequeo "el enlace de entrada no sirve dos veces" del
+  caso 10, que sin enlace no tiene objeto. La regla sigue probada en los tests del
+  modo con correo.
+
+**El diseño:**
+
+- **Ancho:** contenedor de hasta 1320 px con márgenes `clamp(20px, 4vw, 56px)`,
+  unos 1208 px de contenido a 1470 px, igual que fintual.cl. Los párrafos llegan
+  hasta ~80 caracteres; más que eso cuesta leer.
+- **Tarjetas:** rejillas de columnas iguales (`auto-fill`), cada tarjeta estira a
+  la altura de la fila y deja su acción abajo. El mínimo de columna es
+  `min(340px, 100%)`, así que en un teléfono no desborda.
+- **Pies:** en RealOps, una fila con el texto y enlaces a AgentPey, SignalDesk y
+  GitHub. En SignalDesk, una fila por nota, con el título a la izquierda y el
+  texto a lo ancho.
+- **Lema:** "Payment infrastructure for agents" / "Infraestructura de pagos para
+  agentes", "Agent platform" / "Plataforma de agentes", "x402 merchant" /
+  "Comercio x402" (en inglés "x402" va en minúscula porque así se escribe el
+  protocolo), "Live demo" / "Demo en vivo". Separado del nombre por una línea
+  fina. Vuelve a la landing, que ahora tiene lugar.
+- **Nombres escritos por la persona** (agente, alias) se muestran con mayúscula
+  inicial. Lo guardado y lo enviado a AgentPey no cambia.
+
+**Alternativas descartadas:**
+- **Quitar también el enlace cuando hay correo configurado.** Dejaría a RealOps
+  sin forma de comprobar la dirección el día que se abra a externos.
+- **Actualizar el nombre al entrar con un correo conocido.** Cualquiera que
+  escriba ese correo podría renombrar la cuenta de otra persona.
+- **Párrafos a todo el ancho.** A 1208 px una línea pasa de 150 caracteres.

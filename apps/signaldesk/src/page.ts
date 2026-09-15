@@ -100,13 +100,14 @@ export const SIGNALDESK_STYLE = `
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px;
          line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   a { color: var(--accent); }
-  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 56px); }
 
   .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
   .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px;
           font-weight: 600; letter-spacing: -0.01em; }
   .mark .logo { width: 24px; height: 24px; flex: none; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0;
+          border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
   .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
   .apps { display: flex; align-items: center; gap: 16px; }
   .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
@@ -130,22 +131,28 @@ export const SIGNALDESK_STYLE = `
   h1 { margin: 18px 0 0; font-family: var(--serif); font-weight: 400; font-size: clamp(2.4rem, 5.6vw, 3.7rem);
        line-height: 1.05; letter-spacing: -0.018em; }
   h2 { margin: 0 0 10px; font-family: var(--serif); font-weight: 400; font-size: 1.7rem; line-height: 1.15; letter-spacing: -0.015em; }
-  .lede { max-width: 62ch; margin: 18px 0 0; color: var(--ink-2); font-size: clamp(1rem, 1.6vw, 1.12rem); }
+  .lede { max-width: 80ch; margin: 18px 0 0; color: var(--ink-2); font-size: clamp(1rem, 1.6vw, 1.12rem); }
 
-  .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: stretch; }
-  .product { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 24px 26px; min-width: 0; }
+  /* Every product card has the same width and height, with its ids lined up at the bottom. */
+  .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px; align-items: stretch; }
+  .product { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--rule); border-radius: 10px;
+             padding: 24px 26px; min-width: 0; }
+  .product .meta { margin-top: auto; padding-top: 4px; }
   .product-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
   .price { font-family: var(--mono); font-size: 15px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .product p { margin: 0 0 12px; color: var(--ink-2); }
   .product p:last-child { margin-bottom: 0; }
-  code { font-family: var(--mono); background: var(--paper-2); padding: 2px 6px; border-radius: 5px; font-size: 12.5px; word-break: break-all; }
+  code { font-family: var(--mono); background: var(--paper-2); padding: 2px 6px; border-radius: 5px; font-size: 12.5px; overflow-wrap: anywhere; }
   .meta { color: var(--ink-3); font-size: 13px; }
 
-  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px 36px; margin-top: 52px;
-           padding: 30px 0 48px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 13.5px; }
-  .notes p { margin: 0; }
-  .notes strong { color: var(--ink-2); font-weight: 600; }
-  @media (max-width: 520px) { .wrap { padding: 0 20px; } .product { padding: 18px; } }
+  /* One row per note, label on the left and the text across the rest of the width. */
+  .notes { margin: 56px 0 0; padding: 0 0 48px; border-top: 1px solid var(--rule); font-size: 14px; }
+  .note { display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); gap: 4px 40px; padding: 16px 0;
+          border-bottom: 1px dashed var(--rule); }
+  .note dt { color: var(--ink-2); font-weight: 600; }
+  .note dd { margin: 0; color: var(--ink-3); }
+  @media (max-width: 720px) { .note { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 560px) { .mark .tagline { display: none; } .product { padding: 18px; } }
   @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
 `;
 
@@ -215,7 +222,7 @@ export function renderCatalogPage(input: PageInput): string {
 <body>
 <main class="wrap">
   <div class="top">
-    <a class="mark" href="/">${ICON_SVG.replace("<svg ", '<svg class="logo" aria-hidden="true" ')}<span>SignalDesk</span><span class="tagline">${tr("· x402 merchant", "· comercio x402")}</span></a>
+    <a class="mark" href="/">${ICON_SVG.replace("<svg ", '<svg class="logo" aria-hidden="true" ')}<span>SignalDesk</span><span class="tagline">${tr("x402 merchant", "Comercio x402")}</span></a>
     <div class="utils">
       <nav class="apps" aria-label="Pilot apps"><a href="https://agentpey.com">AgentPey</a><a href="https://realops.agentpey.com">RealOps</a></nav>
       <div class="lang"><button type="button" data-set-lang="en" aria-pressed="true">EN</button><span aria-hidden="true">/</span><button type="button" data-set-lang="es" aria-pressed="false">ES</button></div>
@@ -249,24 +256,27 @@ export function renderCatalogPage(input: PageInput): string {
   }).join("\n  ")}
   </div>
 
-  <footer class="notes">
-    <p>${tr(
-      "<strong>Synthetic data.</strong> The market report is generated by SignalDesk. It does not use or reproduce real market data, and it is not financial advice.",
-      "<strong>Datos sintéticos.</strong> El informe de mercado lo genera SignalDesk. No usa ni reproduce datos de mercado reales, y no es asesoría financiera.",
-    )}</p>
-    <p>${tr(
-      "<strong>Credits are not transferable.</strong> They are a balance tied to a holder inside SignalDesk, not a Stellar token. This service exposes no operation to move them.",
-      "<strong>Los créditos no son transferibles.</strong> Son un saldo ligado a un titular dentro de SignalDesk, no un token de Stellar. Este servicio no expone ninguna operación para moverlos.",
-    )}</p>
-    <p>${tr(
-      `<strong>Retention.</strong> Delivered artifacts are kept for ${days} days. After that, the signed receipt and its hash remain, not the file.`,
-      `<strong>Retención.</strong> Los artefactos entregados se conservan ${days} días. Después quedan el recibo firmado y su hash, no el archivo.`,
-    )}</p>
-    <p>${tr(
-      `<strong>Every delivery carries a receipt signed by SignalDesk</strong>, verifiable with its public key <code>${payTo}</code> without anyone else involved. Merchant identity: ${identity}.`,
-      `<strong>Cada entrega lleva un recibo firmado por SignalDesk</strong>, verificable con su clave pública <code>${payTo}</code> sin intervención de nadie más. Identidad de comercio: ${identity}.`,
-    )}</p>
-    <p>${tr("Catalog for agents", "Catálogo para agentes")}: <code>${escape(input.discoveryPath)}</code></p>
+  <footer>
+    <dl class="notes">
+      <div class="note"><dt>${tr("Synthetic data", "Datos sintéticos")}</dt><dd>${tr(
+        "The market report is generated by SignalDesk. It does not use or reproduce real market data, and it is not financial advice.",
+        "El informe de mercado lo genera SignalDesk. No usa ni reproduce datos de mercado reales, y no es asesoría financiera.",
+      )}</dd></div>
+      <div class="note"><dt>${tr("Credits are not transferable", "Los créditos no son transferibles")}</dt><dd>${tr(
+        "They are a balance tied to a holder inside SignalDesk, not a Stellar token. This service exposes no operation to move them.",
+        "Son un saldo ligado a un titular dentro de SignalDesk, no un token de Stellar. Este servicio no expone ninguna operación para moverlos.",
+      )}</dd></div>
+      <div class="note"><dt>${tr("Retention", "Retención")}</dt><dd>${tr(
+        `Delivered artifacts are kept for ${days} days. After that, the signed receipt and its hash remain, not the file.`,
+        `Los artefactos entregados se conservan ${days} días. Después quedan el recibo firmado y su hash, no el archivo.`,
+      )}</dd></div>
+      <div class="note"><dt>${tr("Signed receipts", "Recibos firmados")}</dt><dd>${tr(
+        `Every delivery carries a receipt signed by SignalDesk, verifiable with its public key <code>${payTo}</code> without anyone else involved.`,
+        `Cada entrega lleva un recibo firmado por SignalDesk, verificable con su clave pública <code>${payTo}</code> sin intervención de nadie más.`,
+      )}</dd></div>
+      <div class="note"><dt>${tr("Merchant identity", "Identidad de comercio")}</dt><dd>${identity}</dd></div>
+      <div class="note"><dt>${tr("Catalog for agents", "Catálogo para agentes")}</dt><dd><code>${escape(input.discoveryPath)}</code></dd></div>
+    </dl>
   </footer>
 </main>
 <script>${LANG_SWITCH}</script>

@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-14 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`) y T87 (piloto en inglés y español, verificado en producción) · **Sigue:** el hito de `C-113`, decidido y sin arrancar · **Fase 6: en curso**
+**Fecha:** 2026-09-14 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`) y T87 (piloto en inglés y español, verificado en producción) · **En curso:** T88 (entrada directa a RealOps y páginas más anchas, listo en su rama, sin mergear) · **Sigue:** el hito de `C-113`, decidido y sin arrancar · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -152,7 +152,10 @@ Los tres servicios viejos ya no existen, y las tres páginas comparten la misma
 identidad visual: `agentpey.com` abre la landing (`C-117`). Y el piloto se lee en
 inglés o en español, con inglés por defecto, el logo de AgentPey junto al nombre
 en las tres apps y su ícono en la pestaña del navegador. La demo con wallet pasó
-de `/sign` a `agentpey.com/consent`, y `/sign` ya no existe (T87, `C-118`).
+de `/sign` a `agentpey.com/consent`, y `/sign` ya no existe (T87, `C-118`). Y entrar
+a RealOps ya no pide revisar el correo: con correo y nombre se entra directo,
+mientras el piloto no tenga proveedor de correo. Las páginas usan el ancho de la
+pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 
 ### Progreso
 
@@ -209,6 +212,7 @@ de `/sign` a `agentpey.com/consent`, y `/sign` ya no existe (T87, `C-118`).
 | T85 | F9: la suite de los casos de aceptación 2 a 10 contra lo desplegado — cinco defectos encontrados en producción y cerrados, 88 ✓ · 1 ✗ (diferido, `C-113`) · 4 declarados en la segunda corrida | ✅ cerrado 2026-09-15 · día 2 (Mandato vencido desde RealOps): 8 ✓ · 0 ✗ |
 | T86 | F9: un solo servicio de Render (`AgentPey`, Starter) para las tres apps, bajo `agentpey.com` — `@agentpey/gateway` arranca tres procesos con sus propias claves y rutea por dominio; compra real por los dominios nuevos, 20 ✓ · 1 ✗ (`C-113`) | ✅ cerrado 2026-09-14 · mergeado a `main` · servicios viejos borrados · identidad visual única (`C-117`) |
 | T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | ✅ cerrado 2026-09-14 · mergeado a `main` · verificado en producción (`C-118`) |
+| T88 | F9: sin proveedor de correo, RealOps deja entrar directo; páginas de hasta ~1208 px de contenido; tarjetas iguales y alineadas; pies de RealOps y SignalDesk a lo ancho; lema con mayúscula; nombres con mayúscula inicial | 🟡 listo en `cc/t88-pilot-polish` 2026-09-15 · sin mergear · espera confirmación del usuario (`C-119`) |
 
 ---
 
@@ -3792,3 +3796,62 @@ día 2 corre después de que este despliegue esté en producción, nunca en medi
   antes de cerrar.
 
 **Decisiones nuevas:** `C-118` (enmienda `C-117` en la ruta de la demo).
+
+---
+
+## T88 · Entrar directo a RealOps, y un piloto que usa la pantalla · listo 2026-09-15, sin mergear
+
+**Qué quedó funcionando, en palabras simples.**
+
+**Entrar a RealOps es un paso.** Se escribe el correo y un nombre, y se llega a
+"Mis agentes". Ya no aparece "Revisa tu correo". Esto vale mientras el piloto no
+tenga un servicio de correo configurado; si se configura, vuelve el enlace de un
+solo uso. La página de entrada dice que el piloto todavía no confirma el correo.
+
+**El correo es la cuenta.** Entrar de nuevo con el mismo correo lleva a la misma
+cuenta, con sus agentes y compras. Si esa vez se escribe otro nombre, queda el
+primero. Se eligió así porque, si el nombre se actualizara, cualquiera que
+escriba el correo de otra persona podría renombrar su cuenta.
+
+**Lo que esto implica, dicho al usuario.** Quien sepa el correo de una cuenta
+entra a ella. Ya pasaba antes, porque el enlace se mostraba en pantalla a quien
+escribiera la dirección. Puede ver agentes y compras y pedir compras dentro de lo
+que el Mandato firmado ya permite. No puede firmar, revocar ni gastar más de eso:
+todo eso ocurre en AgentPey con la wallet. Antes de abrir el piloto a personas
+externas conviene configurar el correo.
+
+**Las páginas usan la pantalla.** En un Mac de 13 pulgadas el contenido llega a
+unos 1208 px, como fintual.cl, en lugar de 1040. Los textos usan más ancho sin
+pasar de una línea cómoda de leer.
+
+**Las tarjetas son iguales.** Los agentes contratados, las entregas, los rechazos
+y los productos de SignalDesk van en columnas del mismo ancho, con la misma
+altura en cada fila y su acción alineada abajo. En un teléfono pasan a una
+columna, sin salirse de la pantalla.
+
+**Los pies se ven bien.** RealOps: una fila con el texto a la izquierda y
+enlaces a AgentPey, SignalDesk y GitHub a la derecha. SignalDesk: una fila por
+nota, el título a la izquierda y el texto a lo ancho, en lugar de columnas
+angostas.
+
+**Detalles.** El lema junto al logo empieza con mayúscula ("Plataforma de
+agentes", "Comercio x402", "Infraestructura de pagos para agentes") y volvió a la
+landing. RealOps ya no tiene "Entrar" en el centro de la barra. El nombre del
+agente y el de la persona se muestran con mayúscula inicial, sin cambiar lo
+guardado. Las fechas de las tarjetas se acortan ("2026-09-12 21:11 UTC") y los
+códigos largos ya no se cortan en cualquier letra.
+
+**Evidencia técnica.**
+
+- **1300 tests verdes** (eran 1298: +3 de la entrada directa, −1 de la lectura
+  del enlace en pantalla, que ya no existe), `typecheck` y `build` limpios.
+- A 1470 px: tarjetas de agentes 3 × 392 px, misma altura y mismo borde superior;
+  entregas y rechazos igual; pedido y límite diario en la misma fila; productos
+  de SignalDesk 2 × 596 px con los ids alineados; pie de RealOps en una fila.
+- A 375 px: sin desborde horizontal en ocho páginas.
+- Detalle en `evidencia/T88.md`. Las cuatro páginas de `agentpey.com` las ajustó un
+  subagente de Claude Code con una especificación escrita, revisada antes de
+  cerrar.
+
+**Decisiones nuevas:** `C-119` (enmienda `PILOTO-F9.md` § 1.3 en el enlace de un
+solo uso para el modo sin correo).

@@ -5187,3 +5187,40 @@ Pendiente:
   de `POST /agentes/{id}/firmar`; medir la memoria del Starter con tráfico real.
 - Ramas `codex/*` sin mergear en `origin` (siete). `codex/vault-amount-tests`
   roza MandateVault: no se mergea sin revisión.
+
+## 2026-09-15 (27) — cc/t88-pilot-polish (sin mergear, sobre cc/t85-day2-closeout)
+
+Agente: Claude Code (más un subagente de Claude Code para las cuatro páginas de
+`apps/web/public`, con especificación escrita y revisado). Nada delegado a Codex.
+
+Qué: **T88**, a pedido del usuario tras mirar lo desplegado (`C-119`).
+- **RealOps sin proveedor de correo deja entrar directo:** `POST /entrar` abre la
+  sesión y redirige a `/agentes`. Con `RESEND_API_KEY` vuelve el enlace. El
+  correo es la cuenta; un nombre distinto con un correo conocido no se aplica
+  (con test).
+- Contenido de hasta ~1208 px a 1470 px (referencia fintual.cl), textos hasta
+  ~80ch.
+- Tarjetas de igual ancho y alto en Mis agentes, Mis servicios y SignalDesk, sin
+  desborde en móvil.
+- Pie de RealOps en una fila; notas de SignalDesk en filas.
+- Lema con mayúscula (de vuelta en la landing); sin "Entrar" en la barra de
+  RealOps; nombres con mayúscula inicial; fechas cortas.
+- La suite entra con el `POST` directo; se quitó `readOnScreenMagicLink`.
+
+Por qué: la reunión con Stellar es esta tarde, y el usuario lo vio angosto,
+desalineado y con un paso de más para entrar.
+
+Documentación tocada: `DECISIONES.md` (`C-119`), `BITACORA.md` (estado, fila y
+bloque de T88), `evidencia/T88.md` (nuevo). `AGENTS.md` sin cambios: nada de
+esto cambia qué es delegable. **1300 tests**, `typecheck` y `build` limpios.
+
+Pendiente:
+- **Merge de `cc/t88-pilot-polish` a `main`, con confirmación del usuario.**
+  Incluye el cierre de T85 (`cc/t85-day2-closeout`). Un solo push redespliega;
+  después, mirar los cinco dominios y entrar a RealOps con un correo.
+- Antes de abrir el piloto a externos: configurar el correo (`RESEND_API_KEY`),
+  para que la entrada vuelva a comprobar la dirección.
+- La suite de aceptación no corrió con el `signIn` nuevo.
+- Firmar y revocar con Freighter en producción.
+- Sigue igual: `C-113`, rotar los dos secretos, lo anotado sin construir en T86,
+  las ramas `codex/*`.

@@ -50,13 +50,14 @@ const STYLE = `
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px;
          line-height: 1.55; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   a { color: var(--accent); }
-  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 56px); }
 
   .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
   .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px;
           font-weight: 600; letter-spacing: -0.01em; }
   .mark .logo { width: 24px; height: 24px; flex: none; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0;
+          border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
   .nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 22px; }
   .nav a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
   .nav a:hover { color: var(--ink); }
@@ -78,20 +79,27 @@ const STYLE = `
   @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
 
   h1 { margin: 18px 0 0; font-family: var(--serif); font-weight: 400; font-size: clamp(2.4rem, 5.6vw, 3.7rem);
-       line-height: 1.05; letter-spacing: -0.018em; max-width: 22ch; }
+       line-height: 1.05; letter-spacing: -0.018em; max-width: 28ch; text-wrap: balance; }
   h2 { margin: 52px 0 16px; font-family: var(--serif); font-weight: 400; font-size: clamp(1.6rem, 3vw, 2.1rem);
        line-height: 1.12; letter-spacing: -0.014em; }
   h3 { margin: 0 0 8px; font-size: 1.02rem; font-weight: 600; letter-spacing: -0.005em; }
   .card h2 { margin: 0 0 12px; font-size: 1.6rem; }
-  .lede { max-width: 62ch; margin: 18px 0 36px; color: var(--ink-2); font-size: clamp(1rem, 1.6vw, 1.12rem); }
+  .lede { max-width: 80ch; margin: 18px 0 36px; color: var(--ink-2); font-size: clamp(1rem, 1.6vw, 1.12rem); }
   .meta { color: var(--ink-3); font-size: 13.5px; }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
-  .split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+  /* Cards in a row share one width and one height, whatever each holds. */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; align-items: stretch; }
+  .grid.pair { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+  .split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(min(300px, 100%), 1fr); gap: 16px; align-items: stretch; }
+  .stack { display: flex; flex-direction: column; }
+  .stack > * { margin: 0 0 10px; }
+  .stack > :last-child { margin-bottom: 0; }
+  .stack > .push { margin-top: auto; padding-top: 6px; }
   @media (max-width: 860px) { .split { grid-template-columns: minmax(0, 1fr); } }
   .card { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 24px 26px; min-width: 0; }
   .card + .card, .card + .grid, .grid + .card, .split + .card, .card + .split { margin-top: 16px; }
-  .grid > *, .split > * { margin-top: 0; }
+  /* Inside a row the gap does the spacing; a card's own margin would push it below its neighbours. */
+  .grid > .card, .split > .card, .grid > *, .split > * { margin-top: 0; }
   .card > :first-child { margin-top: 0; }
   .card > :last-child { margin-bottom: 0; }
   .card ol { padding-left: 1.2em; }
@@ -119,7 +127,7 @@ const STYLE = `
   html[lang="en"] .lang button[data-set-lang="en"], html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
 
   code, pre { font-family: var(--mono); background: var(--paper-2); border-radius: 5px; }
-  code { padding: 2px 6px; font-size: 12.5px; word-break: break-all; }
+  code { padding: 2px 6px; font-size: 12.5px; overflow-wrap: anywhere; }
   pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-size: 12.5px; line-height: 1.55; border: 1px solid var(--rule); }
 
   .table-wrap { overflow-x: auto; padding: 8px 14px; }
@@ -136,14 +144,20 @@ const STYLE = `
   .tag-realops { background: var(--paper-2); color: var(--ink-2); }
   .tag-refused { background: var(--danger-wash); color: var(--danger); }
   .signed { color: var(--accent); font-weight: 500; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+  .actions .button { margin-top: 0; }
   .head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 
-  footer { border-top: 1px solid var(--rule); padding: 26px 0 48px; color: var(--ink-3); font-size: 13.5px; }
-  footer p { margin: 0; max-width: 72ch; }
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 12px 40px;
+           border-top: 1px solid var(--rule); padding: 26px 0 48px; color: var(--ink-3); font-size: 13.5px; }
+  footer p { margin: 0; flex: 1 1 560px; }
   footer strong { color: var(--ink-2); font-weight: 600; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+  footer nav a { color: var(--ink-3); text-decoration: none; }
+  footer nav a:hover { color: var(--ink); }
 
-  @media (max-width: 520px) {
-    .wrap { padding: 0 20px; }
+  @media (max-width: 560px) {
+    .mark .tagline { display: none; }
     .card { padding: 18px; }
   }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -229,6 +243,14 @@ function textAttributes(text: Bilingual): string {
   return `data-text-en="${escape(text.en)}" data-text-es="${escape(text.es)}"`;
 }
 
+/**
+ * A name a person typed, shown with a capital first letter. Display only: the
+ * stored value, and anything sent to AgentPey, keep exactly what was typed.
+ */
+function displayName(value: string): string {
+  return escape(value.charAt(0).toLocaleUpperCase() + value.slice(1));
+}
+
 export interface LayoutInput {
   readonly title: Bilingual;
   readonly body: string;
@@ -241,7 +263,7 @@ export function layout(input: LayoutInput): string {
       ? `<a href="/agentes">${tr(bilingual("My agents", "Mis agentes"))}</a>` +
         `<a href="/servicios">${tr(bilingual("My services", "Mis servicios"))}</a>` +
         `<a href="/salir">${tr(bilingual("Sign out", "Salir"))}</a>`
-      : `<a href="/entrar">${tr(bilingual("Sign in", "Entrar"))}</a>`;
+      : "";
 
   return `<!doctype html>
 <html lang="en" data-title-en="${escape(input.title.en)} · RealOps" data-title-es="${escape(input.title.es)} · RealOps">
@@ -259,7 +281,7 @@ ${FAVICON}
 <body>
 <main class="wrap">
   <div class="top">
-    <a class="mark" href="/">${LOGO}<span>RealOps</span><span class="tagline">${trHtml("· agent platform", "· plataforma de agentes")}</span></a>
+    <a class="mark" href="/">${LOGO}<span>RealOps</span><span class="tagline">${trHtml("Agent platform", "Plataforma de agentes")}</span></a>
     <nav class="nav">${nav}</nav>
     <div class="utils">
       <nav class="apps" aria-label="Pilot apps"><a href="${PILOT_LINKS.agentpey}">AgentPey</a><a href="${PILOT_LINKS.signalDesk}">SignalDesk</a></nav>
@@ -273,9 +295,10 @@ ${FAVICON}
   </div>
   <footer>
     <p>${trHtml(
-      "RealOps is the pilot's agent platform. <strong>It does not authorize payments</strong>: it asks, and AgentPey decides. Your Mandate is always signed on AgentPey's domain, never here.",
-      "RealOps es la plataforma de agentes del piloto. <strong>No autoriza pagos</strong>: pide, y AgentPey decide. Tu Mandato se firma siempre en el dominio de AgentPey, nunca aquí.",
+      "<strong>RealOps does not authorize payments.</strong> It asks, and AgentPey decides. Your Mandate is always signed on AgentPey's domain, never here.",
+      "<strong>RealOps no autoriza pagos.</strong> Pide, y AgentPey decide. Tu Mandato se firma siempre en el dominio de AgentPey, nunca aquí.",
     )}</p>
+    <nav aria-label="Pilot"><a href="${PILOT_LINKS.agentpey}">AgentPey</a><a href="${PILOT_LINKS.signalDesk}">SignalDesk</a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
   </footer>
 </main>
 <script>${LANG_SWITCH}</script>
@@ -297,7 +320,7 @@ export function homePage(signalDeskUrl: string): string {
     ),
   )}</p>
 
-  <div class="grid">
+  <div class="grid pair">
     <div class="card">
       <h2>${tr(bilingual("How it works", "Cómo funciona"))}</h2>
       <ol>
@@ -335,12 +358,26 @@ export function homePage(signalDeskUrl: string): string {
   });
 }
 
-export function signInPage(options: { readonly error?: Bilingual } = {}): string {
+export interface SignInOptions {
+  readonly error?: Bilingual;
+  /** `true` when there is no email provider and the form signs the person straight in (C-119). */
+  readonly direct?: boolean;
+}
+
+export function signInPage(options: SignInOptions = {}): string {
+  const direct = options.direct === true;
   return layout({
     title: bilingual("Sign in", "Entrar"),
     body: `
   <h1>${tr(bilingual("Sign in", "Entrar"))}</h1>
-  <p class="lede">${tr(bilingual("We send you a one-time link. It lasts 15 minutes.", "Te enviamos un enlace de un solo uso. Dura 15 minutos."))}</p>
+  <p class="lede">${tr(
+    direct
+      ? bilingual(
+          "Type your email and a name. For now you go straight in: the pilot does not confirm the email yet.",
+          "Escribe tu correo y un nombre. Por ahora entras directo: el piloto todavía no confirma el correo.",
+        )
+      : bilingual("We send you a one-time link. It lasts 15 minutes.", "Te enviamos un enlace de un solo uso. Dura 15 minutos."),
+  )}</p>
   ${options.error === undefined ? "" : `<p class="card error">${tr(options.error)}</p>`}
   <div class="split">
     <form class="card" method="post" action="/entrar">
@@ -348,7 +385,7 @@ export function signInPage(options: { readonly error?: Bilingual } = {}): string
       <input id="email" name="email" type="email" required autocomplete="email" ${placeholder(bilingual("you@example.com", "tu@ejemplo.com"))}>
       <label for="alias">${tr(bilingual("What should we call you", "Cómo quieres que te llamemos"))}</label>
       <input id="alias" name="alias" required autocomplete="nickname" placeholder="Alex" maxlength="60">
-      <button type="submit">${tr(bilingual("Send me the link", "Envíame el enlace"))}</button>
+      <button type="submit">${tr(direct ? bilingual("Enter", "Entrar") : bilingual("Send me the link", "Envíame el enlace"))}</button>
     </form>
     <div class="card">
       <h3>${tr(bilingual("Your email stays here", "Tu correo se queda aquí"))}</h3>
@@ -364,7 +401,8 @@ export function signInPage(options: { readonly error?: Bilingual } = {}): string
   });
 }
 
-export function linkSentPage(options: { readonly onScreenLink?: string }): string {
+/** Only when an email provider is configured: without one, signing in goes straight in (C-119). */
+export function linkSentPage(): string {
   return layout({
     title: bilingual("Check your email", "Revisa tu correo"),
     body: `
@@ -375,17 +413,6 @@ export function linkSentPage(options: { readonly onScreenLink?: string }): strin
       "Si esa dirección tiene cuenta o la acabamos de crear, ahí va el enlace. Dura 15 minutos y sirve una sola vez.",
     ),
   )}</p>
-  ${
-    options.onScreenLink === undefined
-      ? ""
-      : `<div class="card">
-    <p>${trHtml(
-      "<strong>Pilot mode, no email provider configured.</strong> There is no email provider yet, so the link is shown here. This means it is <em>not verifying</em> that the email is yours. Once sending is configured, it will.",
-      "<strong>Modo piloto sin correo configurado.</strong> Todavía no hay proveedor de email, así que el enlace se muestra aquí. Esto significa que <em>no se está verificando</em> que el correo sea tuyo. Cuando el envío esté configurado, sí se verificará.",
-    )}</p>
-    <p><a class="button" href="${escape(options.onScreenLink)}" data-magic-link>${tr(bilingual("Sign in with the link", "Entrar con el enlace"))}</a></p>
-  </div>`
-  }
 `,
   });
 }
@@ -408,7 +435,7 @@ const AGENT_COPY: Readonly<Record<AgentKind, { readonly name: Bilingual; readonl
 };
 
 export function agentsPage(account: Account, agents: readonly AgentConfig[]): string {
-  const alias = escape(account.alias);
+  const alias = displayName(account.alias);
   const rows =
     agents.length === 0
       ? `<p class="card">${tr(bilingual("You have not hired any agent yet.", "Todavía no has contratado ningún agente."))}</p>`
@@ -422,14 +449,14 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[]): st
           agent.mandateId === null
             ? `<span class="tag tag-realops">${tr(bilingual("not signed", "sin firmar"))}</span>`
             : `<span class="tag tag-signed">${tr(bilingual("signed", "firmado"))}</span>`;
-        return `<div class="card">
-      <div class="head-row"><h3>${escape(agent.label)}</h3>${status}</div>
+        return `<div class="card stack">
+      <div class="head-row"><h3>${displayName(agent.label)}</h3>${status}</div>
       <p class="meta">${tr(AGENT_COPY[agent.kind].name)}</p>
       <p>${trHtml(
         `Max per purchase <strong>${perTx} USDC</strong> · per day <strong>${perDay} USDC</strong> · valid for <strong>${days} days</strong>`,
         `Máximo por compra <strong>${perTx} USDC</strong> · por día <strong>${perDay} USDC</strong> · vigencia <strong>${days} días</strong>`,
       )}</p>
-      <p><a href="/agentes/${escape(agent.id)}">${tr(bilingual("View and sign →", "Ver y firmar →"))}</a></p>
+      <p class="push"><a href="/agentes/${escape(agent.id)}">${tr(bilingual("View and sign →", "Ver y firmar →"))}</a></p>
     </div>`;
       })
       .join("\n    ")}
@@ -508,7 +535,7 @@ export function reviewPage(
     title: bilingual("Review the permission", "Revisar el permiso"),
     signedIn: true,
     body: `
-  <h1>${escape(agent.label)}</h1>
+  <h1>${displayName(agent.label)}</h1>
   <p class="lede">${trHtml(
     "This is exactly what you are about to sign. The tag on the right says who enforces each item: <strong>signed</strong> is checked by AgentPey against your Mandate, <strong>on-chain</strong> is also revalidated by the contract on Stellar, and <strong>RealOps</strong> belongs to this platform only.",
     "Esto es exactamente lo que vas a firmar. La etiqueta de la derecha dice quién lo hace cumplir: <strong>firmado</strong> lo verifica AgentPey contra tu Mandato, <strong>on-chain</strong> además lo revalida el contrato en Stellar, y <strong>RealOps</strong> es solo de esta plataforma.",
@@ -594,6 +621,11 @@ export interface ServicesInput {
   readonly agents: readonly AgentConfig[];
 }
 
+/** `2026-09-12T21:11:22.000Z` → `2026-09-12 21:11 UTC`: short enough to stay on one line in a card. */
+function shortTime(iso: string): string {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) ? `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC` : iso;
+}
+
 /** One purchase, settled — what the person actually got. */
 function deliveryCard(purchase: PurchaseResource): string {
   const links: string[] = [];
@@ -604,28 +636,28 @@ function deliveryCard(purchase: PurchaseResource): string {
     links.push(`<a href="${escape(purchase.explorer_url)}">${tr(bilingual("See the payment on Stellar ↗", "Ver el pago en Stellar ↗"))}</a>`);
   }
 
-  return `<div class="card">
-    <span class="tag tag-signed">${tr(bilingual("delivered", "entregado"))}</span>
-    <h3 style="margin:10px 0 4px">${escape(purchase.product_id)}</h3>
-    <p style="margin:0 0 8px">${escape(purchase.total ?? "?")} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${escape(purchase.created_at)}</p>
-    <p class="meta" style="margin:0 0 4px">
+  return `<div class="card stack">
+    <div><span class="tag tag-signed">${tr(bilingual("delivered", "entregado"))}</span></div>
+    <h3>${escape(purchase.product_id)}</h3>
+    <p>${escape(purchase.total ?? "?")} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${escape(shortTime(purchase.created_at))}</p>
+    <p class="meta">
       ${purchase.delivery?.delivery_id == null ? "" : `${tr(bilingual("Delivery", "Entrega"))} <code>${escape(purchase.delivery.delivery_id)}</code><br>`}
       ${purchase.delivery?.receipt_hash == null ? "" : `${tr(bilingual("Receipt", "Recibo"))} <code>${escape(purchase.delivery.receipt_hash)}</code>`}
     </p>
-    ${links.join(" ")}
+    ${links.length === 0 ? "" : `<p class="push actions">${links.join(" ")}</p>`}
   </div>`;
 }
 
 /** One purchase, refused — said in words the person can act on. */
 function refusalCard(purchase: PurchaseResource): string {
   const explained = explainRefusal(purchase.code ?? "unknown", purchase.reason);
-  return `<div class="card error">
-    <span class="tag tag-refused">${tr(bilingual("refused", "rechazado"))}</span>
-    <h3 style="margin:10px 0 4px">${escape(purchase.product_id)}</h3>
-    <p style="margin:0 0 6px"><strong>${tr(explained.what)}</strong></p>
-    <p style="margin:0 0 8px">${tr(explained.next)}</p>
-    <p class="meta" style="margin:0">
-      ${escape(purchase.created_at)} · ${tr(bilingual("code", "código"))} <code>${escape(purchase.code ?? "unknown")}</code>
+  return `<div class="card error stack">
+    <div><span class="tag tag-refused">${tr(bilingual("refused", "rechazado"))}</span></div>
+    <h3>${escape(purchase.product_id)}</h3>
+    <p><strong>${tr(explained.what)}</strong></p>
+    <p>${tr(explained.next)}</p>
+    <p class="meta push">
+      ${escape(shortTime(purchase.created_at))} · ${tr(bilingual("code", "código"))} <code>${escape(purchase.code ?? "unknown")}</code>
     </p>
   </div>`;
 }

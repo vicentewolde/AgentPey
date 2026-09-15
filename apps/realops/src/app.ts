@@ -69,14 +69,13 @@ const requestKeySchema = z.uuid();
 /** How the magic link reaches the person. */
 export interface MagicLinkDelivery {
   /**
-   * `"email"` sends it; `"onscreen"` shows it to the browser that asked.
+   * `"email"` sends a one-time link; `"onscreen"` signs the person straight in.
    *
-   * On-screen is a pilot fallback for before an email provider exists, and it
-   * carries a real cost that the page states plainly: it does **not** verify
-   * that the address belongs to whoever typed it. It is not a bypass for a
-   * third party — only the browser that submitted the form sees the link — but
-   * it is not proof of possession either, and pretending otherwise would be
-   * the kind of quiet overstatement this project does not make.
+   * `"onscreen"` is the pilot's mode before an email provider exists. It used
+   * to show the link to the browser that asked; since T88 (C-119, decided by
+   * the user) it skips that page. Neither version verifies that the address
+   * belongs to whoever typed it, and the sign-in page says so. Configuring an
+   * email provider brings the link back.
    */
   readonly mode: "email" | "onscreen";
   readonly send?: (email: string, link: string) => Promise<void>;
@@ -206,6 +205,19 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     return config.store.findAccount(session!.accountId);
   }
 
+  /** Opens a session for an account and lands the person on their agents. */
+  async function startSession(response: ServerResponse, accountId: string): Promise<void> {
+    const session = newSession(accountId, now());
+    await config.store.saveSession(session);
+    await config.store.touchAccount(accountId, now());
+    redirect(response, "/agentes", {
+      "set-cookie": cookieFor(session.id, Math.floor((session.expiresAt.getTime() - now().getTime()) / 1000), secure),
+    });
+  }
+
+  /** Whether signing in goes straight in (no email provider) or sends a link. */
+  const direct = config.delivery.mode !== "email" || config.delivery.send === undefined;
+
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const url = new URL(request.url ?? "/", config.baseUrl);
     const { pathname } = url;
@@ -217,7 +229,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     }
 
     if (method === "GET" && pathname === "/entrar") {
-      sendHtml(response, 200, signInPage());
+      sendHtml(response, 200, signInPage({ direct }));
       return;
     }
 
@@ -226,22 +238,27 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       const email = emailSchema.safeParse(form.get("email"));
       const alias = aliasSchema.safeParse(form.get("alias"));
       if (!email.success || !alias.success) {
-        sendHtml(response, 400, signInPage({ error: bilingual("Check the email and the name.", "Revisa el correo y el nombre.") }));
+        sendHtml(response, 400, signInPage({ direct, error: bilingual("Check the email and the name.", "Revisa el correo y el nombre.") }));
         return;
       }
 
+      // The email is the account. Signing in again with a known email reaches
+      // that same account, and the alias typed this time is not applied.
       const existing = await config.store.findAccountByEmail(email.data);
       const account = existing ?? (await config.store.createAccount(email.data, alias.data));
-      const issued = issueMagicLink(account.id, now());
-      await config.store.saveMagicLink(issued.link);
 
-      const link = `${config.baseUrl.replace(/\/+$/, "")}/entrar/${issued.token}`;
-      if (config.delivery.mode === "email" && config.delivery.send !== undefined) {
-        await config.delivery.send(email.data, link);
-        sendHtml(response, 200, linkSentPage({}));
+      if (config.delivery.mode !== "email" || config.delivery.send === undefined) {
+        // No email provider: straight in (C-119, decided by the user). The
+        // on-screen link this replaced verified nothing either, since it was
+        // shown to whoever typed the address; skipping it only removes a click.
+        await startSession(response, account.id);
         return;
       }
-      sendHtml(response, 200, linkSentPage({ onScreenLink: link }));
+
+      const issued = issueMagicLink(account.id, now());
+      await config.store.saveMagicLink(issued.link);
+      await config.delivery.send(email.data, `${config.baseUrl.replace(/\/+$/, "")}/entrar/${issued.token}`);
+      sendHtml(response, 200, linkSentPage());
       return;
     }
 
@@ -257,7 +274,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
             : check.reason === "already-used"
               ? LINK_ALREADY_USED
               : bilingual("That link does not exist.", "Ese enlace no existe.");
-        sendHtml(response, 400, signInPage({ error: reason }));
+        sendHtml(response, 400, signInPage({ direct, error: reason }));
         return;
       }
 
@@ -265,16 +282,11 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // tying it.
       const redeemed = await config.store.redeemMagicLink(tokenHash, now());
       if (!redeemed) {
-        sendHtml(response, 400, signInPage({ error: LINK_ALREADY_USED }));
+        sendHtml(response, 400, signInPage({ direct, error: LINK_ALREADY_USED }));
         return;
       }
 
-      const session = newSession(link!.accountId, now());
-      await config.store.saveSession(session);
-      await config.store.touchAccount(link!.accountId, now());
-      redirect(response, "/agentes", {
-        "set-cookie": cookieFor(session.id, Math.floor((session.expiresAt.getTime() - now().getTime()) / 1000), secure),
-      });
+      await startSession(response, link!.accountId);
       return;
     }
 
