@@ -4827,3 +4827,85 @@ gasto por agente.
 
 `AGENTS.md` sin cambios: T90 no cambia qué es delegable. `POST /v1/purchases` y la
 elección del Mandato ya estaban fuera del alcance de Codex.
+
+---
+
+### C-122 · Pregunta abierta: MPP en modo Session cambiaría dónde se autoriza el gasto · `Pendiente`
+**Fecha:** 2026-09-16 · anotada por Claude Code al comparar con la skill oficial `stellar/agentic-payments` · sin construir
+
+**De dónde sale.** La skill oficial de la SDF (`stellar-dev-skill`, instalada en
+`~/.agents/skills/agentic-payments/`) cubre tres formas de pago de agentes: x402,
+MPP Charge y MPP Session. AgentPey solo usa x402 `exact`: una transacción por
+compra, y `PolicyRail.authorise()` decide compra por compra, antes de firmar.
+
+**Qué cambia con Session.** El cliente deposita USDC una vez en un contrato de
+canal, firma compromisos **acumulados fuera de la cadena** por cada pedido, y el
+comercio cierra el canal con una sola transacción al final. Consecuencias para el
+modelo actual:
+
+1. **Nada pasa por la cadena entre el depósito y el cierre.** El `__check_auth` de
+   `policy_rail` (T22, T31) vería el depósito, no cada pedido: `perTx` y `perDay`
+   on-chain dejarían de describir el gasto real.
+2. **El depósito pasa a ser el tope efectivo.** Lo que el agente puede perder es
+   lo depositado, no lo que diga `perDay`.
+3. **`reconcileTerms` y `SpendLedger` tendrían que correr sobre cada compromiso
+   firmado**, y el monto de cada uno es acumulado, no el de la compra. El ledger
+   anotaría la diferencia entre compromisos, no el monto del 402.
+4. **Revocar un Mandato no retira lo depositado.** Cortar el consentimiento
+   detiene los compromisos nuevos; el comercio puede cerrar con el último firmado.
+
+**Qué se decide hoy.** Nada. Ningún comercio del piloto (bazaar, SignalDesk) usa
+MPP, y la regla 5 de `CLAUDE.md` dice anotar y no construir. Si un comercio real
+lo pide, esta entrada es el punto de partida del diseño, no la respuesta.
+
+**Alternativas, para cuando toque:** (a) no soportar Session y rechazar el reto
+con un código propio; (b) autorizar el depósito como una compra con tope, y tratar
+cada compromiso como consumo de ese tope; (c) autorizar cada compromiso y limitar
+el depósito a `perTx`. Ninguna está evaluada.
+
+`AGENTS.md` sin cambios: es una pregunta de autorización y flujo de fondos, que ya
+queda en Claude Code (`P-10`).
+
+---
+
+### C-123 · Pregunta abierta: ¿puede un Mandato del piloto no nombrar a quién se le paga? · `Pendiente`
+**Fecha:** 2026-09-16 · anotada por Claude Code · **la decide el usuario**
+
+**El hecho, verificado en el código.** `reconcileTerms`
+(`apps/agent/src/policy/terms.ts:144`) compara el `payTo` del reto 402 contra
+`grant.payTo` **solo si el Mandato trae la lista** (`G-10`). Sin lista, el chequeo
+se saltea y la compra puede pagarle a cualquier cuenta, siempre que venue, asset y
+monto coincidan con el intent.
+
+- **RealOps** siempre manda `payTo` (`proposedGrantSchema`,
+  `apps/realops/src/permissions.ts:47`, `min(1)`).
+- **`POST /v1/consent_sessions`** no lo exige: en `docs/api/openapi.yaml` el
+  `grant` requiere `actions`, `venues`, `assets` y `limits`, y `payTo` es opcional.
+  Un partner que no sea RealOps puede crear un Mandato sin `payTo`.
+
+**Por qué importa ahora.** La skill oficial trata `payTo` como el dato más
+delicado del reto 402: es la cuenta que cobra. `venue` es un nombre que AgentPey
+compara consigo mismo, no una cuenta en la cadena; un comercio comprometido, o una
+respuesta 402 alterada, puede cambiar `payTo` sin cambiar nada de lo que hoy se
+compara.
+
+**Lo que `G-10` ya dijo y sigue valiendo.** Hacerlo opcional fue deliberado:
+`M-14` pidió no fingir un chequeo sin algo firmado contra qué comparar. Esta
+entrada no dice que `G-10` esté mal; pregunta si, **para Mandatos emitidos por la
+API pública**, la lista debería ser obligatoria.
+
+**Opciones:**
+
+1. **Dejarlo como está.** Opcional; la guía de partners recomienda mandarlo.
+2. **Obligatorio en `/v1/consent_sessions`**, opcional en el esquema del documento.
+   Los Mandatos existentes sin `payTo` siguen verificando igual. Cambio aditivo
+   del lado de la validación, pero rompe a un partner que hoy no lo manda (no hay
+   ninguno fuera de RealOps).
+3. **Sin lista, rechazar en `reconcileTerms`** con un código propio. Cambia `G-10`
+   y afecta Mandatos ya firmados; por la regla 2 no se toca sin decisión explícita.
+
+**Recomendación de Claude Code:** la opción 2, por ser la que cierra el hueco para
+Mandatos nuevos sin cambiar el significado de los ya firmados. No se implementa
+hasta que el usuario elija.
+
+`AGENTS.md` sin cambios: autorización y contrato de `/v1` ya quedan en Claude Code.

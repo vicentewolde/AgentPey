@@ -5315,3 +5315,34 @@ Pendiente:
 - Siguen: la hora local de T89 en producción, firmar y revocar con Freighter en
   producción, quitar `/api/session/*`, `C-113`, rotar los dos secretos, lo
   anotado sin construir en T86.
+
+## 2026-09-16 (1) — cc/agentic-payments-review (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex (autorización y flujo de fondos).
+
+Qué:
+- Sesión fuera de hitos. Se instaló el MCP **Raven** (`stellar-raven`,
+  `https://raven.stellar.org/mcp`) y las ocho **Stellar Skills** oficiales en modo
+  global (`~/.agents/skills/`, desde `stellar/stellar-dev-skill`). Ojo: el campo
+  `install` de Raven para cada skill (`npx skills add stellar/<slug>`) apunta a
+  repos que no existen; el comando que funciona es
+  `npx skills add https://github.com/stellar/stellar-dev-skill`.
+- Prior art en SCF con Raven: lo más cercano es **REAPP** (SCF #43, $70K):
+  x402, `MandateRegistry` en Soroban y mandatos AP2. Resultado solo contado al
+  usuario, sin documentar.
+- Comparación de la skill `agentic-payments` contra PolicyRail, Mandato y
+  MandateGate. La skill no tiene capa de autorización (el comprador es una clave
+  en `.env`); confirma B-14, T24 (dos direcciones de USDC), "el 402 manda" y
+  fallar cerrado.
+- Docs: `fase-3-policyrail-mandato/ARQUITECTURA.md` § 9 decía que `payTo` no se
+  chequea; nota de actualización que apunta a `G-10`. Dos preguntas abiertas en
+  la Fase 6: `C-122` (MPP Session movería dónde se autoriza el gasto) y `C-123`
+  (`/v1/consent_sessions` acepta Mandatos sin `payTo`, y entonces
+  `reconcileTerms` no chequea a quién se le paga).
+
+Sin código tocado; sin tests que correr. `AGENTS.md` sin cambios.
+
+Pendiente:
+- **`C-123` espera decisión del usuario** (recomendada la opción 2: `payTo`
+  obligatorio en `/v1/consent_sessions`).
+- Merge de esta rama a `main`, con confirmación del usuario (solo docs).

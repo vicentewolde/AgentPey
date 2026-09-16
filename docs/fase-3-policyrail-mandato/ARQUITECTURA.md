@@ -325,8 +325,15 @@ cadena de promesas: vale dentro de un proceso y en ninguna parte más.
 `PaymentRequirements` de x402. Mapear uno al otro es trabajo del adaptador
 (T15), para que la capa de política no importe los tipos de un tercero. Se
 comparan solo los tres campos para los que existe un documento firmado contra
-qué compararlos; **`payTo` no se chequea**, y `M-14` dice por qué y qué le
-falta al Mandato para poder hacerlo.
+qué compararlos. Al cerrar T19, **`payTo` no se chequeaba**, y `M-14` dice por
+qué y qué le faltaba al Mandato para poder hacerlo.
+
+> **Actualizado (2026-09-16).** Ya no es así desde `G-10` (Fase 4,
+> 2026-09-04): el Mandato ganó `grant.payTo` opcional y `reconcileTerms`
+> compara el `payTo` del reto 402 contra esa lista, con el código
+> `TermsPayeeNotAllowed`. El chequeo solo corre **cuando el Mandato trae la
+> lista**; sin ella se saltea. Esa condición es una pregunta abierta:
+> `C-123` en `docs/fase-6-agentguard-comercializacion/DECISIONES.md`.
 
 El presupuesto diario se lleva por **DID del agente**, con el reloj del rail y
 nunca con `intent.issuedAt` — que el agente firma sobre su propio documento y
