@@ -5357,3 +5357,27 @@ implementación va en T91, en su propia rama. Rama mergeada a `main` a pedido de
 usuario (solo docs).
 
 Pendiente: T91.
+
+## 2026-09-16 (3) — main (882c62d, pusheado) / cc/t91-require-payto (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex (autorización y contrato de `/v1`).
+
+Qué:
+- `main` con las dos entradas de docs de hoy, pusheado a `origin/main`.
+- **T91** (`C-123`, opción 2): `POST /v1/consent_sessions` exige `grant.payTo`
+  con al menos una cuenta (`proposedGrantSchema` en
+  `packages/partner-api/src/resources/consent-sessions.ts`). El esquema del
+  Mandato firmado y `reconcileTerms` no cambian. OpenAPI regenerado (solo el
+  request), guía de partners § 4, tests del esquema, del SDK y de la ruta.
+- Corregido en `BITACORA.md`: la fila y el título de T90 decían "sin mergear" y
+  T90 ya está en `main` (`f17809a`).
+
+**1349 tests**, `typecheck` y `build` limpios. `AGENTS.md` sin cambios.
+
+Pendiente:
+- **Merge de `cc/t91-require-payto`, con confirmación del usuario.** El push
+  redespliega. Rompe a cualquier partner que cree sesiones sin `payTo`; hoy el
+  único cliente es RealOps, que ya lo manda.
+- Sin verificar en producción: una llamada real a `/v1/consent_sessions` sin
+  `payTo` (escribiría con la API key de un partner real si la validación fallara).
+- Sigue abierta `C-122` (MPP Session). Sigue el hito de `C-113`.

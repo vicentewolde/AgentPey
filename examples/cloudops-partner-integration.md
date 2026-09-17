@@ -79,8 +79,12 @@ curl --fail-with-body --silent --show-error \
 Este ejemplo permite crear intents de catálogo para un único venue y asset,
 con límites de 50 USDC por transacción y 200 USDC por día. `payTo` restringe
 el pago al account Stellar testnet mostrado; reemplazá cada valor del grant
-por la política exacta que el principal debe revisar y firmar. Un arreglo
-`payTo` vacío no permite ningún destinatario.
+por la política exacta que el principal debe revisar y firmar.
+
+`payTo` es **obligatorio**, con al menos una cuenta (`G...`) o contrato (`C...`):
+sin él, AgentPey no podría comprobar a quién le paga el agente. Un grant sin
+`payTo`, o con el arreglo vacío, responde `400 InvalidArguments` y no crea la
+sesión.
 
 ```sh
 export CONSENT_IDEMPOTENCY_KEY="$(uuidgen)"

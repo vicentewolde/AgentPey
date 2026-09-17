@@ -16,6 +16,7 @@ const validGrant = {
   venues: ["mock-bazaar:CCL57L4ZQVQCGTQKGQMOAX7QDPEDW4LX2QSPBQMTMLB7BFQ7I3TM7F4A"],
   assets: ["USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"],
   limits: { perTx: "50.0000000", perDay: "200.0000000", currency: "USDC" },
+  payTo: ["GDVR2KDK5DSMNYZJKNISUIOBDC6FZK3XZOIQWSS7KL4BRMD5BMW6RMCQ"],
 };
 
 describe("createConsentSessionRequestSchema", () => {
@@ -32,6 +33,36 @@ describe("createConsentSessionRequestSchema", () => {
     const result = createConsentSessionRequestSchema.safeParse({
       tenant_id: tenantId,
       grant: { ...validGrant, actions: [] },
+      valid_until: "2026-12-01T00:00:00.000Z",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // C-123: without payTo, reconcileTerms skips the payee check entirely.
+  it("rejects a grant without payTo", () => {
+    const { payTo: _payTo, ...grant } = validGrant;
+    const result = createConsentSessionRequestSchema.safeParse({
+      tenant_id: tenantId,
+      grant,
+      valid_until: "2026-12-01T00:00:00.000Z",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["grant", "payTo"]);
+  });
+
+  it("rejects an empty payTo", () => {
+    const result = createConsentSessionRequestSchema.safeParse({
+      tenant_id: tenantId,
+      grant: { ...validGrant, payTo: [] },
+      valid_until: "2026-12-01T00:00:00.000Z",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("still rejects a payee that is not a Stellar account or contract", () => {
+    const result = createConsentSessionRequestSchema.safeParse({
+      tenant_id: tenantId,
+      grant: { ...validGrant, payTo: ["not-an-address"] },
       valid_until: "2026-12-01T00:00:00.000Z",
     });
     expect(result.success).toBe(false);

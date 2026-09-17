@@ -13,11 +13,15 @@
  * resource — the piece T45's own doc comment had explicitly left for
  * "whichever ticket builds the route".
  *
- * The proposed grant reuses `@agentpey/mandate`'s `mandateGrantSchema`
- * verbatim rather than re-describing `actions`/`venues`/`assets`/`limits`/
- * `payTo`: a consent session is proposing exactly the grant a Mandate will
- * carry, and a second definition of the same shape is a second place for the
- * two to drift apart.
+ * The proposed grant is `@agentpey/mandate`'s `mandateGrantSchema` rather than
+ * a re-description of `actions`/`venues`/`assets`/`limits`/`payTo`: a consent
+ * session is proposing exactly the grant a Mandate will carry, and a second
+ * definition of the same shape is a second place for the two to drift apart.
+ *
+ * One difference, on purpose (`C-123`): here `payTo` is required with at least
+ * one payee. Without it `reconcileTerms` skips the payee check, so the agent
+ * could pay whatever account a 402 names. The Mandate document keeps `payTo`
+ * optional, so Mandates already signed without it still verify.
  */
 import { consentSessionIdSchema, consentSessionStatusSchema, tenantIdSchema, mandateIdSchema, type ConsentSessionRecord } from "@agentpey/directory";
 import { mandateGrantSchema } from "@agentpey/mandate";
@@ -26,9 +30,13 @@ import { z } from "zod";
 export { consentSessionIdSchema, consentSessionStatusSchema };
 export type ConsentSessionStatus = z.infer<typeof consentSessionStatusSchema>;
 
+const proposedGrantSchema = mandateGrantSchema.extend({
+  payTo: mandateGrantSchema.shape.payTo.unwrap().min(1),
+});
+
 export const createConsentSessionRequestSchema = z.strictObject({
   tenant_id: tenantIdSchema,
-  grant: mandateGrantSchema,
+  grant: proposedGrantSchema,
   /** Defaults to now, same as `@agentpey/mandate`'s `createMandate`. */
   valid_from: z.iso.datetime().optional(),
   valid_until: z.iso.datetime(),

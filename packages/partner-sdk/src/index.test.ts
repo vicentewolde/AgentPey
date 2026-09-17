@@ -66,6 +66,7 @@ const consentSessionInput = {
     venues: ["mock-bazaar:CCL57L4ZQVQCGTQKGQMOAX7QDPEDW4LX2QSPBQMTMLB7BFQ7I3TM7F4A"],
     assets: [`USDC:${ADDRESS}`],
     limits: { perTx: "50.0000000", perDay: "200.0000000", currency: "USDC" },
+    payTo: [ADDRESS],
   },
   valid_until: "2026-12-01T00:00:00.000Z",
 };
@@ -140,6 +141,25 @@ describe("createPartnerClient", () => {
 
       expect(requests).toHaveLength(7);
       expect(requests.map((request) => request.authorization)).toEqual(Array(7).fill(`Bearer ${API_KEY}`));
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("refuses a consent session whose grant names no payee, without calling the API (C-123)", async () => {
+    let calls = 0;
+    const server = await startServer((_request, response) => {
+      calls += 1;
+      return sendJson(response, 201, successEnvelope(consentSession));
+    });
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      const { payTo: _payTo, ...grant } = consentSessionInput.grant;
+      await expect(
+        client.createConsentSession({ ...consentSessionInput, grant } as unknown as typeof consentSessionInput),
+      ).rejects.toMatchObject({ code: "InvalidArguments" });
+      expect(calls).toBe(0);
     } finally {
       await server.close();
     }

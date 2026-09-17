@@ -509,7 +509,13 @@ describe("routePartnerRequest — GET /v1/mandates/{id} and /v1/mandates", () =>
 describe("routePartnerRequest — POST /v1/consent_sessions", () => {
   const validBody = {
     tenant_id: "",
-    grant: { actions: ["catalog:read"], venues: [], assets: [], limits: { perTx: "1", perDay: "1", currency: "USDC" } },
+    grant: {
+      actions: ["catalog:read"],
+      venues: [],
+      assets: [],
+      limits: { perTx: "1", perDay: "1", currency: "USDC" },
+      payTo: ["GDVR2KDK5DSMNYZJKNISUIOBDC6FZK3XZOIQWSS7KL4BRMD5BMW6RMCQ"],
+    },
     valid_until: "2026-12-01T00:00:00.000Z",
   };
 
@@ -568,6 +574,31 @@ describe("routePartnerRequest — POST /v1/consent_sessions", () => {
     expect(result.status).toBe(400);
     expect(directory.createConsentSessionCalls).toBe(0);
   });
+
+  // C-123: a Mandate without payTo lets the agent pay any account a 402 names.
+  it("400s a grant that names no payee, without creating anything", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const { payTo: _payTo, ...grant } = validBody.grant;
+    const missing = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/consent_sessions",
+        body: { ...validBody, tenant_id: tenant.id, grant },
+        idempotencyKeyHeader: "cs-key-4",
+      }),
+    );
+    const empty = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/consent_sessions",
+        body: { ...validBody, tenant_id: tenant.id, grant: { ...grant, payTo: [] } },
+        idempotencyKeyHeader: "cs-key-5",
+      }),
+    );
+    expect(missing.status).toBe(400);
+    expect(empty.status).toBe(400);
+    expect(directory.createConsentSessionCalls).toBe(0);
+  });
 });
 
 /**
@@ -579,7 +610,13 @@ describe("routePartnerRequest — POST /v1/consent_sessions", () => {
 describe("routePartnerRequest — POST /v1/consent_sessions return_url allowlist", () => {
   const validBody = {
     tenant_id: "",
-    grant: { actions: ["catalog:read"], venues: [], assets: [], limits: { perTx: "1", perDay: "1", currency: "USDC" } },
+    grant: {
+      actions: ["catalog:read"],
+      venues: [],
+      assets: [],
+      limits: { perTx: "1", perDay: "1", currency: "USDC" },
+      payTo: ["GDVR2KDK5DSMNYZJKNISUIOBDC6FZK3XZOIQWSS7KL4BRMD5BMW6RMCQ"],
+    },
     valid_until: "2026-12-01T00:00:00.000Z",
   };
 

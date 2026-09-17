@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-15 · **Últimos hitos cerrados:** T85 (suite de aceptación, día 2 corrido y aprobado), T86 (un solo servicio bajo `agentpey.com`), T87 (piloto en inglés y español), T88 (entrada directa a RealOps y páginas más anchas) y T89 (rechazos, montos, hora local y botón en vivo), los tres últimos verificados en producción · **En curso:** T90 (elegir qué agente compra; listo en `cc/t90-choose-agent`, sin mergear) · **Sigue:** el hito de `C-113` · **Fase 6: en curso**
+**Fecha:** 2026-09-16 · **Últimos hitos cerrados:** T86 (un solo servicio bajo `agentpey.com`), T87 (piloto en inglés y español), T88 (entrada directa a RealOps y páginas más anchas), T89 (rechazos, montos, hora local y botón en vivo) y T90 (elegir qué agente compra, mergeado a `main`) · **En curso:** T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`; listo en `cc/t91-require-payto`, sin mergear) · **Sigue:** el hito de `C-113` · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -214,7 +214,8 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T87 | F9: el piloto en inglés y español (inglés por defecto), logo y favicon de AgentPey en las tres apps, la misma barra superior y el mismo ancho, la demo en `/consent` y `/sign` fuera; español neutro y sin "—" | ✅ cerrado 2026-09-14 · mergeado a `main` · verificado en producción (`C-118`) |
 | T88 | F9: sin proveedor de correo, RealOps deja entrar directo; páginas de hasta ~1208 px de contenido; tarjetas iguales y alineadas; pies de RealOps y SignalDesk a lo ancho; lema con mayúscula; nombres con mayúscula inicial | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382`) · verificado en producción (`C-119`) |
 | T89 | F9: todos los rechazos con una frase que se entiende y tabla generada de códigos; montos con 2–3 decimales; horas en la zona de quien mira; "Watch it pay, live" a RealOps y la demo de `/consent` quitada | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382..0faa2bb`) · verificado en producción salvo la hora local (`C-120`) |
-| T90 | F9: la persona elige qué agente compra cuando tiene más de uno del mismo tipo; `POST /v1/purchases` acepta `mandate_id`, validado contra el tenant, que elige el Mandato sin autorizar nada; la compra dice por qué Mandato pasó | 🟡 listo en `cc/t90-choose-agent` 2026-09-15 · sin mergear (`C-121`) |
+| T90 | F9: la persona elige qué agente compra cuando tiene más de uno del mismo tipo; `POST /v1/purchases` acepta `mandate_id`, validado contra el tenant, que elige el Mandato sin autorizar nada; la compra dice por qué Mandato pasó | ✅ cerrado 2026-09-15 · mergeado a `main` (`f17809a`) (`C-121`) |
+| T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | 🟡 listo en `cc/t91-require-payto` 2026-09-16 · sin mergear (`C-123`) |
 
 ---
 
@@ -3931,7 +3932,7 @@ lo autorice. Lo fijan los tests de `pages.test.ts` y `public-pages.test.ts`.
 
 ---
 
-## T90 · Elegir qué agente compra · listo 2026-09-15, sin mergear
+## T90 · Elegir qué agente compra · cerrado 2026-09-15, mergeado a `main`
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -3985,3 +3986,46 @@ opcional. La guía de partners explica ahora cómo pedir una compra.
 **Decisiones nuevas:** `C-121` (enmienda `C-111` cuando se nombra un Mandato, el
 contrato de T73 de forma aditiva, y lo propuesto en T89 sobre la clave de
 idempotencia).
+
+---
+
+## T91 · A quién se le paga, obligatorio al pedir un permiso · listo 2026-09-16, sin mergear
+
+**Qué quedó funcionando, en palabras simples.**
+
+**Todo permiso nuevo pedido por la API dice a qué cuenta se le puede pagar.**
+Una plataforma que pide un permiso a través de AgentPey ahora tiene que nombrar
+al menos una cuenta que cobra. Si no la nombra, AgentPey rechaza el pedido y no
+crea nada.
+
+**Por qué.** Cuando un permiso no nombraba cuentas, AgentPey comprobaba el
+comercio, el activo y el monto de cada factura, pero no a quién iba la plata. Una
+factura alterada podía mandar el pago a otra cuenta sin que nada lo notara.
+RealOps ya nombraba siempre la cuenta; ahora es obligatorio para cualquiera.
+
+**Lo que no cambió.** Los permisos que ya están firmados siguen valiendo igual,
+incluso si no nombran cuentas. La comprobación de la factura no cambió.
+
+**Para quien integra AgentPey.** En `POST /v1/consent_sessions`, `grant.payTo`
+pasa a ser obligatorio y no puede ir vacío; si falta, la respuesta es
+`400 InvalidArguments`. El SDK de partners lo rechaza antes de llamar a la API.
+
+**Evidencia técnica.**
+
+- `createConsentSessionRequestSchema` usa `proposedGrantSchema`:
+  `mandateGrantSchema` con `payTo` obligatorio y `min(1)`. `mandateGrantSchema`,
+  el documento firmado y `reconcileTerms` sin cambios; `server.ts` sigue
+  validando lo guardado con `mandateGrantSchema`, así que una sesión pendiente
+  creada antes del cambio todavía se puede firmar.
+- `openapi.yaml` regenerado: solo `CreateConsentSessionRequest.grant` gana
+  `payTo` en `required` y `minItems: 1`. `MandateResource.grant` no cambia.
+- Guía `examples/cloudops-partner-integration.md` § 4: `payTo` obligatorio.
+- **1349 tests verdes** (eran 1344): 3 del esquema, 1 del SDK (no llama a la API),
+  1 de la ruta (sin `payTo` y vacío: `400`, ninguna sesión creada). `typecheck` y
+  `build` limpios.
+- `scripts/f9-acceptance.ts` y RealOps ya mandaban `payTo`.
+- Detalle en `evidencia/T91.md`.
+
+**Decisiones:** `C-123` (opción 2, elegida por el usuario). Origen: comparación
+con la skill oficial `stellar/agentic-payments`, junto con `C-122` (pregunta
+abierta sobre MPP Session, sin construir).

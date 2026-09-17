@@ -423,6 +423,7 @@ components:
                 - currency
               additionalProperties: false
             payTo:
+              minItems: 1
               type: array
               items:
                 type: string
@@ -436,6 +437,7 @@ components:
             - venues
             - assets
             - limits
+            - payTo
           additionalProperties: false
         valid_from:
           type: string

@@ -4910,6 +4910,9 @@ Mandatos nuevos sin cambiar el significado de los ya firmados.
 **Decisión del usuario (2026-09-16): opción 2.** `payTo` pasa a ser obligatorio,
 con al menos una cuenta, en el `grant` de `POST /v1/consent_sessions`. El esquema
 del documento (`mandateGrantSchema`) y `reconcileTerms` no cambian: un Mandato ya
-firmado sin `payTo` sigue verificando igual. Se implementa en T91.
+firmado sin `payTo` sigue verificando igual. Implementado en T91
+(`proposedGrantSchema` en `packages/partner-api/src/resources/consent-sessions.ts`).
+Una sesión pendiente creada antes del despliegue sin `payTo` todavía se puede
+firmar: se valida con el esquema del documento, y vence sola.
 
 `AGENTS.md` sin cambios: autorización y contrato de `/v1` ya quedan en Claude Code.
