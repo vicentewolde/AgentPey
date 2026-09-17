@@ -5346,3 +5346,14 @@ Pendiente:
 - **`C-123` espera decisión del usuario** (recomendada la opción 2: `payTo`
   obligatorio en `/v1/consent_sessions`).
 - Merge de esta rama a `main`, con confirmación del usuario (solo docs).
+
+## 2026-09-16 (2) — cc/agentic-payments-review → main
+
+Agente: Claude Code.
+
+Qué: el usuario eligió la **opción 2 de `C-123`** (`payTo` obligatorio en el
+`grant` de `POST /v1/consent_sessions`). `C-123` pasa a `Vigente`; la
+implementación va en T91, en su propia rama. Rama mergeada a `main` a pedido del
+usuario (solo docs).
+
+Pendiente: T91.

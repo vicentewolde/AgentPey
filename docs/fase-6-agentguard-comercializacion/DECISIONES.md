@@ -4868,8 +4868,8 @@ queda en Claude Code (`P-10`).
 
 ---
 
-### C-123 · Pregunta abierta: ¿puede un Mandato del piloto no nombrar a quién se le paga? · `Pendiente`
-**Fecha:** 2026-09-16 · anotada por Claude Code · **la decide el usuario**
+### C-123 · Un Mandato nuevo creado por la API pública tiene que nombrar a quién se le paga · `Vigente`
+**Fecha:** 2026-09-16 · anotada por Claude Code como pregunta abierta · **decidido por el usuario el mismo día: opción 2**
 
 **El hecho, verificado en el código.** `reconcileTerms`
 (`apps/agent/src/policy/terms.ts:144`) compara el `payTo` del reto 402 contra
@@ -4905,7 +4905,11 @@ API pública**, la lista debería ser obligatoria.
    y afecta Mandatos ya firmados; por la regla 2 no se toca sin decisión explícita.
 
 **Recomendación de Claude Code:** la opción 2, por ser la que cierra el hueco para
-Mandatos nuevos sin cambiar el significado de los ya firmados. No se implementa
-hasta que el usuario elija.
+Mandatos nuevos sin cambiar el significado de los ya firmados.
+
+**Decisión del usuario (2026-09-16): opción 2.** `payTo` pasa a ser obligatorio,
+con al menos una cuenta, en el `grant` de `POST /v1/consent_sessions`. El esquema
+del documento (`mandateGrantSchema`) y `reconcileTerms` no cambian: un Mandato ya
+firmado sin `payTo` sigue verificando igual. Se implementa en T91.
 
 `AGENTS.md` sin cambios: autorización y contrato de `/v1` ya quedan en Claude Code.
