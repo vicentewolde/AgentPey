@@ -5381,3 +5381,14 @@ Pendiente:
 - Sin verificar en producción: una llamada real a `/v1/consent_sessions` sin
   `payTo` (escribiría con la API key de un partner real si la validación fallara).
 - Sigue abierta `C-122` (MPP Session). Sigue el hito de `C-113`.
+
+## 2026-09-16 (4) — main (T91 mergeado)
+
+Agente: Claude Code.
+
+Qué: **T91 mergeado** a `main` y pusheado (`882c62d..4a188f6`), a pedido del
+usuario. Bitácora actualizada.
+
+Pendiente: verificar en producción, una vez desplegado, que
+`POST /v1/consent_sessions` sin `payTo` responde `400` (necesita una API key de
+partner; no se hizo). Sigue abierta `C-122`. Sigue el hito de `C-113`.

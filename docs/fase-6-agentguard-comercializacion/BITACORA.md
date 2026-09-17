@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-16 · **Últimos hitos cerrados:** T86 (un solo servicio bajo `agentpey.com`), T87 (piloto en inglés y español), T88 (entrada directa a RealOps y páginas más anchas), T89 (rechazos, montos, hora local y botón en vivo) y T90 (elegir qué agente compra, mergeado a `main`) · **En curso:** T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`; listo en `cc/t91-require-payto`, sin mergear) · **Sigue:** el hito de `C-113` · **Fase 6: en curso**
+**Fecha:** 2026-09-16 · **Últimos hitos cerrados:** T86 (un solo servicio bajo `agentpey.com`), T87 (piloto en inglés y español), T88 (entrada directa a RealOps y páginas más anchas), T89 (rechazos, montos, hora local y botón en vivo) T90 (elegir qué agente compra) y T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`), los dos mergeados a `main` · **Sigue:** el hito de `C-113` · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -215,7 +215,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T88 | F9: sin proveedor de correo, RealOps deja entrar directo; páginas de hasta ~1208 px de contenido; tarjetas iguales y alineadas; pies de RealOps y SignalDesk a lo ancho; lema con mayúscula; nombres con mayúscula inicial | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382`) · verificado en producción (`C-119`) |
 | T89 | F9: todos los rechazos con una frase que se entiende y tabla generada de códigos; montos con 2–3 decimales; horas en la zona de quien mira; "Watch it pay, live" a RealOps y la demo de `/consent` quitada | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382..0faa2bb`) · verificado en producción salvo la hora local (`C-120`) |
 | T90 | F9: la persona elige qué agente compra cuando tiene más de uno del mismo tipo; `POST /v1/purchases` acepta `mandate_id`, validado contra el tenant, que elige el Mandato sin autorizar nada; la compra dice por qué Mandato pasó | ✅ cerrado 2026-09-15 · mergeado a `main` (`f17809a`) (`C-121`) |
-| T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | 🟡 listo en `cc/t91-require-payto` 2026-09-16 · sin mergear (`C-123`) |
+| T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | ✅ cerrado 2026-09-16 · mergeado a `main` (`4a188f6`) · sin verificar en producción (`C-123`) |
 
 ---
 
@@ -3989,7 +3989,7 @@ idempotencia).
 
 ---
 
-## T91 · A quién se le paga, obligatorio al pedir un permiso · listo 2026-09-16, sin mergear
+## T91 · A quién se le paga, obligatorio al pedir un permiso · cerrado 2026-09-16, mergeado a `main`
 
 **Qué quedó funcionando, en palabras simples.**
 
