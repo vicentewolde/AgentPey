@@ -70,6 +70,7 @@ import {
   createLocalPolicyRail,
   createOnChainMandateVerifier,
   executeBazaarPayment,
+  mayHaveBeenPaid,
   fillRouteTemplate,
   getBazaarServiceRoute,
   interpretPurchase,
@@ -841,16 +842,37 @@ async function buy(
         : `${payer.contractId} (policy_rail, límites on-chain)`,
   });
 
-  const receipt = await executeBazaarPayment(
-    { policyRail: current.policyRail, signerSecret: current.paymentSecret, payer },
-    {
-      resourceUrl,
-      intent: verified.intent,
-      scope: current.scope,
-      mandate: current.mandate.mandate,
-      venueId: current.venueId,
-    },
-  );
+  let receipt;
+  try {
+    receipt = await executeBazaarPayment(
+      { policyRail: current.policyRail, signerSecret: current.paymentSecret, payer },
+      {
+        resourceUrl,
+        intent: verified.intent,
+        scope: current.scope,
+        mandate: current.mandate.mandate,
+        venueId: current.venueId,
+      },
+    );
+  } catch (error) {
+    // The classic (non-`/v1`) path gets the same treatment as the pilot's
+    // (`C-113`, T92): a purchase that provably never reached the network
+    // gives its reserved spend back, and one that may have paid never does.
+    // The error keeps travelling either way — this only decides whether the
+    // day's budget keeps counting it.
+    if (!mayHaveBeenPaid(error)) {
+      try {
+        await current.policyRail.release({
+          intentId: intentResult.intent_id,
+          reason: isAgentPassError(error) ? error.code : "UnexpectedError",
+        });
+      } catch (releaseError) {
+        const message = releaseError instanceof Error ? releaseError.message : String(releaseError);
+        console.error(`[buy] could not release the spend for intent ${intentResult.intent_id}: ${message}`);
+      }
+    }
+    throw error;
+  }
 
   steps.push({ label: "settled", value: String(receipt.settled) });
   if (receipt.transaction !== undefined) {
@@ -955,7 +977,7 @@ async function revoke(current: DemoSession): Promise<RevokeOutcome> {
 
 interface WireVaultRecord {
   readonly seq: number;
-  readonly kind: "granted" | "refused" | "anchored";
+  readonly kind: "granted" | "refused" | "anchored" | "released";
   readonly hash: string;
   readonly at: string;
   readonly intentId: string;
@@ -1031,6 +1053,13 @@ async function vaultReport(current: DemoSession): Promise<VaultReport> {
       }
       if (entry.kind === "refused") {
         return { ...base, detail: `${entry.code}: ${entry.reason}` };
+      }
+      // A released spend reads as the negative of the grant it undoes, so the
+      // page shows why a day's total went down and not only that it did
+      // (`C-113`). Matched before `anchored`, which is what the fall-through
+      // below assumes.
+      if (entry.kind === "released") {
+        return { ...base, detail: `-${entry.amount} ${entry.currency} · ${entry.reason}` };
       }
       const onChainStatus = await current.agentpass.status(entry.linkHash).catch(() => "Unknown" as const);
       return {

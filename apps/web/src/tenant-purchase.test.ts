@@ -18,6 +18,8 @@ import { describe, expect, it } from "vitest";
 import {
   executeTenantPurchase,
   explainMissingMandate,
+  refusalCodeOf,
+  releaseUnpaidSpend,
   resolveNamedMandate,
   selectMandateFor,
   withheldBecause,
@@ -552,5 +554,57 @@ describe("which Mandate a purchase goes through, and why there is none", () => {
       expect(unnamed).toMatchObject({ kind: "refused", code: "ConfigError", mandateId: newer.id });
       expect(unnamed.kind === "refused" && unnamed.details.mandateHash).toBeUndefined();
     });
+  });
+});
+
+/**
+ * T92 (`C-113`). The release calls themselves sit past the point this file
+ * stops at — after a real 402 — so what is covered here is the helper's own
+ * guarantee, which is the part that could turn a refusal into an outage.
+ * The end-to-end behaviour is case 8b of the acceptance suite, against the
+ * live pilot.
+ */
+describe("releasing the spend of a purchase that never paid", () => {
+  function railThatFails(error: unknown): Parameters<typeof releaseUnpaidSpend>[0] {
+    return {
+      authorise: () => {
+        throw new Error("not used in these tests");
+      },
+      release: () => Promise.reject(error),
+    };
+  }
+
+  it("asks the rail to release exactly the intent it was given, with the refusal's own code as the reason", async () => {
+    const calls: { intentId: string; reason: string }[] = [];
+    await releaseUnpaidSpend(
+      {
+        authorise: () => {
+          throw new Error("not used in these tests");
+        },
+        release: async (input) => {
+          calls.push({ intentId: input.intentId, reason: input.reason });
+        },
+      },
+      "intent-1",
+      "MerchantRejectedRequest",
+    );
+    expect(calls).toEqual([{ intentId: "intent-1", reason: "MerchantRejectedRequest" }]);
+  });
+
+  it("never throws when the release itself fails — the original refusal has to survive", async () => {
+    // Giving budget back is a courtesy on top of a refusal that is already
+    // on its way to the caller. If this threw, a venue saying "no" would
+    // reach a person as an outage instead, and the real reason would be gone.
+    await expect(
+      releaseUnpaidSpend(railThatFails(new AgentPassError("SpendNotRecorded", "nothing to release")), "i1", "X"),
+    ).resolves.toBeUndefined();
+    await expect(releaseUnpaidSpend(railThatFails(new Error("postgres is down")), "i1", "X")).resolves.toBeUndefined();
+    await expect(releaseUnpaidSpend(railThatFails("a thrown string"), "i1", "X")).resolves.toBeUndefined();
+  });
+
+  it("names the typed code of whatever was thrown, and falls back rather than inventing one", () => {
+    expect(refusalCodeOf(new AgentPassError("MerchantRejectedRequest", "no"))).toBe("MerchantRejectedRequest");
+    expect(refusalCodeOf(new Error("a plain error"))).toBe("UnexpectedError");
+    expect(refusalCodeOf("a thrown string")).toBe("UnexpectedError");
   });
 });

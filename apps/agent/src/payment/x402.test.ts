@@ -1,4 +1,4 @@
-import { hasErrorCode, stellarAddressToDid, type Scope } from "@agentpass/core";
+import { AgentPassError, hasErrorCode, stellarAddressToDid, type Scope } from "@agentpass/core";
 import { createMandate, type AgentPayMandate } from "@agentpey/mandate";
 import { Keypair } from "@stellar/stellar-sdk/base";
 import type { PaymentRequirements } from "@x402/core/types";
@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BAZAAR_USDC, BAZAAR_USDC_ISSUER, BAZAAR_VENUE_ID, type BazaarServiceRoute } from "../catalog/bazaar.js";
 import type { PurchaseIntent } from "../intent/intent.js";
 import type { AuthorisationDecision, AuthorisationRequest, PolicyRail } from "../policy/policy-rail.js";
-import { executeBazaarPayment, fillRouteTemplate, toPaymentTerms } from "./x402.js";
+import { PAYMENT_SENT_DETAIL, executeBazaarPayment, fillRouteTemplate, mayHaveBeenPaid, toPaymentTerms } from "./x402.js";
 
 const principal = Keypair.random();
 const agent = Keypair.random();
@@ -113,7 +113,12 @@ function challengeResponse(): Response {
 }
 
 function fakeRail(authorise: (request: AuthorisationRequest) => Promise<AuthorisationDecision>): PolicyRail {
-  return { authorise };
+  return {
+    authorise,
+    release: () => {
+      throw new Error("release must not be called from inside executeBazaarPayment");
+    },
+  };
 }
 
 describe("toPaymentTerms", () => {
@@ -321,5 +326,101 @@ describe("fillRouteTemplate", () => {
     } catch (error) {
       expect(hasErrorCode(error, "InvalidArguments")).toBe(true);
     }
+  });
+});
+
+/**
+ * T92 (`C-113`): whether a spend may be given back hangs entirely on this
+ * marker, so it is tested as a contract in its own right — not only through
+ * the callers that read it.
+ */
+describe("mayHaveBeenPaid", () => {
+  it("answers false only for an AgentPassError explicitly stamped paymentSent: false", () => {
+    const stamped = new AgentPassError("NetworkError", "before the door", {
+      details: { [PAYMENT_SENT_DETAIL]: false },
+    });
+    expect(mayHaveBeenPaid(stamped)).toBe(false);
+  });
+
+  it("answers true for an AgentPassError stamped paymentSent: true", () => {
+    const stamped = new AgentPassError("NetworkError", "past the door", {
+      details: { [PAYMENT_SENT_DETAIL]: true },
+    });
+    expect(mayHaveBeenPaid(stamped)).toBe(true);
+  });
+
+  it("fails closed for anything unmarked — an unstamped error must never release a spend", () => {
+    // Every one of these is a route by which an error could reach a caller
+    // without ever passing through `executeBazaarPayment`'s own marking. None
+    // of them may be treated as proof that nothing was paid.
+    expect(mayHaveBeenPaid(new AgentPassError("NetworkError", "no details at all"))).toBe(true);
+    expect(mayHaveBeenPaid(new AgentPassError("NetworkError", "other details", { details: { foo: 1 } }))).toBe(true);
+    expect(mayHaveBeenPaid(new Error("a plain error from a dependency"))).toBe(true);
+    expect(mayHaveBeenPaid("a thrown string")).toBe(true);
+    expect(mayHaveBeenPaid(undefined)).toBe(true);
+  });
+
+  it("fails closed for a non-boolean stamp, rather than reading it as falsy", () => {
+    const odd = new AgentPassError("NetworkError", "odd", { details: { [PAYMENT_SENT_DETAIL]: "no" } });
+    expect(mayHaveBeenPaid(odd)).toBe(true);
+  });
+});
+
+describe("executeBazaarPayment — the payment door (C-113, T92)", () => {
+  async function failureFrom(fetchImpl: typeof fetch, authorise: Parameters<typeof fakeRail>[0]): Promise<unknown> {
+    try {
+      await executeBazaarPayment(
+        { policyRail: fakeRail(authorise), signerSecret: THROWAWAY_SECRET, fetchImpl },
+        { resourceUrl: RESOURCE_URL, intent: intentFor(), scope: scopeFor(), mandate: mandateFor(), venueId: BAZAAR_VENUE_ID },
+      );
+      return expect.unreachable("expected executeBazaarPayment to throw");
+    } catch (error) {
+      return error;
+    }
+  }
+
+  const refuses = async () => ({
+    authorised: false as const,
+    code: "ScopeAmountExceeded" as const,
+    reason: "over the per-transaction limit",
+    details: {},
+  });
+
+  it("marks a PolicyRail refusal as pre-payment — nothing was signed, so the spend is releasable", async () => {
+    const error = await failureFrom(fetchChallengeThen(challengeResponse()), refuses);
+    expect(mayHaveBeenPaid(error)).toBe(false);
+    expect(hasErrorCode(error, "ScopeAmountExceeded")).toBe(true);
+  });
+
+  it("keeps the original code and message when it stamps the marker on", async () => {
+    // The marker must not cost a caller its typed refusal: every
+    // `hasErrorCode` check upstream still has to match.
+    const error = await failureFrom(fetchChallengeThen(challengeResponse()), refuses);
+    expect(error).toBeInstanceOf(AgentPassError);
+    expect((error as AgentPassError).message).toBe("over the per-transaction limit");
+    expect((error as AgentPassError).code).toBe("ScopeAmountExceeded");
+  });
+
+  it("marks a venue that never answered with a 402 as pre-payment", async () => {
+    const error = await failureFrom(fetchChallengeThen(new Response("ok", { status: 200 })), vi.fn());
+    expect(mayHaveBeenPaid(error)).toBe(false);
+    expect(hasErrorCode(error, "NetworkError")).toBe(true);
+  });
+
+  it("marks a venue that refused the request outright as pre-payment", async () => {
+    const error = await failureFrom(
+      fetchChallengeThen(new Response(JSON.stringify({ ok: false, code: "InvalidRequest" }), { status: 400 })),
+      vi.fn(),
+    );
+    expect(mayHaveBeenPaid(error)).toBe(false);
+    expect(hasErrorCode(error, "MerchantRejectedRequest")).toBe(true);
+  });
+
+  it("marks an unreachable venue as pre-payment", async () => {
+    const unreachable = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const error = await failureFrom(unreachable, vi.fn());
+    expect(mayHaveBeenPaid(error)).toBe(false);
   });
 });

@@ -30,5 +30,10 @@ export function withVault(policyRail: PolicyRail, vault: MandateVault): PolicyRa
       }
       return decision;
     },
+
+    // Forwarded untouched. A release is already an entry in this same vault —
+    // `LocalPolicyRail.release` writes it through the ledger, which *is* the
+    // vault — so wrapping it here would record it twice.
+    release: (input) => policyRail.release(input),
   };
 }

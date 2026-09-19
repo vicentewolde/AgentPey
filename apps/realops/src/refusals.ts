@@ -384,6 +384,16 @@ export const REFUSAL_GROUPS: readonly RefusalGroup[] = [
         ),
         bilingual("That cap belongs to RealOps, not to your permission. Try again.", "Ese tope es de RealOps, no de tu permiso. Inténtalo de nuevo."),
       ),
+      RailInsufficientFunds: explained(
+        bilingual(
+          "Your agent's payment account does not have enough testnet USDC, so nothing was paid.",
+          "La cuenta de pago de tu agente no tiene suficiente USDC de testnet, así que no se pagó nada.",
+        ),
+        bilingual(
+          "Nothing was spent, and this purchase does not count against your daily limit. The pilot tops these accounts up; try again in a little while.",
+          "No se gastó nada, y esta compra no cuenta contra tu límite diario. El piloto recarga esas cuentas; inténtalo de nuevo en un momento.",
+        ),
+      ),
       NetworkError: explained(
         bilingual("The payment could not go through, so nothing was paid.", "El pago no se pudo completar, así que no se pagó nada."),
         bilingual(

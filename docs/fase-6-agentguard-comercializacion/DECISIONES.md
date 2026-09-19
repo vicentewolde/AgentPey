@@ -4259,8 +4259,8 @@ comercio antes de cotizar y no del pago con el rail vacío.
 
 ---
 
-### C-113 · T85: el gasto de una intención que no se pagó sigue contando, y liberarlo queda para un hito aparte · `Vigente`
-**Fecha:** 2026-09-13 · **Decidido por el usuario** · no enmienda `M-15` todavía
+### C-113 · T85: el gasto de una intención que no se pagó sigue contando, y liberarlo queda para un hito aparte · `Superada`
+**Fecha:** 2026-09-13 · **Decidido por el usuario** · **superada en T92 por `C-124`** y por la enmienda `M-23`
 
 **Lo que encontró la suite.** Dos intentos de compra que no se pagaron subieron
 el gasto del día de 0.10 a 0.20. `LocalPolicyRail.authorise()` registra el gasto
@@ -4283,6 +4283,13 @@ falla en la consulta previa, antes de gastar el rail. El gasto de la intención
 se sigue registrando igual, porque se autoriza antes de esa consulta. El chequeo
 "el gasto del día no cuenta un pago que no ocurrió" del caso 8b va a seguir
 fallando, y así queda documentado.
+
+**Construido en T92 (2026-09-19).** Las dos mitades que esta entrada dejó
+anotadas —liberar el gasto y el código propio para el rail vacío— están en
+`C-124`, y la enmienda a `M-15` que hacía falta, en
+[fase-3/DECISIONES.md § M-23](../fase-3-policyrail-mandato/DECISIONES.md). El
+chequeo 8b de la suite de aceptación, que esta entrada dejó documentado como
+"va a seguir fallando", pasa a ser exigible.
 
 **En el mismo hito, decidido por el usuario: el rail vacío.** En la segunda
 corrida, una compra con el rail sin saldo no pagó ni entregó nada, que es lo
@@ -4916,3 +4923,102 @@ Una sesión pendiente creada antes del despliegue sin `payTo` todavía se puede
 firmar: se valida con el esquema del documento, y vence sola.
 
 `AGENTS.md` sin cambios: autorización y contrato de `/v1` ya quedan en Claude Code.
+
+---
+
+### C-124 · T92: se libera el gasto de una compra que nunca llegó a la red, y un rail sin saldo lo dice · `Vigente`
+**Fecha:** 2026-09-19 · **Hito:** T92 · **Decidido por el usuario** (las tres preguntas del diseño) · cierra `C-113`
+
+Esto construye lo que `C-113` dejó anotado en T85, con las dos mitades que esa
+entrada dijo que iban juntas "porque tocan el mismo camino del rail".
+
+#### La mitad 1: liberar el gasto
+
+**El defecto, medido.** En la segunda corrida de la suite de aceptación, dos
+intentos de compra que no se pagaron subieron el gasto del día de 0.10 a 0.20.
+El cupo diario de la persona quedaba consumido hasta la medianoche UTC por
+compras que no ocurrieron.
+
+**La frontera, que es toda la decisión.** El `fetch` que lleva el header de
+pago firmado, en `executeBazaarPayment`
+(`apps/agent/src/payment/x402.ts`). Antes de esa línea nada firmado salió del
+proceso y el gasto se libera; esa línea y todo lo posterior es ambiguo y
+**nunca** se libera. La amplitud de la enmienda a `M-15` y el mecanismo que la
+hace cumplir (`details.paymentSent` + `mayHaveBeenPaid()`, que falla cerrado
+ante cualquier error sin marcar) están en
+[fase-3/DECISIONES.md § M-23](../fase-3-policyrail-mandato/DECISIONES.md).
+
+**En el vault: un cuarto tipo de asiento, `released`.** La cadena es
+append-only, así que liberar **resta con un asiento nuevo**; la concesión que
+deshace sigue en la cadena y `verify()` sigue dando `ok`. Tres reglas que
+salieron del diseño, cada una con su test:
+
+- **El asiento lleva el día de su concesión, nunca el de la liberación.** Un
+  gasto registrado a las 23:59 UTC y liberado a las 00:01 restaría de un día al
+  que nunca sumó, rompiendo dos días de una sola vez.
+- **Idempotente.** Liberar dos veces libera una.
+- **Cerrada ante lo que no corresponde.** Liberar una intención sin concesión
+  da `SpendNotRecorded`; liberar una con asiento `anchored` —un pago que
+  liquidó en la cadena— da `SpendAlreadySettled`. Nunca silencio.
+
+**Un caché que había que sacar.** `hasRecordedVia` (vault de Postgres) cortaba
+en un `Set` en memoria antes de consultar. Con liberaciones esa respuesta queda
+vieja incluso dentro de un solo proceso, y el efecto habría sido regalar
+presupuesto de forma permanente. Se eliminó: es la misma clase de caché
+obsoleto que `G4` ya había sacado de `spentOn`.
+
+**Dónde se libera, y dónde no.** En `apps/web/src/tenant-purchase.ts` los pasos
+5b a 7 (tope del partner, ruta del producto, la consulta previa al comercio de
+`C-110`, desplegar/fondear el rail) son todos anteriores a la frontera y
+liberan directo. Solo el paso 8 pregunta. El helper `releaseUnpaidSpend`
+**nunca lanza**: corre mientras un rechazo ya va en camino, y una liberación
+que falla no puede convertir ese rechazo en una caída ni tapar el motivo real —
+se loguea y el gasto queda contado, que es el comportamiento anterior a T92.
+Los otros dos llamadores de `executeBazaarPayment` (el camino clásico de
+`server.ts` y la tool `execute_payment`) reciben el mismo tratamiento.
+
+#### La mitad 2: el rail sin saldo lo dice
+
+**El defecto.** Un rail sin USDC fallaba en la simulación de la transferencia y
+salía como `NetworkError`, y RealOps le decía a la persona "No se pudo hablar
+con el comercio. Puede estar caído" — ni cierto ni accionable. El caso 8 del
+brief pide un mensaje comprensible.
+
+**Código propio `RailInsufficientFunds`, por las dos puntas** (el usuario eligió
+ambos mecanismos):
+
+1. **Consulta previa**, en el paso 7b de `tenant-purchase.ts`, donde ya se leen
+   saldos para la reserva: se rechaza antes de intentar nada. Misma postura que
+   la consulta previa de `C-110`.
+2. **Respaldo**, en `assertSimulationUsable`: cuando la simulación falla igual
+   —la ventana entre el chequeo y la transferencia—, se lee el saldo una vez más
+   y, si está corto, se lanza el código propio en lugar de `NetworkError`.
+
+**Por qué se lee el saldo y no se parsea el error.** `simulation.error` es la
+representación del host Soroban de lo que haya lanzado el contrato del asset;
+para el Stellar Asset Contract, "saldo insuficiente" es un `Error(Contract, #N)`
+opaco cuya numeración es del token, no nuestra. Leer el saldo contesta la
+pregunta que la persona realmente tiene, y no se desactualiza contra un
+contrato que no controlamos.
+
+**Dos detalles de la consulta previa:** `readUsdcBalance` lee USDC y solo USDC,
+así que el paso 7b se saltea para una compra cotizada en otro asset en vez de
+comparar contra el saldo del asset equivocado — ese camino lo cubre el respaldo,
+que sí consulta el asset que nombró el reto 402. Y un saldo que no se puede leer
+no es un rechazo: el pago sigue y falla, o no, por sus propios medios.
+
+**La frase**, en los dos idiomas, dice además que la compra no cuenta contra el
+límite diario — que ahora es cierto, por la mitad 1.
+
+#### Lo que no se tocó
+
+`checkMandate`, `checkScope`, `reconcileTerms`, la aritmética de
+`checkDailyLimit` y el contrato `policy_rail` en Stellar quedan igual. Un
+Mandato ya firmado verifica exactamente como antes.
+
+`SpendNotRecorded` y `SpendAlreadySettled` no tienen frase en RealOps a
+propósito: son errores internos del camino de liberación, que `releaseUnpaidSpend`
+se traga y loguea. Una persona no debería poder verlos nunca.
+
+**Sin cambios en `AGENTS.md`:** autorización y flujo de fondos ya quedan en
+Claude Code (`P-10`).

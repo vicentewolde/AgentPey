@@ -58,6 +58,9 @@ import {
   getRpcUrl,
 } from "@x402/stellar";
 
+import { readRailUsdcBalance } from "../policy/rail-balance.js";
+import { fromScaledAmount, toScaledAmount } from "../scope/amount.js";
+
 /** Which smart account pays, and whose key speaks for it. */
 export interface PolicyRailPayer {
   /** The deployed `policy_rail` contract id (`C…`) — the `from` of the transfer. */
@@ -81,14 +84,34 @@ function paymentError(message: string, details: Record<string, unknown>, cause?:
  * mismatch `x402.ts` already sidesteps for signers. Six lines here cost less
  * than a cast that would silence a real type difference.
  */
-function assertSimulationUsable(
+export async function assertSimulationUsable(
   simulation: rpc.Api.SimulateTransactionResponse | undefined,
   details: Record<string, unknown>,
-): void {
+  funds: InsufficientFundsProbe,
+): Promise<void> {
   if (simulation === undefined) {
     throw paymentError("the transfer from policy_rail was never simulated", details);
   }
   if (rpc.Api.isSimulationError(simulation)) {
+    // Before reporting this as a network-shaped failure, answer the one
+    // question that has a completely different remedy: does the rail simply
+    // not hold enough of the asset? (`C-113`, T92.)
+    //
+    // Checked by reading the balance rather than by matching a contract error
+    // number out of `simulation.error`. That string is the Soroban host's
+    // rendering of whatever the asset contract raised — for the Stellar Asset
+    // Contract, "not enough balance" is an opaque `Error(Contract, #N)` whose
+    // numbering is the token's, not ours. Reading the balance answers the
+    // question the person actually has, and cannot go stale against a
+    // contract we do not control.
+    const shortfall = await describeShortfall(funds);
+    if (shortfall !== undefined) {
+      throw new AgentPassError(
+        "RailInsufficientFunds",
+        "this agent's payment account does not hold enough to pay for this purchase",
+        { details: { ...details, ...shortfall } },
+      );
+    }
     throw paymentError("simulating the transfer from policy_rail failed", {
       ...details,
       // `__check_auth`'s own error codes surface here — a `perTx`/`perDay`
@@ -99,6 +122,48 @@ function assertSimulationUsable(
   if (rpc.Api.isSimulationRestore(simulation)) {
     throw paymentError("policy_rail's state has expired and needs restoring before it can pay", details);
   }
+}
+
+/** What {@link describeShortfall} needs to ask "is the rail simply empty?". */
+export interface InsufficientFundsProbe {
+  readonly contractId: string;
+  /** The asset contract the challenge named — not assumed to be the default USDC. */
+  readonly asset: string;
+  /** The challenge's amount, scaled to seven decimals, exactly as the transfer would move it. */
+  readonly amount: string;
+  readonly readBalance: (address: string, assetContractId: string) => Promise<string>;
+}
+
+/**
+ * `{ balance, required }` when the rail holds less than the transfer needs,
+ * `undefined` when it holds enough — or when the balance could not be read at
+ * all.
+ *
+ * An unreadable balance answers `undefined` on purpose: this runs while
+ * another failure is already being reported, and a diagnostic that throws
+ * would replace a real error with a worse one. The caller falls back to the
+ * generic simulation failure, which is exactly the behaviour that existed
+ * before this check.
+ */
+export async function describeShortfall(
+  probe: InsufficientFundsProbe,
+): Promise<{ readonly balance: string; readonly required: string } | undefined> {
+  let balance: string;
+  try {
+    balance = await probe.readBalance(probe.contractId, probe.asset);
+  } catch {
+    return undefined;
+  }
+  let held: bigint;
+  let needed: bigint;
+  try {
+    held = toScaledAmount(balance);
+    needed = BigInt(probe.amount);
+  } catch {
+    return undefined;
+  }
+  if (held >= needed) return undefined;
+  return { balance, required: fromScaledAmount(needed) };
 }
 
 /**
@@ -149,16 +214,26 @@ export class PolicyRailStellarScheme implements SchemeNetworkClient {
   readonly findDefaultAsset = findDefaultAsset;
 
   private readonly owner: Keypair;
+  /** Injected so tests can answer "how much does the rail hold?" without a network. */
+  private readonly readBalance: (address: string, assetContractId: string) => Promise<string>;
 
-  constructor(private readonly payer: PolicyRailPayer) {
+  constructor(
+    private readonly payer: PolicyRailPayer,
+    readBalance: (address: string, assetContractId: string) => Promise<string> = readRailUsdcBalance,
+  ) {
     this.owner = Keypair.fromSecret(payer.ownerSecret);
+    this.readBalance = readBalance;
   }
 
   /**
+   * @throws AgentPassError `RailInsufficientFunds` when the simulation fails
+   * and the rail turns out not to hold enough of the asset — the one
+   * simulation failure with a remedy a person can act on (`C-113`).
    * @throws AgentPassError `NetworkError` when the RPC is unreachable, the
-   * simulation fails, or the signed transaction still reports a missing
-   * signer — the last of which is what a mismatch between the deployed
-   * contract's `owner` and `payer.ownerSecret` looks like from here.
+   * simulation fails for any other reason, or the signed transaction still
+   * reports a missing signer — the last of which is what a mismatch between
+   * the deployed contract's `owner` and `payer.ownerSecret` looks like from
+   * here.
    */
   async createPaymentPayload(
     x402Version: number,
@@ -207,7 +282,11 @@ export class PolicyRailStellarScheme implements SchemeNetworkClient {
         amount,
       }, error);
     }
-    assertSimulationUsable(tx.simulation, { contractId: this.payer.contractId, asset, payTo, amount });
+    await assertSimulationUsable(
+      tx.simulation,
+      { contractId: this.payer.contractId, asset, payTo, amount },
+      { contractId: this.payer.contractId, asset, amount, readBalance: this.readBalance },
+    );
 
     await tx.signAuthEntries({
       address: this.payer.contractId,
@@ -220,7 +299,11 @@ export class PolicyRailStellarScheme implements SchemeNetworkClient {
     // 38 888 of the 50 000 stroops it allows). Existing auth entries survive:
     // `assembleTransaction` keeps them rather than taking the simulation's.
     await tx.simulate({ useUpgradedAuth: false });
-    assertSimulationUsable(tx.simulation, { contractId: this.payer.contractId, asset, payTo, amount });
+    await assertSimulationUsable(
+      tx.simulation,
+      { contractId: this.payer.contractId, asset, payTo, amount },
+      { contractId: this.payer.contractId, asset, amount, readBalance: this.readBalance },
+    );
 
     const missing = tx.needsNonInvokerSigningBy();
     if (missing.length > 0) {

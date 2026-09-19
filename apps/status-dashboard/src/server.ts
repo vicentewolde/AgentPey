@@ -81,6 +81,11 @@ function displayRecord(record: VaultRecord): { readonly at: string; readonly kin
   if (entry.kind === "refused") {
     return { at: entry.at, kind: entry.kind, amount: "—", detail: `${entry.code}: ${entry.reason}` };
   }
+  // Signed, because a release is what makes a day's total go *down* (`C-113`)
+  // — a bare amount here would read as one more spend.
+  if (entry.kind === "released") {
+    return { at: entry.at, kind: entry.kind, amount: `-${entry.amount} ${entry.currency}`, detail: entry.reason };
+  }
   return { at: entry.at, kind: entry.kind, amount: "—", detail: entry.intentId };
 }
 

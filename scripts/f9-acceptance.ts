@@ -1101,6 +1101,17 @@ async function personaC(): Promise<void> {
     record.check(checkThat("no se liquidó ninguna compra", fresh.every((purchase) => purchase.outcome !== "settled"), "ninguna liquidada", summarise(fresh)));
     record.check(checkThat("no hay entrega nueva", fresh.every((purchase) => !purchase.delivery?.delivery_id), "sin entrega", summarise(fresh)));
     record.check(checkThat("el intento quedó registrado como rechazo", fresh.length === 1 && fresh[0]?.outcome === "refused", "1 rechazada", summarise(fresh)));
+    // T92 (`C-113`): until then this came back as `NetworkError`, and RealOps
+    // told the person the merchant might be down — about their own payment
+    // account being empty.
+    record.check(
+      checkThat(
+        "el rechazo dice que el rail no tiene saldo, no que falló la red",
+        fresh[0]?.code === "RailInsufficientFunds",
+        "RailInsufficientFunds",
+        fresh[0]?.code ?? "(ninguno)",
+      ),
+    );
     record.check(
       checkThat(
         "el gasto del día no cuenta un pago que no ocurrió",

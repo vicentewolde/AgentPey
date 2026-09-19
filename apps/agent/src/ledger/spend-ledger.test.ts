@@ -104,3 +104,50 @@ describe("isolation", () => {
     expect(await ledger.spentOn("a", "EURC", DAY_1)).toBe("0.0000000");
   });
 });
+
+describe("createInMemorySpendLedger — release (C-113, T92)", () => {
+  it("gives a recorded spend back, exactly and only that one", async () => {
+    const ledger = createInMemorySpendLedger();
+    await ledger.record({ subject: "a", intentId: "i1", currency: "USDC", amount: "1.50", at: DAY_1 });
+    await ledger.record({ subject: "a", intentId: "i2", currency: "USDC", amount: "2.50", at: DAY_1 });
+
+    await ledger.release({ intentId: "i1", reason: "MerchantRejectedRequest" });
+
+    expect(await ledger.spentOn("a", "USDC", DAY_1)).toBe("2.5000000");
+  });
+
+  it("subtracts from the day the spend went into, across a UTC midnight", async () => {
+    const ledger = createInMemorySpendLedger();
+    await ledger.record({ subject: "a", intentId: "i1", currency: "USDC", amount: "1.50", at: DAY_1_LATER });
+
+    await ledger.release({ intentId: "i1", reason: "MerchantRejectedRequest" });
+
+    expect(await ledger.spentOn("a", "USDC", DAY_1_LATER)).toBe("0.0000000");
+    expect(await ledger.spentOn("a", "USDC", DAY_2)).toBe("0.0000000");
+  });
+
+  it("is idempotent", async () => {
+    const ledger = createInMemorySpendLedger();
+    await ledger.record({ subject: "a", intentId: "i1", currency: "USDC", amount: "1.50", at: DAY_1 });
+    await ledger.release({ intentId: "i1", reason: "x" });
+    await ledger.release({ intentId: "i1", reason: "x" });
+    expect(await ledger.spentOn("a", "USDC", DAY_1)).toBe("0.0000000");
+  });
+
+  it("refuses an intent it never recorded, with SpendNotRecorded", async () => {
+    const ledger = createInMemorySpendLedger();
+    await expect(ledger.release({ intentId: "nope", reason: "x" })).rejects.toSatisfy((error: unknown) =>
+      hasErrorCode(error, "SpendNotRecorded"),
+    );
+  });
+
+  it("makes hasRecorded false again, so the same intent authorised later counts again", async () => {
+    const ledger = createInMemorySpendLedger();
+    await ledger.record({ subject: "a", intentId: "i1", currency: "USDC", amount: "1.50", at: DAY_1 });
+    await ledger.release({ intentId: "i1", reason: "x" });
+    expect(await ledger.hasRecorded("i1")).toBe(false);
+
+    await ledger.record({ subject: "a", intentId: "i1", currency: "USDC", amount: "1.50", at: DAY_1 });
+    expect(await ledger.spentOn("a", "USDC", DAY_1)).toBe("1.5000000");
+  });
+});

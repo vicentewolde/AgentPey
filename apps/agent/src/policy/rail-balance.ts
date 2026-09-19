@@ -32,9 +32,13 @@ interface SacBalance {
  * the panel's reading of a rail are the same call rather than two ways of
  * asking the same question.
  */
-export async function readRailUsdcBalance(address: string): Promise<string> {
+export async function readRailUsdcBalance(address: string, assetContractId?: string): Promise<string> {
   const client = await contract.Client.from<SacBalance>({
-    contractId: BAZAAR_USDC_ISSUER,
+    // The bazaar's USDC unless a caller names another asset contract. T92's
+    // "does this rail have enough to pay?" check asks about the asset the
+    // 402 challenge actually named, which need not be the one this project
+    // happens to treat as its default.
+    contractId: assetContractId ?? BAZAAR_USDC_ISSUER,
     rpcUrl: RPC_URL,
     networkPassphrase: NETWORK_PASSPHRASE,
   });

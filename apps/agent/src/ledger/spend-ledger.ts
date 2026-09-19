@@ -22,6 +22,8 @@
  * that moved with a server's local timezone would make "today" ambiguous
  * depending on where the process runs.
  */
+import { AgentPassError } from "@agentpass/core";
+
 import { fromScaledAmount, toScaledAmount } from "../scope/amount.js";
 
 export interface SpendLedgerEntry {
@@ -55,6 +57,31 @@ export interface SpendLedger {
    */
   hasRecorded(intentId: string): Promise<boolean>;
   /**
+   * Gives back the spend `intentId` reserved, because the purchase it
+   * reserved it for provably never reached the network (`C-113`, T92).
+   *
+   * `M-15` chose to record on authorising rather than on paying, and named
+   * this as the missing remedy in the same breath: "un intent autorizado que
+   * nunca se convierte en pago consume presupuesto del día igual. El remedio
+   * es una liberación (`release`/`void`) cuando la compra falla — y hoy no
+   * existe nada que pueda decirle a PolicyRail que una compra falló". Fase 4
+   * built the thing that can say so; this is the remedy it was waiting for.
+   *
+   * Only ever called for a failure that happened **before anything signed
+   * left the process**. A payment that may have been sent is never released:
+   * over-counting is fail-closed, under-counting is not, and that half of
+   * `M-15` is unchanged.
+   *
+   * Nothing about `subject`, `currency`, `amount` or the day is passed in:
+   * all four are read off the recorded entry, so a release cannot land on the
+   * wrong day or give back the wrong amount. Idempotent — releasing twice
+   * releases once.
+   *
+   * @throws AgentPassError `SpendNotRecorded` when `intentId` has no recorded
+   * spend to give back.
+   */
+  release(input: ReleaseSpendInput): Promise<void>;
+  /**
    * Runs `work` as one critical section for `subject`: no other `atomically`
    * call for the same subject — in this process, or, for a ledger backed by
    * shared durable storage, in any other process pointed at the same store —
@@ -78,11 +105,23 @@ export interface SpendLedger {
   atomically?<T>(subject: string, work: (locked: LockedSpendLedger) => Promise<T>): Promise<T>;
 }
 
-/** The `spentOn`/`hasRecorded`/`record` trio, scoped to one `atomically` critical section. */
+/**
+ * What a caller supplies to release a spend: which intent, and why. Mirrors
+ * `@agentpey/vault`'s `ReleaseSpendInput` exactly — the same structural
+ * satisfaction the rest of this port already relies on.
+ */
+export interface ReleaseSpendInput {
+  readonly intentId: string;
+  /** The refusal code that ended the purchase, kept with the release. */
+  readonly reason: string;
+}
+
+/** The `spentOn`/`hasRecorded`/`record`/`release` group, scoped to one `atomically` critical section. */
 export interface LockedSpendLedger {
   spentOn(subject: string, currency: string, at: Date): Promise<string>;
   hasRecorded(intentId: string): Promise<boolean>;
   record(entry: SpendLedgerEntry): Promise<void>;
+  release(input: ReleaseSpendInput): Promise<void>;
 }
 
 /** `YYYY-MM-DD`, in UTC. The bucket a spend counts toward. */
@@ -98,7 +137,22 @@ export function utcDayKey(at: Date): string {
 export function createInMemorySpendLedger(): SpendLedger {
   // subject -> currency -> day -> scaled total
   const totals = new Map<string, Map<string, Map<string, bigint>>>();
-  const seenIntents = new Set<string>();
+  // The recorded entries themselves, not just their ids: `release` reads the
+  // subject, currency, amount and day back off the entry rather than trusting
+  // a caller to repeat them (`C-113`).
+  const recorded = new Map<string, SpendLedgerEntry>();
+  const released = new Set<string>();
+
+  /** Adds `amount` (negative to release) to one subject/currency/day bucket. */
+  function addToTotals(subject: string, currency: string, day: string, amount: bigint): void {
+    const bySubject = totals.get(subject) ?? new Map<string, Map<string, bigint>>();
+    totals.set(subject, bySubject);
+
+    const byCurrency = bySubject.get(currency) ?? new Map<string, bigint>();
+    bySubject.set(currency, byCurrency);
+
+    byCurrency.set(day, (byCurrency.get(day) ?? 0n) + amount);
+  }
 
   return {
     async spentOn(subject: string, currency: string, at: Date): Promise<string> {
@@ -107,30 +161,41 @@ export function createInMemorySpendLedger(): SpendLedger {
     },
 
     async record(entry: SpendLedgerEntry): Promise<void> {
-      if (seenIntents.has(entry.intentId)) return;
+      // "Already recorded" means granted *and not released*: once a spend is
+      // given back, authorising the same intent again has to count again.
+      if (recorded.has(entry.intentId) && !released.has(entry.intentId)) return;
 
       // Throws InvalidAmount for anything malformed — the same validation
       // every other amount in the project goes through, never a bespoke copy.
       const amount = toScaledAmount(entry.amount);
 
-      const bySubject = totals.get(entry.subject) ?? new Map<string, Map<string, bigint>>();
-      totals.set(entry.subject, bySubject);
-
-      const byCurrency = bySubject.get(entry.currency) ?? new Map<string, bigint>();
-      bySubject.set(entry.currency, byCurrency);
-
-      const day = utcDayKey(entry.at);
-      const current = byCurrency.get(day) ?? 0n;
-      byCurrency.set(day, current + amount);
+      addToTotals(entry.subject, entry.currency, utcDayKey(entry.at), amount);
 
       // Marked only after every step above succeeded: a rejected entry (a bad
       // amount) must remain retryable under the same intentId, not silently
       // and permanently ignored.
-      seenIntents.add(entry.intentId);
+      recorded.set(entry.intentId, entry);
+      released.delete(entry.intentId);
     },
 
     async hasRecorded(intentId: string): Promise<boolean> {
-      return seenIntents.has(intentId);
+      return recorded.has(intentId) && !released.has(intentId);
+    },
+
+    async release(input: ReleaseSpendInput): Promise<void> {
+      if (released.has(input.intentId)) return;
+
+      const entry = recorded.get(input.intentId);
+      if (entry === undefined) {
+        throw new AgentPassError("SpendNotRecorded", "no recorded spend to release for that intent", {
+          details: { intentId: input.intentId },
+        });
+      }
+
+      // The entry's own day, never today's: a spend recorded at 23:59 UTC and
+      // released at 00:01 must come back out of the day it went into.
+      addToTotals(entry.subject, entry.currency, utcDayKey(entry.at), -toScaledAmount(entry.amount));
+      released.add(input.intentId);
     },
   };
 }

@@ -73,7 +73,35 @@ export interface VaultAnchoredEntry {
   readonly at: string;
 }
 
-export type VaultEntry = VaultGrantedEntry | VaultRefusedEntry | VaultAnchoredEntry;
+/**
+ * That a `granted` decision's spend is given back, because the purchase it
+ * reserved budget for provably never reached the network (Fase 6, T92,
+ * `C-113` — the release `M-15` named and deferred: "el remedio es una
+ * liberación (`release`/`void`) cuando la compra falla").
+ *
+ * An entry rather than an edit, because the chain is append-only: releasing
+ * is a record that *subtracts*, and the grant it undoes stays exactly where
+ * it was. Reading a day's total is `granted` minus `released`, and the
+ * history of both is still there to read.
+ *
+ * `at` is the **granted entry's** day, never the moment of release. A grant
+ * at 23:59 UTC released at 00:01 the next day would otherwise subtract from a
+ * day it never added to, corrupting both.
+ */
+export interface VaultReleasedEntry {
+  readonly kind: "released";
+  readonly subject: string;
+  readonly intentId: string;
+  readonly currency: string;
+  /** Exactly the granted entry's amount — this type cannot release a part of one. */
+  readonly amount: string;
+  /** The granted entry's `at`, copied verbatim. */
+  readonly at: string;
+  /** Why the purchase never happened — the refusal code that ended it. */
+  readonly reason: string;
+}
+
+export type VaultEntry = VaultGrantedEntry | VaultRefusedEntry | VaultAnchoredEntry | VaultReleasedEntry;
 
 export interface VaultRecord {
   readonly seq: number;
@@ -89,6 +117,21 @@ export interface RecordRefusalInput {
   readonly code: string;
   readonly reason: string;
   readonly details: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * What a caller has to know to release a spend: which intent, and why.
+ *
+ * Deliberately *not* subject/currency/amount/day — every one of those is read
+ * off the granted entry being released, so a caller cannot release the wrong
+ * amount, against the wrong subject, or out of the wrong day's bucket. The
+ * only thing it supplies is the one fact the vault cannot know: why the
+ * purchase never happened.
+ */
+export interface ReleaseSpendInput {
+  readonly intentId: string;
+  /** The refusal code that ended the purchase, for the record. */
+  readonly reason: string;
 }
 
 export interface RecordAnchorInput {
@@ -124,6 +167,7 @@ export interface LockedVaultLedger {
   spentOn(subject: string, currency: string, at: Date): Promise<string>;
   hasRecorded(intentId: string): Promise<boolean>;
   record(entry: VaultLedgerEntry): Promise<void>;
+  release(input: ReleaseSpendInput): Promise<void>;
 }
 
 export interface MandateVault {
@@ -138,6 +182,27 @@ export interface MandateVault {
     readonly at: Date;
   }): Promise<void>;
   hasRecorded(intentId: string): Promise<boolean>;
+  /**
+   * Gives back the spend a `granted` entry reserved, because the purchase it
+   * reserved it for provably never reached the network (`C-113`).
+   *
+   * Only the caller knows that, and only for the failures that happened
+   * *before* anything signed left the process — see `executeBazaarPayment`'s
+   * own `paymentSent` marker. A payment that may have been sent is never
+   * released: under-counting a day's spend is the one direction `M-15` calls
+   * unsafe.
+   *
+   * Idempotent: releasing an already-released intent is a no-op, so a retry
+   * cannot give the budget back twice.
+   *
+   * @throws AgentPassError `SpendNotRecorded` for an intent with no granted
+   * entry — releasing something that was never reserved would silently credit
+   * budget that was never spent.
+   * @throws AgentPassError `SpendAlreadySettled` for an intent that has an
+   * `anchored` entry. A payment that settled on-chain is exactly what this
+   * must never give back.
+   */
+  release(input: ReleaseSpendInput): Promise<void>;
 
   /**
    * Closes the gap `SpendLedger.atomically` names: the read of `spentOn`, the
@@ -218,23 +283,37 @@ export function createFileMandateVault(options: { readonly path: string }): Mand
 
   const records: VaultRecord[] = [];
   const totals = new Map<string, Map<string, Map<string, bigint>>>();
-  const seenIntents = new Set<string>();
+  /** Every `granted` entry, by intent — `release` reads the amount and day back off it. */
+  const grants = new Map<string, VaultGrantedEntry>();
+  const releasedIntents = new Set<string>();
+  const anchoredIntents = new Set<string>();
+
+  /** Adds `scaled` (negative to release) to one subject/currency/day bucket. */
+  function addToTotals(subject: string, currency: string, day: string, scaled: bigint): void {
+    const bySubject = totals.get(subject) ?? new Map<string, Map<string, bigint>>();
+    totals.set(subject, bySubject);
+    const byCurrency = bySubject.get(currency) ?? new Map<string, bigint>();
+    bySubject.set(currency, byCurrency);
+    byCurrency.set(day, (byCurrency.get(day) ?? 0n) + scaled);
+  }
 
   if (existsSync(path)) {
     const lines = readFileSync(path, "utf8").split("\n").filter((line) => line.length > 0);
     for (const line of lines) {
       const record = parseLine(line, path);
       records.push(record);
-      if (record.entry.kind === "granted") {
-        seenIntents.add(record.entry.intentId);
-        const scaled = scaleAmount(record.entry.amount);
-        const bySubject = totals.get(record.entry.subject) ?? new Map<string, Map<string, bigint>>();
-        totals.set(record.entry.subject, bySubject);
-        const byCurrency = bySubject.get(record.entry.currency) ?? new Map<string, bigint>();
-        bySubject.set(record.entry.currency, byCurrency);
-        const day = record.entry.at.slice(0, record.entry.at.indexOf("T"));
-        byCurrency.set(day, (byCurrency.get(day) ?? 0n) + scaled);
+      const { entry } = record;
+      if (entry.kind === "granted") {
+        grants.set(entry.intentId, entry);
+        addToTotals(entry.subject, entry.currency, entry.at.slice(0, entry.at.indexOf("T")), scaleAmount(entry.amount));
       }
+      // A release subtracts from the day its *grant* landed on, which is the
+      // day it carries — never the day it was written.
+      if (entry.kind === "released") {
+        releasedIntents.add(entry.intentId);
+        addToTotals(entry.subject, entry.currency, entry.at.slice(0, entry.at.indexOf("T")), -scaleAmount(entry.amount));
+      }
+      if (entry.kind === "anchored") anchoredIntents.add(entry.intentId);
     }
   } else {
     mkdirSync(dirname(path), { recursive: true });
@@ -256,7 +335,10 @@ export function createFileMandateVault(options: { readonly path: string }): Mand
     },
 
     async record(entry) {
-      if (seenIntents.has(entry.intentId)) return;
+      // "Already recorded" is *granted and not released*: once a spend is
+      // given back, the same intent authorised again has to count again, or
+      // the release would hand out budget for free (`C-113`).
+      if (grants.has(entry.intentId) && !releasedIntents.has(entry.intentId)) return;
 
       // Validates the amount, and throws `InvalidAmount` before anything is
       // appended — a rejected entry must stay retryable under the same
@@ -264,27 +346,58 @@ export function createFileMandateVault(options: { readonly path: string }): Mand
       // in-memory `SpendLedger`'s own rule).
       const scaled = scaleAmount(entry.amount);
 
-      append({
+      const granted: VaultGrantedEntry = {
         kind: "granted",
         subject: entry.subject,
         intentId: entry.intentId,
         currency: entry.currency,
         amount: entry.amount,
         at: entry.at.toISOString(),
-      });
+      };
+      append(granted);
+      addToTotals(entry.subject, entry.currency, utcDayKey(entry.at), scaled);
 
-      const bySubject = totals.get(entry.subject) ?? new Map<string, Map<string, bigint>>();
-      totals.set(entry.subject, bySubject);
-      const byCurrency = bySubject.get(entry.currency) ?? new Map<string, bigint>();
-      bySubject.set(entry.currency, byCurrency);
-      const day = utcDayKey(entry.at);
-      byCurrency.set(day, (byCurrency.get(day) ?? 0n) + scaled);
-
-      seenIntents.add(entry.intentId);
+      grants.set(entry.intentId, granted);
+      // Re-granting after a release makes this intent live again, so the next
+      // release is a fresh one rather than a no-op against the old record.
+      releasedIntents.delete(entry.intentId);
     },
 
     async hasRecorded(intentId) {
-      return seenIntents.has(intentId);
+      return grants.has(intentId) && !releasedIntents.has(intentId);
+    },
+
+    async release(input) {
+      if (releasedIntents.has(input.intentId)) return;
+
+      const granted = grants.get(input.intentId);
+      if (granted === undefined) {
+        throw new AgentPassError("SpendNotRecorded", "no granted spend to release for that intent", {
+          details: { intentId: input.intentId },
+        });
+      }
+      if (anchoredIntents.has(input.intentId)) {
+        throw new AgentPassError("SpendAlreadySettled", "that intent's payment is anchored on-chain and cannot be released", {
+          details: { intentId: input.intentId },
+        });
+      }
+
+      append({
+        kind: "released",
+        subject: granted.subject,
+        intentId: granted.intentId,
+        currency: granted.currency,
+        amount: granted.amount,
+        at: granted.at,
+        reason: input.reason,
+      });
+      addToTotals(
+        granted.subject,
+        granted.currency,
+        granted.at.slice(0, granted.at.indexOf("T")),
+        -scaleAmount(granted.amount),
+      );
+      releasedIntents.add(input.intentId);
     },
 
     async recordRefusal(input, at) {
@@ -300,6 +413,7 @@ export function createFileMandateVault(options: { readonly path: string }): Mand
     },
 
     async recordAnchor(input, at) {
+      anchoredIntents.add(input.intentId);
       append({
         kind: "anchored",
         subject: input.subject,

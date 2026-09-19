@@ -235,6 +235,8 @@ export {
 export {
   createInMemorySpendLedger,
   utcDayKey,
+  type LockedSpendLedger,
+  type ReleaseSpendInput,
   type SpendLedger,
   type SpendLedgerEntry,
 } from "./ledger/spend-ledger.js";
@@ -275,8 +277,10 @@ export {
 } from "./policy/terms.js";
 
 export {
+  PAYMENT_SENT_DETAIL,
   executeBazaarPayment,
   fillRouteTemplate,
+  mayHaveBeenPaid,
   requestPaymentChallenge,
   toPaymentTerms,
   type BazaarPaymentReceipt,

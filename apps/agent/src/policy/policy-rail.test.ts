@@ -475,6 +475,7 @@ describe("concurrent authorisations cannot both spend the same room (M-15)", () 
         if (calls === 1) throw new Error("ledger unavailable");
         await inner.record(entry);
       },
+      release: (input) => inner.release(input),
     };
     const rail = createLocalPolicyRail({ ledger: flaky, now: () => NOON });
     const scope = scopeFor();
@@ -544,5 +545,76 @@ describe("the refusal becomes a typed error at the tool boundary", () => {
 
     expect(hasErrorCode(error, "ScopeAmountExceeded")).toBe(true);
     expect(error.details).toMatchObject({ limit: "1.00" });
+  });
+});
+
+describe("LocalPolicyRail.release — C-113, T92", () => {
+  it("gives the day's budget back, so a purchase refused before paying does not block the next one", async () => {
+    // The defect T85's acceptance run measured: two purchases that never paid
+    // still pushed the day's total up, and a third — well within the limit —
+    // was refused because of them.
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const scope = scopeFor({ limits: { perTx: "50.00", perDay: "40.00", currency: "USDC" } });
+    const mandate = mandateFor({ limits: { perTx: "50.00", perDay: "40.00", currency: "USDC" } });
+
+    const first = await rail.authorise({ intent: intentFor(), scope, mandate });
+    expect(first.authorised).toBe(true);
+
+    // 37.00 of a 40.00 daily budget is spoken for; a second purchase of the
+    // same size cannot fit.
+    const blocked = await rail.authorise({ intent: intentFor(), scope, mandate });
+    expect(blocked.authorised).toBe(false);
+
+    // The first purchase never paid. Give it back.
+    if (!first.authorised) throw new Error("the first authorisation should have been granted");
+    await rail.release({ intentId: first.intentId, reason: "MerchantRejectedRequest" });
+
+    const afterRelease = await rail.authorise({ intent: intentFor(), scope, mandate });
+    expect(afterRelease.authorised).toBe(true);
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("37.0000000");
+  });
+
+  it("releases exactly one purchase's worth, leaving every other spend of the day alone", async () => {
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const scope = scopeFor();
+    const mandate = mandateFor();
+
+    const kept = await rail.authorise({ intent: intentFor(), scope, mandate });
+    const dropped = await rail.authorise({ intent: intentFor(), scope, mandate });
+    if (!kept.authorised || !dropped.authorised) throw new Error("both should have been granted");
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("74.0000000");
+
+    await rail.release({ intentId: dropped.intentId, reason: "RailInsufficientFunds" });
+
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("37.0000000");
+  });
+
+  it("refuses an intent it never authorised, typed — a caller releasing the wrong id finds out", async () => {
+    const rail = createLocalPolicyRail({ ledger: createInMemorySpendLedger(), now: () => NOON });
+    await expect(rail.release({ intentId: "not-an-intent", reason: "x" })).rejects.toSatisfy((error: unknown) =>
+      hasErrorCode(error, "SpendNotRecorded"),
+    );
+  });
+
+  it("re-authorising a released intent counts it again, rather than passing for free", async () => {
+    // The trap behind `hasRecorded`: if a released intent still answered
+    // "already recorded", `authorise` would add 0 to the day's total and the
+    // release would have handed out budget permanently.
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const scope = scopeFor();
+    const mandate = mandateFor();
+    const intent = intentFor();
+
+    const granted = await rail.authorise({ intent, scope, mandate });
+    if (!granted.authorised) throw new Error("should have been granted");
+    await rail.release({ intentId: granted.intentId, reason: "MerchantRejectedRequest" });
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("0.0000000");
+
+    const again = await rail.authorise({ intent, scope, mandate });
+    expect(again.authorised).toBe(true);
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("37.0000000");
   });
 });

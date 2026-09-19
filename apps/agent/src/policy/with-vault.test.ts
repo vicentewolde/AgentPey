@@ -24,8 +24,15 @@ function requestFor(agent: string, intentId: string): AuthorisationRequest {
   return { intent: { agent, intentId } } as unknown as AuthorisationRequest;
 }
 
-function fakeRail(decision: AuthorisationDecision): PolicyRail {
-  return { authorise: async () => decision };
+function fakeRail(decision: AuthorisationDecision, release?: PolicyRail["release"]): PolicyRail {
+  return {
+    authorise: async () => decision,
+    release:
+      release ??
+      (() => {
+        throw new Error("release was not expected in this test");
+      }),
+  };
 }
 
 describe("withVault", () => {

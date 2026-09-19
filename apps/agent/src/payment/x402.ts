@@ -30,7 +30,7 @@
  * `perTx`/`perDay` on-chain inside the same transaction that moves the money
  * — see `./policy-rail-payer.ts` for why that needs its own signing path.
  */
-import { AgentPassError } from "@agentpass/core";
+import { AgentPassError, isAgentPassError } from "@agentpass/core";
 import type { Scope } from "@agentpass/core";
 import type { AgentPayMandate } from "@agentpey/mandate";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
@@ -190,6 +190,49 @@ export async function requestPaymentChallenge(resourceUrl: string, fetchImpl: ty
 }
 
 /**
+ * The key `executeBazaarPayment` stamps on every error it throws, saying
+ * whether a signed payment may already have left this process (`C-113`, T92).
+ *
+ * It exists so `PolicyRail.release` has proof rather than a guess. Releasing
+ * a spend whose payment actually settled would hand back budget for a
+ * purchase that happened, which is the direction `M-15` calls unsafe — so the
+ * absence of this key, on any error from anywhere else, has to read as "may
+ * have been sent". {@link mayHaveBeenPaid} is what enforces that default.
+ */
+export const PAYMENT_SENT_DETAIL = "paymentSent";
+
+/**
+ * Re-throws `error` carrying {@link PAYMENT_SENT_DETAIL}.
+ *
+ * A new `AgentPassError` rather than a mutation, because `details` is
+ * `readonly` and assigning through it would be a lie the type system happens
+ * not to catch. `code`, `message` and `cause` are carried over untouched, so
+ * every existing `hasErrorCode(...)` check upstream keeps matching.
+ */
+function withPaymentSent(error: unknown, paymentSent: boolean): unknown {
+  if (!isAgentPassError(error)) return error;
+  return new AgentPassError(error.code, error.message, {
+    cause: error.cause,
+    details: { ...error.details, [PAYMENT_SENT_DETAIL]: paymentSent },
+  });
+}
+
+/**
+ * Whether `error` leaves open the possibility that a payment was already
+ * sent — the question a caller must answer `false` before releasing a spend.
+ *
+ * **Fails closed on purpose.** Anything that is not an `AgentPassError`
+ * explicitly stamped `paymentSent: false` answers `true`. An error from a
+ * path that never learned about this marker, a plain `Error` escaping from a
+ * dependency, a future refactor that forgets to stamp — all of them refuse
+ * the release and leave today's behaviour exactly as it was before T92.
+ */
+export function mayHaveBeenPaid(error: unknown): boolean {
+  if (!isAgentPassError(error)) return true;
+  return error.details[PAYMENT_SENT_DETAIL] !== false;
+}
+
+/**
  * Executes one real x402 payment: fetches `resourceUrl`, expects a `402`,
  * reconciles the real challenge against `input.intent` through
  * `deps.policyRail` (never signs anything the rail refuses), then signs and
@@ -208,6 +251,26 @@ export async function executeBazaarPayment(
   deps: ExecuteBazaarPaymentDeps,
   input: ExecuteBazaarPaymentInput,
 ): Promise<BazaarPaymentReceipt> {
+  // Where the one-way door is (`C-113`, T92). Flipped immediately before the
+  // signed payment header is handed to `fetch`, and read by `payAndMark`'s
+  // catch below to stamp every error this function throws.
+  //
+  // Deliberately a flag around the whole body rather than a literal at each
+  // `throw`: a throw site added here later is stamped by where it sits in the
+  // sequence, which is the actual question, instead of by whether whoever
+  // added it remembered. Before the flip, nothing signed has left the
+  // process and the caller may release the spend; from the flip onwards the
+  // payment may have been received and submitted even if the response never
+  // came back, and releasing would hand back budget for a purchase that
+  // settled (`C-107` is the same hazard, seen from the other side).
+  let paymentSent = false;
+  try {
+    return await payAndMark();
+  } catch (error) {
+    throw withPaymentSent(error, paymentSent);
+  }
+
+  async function payAndMark(): Promise<BazaarPaymentReceipt> {
   const fetchImpl = deps.fetchImpl ?? fetch;
 
   const challenge = await requestPaymentChallenge(input.resourceUrl, fetchImpl);
@@ -237,8 +300,14 @@ export async function executeBazaarPayment(
   });
   if (!decision.authorised) throw policyRailError(decision);
 
+  // Signing happens here, and this is where a rail with no USDC fails: the
+  // transfer is simulated before it can be signed, and the simulation is
+  // refused. Nothing has been sent yet, so this is still releasable.
   const paymentPayload = await httpClient.createPaymentPayload(paymentRequired);
   const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
+
+  // The door. Everything from here on may have moved money.
+  paymentSent = true;
 
   let paid: Response;
   try {
@@ -271,6 +340,7 @@ export async function executeBazaarPayment(
     errorReason: settlement.errorReason,
     resourceBody: result.body,
   };
+  }
 }
 
 /**

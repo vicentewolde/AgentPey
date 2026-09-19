@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-16 · **Últimos hitos cerrados:** T86 (un solo servicio bajo `agentpey.com`), T87 (piloto en inglés y español), T88 (entrada directa a RealOps y páginas más anchas), T89 (rechazos, montos, hora local y botón en vivo) T90 (elegir qué agente compra) y T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`), los dos mergeados a `main` · **Sigue:** el hito de `C-113` · **Fase 6: en curso**
+**Fecha:** 2026-09-19 · **Últimos hitos cerrados:** T88 (entrada directa a RealOps y páginas más anchas), T89 (rechazos, montos, hora local y botón en vivo), T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción el 2026-09-19) y T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`) · **Sigue:** sin hito asignado; las tres propuestas nuevas de la sesión (webhooks en vivo, `dry_run` en `/v1/purchases`, límite de tasa por API key) esperan orden del usuario · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -215,7 +215,8 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T88 | F9: sin proveedor de correo, RealOps deja entrar directo; páginas de hasta ~1208 px de contenido; tarjetas iguales y alineadas; pies de RealOps y SignalDesk a lo ancho; lema con mayúscula; nombres con mayúscula inicial | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382`) · verificado en producción (`C-119`) |
 | T89 | F9: todos los rechazos con una frase que se entiende y tabla generada de códigos; montos con 2–3 decimales; horas en la zona de quien mira; "Watch it pay, live" a RealOps y la demo de `/consent` quitada | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382..0faa2bb`) · verificado en producción salvo la hora local (`C-120`) |
 | T90 | F9: la persona elige qué agente compra cuando tiene más de uno del mismo tipo; `POST /v1/purchases` acepta `mandate_id`, validado contra el tenant, que elige el Mandato sin autorizar nada; la compra dice por qué Mandato pasó | ✅ cerrado 2026-09-15 · mergeado a `main` (`f17809a`) (`C-121`) |
-| T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | ✅ cerrado 2026-09-16 · mergeado a `main` (`4a188f6`) · sin verificar en producción (`C-123`) |
+| T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | ✅ cerrado 2026-09-16 · mergeado a `main` (`4a188f6`) · **verificado en producción 2026-09-19** (`C-123`) |
+| T92 | `C-113`: el gasto de una compra que nunca llegó a la red se libera, y un rail sin saldo lo dice con su propio código en vez de parecer una caída del comercio | ✅ cerrado 2026-09-19 (`C-124`, enmienda `M-23`) |
 
 ---
 
@@ -4029,3 +4030,68 @@ pasa a ser obligatorio y no puede ir vacío; si falta, la respuesta es
 **Decisiones:** `C-123` (opción 2, elegida por el usuario). Origen: comparación
 con la skill oficial `stellar/agentic-payments`, junto con `C-122` (pregunta
 abierta sobre MPP Session, sin construir).
+
+---
+
+## T92 — el gasto de una compra que no ocurrió se devuelve, y un rail sin saldo lo dice
+
+**Qué quedó funcionando, en llano.**
+
+Antes de este hito, AgentPey anotaba el gasto de una compra **en el momento de
+autorizarla**, no cuando la pagaba. Si después la compra no ocurría —porque el
+comercio la rechazó, porque el permiso ya no servía, porque la cuenta de pago
+del agente estaba vacía— ese gasto quedaba anotado igual y le comía el cupo del
+día a la persona por algo que nunca pasó. La suite de aceptación lo había
+medido: dos intentos que no pagaron nada subieron el gasto del día de 0.10 a
+0.20.
+
+Ahora ese gasto se devuelve. Pero **solo cuando se puede probar que nada
+firmado llegó a salir**. Si el pago ya se mandó y no sabemos si llegó, no se
+devuelve nada: devolver plata por una compra que en realidad sí se pagó es
+mucho peor que contarla de más, y es exactamente el error que se encontró en
+producción en T84.
+
+Y lo segundo: cuando la cuenta de pago del agente se queda sin fondos, la
+persona leía "No se pudo hablar con el comercio. Puede estar caído" — que no era
+cierto y no le decía qué hacer. Ahora lee que su cuenta de pago no tiene
+suficiente, que no se gastó nada, y que esa compra no le cuenta contra el
+límite diario.
+
+**La evidencia técnica.**
+
+- **La frontera es una línea concreta**, no un criterio: el `fetch` que lleva el
+  header de pago firmado en `executeBazaarPayment`. Antes de ahí, liberable;
+  desde ahí, nunca.
+- **Se hace cumplir, no se recuerda.** Todo error que lanza esa función lleva
+  `details.paymentSent`, y `mayHaveBeenPaid()` responde "puede haberse pagado"
+  ante cualquier cosa que no sea un error marcado explícitamente con `false`.
+  Un camino nuevo que alguien agregue y olvide marcar cae del lado seguro.
+- **En el vault, un cuarto asiento `released`** que resta dentro del mismo lock,
+  con el día de su concesión y no el de la liberación; idempotente; y cerrado
+  ante una intención sin concesión (`SpendNotRecorded`) o ya anclada en la
+  cadena (`SpendAlreadySettled`). La cadena sigue verificando.
+- **Se sacó un caché obsoleto** en `hasRecordedVia`: con liberaciones, un `Set`
+  en memoria habría regalado presupuesto de forma permanente.
+- **`RailInsufficientFunds` por las dos puntas:** consulta previa antes de
+  pagar, y respaldo en el error de simulación que lee el saldo real en vez de
+  parsear un código de error de un contrato que no controlamos.
+- **1387 tests** (eran 1349), `typecheck` y `build` limpios.
+- Salidas crudas en [`evidencia/T92.md`](evidencia/T92.md).
+
+**Lo que este hito no prueba todavía.** Las liberaciones de
+`tenant-purchase.ts` viven después del 402, que es donde los tests de ese
+archivo se detienen por diseño. Lo que está cubierto ahí es la garantía del
+helper (que nunca lanza). El recorrido completo es el **caso 8b de la suite de
+aceptación**, que corre contra el piloto en vivo y **no se corrió en este
+hito** — escribe en producción y vacía un rail. El caso ya exige el código
+nuevo además del chequeo de gasto que `C-113` había dejado documentado como
+fallando.
+
+**Decisiones:** `C-124` (el hito), y `M-23` en la Fase 3, que enmienda `M-15` de
+forma acotada — y completa lo que `M-15` ya había anotado como pendiente para
+cuando existiera el aviso de settlement. `C-113` queda `Superada`.
+
+**Verificado en producción, aparte:** `POST /v1/consent_sessions` sin `payTo`
+responde `400` (T91, `C-123`), con el mismo pedido *con* `payTo` dando `404
+TenantNotFound` como control. Sin escribir nada: se usó un `tenant_id`
+inexistente.

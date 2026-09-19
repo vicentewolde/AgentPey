@@ -5392,3 +5392,59 @@ usuario. Bitácora actualizada.
 Pendiente: verificar en producción, una vez desplegado, que
 `POST /v1/consent_sessions` sin `payTo` responde `400` (necesita una API key de
 partner; no se hizo). Sigue abierta `C-122`. Sigue el hito de `C-113`.
+
+## 2026-09-19 — cc/t92-release-unpaid-spend (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex (autorización, `perDay` y flujo de
+fondos — `P-10`).
+
+Qué:
+- **T91 verificado en producción**, con la API key de RealOps de `.env.local` y
+  confirmación del usuario: `POST /v1/consent_sessions` sin `payTo` → `400`; el
+  mismo pedido con `payTo` → `404 TenantNotFound`, como control positivo. Sin
+  escribir nada (se usó un `tenant_id` inexistente, así que ninguna de las dos
+  llamadas podía crear una fila). Observado sin cambiar: ese `400` llega con
+  `details: {}` y no dice qué campo falló.
+- **T92** (`C-124`, y `M-23` en la Fase 3), las dos mitades de `C-113`:
+  - **Liberar el gasto de una compra que nunca llegó a la red.** La frontera es
+    el `fetch` con el header de pago firmado en `executeBazaarPayment`: antes,
+    liberable; desde ahí, nunca (`C-107` es el mismo peligro del otro lado). Se
+    hace cumplir con `details.paymentSent` + `mayHaveBeenPaid()`, que falla
+    cerrado ante cualquier error sin marcar. En el vault, un cuarto asiento
+    `released` que resta dentro del mismo lock, con el día de su concesión,
+    idempotente, y cerrado ante una intención sin concesión o ya anclada.
+    `hasRecorded` pasa a significar "concedido y no liberado" — y se sacó el
+    caché en memoria de `hasRecordedVia`, que con liberaciones habría regalado
+    presupuesto.
+  - **`RailInsufficientFunds`**, por consulta previa y por respaldo en el error
+    de simulación, leyendo el saldo real en vez de parsear un código de error
+    del contrato del asset. Con frase en los dos idiomas.
+  - Los tres llamadores de `executeBazaarPayment` liberan (o no) según la marca.
+    `releaseUnpaidSpend` nunca lanza: una liberación que falla no puede
+    convertir un rechazo en una caída.
+  - Caso 8b de la suite de aceptación reforzado: ahora exige el código nuevo.
+
+Documentación tocada: `fase-3/DECISIONES.md` (`M-23`, enmienda acotada a
+`M-15`), `fase-6/DECISIONES.md` (`C-124`; `C-113` pasa a `Superada`),
+`fase-6/BITACORA.md` (estado, filas de T91 y T92, bloque de T92),
+`evidencia/T92.md` (nuevo), `CODIGOS-DE-RECHAZO.md` (regenerado).
+`AGENTS.md` sin cambios: T92 no cambia qué es delegable.
+**1387 tests** (eran 1349), `typecheck` y `build` limpios.
+
+Pendiente:
+- **Merge de `cc/t92-release-unpaid-spend`, con confirmación del usuario.** El
+  push redespliega.
+- **Sin correr: el caso 8b de la suite de aceptación**, que es el recorrido
+  completo de este hito. Vacía un rail de un tenant real y escribe en
+  producción; necesita el visto bueno del usuario.
+- **Tres propuestas aprobadas por el usuario, sin empezar**, en este orden:
+  `dry_run` en `POST /v1/purchases`; y webhooks en vivo (cerrar el paquete
+  huérfano `@agentpey/webhooks` de T48: no lo importa ningún `package.json` de
+  `apps/` ni `packages/`, y no hay tabla de endpoints en el directorio). La
+  tercera propuesta de la sesión (límite de tasa por API key en `/v1` — hoy no
+  hay ningún `429` en `apps/web/src` ni en `packages/partner-api/src`) quedó sin
+  elegir.
+- Siguen: firmar y revocar con Freighter en producción; la hora local de T89 en
+  producción; quitar `/api/session/*`; rotar los dos secretos; lo anotado sin
+  construir en T86 y T90 (compras en `@agentpey/partner-sdk`, tarjeta de gasto
+  por agente). Sigue abierta `C-122` (MPP Session), sin construir.

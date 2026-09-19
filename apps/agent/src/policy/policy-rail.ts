@@ -28,7 +28,7 @@ import type { AgentPayMandate } from "@agentpey/mandate";
 
 import type { PurchaseIntent } from "../intent/intent.js";
 import { checkDailyLimit, type DailyLimitRejectionCode } from "../ledger/check-daily-limit.js";
-import type { LockedSpendLedger, SpendLedger } from "../ledger/spend-ledger.js";
+import type { LockedSpendLedger, ReleaseSpendInput, SpendLedger } from "../ledger/spend-ledger.js";
 import { checkMandate, type MandateRejectionCode } from "../mandate/check-mandate.js";
 import { checkScope, type ScopeRejectionCode } from "../scope/scope.js";
 import { reconcileTerms, type PaymentTerms, type TermsRejectionCode } from "./terms.js";
@@ -85,7 +85,11 @@ export interface AuthorisationRefused {
 export type AuthorisationDecision = AuthorisationGranted | AuthorisationRefused;
 
 /**
- * The port. One method, because there is one question.
+ * The port. Two methods, because a granted authorisation has a consequence
+ * that sometimes has to be undone — `authorise` reserves budget, `release`
+ * gives it back when the purchase provably never happened (`C-113`). There is
+ * still only one question; `release` is the answer to what happens when the
+ * world does not follow through on it.
  *
  * `authorised` rather than the `allowed` the pure checks use, and deliberately:
  * a granted authorisation has **recorded a spend** (`M-15`). Calling it is not
@@ -94,6 +98,23 @@ export type AuthorisationDecision = AuthorisationGranted | AuthorisationRefused;
  */
 export interface PolicyRail {
   authorise(request: AuthorisationRequest): Promise<AuthorisationDecision>;
+  /**
+   * The other half of `authorise`'s consequence: give back the spend it
+   * recorded, because the purchase it reserved budget for provably never
+   * reached the network (`C-113`, T92).
+   *
+   * **The caller must have proof, not a guess.** The only failures that
+   * qualify are the ones that happened before anything signed left the
+   * process — `executeBazaarPayment` marks exactly that on every error it
+   * throws (`details.paymentSent`), and everything upstream of it is
+   * unambiguously pre-payment. A failure that *might* have paid is never
+   * released: `M-15`'s core reasoning is unchanged, and under-counting a
+   * day's spend is the direction it calls unsafe.
+   *
+   * @throws AgentPassError `SpendNotRecorded` for an intent with nothing to
+   * give back — never silence, so a caller releasing the wrong id finds out.
+   */
+  release(input: ReleaseSpendInput): Promise<void>;
 }
 
 export interface LocalPolicyRailDeps {
@@ -169,6 +190,7 @@ export function createLocalPolicyRail(deps: LocalPolicyRailDeps): PolicyRail {
         spentOn: (s, currency, at) => ledger.spentOn(s, currency, at),
         hasRecorded: (intentId) => ledger.hasRecorded(intentId),
         record: (entry) => ledger.record(entry),
+        release: (input) => ledger.release(input),
       }),
     );
   }
@@ -264,6 +286,26 @@ export function createLocalPolicyRail(deps: LocalPolicyRailDeps): PolicyRail {
           reconciled: terms !== undefined,
         };
       });
+    },
+
+    /**
+     * Inside the same critical section `authorise` records in, keyed on the
+     * same subject — a release racing an authorisation for the same agent
+     * must not let either read a total the other is halfway through changing.
+     *
+     * The subject is not a parameter: it is read off the recorded spend by
+     * the ledger itself, which is also the only thing that knows the amount
+     * and the day. That leaves `criticalSection` needing a key before the
+     * ledger has looked anything up, so it locks on the intent. For the
+     * Postgres vault that is immaterial — `atomically` ignores the key and
+     * locks the whole tenant's chain, which is strictly wider. For the
+     * in-process fallback it is narrower than the subject's own queue, and
+     * that is sound for the same reason: those ledgers cannot outlive one
+     * process, and within one process `release`'s read-modify-write of the
+     * totals map runs without an `await` in the middle.
+     */
+    async release(input: ReleaseSpendInput): Promise<void> {
+      await criticalSection(input.intentId, ({ release }) => release(input));
     },
   };
 }

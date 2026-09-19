@@ -57,12 +57,14 @@ import {
   executeBazaarPayment,
   fillRouteTemplate,
   getX402ServiceRoute,
+  mayHaveBeenPaid,
   parseVenueId,
   requestPaymentChallenge,
   toScaledAmount,
   verifyIntent,
   withVault,
   type MandateSource,
+  type PolicyRail,
   type VenueId,
   type VenueRegistry,
 } from "@agentpey/agent";
@@ -190,6 +192,36 @@ function refuse(
 function asRefusal(error: unknown, intentId?: string, agentId: string | null = null, mandateId: string | null = null): PurchaseRefused {
   if (!isAgentPassError(error)) throw error;
   return refuse(error.code, error.message, error.details ?? {}, intentId, agentId, mandateId);
+}
+
+/** The typed code of whatever was thrown, for the release record's own reason field. */
+export function refusalCodeOf(error: unknown): string {
+  return isAgentPassError(error) ? error.code : "UnexpectedError";
+}
+
+/**
+ * Gives back the spend an authorised intent reserved, for a purchase that is
+ * now known not to have happened (`C-113`, T92).
+ *
+ * Every caller below sits downstream of `PolicyRail.authorise()`, which
+ * records the spend at the moment it authorises (`M-15`). Without this, a
+ * purchase refused by the venue, by the route, or by the rail's own funding
+ * would still eat the principal's daily budget until midnight UTC — which is
+ * exactly what T85's acceptance run measured (0.10 became 0.20 across two
+ * purchases that never paid).
+ *
+ * **Never throws.** It runs while a refusal is already being returned, and a
+ * failure to give budget back must not turn that refusal into an outage, or
+ * replace the real reason with this one. A release that fails is logged and
+ * the spend stays counted — the same, safe, pre-T92 behaviour.
+ */
+export async function releaseUnpaidSpend(policyRail: PolicyRail, intentId: string, reason: string): Promise<void> {
+  try {
+    await policyRail.release({ intentId, reason });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[purchase] could not release the spend for intent ${intentId}: ${message}`);
+  }
 }
 
 /**
@@ -595,6 +627,8 @@ export async function executeTenantPurchase(
   // 5. The partner's own ceiling, if it set one. Only ever refuses earlier
   //    than the Mandate already would.
   if (request.maxTotal !== undefined && toScaledAmount(intentResult.total_amount) > toScaledAmount(request.maxTotal)) {
+    // Nothing has been asked of the venue yet, let alone signed.
+    await releaseUnpaidSpend(policyRail, intentResult.intent_id, "PurchaseCeilingExceeded");
     return refuse(
       "PurchaseCeilingExceeded",
       "the venue's total is above the ceiling this purchase declared",
@@ -613,6 +647,7 @@ export async function executeTenantPurchase(
     requireRouteParams(route, request.routeParams ?? {});
     resourceUrl = fillRouteTemplate(baseUrl, route, request.routeParams ?? {});
   } catch (error) {
+    await releaseUnpaidSpend(policyRail, intentResult.intent_id, refusalCodeOf(error));
     return asRefusal(error, intentResult.intent_id, agentId, mandateId);
   }
 
@@ -624,6 +659,9 @@ export async function executeTenantPurchase(
   try {
     await requestPaymentChallenge(resourceUrl, deps.fetchImpl);
   } catch (error) {
+    // The venue itself said no before quoting a price (`C-110`). This is the
+    // exact failure T85's case 8b measured eating the daily budget.
+    await releaseUnpaidSpend(policyRail, intentResult.intent_id, refusalCodeOf(error));
     return asRefusal(error, intentResult.intent_id, agentId, mandateId);
   }
 
@@ -644,6 +682,7 @@ export async function executeTenantPurchase(
     const principalAddress = didToStellarAddress(parsedMandate.issuer);
     const agentInstance = await deps.directory.findAgent(tenantAgent.instance.id);
     if (agentInstance === undefined) {
+      await releaseUnpaidSpend(policyRail, intentResult.intent_id, "AgentNotFound");
       return refuse("AgentNotFound", "this tenant has no agent row to own a rail", { tenantId: request.tenantId }, intentResult.intent_id, agentId, mandateId);
     }
     const contractId = await ensureTenantPolicyRail(
@@ -656,7 +695,43 @@ export async function executeTenantPurchase(
     );
     payer = { contractId, ownerSecret: tenantAgent.keypair.secret() };
   } catch (error) {
+    await releaseUnpaidSpend(policyRail, intentResult.intent_id, refusalCodeOf(error));
     return asRefusal(error, intentResult.intent_id, agentId, mandateId);
+  }
+
+  // 7b. Does that rail actually hold enough to pay? (`C-113`, T92.)
+  //
+  //     Before T92 an empty rail surfaced as `NetworkError` from the
+  //     transfer's own simulation, and RealOps told the person "we could not
+  //     reach the merchant, it may be down" — which was neither true nor
+  //     actionable. Asking here, up front, is the same posture as step 6b's
+  //     pre-flight quote (`C-110`): find out before spending anything.
+  //
+  //     `deps.readUsdcBalance` reads USDC and only USDC, so this is skipped
+  //     for a purchase priced in anything else rather than compared against
+  //     the balance of the wrong asset. That path is not left uncovered: the
+  //     payer's own simulation still diagnoses a shortfall against whatever
+  //     asset the challenge named, and raises the same code.
+  if (intentResult.asset.startsWith("USDC:")) {
+    let railBalance: string | undefined;
+    try {
+      railBalance = await deps.readUsdcBalance(payer.contractId);
+    } catch {
+      // A balance this check could not read is not a refusal — the payment
+      // goes ahead and fails, or succeeds, on its own terms.
+      railBalance = undefined;
+    }
+    if (railBalance !== undefined && toScaledAmount(railBalance) < toScaledAmount(intentResult.total_amount)) {
+      await releaseUnpaidSpend(policyRail, intentResult.intent_id, "RailInsufficientFunds");
+      return refuse(
+        "RailInsufficientFunds",
+        "this agent's payment account does not hold enough to pay for this purchase",
+        { contractId: payer.contractId, balance: railBalance, required: intentResult.total_amount },
+        intentResult.intent_id,
+        agentId,
+        mandateId,
+      );
+    }
   }
 
   // 8. The payment itself: the 402 challenge, `reconcileTerms` against the
@@ -678,6 +753,13 @@ export async function executeTenantPurchase(
       { resourceUrl, intent: verified.intent, scope, mandate: parsedMandate, venueId },
     );
   } catch (error) {
+    // The only place in this function that has to ask. Everything above is
+    // unambiguously before any payment; from inside `executeBazaarPayment`
+    // the answer depends on which side of its own door the failure fell, and
+    // anything unmarked counts as "may have paid" (`C-113`).
+    if (!mayHaveBeenPaid(error)) {
+      await releaseUnpaidSpend(policyRail, intentResult.intent_id, refusalCodeOf(error));
+    }
     return asRefusal(error, intentResult.intent_id, agentId, mandateId);
   }
 

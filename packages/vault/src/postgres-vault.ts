@@ -21,7 +21,14 @@ import { AgentPassError } from "@agentpass/core";
 import { Pool } from "pg";
 
 import { computeHash, scaleAmount, utcDayKey, unscaleAmount } from "./internal/amount.js";
-import type { LockedVaultLedger, MandateVault, VaultEntry, VaultLedgerEntry, VaultRecord } from "./vault.js";
+import type {
+  LockedVaultLedger,
+  MandateVault,
+  ReleaseSpendInput,
+  VaultEntry,
+  VaultLedgerEntry,
+  VaultRecord,
+} from "./vault.js";
 
 /** What `pool` and a checked-out `client` have in common — the only thing the query helpers below need. */
 interface Queryable {
@@ -174,19 +181,20 @@ export async function createPostgresMandateVault(options: PostgresMandateVaultOp
     entry: row.entry,
   }));
 
-  const seenIntents = new Set<string>();
-  for (const record of records) {
-    if (record.entry.kind === "granted") seenIntents.add(record.entry.intentId);
-  }
-
   // The one query `spentOn` runs, against either `pool` (a plain read, no
   // lock needed) or a `client` already holding this tenant's advisory lock
   // (inside `atomically`) — same SQL either way, so the two never drift.
+  //
+  // `released` entries count too, with the opposite sign (`C-113`): a spend
+  // given back because its purchase never reached the network is not part of
+  // the day's total. A release carries its *grant's* day in `at`, so this
+  // day filter puts both sides of the pair in the same bucket by
+  // construction.
   async function spentOnVia(queryable: Queryable, subject: string, currency: string, at: Date): Promise<string> {
     const { rows } = await queryable.query<{ entry: VaultEntry }>(
       `select entry from vault_records
        where tenant_id = $1
-         and entry->>'kind' = 'granted'
+         and entry->>'kind' in ('granted', 'released')
          and entry->>'subject' = $2
          and entry->>'currency' = $3
          and left(entry->>'at', 10) = $4`,
@@ -195,21 +203,51 @@ export async function createPostgresMandateVault(options: PostgresMandateVaultOp
     let total = 0n;
     for (const row of rows) {
       if (row.entry.kind === "granted") total += scaleAmount(row.entry.amount);
+      if (row.entry.kind === "released") total -= scaleAmount(row.entry.amount);
     }
     return unscaleAmount(total);
   }
 
-  // `hasRecorded`'s real check, against either `pool` or a locked `client`.
-  // `seenIntents` alone would only ever tell this instance about intentIds
-  // *this* process has recorded or loaded at construction — exactly the
-  // staleness `spentOn` used to have before G4, for the same reason.
-  async function hasRecordedVia(queryable: Queryable, intentId: string): Promise<boolean> {
-    if (seenIntents.has(intentId)) return true;
-    const { rows } = await queryable.query(
-      "select 1 from vault_records where tenant_id = $1 and entry->>'kind' = 'granted' and entry->>'intentId' = $2 limit 1",
+  /** The latest `granted` entry for `intentId`, and whether anything has happened to it since. */
+  async function grantStateVia(
+    queryable: Queryable,
+    intentId: string,
+  ): Promise<{ granted?: VaultEntry & { kind: "granted" }; released: boolean; anchored: boolean }> {
+    const { rows } = await queryable.query<{ entry: VaultEntry }>(
+      `select entry from vault_records
+       where tenant_id = $1
+         and entry->>'intentId' = $2
+         and entry->>'kind' in ('granted', 'released', 'anchored')
+       order by seq asc`,
       [tenantId, intentId],
     );
-    return rows.length > 0;
+    let granted: (VaultEntry & { kind: "granted" }) | undefined;
+    let released = false;
+    let anchored = false;
+    for (const row of rows) {
+      // In `seq` order, so a grant written *after* a release (the same intent
+      // authorised again) clears the release, exactly as the file vault does.
+      if (row.entry.kind === "granted") {
+        granted = row.entry;
+        released = false;
+      }
+      if (row.entry.kind === "released") released = true;
+      if (row.entry.kind === "anchored") anchored = true;
+    }
+    return { ...(granted === undefined ? {} : { granted }), released, anchored };
+  }
+
+  // `hasRecorded`'s real check, against either `pool` or a locked `client`.
+  //
+  // There is deliberately no in-memory shortcut here. An earlier version kept
+  // a `seenIntents` set and returned `true` straight from it, which was both
+  // stale across processes (the same staleness `spentOn` had before `G4`) and,
+  // once `release` existed, wrong even within one: a released intent has a
+  // `granted` row and must still answer `false`, so that authorising it again
+  // counts again (`C-113`).
+  async function hasRecordedVia(queryable: Queryable, intentId: string): Promise<boolean> {
+    const state = await grantStateVia(queryable, intentId);
+    return state.granted !== undefined && !state.released;
   }
 
   /**
@@ -278,7 +316,41 @@ export async function createPostgresMandateVault(options: PostgresMandateVaultOp
       amount: entry.amount,
       at: entry.at.toISOString(),
     });
-    seenIntents.add(entry.intentId);
+  }
+
+  /**
+   * The release itself, against a `client` that already holds this tenant's
+   * advisory lock — shared by `release()` and `atomically()`'s scoped
+   * `release`, for the same reason `recordVia`/`appendVia` are shared: one
+   * caller inside a critical section and one outside must not drift into two
+   * different notions of what releasing means.
+   */
+  async function releaseVia(client: Queryable, input: ReleaseSpendInput): Promise<void> {
+    const state = await grantStateVia(client, input.intentId);
+    if (state.released) return;
+    if (state.granted === undefined) {
+      throw new AgentPassError("SpendNotRecorded", "no granted spend to release for that intent", {
+        details: { intentId: input.intentId },
+      });
+    }
+    if (state.anchored) {
+      throw new AgentPassError(
+        "SpendAlreadySettled",
+        "that intent's payment is anchored on-chain and cannot be released",
+        { details: { intentId: input.intentId } },
+      );
+    }
+    const { granted } = state;
+    await appendVia(client, {
+      kind: "released",
+      subject: granted.subject,
+      intentId: granted.intentId,
+      currency: granted.currency,
+      amount: granted.amount,
+      // The grant's own day, copied verbatim — never `now`.
+      at: granted.at,
+      reason: input.reason,
+    });
   }
 
   return {
@@ -316,6 +388,7 @@ export async function createPostgresMandateVault(options: PostgresMandateVaultOp
           spentOn: (lockedSubject, currency, at) => spentOnVia(client, lockedSubject, currency, at),
           hasRecorded: (intentId) => hasRecordedVia(client, intentId),
           record: (entry) => recordVia(client, entry),
+          release: (input) => releaseVia(client, input),
         };
         return work(locked);
       });
@@ -331,6 +404,13 @@ export async function createPostgresMandateVault(options: PostgresMandateVaultOp
 
     async hasRecorded(intentId) {
       return hasRecordedVia(pool, intentId);
+    },
+
+    // Takes this tenant's advisory lock for itself, like `record` — a release
+    // reads the grant it undoes and appends against the chain's current tail,
+    // and both have to be inside the same lock as every other writer (`C-113`).
+    async release(input) {
+      await withOwnLock((client) => releaseVia(client, input));
     },
 
     async recordRefusal(input, at) {

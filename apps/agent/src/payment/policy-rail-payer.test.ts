@@ -1,7 +1,14 @@
 import { Address, Keypair, inspectAuthEntry, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 
-import { authorizeAsPolicyRailOwner } from "./policy-rail-payer.js";
+import { hasErrorCode } from "@agentpass/core";
+
+import {
+  assertSimulationUsable,
+  authorizeAsPolicyRailOwner,
+  describeShortfall,
+  type InsufficientFundsProbe,
+} from "./policy-rail-payer.js";
 
 const PASSPHRASE = "Test SDF Network ; September 2015";
 const RAIL = "CBDWMXZEE44NJ3RA6RS7K4EK36KDFW5S7KHP276HCMM4I52MIUUHEF5B";
@@ -137,5 +144,104 @@ describe("authorizeAsPolicyRailOwner", () => {
     // The network id is hashed into the preimage; a signature made for testnet
     // is not replayable on pubnet.
     expect(signaturesOf(testnet)[0]?.signature).not.toEqual(signaturesOf(pubnet)[0]?.signature);
+  });
+});
+
+/**
+ * T92 (`C-113`): an empty rail used to reach a person as "we could not reach
+ * the merchant, it may be down", which was neither true nor actionable. These
+ * cover the seam that decides which of the two errors they get.
+ */
+describe("describeShortfall", () => {
+  function probe(balance: string, amount: string): InsufficientFundsProbe {
+    return {
+      contractId: "CRAIL",
+      asset: "CUSDC",
+      amount,
+      readBalance: async () => balance,
+    };
+  }
+
+  it("reports the gap when the rail holds less than the transfer needs", async () => {
+    // 0.20 USDC held, 0.35 required — scaled to seven decimals, as the
+    // transfer itself moves it.
+    expect(await describeShortfall(probe("0.2000000", "3500000"))).toEqual({
+      balance: "0.2000000",
+      required: "0.3500000",
+    });
+  });
+
+  it("reports nothing when the rail holds exactly enough — the boundary is not a shortfall", async () => {
+    expect(await describeShortfall(probe("0.3500000", "3500000"))).toBeUndefined();
+  });
+
+  it("reports nothing when the rail holds more than enough", async () => {
+    expect(await describeShortfall(probe("10.0000000", "3500000"))).toBeUndefined();
+  });
+
+  it("reports nothing when the balance cannot be read at all", async () => {
+    // This runs while another failure is already being reported. A diagnostic
+    // that threw would replace a real error with a worse one.
+    const unreadable: InsufficientFundsProbe = {
+      contractId: "CRAIL",
+      asset: "CUSDC",
+      amount: "3500000",
+      readBalance: async () => {
+        throw new Error("rpc unreachable");
+      },
+    };
+    expect(await describeShortfall(unreadable)).toBeUndefined();
+  });
+
+  it("reports nothing when either amount is malformed, rather than throwing", async () => {
+    expect(await describeShortfall(probe("not a number", "3500000"))).toBeUndefined();
+    expect(await describeShortfall(probe("0.2000000", "not a number"))).toBeUndefined();
+  });
+
+  it("reads the balance of the asset the challenge named, not a hardcoded default", async () => {
+    const seen: string[] = [];
+    await describeShortfall({
+      contractId: "CRAIL",
+      asset: "CSOMEOTHERASSET",
+      amount: "3500000",
+      readBalance: async (_address, assetContractId) => {
+        seen.push(assetContractId);
+        return "0.0000000";
+      },
+    });
+    expect(seen).toEqual(["CSOMEOTHERASSET"]);
+  });
+});
+
+describe("assertSimulationUsable", () => {
+  const details = { contractId: "CRAIL", asset: "CUSDC", payTo: "GPAYEE", amount: "3500000" };
+  const enough: InsufficientFundsProbe = {
+    contractId: "CRAIL",
+    asset: "CUSDC",
+    amount: "3500000",
+    readBalance: async () => "10.0000000",
+  };
+  const empty: InsufficientFundsProbe = { ...enough, readBalance: async () => "0.0000000" };
+  // `rpc.Api.isSimulationError` narrows on the presence of `error`.
+  const failedSimulation = { error: "HostError: Error(Contract, #10)" } as never;
+
+  it("raises RailInsufficientFunds when the simulation failed and the rail is short", async () => {
+    await expect(assertSimulationUsable(failedSimulation, details, empty)).rejects.toSatisfy((error: unknown) =>
+      hasErrorCode(error, "RailInsufficientFunds"),
+    );
+  });
+
+  it("raises the generic NetworkError when the simulation failed for some other reason", async () => {
+    // A `__check_auth` refusal by the contract's own limits lands here too,
+    // and must not be reported to a person as "your account is empty".
+    await expect(assertSimulationUsable(failedSimulation, details, enough)).rejects.toSatisfy((error: unknown) =>
+      hasErrorCode(error, "NetworkError"),
+    );
+  });
+
+  it("raises NetworkError when there was no simulation at all", async () => {
+    await expect(assertSimulationUsable(undefined, details, empty)).rejects.toSatisfy((error: unknown) =>
+      hasErrorCode(error, "NetworkError"),
+    );
   });
 });

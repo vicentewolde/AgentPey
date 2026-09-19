@@ -16,7 +16,7 @@
  * the tool names. TypeScript inside the package stays camelCase.
  */
 import type { AgentPassErrorCode } from "@agentpass/core";
-import { AgentPassError } from "@agentpass/core";
+import { AgentPassError, isAgentPassError } from "@agentpass/core";
 import type { AgentPayMandate } from "@agentpey/mandate";
 import type { Keypair } from "@stellar/stellar-sdk/base";
 import { randomUUID } from "node:crypto";
@@ -41,7 +41,7 @@ import type { SpendLedger } from "../ledger/spend-ledger.js";
 import { checkMandate, mandateCheckError } from "../mandate/check-mandate.js";
 import type { MandateState, MandateVerifier, UsableMandate } from "../mandate/verifier.js";
 import { checkOwnMandate } from "../mandate/verifier.js";
-import { executeBazaarPayment, fillRouteTemplate } from "../payment/x402.js";
+import { executeBazaarPayment, fillRouteTemplate, mayHaveBeenPaid } from "../payment/x402.js";
 import { createLocalPolicyRail, policyRailError, type PolicyRail } from "../policy/policy-rail.js";
 import { fromScaledAmount, multiplyAmount } from "../scope/amount.js";
 import { checkScope, scopeError } from "../scope/scope.js";
@@ -467,20 +467,41 @@ function executePaymentTool(deps: ExecutePaymentDeps): ErasedTool {
       );
       const resourceUrl = fillRouteTemplate(deps.payment.baseUrl, route, params);
 
-      const receipt = await executeBazaarPayment(
-        {
-          policyRail: deps.policyRail,
-          signerSecret: deps.signer.secret(),
-          fetchImpl: deps.payment.fetchImpl,
-        },
-        {
-          resourceUrl,
-          intent: signed.intent,
-          scope: deps.credential.verified.credential.credentialSubject.scope,
-          mandate: signed.freshMandate,
-          venueId: deps.catalog.venueId,
-        },
-      );
+      let receipt;
+      try {
+        receipt = await executeBazaarPayment(
+          {
+            policyRail: deps.policyRail,
+            signerSecret: deps.signer.secret(),
+            fetchImpl: deps.payment.fetchImpl,
+          },
+          {
+            resourceUrl,
+            intent: signed.intent,
+            scope: deps.credential.verified.credential.credentialSubject.scope,
+            mandate: signed.freshMandate,
+            venueId: deps.catalog.venueId,
+          },
+        );
+      } catch (error) {
+        // `buildSignedIntent` above already authorised, and authorising
+        // records the spend (`M-15`). If the payment provably never left this
+        // process, give it back (`C-113`, T92); if it may have been sent,
+        // leave it counted. The error is re-thrown untouched either way — the
+        // tool boundary above still turns it into the same typed refusal.
+        if (!mayHaveBeenPaid(error)) {
+          try {
+            await deps.policyRail.release({
+              intentId: signed.intent.intentId,
+              reason: isAgentPassError(error) ? error.code : "UnexpectedError",
+            });
+          } catch (releaseError) {
+            const message = releaseError instanceof Error ? releaseError.message : String(releaseError);
+            console.error(`[execute_payment] could not release the spend for intent ${signed.intent.intentId}: ${message}`);
+          }
+        }
+        throw error;
+      }
 
       return {
         intent_id: signed.intent.intentId,

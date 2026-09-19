@@ -132,6 +132,12 @@ export type AgentPassErrorCode =
   | "TermsPayeeNotAllowed"
   /** A `MandateVault` file is not well-formed JSON Lines of vault records. */
   | "VaultCorrupted"
+  /** A spend was asked to be released for an intent that has no recorded spend to give back. */
+  | "SpendNotRecorded"
+  /** A spend was asked to be released for an intent whose payment is already anchored on-chain. */
+  | "SpendAlreadySettled"
+  /** The agent's `policy_rail` does not hold enough USDC to pay for this purchase. */
+  | "RailInsufficientFunds"
   /** A tenant index is negative, non-integer, or outside BIP-32's hardened range. */
   | "InvalidTenantIndex"
   /** A partner-supplied external reference is malformed, or looks like personal data. */

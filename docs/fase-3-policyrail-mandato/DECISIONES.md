@@ -886,3 +886,57 @@ encima del techo antes de la corrección de TTL) mostró que no era ahí donde
 estaba el costo real, y habría cambiado observabilidad por un ahorro que no
 resolvía el problema.
 
+
+---
+
+### M-23 · El gasto de una intención que nunca llegó a la red se libera; el resto de `M-15` no cambia · `Vigente`
+**Fecha:** 2026-09-19 · **Hito:** T92 (Fase 6) · **Decidido por el usuario** · **enmienda acotada a `M-15`**
+
+**Esto no contradice a `M-15`: completa lo que `M-15` dejó anotado.** Aquella
+decisión eligió registrar el gasto **al autorizar** y explicó por qué, y en el
+mismo párrafo escribió cuál era el costo y cuál el remedio:
+
+> "Un intent autorizado que nunca se convierte en pago consume presupuesto del
+> día igual. El remedio es una liberación (`release`/`void`) cuando la compra
+> falla — y **hoy no existe nada que pueda decirle a PolicyRail que una compra
+> falló**: ese aviso es el recibo de settlement, que es de la Fase 4."
+
+La Fase 4 construyó ese aviso. Esto es el remedio que estaba esperando, y lo
+que la enmienda agrega es la única cosa que `M-15` todavía no podía saber:
+**dónde está exactamente la frontera**.
+
+**Lo que cambia.** `PolicyRail` gana `release(intentId)`. Se llama únicamente
+para fallas ocurridas **antes de que algo firmado saliera del proceso**.
+
+**Lo que no cambia, y es la mitad importante.** El motivo central de `M-15`
+sigue vigente palabra por palabra: contar de más es *fail-closed*, contar de
+menos no lo es. Por eso la liberación exige **prueba, no suposición**. La
+frontera es una línea concreta —el `fetch` que lleva el header de pago firmado,
+en `executeBazaarPayment`— y todo lo que pase de ahí en adelante, incluida una
+respuesta que no confirma liquidación, **nunca** se libera. Es el mismo peligro
+que `C-107` cerró desde el otro lado: en producción se le dijo a una persona
+que su compra había fallado mientras se estaba pagando.
+
+**Cómo se hace cumplir, en vez de recordarlo.** `executeBazaarPayment` estampa
+`details.paymentSent` en todo error que lanza, y `mayHaveBeenPaid()` —la única
+función que los llamadores consultan— responde "puede haberse pagado" ante
+**cualquier** cosa que no sea un `AgentPassError` marcado explícitamente con
+`false`: un error sin marcar, un `Error` pelado de una dependencia, un camino
+nuevo que alguien agregue y olvide marcar. El default es el comportamiento
+anterior a T92, que es el seguro.
+
+**Consecuencia que muerde, y por qué está en esta entrada.** "Ya registrado"
+pasa a significar *concedido y no liberado*. Si `hasRecorded` siguiera diciendo
+`true` para una intención liberada, `authorise()` sumaría `0` al total del día y
+la liberación habría regalado presupuesto de forma permanente.
+
+**Alternativas descartadas:**
+- **Registrar al liquidar** (la que `M-15` ya había descartado). Sigue
+  descartada por el mismo motivo: varias autorizaciones concurrentes podrían
+  pasar y juntas exceder `perDay`.
+- **Liberar también ante una falla ambigua** (el `fetch` del pago, o una
+  respuesta sin `settled`). Es exactamente el caso de `C-107`: devolver
+  presupuesto por una compra que sí se pagó.
+- **Borrar o editar el asiento concedido.** MandateVault es una cadena de
+  hashes a la que solo se agrega; liberar es un asiento nuevo que resta, y la
+  concesión que deshace queda donde estaba.
