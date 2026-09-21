@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado), T93 (`POST /v1/purchases/preview`, `C-125`, mergeado) y T94 (webhooks en vivo, `C-126`) · **Sigue:** las tres propuestas aprobadas están construidas; sin hito asignado. Queda sin elegir la cuarta idea de la sesión (límite de tasa por API key en `/v1`) · **Fase 6: en curso**
+**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado), T93 (`POST /v1/purchases/preview`, `C-125`, mergeado) T94 (webhooks en vivo, `C-126`, mergeado) y T95 (límite de tasa por API key, `C-127`) · **Sigue:** sin hito asignado. Las cuatro ideas de la sesión están construidas. Para usar T93, T94 y T95 en producción hace falta emitir una API key nueva · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -218,7 +218,8 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | ✅ cerrado 2026-09-16 · mergeado a `main` (`4a188f6`) · **verificado en producción 2026-09-19** (`C-123`) |
 | T92 | `C-113`: el gasto de una compra que nunca llegó a la red se libera, y un rail sin saldo lo dice con su propio código en vez de parecer una caída del comercio | ✅ cerrado 2026-09-19 · mergeado a `main` (`b8e66a9`) (`C-124`, enmienda `M-23`) |
 | T93 | `POST /v1/purchases/preview`: el enforcement contesta si una compra se permitiría, sin reservar presupuesto, sin firmar y sin pagar — ruta y permiso propios | ✅ cerrado 2026-09-20 · mergeado a `main` (`dfe52b4`) (`C-125`) |
-| T94 | Webhooks en vivo: registro de endpoints con política de URL propia, outbox escrito en el mismo statement que el cambio, y un drenaje que entrega firmado — cierra el paquete huérfano de T48 | ✅ cerrado 2026-09-20 (`C-126`) |
+| T94 | Webhooks en vivo: registro de endpoints con política de URL propia, outbox escrito en el mismo statement que el cambio, y un drenaje que entrega firmado — cierra el paquete huérfano de T48 | ✅ cerrado 2026-09-20 · mergeado a `main` (`3fd91af`) (`C-126`) |
+| T95 | Límite de tasa por API key en `/v1`: 120/min general, 10/min en las rutas que gastan o se conectan hacia afuera; el nivel sale del permiso y no hay ruta que se lo salte | ✅ cerrado 2026-09-20 (`C-127`) |
 
 ---
 
@@ -4229,3 +4230,49 @@ corrida dio **45 de 45**, y no quedó ninguna fila de prueba.
 permisos nuevos (se emitió antes). Emitir una nueva es del usuario.
 
 **Decisiones:** `C-126`. Esquema del directorio, versión 10.
+
+---
+
+## T95 — nadie puede martillar la API
+
+**Qué quedó funcionando, en llano.**
+
+Hasta ahora había un límite a cuánto podía gastar un permiso por día, pero
+ninguno a cuántas veces un partner podía *pedir*. Un error en la integración de
+un tercero —un bucle que pide compras sin parar— habría ido gastando el fondo de
+prueba compartido, una transacción por vez, hasta que algo se acabara.
+
+Ahora cada llave de partner tiene un tope por minuto: 120 pedidos en general, y
+10 en las tres cosas que cuestan algo real — comprar, crear una invitación para
+firmar, y registrar una URL a la que AgentPey se va a conectar. Si se pasa,
+recibe una respuesta que le dice cuántos segundos esperar.
+
+**Lo que hace que no se pueda esquivar.** El conteo está metido dentro del paso
+que verifica la llave, y las 14 rutas pasan por ahí. No hay forma de que una
+ruta autentique sin contar. Y a qué balde va cada ruta no sale de una lista que
+alguien tiene que mantener: sale del permiso que la ruta ya pide. Una ruta
+nueva que gasta plata cae sola en el balde apretado.
+
+**Para la persona en RealOps:** si RealOps choca con el tope, la persona lee que
+no se compró nada y que espere un minuto. Se puede decir con seguridad —a
+diferencia de cuando algo tarda— porque el conteo pasa antes que cualquier otra
+cosa.
+
+**La evidencia técnica.**
+
+- Contador en Postgres con un solo upsert sobre la clave primaria: dos procesos
+  contando a la vez obtienen números distintos, sin el hueco de leer-y-escribir
+  que tuvo `perDay` en F8.
+- Un pedido rechazado por permisos no se cuenta; una key desconocida tampoco.
+- Si el contador falla: la compra se rechaza (`503`), la lectura pasa — decidido
+  por el usuario.
+- `429` con `Retry-After`, nunca `0`.
+- Un test recorre las **14 rutas** y falla si alguna no se cuenta.
+- **1495 tests** (eran 1473), `typecheck` y `build` limpios. Salidas crudas en
+  [`evidencia/T95.md`](evidencia/T95.md).
+
+**Fuera, nombrado:** limitar por IP los pedidos sin llave. Detrás del proxy de
+Render la IP se puede falsificar si no se confía en el salto correcto; es otro
+problema.
+
+**Decisiones:** `C-127`. Esquema del directorio, versión 11.

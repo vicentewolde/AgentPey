@@ -568,6 +568,19 @@ export interface Directory {
   /** Records an attempt that did not land — and, when `giveUp`, that no more will be made. */
   markWebhookFailed(input: MarkWebhookFailedInput): Promise<void>;
 
+  /**
+   * Counts one request against `(apiKeyId, tier, windowStart)` and returns
+   * the count including it (T95). A single upsert, so two processes counting
+   * the same key at once each get a distinct, correct number.
+   */
+  countRateLimitedRequest(input: {
+    readonly apiKeyId: string;
+    readonly tier: string;
+    readonly windowStart: Date;
+  }): Promise<number>;
+  /** Deletes windows that closed before `before`. Returns how many rows went. */
+  sweepRateLimitWindows(before: Date): Promise<number>;
+
   /** Records one purchase a partner asked for — settled or refused (T75). */
   createPurchase(input: CreatePurchaseInput): Promise<PurchaseRecord>;
   findPurchase(id: string): Promise<PurchaseRecord | undefined>;
@@ -1224,6 +1237,26 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
         [tenantId, limit],
       );
       return rows.map(toPurchase);
+    },
+
+    // ---- rate limiting (T95) ----------------------------------------------
+
+    async countRateLimitedRequest(input) {
+      const { rows } = await pool.query<{ count: number }>(
+        `insert into directory_rate_limit_windows (api_key_id, tier, window_start, count)
+         values ($1, $2, $3, 1)
+         on conflict (api_key_id, tier, window_start) do update set count = directory_rate_limit_windows.count + 1
+         returning count`,
+        [input.apiKeyId, input.tier, input.windowStart],
+      );
+      const count = rows[0]?.count;
+      if (count === undefined) throw wrap("counting a request returned no row", undefined, { apiKeyId: input.apiKeyId });
+      return toSafeInteger(count, "count");
+    },
+
+    async sweepRateLimitWindows(before) {
+      const { rowCount } = await pool.query("delete from directory_rate_limit_windows where window_start < $1", [before]);
+      return rowCount ?? 0;
     },
 
     // ---- webhooks (T94) ---------------------------------------------------

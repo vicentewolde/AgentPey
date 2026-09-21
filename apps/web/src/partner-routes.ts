@@ -18,6 +18,9 @@ import { AgentPassError, isAgentPassError } from "@agentpass/core";
 import type { AgentInstance, ConsentSessionRecord, Directory, MandateRecord, PurchaseRecord, Tenant } from "@agentpey/directory";
 import {
   authorizeRequest,
+  rateLimitHeaders,
+  type AuthorizedRequest,
+  type RateLimiter,
   createConsentSessionRequestSchema,
   createTenantRequestSchema,
   hashRequestBody,
@@ -177,6 +180,12 @@ export interface PartnerRouteRequest {
    */
   readonly newWebhookSecret: () => string;
   /**
+   * Counts each authenticated request against its key's tier (T95). Injected
+   * like `authenticate` and for the same reason: the counter lives in
+   * Postgres, and this layer stays testable with a fake.
+   */
+  readonly rateLimiter: RateLimiter;
+  /**
    * Reads everything a tenant may be shown about their own agent. Only read
    * by `GET /v1/tenants/{id}/activity`, and injected for the same reason
    * `executePurchase` is: Postgres, the vault and a Stellar RPC client all
@@ -189,6 +198,8 @@ export interface PartnerRouteRequest {
 export interface PartnerRouteResponse {
   readonly status: number;
   readonly body: unknown;
+  /** T95: only set on a `429`, where `Retry-After` is what lets a client back off correctly. */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 /** Every `/v1`-relevant `AgentPassError` code this route layer can produce or pass through, mapped to its HTTP status. Anything else is a 500 — an error this layer did not anticipate should never masquerade as a client mistake. */
@@ -214,6 +225,14 @@ const STATUS_BY_CODE: Readonly<Record<string, number>> = {
   /** T94: the partner's URL, the partner's mistake — a `400`, with a reason they can act on. */
   WebhookUrlNotAllowed: 400,
   WebhookEndpointNotFound: 404,
+  /** T95: too many requests for this key's tier. A `429` with `Retry-After`, never a silent drop. */
+  RateLimited: 429,
+  /**
+   * T95: the counter could not be read on a route that spends or connects out.
+   * `503`, not `500`: it is a temporary condition of ours, and a partner's
+   * client should retry it rather than treat it as a bug in its request.
+   */
+  RateLimiterUnavailable: 503,
   /**
    * T73 froze the execution routes before T75 implements them. `501` and not
    * `404`: the route exists, is authenticated, and validates its body — what
@@ -242,6 +261,20 @@ function requireQueryParam(searchParams: URLSearchParams, name: string): string 
     throw new AgentPassError("InvalidArguments", `missing required query parameter '${name}'`, { details: { name } });
   }
   return value;
+}
+
+/**
+ * The only way a `/v1` route authenticates, and the reason there is only one:
+ * it always counts the request (T95).
+ *
+ * `authorizeRequest` accepts a limiter as an optional argument so its own
+ * tests can exercise authentication alone. Every route in this file calls this
+ * instead, so there is no route that authenticates without being counted — a
+ * new one written by copying any existing one inherits the limit, and the
+ * tier follows from the scope it names.
+ */
+function authorize(input: PartnerRouteRequest, scope: ApiScope): Promise<AuthorizedRequest> {
+  return authorizeRequest(input.authorizationHeader, scope, input.directory.authenticate, input.rateLimiter);
 }
 
 /** `404`, never `403`, when the tenant exists but belongs to another partner. */
@@ -317,7 +350,7 @@ async function respondOrCache(
 }
 
 async function handleCreateTenant(input: PartnerRouteRequest, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "tenants:write" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "tenants:write");
 
   const outcome = await resolveIdempotency({
     partnerId: auth.partnerId,
@@ -352,13 +385,13 @@ async function handleCreateTenant(input: PartnerRouteRequest, now: Date): Promis
 }
 
 async function handleGetTenant(input: PartnerRouteRequest, tenantId: string): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "tenants:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "tenants:read");
   const tenant = await requireOwnedTenant(input.directory, tenantId, auth.partnerId);
   return { status: 200, body: successEnvelope(toTenantResource(tenant)) };
 }
 
 async function handleListAgents(input: PartnerRouteRequest): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "agents:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "agents:read");
   const tenantId = requireQueryParam(input.searchParams, "tenant_id");
   await requireOwnedTenant(input.directory, tenantId, auth.partnerId);
   const agents: readonly AgentInstance[] = await input.directory.listAgents(tenantId);
@@ -366,13 +399,13 @@ async function handleListAgents(input: PartnerRouteRequest): Promise<PartnerRout
 }
 
 async function handleGetMandate(input: PartnerRouteRequest, mandateId: string, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "mandates:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "mandates:read");
   const mandate = await requireOwnedMandate(input.directory, mandateId, auth.partnerId);
   return { status: 200, body: successEnvelope(toMandateResource(mandate, now)) };
 }
 
 async function handleListMandates(input: PartnerRouteRequest, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "mandates:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "mandates:read");
   const tenantId = requireQueryParam(input.searchParams, "tenant_id");
   await requireOwnedTenant(input.directory, tenantId, auth.partnerId);
   const mandates: readonly MandateRecord[] = await input.directory.listMandates(tenantId);
@@ -383,7 +416,7 @@ async function handleListMandates(input: PartnerRouteRequest, now: Date): Promis
 const CONSENT_SESSION_TTL_MS = 60 * 60 * 1000;
 
 async function handleCreateConsentSession(input: PartnerRouteRequest, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "consent_sessions:write" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "consent_sessions:write");
 
   const outcome = await resolveIdempotency({
     partnerId: auth.partnerId,
@@ -430,7 +463,7 @@ async function handleCreateConsentSession(input: PartnerRouteRequest, now: Date)
 }
 
 async function handleGetConsentSession(input: PartnerRouteRequest, id: string, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "consent_sessions:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "consent_sessions:read");
   const session = await requireOwnedConsentSession(input.directory, id, auth.partnerId);
   const consentUrl = `${input.baseUrl}/consent/${session.id}`;
   return { status: 200, body: successEnvelope(toConsentSessionResource(session, now, consentUrl)) };
@@ -453,7 +486,7 @@ async function handleGetConsentSession(input: PartnerRouteRequest, id: string, n
  * well-formed.
  */
 async function handleCreatePurchase(input: PartnerRouteRequest, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "payments:authorize" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "payments:authorize");
 
   const outcome = await resolveIdempotency({
     partnerId: auth.partnerId,
@@ -538,7 +571,7 @@ async function handleCreatePurchase(input: PartnerRouteRequest, now: Date): Prom
  * refusal is a `201` and not a `4xx`.
  */
 async function handlePreviewPurchase(input: PartnerRouteRequest): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "payments:preview" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "payments:preview");
 
   // Same order as `handleCreatePurchase`: tenant ownership before the body, so
   // another partner's tenant is a `404` that reveals nothing about whether the
@@ -619,7 +652,7 @@ async function handlePreviewPurchase(input: PartnerRouteRequest): Promise<Partne
  * unlike an API key, because every delivery is signed with it.
  */
 async function handleCreateWebhookEndpoint(input: PartnerRouteRequest, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "webhooks:write" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "webhooks:write");
 
   const outcome = await resolveIdempotency({
     partnerId: auth.partnerId,
@@ -661,7 +694,7 @@ async function handleCreateWebhookEndpoint(input: PartnerRouteRequest, now: Date
 
 /** `GET /v1/webhook_endpoints` — this partner's live endpoints, never their secrets. */
 async function handleListWebhookEndpoints(input: PartnerRouteRequest): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "webhooks:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "webhooks:read");
   const endpoints = await input.directory.listWebhookEndpoints(auth.partnerId);
   return {
     status: 200,
@@ -688,7 +721,7 @@ async function handleListWebhookEndpoints(input: PartnerRouteRequest): Promise<P
  * deletion is not a retraction of what already happened.
  */
 async function handleDeleteWebhookEndpoint(input: PartnerRouteRequest, id: string, now: Date): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "webhooks:write" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "webhooks:write");
   const deleted = await input.directory.deleteWebhookEndpoint(id, auth.partnerId, now);
   if (!deleted) {
     throw new AgentPassError("WebhookEndpointNotFound", "no webhook endpoint with that id", {
@@ -699,7 +732,7 @@ async function handleDeleteWebhookEndpoint(input: PartnerRouteRequest, id: strin
 }
 
 async function handleGetPurchase(input: PartnerRouteRequest, id: string): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "payments:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "payments:read");
   const record = await input.directory.findPurchase(id);
   // `404`, never `403`, for another partner's purchase — the rule this file
   // has applied to every resource since T49.
@@ -714,7 +747,7 @@ async function handleGetPurchase(input: PartnerRouteRequest, id: string): Promis
  * `vault:read` rather than by anything that can spend.
  */
 async function handleGetTenantActivity(input: PartnerRouteRequest, tenantId: string): Promise<PartnerRouteResponse> {
-  const auth = await authorizeRequest(input.authorizationHeader, "vault:read" satisfies ApiScope, input.directory.authenticate);
+  const auth = await authorize(input, "vault:read");
   // Ownership first: another partner's tenant gets the same `404` a
   // nonexistent one does, before a single figure about it is read.
   await requireOwnedTenant(input.directory, tenantId, auth.partnerId);
@@ -795,6 +828,13 @@ export async function routePartnerRequest(input: PartnerRouteRequest): Promise<P
 
     return notFound(input.method, input.pathname);
   } catch (error) {
-    return { status: statusForError(error), body: toErrorEnvelope(error) };
+    const response = { status: statusForError(error), body: toErrorEnvelope(error) };
+    // `Retry-After` belongs on the response, not only in the body's details:
+    // it is what an HTTP client's own retry logic reads without knowing
+    // anything about AgentPey's envelope.
+    if (isAgentPassError(error) && error.code === "RateLimited") {
+      return { ...response, headers: rateLimitHeaders(error) };
+    }
+    return response;
   }
 }

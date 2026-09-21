@@ -1,4 +1,4 @@
-import { AgentPassError } from "@agentpass/core";
+import { AgentPassError, hasErrorCode } from "@agentpass/core";
 import type { ApiKey } from "@agentpey/directory";
 import { describe, expect, it, vi } from "vitest";
 
@@ -91,5 +91,55 @@ describe("authorizeRequest", () => {
     await expect(authorizeRequest(`Bearer ${VALID_SECRET}`, "tenants:read", authenticate)).rejects.toEqual(
       expect.objectContaining({ code: "InvalidApiKey" }),
     );
+  });
+});
+
+/** T95: where the limiter sits in authentication, which is what makes it unavoidable. */
+describe("authorizeRequest — rate limiting", () => {
+  const key = fakeApiKey({ id: "apk_counted", scopes: ["payments:authorize", "tenants:read"] });
+
+  it("counts an authenticated, in-scope request against that key", async () => {
+    const counted: string[] = [];
+    await authorizeRequest(`Bearer ${VALID_SECRET}`, "tenants:read", vi.fn().mockResolvedValue(key), {
+      count: async (input) => {
+        counted.push(`${input.apiKeyId}/${input.tier}`);
+        return 1;
+      },
+    });
+    expect(counted).toEqual(["apk_counted/standard"]);
+  });
+
+  it("does not count a request the key has no permission for — fixing a scope mistake costs no budget", async () => {
+    let calls = 0;
+    await expect(
+      authorizeRequest(`Bearer ${VALID_SECRET}`, "webhooks:write", vi.fn().mockResolvedValue(key), {
+        count: async () => {
+          calls += 1;
+          return 1;
+        },
+      }),
+    ).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "ScopeNotGranted"));
+    expect(calls).toBe(0);
+  });
+
+  it("does not count an unknown key — there is no id to count it against", async () => {
+    let calls = 0;
+    await expect(
+      authorizeRequest(`Bearer ${VALID_SECRET}`, "tenants:read", vi.fn().mockResolvedValue(undefined), {
+        count: async () => {
+          calls += 1;
+          return 1;
+        },
+      }),
+    ).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "InvalidApiKey"));
+    expect(calls).toBe(0);
+  });
+
+  it("refuses a key over its limit, after authentication and scope both passed", async () => {
+    await expect(
+      authorizeRequest(`Bearer ${VALID_SECRET}`, "payments:authorize", vi.fn().mockResolvedValue(key), {
+        count: async () => 11,
+      }),
+    ).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "RateLimited"));
   });
 });

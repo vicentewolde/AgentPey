@@ -1076,9 +1076,9 @@ async function vaultReport(current: DemoSession): Promise<VaultReport> {
 
 // ---- HTTP plumbing -------------------------------------------------------
 
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
+function sendJson(res: ServerResponse, status: number, body: unknown, headers: Readonly<Record<string, string>> = {}): void {
   const payload = JSON.stringify(body);
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  res.writeHead(status, { ...headers, "content-type": "application/json; charset=utf-8" });
   res.end(payload);
 }
 
@@ -1236,8 +1236,11 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
           },
           purchase,
         ),
+      // Counted in Postgres, so two processes (or two Render instances) share
+      // one budget per key rather than each granting the full limit (T95).
+      rateLimiter: { count: (input) => directory.countRateLimitedRequest(input) },
     });
-    sendJson(res, result.status, result.body);
+    sendJson(res, result.status, result.body, result.headers);
     return;
   }
 
@@ -1921,17 +1924,29 @@ function startRetentionSweep(): void {
           getWalletSessionStore(env),
           getPendingWriteStore(env),
         ]);
-        const [walletSwept, writesSwept] = await Promise.all([
+        const directory = await getDirectory(env);
+        // T95: a rate-limit window is only ever read by the upsert that
+        // counts into it, so a window that closed an hour ago is dead weight.
+        // An hour, not a minute, so a clock that drifts between instances can
+        // never sweep a window someone is still counting into.
+        const rateLimitCutoff = new Date(Date.now() - 60 * 60_000);
+        const [walletSwept, writesSwept, rateLimitWindows] = await Promise.all([
           walletSessionStore.sweepExpired(),
           pendingWriteStore.sweepExpired(),
+          directory.sweepRateLimitWindows(rateLimitCutoff),
         ]);
         const total =
           walletSwept.walletChallenges +
           walletSwept.pendingWalletSessions +
           walletSwept.pendingConsentSessions +
-          writesSwept.deleted;
+          writesSwept.deleted +
+          rateLimitWindows;
         if (total > 0) {
-          log("info", "[retention] swept expired rows", { ...walletSwept, sdkPendingWrites: writesSwept.deleted });
+          log("info", "[retention] swept expired rows", {
+            ...walletSwept,
+            sdkPendingWrites: writesSwept.deleted,
+            rateLimitWindows,
+          });
         }
       } catch (error) {
         logError("[retention] sweep failed", error);

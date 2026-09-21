@@ -5574,3 +5574,51 @@ Pendiente:
 - Siguen: firmar y revocar con Freighter en producción; la hora local de T89;
   quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
   tarjeta de gasto por agente. Sigue abierta `C-122` (MPP Session).
+
+## 2026-09-20 (3) — main (T94 mergeado) / cc/t95-rate-limit (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex (contrato de `/v1`, seguridad).
+
+Qué:
+- **T94: integración corrida** contra el Postgres de producción, con visto bueno
+  del usuario. **Encontró un bug real** en `markWebhookFailed`: un parámetro
+  dentro de un `case` junto a un `null` pelado queda tipado como `text`, así que
+  toda entrega fallida tiraba error y un endpoint roto se habría reintentado
+  cada dos minutos para siempre. Arreglado con casts explícitos (`3fd91af`),
+  más un test de la otra rama. Segunda corrida 45/45; lectura posterior sin
+  filas de prueba. Crear las tablas fue aditivo.
+- **T94 mergeado** a `main` y pusheado (`dfe52b4..3fd91af`).
+- **T95** (`C-127`): límite de tasa por API key.
+  - Dentro de `authorizeRequest`, después de autenticar y del chequeo de
+    permiso. Las 14 rutas pasan por un único helper `authorize()` que siempre
+    cuenta; un test las recorre todas.
+  - El nivel se deriva del permiso: `payments:authorize`,
+    `consent_sessions:write` y `webhooks:write` → 10/min; el resto → 120/min
+    (números elegidos por el usuario).
+  - Ventana fija de un minuto en Postgres, un solo upsert sobre la clave
+    primaria. Costo dicho: hasta el doble en el borde de una ventana.
+  - Si el contador falla: cerrado (`503`) en las costosas, abierto en el resto
+    (elegido por el usuario).
+  - `429` con `Retry-After` y `RateLimit-*`, solo en el `429`.
+  - RealOps traduce un `429` en la compra a "no se compró nada, espera un
+    minuto".
+  - Barrido de ventanas de más de una hora en la retención de T70.
+  - Esquema del directorio: **versión 11**.
+
+Documentación: `C-127`, bitácora (estado, fila de T94 con su merge, fila y
+bloque de T95), `evidencia/T95.md`. `AGENTS.md` sin cambios. **1495 tests**
+(eran 1473), `typecheck` y `build` limpios.
+
+Pendiente:
+- **Merge de `cc/t95-rate-limit`, con confirmación del usuario.**
+- **Sin correr: los 3 tests de integración nuevos** (el central: 20 pedidos
+  concurrentes numerados 1..20). Crean la tabla `directory_rate_limit_windows`
+  en producción.
+- **Para usar T93, T94 y T95 en producción hace falta una API key nueva** con
+  `payments:preview`, `webhooks:read` y `webhooks:write`. Emitir claves es del
+  usuario (`P-10`).
+- Fuera de T95, nombrado: limitar por IP los pedidos sin autenticar.
+- Siguen: caso 8b de aceptación (desde T92); firmar y revocar con Freighter en
+  producción; la hora local de T89; quitar `/api/session/*`; rotar los dos
+  secretos; `createPurchase` en el SDK; tarjeta de gasto por agente. Sigue
+  abierta `C-122`.

@@ -13,6 +13,7 @@
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
 import type { ApiKey } from "@agentpey/directory";
 
+import { enforceRateLimit, type RateLimiter } from "./rate-limit.js";
 import { type ApiScope, apiScopeCovers } from "./scopes.js";
 
 /** Node lower-cases incoming header names; this is the name to read. */
@@ -59,6 +60,12 @@ export async function authorizeRequest(
   authorizationHeader: string | undefined,
   requiredScope: ApiScope,
   authenticate: AuthenticateApiKey,
+  /**
+   * Counts this request against the key's tier (T95). Optional only so this
+   * function's own tests can exercise authentication alone; every `/v1` route
+   * passes one, through the single `authorize` helper in `apps/web`.
+   */
+  rateLimiter?: RateLimiter,
 ): Promise<AuthorizedRequest> {
   const secret = extractBearerSecret(authorizationHeader);
   if (!API_KEY_SECRET_PATTERN.test(secret)) {
@@ -80,6 +87,15 @@ export async function authorizeRequest(
     throw new AgentPassError("ScopeNotGranted", `this api key does not have the '${requiredScope}' scope`, {
       details: { required: requiredScope, granted: apiKey.scopes },
     });
+  }
+
+  // After the scope check, on purpose: a key asking for something it may not
+  // do is refused with `403` and never counted, so a partner fixing a
+  // permission mistake does not also burn their budget finding it. And after
+  // authentication, necessarily — the count is per key, and an unknown key has
+  // no id to count against.
+  if (rateLimiter !== undefined) {
+    await enforceRateLimit(rateLimiter, apiKey.id, requiredScope);
   }
 
   return { apiKeyId: apiKey.id, partnerId: apiKey.partnerId, scopes: apiKey.scopes };

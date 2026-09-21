@@ -142,6 +142,10 @@ export type AgentPassErrorCode =
   | "WebhookUrlNotAllowed"
   /** No webhook endpoint visible to this partner has that id. */
   | "WebhookEndpointNotFound"
+  /** This API key made more requests in the current window than its tier allows. */
+  | "RateLimited"
+  /** The request counter could not be read, and the route is one that is refused rather than let through uncounted. */
+  | "RateLimiterUnavailable"
   /** A tenant index is negative, non-integer, or outside BIP-32's hardened range. */
   | "InvalidTenantIndex"
   /** A partner-supplied external reference is malformed, or looks like personal data. */

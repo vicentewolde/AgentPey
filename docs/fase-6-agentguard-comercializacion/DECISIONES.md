@@ -5260,3 +5260,101 @@ no se enteró de una compra necesita poder distinguirlos.
 
 `AGENTS.md` sin cambios: sigue siendo autorización y contrato de `/v1`, que ya
 quedan en Claude Code (`P-10`).
+
+---
+
+### C-127 · T95: `/v1` cuenta los pedidos por API key, y el nivel sale del permiso · `Vigente`
+**Fecha:** 2026-09-20 · **Hito:** T95 · **Decidido por el usuario:** los números (120/min y 10/min) y la política de falla (cerrado en las costosas, abierto en el resto)
+
+**El hueco.** `perDay` limita lo que un Mandato puede gastar. Nada limitaba
+cuántas veces un partner podía *pedir*. Un bucle en la integración de un tercero
+llamando a `POST /v1/purchases` habría gastado el USDC de testnet del rail
+compartido, una transacción de Stellar por vez, en una sola instancia Starter,
+hasta que algo se acabara. Y desde T94 hay una ruta que hace que este proceso se
+conecte hacia afuera.
+
+#### Dentro de la autenticación, para que no se pueda esquivar
+
+El contador vive en `authorizeRequest`, después de autenticar y de chequear el
+permiso, y entra como un puerto inyectado igual que `authenticate`. En
+`apps/web`, las 14 rutas de `/v1` pasan por un único helper `authorize()` que
+siempre lo pasa, así que **no hay ruta que autentique sin ser contada**: una
+nueva escrita copiando cualquiera de las existentes hereda el límite. Un test
+recorre las 14 y falla si alguna no se cuenta.
+
+**El orden importa, en dos sentidos:**
+- *Después* del chequeo de permiso: un pedido que la key no tiene permitido
+  recibe `403` y **no se cuenta**, así que un partner corrigiendo un error de
+  permisos no quema presupuesto encontrándolo.
+- *Después* de autenticar, necesariamente: el conteo es por key, y una key
+  desconocida no tiene id contra el cual contar.
+
+#### El nivel sale del permiso, no de una lista de rutas
+
+Las rutas que exigen `payments:authorize`, `consent_sessions:write` o
+`webhooks:write` —las que gastan, crean una invitación firmable, o apuntan la
+red de este proceso a algún lado— van al balde apretado (10/min). El resto, al
+general (120/min). Derivarlo del permiso significa que una ruta agregada después
+no puede quedar en el nivel equivocado porque alguien se olvidó de listarla: su
+nivel es lo que diga el permiso que ya tiene que nombrar. `payments:preview`
+(T93) queda en el general, porque no gasta nada.
+
+#### Ventana fija en Postgres, con un solo upsert
+
+`insert ... on conflict do update set count = count + 1 returning count` sobre la
+clave primaria `(api_key_id, tier, window_start)`. Postgres serializa las dos
+ramas en la clave, así que dos procesos contando a la vez obtienen números
+distintos y correctos — sin lock consultivo y sin el hueco de leer-y-escribir
+donde `perDay` se excedió en F8 (T64).
+
+**El costo de la ventana fija, dicho:** justo en el borde entre dos minutos, una
+key puede gastar los dos presupuestos seguidos, así que una ráfaga de hasta el
+doble puede entrar en poco tiempo. Para un freno contra abuso en un piloto
+alcanza; no es un medidor preciso.
+
+**Alternativa descartada: token bucket.** Más suave, y necesita más estado por
+key y una lectura del último relleno — más código en el camino de cada pedido,
+para una precisión que este uso no pide.
+
+**Sin clave foránea a `directory_api_keys`, a propósito:** la tabla se escribe
+en cada pedido autenticado y no la lee nadie más que su propio upsert, y una key
+revocada a mitad de la ventana no debe convertir su próximo pedido en una
+violación de restricción en vez del `401` que le corresponde.
+
+#### Cuando el contador mismo falla
+
+Decidido por el usuario: **cerrado en las rutas costosas, abierto en el resto.**
+Una compra no pasa sin contarse, porque es la ruta que mueve plata
+(`RateLimiterUnavailable`, `503` — condición temporal nuestra, que el cliente
+debería reintentar, no un error de su pedido). Una lectura sí pasa: un limitador
+roto no debería tumbar todo `/v1`. En la práctica casi nunca pasa sola, porque
+el contador vive en la misma base que `authenticate` acaba de leer; pero "casi
+nunca" no es una política.
+
+#### La respuesta
+
+`429 RateLimited` con `Retry-After` y `RateLimit-Limit`/`-Remaining`/`-Reset`
+**solo en el `429`**, no en cada respuesta. Emitirlos siempre habría obligado a
+sacar el conteo de `authorizeRequest` a través de cada handler; el encabezado
+que un cliente necesita para frenar bien es `Retry-After`, y llega justo cuando
+hace falta. `Retry-After` nunca es `0`: se redondea para arriba, para no invitar
+a reintentar dentro de la misma ventana.
+
+**RealOps**, el único partner real, traduce un `429` en la compra a una frase que
+dice **que no se compró nada** y cuándo volver a pedirlo. Es seguro decirlo —a
+diferencia del timeout de `C-107`— porque el conteo pasa antes de cualquier otra
+cosa: un `429` significa que la compra nunca se intentó.
+
+**Limpieza:** las ventanas de más de una hora entran al barrido de retención de
+T70. Una hora y no un minuto, para que un reloj que se desfasa entre instancias
+nunca barra una ventana en la que alguien todavía está contando.
+
+#### Fuera de este hito, nombrado
+
+**Limitar por IP los pedidos *sin* autenticar.** Una avalancha de keys inválidas
+igual le pega a la base en cada `authenticate`. Detrás del proxy de Render, la
+IP llega en `X-Forwarded-For`, que se puede falsificar si no se confía
+exactamente en el salto correcto — es un problema propio, no un agregado a
+este.
+
+`AGENTS.md` sin cambios: contrato de `/v1` y superficie de seguridad (`P-10`).

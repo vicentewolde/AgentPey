@@ -303,6 +303,29 @@ describe("asking for a purchase", () => {
     agentpey.answerWith(settled());
   });
 
+  it("on a rate limit, says nothing was bought and when to try again (T95)", async () => {
+    // AgentPey counts a request before doing anything else, so unlike a
+    // timeout this one is certain: the purchase was never attempted.
+    const cookie = await readyAgent("apurado@ejemplo.cl");
+    const { AgentPassError } = await import("@agentpass/core");
+    agentpey.answerWith(
+      new AgentPassError("CommandFailed", "this api key made more than 10 costly requests in a minute", {
+        details: { path: "/v1/purchases", status: 429, code: "RateLimited" },
+      }),
+    );
+
+    const response = await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
+
+    expect(response.status).toBe(429);
+    const html = await response.text();
+    expect(html).toContain("no se compró nada");
+    expect(html).toContain("Espera un minuto");
+    // Not the "may have completed" of a timeout, and not "could not reach".
+    expect(html).not.toContain("puede haberse completado");
+    expect(html).not.toContain("no se pudo hablar");
+    agentpey.answerWith(settled());
+  });
+
   it("refuses to buy for a kind the person has no signed permission for", async () => {
     const cookie = await readyAgent("solobrief@ejemplo.cl", "market_brief");
     const before = agentpey.purchases.length;

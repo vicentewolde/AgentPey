@@ -598,6 +598,24 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           sendHtml(response, 409, errorPage(409, ALREADY_ASKED));
           return;
         }
+        // T95: AgentPey counts requests before it does anything else, so a
+        // `429` here means this purchase was never attempted. Unlike a
+        // timeout, it is safe to say nothing was bought — and to say when to
+        // try again, which is the only useful thing a person can do about it.
+        if (isAgentPassError(error) && error.details.code === "RateLimited") {
+          sendHtml(
+            response,
+            429,
+            errorPage(
+              429,
+              bilingual(
+                "Too many requests to AgentPey right now, so nothing was bought. Wait a minute and ask again.",
+                "Hay demasiados pedidos a AgentPey en este momento, así que no se compró nada. Espera un minuto y vuelve a pedirlo.",
+              ),
+            ),
+          );
+          return;
+        }
         // A timeout is not a failure to buy: AgentPey may still be settling the
         // payment. Saying "could not reach" here is what made people retry and
         // pay twice in the deployed pilot (T84).

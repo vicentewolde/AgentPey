@@ -24,7 +24,7 @@
  */
 
 /** Bumped when the layout changes incompatibly. Mirrors the contracts' own convention. */
-export const DIRECTORY_SCHEMA_VERSION = 10;
+export const DIRECTORY_SCHEMA_VERSION = 11;
 
 export const DIRECTORY_SCHEMA_SQL: readonly string[] = [
   `create sequence if not exists directory_key_index_seq as bigint start with 0 minvalue 0`,
@@ -333,4 +333,26 @@ export const DIRECTORY_SCHEMA_SQL: readonly string[] = [
   `create index if not exists directory_webhook_deliveries_due_idx
      on directory_webhook_deliveries (next_attempt_at)
      where delivered_at is null and gave_up_at is null`,
+
+  // Schema version 11 (T95): how many requests each API key made per minute.
+  //
+  // One row per (key, tier, window). The primary key is what makes counting
+  // atomic across processes: `countRateLimitedRequest` is a single upsert
+  // that either inserts the first request of a window or increments the row
+  // that is already there, and Postgres serialises the two on the key. No
+  // advisory lock, and no read-then-write for a second process to land in
+  // between — the gap `perDay` fell into in F8 (T64) does not exist here.
+  //
+  // No foreign key to `directory_api_keys`: this table is written on every
+  // authenticated request and read by nobody but the upsert itself, and a
+  // key revoked mid-window must not turn its next request into a
+  // constraint violation instead of the `401` it should get. Old windows are
+  // swept by the retention pass (T70).
+  `create table if not exists directory_rate_limit_windows (
+     api_key_id   text        not null,
+     tier         text        not null,
+     window_start timestamptz not null,
+     count        integer     not null,
+     primary key (api_key_id, tier, window_start)
+   )`,
 ];

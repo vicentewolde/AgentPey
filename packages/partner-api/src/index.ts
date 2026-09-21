@@ -80,6 +80,18 @@ export {
 } from "./resources/consent-sessions.js";
 
 export {
+  RATE_LIMITS,
+  RATE_LIMIT_WINDOW_MS,
+  enforceRateLimit,
+  rateLimitHeaders,
+  tierForScope,
+  windowStartFor,
+  type CountRequest,
+  type RateLimitTier,
+  type RateLimiter,
+} from "./rate-limit.js";
+
+export {
   assertWebhookUrlResolvesPublicly,
   assertWebhookUrlShape,
   isPrivateAddress,

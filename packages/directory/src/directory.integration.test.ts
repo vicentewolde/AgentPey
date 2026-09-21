@@ -1176,4 +1176,59 @@ describe("createDirectory", () => {
     expect(due).toHaveLength(1);
     expect(due[0]?.attempts).toBe(2);
   });
+
+  // ---- rate limiting (T95) -----------------------------------------------
+
+  it("hands concurrent requests distinct counts — nobody reads a stale total", async () => {
+    // The property the whole limiter rests on. Twenty requests fired at once
+    // against the same key and window must come back numbered 1 through 20
+    // with no repeats; a read-then-write would hand two of them the same
+    // number, which is exactly how `perDay` was exceeded in F8 (T64).
+    const apiKeyId = `apk_test_${randomUUID()}`;
+    const windowStart = new Date("2026-09-20T12:00:00.000Z");
+    try {
+      const counts = await Promise.all(
+        Array.from({ length: 20 }, () => directory.countRateLimitedRequest({ apiKeyId, tier: "costly", windowStart })),
+      );
+      expect([...counts].sort((a, b) => a - b)).toEqual(Array.from({ length: 20 }, (_, index) => index + 1));
+    } finally {
+      await pool.query("delete from directory_rate_limit_windows where api_key_id = $1", [apiKeyId]);
+    }
+  });
+
+  it("keeps tiers and windows apart", async () => {
+    const apiKeyId = `apk_test_${randomUUID()}`;
+    const minute = new Date("2026-09-20T12:00:00.000Z");
+    const nextMinute = new Date("2026-09-20T12:01:00.000Z");
+    try {
+      await directory.countRateLimitedRequest({ apiKeyId, tier: "costly", windowStart: minute });
+      await directory.countRateLimitedRequest({ apiKeyId, tier: "costly", windowStart: minute });
+      // A standard request in the same minute starts its own count.
+      expect(await directory.countRateLimitedRequest({ apiKeyId, tier: "standard", windowStart: minute })).toBe(1);
+      // And the next minute starts over.
+      expect(await directory.countRateLimitedRequest({ apiKeyId, tier: "costly", windowStart: nextMinute })).toBe(1);
+    } finally {
+      await pool.query("delete from directory_rate_limit_windows where api_key_id = $1", [apiKeyId]);
+    }
+  });
+
+  it("sweeps closed windows and leaves open ones alone", async () => {
+    const apiKeyId = `apk_test_${randomUUID()}`;
+    const old = new Date("2026-09-19T00:00:00.000Z");
+    const current = new Date("2026-09-20T12:00:00.000Z");
+    try {
+      await directory.countRateLimitedRequest({ apiKeyId, tier: "standard", windowStart: old });
+      await directory.countRateLimitedRequest({ apiKeyId, tier: "standard", windowStart: current });
+
+      await directory.sweepRateLimitWindows(new Date("2026-09-20T00:00:00.000Z"));
+
+      const { rows } = await pool.query<{ window_start: Date }>(
+        "select window_start from directory_rate_limit_windows where api_key_id = $1",
+        [apiKeyId],
+      );
+      expect(rows.map((row) => row.window_start.toISOString())).toEqual(["2026-09-20T12:00:00.000Z"]);
+    } finally {
+      await pool.query("delete from directory_rate_limit_windows where api_key_id = $1", [apiKeyId]);
+    }
+  });
 });

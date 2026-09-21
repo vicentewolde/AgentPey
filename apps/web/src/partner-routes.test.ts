@@ -22,6 +22,7 @@ import {
   type PartnerRoutesDirectory,
   type PreviewPurchase,
 } from "./partner-routes.js";
+import type { RateLimiter } from "@agentpey/partner-api";
 
 const PARTNER_A = newId("partner");
 const PARTNER_B = newId("partner");
@@ -370,6 +371,9 @@ const settlingPurchase: ExecutePurchase = async (request) => ({
   },
 });
 
+/** A limiter that counts nothing and refuses nothing — the default for tests not about T95. */
+const unlimited: RateLimiter = { count: async () => 1 };
+
 /** The default preview port: every layer would allow it. */
 const allowingPreview: PreviewPurchase = async () => ({
   kind: "preview",
@@ -400,6 +404,8 @@ function baseRequest(overrides: Partial<Parameters<typeof routePartnerRequest>[0
     previewPurchase: allowingPreview,
     // Deterministic, so a test can assert the secret is returned exactly once.
     newWebhookSecret: () => "whsec_test-secret",
+    // Never over the limit by default; the T95 tests below supply their own.
+    rateLimiter: unlimited,
     readActivity: async (tenantId: string) => ({ tenant_id: tenantId, mandate: null, per_day: null, rail: null, purchases: [], refusals: [] }),
     ...overrides,
   };
@@ -1477,5 +1483,158 @@ describe("/v1/webhook_endpoints", () => {
     );
     expect(second.body).toEqual(first.body);
     expect(directory.webhookEndpointCount()).toBe(1);
+  });
+});
+
+/** T95. */
+describe("rate limiting on /v1", () => {
+  /** A limiter that records what it counted and answers a fixed count. */
+  function recordingLimiter(answer: number) {
+    const counted: Array<{ apiKeyId: string; tier: string }> = [];
+    const limiter: RateLimiter = {
+      count: async (input) => {
+        counted.push({ apiKeyId: input.apiKeyId, tier: input.tier });
+        return answer;
+      },
+      now: () => new Date("2026-09-20T12:00:30.000Z"),
+    };
+    return { limiter, counted };
+  }
+
+  it("answers 429 with Retry-After and the RateLimit headers, and buys nothing", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    let purchases = 0;
+    const { limiter } = recordingLimiter(11);
+
+    const result = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/purchases",
+        body: { tenant_id: tenant.id, venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F", product_id: "x", quantity: 1 },
+        idempotencyKeyHeader: "rl-1",
+        rateLimiter: limiter,
+        executePurchase: (async () => {
+          purchases += 1;
+          throw new Error("a rate-limited request must never reach the purchase");
+        }) as ExecutePurchase,
+      }),
+    );
+
+    expect(result.status).toBe(429);
+    expect((result.body as { code: string }).code).toBe("RateLimited");
+    expect(result.headers).toMatchObject({ "retry-after": "30", "ratelimit-limit": "10", "ratelimit-remaining": "0" });
+    expect(purchases).toBe(0);
+  });
+
+  it("counts every authenticated route — there is no route that skips it", async () => {
+    // Every handler authenticates through one helper that always passes the
+    // limiter. This walks one representative request per route and checks
+    // each was counted, so a handler that went back to calling
+    // `authorizeRequest` directly would fail here.
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const { limiter, counted } = recordingLimiter(1);
+    const requests: Array<Partial<Parameters<typeof routePartnerRequest>[0]>> = [
+      { method: "POST", pathname: "/v1/tenants", body: { external_ref: "usr_rl" }, idempotencyKeyHeader: "rl-t" },
+      { method: "GET", pathname: `/v1/tenants/${encodeURIComponent(tenant.id)}` },
+      { method: "GET", pathname: "/v1/agents", searchParams: new URLSearchParams({ tenant_id: tenant.id }) },
+      { method: "GET", pathname: "/v1/mandates", searchParams: new URLSearchParams({ tenant_id: tenant.id }) },
+      { method: "GET", pathname: "/v1/mandates/mdt_00000000000000000000000009" },
+      { method: "GET", pathname: "/v1/consent_sessions/cns_00000000000000000000000009" },
+      { method: "GET", pathname: "/v1/purchases/pur_00000000000000000000000009" },
+      { method: "GET", pathname: `/v1/tenants/${encodeURIComponent(tenant.id)}/activity` },
+      { method: "GET", pathname: "/v1/webhook_endpoints" },
+      { method: "DELETE", pathname: "/v1/webhook_endpoints/whe_00000000000000000000000009" },
+      {
+        method: "POST",
+        pathname: "/v1/webhook_endpoints",
+        body: { url: "https://partner.example/hooks", events: ["payment.settled"] },
+        idempotencyKeyHeader: "rl-w",
+      },
+      {
+        method: "POST",
+        pathname: "/v1/consent_sessions",
+        body: {
+          tenant_id: tenant.id,
+          grant: {
+            actions: ["catalog:read"],
+            venues: [],
+            assets: [],
+            limits: { perTx: "1", perDay: "1", currency: "USDC" },
+            payTo: ["GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"],
+          },
+          valid_until: "2026-12-01T00:00:00.000Z",
+        },
+        idempotencyKeyHeader: "rl-c",
+      },
+      {
+        method: "POST",
+        pathname: "/v1/purchases",
+        body: { tenant_id: tenant.id, venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F", product_id: "x", quantity: 1 },
+        idempotencyKeyHeader: "rl-p",
+      },
+      {
+        method: "POST",
+        pathname: "/v1/purchases/preview",
+        body: { tenant_id: tenant.id, venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F", product_id: "x", quantity: 1 },
+      },
+    ];
+
+    // All fourteen handlers in `partner-routes.ts`.
+    expect(requests).toHaveLength(14);
+    for (const request of requests) {
+      const before = counted.length;
+      await routePartnerRequest(baseRequest({ ...request, rateLimiter: limiter }));
+      expect(counted.length, `${request.method} ${request.pathname}`).toBe(before + 1);
+    }
+  });
+
+  it("puts a purchase in the costly tier and a read in the standard one", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const { limiter, counted } = recordingLimiter(1);
+
+    await routePartnerRequest(
+      baseRequest({ method: "GET", pathname: `/v1/tenants/${encodeURIComponent(tenant.id)}`, rateLimiter: limiter }),
+    );
+    await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/purchases",
+        body: { tenant_id: tenant.id, venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F", product_id: "x", quantity: 1 },
+        idempotencyKeyHeader: "rl-2",
+        rateLimiter: limiter,
+      }),
+    );
+
+    expect(counted.map((entry) => entry.tier)).toEqual(["standard", "costly"]);
+  });
+
+  it("answers 503, not 500, when a costly route's counter is unavailable", async () => {
+    // A temporary condition of ours: a partner's client should retry it, not
+    // treat it as a bug in its own request.
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const result = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/purchases",
+        body: { tenant_id: tenant.id, venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F", product_id: "x", quantity: 1 },
+        idempotencyKeyHeader: "rl-3",
+        rateLimiter: {
+          count: async () => {
+            throw new Error("postgres is down");
+          },
+        },
+      }),
+    );
+    expect(result.status).toBe(503);
+    expect((result.body as { code: string }).code).toBe("RateLimiterUnavailable");
+  });
+
+  it("sends no rate-limit headers on an ordinary response", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const result = await routePartnerRequest(
+      baseRequest({ method: "GET", pathname: `/v1/tenants/${encodeURIComponent(tenant.id)}` }),
+    );
+    expect(result.status).toBe(200);
+    expect(result.headers).toBeUndefined();
   });
 });
