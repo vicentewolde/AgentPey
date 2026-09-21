@@ -1304,11 +1304,19 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
       // different fact from "nothing ever happened", and an operator asking
       // why a partner never heard about a purchase needs to be able to tell
       // them apart.
+      //
+      // The `::timestamptz` casts are load-bearing, not decoration. Inside a
+      // `case` whose other branch is a bare `null`, Postgres cannot infer a
+      // parameter's type from the column it lands in and settles on `text` —
+      // so without them every failed delivery threw here, `gave_up_at` was
+      // never written, and the lease put a dead endpoint back in the queue
+      // every two minutes, forever. Found by this package's own integration
+      // test against a real database, not by reading.
       await pool.query(
         `update directory_webhook_deliveries
          set last_error = $2,
-             gave_up_at = case when $3::boolean then $4 else null end,
-             next_attempt_at = case when $3::boolean then next_attempt_at else $5 end
+             gave_up_at = case when $3::boolean then $4::timestamptz else null end,
+             next_attempt_at = case when $3::boolean then next_attempt_at else $5::timestamptz end
          where id = $1`,
         [input.id, input.lastError, input.giveUp, input.at ?? new Date(), input.nextAttemptAt ?? new Date()],
       );

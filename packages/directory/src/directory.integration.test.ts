@@ -1140,4 +1140,40 @@ describe("createDirectory", () => {
     );
     expect(later).toEqual([]);
   });
+
+  it("schedules a retry, and the delivery comes back once its time arrives", async () => {
+    // The other branch of `markWebhookFailed`. Both branches put a parameter
+    // inside a `case`, and the first version of this method had neither cast:
+    // Postgres typed them as `text` and every failed delivery threw.
+    const { partner, tenant, agent, principal } = await mandateFixture(["mandate.activated"]);
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    const [claimed] = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
+    const retryAt = new Date(Date.now() + 5 * 60_000);
+    await directory.markWebhookFailed({ id: claimed!.id, lastError: "HTTP 503", giveUp: false, nextAttemptAt: retryAt });
+
+    // Not before its time — the backoff is honoured.
+    const early = (await directory.claimDueWebhookDeliveries(10, new Date(Date.now() + 60_000))).filter(
+      (row) => row.partnerId === partner.id,
+    );
+    expect(early).toEqual([]);
+
+    // After it, back again, with the attempt counted.
+    const due = (await directory.claimDueWebhookDeliveries(10, new Date(retryAt.getTime() + 1_000))).filter(
+      (row) => row.partnerId === partner.id,
+    );
+    expect(due).toHaveLength(1);
+    expect(due[0]?.attempts).toBe(2);
+  });
 });

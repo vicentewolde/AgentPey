@@ -4217,9 +4217,15 @@ redirecciones.
 - **1473 tests** (eran 1415), `typecheck` y `build` limpios. Salidas crudas en
   [`evidencia/T94.md`](evidencia/T94.md).
 
-**Lo que falta para usarlo.** Dos cosas, las dos del usuario: la API key de
-partner que existe hoy no tiene los permisos nuevos (se emitió antes), y los
-tests de integración del outbox **no se corrieron** — escriben en el Postgres
-de producción.
+**Lo que encontró la corrida contra la base real.** Los tests de integración
+del outbox se corrieron contra el Postgres de producción, con visto bueno del
+usuario, y **encontraron un bug que ningún test unitario podía ver**: al marcar
+una entrega fallida, Postgres interpretaba la fecha como texto y la operación
+tiraba error. En producción, un endpoint roto se habría reintentado cada dos
+minutos, para siempre. Arreglado, con un test más para la otra rama; la segunda
+corrida dio **45 de 45**, y no quedó ninguna fila de prueba.
+
+**Lo que falta para usarlo.** La API key de partner que existe hoy no tiene los
+permisos nuevos (se emitió antes). Emitir una nueva es del usuario.
 
 **Decisiones:** `C-126`. Esquema del directorio, versión 10.

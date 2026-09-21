@@ -5558,10 +5558,13 @@ Pendiente:
 - **Merge de `cc/t94-live-webhooks`, con confirmación del usuario.** El push
   redespliega, y el esquema se crea solo al arrancar (`create table if not
   exists`).
-- **Sin correr: `pnpm --filter @agentpey/directory run test:integration`** — los
-  11 tests nuevos del outbox son los únicos que prueban las afirmaciones que
-  dependen de Postgres. Escriben en el Postgres de producción (se limpian
-  solos); necesitan el visto bueno del usuario.
+- ~~Correr la integración del directorio~~ **Hecho, con visto bueno del usuario:**
+  la primera corrida encontró un bug real en `markWebhookFailed` (un parámetro
+  dentro de un `case` tipado como `text`; en producción, un endpoint roto se
+  habría reintentado cada dos minutos para siempre). Arreglado con casts, más un
+  test para la otra rama. Segunda corrida: **45/45**. Correrla creó las dos
+  tablas nuevas en producción (aditivo, lo mismo que el deploy). Lectura
+  posterior: 0 endpoints, 0 entregas, 0 partners de prueba.
 - **Sin probar contra producción:** las rutas nuevas, porque la API key que
   existe no tiene `webhooks:read`/`webhooks:write`. Igual que `payments:preview`
   en T93: hace falta emitir una key nueva, que es del usuario (`P-10`).
