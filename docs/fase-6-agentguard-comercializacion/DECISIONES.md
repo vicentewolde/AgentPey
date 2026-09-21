@@ -5119,3 +5119,144 @@ fallar la compra real con `RouteParamMissing` y la previa no lo va a anticipar
 
 `AGENTS.md` sin cambios: autorización y contrato de `/v1` ya quedan en Claude
 Code (`P-10`).
+
+---
+
+### C-126 · T94: los webhooks salen de verdad, con outbox en el mismo statement y una política de URL propia · `Vigente`
+**Fecha:** 2026-09-20 · **Hito:** T94 · **Pedido por el usuario** (tercera de las tres propuestas aprobadas)
+
+**El hueco.** `@agentpey/webhooks` (T48, Codex PR #8) sabía firmar y entregar un
+evento desde el día que se escribió, y **nunca lo llamó nadie**: ningún
+`package.json` de `apps/` ni de `packages/` lo declaraba como dependencia.
+`webhooks.ts` tenía siete nombres de evento congelados y la firma HMAC. No
+había dónde registrar una URL ni nada que creara un evento. Un partner que
+quería saber que el principal firmó, o que una compra liquidó, solo podía hacer
+polling.
+
+#### El outbox va en el mismo statement, no en una transacción
+
+`directory_webhook_deliveries` se escribe **dentro del mismo `insert`/`update`**
+que el cambio que describe, con un CTE (`with inserted as (...) insert into
+directory_webhook_deliveries select ... from inserted`). Postgres corre un
+statement solo de forma atómica, así que:
+
+- un evento no puede existir para un cambio que no se confirmó, y
+- un cambio no puede confirmarse sin su evento.
+
+**Alternativa descartada: envolver los tres métodos en una transacción.** El
+directorio nunca tuvo plumbing de transacciones —cada método es un `pool.query`
+suelto— y agregarlo para esto habría sido maquinaria nueva en el camino que
+escribe Mandatos y compras. El CTE da la misma garantía sin tocar esa forma.
+
+**Un beneficio que salió gratis:** el `revoked_at is null` de `revokeMandate`
+ya hacía idempotente la revocación, y como el evento se abre desde la fila
+*actualizada*, una segunda revocación no actualiza nada y por lo tanto no encola
+un segundo evento. No hubo que escribir nada para eso.
+
+**Una fila por (evento, endpoint), no por evento.** El endpoint roto de un
+partner no puede frenar la entrega a otro suyo, y cada destino lleva su propia
+cuenta de intentos y su propio backoff. La clave es `<event id>:<endpoint id>`,
+única por construcción: un duplicado sería una violación de clave primaria en
+vez de una segunda entrega. Y como el `select` recorre los endpoints
+suscriptos, un partner sin ninguno no inserta nada — el outbox solo tiene
+trabajo con destino.
+
+#### Los eventos son delgados, a propósito
+
+Un evento lleva los ids de lo que cambió y nada más; el partner lee el recurso
+por `/v1` con su propia key. Dos motivos, en ese orden de peso:
+
+1. **Una entrega que se desvía filtra identificadores y nada más** — nunca los
+   términos de un Mandato ni la URL de una entrega. Un evento delgado no puede
+   revelar más de lo que ese partner ya puede consultar.
+2. Lo que el partner lee es el recurso **actual**, no lo que era cierto cuando
+   el evento se encoló.
+
+#### Solo se suscribe a lo que algo emite
+
+T45 congeló siete nombres. Cuatro tienen ahora exactamente una escritura que
+los dispara. `DELIVERABLE_WEBHOOK_EVENT_TYPES` es ese subconjunto, y el esquema
+de registro valida contra él: pedir `mandate.expiring` da `400`. Es la misma
+regla que `scopes.ts` ya aplicaba a los permisos — una suscripción que nunca
+puede dispararse es peor que ninguna, porque parece cableada, y alguien
+construiría un recordatorio de renovación sobre un mensaje que este sistema no
+tiene código para mandar.
+
+`payment.authorized` queda afuera por un motivo distinto y más interesante: el
+momento que describiría es real (`PolicyRail.authorise` concediendo), pero pasa
+a mitad de la compra, antes de reconciliar la factura del comercio — anunciaría
+compras que después se rechazan en el 402. Queda sin poder suscribirse hasta
+que haya un motivo para quererlo, en vez de cablearse a la línea más plausible.
+
+#### La política de URL: la primera vez que un tercero elige el destino
+
+Hasta ahora, cada pedido saliente iba a una dirección que **AgentPey** eligió:
+un RPC de Stellar, un venue de `venues.json`. Un webhook invierte eso, y
+apuntado hacia adentro es SSRF — con blancos que el despliegue alcanza y la
+internet no: `169.254.169.254` (metadata de la nube), los procesos hermanos en
+`127.0.0.1` que arranca el gateway (`C-114`), el host de Postgres.
+
+`webhook-url.ts` es lista blanca de forma y lista negra de destino: solo
+`https`, sin credenciales, sin puerto propio, un host y no una IP literal. **Y
+se chequea dos veces, siendo la segunda la que cuenta:** el registro revisa lo
+que se ve en el string, y **cada entrega vuelve a resolver el host** y rechaza
+si las direcciones que contesta caen en rangos que la internet pública no
+rutea. Un chequeo solo al registrar lo derrota un nombre que hoy resuelve a
+`1.2.3.4` y a `127.0.0.1` cuando el evento sale — el host es del partner y lo
+reapunta cuando quiere.
+
+**Lo que esto no cierra, dicho en voz alta:** entre la resolución y la conexión
+que hace `fetch`, el nombre puede resolverse otra vez y contestar distinto —
+DNS rebinding clásico. Cerrarlo requiere fijar la conexión a la dirección
+chequeada, que el `fetch` de Node no expone. Lo que **sí** está mitigado es la
+versión barata del mismo ataque: `redirect: "error"` en la entrega, así que
+contestar desde una dirección pública y después redirigir a la metadata no
+funciona. Un nombre que pasó a resolver hacia adentro se trata como permanente,
+no como falla transitoria: reintentarlo dos horas serían dos horas de este
+proceso sondeando su propia red.
+
+#### El secreto se guarda en claro, y eso es forzado
+
+`directory_api_keys` guarda un hash porque una API key solo se **compara**. Un
+secreto de webhook se usa para **firmar** cada entrega, así que este proceso
+tiene que poder leerlo. La consecuencia queda escrita en el propio esquema:
+cualquier cosa que pueda leer esa tabla puede falsificar un webhook a ese
+partner. Es inherente a los webhooks con HMAC, no algo que este diseño pudiera
+evitar. Viaja una sola vez, en la respuesta que lo crea; todo `GET` posterior
+lo devuelve en `null`.
+
+#### Dos permisos, no uno
+
+`webhooks:write` y `webhooks:read`, separados. Registrar un endpoint es lo
+único que un partner puede hacer que apunte la red de **este** proceso a algún
+lado; listar endpoints es inofensivo. Juntarlos significaría que una key que
+solo necesita mostrar la configuración carga con ese poder.
+
+**Consecuencia operativa, igual que en T93:** la key de partner que ya existe
+en producción no tiene ninguno de los dos, así que la ruta le responde `403`
+hasta que se emita una nueva.
+
+#### El drenaje
+
+Un barrido cada 30 segundos, no cada 15 minutos como el de retención (`T70`):
+un webhook que llega un cuarto de hora después de la compra que describe no es
+un webhook, es un polling lento. `claimDueWebhookDeliveries` reclama y lee en
+un solo statement con `for update skip locked` y arrienda cada fila dos
+minutos, así que dos instancias de Render drenan la misma tabla sin que ninguna
+sepa de la otra, y una caída a mitad de entrega cuesta un ciclo de reintento en
+vez de una fila trabada.
+
+**Un intento por pasada**, no los cinco que `deliverWebhook` sabe hacer: esos
+reintentos viven en memoria y bloquean, así que un reinicio los pierde y cinco
+endpoints lentos se frenan entre sí. El estado de reintento vive en la fila.
+Para eso `deliverWebhook` ganó `retryable`: con un intento por pasada, el
+llamador necesita saber si el fallo fue un `4xx` (el endpoint leyó y dijo que
+no) o un `5xx`/timeout (vale otra pasada). Backoff de 1, 3, 9, 27, 81 y 135
+minutos, hasta seis intentos.
+
+**`gave_up_at` en vez de borrar la fila:** "lo intentamos y paramos" es un hecho
+distinto de "nunca pasó nada", y un operador que investiga por qué un partner
+no se enteró de una compra necesita poder distinguirlos.
+
+`AGENTS.md` sin cambios: sigue siendo autorización y contrato de `/v1`, que ya
+quedan en Claude Code (`P-10`).

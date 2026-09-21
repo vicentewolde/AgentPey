@@ -5508,3 +5508,66 @@ Pendiente:
 - Siguen: firmar y revocar con Freighter en producción; la hora local de T89;
   quitar `/api/session/*`; rotar los dos secretos; compras en el SDK; tarjeta de
   gasto por agente. Sigue abierta `C-122` (MPP Session), sin construir.
+
+## 2026-09-20 (2) — main (T93 mergeado) / cc/t94-live-webhooks (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex (contrato de `/v1`, y la política de
+URL es superficie de seguridad).
+
+Qué:
+- **T93 mergeado** a `main` y pusheado (`b8e66a9..dfe52b4`). Rama borrada.
+- **T94** (`C-126`), la tercera de las tres propuestas aprobadas: **webhooks en
+  vivo**, cerrando el paquete huérfano de T48.
+  - **Outbox en el mismo statement que el cambio**, por CTE, en `recordMandate`,
+    `revokeMandate` y `createPurchase`. Descartado envolverlos en una
+    transacción: el directorio nunca tuvo ese plumbing y el CTE da la misma
+    atomicidad. Una fila por (evento, endpoint), clave `<evento>:<endpoint>`.
+    Un partner sin endpoints no encola nada. La revocación repetida no encola un
+    segundo evento — salió gratis del `revoked_at is null` que ya existía.
+  - **Eventos delgados** (solo ids; el partner lee el recurso por `/v1`), así
+    que una entrega desviada filtra identificadores y nada más.
+  - **Solo cuatro de los siete nombres congelados son suscribibles**, los que
+    algo emite. `payment.authorized` queda afuera a propósito: describiría un
+    momento real pero anterior a reconciliar el 402, así que anunciaría compras
+    que después se rechazan.
+  - **Política de URL propia** (`packages/partner-api/src/webhook-url.ts`):
+    primera vez que un tercero elige un destino saliente. `https`, sin
+    credenciales, sin puerto, host y no IP; **y se re-resuelve el host en cada
+    entrega**, porque el nombre es del partner. El DNS rebinding residual queda
+    escrito, no tapado; la mitad barata sí está cerrada con `redirect: "error"`.
+  - **Drenaje** cada 30 s, `for update skip locked` + arriendo de dos minutos,
+    un intento por pasada, backoff 1/3/9/27/81/135 min hasta seis. `gave_up_at`
+    en vez de borrar la fila.
+  - `webhooks:read` y `webhooks:write` separados. El secreto se guarda en claro
+    —forzado, porque se firma con él— y eso queda dicho en el esquema.
+  - Esquema del directorio: **versión 10**. OpenAPI regenerado, SDK con los tres
+    métodos, guía de partners § 7c.
+
+Documentación tocada: `fase-6/DECISIONES.md` (`C-126`), `fase-6/BITACORA.md`
+(estado, fila de T93 con su merge, fila y bloque de T94), `evidencia/T94.md`
+(nuevo), `docs/api/openapi.yaml`, `examples/cloudops-partner-integration.md`.
+`AGENTS.md` sin cambios. **1473 tests** (eran 1415), `typecheck` y `build`
+limpios.
+
+Arreglo al pasar: la limpieza del test de integración del directorio borraba
+`directory_mandates` antes que `directory_purchases`, que las referencia.
+Nunca falló porque ningún test de ese archivo escribía una compra; los nuevos
+sí. Reordenado.
+
+Pendiente:
+- **Merge de `cc/t94-live-webhooks`, con confirmación del usuario.** El push
+  redespliega, y el esquema se crea solo al arrancar (`create table if not
+  exists`).
+- **Sin correr: `pnpm --filter @agentpey/directory run test:integration`** — los
+  11 tests nuevos del outbox son los únicos que prueban las afirmaciones que
+  dependen de Postgres. Escriben en el Postgres de producción (se limpian
+  solos); necesitan el visto bueno del usuario.
+- **Sin probar contra producción:** las rutas nuevas, porque la API key que
+  existe no tiene `webhooks:read`/`webhooks:write`. Igual que `payments:preview`
+  en T93: hace falta emitir una key nueva, que es del usuario (`P-10`).
+- **Sin correr desde T92: el caso 8b de la suite de aceptación.**
+- Idea de la sesión sin elegir: límite de tasa por API key en `/v1` (hoy no hay
+  ningún `429`).
+- Siguen: firmar y revocar con Freighter en producción; la hora local de T89;
+  quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
+  tarjeta de gasto por agente. Sigue abierta `C-122` (MPP Session).

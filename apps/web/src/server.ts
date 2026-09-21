@@ -28,7 +28,7 @@
  * shows the bazaar's other real products too, read-only, rather than
  * pretending every one of them is a verified payment path.
  */
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -98,6 +98,7 @@ import { ensureSharedPayerIdentity, ensureVisitorTenant } from "./shared-identit
 import { ensureTenantAgent } from "./tenant-agent.js";
 import { ensureTenantPolicyRail } from "./tenant-rail.js";
 import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.js";
+import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
 import {
   createPostgresWalletSessionStore,
@@ -1191,6 +1192,9 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
       body: await readJsonBody(req),
       directory,
       baseUrl: resolveBaseUrl(req, env),
+      // 32 random bytes, hex — the same shape and strength as an API key's
+      // secret. The partner verifies every delivery's HMAC with it.
+      newWebhookSecret: () => `whsec_${randomBytes(32).toString("hex")}`,
       readActivity: async (tenantId) =>
         readTenantActivity(
           {
@@ -1937,7 +1941,41 @@ function startRetentionSweep(): void {
   timer.unref();
 }
 
+/**
+ * T94: empties `directory_webhook_deliveries`.
+ *
+ * Every 30 seconds, not every 15 minutes like the retention sweep: a webhook
+ * that arrives a quarter of an hour after the purchase it describes is not a
+ * webhook, it is a slow poll. A pass that finds nothing due is a single
+ * indexed query, so running it often is cheap.
+ *
+ * Overlap is safe rather than prevented: `claimDueWebhookDeliveries` leases
+ * each row it takes, so a pass that runs long cannot have its work taken by
+ * the next one, and two Render instances drain the same table without either
+ * needing to know the other exists.
+ *
+ * `.unref()`, like the retention sweep, so this timer alone never holds the
+ * process open.
+ */
+const WEBHOOK_DRAIN_INTERVAL_MS = 30_000;
+function startWebhookDrain(): void {
+  const timer = setInterval(() => {
+    void (async () => {
+      try {
+        const env = await readEnv();
+        const directory = await getDirectory(env);
+        const summary = await drainWebhooks({ directory, resolveHost: resolveHostAddresses });
+        if (summary.claimed > 0) log("info", "[webhooks] drained", { ...summary });
+      } catch (error) {
+        logError("[webhooks] drain failed", error);
+      }
+    })();
+  }, WEBHOOK_DRAIN_INTERVAL_MS);
+  timer.unref();
+}
+
 server.listen(PORT, () => {
   startRetentionSweep();
+  startWebhookDrain();
   process.stdout.write(`\nAgentPey web · Fase 4 (T25) · http://localhost:${PORT}\n\n`);
 });

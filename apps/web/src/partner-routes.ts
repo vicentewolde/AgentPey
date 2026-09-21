@@ -30,9 +30,12 @@ import {
   toMandateResource,
   toPurchaseResource,
   toTenantResource,
+  assertWebhookUrlShape,
   createPurchaseRequestSchema,
+  createWebhookEndpointRequestSchema,
   previewPurchaseRequestSchema,
   purchasePreviewResourceSchema,
+  webhookEndpointResourceSchema,
   type ApiScope,
   type PurchaseResource,
 } from "@agentpey/partner-api";
@@ -56,6 +59,12 @@ export type PartnerRoutesDirectory = Pick<
   // T81: the return-URL allowlist is the partner's own data, so the route
   // reads the partner to apply it.
   | "findPartner"
+  // T94: where this partner wants its events sent. Registering and deleting
+  // only; nothing in this layer reads the outbox or sends anything — that is
+  // `webhook-drain.ts`, on its own port.
+  | "createWebhookEndpoint"
+  | "listWebhookEndpoints"
+  | "deleteWebhookEndpoint"
 >;
 
 /**
@@ -162,6 +171,12 @@ export interface PartnerRouteRequest {
    */
   readonly previewPurchase: PreviewPurchase;
   /**
+   * Mints a webhook signing secret. Injected rather than called inline so a
+   * test can make it deterministic, and so the one place that generates
+   * secrets is visible from the route's dependencies rather than buried in it.
+   */
+  readonly newWebhookSecret: () => string;
+  /**
    * Reads everything a tenant may be shown about their own agent. Only read
    * by `GET /v1/tenants/{id}/activity`, and injected for the same reason
    * `executePurchase` is: Postgres, the vault and a Stellar RPC client all
@@ -196,6 +211,9 @@ const STATUS_BY_CODE: Readonly<Record<string, number>> = {
   /** T81: the partner asked to redirect somewhere it never registered. Their mistake, not ours. */
   ReturnUrlNotAllowed: 400,
   PurchaseNotFound: 404,
+  /** T94: the partner's URL, the partner's mistake — a `400`, with a reason they can act on. */
+  WebhookUrlNotAllowed: 400,
+  WebhookEndpointNotFound: 404,
   /**
    * T73 froze the execution routes before T75 implements them. `501` and not
    * `404`: the route exists, is authenticated, and validates its body — what
@@ -586,6 +604,100 @@ async function handlePreviewPurchase(input: PartnerRouteRequest): Promise<Partne
   };
 }
 
+/**
+ * `POST /v1/webhook_endpoints` — where a partner says where to send events,
+ * T94.
+ *
+ * This is the one route in `/v1` whose effect is to make **this** process open
+ * an outbound connection to an address the caller chose, which is why it is
+ * the only one that checks a URL against a policy (`webhook-url.ts`) rather
+ * than merely parsing it. The check here is the cheap half — scheme, port,
+ * credentials, a literal address — and the half that counts runs again at
+ * every delivery, because the hostname stays the partner's to repoint.
+ *
+ * The secret is minted here and returned **once**. It is stored recoverably,
+ * unlike an API key, because every delivery is signed with it.
+ */
+async function handleCreateWebhookEndpoint(input: PartnerRouteRequest, now: Date): Promise<PartnerRouteResponse> {
+  const auth = await authorizeRequest(input.authorizationHeader, "webhooks:write" satisfies ApiScope, input.directory.authenticate);
+
+  const outcome = await resolveIdempotency({
+    partnerId: auth.partnerId,
+    idempotencyKeyHeader: input.idempotencyKeyHeader,
+    body: input.body,
+    lookup: input.directory.findIdempotentResponse,
+    now,
+  });
+  if (outcome.kind === "replay") return { status: outcome.record.responseStatus, body: outcome.record.responseBody };
+
+  return respondOrCache(input.directory, auth.partnerId, input.idempotencyKeyHeader!, input.body, async () => {
+    const request = parseBody(createWebhookEndpointRequestSchema, input.body);
+    // Throws `WebhookUrlNotAllowed`, with a reason a partner can act on — the
+    // likeliest cause by far is an honest mistake, not an attack.
+    const allowed = assertWebhookUrlShape(request.url);
+
+    const endpoint = await input.directory.createWebhookEndpoint({
+      partnerId: auth.partnerId,
+      url: allowed.url,
+      secret: input.newWebhookSecret(),
+      events: request.events,
+    });
+
+    return {
+      status: 201,
+      body: successEnvelope(
+        webhookEndpointResourceSchema.parse({
+          id: endpoint.id,
+          url: endpoint.url,
+          events: endpoint.events,
+          created_at: endpoint.createdAt.toISOString(),
+          // The only response that ever carries it.
+          secret: endpoint.secret,
+        }),
+      ),
+    };
+  });
+}
+
+/** `GET /v1/webhook_endpoints` — this partner's live endpoints, never their secrets. */
+async function handleListWebhookEndpoints(input: PartnerRouteRequest): Promise<PartnerRouteResponse> {
+  const auth = await authorizeRequest(input.authorizationHeader, "webhooks:read" satisfies ApiScope, input.directory.authenticate);
+  const endpoints = await input.directory.listWebhookEndpoints(auth.partnerId);
+  return {
+    status: 200,
+    body: successEnvelope(
+      endpoints.map((endpoint) =>
+        webhookEndpointResourceSchema.parse({
+          id: endpoint.id,
+          url: endpoint.url,
+          events: endpoint.events,
+          created_at: endpoint.createdAt.toISOString(),
+          secret: null,
+        }),
+      ),
+    ),
+  };
+}
+
+/**
+ * `DELETE /v1/webhook_endpoints/{id}` — stop sending here.
+ *
+ * `404`, never `403`, for another partner's endpoint: the rule this file has
+ * applied to every resource since T49. Events already queued for it stay
+ * queued — the outbox row records where that event was destined, and a
+ * deletion is not a retraction of what already happened.
+ */
+async function handleDeleteWebhookEndpoint(input: PartnerRouteRequest, id: string, now: Date): Promise<PartnerRouteResponse> {
+  const auth = await authorizeRequest(input.authorizationHeader, "webhooks:write" satisfies ApiScope, input.directory.authenticate);
+  const deleted = await input.directory.deleteWebhookEndpoint(id, auth.partnerId, now);
+  if (!deleted) {
+    throw new AgentPassError("WebhookEndpointNotFound", "no webhook endpoint with that id", {
+      details: { webhookEndpointId: id },
+    });
+  }
+  return { status: 204, body: undefined };
+}
+
 async function handleGetPurchase(input: PartnerRouteRequest, id: string): Promise<PartnerRouteResponse> {
   const auth = await authorizeRequest(input.authorizationHeader, "payments:read" satisfies ApiScope, input.directory.authenticate);
   const record = await input.directory.findPurchase(id);
@@ -659,6 +771,16 @@ export async function routePartnerRequest(input: PartnerRouteRequest): Promise<P
 
     if (input.method === "POST" && input.pathname === "/v1/purchases") {
       return await handleCreatePurchase(input, now);
+    }
+
+    if (input.pathname === "/v1/webhook_endpoints") {
+      if (input.method === "POST") return await handleCreateWebhookEndpoint(input, now);
+      if (input.method === "GET") return await handleListWebhookEndpoints(input);
+    }
+
+    const webhookEndpointMatch = /^\/v1\/webhook_endpoints\/([^/]+)$/.exec(input.pathname);
+    if (input.method === "DELETE" && webhookEndpointMatch?.[1] !== undefined) {
+      return await handleDeleteWebhookEndpoint(input, decodeURIComponent(webhookEndpointMatch[1]), now);
     }
 
     // Before the `{id}` pattern below, so `preview` is never read as an id.

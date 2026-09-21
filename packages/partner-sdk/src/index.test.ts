@@ -310,3 +310,98 @@ describe("previewPurchase", () => {
     }
   });
 });
+
+/** T94: registering where events go, and the secret that only arrives once. */
+describe("webhook endpoints", () => {
+  const ENDPOINT_ID = `whe_${ULID}`;
+  const created = {
+    id: ENDPOINT_ID,
+    url: "https://partner.example/hooks",
+    events: ["payment.settled"],
+    created_at: "2026-09-20T00:00:00.000Z",
+    secret: "whsec_the-only-copy",
+  };
+
+  it("registers an endpoint and hands back the secret", async () => {
+    const server = await startServer((request, response) => {
+      if (request.method === "POST" && request.url === "/v1/webhook_endpoints") {
+        return sendJson(response, 201, successEnvelope(created));
+      }
+      return sendJson(response, 404, { ok: false, code: "TenantNotFound", message: "x", details: {} });
+    });
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(
+        client.createWebhookEndpoint({ url: created.url, events: ["payment.settled"] }),
+      ).resolves.toEqual(created);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("accepts a listing whose endpoints carry no secret", async () => {
+    // `secret` is required-and-nullable, so a server that simply omitted it
+    // would be outside the contract — the client should not quietly accept a
+    // shape the API does not produce.
+    const listed = { ...created, secret: null };
+    const server = await startServer((_request, response) => sendJson(response, 200, successEnvelope([listed])));
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(client.listWebhookEndpoints()).resolves.toEqual([listed]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("deletes one, reading a 204 that has no body to parse", async () => {
+    let seen: { method: string; url: string } | undefined;
+    const server = await startServer((request, response) => {
+      seen = { method: request.method ?? "", url: request.url ?? "" };
+      response.writeHead(204);
+      response.end();
+    });
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(client.deleteWebhookEndpoint(ENDPOINT_ID)).resolves.toBeUndefined();
+      expect(seen).toEqual({ method: "DELETE", url: `/v1/webhook_endpoints/${ENDPOINT_ID}` });
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("turns a delete refusal into the same typed error a body-bearing route would", async () => {
+    const server = await startServer((_request, response) =>
+      sendJson(response, 404, { ok: false, code: "WebhookEndpointNotFound", message: "no endpoint", details: {} }),
+    );
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(client.deleteWebhookEndpoint(ENDPOINT_ID)).rejects.toSatisfy((error: unknown) =>
+        hasErrorCode(error, "WebhookEndpointNotFound"),
+      );
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("refuses an event nothing emits before it reaches the network", async () => {
+    let calls = 0;
+    const server = await startServer((_request, response) => {
+      calls += 1;
+      return sendJson(response, 201, successEnvelope(created));
+    });
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(
+        client.createWebhookEndpoint({ url: created.url, events: ["mandate.expiring"] as never }),
+      ).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "InvalidArguments"));
+      expect(calls).toBe(0);
+    } finally {
+      await server.close();
+    }
+  });
+});

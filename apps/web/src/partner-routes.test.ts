@@ -40,6 +40,8 @@ interface FakeDirectory extends PartnerRoutesDirectory {
   setReturnOrigins(origins: readonly string[]): void;
   /** T93: how many purchase rows exist, so a test can prove a preview wrote none. */
   purchaseCount(): number;
+  /** T94: every endpoint ever registered, deleted ones included. */
+  webhookEndpointCount(): number;
   /** T93: narrows a key's permissions, to prove a route really requires its own scope. */
   setScopes(secret: string, scopes: readonly string[]): void;
 }
@@ -58,7 +60,7 @@ function fakeApiKeyRecord(partnerId: string, scopes: readonly string[]): ApiKey 
 
 function createFakeDirectory(): FakeDirectory {
   const apiKeys = new Map<string, { partnerId: string; scopes: readonly string[]; revoked: boolean }>();
-  apiKeys.set(SECRET_A, { partnerId: PARTNER_A, scopes: ["tenants:read", "tenants:write", "agents:read", "mandates:read", "consent_sessions:read", "consent_sessions:write", "payments:authorize", "payments:preview", "payments:read", "vault:read"], revoked: false });
+  apiKeys.set(SECRET_A, { partnerId: PARTNER_A, scopes: ["tenants:read", "tenants:write", "agents:read", "mandates:read", "consent_sessions:read", "consent_sessions:write", "payments:authorize", "payments:preview", "payments:read", "vault:read", "webhooks:read", "webhooks:write"], revoked: false });
   apiKeys.set(SECRET_B, { partnerId: PARTNER_B, scopes: ["tenants:read", "tenants:write", "agents:read", "mandates:read", "consent_sessions:read", "consent_sessions:write"], revoked: false });
 
   const tenants = new Map<string, Tenant>();
@@ -68,6 +70,10 @@ function createFakeDirectory(): FakeDirectory {
   const idempotency = new Map<string, IdempotencyRecord>();
   const consentSessions = new Map<string, ConsentSessionRecord>();
   const purchases = new Map<string, PurchaseRecord>();
+  const webhookEndpoints = new Map<
+    string,
+    { id: string; partnerId: string; url: string; secret: string; events: string[]; createdAt: Date; deletedAt: Date | null }
+  >();
   let createTenantCalls = 0;
   let createConsentSessionCalls = 0;
   let returnOrigins: readonly string[] = [];
@@ -134,6 +140,37 @@ function createFakeDirectory(): FakeDirectory {
 
     purchaseCount() {
       return purchases.size;
+    },
+
+    webhookEndpointCount() {
+      return webhookEndpoints.size;
+    },
+
+    async createWebhookEndpoint(input) {
+      const endpoint = {
+        id: `whe_${String(webhookEndpoints.size + 1).padStart(26, "0")}`,
+        partnerId: input.partnerId,
+        url: input.url,
+        secret: input.secret,
+        events: [...input.events],
+        createdAt: new Date("2026-09-20T00:00:00.000Z"),
+        deletedAt: null as Date | null,
+      };
+      webhookEndpoints.set(endpoint.id, endpoint);
+      return endpoint;
+    },
+
+    async listWebhookEndpoints(partnerId) {
+      return [...webhookEndpoints.values()].filter(
+        (endpoint) => endpoint.partnerId === partnerId && endpoint.deletedAt === null,
+      );
+    },
+
+    async deleteWebhookEndpoint(id, partnerId, at) {
+      const endpoint = webhookEndpoints.get(id);
+      if (endpoint === undefined || endpoint.partnerId !== partnerId || endpoint.deletedAt !== null) return false;
+      endpoint.deletedAt = at ?? new Date();
+      return true;
     },
 
     setScopes(secret, scopes) {
@@ -361,6 +398,8 @@ function baseRequest(overrides: Partial<Parameters<typeof routePartnerRequest>[0
     executePurchase: settlingPurchase,
     // The default preview says yes, for the same reason.
     previewPurchase: allowingPreview,
+    // Deterministic, so a test can assert the secret is returned exactly once.
+    newWebhookSecret: () => "whsec_test-secret",
     readActivity: async (tenantId: string) => ({ tenant_id: tenantId, mandate: null, per_day: null, rail: null, purchases: [], refusals: [] }),
     ...overrides,
   };
@@ -376,6 +415,10 @@ describe("statusForError", () => {
     expect(statusForError(new AgentPassError("TenantNotFound", "x"))).toBe(404);
     expect(statusForError(new AgentPassError("NotImplemented", "x"))).toBe(501);
     expect(statusForError(new AgentPassError("PurchaseNotFound", "x"))).toBe(404);
+    // T94: a URL this platform will not send to is the partner's mistake to
+    // fix, not an outage — and a 500 would tell them to retry it.
+    expect(statusForError(new AgentPassError("WebhookUrlNotAllowed", "x"))).toBe(400);
+    expect(statusForError(new AgentPassError("WebhookEndpointNotFound", "x"))).toBe(404);
     // A code this layer never anticipated must not masquerade as a client mistake.
     expect(statusForError(new AgentPassError("VaultCorrupted", "x"))).toBe(500);
     expect(statusForError(new Error("plain"))).toBe(500);
@@ -1297,5 +1340,142 @@ describe("POST /v1/purchases/preview", () => {
       baseRequest({ method: "POST", pathname: "/v1/purchases/preview", body: previewBody(tenant.id, { dry_run: true }) }),
     );
     expect(result.status).toBe(400);
+  });
+});
+
+/** T94: where a partner says where to send events. */
+describe("/v1/webhook_endpoints", () => {
+  const endpointBody = { url: "https://partner.example/hooks/agentpey", events: ["payment.settled"] };
+
+  it("registers an endpoint and returns the signing secret exactly once", async () => {
+    const created = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/webhook_endpoints", body: endpointBody, idempotencyKeyHeader: "whe-1" }),
+    );
+    expect(created.status).toBe(201);
+    const data = (created.body as { data: { id: string; url: string; secret: string | null } }).data;
+    expect(data.url).toBe("https://partner.example/hooks/agentpey");
+    expect(data.secret).toBe("whsec_test-secret");
+
+    // Every later read: the secret is gone, like an API key's.
+    const listed = await routePartnerRequest(baseRequest({ method: "GET", pathname: "/v1/webhook_endpoints" }));
+    expect(listed.status).toBe(200);
+    const rows = (listed.body as { data: Array<{ id: string; secret: string | null }> }).data;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.secret).toBeNull();
+    expect(JSON.stringify(listed.body)).not.toContain("whsec_test-secret");
+  });
+
+  it("refuses a URL the policy will not send to, and registers nothing", async () => {
+    // This route is the only one in `/v1` whose effect is to make this process
+    // open a connection to an address the caller chose.
+    for (const url of [
+      "http://partner.example/hooks",
+      "https://169.254.169.254/latest/meta-data/",
+      "https://partner.example:5432/hooks",
+      "https://user:pass@partner.example/hooks",
+      "https://localhost/hooks",
+    ]) {
+      const before = directory.webhookEndpointCount();
+      const result = await routePartnerRequest(
+        baseRequest({
+          method: "POST",
+          pathname: "/v1/webhook_endpoints",
+          body: { ...endpointBody, url },
+          idempotencyKeyHeader: `whe-bad-${url}`,
+        }),
+      );
+      expect((result.body as { code: string }).code, url).toBe("WebhookUrlNotAllowed");
+      expect(directory.webhookEndpointCount(), url).toBe(before);
+    }
+  });
+
+  it("refuses an event name nothing ever emits, rather than looking wired", async () => {
+    // `mandate.expiring` is in the frozen list and has no code that fires it.
+    // A partner building a renewal reminder on it would wait forever.
+    const result = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/webhook_endpoints",
+        body: { ...endpointBody, events: ["mandate.expiring"] },
+        idempotencyKeyHeader: "whe-2",
+      }),
+    );
+    expect(result.status).toBe(400);
+  });
+
+  it("refuses an endpoint subscribed to nothing", async () => {
+    const result = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/webhook_endpoints",
+        body: { ...endpointBody, events: [] },
+        idempotencyKeyHeader: "whe-3",
+      }),
+    );
+    expect(result.status).toBe(400);
+  });
+
+  it("needs webhooks:write to register, and reading is not enough", async () => {
+    // The split exists because registering points this process's network
+    // somewhere, and listing does not.
+    directory.setScopes(SECRET_A, ["webhooks:read"]);
+    const result = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/webhook_endpoints", body: endpointBody, idempotencyKeyHeader: "whe-4" }),
+    );
+    expect(result.status).toBe(403);
+    expect((result.body as { code: string }).code).toBe("ScopeNotGranted");
+  });
+
+  it("needs webhooks:read to list", async () => {
+    directory.setScopes(SECRET_A, ["webhooks:write"]);
+    const result = await routePartnerRequest(baseRequest({ method: "GET", pathname: "/v1/webhook_endpoints" }));
+    expect(result.status).toBe(403);
+  });
+
+  it("never lists another partner's endpoints", async () => {
+    await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/webhook_endpoints", body: endpointBody, idempotencyKeyHeader: "whe-5" }),
+    );
+    const other = await routePartnerRequest(
+      baseRequest({ method: "GET", pathname: "/v1/webhook_endpoints", authorizationHeader: `Bearer ${SECRET_B}` }),
+    );
+    expect(other.status).toBe(403); // partner B holds no webhook scopes at all
+  });
+
+  it("deletes one, and a second delete is a 404", async () => {
+    const created = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/webhook_endpoints", body: endpointBody, idempotencyKeyHeader: "whe-6" }),
+    );
+    const id = (created.body as { data: { id: string } }).data.id;
+
+    const deleted = await routePartnerRequest(
+      baseRequest({ method: "DELETE", pathname: `/v1/webhook_endpoints/${id}` }),
+    );
+    expect(deleted.status).toBe(204);
+
+    const again = await routePartnerRequest(
+      baseRequest({ method: "DELETE", pathname: `/v1/webhook_endpoints/${id}` }),
+    );
+    expect(again.status).toBe(404);
+    expect((again.body as { code: string }).code).toBe("WebhookEndpointNotFound");
+  });
+
+  it("answers 404, never 403, for an id that is not this partner's", async () => {
+    const result = await routePartnerRequest(
+      baseRequest({ method: "DELETE", pathname: "/v1/webhook_endpoints/whe_00000000000000000000000009" }),
+    );
+    expect(result.status).toBe(404);
+  });
+
+  it("replays a repeated registration instead of minting a second endpoint", async () => {
+    const body = { ...endpointBody };
+    const first = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/webhook_endpoints", body, idempotencyKeyHeader: "whe-7" }),
+    );
+    const second = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/webhook_endpoints", body, idempotencyKeyHeader: "whe-7" }),
+    );
+    expect(second.body).toEqual(first.body);
+    expect(directory.webhookEndpointCount()).toBe(1);
   });
 });

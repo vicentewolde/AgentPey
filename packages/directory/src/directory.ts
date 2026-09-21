@@ -32,6 +32,8 @@ import {
   partnerSchema,
   principalBindingSchema,
   purchaseRecordSchema,
+  dueWebhookDeliverySchema,
+  webhookEndpointSchema,
   principalSchema,
   tenantSchema,
   type AgentInstance,
@@ -42,6 +44,8 @@ import {
   type IdempotencyRecord,
   type MandateRecord,
   type PurchaseRecord,
+  type DueWebhookDelivery,
+  type WebhookEndpoint,
   type MandateSignatureKind,
   type OnchainState,
   type Partner,
@@ -192,6 +196,34 @@ export interface CreateConsentSessionInput {
    * with `grant`.
    */
   readonly returnUrl?: string | null;
+}
+
+/**
+ * The endpoint plus its signing secret — the one shape that carries it, and
+ * only on the call that minted it. Mirrors `IssuedApiKey`: everything that
+ * merely *reads* endpoints gets the secret-free {@link WebhookEndpoint}.
+ */
+export interface IssuedWebhookEndpoint extends WebhookEndpoint {
+  readonly secret: string;
+}
+
+export interface CreateWebhookEndpointInput {
+  readonly partnerId: string;
+  /** Already checked against the URL policy by the caller (`webhook-url.ts`). */
+  readonly url: string;
+  /** The plaintext signing secret. Stored recoverably, because every delivery is signed with it. */
+  readonly secret: string;
+  readonly events: readonly string[];
+}
+
+export interface MarkWebhookFailedInput {
+  readonly id: string;
+  readonly lastError: string;
+  /** `true` when no further attempt will be made — the attempts ran out, or the endpoint refused permanently. */
+  readonly giveUp: boolean;
+  /** When to try again. Ignored when `giveUp`. */
+  readonly nextAttemptAt?: Date;
+  readonly at?: Date;
 }
 
 export interface CreatePurchaseInput {
@@ -348,6 +380,37 @@ function toIdempotencyRecord(row: Record<string, unknown>): IdempotencyRecord {
   });
 }
 
+function toWebhookEndpoint(row: Record<string, unknown>): WebhookEndpoint {
+  return webhookEndpointSchema.parse({
+    id: row.id,
+    partnerId: row.partner_id,
+    url: row.url,
+    events: row.events,
+    createdAt: row.created_at,
+    deletedAt: row.deleted_at ?? null,
+  });
+}
+
+function toDueWebhookDelivery(row: Record<string, unknown>): DueWebhookDelivery {
+  return dueWebhookDeliverySchema.parse({
+    id: row.id,
+    endpointId: row.endpoint_id,
+    partnerId: row.partner_id,
+    url: row.url,
+    secret: row.secret,
+    // Assembled here rather than stored whole, so the wire shape lives in one
+    // place (`webhookEventSchema`) instead of being frozen into every row the
+    // outbox ever wrote.
+    event: {
+      id: row.event_id,
+      type: row.type,
+      created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+      data: row.payload,
+    },
+    attempts: toSafeInteger(row.attempts, "attempts"),
+  });
+}
+
 function toPurchase(row: Record<string, unknown>): PurchaseRecord {
   return purchaseRecordSchema.parse({
     id: row.id,
@@ -482,6 +545,28 @@ export interface Directory {
   releaseRailFunding(agentId: string): Promise<void>;
   /** How many rails the reserve has funded, across every tenant — the sponsored-credit cap counts against this. */
   countFundedRails(): Promise<number>;
+
+  /**
+   * Registers where to send this partner's events (T94). `secret` is supplied
+   * by the caller, not minted here: generating it is the route's job, because
+   * the route is also the only thing that ever returns it.
+   */
+  createWebhookEndpoint(input: CreateWebhookEndpointInput): Promise<IssuedWebhookEndpoint>;
+  /** This partner's live endpoints. Never carries the signing secret. */
+  listWebhookEndpoints(partnerId: string): Promise<readonly WebhookEndpoint[]>;
+  /** Soft-deletes one. `false` when it is not this partner's, or already gone. */
+  deleteWebhookEndpoint(id: string, partnerId: string, at?: Date): Promise<boolean>;
+  /**
+   * Takes up to `limit` deliveries that are owed and due, leasing each so no
+   * other drain can take it for two minutes.
+   *
+   * Claiming and reading are one statement: two instances draining at once
+   * must not both send the same event.
+   */
+  claimDueWebhookDeliveries(limit: number, now?: Date): Promise<readonly DueWebhookDelivery[]>;
+  markWebhookDelivered(id: string, at?: Date): Promise<void>;
+  /** Records an attempt that did not land — and, when `giveUp`, that no more will be made. */
+  markWebhookFailed(input: MarkWebhookFailedInput): Promise<void>;
 
   /** Records one purchase a partner asked for — settled or refused (T75). */
   createPurchase(input: CreatePurchaseInput): Promise<PurchaseRecord>;
@@ -882,11 +967,45 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
     // ---- mandates -------------------------------------------------------
     async recordMandate(input) {
       const id = newId("mandate");
+      // One event id for this change, shared by every endpoint it fans out
+      // to; the delivery's own key is `<event id>:<endpoint id>`, which is
+      // unique by construction and makes a duplicate a primary-key violation
+      // rather than a second delivery.
+      const eventId = newId("webhookEvent");
+      // One statement, so the Mandate and the `mandate.activated` events owed
+      // for it either both land or neither does (T94). Postgres runs a single
+      // statement atomically; two queries here would let a crash between them
+      // leave a signed Mandate no partner was ever told about, or — worse —
+      // an event for a Mandate that never committed.
+      //
+      // The `select` fans out over this partner's subscribed endpoints, so a
+      // partner with none inserts no rows at all and the outbox only ever
+      // holds work with somewhere to go.
       const row = await one(
-        `insert into directory_mandates
-           (id, tenant_id, agent_id, principal_id, mandate_hash, signature_kind, document,
-            signature, jws, valid_from, valid_until, anchor_tx, supersedes_id)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) returning *`,
+        `with inserted as (
+           insert into directory_mandates
+             (id, tenant_id, agent_id, principal_id, mandate_hash, signature_kind, document,
+              signature, jws, valid_from, valid_until, anchor_tx, supersedes_id)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) returning *
+         ), queued as (
+           insert into directory_webhook_deliveries (id, endpoint_id, partner_id, event_id, type, payload)
+           select
+             $14 || ':' || e.id,
+             e.id,
+             e.partner_id,
+             $15,
+             'mandate.activated',
+             json_build_object(
+               'mandate_id', inserted.id,
+               'tenant_id', inserted.tenant_id,
+               'agent_id', inserted.agent_id
+             )
+           from inserted
+           join directory_tenants t on t.id = inserted.tenant_id
+           join directory_webhook_endpoints e
+             on e.partner_id = t.partner_id and e.deleted_at is null and 'mandate.activated' = any(e.events)
+         )
+         select * from inserted`,
         [
           id,
           input.tenantId,
@@ -905,6 +1024,8 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
           input.validUntil,
           input.anchorTx,
           input.supersedesId ?? null,
+          eventId,
+          eventId,
         ],
         toMandate,
       );
@@ -947,9 +1068,34 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
     },
 
     async revokeMandate(mandateHash, revokeTx, at) {
+      const eventId = newId("webhookEvent");
+      // Same shape as `recordMandate`, and the `revoked_at is null` guard is
+      // doing double duty: it already made this idempotent, and because the
+      // event is fanned out from `updated`, a second revoke of the same
+      // Mandate updates no row and therefore queues no second event (T94).
       await pool.query(
-        "update directory_mandates set revoked_at = $2, revoke_tx = $3 where mandate_hash = $1 and revoked_at is null",
-        [mandateHash, at ?? new Date(), revokeTx],
+        `with updated as (
+           update directory_mandates set revoked_at = $2, revoke_tx = $3
+           where mandate_hash = $1 and revoked_at is null
+           returning *
+         )
+         insert into directory_webhook_deliveries (id, endpoint_id, partner_id, event_id, type, payload)
+         select
+           $4 || ':' || e.id,
+           e.id,
+           e.partner_id,
+           $5,
+           'mandate.revoked',
+           json_build_object(
+             'mandate_id', updated.id,
+             'tenant_id', updated.tenant_id,
+             'agent_id', updated.agent_id
+           )
+         from updated
+         join directory_tenants t on t.id = updated.tenant_id
+         join directory_webhook_endpoints e
+           on e.partner_id = t.partner_id and e.deleted_at is null and 'mandate.revoked' = any(e.events)`,
+        [mandateHash, at ?? new Date(), revokeTx, eventId, eventId],
       );
     },
 
@@ -1012,11 +1158,32 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
 
     async createPurchase(input) {
       const id = newId("purchase");
+      const eventId = newId("webhookEvent");
+      // `payment.settled` or `payment.refused`, chosen from the row's own
+      // outcome rather than from a second copy of that decision here — the
+      // event type and the stored outcome cannot disagree (T94).
       const row = await one(
-        `insert into directory_purchases
-           (id, tenant_id, agent_id, mandate_id, partner_id, outcome, code, reason, venue, product_id,
-            quantity, intent_id, total, asset, pay_to, transaction_hash, delivery)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning *`,
+        `with inserted as (
+           insert into directory_purchases
+             (id, tenant_id, agent_id, mandate_id, partner_id, outcome, code, reason, venue, product_id,
+              quantity, intent_id, total, asset, pay_to, transaction_hash, delivery)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning *
+         ), queued as (
+           insert into directory_webhook_deliveries (id, endpoint_id, partner_id, event_id, type, payload)
+           select
+             $18 || ':' || e.id,
+             e.id,
+             e.partner_id,
+             $19,
+             'payment.' || inserted.outcome,
+             json_build_object('purchase_id', inserted.id, 'tenant_id', inserted.tenant_id)
+           from inserted
+           join directory_webhook_endpoints e
+             on e.partner_id = inserted.partner_id
+            and e.deleted_at is null
+            and ('payment.' || inserted.outcome) = any(e.events)
+         )
+         select * from inserted`,
         [
           id,
           input.tenantId,
@@ -1035,6 +1202,8 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
           input.payTo,
           input.transactionHash,
           input.delivery === null ? null : JSON.stringify(input.delivery),
+          eventId,
+          eventId,
         ],
         toPurchase,
       );
@@ -1055,6 +1224,94 @@ export async function createDirectory(options: DirectoryOptions): Promise<Direct
         [tenantId, limit],
       );
       return rows.map(toPurchase);
+    },
+
+    // ---- webhooks (T94) ---------------------------------------------------
+
+    async createWebhookEndpoint(input) {
+      const id = newId("webhookEndpoint");
+      const row = await one(
+        `insert into directory_webhook_endpoints (id, partner_id, url, secret, events)
+         values ($1, $2, $3, $4, $5) returning *`,
+        [id, input.partnerId, input.url, input.secret, [...input.events]],
+        toWebhookEndpoint,
+      );
+      if (row === undefined) throw wrap("inserting a webhook endpoint returned no row", undefined, { id });
+      // The secret comes from the input rather than from the row: it is the
+      // same value, and reading it back would be one more place it travels.
+      return { ...row, secret: input.secret };
+    },
+
+    async listWebhookEndpoints(partnerId) {
+      const { rows } = await pool.query<Record<string, unknown>>(
+        "select * from directory_webhook_endpoints where partner_id = $1 and deleted_at is null order by id asc",
+        [partnerId],
+      );
+      return rows.map(toWebhookEndpoint);
+    },
+
+    async deleteWebhookEndpoint(id, partnerId, at) {
+      // Soft, because delivery rows reference it, and because an endpoint
+      // deleted mid-flight must not change where an already-queued event was
+      // destined. `partner_id` is in the predicate rather than checked
+      // afterwards: another partner's id deletes nothing and reports the same
+      // "not found" an id that never existed does.
+      const { rowCount } = await pool.query(
+        "update directory_webhook_endpoints set deleted_at = $3 where id = $1 and partner_id = $2 and deleted_at is null",
+        [id, partnerId, at ?? new Date()],
+      );
+      return (rowCount ?? 0) > 0;
+    },
+
+    async claimDueWebhookDeliveries(limit, now) {
+      // The claim and the read are one statement, so two drains — two Render
+      // instances, or one process overlapping its own previous pass — cannot
+      // both take the same row. `for update skip locked` is what makes the
+      // second one step over what the first is holding instead of blocking
+      // on it. Bumping `next_attempt_at` immediately is the lease: a claimed
+      // row is invisible to any other drain until that time passes, so a
+      // crash mid-delivery costs one retry cycle rather than a stuck row.
+      const at = now ?? new Date();
+      const { rows } = await pool.query<Record<string, unknown>>(
+        `with claimed as (
+           select d.id from directory_webhook_deliveries d
+           where d.delivered_at is null and d.gave_up_at is null and d.next_attempt_at <= $1
+           order by d.next_attempt_at asc
+           limit $2
+           for update skip locked
+         ), leased as (
+           update directory_webhook_deliveries d
+           set attempts = d.attempts + 1, next_attempt_at = $1 + interval '2 minutes'
+           from claimed where d.id = claimed.id
+           returning d.*
+         )
+         select leased.*, e.url, e.secret
+         from leased join directory_webhook_endpoints e on e.id = leased.endpoint_id`,
+        [at, limit],
+      );
+      return rows.map(toDueWebhookDelivery);
+    },
+
+    async markWebhookDelivered(id, at) {
+      await pool.query(
+        "update directory_webhook_deliveries set delivered_at = $2, last_error = null where id = $1",
+        [id, at ?? new Date()],
+      );
+    },
+
+    async markWebhookFailed(input) {
+      // `gave_up_at` rather than deleting the row: "we tried and stopped" is a
+      // different fact from "nothing ever happened", and an operator asking
+      // why a partner never heard about a purchase needs to be able to tell
+      // them apart.
+      await pool.query(
+        `update directory_webhook_deliveries
+         set last_error = $2,
+             gave_up_at = case when $3::boolean then $4 else null end,
+             next_attempt_at = case when $3::boolean then next_attempt_at else $5 end
+         where id = $1`,
+        [input.id, input.lastError, input.giveUp, input.at ?? new Date(), input.nextAttemptAt ?? new Date()],
+      );
     },
 
     async createConsentSession(input) {

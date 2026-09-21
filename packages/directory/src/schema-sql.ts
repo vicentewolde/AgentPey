@@ -24,7 +24,7 @@
  */
 
 /** Bumped when the layout changes incompatibly. Mirrors the contracts' own convention. */
-export const DIRECTORY_SCHEMA_VERSION = 9;
+export const DIRECTORY_SCHEMA_VERSION = 10;
 
 export const DIRECTORY_SCHEMA_SQL: readonly string[] = [
   `create sequence if not exists directory_key_index_seq as bigint start with 0 minvalue 0`,
@@ -273,4 +273,64 @@ export const DIRECTORY_SCHEMA_SQL: readonly string[] = [
   // every row written before this column existed stays `null` rather than
   // being back-filled with a guess.
   `alter table directory_purchases add column if not exists mandate_id text references directory_mandates(id)`,
+
+  // Schema version 10 (T94): live webhooks.
+  //
+  // `@agentpey/webhooks` (T48) has been able to *deliver* an event since the
+  // day it was written, and nothing has ever created one: no `package.json`
+  // in this repo depends on it, and a partner had nowhere to register a URL.
+  // These two tables are the missing halves — where a partner says where to
+  // send events, and what is waiting to be sent.
+  //
+  // `secret` is stored in the clear, unlike `directory_api_keys.key_hash`,
+  // and the difference is forced rather than chosen: an API key secret is
+  // only ever *compared*, so a hash suffices, while a webhook secret is used
+  // to **sign** every delivery, so this process has to be able to read it
+  // back. The consequence is worth stating plainly: anything that can read
+  // this table can forge a webhook to that partner. That is inherent to HMAC
+  // webhooks, not something this schema could design away.
+  `create table if not exists directory_webhook_endpoints (
+     id         text        primary key,
+     partner_id text        not null references directory_partners(id),
+     url        text        not null,
+     secret     text        not null,
+     events     text[]      not null,
+     created_at timestamptz not null default now(),
+     deleted_at timestamptz
+   )`,
+
+  `create index if not exists directory_webhook_endpoints_partner_idx on directory_webhook_endpoints (partner_id) where deleted_at is null`,
+
+  // The outbox. One row per (event, endpoint), not per event: one partner's
+  // broken endpoint must not hold back delivery to another of its own, and
+  // each destination carries its own attempt count and backoff.
+  //
+  // Rows are written **inside the same statement** as the state change they
+  // describe (see `recordMandate`, `revokeMandate` and `createPurchase`), so
+  // an event cannot exist for a change that rolled back, and a change cannot
+  // commit without its event. Postgres runs a single statement atomically,
+  // which is why those writes are CTEs rather than two queries.
+  //
+  // Nothing is inserted when a partner has no endpoint subscribed to that
+  // type, so this table only ever holds work with somewhere to go.
+  `create table if not exists directory_webhook_deliveries (
+     id              text        primary key,
+     endpoint_id     text        not null references directory_webhook_endpoints(id),
+     partner_id      text        not null references directory_partners(id),
+     event_id        text        not null,
+     type            text        not null,
+     payload         json        not null,
+     created_at      timestamptz not null default now(),
+     attempts        integer     not null default 0,
+     next_attempt_at timestamptz not null default now(),
+     delivered_at    timestamptz,
+     /** Set when the attempts are exhausted or the endpoint refused permanently. */
+     gave_up_at      timestamptz,
+     last_error      text
+   )`,
+
+  // The drain's only query: what is still owed, and due now.
+  `create index if not exists directory_webhook_deliveries_due_idx
+     on directory_webhook_deliveries (next_attempt_at)
+     where delivered_at is null and gave_up_at is null`,
 ];

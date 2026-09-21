@@ -91,6 +91,9 @@ describe("deliverWebhook", () => {
         delivered: false,
         attempts: 1,
         lastError: "HTTP 422",
+        // T94: the endpoint read the request and said no. Re-sending the same
+        // body to the same URL gets the same answer.
+        retryable: false,
       });
       expect(calls).toBe(1);
     } finally {
@@ -149,6 +152,8 @@ describe("createFailedDeliveryQueue", () => {
         delivered: false,
         attempts: 1,
         lastError: "HTTP 500",
+        // T94: a 5xx is the endpoint being unwell, not refusing.
+        retryable: true,
       });
       expect(queue.list()).toHaveLength(1);
       expect(queue.list()[0]).toMatchObject({ url: server.url, event, attempts: 1, lastError: "HTTP 500" });
@@ -159,5 +164,69 @@ describe("createFailedDeliveryQueue", () => {
     } finally {
       await server.close();
     }
+  });
+});
+
+/** T94: what a durable outbox needs from this package beyond "did it land?". */
+describe("deliverWebhook — retryable", () => {
+  it("marks a timeout retryable", async () => {
+    // Honours the abort signal, like a real `fetch` — otherwise this never
+    // resolves and the test measures nothing but its own patience.
+    const never = ((_url: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      })) as typeof fetch;
+
+    const result = await deliverWebhook({
+      url: "https://partner.example/hooks",
+      secret: SECRET,
+      event,
+      maxAttempts: 1,
+      fetchImpl: never,
+    });
+    expect(result).toMatchObject({ delivered: false, retryable: true });
+    expect((result as { lastError: string }).lastError).toContain("timed out");
+  }, 15_000);
+
+  it("marks a network failure retryable", async () => {
+    const broken = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const result = await deliverWebhook({
+      url: "https://partner.example/hooks",
+      secret: SECRET,
+      event,
+      maxAttempts: 1,
+      fetchImpl: broken,
+    });
+    expect(result).toMatchObject({ delivered: false, retryable: true, lastError: "fetch failed" });
+  });
+
+  it("marks every 4xx permanent, not only the ones a partner might retry by hand", async () => {
+    for (const status of [400, 401, 403, 404, 410, 422]) {
+      const refusing = (async () => new Response("no", { status })) as typeof fetch;
+      const result = await deliverWebhook({
+        url: "https://partner.example/hooks",
+        secret: SECRET,
+        event,
+        maxAttempts: 3,
+        fetchImpl: refusing,
+      });
+      expect(result).toMatchObject({ delivered: false, retryable: false, attempts: 1 });
+    }
+  });
+
+  it("refuses to follow a redirect rather than chasing it inward", async () => {
+    // The cheap half of DNS rebinding: answer once from a public address, then
+    // 302 to the metadata endpoint. `redirect: "error"` makes that a failed
+    // attempt instead of a request this process makes to itself.
+    let redirectMode: string | undefined;
+    const capturing = (async (_url: string | URL | Request, init?: RequestInit) => {
+      redirectMode = init?.redirect;
+      return new Response("", { status: 200 });
+    }) as typeof fetch;
+
+    await deliverWebhook({ url: "https://partner.example/hooks", secret: SECRET, event, fetchImpl: capturing });
+    expect(redirectMode).toBe("error");
   });
 });

@@ -276,6 +276,93 @@ construir sobre ella:
 Si te equivocás de campo —por ejemplo mandando `dry_run`— la respuesta es
 `400`, no un campo ignorado en silencio.
 
+## 7c. Recibir avisos en vez de preguntar
+
+En vez de consultar `/v1/consent_sessions/{id}` y `/v1/purchases/{id}` hasta
+que cambien, CloudOps puede registrar una URL y que AgentPey le avise. Necesita
+`webhooks:write` para registrar y `webhooks:read` para listar — son permisos
+separados porque registrar un endpoint es lo único que hace que AgentPey abra
+una conexión saliente hacia una dirección que elegís vos.
+
+```sh
+export WEBHOOK_IDEMPOTENCY_KEY="$(uuidgen)"
+WEBHOOK_JSON="$(curl --fail-with-body --silent --show-error \
+  --request POST "$AGENTPAY_BASE_URL/v1/webhook_endpoints" \
+  --header "Authorization: Bearer $AGENTPAY_API_KEY" \
+  --header "Idempotency-Key: $WEBHOOK_IDEMPOTENCY_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "url": "https://cloudops.example/hooks/agentpey",
+    "events": ["mandate.activated", "mandate.revoked", "payment.settled", "payment.refused"]
+  }')"
+printf '%s\n' "$WEBHOOK_JSON" | jq .
+```
+
+**Guardá `secret` ahora.** Es la única vez que viaja: todo `GET` posterior lo
+devuelve en `null`, igual que una API key. Si lo perdés, registrás un endpoint
+nuevo.
+
+### Los cuatro eventos
+
+Solo se puede suscribir a lo que algo emite de verdad: `mandate.activated`,
+`mandate.revoked`, `payment.settled` y `payment.refused`. Pedir otro nombre da
+`400`. Una suscripción que nunca puede dispararse es peor que ninguna, porque
+parece cableada.
+
+### Qué llega, y qué no
+
+El evento es **delgado**: trae los ids de lo que cambió y nada más.
+
+```json
+{
+  "id": "evt_...",
+  "type": "payment.settled",
+  "created_at": "2026-09-20T12:00:00.000Z",
+  "data": { "purchase_id": "pur_...", "tenant_id": "ptn_...:..." }
+}
+```
+
+Para el detalle, leé el recurso con tu propia key: `GET /v1/purchases/{id}` o
+`GET /v1/mandates/{id}`. Es a propósito — una entrega que se desvía filtra
+identificadores y nada más, y lo que leas va a ser el estado actual en vez de
+lo que era cierto cuando el evento se encoló.
+
+### Verificar la firma
+
+Cada entrega trae `AgentPay-Signature: t=<unix ms>,v1=<hmac hex>`. `v1` firma
+`${t}.${cuerpo_crudo}` con HMAC-SHA256 y tu `secret`. Verificá **sobre el
+cuerpo crudo**, antes de parsear el JSON, y rechazá una `t` de más de cinco
+minutos: esa ventana es lo que impide que alguien reenvíe una entrega vieja.
+
+### Reintentos, y cuándo se deja de intentar
+
+Un `2xx` cierra el evento. Un `5xx`, un timeout o un fallo de red se reintenta
+con espera creciente —1, 3, 9, 27, 81 y 135 minutos— hasta seis intentos. Un
+`4xx` **no** se reintenta: leíste el pedido y dijiste que no, y mandarte el
+mismo cuerpo otra vez daría lo mismo. Devolvé `2xx` apenas lo recibas y hacé el
+trabajo después; si tardás más de 10 segundos, la entrega se corta por timeout.
+
+Tu endpoint tiene que aceptar recibir el mismo evento más de una vez. El `id`
+es estable, así que usalo como clave de deduplicación.
+
+### Qué URL se acepta
+
+`https`, sin credenciales, sin puerto propio, y un nombre de host público — no
+una IP. El host se resuelve de nuevo **en cada entrega**, y si en ese momento
+apunta a una dirección privada la entrega se descarta sin reintentos. Una
+redirección tampoco se sigue: si tu endpoint se mudó, registrá la URL nueva.
+
+### Dejar de recibir
+
+```sh
+curl --fail-with-body --silent --show-error \
+  --request DELETE "$AGENTPAY_BASE_URL/v1/webhook_endpoints/$WEBHOOK_ENDPOINT_ID" \
+  --header "Authorization: Bearer $AGENTPAY_API_KEY"
+```
+
+Responde `204`. Los eventos ya encolados para ese endpoint se siguen
+entregando: borrar corta los nuevos, no retira lo que ya pasó.
+
 ## 8. Errores y reintentos
 
 Todas las respuestas de error usan este envelope:

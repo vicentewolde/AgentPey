@@ -7,8 +7,10 @@ import {
   createTenantRequestSchema,
   errorEnvelopeSchema,
   mandateResourceSchema,
+  createWebhookEndpointRequestSchema,
   previewPurchaseRequestSchema,
   purchasePreviewResourceSchema,
+  webhookEndpointResourceSchema,
   tenantResourceSchema,
   type AgentResource,
   type ConsentSessionResource,
@@ -16,7 +18,9 @@ import {
   type CreateTenantRequest,
   type MandateResource,
   type PreviewPurchaseRequest,
+  type CreateWebhookEndpointRequest,
   type PurchasePreviewResource,
+  type WebhookEndpointResource,
   type TenantResource,
 } from "@agentpey/partner-api";
 import { randomUUID } from "node:crypto";
@@ -64,6 +68,23 @@ export interface PartnerClient {
    * tracked gap, not a statement that a partner should only ever preview.
    */
   previewPurchase(input: PreviewPurchaseRequest): Promise<PurchasePreviewResource>;
+  /**
+   * Registers where to send this partner's events (T94). Needs the
+   * `webhooks:write` scope.
+   *
+   * **The returned `secret` is the only copy.** Every later read of this
+   * endpoint has `secret: null`, exactly like an API key. Store it before the
+   * promise's value goes out of scope; a partner that loses it registers a new
+   * endpoint.
+   */
+  createWebhookEndpoint(
+    input: CreateWebhookEndpointRequest,
+    options?: IdempotentRequestOptions,
+  ): Promise<WebhookEndpointResource>;
+  /** This partner's live endpoints. Needs `webhooks:read`. Never carries a secret. */
+  listWebhookEndpoints(): Promise<readonly WebhookEndpointResource[]>;
+  /** Stops new events going to `id`. Needs `webhooks:write`. Already-queued events still go. */
+  deleteWebhookEndpoint(id: string): Promise<void>;
 }
 
 function configError(message: string): AgentPassError {
@@ -109,6 +130,45 @@ export function createPartnerClient(options: PartnerClientOptions): PartnerClien
   const baseUrl = parseBaseUrl(options.baseUrl);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw configError("timeoutMs must be a positive finite number");
+
+  /**
+   * A route that answers `204` with no body — `DELETE /v1/webhook_endpoints/{id}`
+   * is the first (T94).
+   *
+   * Separate from {@link request} rather than a flag on it, because every line
+   * of that function after the fetch is about reading a body: a `204` has
+   * none, and `response.json()` on one throws. The two share the auth header,
+   * the timeout and the error-envelope handling, which is the part that must
+   * not drift.
+   */
+  async function requestNoContent(path: string, init: RequestInit = {}): Promise<void> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    let response: Response;
+
+    try {
+      response = await fetch(new URL(path, baseUrl), {
+        ...init,
+        headers: { Authorization: `Bearer ${options.apiKey}`, ...init.headers },
+        signal: controller.signal,
+      });
+    } catch (error) {
+      throw new AgentPassError("NetworkError", "could not reach the partner API", { cause: error });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (response.status === 204) return;
+
+    // Anything else carries an error envelope, and the same typed failure a
+    // body-bearing route would produce.
+    const body: unknown = await response.json().catch(() => undefined);
+    const errorEnvelope = errorEnvelopeSchema.safeParse(body);
+    if (errorEnvelope.success) {
+      throw toRemoteError(errorEnvelope.data.code, errorEnvelope.data.message, errorEnvelope.data.details);
+    }
+    throw responseError("the partner API returned an unexpected response to a delete", response.status);
+  }
 
   async function request<T>(
     path: string,
@@ -190,6 +250,19 @@ export function createPartnerClient(options: PartnerClientOptions): PartnerClien
     getConsentSession: (id) => request(`/v1/consent_sessions/${encodedPathSegment(id)}`, consentSessionResourceSchema),
     getMandate: (id) => request(`/v1/mandates/${encodedPathSegment(id)}`, mandateResourceSchema),
     listMandates: (tenantId) => request(`/v1/mandates?${tenantQuery(tenantId)}`, z.array(mandateResourceSchema)),
+    createWebhookEndpoint: async (input, requestOptions = {}) => {
+      const body = parseRequest(createWebhookEndpointRequestSchema, input, "createWebhookEndpoint");
+      const idempotencyKey = requestOptions.idempotencyKey ?? randomUUID();
+      return request("/v1/webhook_endpoints", webhookEndpointResourceSchema, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify(body),
+      });
+    },
+    listWebhookEndpoints: () => request("/v1/webhook_endpoints", z.array(webhookEndpointResourceSchema)),
+    deleteWebhookEndpoint: async (id) => {
+      await requestNoContent(`/v1/webhook_endpoints/${encodedPathSegment(id)}`, { method: "DELETE" });
+    },
     previewPurchase: async (input) => {
       const body = parseRequest(previewPurchaseRequestSchema, input, "previewPurchase");
       return request("/v1/purchases/preview", purchasePreviewResourceSchema, {

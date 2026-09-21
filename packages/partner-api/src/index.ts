@@ -80,6 +80,24 @@ export {
 } from "./resources/consent-sessions.js";
 
 export {
+  assertWebhookUrlResolvesPublicly,
+  assertWebhookUrlShape,
+  isPrivateAddress,
+  type AllowedWebhookUrl,
+  type ResolveHost,
+} from "./webhook-url.js";
+
+export {
+  createWebhookEndpointRequestSchema,
+  mandateEventDataSchema,
+  paymentEventDataSchema,
+  webhookEndpointIdSchema,
+  webhookEndpointResourceSchema,
+  type CreateWebhookEndpointRequest,
+  type WebhookEndpointResource,
+} from "./resources/webhook-endpoints.js";
+
+export {
   createPurchaseRequestSchema,
   previewPurchaseRequestSchema,
   purchaseDeliverySchema,

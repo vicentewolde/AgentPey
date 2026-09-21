@@ -34,6 +34,14 @@
  * `payments:authorize` either — this list is flat, and inventing a hierarchy
  * for one pair would make every future reader wonder which other pairs have one.
  *
+ * **T94 adds `webhooks:read` and `webhooks:write`**, split for a reason that
+ * is sharper here than anywhere else in this list. Registering an endpoint is
+ * the one thing a partner can do that makes *this* process open an outbound
+ * connection to an address *they* chose — the SSRF surface `webhook-url.ts`
+ * exists to fence. Listing endpoints is harmless. Folding the two together
+ * would mean a key that only needs to display a partner's configuration also
+ * carries the power to point AgentPey's network at something.
+ *
  * `mandates:revoke` is still not included: revocation stays a wallet-signed
  * action the principal takes through the hosted flow, not something a
  * partner's API key can trigger on their behalf.
@@ -51,6 +59,8 @@ export const API_SCOPES = [
   "payments:preview",
   "payments:read",
   "vault:read",
+  "webhooks:read",
+  "webhooks:write",
 ] as const;
 
 export const apiScopeSchema = z.enum(API_SCOPES);

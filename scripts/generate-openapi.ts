@@ -7,8 +7,10 @@ import {
   consentSessionResourceSchema,
   createConsentSessionRequestSchema,
   createPurchaseRequestSchema,
+  createWebhookEndpointRequestSchema,
   previewPurchaseRequestSchema,
   purchasePreviewResourceSchema,
+  webhookEndpointResourceSchema,
   createTenantRequestSchema,
   errorEnvelopeSchema,
   mandateResourceSchema,
@@ -71,6 +73,11 @@ const mandateSuccessSchema = successEnvelopeComponent(schemaRef("MandateResource
 const mandateListSuccessSchema = successEnvelopeComponent({ type: "array", items: schemaRef("MandateResource") });
 const purchaseSuccessSchema = successEnvelopeComponent(schemaRef("PurchaseResource"));
 const purchasePreviewSuccessSchema = successEnvelopeComponent(schemaRef("PurchasePreviewResource"));
+const webhookEndpointSuccessSchema = successEnvelopeComponent(schemaRef("WebhookEndpointResource"));
+const webhookEndpointListSuccessSchema = successEnvelopeComponent({
+  type: "array",
+  items: schemaRef("WebhookEndpointResource"),
+});
 const tenantActivitySuccessSchema = successEnvelopeComponent(schemaRef("TenantActivityResource"));
 
 const errorResponse = {
@@ -296,6 +303,58 @@ const document = {
         },
       },
     },
+    "/v1/webhook_endpoints": {
+      post: {
+        operationId: "createWebhookEndpoint",
+        summary: "Register where to send this partner's events",
+        description:
+          "Requires the webhooks:write scope, which is separate from webhooks:read because registering an endpoint is the one thing a partner can do that makes AgentPey open an outbound connection to an address the partner chose. The URL must be https, must not carry credentials, must use the default port, and must name a public host rather than an IP address; the same host is resolved again at every delivery and refused if it then points at a private address, because the hostname stays the partner's to repoint. Only event types something actually emits may be subscribed to — mandate.activated, mandate.revoked, payment.settled and payment.refused — so a subscription that could never fire cannot be created. The signing secret is returned once, on this response, and never again: every delivery carries an agentpay-signature header whose v1 value is an HMAC over the timestamp and the raw body. Events are thin: they carry the ids of what changed, and the partner reads the resource itself through /v1 with its own key, so a delivery that goes astray leaks identifiers and nothing else.",
+        security: bearerSecurity,
+        parameters: [idempotencyKeyParameter],
+        requestBody: {
+          required: true,
+          content: { [JSON_MEDIA_TYPE]: { schema: schemaRef("CreateWebhookEndpointRequest") } },
+        },
+        responses: {
+          "201": {
+            description: "The endpoint, with its signing secret — the only response that carries it.",
+            ...jsonContent("WebhookEndpointSuccessResponse"),
+          },
+          ...errorResponses,
+        },
+      },
+      get: {
+        operationId: "listWebhookEndpoints",
+        summary: "List this partner's webhook endpoints",
+        description: "Requires the webhooks:read scope. The signing secret is always null here; it is returned only when the endpoint is created.",
+        security: bearerSecurity,
+        responses: {
+          "200": { description: "This partner's live endpoints.", ...jsonContent("WebhookEndpointListSuccessResponse") },
+          ...errorResponses,
+        },
+      },
+    },
+    "/v1/webhook_endpoints/{id}": {
+      delete: {
+        operationId: "deleteWebhookEndpoint",
+        summary: "Stop sending events to an endpoint",
+        description:
+          "Requires the webhooks:write scope. Another partner's endpoint answers 404, identical to an id that does not exist. Events already queued for this endpoint stay queued: a deletion stops new events, it does not retract what already happened.",
+        security: bearerSecurity,
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: fieldSchema(webhookEndpointResourceSchema, "id"),
+          },
+        ],
+        responses: {
+          "204": { description: "Deleted. No body." },
+          ...errorResponses,
+        },
+      },
+    },
     "/v1/tenants/{id}/activity": {
       get: {
         operationId: "getTenantActivity",
@@ -339,9 +398,13 @@ const document = {
       PreviewPurchaseRequest: toJsonSchema(previewPurchaseRequestSchema),
       PurchaseResource: toJsonSchema(purchaseResourceSchema),
       PurchasePreviewResource: toJsonSchema(purchasePreviewResourceSchema),
+      CreateWebhookEndpointRequest: toJsonSchema(createWebhookEndpointRequestSchema),
+      WebhookEndpointResource: toJsonSchema(webhookEndpointResourceSchema),
       TenantActivityResource: toJsonSchema(tenantActivityResourceSchema),
       PurchaseSuccessResponse: purchaseSuccessSchema,
       PurchasePreviewSuccessResponse: purchasePreviewSuccessSchema,
+      WebhookEndpointSuccessResponse: webhookEndpointSuccessSchema,
+      WebhookEndpointListSuccessResponse: webhookEndpointListSuccessSchema,
       TenantActivitySuccessResponse: tenantActivitySuccessSchema,
     },
     securitySchemes: {

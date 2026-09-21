@@ -70,6 +70,13 @@ describe("createDirectory", () => {
     // Children first: every table here is behind a foreign key.
     while (partnerIds.length > 0) {
       const partnerId = partnerIds.pop();
+      // T94: deliveries reference endpoints, and endpoints reference the
+      // partner. Purchases reference mandates, so they have to go before the
+      // mandates do — an order this cleanup got away with only while nothing
+      // wrote a purchase row.
+      await pool.query("delete from directory_webhook_deliveries where partner_id = $1", [partnerId]);
+      await pool.query("delete from directory_webhook_endpoints where partner_id = $1", [partnerId]);
+      await pool.query("delete from directory_purchases where partner_id = $1", [partnerId]);
       await pool.query(
         `delete from directory_consent_sessions where tenant_id in (select id from directory_tenants where partner_id = $1)`,
         [partnerId],
@@ -835,5 +842,302 @@ describe("createDirectory", () => {
     } finally {
       await reopened.close();
     }
+  });
+
+  // ---- webhooks (T94) ----------------------------------------------------
+
+  /**
+   * These are the claims only a real database can support. The events are
+   * fanned out by a CTE inside the very statement that records the change, so
+   * what has to be true here — an event exists exactly when the change does,
+   * a partner with no endpoint queues nothing, a second revoke queues nothing
+   * — is true because of how Postgres runs a statement, not because of
+   * anything TypeScript checks.
+   */
+  async function mandateFixture(events: readonly string[]) {
+    const partner = await freshPartner();
+    const tenant = await directory.createTenant({ partnerId: partner.id, externalRef: `usr_wh_${randomUUID()}` });
+    const agent = await directory.createAgent({ tenantId: tenant.id, derive: deriveFromMaster });
+    const principal = await freshPrincipal(50 + partnerIds.length);
+    const endpoint =
+      events.length === 0
+        ? undefined
+        : await directory.createWebhookEndpoint({
+            partnerId: partner.id,
+            url: "https://partner.example/hooks",
+            secret: `whsec_${randomUUID()}`,
+            events,
+          });
+    return { partner, tenant, agent, principal, endpoint };
+  }
+
+  async function deliveriesFor(partnerId: string): Promise<Array<{ type: string; payload: Record<string, unknown>; endpoint_id: string }>> {
+    const { rows } = await pool.query<{ type: string; payload: Record<string, unknown>; endpoint_id: string }>(
+      "select type, payload, endpoint_id from directory_webhook_deliveries where partner_id = $1 order by id asc",
+      [partnerId],
+    );
+    return rows;
+  }
+
+  it("queues mandate.activated in the same statement that records the mandate", async () => {
+    const { partner, tenant, agent, principal } = await mandateFixture(["mandate.activated"]);
+
+    const mandate = await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    const queued = await deliveriesFor(partner.id);
+    expect(queued).toHaveLength(1);
+    expect(queued[0]?.type).toBe("mandate.activated");
+    // Thin: ids only. Nothing a misdirected delivery could leak.
+    expect(queued[0]?.payload).toEqual({
+      mandate_id: mandate.id,
+      tenant_id: tenant.id,
+      agent_id: agent.id,
+    });
+  });
+
+  it("queues nothing for a partner with no endpoint — the outbox only holds work with somewhere to go", async () => {
+    const { partner, tenant, agent, principal } = await mandateFixture([]);
+
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    expect(await deliveriesFor(partner.id)).toEqual([]);
+  });
+
+  it("queues nothing for an endpoint that did not subscribe to that type", async () => {
+    const { partner, tenant, agent, principal } = await mandateFixture(["payment.settled"]);
+
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    expect(await deliveriesFor(partner.id)).toEqual([]);
+  });
+
+  it("queues mandate.revoked once, and a second revoke of the same mandate queues nothing", async () => {
+    // The `revoked_at is null` guard already made the update idempotent; the
+    // event is fanned out from the updated row, so idempotence comes free.
+    const { partner, tenant, agent, principal } = await mandateFixture(["mandate.revoked"]);
+    const mandateHash = randomUUID().replaceAll("-", "").padEnd(64, "0");
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash,
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    await directory.revokeMandate(mandateHash, "tx-revoke");
+    await directory.revokeMandate(mandateHash, "tx-revoke-again");
+
+    const queued = await deliveriesFor(partner.id);
+    expect(queued.filter((row) => row.type === "mandate.revoked")).toHaveLength(1);
+  });
+
+  it("names the event after the purchase's own outcome, so the two cannot disagree", async () => {
+    const { partner, tenant, agent, principal } = await mandateFixture(["payment.settled", "payment.refused"]);
+    const mandateHash = randomUUID().replaceAll("-", "").padEnd(64, "0");
+    const mandate = await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash,
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    const base = {
+      tenantId: tenant.id,
+      agentId: agent.id,
+      mandateId: mandate.id,
+      partnerId: partner.id,
+      venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F",
+      productId: "market-brief",
+      quantity: 1,
+      intentId: null,
+      total: null,
+      asset: null,
+      payTo: null,
+      transactionHash: null,
+      delivery: null,
+    };
+    const settled = await directory.createPurchase({ ...base, outcome: "settled", code: null, reason: null });
+    await directory.createPurchase({ ...base, outcome: "refused", code: "MandateExpired", reason: "expired" });
+
+    const queued = await deliveriesFor(partner.id);
+    const payments = queued.filter((row) => row.type.startsWith("payment."));
+    expect(payments.map((row) => row.type).sort()).toEqual(["payment.refused", "payment.settled"]);
+    const settledEvent = payments.find((row) => row.type === "payment.settled");
+    expect(settledEvent?.payload).toEqual({ purchase_id: settled.id, tenant_id: tenant.id });
+  });
+
+  it("fans one event out to every subscribed endpoint, with a key per destination", async () => {
+    const { partner, tenant, agent, principal } = await mandateFixture(["mandate.activated"]);
+    await directory.createWebhookEndpoint({
+      partnerId: partner.id,
+      url: "https://partner.example/second",
+      secret: `whsec_${randomUUID()}`,
+      events: ["mandate.activated"],
+    });
+
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    const queued = await deliveriesFor(partner.id);
+    expect(queued).toHaveLength(2);
+    // Each destination carries its own attempt count and backoff, so one
+    // broken endpoint cannot hold back the other.
+    expect(new Set(queued.map((row) => row.endpoint_id)).size).toBe(2);
+  });
+
+  it("stops queueing for a deleted endpoint, and leaves what was already owed alone", async () => {
+    const { partner, tenant, agent, principal, endpoint } = await mandateFixture(["mandate.activated"]);
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+    expect(await deliveriesFor(partner.id)).toHaveLength(1);
+
+    expect(await directory.deleteWebhookEndpoint(endpoint!.id, partner.id)).toBe(true);
+    expect(await directory.listWebhookEndpoints(partner.id)).toEqual([]);
+
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "two" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor-2",
+    });
+
+    // Still one: nothing new was queued, and a deletion is not a retraction of
+    // what already happened.
+    expect(await deliveriesFor(partner.id)).toHaveLength(1);
+  });
+
+  it("does not delete another partner's endpoint, and says the same 'no' an unknown id does", async () => {
+    const { partner, endpoint } = await mandateFixture(["mandate.activated"]);
+    const other = await freshPartner();
+    expect(await directory.deleteWebhookEndpoint(endpoint!.id, other.id)).toBe(false);
+    expect(await directory.listWebhookEndpoints(partner.id)).toHaveLength(1);
+  });
+
+  it("claims a due delivery once, and leases it away from a second drain", async () => {
+    // Two instances drain the same table. `for update skip locked` plus the
+    // lease is what stops both sending the same event.
+    const { partner, tenant, agent, principal } = await mandateFixture(["mandate.activated"]);
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    const first = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
+    expect(first).toHaveLength(1);
+    expect(first[0]?.attempts).toBe(1);
+    expect(first[0]?.url).toBe("https://partner.example/hooks");
+    expect(first[0]?.event.type).toBe("mandate.activated");
+
+    const second = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
+    expect(second).toEqual([]);
+
+    await directory.markWebhookDelivered(first[0]!.id);
+    // Delivered rows never come back, even once the lease expires.
+    const later = (await directory.claimDueWebhookDeliveries(10, new Date(Date.now() + 10 * 60_000))).filter(
+      (row) => row.partnerId === partner.id,
+    );
+    expect(later).toEqual([]);
+  });
+
+  it("stops claiming a delivery that was given up on", async () => {
+    const { partner, tenant, agent, principal } = await mandateFixture(["mandate.activated"]);
+    await directory.recordMandate({
+      tenantId: tenant.id,
+      agentId: agent.id,
+      principalId: principal.id,
+      mandateHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+      signatureKind: "wallet-sep53",
+      document: { grant: "one" },
+      signature: "sig",
+      validFrom: new Date("2026-09-20T00:00:00.000Z"),
+      validUntil: new Date("2026-09-21T00:00:00.000Z"),
+      anchorTx: "tx-anchor",
+    });
+
+    const [claimed] = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
+    await directory.markWebhookFailed({ id: claimed!.id, lastError: "HTTP 410", giveUp: true });
+
+    const later = (await directory.claimDueWebhookDeliveries(10, new Date(Date.now() + 10 * 60_000))).filter(
+      (row) => row.partnerId === partner.id,
+    );
+    expect(later).toEqual([]);
   });
 });

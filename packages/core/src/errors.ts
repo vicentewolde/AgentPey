@@ -138,6 +138,10 @@ export type AgentPassErrorCode =
   | "SpendAlreadySettled"
   /** The agent's `policy_rail` does not hold enough USDC to pay for this purchase. */
   | "RailInsufficientFunds"
+  /** A webhook endpoint's URL is not one this platform will send to — wrong scheme, a port, or an address that does not route publicly. */
+  | "WebhookUrlNotAllowed"
+  /** No webhook endpoint visible to this partner has that id. */
+  | "WebhookEndpointNotFound"
   /** A tenant index is negative, non-integer, or outside BIP-32's hardened range. */
   | "InvalidTenantIndex"
   /** A partner-supplied external reference is malformed, or looks like personal data. */

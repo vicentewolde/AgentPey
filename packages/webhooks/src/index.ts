@@ -31,6 +31,17 @@ export interface FailedWebhookDelivery {
   readonly delivered: false;
   readonly attempts: number;
   readonly lastError: string;
+  /**
+   * Whether trying again could plausibly work — T94.
+   *
+   * T48 could leave this out because it retried in-process and the caller
+   * only ever saw the final verdict. A durable outbox drains with
+   * `maxAttempts: 1` and keeps the retry state itself, so it has to be told
+   * *why* an attempt failed: a `5xx` or a timeout is worth another pass,
+   * while a `4xx` means the endpoint read the request and rejected it, and
+   * re-sending the same body to the same URL will be rejected the same way.
+   */
+  readonly retryable: boolean;
 }
 
 export type WebhookDeliveryResult = DeliveredWebhook | FailedWebhookDelivery;
@@ -90,6 +101,13 @@ async function deliverAttempt(
         [WEBHOOK_SIGNATURE_HEADER]: signature,
       },
       body: rawBody,
+      // A redirect is not followed, it is an error — T94. The URL policy
+      // (`webhook-url.ts`) resolves the host and refuses private addresses
+      // before this runs, and following a redirect would hand that decision
+      // straight back to whoever answered: `200` from a public address, then
+      // `302` to `169.254.169.254`. There is no legitimate reason for a
+      // webhook receiver to redirect a POST it asked to receive.
+      redirect: "error",
       signal: controller.signal,
     });
   } catch (error) {
@@ -122,11 +140,11 @@ export async function deliverWebhook(input: WebhookDeliveryInput): Promise<Webho
       }
 
       lastError = `HTTP ${outcome.status}`;
-      if (outcome.status >= 400 && outcome.status < 500) {
-        return { delivered: false, attempts: attempt, lastError };
-      }
+      // Anything below 500 that is not a success: the endpoint answered, and
+      // answered no. Re-sending the identical body will get the identical
+      // answer.
       if (outcome.status < 500) {
-        return { delivered: false, attempts: attempt, lastError };
+        return { delivered: false, attempts: attempt, lastError, retryable: false };
       }
     } else {
       lastError = outcome.lastError;
@@ -135,7 +153,10 @@ export async function deliverWebhook(input: WebhookDeliveryInput): Promise<Webho
     if (attempt < maxAttempts) await wait(backoffMs(attempt));
   }
 
-  return { delivered: false, attempts: maxAttempts, lastError };
+  // Ran out of attempts against a `5xx`, a timeout or a network failure —
+  // all of which are worth another pass from a caller that keeps its own
+  // retry state.
+  return { delivered: false, attempts: maxAttempts, lastError, retryable: true };
 }
 
 /** Creates an in-memory record of deliveries that exhausted the retry policy. */

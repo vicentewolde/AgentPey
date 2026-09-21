@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T89 (rechazos, montos, hora local y botón en vivo), T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción el 2026-09-19), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado) y T93 (`POST /v1/purchases/preview`, `C-125`) · **Sigue:** webhooks en vivo, la tercera de las propuestas que el usuario aprobó · **Fase 6: en curso**
+**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado), T93 (`POST /v1/purchases/preview`, `C-125`, mergeado) y T94 (webhooks en vivo, `C-126`) · **Sigue:** las tres propuestas aprobadas están construidas; sin hito asignado. Queda sin elegir la cuarta idea de la sesión (límite de tasa por API key en `/v1`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -217,7 +217,8 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T90 | F9: la persona elige qué agente compra cuando tiene más de uno del mismo tipo; `POST /v1/purchases` acepta `mandate_id`, validado contra el tenant, que elige el Mandato sin autorizar nada; la compra dice por qué Mandato pasó | ✅ cerrado 2026-09-15 · mergeado a `main` (`f17809a`) (`C-121`) |
 | T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | ✅ cerrado 2026-09-16 · mergeado a `main` (`4a188f6`) · **verificado en producción 2026-09-19** (`C-123`) |
 | T92 | `C-113`: el gasto de una compra que nunca llegó a la red se libera, y un rail sin saldo lo dice con su propio código en vez de parecer una caída del comercio | ✅ cerrado 2026-09-19 · mergeado a `main` (`b8e66a9`) (`C-124`, enmienda `M-23`) |
-| T93 | `POST /v1/purchases/preview`: el enforcement contesta si una compra se permitiría, sin reservar presupuesto, sin firmar y sin pagar — ruta y permiso propios | ✅ cerrado 2026-09-20 (`C-125`) |
+| T93 | `POST /v1/purchases/preview`: el enforcement contesta si una compra se permitiría, sin reservar presupuesto, sin firmar y sin pagar — ruta y permiso propios | ✅ cerrado 2026-09-20 · mergeado a `main` (`dfe52b4`) (`C-125`) |
+| T94 | Webhooks en vivo: registro de endpoints con política de URL propia, outbox escrito en el mismo statement que el cambio, y un drenaje que entrega firmado — cierra el paquete huérfano de T48 | ✅ cerrado 2026-09-20 (`C-126`) |
 
 ---
 
@@ -4150,3 +4151,75 @@ hoy se emitió antes de que este permiso existiera, así que la ruta le responde
 los scopes, así que una key nueva lo trae sola.
 
 **Decisiones:** `C-125`.
+
+---
+
+## T94 — los webhooks salen de verdad
+
+**Qué quedó funcionando, en llano.**
+
+Desde T48 existía el código que sabe firmar y mandar un aviso a un partner. No
+lo llamaba nadie: ningún paquete del repo lo usaba, y un partner no tenía dónde
+anotar su dirección. La única forma de enterarse de que alguien había firmado
+su permiso, o de que una compra se había pagado, era preguntar una y otra vez.
+
+Ahora un partner anota una URL y AgentPey le avisa: cuando se firma un permiso,
+cuando se revoca, y cuando una compra se paga o se rechaza. El aviso va firmado,
+así que el partner puede probar que salió de AgentPey y no de cualquiera.
+
+**Tres cosas que se decidieron y vale entender.**
+
+1. **El aviso lleva solo los identificadores de lo que cambió**, y el partner
+   lee el detalle con su propia llave. Si un aviso se va a la dirección
+   equivocada —una URL vieja, un error del partner—, lo que se filtra son
+   identificadores y nada más: nunca los términos de un permiso ni el enlace a
+   lo que se compró.
+2. **El aviso se anota en la misma operación que el cambio que describe.** No
+   puede existir un aviso de algo que no pasó, ni pasar algo sin su aviso.
+3. **Solo se puede pedir aviso de lo que existe de verdad.** De los siete
+   nombres de evento que había reservados, cuatro tienen código que los dispara
+   y tres no. Pedir uno de esos tres da error, en vez de dejar a alguien
+   esperando un mensaje que este sistema no sabe mandar.
+
+**Lo delicado: por primera vez, un tercero elige adónde nos conectamos.**
+
+Hasta ahora, cada pedido que AgentPey hacia afuera iba a una dirección que
+AgentPey había elegido. Un webhook lo da vuelta. Apuntado hacia adentro, eso
+sirve para hacer que este servidor se conecte a cosas que solo él alcanza —la
+dirección donde las nubes guardan sus credenciales, los procesos hermanos, la
+base de datos. Así que hay una política de URL propia, y se aplica **dos
+veces**: al registrar, y otra vez **en cada entrega**, volviendo a resolver el
+nombre. Un chequeo solo al registrar no sirve: el nombre es del partner y lo
+puede reapuntar cuando quiera.
+
+Lo que esa política **no** cierra está escrito en su propio archivo, no
+escondido: entre resolver el nombre y conectarse, alguien podría hacer que
+resuelva distinto. Cerrarlo del todo necesita algo que el `fetch` de Node no
+deja hacer. Lo que sí está cerrado es la versión barata: no se siguen
+redirecciones.
+
+**La evidencia técnica.**
+
+- Outbox por CTE dentro del mismo statement; una fila por (evento, endpoint),
+  con clave `<id de evento>:<id de endpoint>` — un duplicado sería una
+  violación de clave primaria, no una segunda entrega.
+- Un partner sin endpoints no encola nada: la tabla solo tiene trabajo con
+  destino.
+- La revocación repetida no encola un segundo evento, y eso salió gratis del
+  `revoked_at is null` que ya existía.
+- Drenaje cada 30 s, con `for update skip locked` y arriendo de dos minutos:
+  dos instancias drenan la misma tabla sin saber una de la otra.
+- Un intento por pasada; el estado de reintento vive en la fila y sobrevive un
+  reinicio. Backoff 1, 3, 9, 27, 81 y 135 minutos, hasta seis intentos. Un
+  `4xx` no se reintenta.
+- Dos permisos separados (`webhooks:read`, `webhooks:write`), y el secreto de
+  firma viaja una sola vez.
+- **1473 tests** (eran 1415), `typecheck` y `build` limpios. Salidas crudas en
+  [`evidencia/T94.md`](evidencia/T94.md).
+
+**Lo que falta para usarlo.** Dos cosas, las dos del usuario: la API key de
+partner que existe hoy no tiene los permisos nuevos (se emitió antes), y los
+tests de integración del outbox **no se corrieron** — escriben en el Postgres
+de producción.
+
+**Decisiones:** `C-126`. Esquema del directorio, versión 10.

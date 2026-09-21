@@ -30,6 +30,8 @@ export const credentialIdSchema = idSchema("credential");
 export const mandateIdSchema = idSchema("mandate");
 export const consentSessionIdSchema = idSchema("consentSession");
 export const purchaseIdSchema = idSchema("purchase");
+export const webhookEndpointIdSchema = idSchema("webhookEndpoint");
+
 
 export const tenantIdSchema = z
   .string()
@@ -331,3 +333,53 @@ export type IdempotencyRecord = z.infer<typeof idempotencyRecordSchema>;
 export type ConsentSessionRecord = z.infer<typeof consentSessionRecordSchema>;
 export type ConsentSessionStatus = z.infer<typeof consentSessionStatusSchema>;
 export type PurchaseRecord = z.infer<typeof purchaseRecordSchema>;
+
+// ---- webhooks (T94) ---------------------------------------------------------
+
+/**
+ * Where a partner asked for events to be sent.
+ *
+ * `secret` is deliberately **not** on this record. The plaintext exists in the
+ * table, because every delivery has to be signed with it, but it leaves the
+ * directory only through `createWebhookEndpoint`'s own return value — once, on
+ * the call that minted it — and through the drain, which needs it to sign.
+ * Nothing that merely *lists* endpoints ever carries it.
+ */
+export const webhookEndpointSchema = z.strictObject({
+  id: webhookEndpointIdSchema,
+  partnerId: partnerIdSchema,
+  url: z.url(),
+  events: z.array(z.string().min(1)).min(1),
+  createdAt: z.date(),
+  /** Soft-deleted, never removed: a delivery row references it. */
+  deletedAt: z.date().nullable(),
+});
+
+export type WebhookEndpoint = z.infer<typeof webhookEndpointSchema>;
+
+/**
+ * One event owed to one endpoint.
+ *
+ * Carries `secret` and `url` because the drain reads them together with the
+ * payload — one query rather than a lookup per delivery — and because an
+ * endpoint deleted after the event was queued must not change where that
+ * event was destined.
+ */
+export const dueWebhookDeliverySchema = z.strictObject({
+  /** `<event id>:<endpoint id>` — internal, and never crosses the `/v1` boundary. */
+  id: z.string().min(1),
+  endpointId: webhookEndpointIdSchema,
+  partnerId: partnerIdSchema,
+  url: z.url(),
+  secret: z.string().min(1),
+  /** The event as it goes on the wire: `{ id, type, created_at, data }`. */
+  event: z.strictObject({
+    id: z.string().min(1),
+    type: z.string().min(1),
+    created_at: z.iso.datetime(),
+    data: z.record(z.string(), z.unknown()),
+  }),
+  attempts: z.number().int().min(0),
+});
+
+export type DueWebhookDelivery = z.infer<typeof dueWebhookDeliverySchema>;

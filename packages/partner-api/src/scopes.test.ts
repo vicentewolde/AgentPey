@@ -67,3 +67,17 @@ describe("payments:preview — T93", () => {
     expect(apiScopeCovers(["payments:preview"], "payments:preview")).toBe(true);
   });
 });
+
+describe("webhooks:read and webhooks:write — T94", () => {
+  it("are both permissions a key can be granted", () => {
+    expect(areValidApiScopes(["webhooks:read", "webhooks:write"])).toBe(true);
+  });
+
+  it("do not imply each other", () => {
+    // Registering an endpoint is the one thing a partner can do that makes
+    // this process open an outbound connection to an address they chose.
+    // Listing endpoints is harmless, and should not carry that.
+    expect(apiScopeCovers(["webhooks:read"], "webhooks:write")).toBe(false);
+    expect(apiScopeCovers(["webhooks:write"], "webhooks:read")).toBe(false);
+  });
+});

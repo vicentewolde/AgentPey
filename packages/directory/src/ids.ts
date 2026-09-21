@@ -26,6 +26,8 @@ export const ID_PREFIXES = {
   agent: "agt",
   credential: "crd",
   mandate: "mdt",
+  webhookEndpoint: "whe",
+  webhookEvent: "evt",
   consentSession: "cns",
   /** A purchase a partner asked for through `POST /v1/purchases` (T73/F9). */
   purchase: "pur",

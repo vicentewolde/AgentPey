@@ -169,6 +169,9 @@ importers:
       '@agentpey/vault':
         specifier: workspace:*
         version: link:../../packages/vault
+      '@agentpey/webhooks':
+        specifier: workspace:*
+        version: link:../../packages/webhooks
       '@stellar/stellar-sdk':
         specifier: ^17.0.1
         version: 17.0.1(debug@4.4.3)

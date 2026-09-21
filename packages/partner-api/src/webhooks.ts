@@ -36,6 +36,43 @@ export const webhookEventTypeSchema = z.enum(WEBHOOK_EVENT_TYPES);
 
 export type WebhookEventType = z.infer<typeof webhookEventTypeSchema>;
 
+/**
+ * The subset of {@link WEBHOOK_EVENT_TYPES} that something in this system
+ * actually emits — T94.
+ *
+ * T45 froze seven names on the reasoning that the routes would arrive later.
+ * Four of them now have exactly one write each that can fire them
+ * (`recordMandate`, `revokeMandate`, and `createPurchase` for both outcomes).
+ * The other three do not. `mandate.expiring` needs a sweep that notices a
+ * window closing, and `agent.retired` needs a route that retires an agent —
+ * neither exists. `payment.authorized` is different and more interesting: the
+ * moment it would describe is real (`PolicyRail.authorise` granting), but it
+ * happens mid-purchase, before the merchant's invoice is reconciled, so an
+ * event fired there would announce purchases that then get refused at the
+ * `402`. It stays unsubscribable until there is a reason to want it, rather
+ * than being wired to the nearest plausible line.
+ *
+ * A partner may only subscribe to these four, and the reason is the one
+ * `scopes.ts` already gives for not listing a permission no route checks: a
+ * subscription that can never fire is worse than no subscription, because it
+ * looks wired. An integrator who subscribes to `mandate.expiring` and builds a
+ * renewal reminder on it would be waiting for a message this system has no
+ * code to send.
+ *
+ * The frozen list above is untouched. When something emits `mandate.expiring`,
+ * it moves here; nothing has to be renamed.
+ */
+export const DELIVERABLE_WEBHOOK_EVENT_TYPES = [
+  "mandate.activated",
+  "mandate.revoked",
+  "payment.settled",
+  "payment.refused",
+] as const satisfies readonly WebhookEventType[];
+
+export const deliverableWebhookEventTypeSchema = z.enum(DELIVERABLE_WEBHOOK_EVENT_TYPES);
+
+export type DeliverableWebhookEventType = z.infer<typeof deliverableWebhookEventTypeSchema>;
+
 export const webhookEventSchema = z.strictObject({
   id: z.string().min(1),
   type: webhookEventTypeSchema,
