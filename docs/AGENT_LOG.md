@@ -5610,10 +5610,11 @@ bloque de T95), `evidencia/T95.md`. `AGENTS.md` sin cambios. **1495 tests**
 (eran 1473), `typecheck` y `build` limpios.
 
 Pendiente:
-- **Merge de `cc/t95-rate-limit`, con confirmación del usuario.**
-- **Sin correr: los 3 tests de integración nuevos** (el central: 20 pedidos
-  concurrentes numerados 1..20). Crean la tabla `directory_rate_limit_windows`
-  en producción.
+- ~~Merge de T95~~ **Mergeado a pedido del usuario** (ver entrada siguiente).
+- ~~Integración~~ **Corrida, 48/48**, tras arreglar tres tests de T94 que
+  chocaban con el drenaje ya desplegado en producción y con ~0,1 s de desfase
+  de reloj contra Postgres (detalle en `evidencia/T95.md` § 5). Ningún cambio
+  de código de producción; sin filas de prueba remanentes.
 - **Para usar T93, T94 y T95 en producción hace falta una API key nueva** con
   `payments:preview`, `webhooks:read` y `webhooks:write`. Emitir claves es del
   usuario (`P-10`).

@@ -1083,6 +1083,34 @@ describe("createDirectory", () => {
     expect(await directory.listWebhookEndpoints(partner.id)).toHaveLength(1);
   });
 
+  /**
+   * T94 is deployed, so the production server drains this same table every
+   * 30 seconds. From the moment a delivery these tests create commits, it is
+   * fair game for that live drain, which gives up on `partner.example` (it
+   * does not resolve) before the test gets to claim it. Separately, the row's
+   * `next_attempt_at` comes from Postgres's clock while a claim without an
+   * explicit time uses this machine's, and the two were ~0.1 s apart — about
+   * half a round trip — when these tests first failed. Either is enough to
+   * make a fresh row invisible to the test's own claim.
+   *
+   * So these tests move their rows a day ahead as soon as they exist, beyond
+   * anything a drain claiming at the real time will see, and claim at an
+   * explicit time in that future. What remains is the round trip between the
+   * insert and the move, during which the live drain could still take a row:
+   * a small window against a 30-second timer, and inherent to testing against
+   * a database a running server also uses.
+   */
+  function aDayAhead(): Date {
+    return new Date(Date.now() + 24 * 60 * 60_000);
+  }
+
+  async function hideFromLiveDrain(partnerId: string, until: Date): Promise<void> {
+    await pool.query("update directory_webhook_deliveries set next_attempt_at = $2 where partner_id = $1", [
+      partnerId,
+      until,
+    ]);
+  }
+
   it("claims a due delivery once, and leases it away from a second drain", async () => {
     // Two instances drain the same table. `for update skip locked` plus the
     // lease is what stops both sending the same event.
@@ -1100,18 +1128,21 @@ describe("createDirectory", () => {
       anchorTx: "tx-anchor",
     });
 
-    const first = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
+    const at = aDayAhead();
+    await hideFromLiveDrain(partner.id, at);
+
+    const first = (await directory.claimDueWebhookDeliveries(10, at)).filter((row) => row.partnerId === partner.id);
     expect(first).toHaveLength(1);
     expect(first[0]?.attempts).toBe(1);
     expect(first[0]?.url).toBe("https://partner.example/hooks");
     expect(first[0]?.event.type).toBe("mandate.activated");
 
-    const second = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
+    const second = (await directory.claimDueWebhookDeliveries(10, at)).filter((row) => row.partnerId === partner.id);
     expect(second).toEqual([]);
 
     await directory.markWebhookDelivered(first[0]!.id);
     // Delivered rows never come back, even once the lease expires.
-    const later = (await directory.claimDueWebhookDeliveries(10, new Date(Date.now() + 10 * 60_000))).filter(
+    const later = (await directory.claimDueWebhookDeliveries(10, new Date(at.getTime() + 10 * 60_000))).filter(
       (row) => row.partnerId === partner.id,
     );
     expect(later).toEqual([]);
@@ -1132,10 +1163,13 @@ describe("createDirectory", () => {
       anchorTx: "tx-anchor",
     });
 
-    const [claimed] = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
+    const at = aDayAhead();
+    await hideFromLiveDrain(partner.id, at);
+
+    const [claimed] = (await directory.claimDueWebhookDeliveries(10, at)).filter((row) => row.partnerId === partner.id);
     await directory.markWebhookFailed({ id: claimed!.id, lastError: "HTTP 410", giveUp: true });
 
-    const later = (await directory.claimDueWebhookDeliveries(10, new Date(Date.now() + 10 * 60_000))).filter(
+    const later = (await directory.claimDueWebhookDeliveries(10, new Date(at.getTime() + 10 * 60_000))).filter(
       (row) => row.partnerId === partner.id,
     );
     expect(later).toEqual([]);
@@ -1159,12 +1193,15 @@ describe("createDirectory", () => {
       anchorTx: "tx-anchor",
     });
 
-    const [claimed] = (await directory.claimDueWebhookDeliveries(10)).filter((row) => row.partnerId === partner.id);
-    const retryAt = new Date(Date.now() + 5 * 60_000);
+    const at = aDayAhead();
+    await hideFromLiveDrain(partner.id, at);
+
+    const [claimed] = (await directory.claimDueWebhookDeliveries(10, at)).filter((row) => row.partnerId === partner.id);
+    const retryAt = new Date(at.getTime() + 5 * 60_000);
     await directory.markWebhookFailed({ id: claimed!.id, lastError: "HTTP 503", giveUp: false, nextAttemptAt: retryAt });
 
     // Not before its time — the backoff is honoured.
-    const early = (await directory.claimDueWebhookDeliveries(10, new Date(Date.now() + 60_000))).filter(
+    const early = (await directory.claimDueWebhookDeliveries(10, new Date(at.getTime() + 60_000))).filter(
       (row) => row.partnerId === partner.id,
     );
     expect(early).toEqual([]);
