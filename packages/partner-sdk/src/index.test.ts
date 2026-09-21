@@ -228,3 +228,85 @@ describe("createPartnerClient", () => {
     }
   });
 });
+
+/** T93: the client's half of `POST /v1/purchases/preview`. */
+describe("previewPurchase", () => {
+  const preview = {
+    tenant_id: TENANT_ID,
+    would_settle: true,
+    agent_id: AGENT_ID,
+    mandate_id: MANDATE_ID,
+    code: null,
+    reason: null,
+    total: "0.3500000",
+    asset: `USDC:${ADDRESS}`,
+    spent_today: "0.3500000",
+    per_day_limit: "1.0000000",
+    reconciled: false,
+  };
+
+  const input = {
+    tenant_id: TENANT_ID,
+    venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F",
+    product_id: "signaldesk:market-brief-xlm-usdc",
+    quantity: 1,
+  };
+
+  it("posts the verdict request and validates the answer, with no Idempotency-Key", async () => {
+    // No key on purpose: the route creates nothing, so there is nothing a
+    // replay could duplicate, and requiring one would be ceremony.
+    const seen: Array<{ url: string; idempotencyKey: string | undefined }> = [];
+    const server = await startServer((request, response) => {
+      seen.push({ url: request.url ?? "", idempotencyKey: request.headers["idempotency-key"] as string | undefined });
+      if (request.method === "POST" && request.url === "/v1/purchases/preview") {
+        return sendJson(response, 200, successEnvelope(preview));
+      }
+      return sendJson(response, 404, { ok: false, code: "TenantNotFound", message: "not found", details: {} });
+    });
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(client.previewPurchase(input)).resolves.toEqual(preview);
+      expect(seen).toEqual([{ url: "/v1/purchases/preview", idempotencyKey: undefined }]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("refuses a server that claims the merchant's invoice was reconciled", async () => {
+    // A preview fetches no 402, so `reconciled: true` from this route means
+    // something upstream is wrong. Better the client's own
+    // response-outside-contract failure than a caller believing the payee was
+    // checked.
+    const server = await startServer((_request, response) =>
+      sendJson(response, 200, successEnvelope({ ...preview, reconciled: true })),
+    );
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(client.previewPurchase(input)).rejects.toSatisfy((error: unknown) =>
+        hasErrorCode(error, "NetworkError"),
+      );
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("refuses a malformed request before it reaches the network", async () => {
+    let calls = 0;
+    const server = await startServer((_request, response) => {
+      calls += 1;
+      return sendJson(response, 200, successEnvelope(preview));
+    });
+
+    try {
+      const client = createPartnerClient({ apiKey: API_KEY, baseUrl: server.baseUrl });
+      await expect(client.previewPurchase({ ...input, quantity: 0 })).rejects.toSatisfy((error: unknown) =>
+        hasErrorCode(error, "InvalidArguments"),
+      );
+      expect(calls).toBe(0);
+    } finally {
+      await server.close();
+    }
+  });
+});

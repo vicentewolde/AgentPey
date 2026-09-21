@@ -15,7 +15,13 @@ import {
 import { Keypair } from "@stellar/stellar-sdk";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { routePartnerRequest, statusForError, type ExecutePurchase, type PartnerRoutesDirectory } from "./partner-routes.js";
+import {
+  routePartnerRequest,
+  statusForError,
+  type ExecutePurchase,
+  type PartnerRoutesDirectory,
+  type PreviewPurchase,
+} from "./partner-routes.js";
 
 const PARTNER_A = newId("partner");
 const PARTNER_B = newId("partner");
@@ -32,6 +38,10 @@ interface FakeDirectory extends PartnerRoutesDirectory {
   createConsentSessionCalls: number;
   /** T81: what this partner is allowed to redirect back to. */
   setReturnOrigins(origins: readonly string[]): void;
+  /** T93: how many purchase rows exist, so a test can prove a preview wrote none. */
+  purchaseCount(): number;
+  /** T93: narrows a key's permissions, to prove a route really requires its own scope. */
+  setScopes(secret: string, scopes: readonly string[]): void;
 }
 
 function fakeApiKeyRecord(partnerId: string, scopes: readonly string[]): ApiKey {
@@ -48,7 +58,7 @@ function fakeApiKeyRecord(partnerId: string, scopes: readonly string[]): ApiKey 
 
 function createFakeDirectory(): FakeDirectory {
   const apiKeys = new Map<string, { partnerId: string; scopes: readonly string[]; revoked: boolean }>();
-  apiKeys.set(SECRET_A, { partnerId: PARTNER_A, scopes: ["tenants:read", "tenants:write", "agents:read", "mandates:read", "consent_sessions:read", "consent_sessions:write", "payments:authorize", "payments:read", "vault:read"], revoked: false });
+  apiKeys.set(SECRET_A, { partnerId: PARTNER_A, scopes: ["tenants:read", "tenants:write", "agents:read", "mandates:read", "consent_sessions:read", "consent_sessions:write", "payments:authorize", "payments:preview", "payments:read", "vault:read"], revoked: false });
   apiKeys.set(SECRET_B, { partnerId: PARTNER_B, scopes: ["tenants:read", "tenants:write", "agents:read", "mandates:read", "consent_sessions:read", "consent_sessions:write"], revoked: false });
 
   const tenants = new Map<string, Tenant>();
@@ -120,6 +130,15 @@ function createFakeDirectory(): FakeDirectory {
     revoke(secret) {
       const key = apiKeys.get(secret);
       if (key !== undefined) key.revoked = true;
+    },
+
+    purchaseCount() {
+      return purchases.size;
+    },
+
+    setScopes(secret, scopes) {
+      const key = apiKeys.get(secret);
+      if (key !== undefined) key.scopes = [...scopes];
     },
 
     seedTenant(overrides = {}) {
@@ -314,6 +333,20 @@ const settlingPurchase: ExecutePurchase = async (request) => ({
   },
 });
 
+/** The default preview port: every layer would allow it. */
+const allowingPreview: PreviewPurchase = async () => ({
+  kind: "preview",
+  wouldSettle: true,
+  agentId: "agt_00000000000000000000000001",
+  mandateId: "mdt_00000000000000000000000001",
+  code: null,
+  reason: null,
+  total: "0.3500000",
+  asset: "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+  spentToday: "0.3500000",
+  perDayLimit: "1.0000000",
+});
+
 function baseRequest(overrides: Partial<Parameters<typeof routePartnerRequest>[0]> = {}) {
   return {
     method: "GET",
@@ -326,6 +359,8 @@ function baseRequest(overrides: Partial<Parameters<typeof routePartnerRequest>[0
     baseUrl: "https://agentpay.example",
     // The default port settles. Tests that care about a refusal override it.
     executePurchase: settlingPurchase,
+    // The default preview says yes, for the same reason.
+    previewPurchase: allowingPreview,
     readActivity: async (tenantId: string) => ({ tenant_id: tenantId, mandate: null, per_day: null, rail: null, purchases: [], refusals: [] }),
     ...overrides,
   };
@@ -1119,5 +1154,148 @@ describe("routePartnerRequest — never throws", () => {
       baseRequest({ pathname: `/v1/tenants/${newTenantId(PARTNER_A)}`, directory: explodingDirectory }),
     );
     expect(result.status).toBe(500);
+  });
+});
+
+/**
+ * T93. The route that answers "would this be allowed?" — and, above all, the
+ * things it must not be able to do.
+ */
+describe("POST /v1/purchases/preview", () => {
+  const VENUE = "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F";
+
+  function previewBody(tenantId: string, overrides: Record<string, unknown> = {}) {
+    return { tenant_id: tenantId, venue: VENUE, product_id: "signaldesk:market-brief-xlm-usdc", quantity: 1, ...overrides };
+  }
+
+  const refusingPreview: PreviewPurchase = async (request) => ({
+    kind: "preview",
+    wouldSettle: false,
+    agentId: "agt_00000000000000000000000001",
+    mandateId: request.mandateId ?? "mdt_00000000000000000000000001",
+    code: "MandateDailyLimitExceeded",
+    reason: "hoy ya se gastó el límite diario de este permiso",
+    total: "0.3500000",
+    asset: "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+    spentToday: "1.0000000",
+    perDayLimit: "1.0000000",
+  });
+
+  it("answers 200 with the verdict, and creates nothing", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const before = directory.purchaseCount();
+
+    const result = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/purchases/preview", body: previewBody(tenant.id) }),
+    );
+
+    expect(result.status).toBe(200);
+    const data = (result.body as { data: Record<string, unknown> }).data;
+    expect(data.would_settle).toBe(true);
+    expect(data.total).toBe("0.3500000");
+    expect(data.spent_today).toBe("0.3500000");
+    expect(data.per_day_limit).toBe("1.0000000");
+    // A preview is a question. Recording it would make "what did this agent
+    // actually try to buy?" unanswerable.
+    expect(directory.purchaseCount()).toBe(before);
+  });
+
+  it("says reconciled: false, because no merchant invoice was ever fetched", async () => {
+    // The one promise a preview cannot make (`M-14`): price, asset and payee
+    // are still compared against the signed Mandate by the real purchase, and
+    // it can refuse there after this said yes.
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const result = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/purchases/preview", body: previewBody(tenant.id) }),
+    );
+    expect((result.body as { data: { reconciled: boolean } }).data.reconciled).toBe(false);
+  });
+
+  it("answers 200 for a refusal too, with the typed code of the layer that would say no", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const result = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/purchases/preview",
+        body: previewBody(tenant.id),
+        previewPurchase: refusingPreview,
+      }),
+    );
+    expect(result.status).toBe(200);
+    const data = (result.body as { data: { would_settle: boolean; code: string; reason: string } }).data;
+    expect(data.would_settle).toBe(false);
+    expect(data.code).toBe("MandateDailyLimitExceeded");
+    expect(data.reason).toContain("límite diario");
+  });
+
+  it("never reaches the paying port — a preview cannot become a purchase", async () => {
+    // The reason this is a route of its own rather than a flag: whatever the
+    // body says, there is no code path from here to a payment.
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    let paid = 0;
+    await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/purchases/preview",
+        body: previewBody(tenant.id),
+        executePurchase: (async () => {
+          paid += 1;
+          throw new Error("the preview route must never execute a purchase");
+        }) as ExecutePurchase,
+      }),
+    );
+    expect(paid).toBe(0);
+  });
+
+  it("needs payments:preview, and payments:authorize alone is not enough", async () => {
+    // Damage separation, the other way round from the usual: a key that may
+    // spend is not thereby a key that may ask. The list is flat on purpose.
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    directory.setScopes(SECRET_A, ["tenants:read", "payments:authorize"]);
+    const result = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/purchases/preview", body: previewBody(tenant.id) }),
+    );
+    expect(result.status).toBe(403);
+    expect((result.body as { code: string }).code).toBe("ScopeNotGranted");
+  });
+
+  it("needs no Idempotency-Key — nothing is created, so nothing could be duplicated", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const result = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/purchases/preview", body: previewBody(tenant.id), idempotencyKeyHeader: undefined }),
+    );
+    expect(result.status).toBe(200);
+  });
+
+  it("answers 404 for another partner's tenant, saying nothing about the body", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_B });
+    const result = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/purchases/preview", body: previewBody(tenant.id) }),
+    );
+    expect(result.status).toBe(404);
+    expect((result.body as { code: string }).code).toBe("TenantNotFound");
+  });
+
+  it("answers 404 for a mandate_id that is not this tenant's, exactly as the paying route does", async () => {
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const result = await routePartnerRequest(
+      baseRequest({
+        method: "POST",
+        pathname: "/v1/purchases/preview",
+        body: previewBody(tenant.id, { mandate_id: "mdt_00000000000000000000000009" }),
+      }),
+    );
+    expect(result.status).toBe(404);
+    expect((result.body as { code: string }).code).toBe("MandateNotFound");
+  });
+
+  it("refuses a body with an unknown field rather than silently dropping it", async () => {
+    // Notably `dry_run`: an integrator who believes they are constraining a
+    // request with a field we ignore has to find out loudly.
+    const tenant = directory.seedTenant({ partnerId: PARTNER_A });
+    const result = await routePartnerRequest(
+      baseRequest({ method: "POST", pathname: "/v1/purchases/preview", body: previewBody(tenant.id, { dry_run: true }) }),
+    );
+    expect(result.status).toBe(400);
   });
 });

@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-19 · **Últimos hitos cerrados:** T88 (entrada directa a RealOps y páginas más anchas), T89 (rechazos, montos, hora local y botón en vivo), T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción el 2026-09-19) y T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`) · **Sigue:** sin hito asignado; las tres propuestas nuevas de la sesión (webhooks en vivo, `dry_run` en `/v1/purchases`, límite de tasa por API key) esperan orden del usuario · **Fase 6: en curso**
+**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T89 (rechazos, montos, hora local y botón en vivo), T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción el 2026-09-19), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado) y T93 (`POST /v1/purchases/preview`, `C-125`) · **Sigue:** webhooks en vivo, la tercera de las propuestas que el usuario aprobó · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -216,7 +216,8 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T89 | F9: todos los rechazos con una frase que se entiende y tabla generada de códigos; montos con 2–3 decimales; horas en la zona de quien mira; "Watch it pay, live" a RealOps y la demo de `/consent` quitada | ✅ cerrado 2026-09-15 · mergeado a `main` (`185b382..0faa2bb`) · verificado en producción salvo la hora local (`C-120`) |
 | T90 | F9: la persona elige qué agente compra cuando tiene más de uno del mismo tipo; `POST /v1/purchases` acepta `mandate_id`, validado contra el tenant, que elige el Mandato sin autorizar nada; la compra dice por qué Mandato pasó | ✅ cerrado 2026-09-15 · mergeado a `main` (`f17809a`) (`C-121`) |
 | T91 | F9: `POST /v1/consent_sessions` exige `payTo` con al menos una cuenta, para que ningún Mandato nuevo deje sin chequear a quién se le paga; los Mandatos ya firmados no cambian | ✅ cerrado 2026-09-16 · mergeado a `main` (`4a188f6`) · **verificado en producción 2026-09-19** (`C-123`) |
-| T92 | `C-113`: el gasto de una compra que nunca llegó a la red se libera, y un rail sin saldo lo dice con su propio código en vez de parecer una caída del comercio | ✅ cerrado 2026-09-19 (`C-124`, enmienda `M-23`) |
+| T92 | `C-113`: el gasto de una compra que nunca llegó a la red se libera, y un rail sin saldo lo dice con su propio código en vez de parecer una caída del comercio | ✅ cerrado 2026-09-19 · mergeado a `main` (`b8e66a9`) (`C-124`, enmienda `M-23`) |
+| T93 | `POST /v1/purchases/preview`: el enforcement contesta si una compra se permitiría, sin reservar presupuesto, sin firmar y sin pagar — ruta y permiso propios | ✅ cerrado 2026-09-20 (`C-125`) |
 
 ---
 
@@ -4095,3 +4096,57 @@ cuando existiera el aviso de settlement. `C-113` queda `Superada`.
 responde `400` (T91, `C-123`), con el mismo pedido *con* `payTo` dando `404
 TenantNotFound` como control. Sin escribir nada: se usó un `tenant_id`
 inexistente.
+
+---
+
+## T93 — preguntar si una compra se permitiría, sin que preguntar cueste nada
+
+**Qué quedó funcionando, en llano.**
+
+Hasta ahora, la única forma de saber si una compra se iba a permitir era
+intentarla. Y una compra autorizada aparta el dinero del cupo del día: la
+pregunta salía plata. T92 hizo que un intento que no llegó a pagarse devuelva
+ese cupo; esto elimina el costo del todo.
+
+Ahora un partner puede preguntar primero. La respuesta corre **exactamente los
+mismos chequeos** que una compra de verdad —el comercio está registrado, la
+credencial lo permite, el permiso firmado lo cubre, y los dos límites diarios
+contra lo que ya se gastó hoy— y no aparta un centavo, no firma nada y no paga
+nada. Se puede preguntar cien veces sin que cambie nada.
+
+Para quién sirve: una plataforma puede decirle a una persona "esto se
+rechazaría, porque tu permiso vence mañana" **antes** de que apriete comprar. Y
+alguien evaluando AgentPey puede ver al enforcement decir que no con un solo
+`curl`, sin wallet, sin Freighter y sin fondos de testnet.
+
+**Lo que el usuario decidió, y por qué importa.** La propuesta original era un
+campo `dry_run` en la ruta que paga. Al mirar el código se propuso lo contrario
+—una ruta aparte— y el usuario la eligió. El motivo: con un campo, un partner
+cuyo `dry_run` se pierde por un bug **hace una compra real**. Una URL que no
+tiene ningún camino hacia un pago no puede hacer eso, diga lo que diga el
+pedido.
+
+**La evidencia técnica.**
+
+- **Que la previa no pueda gastar es un tipo, no una regla.** `LocalPolicyRail`
+  se partió en `decide()` —todos los chequeos, y **solo** la mitad de lectura
+  del ledger— y `authorise()`, que llama a `decide()` y después registra.
+  `preview()` llama al mismo `decide()`. No podría registrar un gasto aunque
+  alguien agregara la línea: no compila.
+- **Mismo veredicto por el mismo código.** También se extrajo
+  `resolveTenantPurchaseContext`, así que "qué Mandato aplica" se decide en un
+  solo lugar. Dos copias de eso es la forma exacta que tuvo `B-25`.
+- **Permiso propio `payments:preview`**, no implicado por `payments:authorize`.
+- **Dos límites dichos en el payload:** `reconciled` es `z.literal(false)` —el
+  esquema no *puede* prometer que se comparó la factura del comercio— y el campo
+  se llama `would_settle`, en condicional, para seguir recordando que no se
+  reservó nada.
+- **1415 tests** (eran 1387), `typecheck` y `build` limpios. Salidas crudas en
+  [`evidencia/T93.md`](evidencia/T93.md).
+
+**Lo que falta para usarlo en producción.** La API key de partner que existe
+hoy se emitió antes de que este permiso existiera, así que la ruta le responde
+`403` hasta que se emita una nueva. `pnpm run partner:create` ya otorga todos
+los scopes, así que una key nueva lo trae sola.
+
+**Decisiones:** `C-125`.

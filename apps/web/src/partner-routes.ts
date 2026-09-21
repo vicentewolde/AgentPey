@@ -31,6 +31,8 @@ import {
   toPurchaseResource,
   toTenantResource,
   createPurchaseRequestSchema,
+  previewPurchaseRequestSchema,
+  purchasePreviewResourceSchema,
   type ApiScope,
   type PurchaseResource,
 } from "@agentpey/partner-api";
@@ -66,6 +68,43 @@ export type PartnerRoutesDirectory = Pick<
  * lives on the far side of this one function, and none of it leaks into the
  * routing layer.
  */
+/**
+ * What `POST /v1/purchases/preview` calls — T93.
+ *
+ * Same request shape as {@link ExecutePurchase} minus `routeParams`: those
+ * fill the merchant's paid URL, and a preview never builds one. Its answer is
+ * never a purchase row, because nothing happened.
+ */
+export type PreviewPurchase = (request: {
+  readonly tenantId: string;
+  readonly venue: string;
+  readonly productId: string;
+  readonly quantity: number;
+  readonly maxTotal?: string;
+  /** Already checked to be one of `tenantId`'s own Mandates (T90). Chooses; never authorises. */
+  readonly mandateId?: string;
+}) => Promise<
+  | {
+      readonly kind: "preview";
+      readonly wouldSettle: boolean;
+      readonly agentId: string;
+      readonly mandateId: string;
+      readonly code: string | null;
+      readonly reason: string | null;
+      readonly total: string | null;
+      readonly asset: string | null;
+      readonly spentToday: string | null;
+      readonly perDayLimit: string;
+    }
+  | {
+      readonly kind: "refused";
+      readonly agentId: string | null;
+      readonly mandateId: string | null;
+      readonly code: string;
+      readonly reason: string;
+    }
+>;
+
 export type ExecutePurchase = (request: {
   readonly tenantId: string;
   readonly venue: string;
@@ -114,6 +153,14 @@ export interface PartnerRouteRequest {
   readonly baseUrl: string;
   /** Runs one purchase. Only read by `POST /v1/purchases`. */
   readonly executePurchase: ExecutePurchase;
+  /**
+   * Answers what a purchase *would* do, reserving nothing and signing
+   * nothing. Only read by `POST /v1/purchases/preview` (T93), and a separate
+   * port from `executePurchase` for the same reason the routes are separate:
+   * the thing that answers questions must not be able to reach the thing that
+   * moves money.
+   */
+  readonly previewPurchase: PreviewPurchase;
   /**
    * Reads everything a tenant may be shown about their own agent. Only read
    * by `GET /v1/tenants/{id}/activity`, and injected for the same reason
@@ -452,6 +499,93 @@ async function handleCreatePurchase(input: PartnerRouteRequest, now: Date): Prom
   });
 }
 
+/**
+ * `POST /v1/purchases/preview` — "would this be allowed?", answered by the
+ * same enforcement that would answer it for real (T93).
+ *
+ * Three things it deliberately does not do, each of which `POST /v1/purchases`
+ * does:
+ *
+ * - **No `Idempotency-Key`.** It creates nothing, so there is nothing a replay
+ *   could duplicate. Requiring one would be ceremony with no invariant behind
+ *   it.
+ * - **No purchase row.** A preview is a question; recording it would make
+ *   "what did this agent actually try to buy?" unanswerable.
+ * - **No `payments:authorize`.** Its own scope, `payments:preview`, so a
+ *   dashboard that only shows people why something would be refused never
+ *   holds the permission to spend their money.
+ *
+ * `200`, not `201`: nothing was created. A verdict of "would be refused" is
+ * still a `200` — the question was answered — for the same reason a real
+ * refusal is a `201` and not a `4xx`.
+ */
+async function handlePreviewPurchase(input: PartnerRouteRequest): Promise<PartnerRouteResponse> {
+  const auth = await authorizeRequest(input.authorizationHeader, "payments:preview" satisfies ApiScope, input.directory.authenticate);
+
+  // Same order as `handleCreatePurchase`: tenant ownership before the body, so
+  // another partner's tenant is a `404` that reveals nothing about whether the
+  // request was even well-formed.
+  const request = parseBody(previewPurchaseRequestSchema, input.body);
+  await requireOwnedTenant(input.directory, request.tenant_id, auth.partnerId);
+  if (request.mandate_id !== undefined) {
+    await requireMandateOfTenant(input.directory, request.mandate_id, request.tenant_id);
+  }
+
+  const result = await input.previewPurchase({
+    tenantId: request.tenant_id,
+    venue: request.venue,
+    productId: request.product_id,
+    quantity: request.quantity,
+    maxTotal: request.max_total,
+    ...(request.mandate_id === undefined ? {} : { mandateId: request.mandate_id }),
+  });
+
+  // A refusal that happened before the rail could be asked — an unregistered
+  // venue, a tenant with no Mandate — is still an answer to the same question,
+  // and takes the same shape: `would_settle: false` with the code that says
+  // why. A caller should not need two branches for "refused early" and
+  // "refused by the Mandate".
+  if (result.kind === "refused") {
+    return {
+      status: 200,
+      body: successEnvelope(
+        purchasePreviewResourceSchema.parse({
+          tenant_id: request.tenant_id,
+          would_settle: false,
+          agent_id: result.agentId,
+          mandate_id: result.mandateId,
+          code: result.code,
+          reason: result.reason,
+          total: null,
+          asset: null,
+          spent_today: null,
+          per_day_limit: null,
+          reconciled: false,
+        }),
+      ),
+    };
+  }
+
+  return {
+    status: 200,
+    body: successEnvelope(
+      purchasePreviewResourceSchema.parse({
+        tenant_id: request.tenant_id,
+        would_settle: result.wouldSettle,
+        agent_id: result.agentId,
+        mandate_id: result.mandateId,
+        code: result.code,
+        reason: result.reason,
+        total: result.total,
+        asset: result.asset,
+        spent_today: result.spentToday,
+        per_day_limit: result.perDayLimit,
+        reconciled: false,
+      }),
+    ),
+  };
+}
+
 async function handleGetPurchase(input: PartnerRouteRequest, id: string): Promise<PartnerRouteResponse> {
   const auth = await authorizeRequest(input.authorizationHeader, "payments:read" satisfies ApiScope, input.directory.authenticate);
   const record = await input.directory.findPurchase(id);
@@ -525,6 +659,11 @@ export async function routePartnerRequest(input: PartnerRouteRequest): Promise<P
 
     if (input.method === "POST" && input.pathname === "/v1/purchases") {
       return await handleCreatePurchase(input, now);
+    }
+
+    // Before the `{id}` pattern below, so `preview` is never read as an id.
+    if (input.method === "POST" && input.pathname === "/v1/purchases/preview") {
+      return await handlePreviewPurchase(input);
     }
 
     const purchaseMatch = /^\/v1\/purchases\/([^/]+)$/.exec(input.pathname);

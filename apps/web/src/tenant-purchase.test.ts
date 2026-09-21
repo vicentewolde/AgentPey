@@ -566,21 +566,13 @@ describe("which Mandate a purchase goes through, and why there is none", () => {
  */
 describe("releasing the spend of a purchase that never paid", () => {
   function railThatFails(error: unknown): Parameters<typeof releaseUnpaidSpend>[0] {
-    return {
-      authorise: () => {
-        throw new Error("not used in these tests");
-      },
-      release: () => Promise.reject(error),
-    };
+    return { release: () => Promise.reject(error) };
   }
 
   it("asks the rail to release exactly the intent it was given, with the refusal's own code as the reason", async () => {
     const calls: { intentId: string; reason: string }[] = [];
     await releaseUnpaidSpend(
       {
-        authorise: () => {
-          throw new Error("not used in these tests");
-        },
         release: async (input) => {
           calls.push({ intentId: input.intentId, reason: input.reason });
         },

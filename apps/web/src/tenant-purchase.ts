@@ -215,7 +215,11 @@ export function refusalCodeOf(error: unknown): string {
  * replace the real reason with this one. A release that fails is logged and
  * the spend stays counted — the same, safe, pre-T92 behaviour.
  */
-export async function releaseUnpaidSpend(policyRail: PolicyRail, intentId: string, reason: string): Promise<void> {
+export async function releaseUnpaidSpend(
+  policyRail: Pick<PolicyRail, "release">,
+  intentId: string,
+  reason: string,
+): Promise<void> {
   try {
     await policyRail.release({ intentId, reason });
   } catch (error) {
@@ -470,10 +474,46 @@ function requireRouteParams(
  * no is this system working. Only a genuine failure — a database down, a
  * network that never answered — is allowed to throw.
  */
-export async function executeTenantPurchase(
+/**
+ * What {@link resolveTenantPurchaseContext} hands back when a purchase is
+ * still allowed to proceed — the discriminant is `kind`, so a caller cannot
+ * use a context where a refusal was returned.
+ */
+interface PurchaseContext {
+  readonly kind: "context";
+  readonly registry: VenueRegistry;
+  readonly venueId: VenueId;
+  /** Never `undefined`: a venue registered without one is refused before a context exists. */
+  readonly baseUrl: string;
+  readonly tenantAgent: Awaited<ReturnType<typeof ensureTenantAgent>>;
+  readonly mandateRecord: MandateRecord;
+  /** The credential's own scope, lifted out after it verified. */
+  readonly scope: Scope;
+  readonly policyRail: PolicyRail;
+  readonly agent: Awaited<ReturnType<typeof createAgent>>;
+  readonly agentId: string;
+  readonly mandateId: string;
+}
+
+/**
+ * Everything a purchase settles before it can ask the rail anything: which
+ * venue, which of this tenant's agents, which Mandate, and the engine built
+ * around all three.
+ *
+ * Extracted in T93 so `POST /v1/purchases/preview` reaches its verdict
+ * through **the same code** as `POST /v1/purchases`. Two copies of "which
+ * Mandate applies to this product" is precisely the shape `B-25` had, and a
+ * preview that resolved a different Mandate than the purchase would be worse
+ * than no preview at all: confidently wrong.
+ *
+ * Returns a {@link PurchaseRefused} for anything that is an answer about
+ * permission. A real failure (Postgres unreachable) still throws, exactly as
+ * before.
+ */
+async function resolveTenantPurchaseContext(
   deps: TenantPurchaseDeps,
   request: TenantPurchaseRequest,
-): Promise<TenantPurchaseOutcome> {
+): Promise<PurchaseContext | PurchaseRefused> {
   const registry = deps.registry ?? DEFAULT_VENUE_REGISTRY;
 
   // 1. Is this a venue anyone may be paid at? Before any network call to it:
@@ -609,6 +649,19 @@ export async function executeTenantPurchase(
   if (withheld !== undefined) {
     return refuse(withheld.code, withheld.message, withheld.details ?? {}, undefined, agentId, mandateId);
   }
+
+  return { kind: "context", registry, venueId, baseUrl, tenantAgent, mandateRecord, scope, policyRail, agent, agentId, mandateId };
+}
+
+/** The remainder of a purchase: from the signed intent to the settled payment. */
+export async function executeTenantPurchase(
+  deps: TenantPurchaseDeps,
+  request: TenantPurchaseRequest,
+): Promise<TenantPurchaseOutcome> {
+  const resolved = await resolveTenantPurchaseContext(deps, request);
+  if (resolved.kind === "refused") return resolved;
+  const { registry, venueId, baseUrl, tenantAgent, mandateRecord, scope, policyRail, agent, agentId, mandateId } =
+    resolved;
 
   // 4. The intent. This is where `checkScope`, `checkMandate` — including the
   //    product allowlist of `C-75` — and `perDay` all run. The tool does not
@@ -779,3 +832,104 @@ export async function executeTenantPurchase(
   };
 }
 
+
+/** What a preview answers. Never a purchase row: nothing happened. */
+export interface TenantPurchasePreview {
+  readonly kind: "preview";
+  /** `true` when every layer would allow it, as of now. */
+  readonly wouldSettle: boolean;
+  readonly agentId: string;
+  readonly mandateId: string;
+  /** The typed code of whichever layer would refuse. `null` when it would be allowed. */
+  readonly code: string | null;
+  readonly reason: string | null;
+  readonly details: Readonly<Record<string, unknown>>;
+  /** The catalogue's price for this quantity. Present whenever the intent got built. */
+  readonly total: string | null;
+  readonly asset: string | null;
+  /** This agent's spending today, and the tighter of the two daily ceilings. */
+  readonly spentToday: string | null;
+  readonly perDayLimit: string;
+}
+
+/**
+ * Answers "would this purchase be allowed?" without reserving budget, without
+ * asking the merchant to be paid, and without signing anything — T93.
+ *
+ * **Why it exists.** Until now the only way to find out was to attempt a
+ * purchase, and an attempt that is authorised reserves budget (`M-15`): the
+ * question cost the person money they had not spent. T92 made an unpaid
+ * attempt give its budget back, which softens that; this removes the cost
+ * entirely, and lets a partner tell someone *why* a purchase would be refused
+ * before they commit to it.
+ *
+ * **It reaches its verdict through the same code a purchase does.** Venue
+ * resolution, which agent, which Mandate, the catalogue's price, and every
+ * check `PolicyRail` runs are shared with `executeTenantPurchase` via
+ * `resolveTenantPurchaseContext` and `previewPurchase`. The only things it
+ * does differently are the two that would cost something: it never records a
+ * spend, and it never signs an intent.
+ *
+ * **What it cannot promise, said plainly.** There is no `402` here, so the
+ * merchant's actual invoice is not reconciled — `reconcileTerms` has nothing
+ * to run against, which is the same distinction `M-14` already draws with
+ * `reconciled: false`. A preview answers "my own rules allow this at the
+ * catalogue's price", not "this will settle". And it is not a reservation:
+ * between a granted preview and the purchase that follows, another purchase
+ * for the same agent may take the budget.
+ */
+export async function previewTenantPurchase(
+  deps: TenantPurchaseDeps,
+  request: TenantPurchaseRequest,
+): Promise<TenantPurchasePreview | PurchaseRefused> {
+  const resolved = await resolveTenantPurchaseContext(deps, request);
+  if (resolved.kind === "refused") return resolved;
+  const { agent, agentId, mandateId, scope, mandateRecord } = resolved;
+
+  // No previewer for exactly the agents that have no `create_purchase_intent`
+  // either. `withheldBecause` already refused those inside
+  // `resolveTenantPurchaseContext`, so reaching this line with none would mean
+  // that guarantee broke — say so rather than reporting a hypothetical verdict.
+  if (agent.preview === undefined) {
+    return refuse(
+      "ConfigError",
+      "this tenant's agent cannot buy, so there is nothing to preview",
+      { tenantId: request.tenantId },
+      undefined,
+      agentId,
+      mandateId,
+    );
+  }
+
+  // The tighter of the two daily ceilings — the one that would actually bite.
+  // A caller showing "you have X left today" must not be handed the looser.
+  const parsedMandate = agentPayMandateSchema.parse(mandateRecord.document);
+  const mandatePerDay = parsedMandate.credentialSubject.grant.limits.perDay;
+  const perDayLimit =
+    toScaledAmount(mandatePerDay) < toScaledAmount(scope.limits.perDay) ? mandatePerDay : scope.limits.perDay;
+
+  let preview;
+  try {
+    preview = await agent.preview(request.productId, request.quantity);
+  } catch (error) {
+    // An unknown product, or a credential or Mandate that no longer verifies:
+    // the question could not be asked, which is itself an answer about
+    // permission and arrives as a refusal like any other.
+    return asRefusal(error, undefined, agentId, mandateId);
+  }
+
+  const { decision, intent } = preview;
+  return {
+    kind: "preview",
+    wouldSettle: decision.authorised,
+    agentId,
+    mandateId,
+    code: decision.authorised ? null : decision.code,
+    reason: decision.authorised ? null : decision.reason,
+    details: decision.authorised ? {} : decision.details,
+    total: intent.purchase.totalAmount,
+    asset: intent.purchase.asset,
+    spentToday: decision.authorised ? decision.spentToday : null,
+    perDayLimit,
+  };
+}

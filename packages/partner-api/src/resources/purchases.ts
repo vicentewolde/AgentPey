@@ -284,3 +284,72 @@ export function toPurchaseResource(record: {
     created_at: record.createdAt.toISOString(),
   });
 }
+
+/**
+ * `POST /v1/purchases/preview` — "would this purchase be allowed?" — T93.
+ *
+ * **Its own route, not a flag on `POST /v1/purchases`.** The alternative was
+ * a `dry_run` boolean, and it was rejected for the direction its failures
+ * point: a partner whose preview call loses that flag, through a bug or a
+ * bad default, makes a **real payment**. Calling a URL that has no payment
+ * code path in it cannot do that, whatever the body says. Two smaller
+ * reasons follow from the same split: a preview creates nothing, so it needs
+ * no `Idempotency-Key`, and its answer is a different shape — folding it into
+ * `PurchaseResource` would have meant a purchase id that is sometimes null.
+ *
+ * **It is a question, not a reservation.** A granted preview means "as of
+ * now, every layer would allow this". It does not hold budget, and between it
+ * and the purchase that follows, another purchase for the same agent may take
+ * that budget. `POST /v1/purchases` remains the only thing that decides.
+ */
+export const previewPurchaseRequestSchema = z.strictObject({
+  tenant_id: tenantIdSchema,
+  venue: venueIdSchema,
+  product_id: z.string().min(1).max(200),
+  quantity: z.int().min(1).max(1000),
+  /**
+   * The same optional partner ceiling `POST /v1/purchases` accepts, so the
+   * preview can answer the question the purchase would actually be asked.
+   * Leaving it out here and sending it there would make the preview answer
+   * about a different purchase.
+   */
+  max_total: z.string().regex(/^\d+(?:\.\d{1,7})?$/, "expected a decimal amount with at most 7 places").optional(),
+  /** Chooses which of this tenant's Mandates to ask about; never authorises (T90, `B-25`). */
+  mandate_id: mandateIdSchema.optional(),
+});
+
+export type PreviewPurchaseRequest = z.infer<typeof previewPurchaseRequestSchema>;
+
+export const purchasePreviewResourceSchema = z.strictObject({
+  tenant_id: tenantIdSchema,
+  /**
+   * Named `would_settle`, not `allowed`, and in the conditional on purpose.
+   * The field has to keep reminding an integrator that nothing was reserved.
+   */
+  would_settle: z.boolean(),
+  agent_id: agentIdSchema.nullable(),
+  mandate_id: mandateIdSchema.nullable(),
+  /** The `AgentPassError` code of whichever layer would refuse. `null` when it would be allowed. */
+  code: z.string().min(1).nullable(),
+  /** The same refusal in a sentence. `null` when it would be allowed. */
+  reason: z.string().min(1).nullable(),
+  /** The catalogue's total for this quantity. `null` when the refusal came before a price existed. */
+  total: z.string().nullable(),
+  asset: z.string().nullable(),
+  /** This agent's spending so far today, in the Mandate's currency. */
+  spent_today: z.string().nullable(),
+  /** The **tighter** of the credential's and the Mandate's `perDay` — the one that would actually bite. */
+  per_day_limit: z.string().nullable(),
+  /**
+   * Always `false`, and present rather than omitted (`M-14`).
+   *
+   * A preview never fetches the merchant's `402`, so the invoice — its price,
+   * its asset, and above all the account it asks to be paid — was **not**
+   * reconciled against the signed Mandate. A real purchase does reconcile it,
+   * and can still be refused there after a preview said `would_settle: true`.
+   * Saying so in the payload is cheaper than an integrator discovering it.
+   */
+  reconciled: z.literal(false),
+});
+
+export type PurchasePreviewResource = z.infer<typeof purchasePreviewResourceSchema>;

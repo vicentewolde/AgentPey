@@ -5022,3 +5022,100 @@ se traga y loguea. Una persona no debería poder verlos nunca.
 
 **Sin cambios en `AGENTS.md`:** autorización y flujo de fondos ya quedan en
 Claude Code (`P-10`).
+
+---
+
+### C-125 · T93: preguntar si una compra se permitiría es una ruta aparte, no un campo de la que paga · `Vigente`
+**Fecha:** 2026-09-20 · **Hito:** T93 · **La forma (ruta aparte) la decidió el usuario**, sobre una propuesta inicial distinta
+
+**El problema.** Hasta acá, la única forma de saber si una compra se permitiría
+era intentarla. Y una compra autorizada **reserva presupuesto** (`M-15`): la
+pregunta le costaba plata a la persona. T92 lo suavizó —un intento que no pagó
+devuelve el cupo— pero no lo elimina. Además, un candidato a partner no podía
+ver al enforcement decidir sin wallet, sin Freighter y sin USDC de testnet.
+
+**Lo que se construyó.** `POST /v1/purchases/preview` corre **todos** los
+chequeos de una compra real —registro de venues, `checkScope`, `checkMandate`
+incluida la lista de productos de `C-75`, y los dos límites diarios contra el
+gasto real de hoy— y no reserva, no firma y no paga.
+
+#### La decisión de forma: ruta aparte, no `dry_run`
+
+La propuesta original de Claude Code era un campo `dry_run` en
+`POST /v1/purchases`. Al mirar el código se propuso lo contrario y **el usuario
+eligió la ruta aparte**, por la dirección en que fallan las dos:
+
+- Con un flag, un partner cuyo `dry_run` se pierde —un bug, un default malo, un
+  campo que no viajó— **hace una compra real**. Llamar a una URL que no tiene
+  ningún camino de código hacia un pago no puede hacer eso, diga lo que diga el
+  cuerpo. Hay un test que lo fija: el puerto que paga nunca se toca.
+- La previa no crea nada, así que no necesita `Idempotency-Key`. Exigirlo sería
+  ceremonia sin invariante detrás.
+- La respuesta tiene otra forma. Meterla en `PurchaseResource` habría
+  significado un id de compra que a veces es `null`.
+
+#### Permiso propio: `payments:preview`
+
+No implicado por `payments:authorize`, y la lista sigue plana. El motivo es el
+mismo que `scopes.ts` ya tenía escrito para separar `payments:read` de
+`payments:authorize`: un panel que solo le muestra a alguien por qué una compra
+se rechazaría no tiene por qué cargar con el poder de gastarle la plata. Y al
+revés: una key que puede gastar no queda habilitada a preguntar sin que alguien
+se lo conceda.
+
+**Consecuencia operativa:** la key de partner que ya existe en producción **no
+tiene** este scope, porque se emitió antes. La ruta le responde `403
+ScopeNotGranted` hasta que se emita una key nueva. `pnpm run partner:create` ya
+otorga todos los scopes por defecto, así que una key nueva lo trae sola.
+
+#### Que no pueda gastar es un tipo, no una regla
+
+`LocalPolicyRail` se refactorizó en dos piezas: `decide()`, que contiene todos
+los chequeos y recibe **solo la mitad de lectura** del ledger
+(`Pick<LockedSpendLedger, "spentOn" | "hasRecorded">`), y `authorise()`, que
+llama a `decide()` y **después** registra. `preview()` llama al mismo
+`decide()`. No podría registrar un gasto aunque alguien agregara la línea: es
+un error de compilación, no una disciplina que recordar. Y las dos llegan al
+mismo veredicto por el mismo código — una segunda implementación de "¿esto se
+permitiría?" sería una segunda cosa que mantener en sincronía con
+`checkMandate`.
+
+Por el mismo motivo se extrajo `resolveTenantPurchaseContext` en
+`apps/web`: dos copias de "qué Mandato aplica a este producto" es exactamente
+la forma que tuvo `B-25`, y una previa que resolviera otro Mandato que la
+compra sería peor que no tener previa — sería segura y equivocada.
+
+#### Fuera de la sección crítica, a propósito
+
+`preview` **no** toma el lock del tenant. Solo lee, y una previa
+explícitamente no es una promesa: para cuando alguien actúe sobre ella, otra
+compra del mismo agente puede haberse llevado el cupo que vio. Tomar el lock
+para decir eso haría que el panel de un partner se encolara detrás de —y
+frenara— las compras que sí mueven dinero.
+
+#### Los dos límites, dichos en el payload
+
+- **`reconciled` es `z.literal(false)`**, no un booleano. Una previa no pide la
+  factura 402, así que no compara precio, asset ni `payTo` contra el Mandato
+  firmado — la misma distinción que `M-14` ya hace. La compra real sí lo hace y
+  puede rechazar ahí después de que la previa dijo que sí. Que el esquema no
+  **pueda** decir `true` es la forma de que nadie lo prometa por error.
+- **`would_settle`**, en condicional y no `allowed`, para que el campo mismo
+  siga recordando que no se reservó nada.
+
+**Una previa no se registra como compra**, ni en el directorio ni en el vault
+(`withVault` la reenvía sin anotar). El vault es el registro de decisiones que
+ocurrieron; llenarlo de hipotéticas dejaría "¿cuántas veces rechazaron a este
+agente?" sin respuesta.
+
+**En el SDK:** `previewPurchase` existe; `createPurchase` sigue sin existir, y
+eso no cambió acá. El SDK cubre la mitad segura y la que falta sigue anotada
+como pendiente, no como una postura de que un partner solo deba previsualizar.
+
+**Alternativa descartada:** aceptar `route_params`. Rellenan la URL paga del
+comercio y una previa nunca construye una. Un `route_params` mal armado hace
+fallar la compra real con `RouteParamMissing` y la previa no lo va a anticipar
+— queda dicho acá y en la guía, en vez de fingir que sí.
+
+`AGENTS.md` sin cambios: autorización y contrato de `/v1` ya quedan en Claude
+Code (`P-10`).

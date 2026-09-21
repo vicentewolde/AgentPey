@@ -618,3 +618,92 @@ describe("LocalPolicyRail.release — C-113, T92", () => {
     expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("37.0000000");
   });
 });
+
+describe("LocalPolicyRail.preview — T93", () => {
+  it("reaches the same verdict as authorise, without spending anything", async () => {
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const request = { intent: intentFor(), scope: scopeFor(), mandate: mandateFor() };
+
+    const previewed = await rail.preview(request);
+    expect(previewed.authorised).toBe(true);
+    // The whole point: asking cost nothing.
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("0.0000000");
+
+    const authorised = await rail.authorise(request);
+    expect(authorised.authorised).toBe(true);
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("37.0000000");
+  });
+
+  it("can be called any number of times without moving the daily total", async () => {
+    // Before T93 the only way to ask was to attempt a purchase, and an
+    // authorised attempt reserves budget — so asking twice cost 74.00.
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const request = { intent: intentFor(), scope: scopeFor(), mandate: mandateFor() };
+
+    for (let i = 0; i < 5; i += 1) {
+      expect((await rail.preview(request)).authorised).toBe(true);
+    }
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("0.0000000");
+  });
+
+  it("refuses for the same reason, with the same code, as a real authorisation would", async () => {
+    const scope = scopeFor({ limits: { perTx: "1.00", perDay: "200.00", currency: "USDC" } });
+    const mandate = mandateFor();
+    const rail = createLocalPolicyRail({ ledger: createInMemorySpendLedger(), now: () => NOON });
+    const request = { intent: intentFor(), scope, mandate };
+
+    const previewed = await rail.preview(request);
+    const authorised = await rail.authorise(request);
+
+    expect(previewed.authorised).toBe(false);
+    if (previewed.authorised || authorised.authorised) throw new Error("both should have refused");
+    expect(previewed.code).toBe(authorised.code);
+    expect(previewed.reason).toBe(authorised.reason);
+  });
+
+  it("reads today's real total, so budget already spent shows up in the verdict", async () => {
+    // A preview that ignored recorded spending would cheerfully say "yes" to
+    // a purchase the very next call would refuse.
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const scope = scopeFor({ limits: { perTx: "50.00", perDay: "40.00", currency: "USDC" } });
+    const mandate = mandateFor({ limits: { perTx: "50.00", perDay: "40.00", currency: "USDC" } });
+
+    expect((await rail.preview({ intent: intentFor(), scope, mandate })).authorised).toBe(true);
+    await rail.authorise({ intent: intentFor(), scope, mandate });
+
+    const afterSpending = await rail.preview({ intent: intentFor(), scope, mandate });
+    expect(afterSpending.authorised).toBe(false);
+    if (afterSpending.authorised) throw new Error("should have refused");
+    expect(afterSpending.code).toBe("ScopeDailyLimitExceeded");
+  });
+
+  it("does not mark the intent as recorded, so previewing first never discounts the real purchase", async () => {
+    // `authorise` adds 0 instead of the total for an intent already recorded
+    // (`G-8`). If a preview had recorded anything, the purchase that followed
+    // would have been counted as free.
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const request = { intent: intentFor(), scope: scopeFor(), mandate: mandateFor() };
+
+    await rail.preview(request);
+    expect(await ledger.hasRecorded(request.intent.intentId)).toBe(false);
+
+    await rail.authorise(request);
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("37.0000000");
+  });
+
+  it("leaves nothing to release — a preview never reserved anything to give back", async () => {
+    const ledger = createInMemorySpendLedger();
+    const rail = createLocalPolicyRail({ ledger, now: () => NOON });
+    const request = { intent: intentFor(), scope: scopeFor(), mandate: mandateFor() };
+
+    await rail.preview(request);
+
+    await expect(rail.release({ intentId: request.intent.intentId, reason: "x" })).rejects.toSatisfy(
+      (error: unknown) => hasErrorCode(error, "SpendNotRecorded"),
+    );
+  });
+});

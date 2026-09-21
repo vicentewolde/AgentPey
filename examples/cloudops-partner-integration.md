@@ -219,6 +219,63 @@ Qué hace AgentPey con el `mandate_id` que nombraste:
 Si reintentás con la misma `Idempotency-Key` y otro `mandate_id`, el cuerpo es
 distinto y AgentPey responde `409 IdempotencyKeyConflict` sin comprar.
 
+## 7b. Preguntar antes de comprar
+
+Antes de pedir una compra, CloudOps puede preguntar **si se permitiría**, sin
+gastar nada. Es una ruta aparte, `POST /v1/purchases/preview`, y necesita su
+propio scope: `payments:preview`. Tenerlo no habilita a comprar, y tener
+`payments:authorize` no habilita a preguntar — son permisos separados a
+propósito, para que un panel que solo le muestra a una persona por qué una
+compra se rechazaría no cargue con el poder de gastarle la plata.
+
+Corre exactamente los mismos chequeos que una compra real: el registro de
+venues, el scope de la credencial, el mandato firmado —incluida su lista de
+productos— y los dos límites diarios contra el gasto **real** de hoy. No
+reserva presupuesto, no firma nada y no paga nada.
+
+```sh
+PREVIEW_REQUEST="$(jq -cn \
+  --arg tenant_id "$TENANT_ID" \
+  --arg mandate_id "$MANDATE_ID" \
+  '{
+    tenant_id: $tenant_id,
+    venue: "mock-bazaar:CCL57L4ZQVQCGTQKGQMOAX7QDPEDW4LX2QSPBQMTMLB7BFQ7I3TM7F4A",
+    product_id: "REPLACE_WITH_THE_MERCHANT_PRODUCT_ID",
+    quantity: 1,
+    mandate_id: $mandate_id
+  }')"
+curl --fail-with-body --silent --show-error \
+  --request POST "$AGENTPAY_BASE_URL/v1/purchases/preview" \
+  --header "Authorization: Bearer $AGENTPAY_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data "$PREVIEW_REQUEST" | jq .
+```
+
+La respuesta es `200` en los dos casos — la pregunta se contestó — con
+`would_settle` en `true` o `false`, y con el mismo `code` y `reason` que
+daría el rechazo real. Trae además `total`, `asset`, `spent_today` y
+`per_day_limit`, que es el **más apretado** de los dos topes diarios: el del
+mandato o el de la credencial, el que realmente va a morder.
+
+**Sin `Idempotency-Key`:** no crea nada, así que no hay nada que un reintento
+pueda duplicar. Tampoco queda registrada como compra: `GET /v1/purchases/{id}`
+sigue contando solo lo que de verdad se intentó.
+
+Dos cosas que una previa **no** promete, y conviene saberlas antes de
+construir sobre ella:
+
+- **`reconciled` siempre es `false`.** Una previa no le pide la factura 402 al
+  comercio, así que no compara precio, asset ni `payTo` contra el mandato
+  firmado. La compra real sí lo hace, y puede rechazar ahí —
+  `TermsPayeeNotAllowed`, `TermsAmountMismatch`— después de que la previa dijo
+  que sí. La previa contesta "mis propias reglas lo permiten al precio del
+  catálogo", no "esto va a liquidar".
+- **No reserva presupuesto.** Entre una previa que dijo que sí y la compra que
+  la sigue, otra compra del mismo agente puede llevarse ese cupo.
+
+Si te equivocás de campo —por ejemplo mandando `dry_run`— la respuesta es
+`400`, no un campo ignorado en silencio.
+
 ## 8. Errores y reintentos
 
 Todas las respuestas de error usan este envelope:

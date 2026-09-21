@@ -229,6 +229,42 @@ paths:
                 $ref: "#/components/schemas/PurchaseSuccessResponse"
         "400":
           $ref: "#/components/responses/ErrorResponse"
+  /v1/purchases/preview:
+    post:
+      operationId: previewPurchase
+      summary: Ask whether a purchase would be allowed
+      description: "Requires the payments:preview scope, which is separate from
+        payments:authorize on purpose: a dashboard that only shows a person why
+        a purchase would be refused never needs the permission to spend their
+        money. Runs every check a real purchase runs — the venue registry, the
+        credential's scope, the signed Mandate including its product allowlist,
+        and both daily limits against today's real running total — and reserves
+        nothing, signs nothing and pays nothing. A verdict of would_settle false
+        is a 200, not a 4xx: the question was answered. Two limits, stated
+        rather than discovered: reconciled is always false, because no merchant
+        invoice is fetched, so a real purchase still compares price, asset and
+        payTo against the signed Mandate and can refuse there; and a
+        would_settle of true is not a reservation, so another purchase for the
+        same agent may take that budget first. It is a separate route rather
+        than a flag on POST /v1/purchases so that a request which loses the flag
+        cannot become a real payment. No Idempotency-Key: nothing is created."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewPurchaseRequest"
+      responses:
+        "200":
+          description: The verdict, allowed or refused. Nothing was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchasePreviewSuccessResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
   /v1/purchases/{id}:
     get:
       operationId: getPurchase
@@ -691,6 +727,36 @@ components:
         - product_id
         - quantity
       additionalProperties: false
+    PreviewPurchaseRequest:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          pattern: ^ptn_[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}:[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$
+        venue:
+          type: string
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*:[CG][A-Z2-7]{55}$
+        product_id:
+          type: string
+          minLength: 1
+          maxLength: 200
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        max_total:
+          type: string
+          pattern: ^\d+(?:\.\d{1,7})?$
+        mandate_id:
+          type: string
+          pattern: ^mdt_[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$
+      required:
+        - tenant_id
+        - venue
+        - product_id
+        - quantity
+      additionalProperties: false
     PurchaseResource:
       $schema: https://json-schema.org/draft/2020-12/schema
       type: object
@@ -813,6 +879,67 @@ components:
         - explorer_url
         - delivery
         - created_at
+      additionalProperties: false
+    PurchasePreviewResource:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          pattern: ^ptn_[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}:[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$
+        would_settle:
+          type: boolean
+        agent_id:
+          anyOf:
+            - type: string
+              pattern: ^agt_[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$
+            - type: "null"
+        mandate_id:
+          anyOf:
+            - type: string
+              pattern: ^mdt_[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$
+            - type: "null"
+        code:
+          anyOf:
+            - type: string
+              minLength: 1
+            - type: "null"
+        reason:
+          anyOf:
+            - type: string
+              minLength: 1
+            - type: "null"
+        total:
+          type:
+            - string
+            - "null"
+        asset:
+          type:
+            - string
+            - "null"
+        spent_today:
+          type:
+            - string
+            - "null"
+        per_day_limit:
+          type:
+            - string
+            - "null"
+        reconciled:
+          type: boolean
+          const: false
+      required:
+        - tenant_id
+        - would_settle
+        - agent_id
+        - mandate_id
+        - code
+        - reason
+        - total
+        - asset
+        - spent_today
+        - per_day_limit
+        - reconciled
       additionalProperties: false
     TenantActivityResource:
       $schema: https://json-schema.org/draft/2020-12/schema
@@ -1116,6 +1243,18 @@ components:
           const: true
         data:
           $ref: "#/components/schemas/PurchaseResource"
+      required:
+        - ok
+        - data
+      additionalProperties: false
+    PurchasePreviewSuccessResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          $ref: "#/components/schemas/PurchasePreviewResource"
       required:
         - ok
         - data

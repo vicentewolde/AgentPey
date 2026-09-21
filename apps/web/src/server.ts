@@ -97,7 +97,7 @@ import { buildSessionDocuments } from "./session-documents.js";
 import { ensureSharedPayerIdentity, ensureVisitorTenant } from "./shared-identity.js";
 import { ensureTenantAgent } from "./tenant-agent.js";
 import { ensureTenantPolicyRail } from "./tenant-rail.js";
-import { executeTenantPurchase } from "./tenant-purchase.js";
+import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.js";
 import { readTenantActivity } from "./tenant-activity.js";
 import {
   createPostgresWalletSessionStore,
@@ -1203,6 +1203,24 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         ),
       executePurchase: async (purchase) =>
         executeTenantPurchase(
+          {
+            directory,
+            agentpass: await createWalletAgentPass(env),
+            masterMnemonic: requireEnv(env, "MASTER_MNEMONIC"),
+            databaseUrl: requireEnv(env, "DATABASE_URL"),
+            reserve: requireSecretKey(env, "AGENT_SECRET_KEY"),
+            policyRailWasmHash: requireEnv(env, "POLICY_RAIL_WASM_HASH"),
+            readUsdcBalance: readRailUsdcBalance,
+          },
+          purchase,
+        ),
+      // The same dependencies, because the preview has to reach its verdict
+      // through the same code a purchase would (T93). `reserve` and
+      // `policyRailWasmHash` are only ever read on the paying path — a
+      // preview never deploys or funds a rail — but handing it a different
+      // set of dependencies is how the two would start answering differently.
+      previewPurchase: async (purchase) =>
+        previewTenantPurchase(
           {
             directory,
             agentpass: await createWalletAgentPass(env),

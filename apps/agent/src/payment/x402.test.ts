@@ -118,6 +118,9 @@ function fakeRail(authorise: (request: AuthorisationRequest) => Promise<Authoris
     release: () => {
       throw new Error("release must not be called from inside executeBazaarPayment");
     },
+    preview: () => {
+      throw new Error("preview must not be called from inside executeBazaarPayment");
+    },
   };
 }
 

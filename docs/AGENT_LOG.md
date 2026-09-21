@@ -5448,3 +5448,63 @@ Pendiente:
   producción; quitar `/api/session/*`; rotar los dos secretos; lo anotado sin
   construir en T86 y T90 (compras en `@agentpey/partner-sdk`, tarjeta de gasto
   por agente). Sigue abierta `C-122` (MPP Session), sin construir.
+
+## 2026-09-20 — main (T92 mergeado) / cc/t93-purchase-preview (sin mergear)
+
+Agente: Claude Code. Nada delegado a Codex (autorización y contrato de `/v1`).
+
+Qué:
+- **T92 mergeado** a `main` y pusheado (`672d0fa..b8e66a9`), a pedido del
+  usuario. Rama borrada.
+- **T93** (`C-125`): `POST /v1/purchases/preview`, que contesta si una compra
+  se permitiría sin reservar presupuesto, sin firmar y sin pagar.
+  - **Forma decidida por el usuario: ruta aparte, no un campo `dry_run` en
+    `POST /v1/purchases`** — Claude Code había propuesto el campo y propuso lo
+    contrario al mirar el código. Motivo: con un flag, un `dry_run` que se
+    pierde por un bug hace una compra real; una URL sin camino a un pago no
+    puede. Hay test.
+  - **Permiso propio `payments:preview`**, no implicado por
+    `payments:authorize`, con la misma separación de daño que `scopes.ts` ya
+    aplicaba. **Ojo operativo:** la key de partner que ya existe en producción
+    se emitió antes y **no lo tiene** — la ruta le da `403` hasta que se emita
+    una nueva. `partner:create` otorga todos los scopes por defecto.
+  - **Dos refactors, los dos extracciones puras, verificadas por los 1387 tests
+    previos sin tocar ninguno:** `LocalPolicyRail` se partió en `decide()`
+    (todos los chequeos, y **solo** la mitad de lectura del ledger, por tipo) y
+    `authorise()` (llama a `decide` y después registra); `executeTenantPurchase`
+    se partió sobre `resolveTenantPurchaseContext`, para que "qué Mandato
+    aplica" se decida en un solo lugar — dos copias de eso es la forma de
+    `B-25`.
+  - `preview` corre **fuera** del lock del tenant, a propósito: solo lee, y no
+    es una reserva; tomar el lock encolaría el panel de un partner detrás de
+    las compras reales.
+  - `reconciled` es `z.literal(false)`: el esquema no *puede* afirmar que se
+    comparó la factura del comercio. Una previa no se registra como compra ni
+    en el directorio ni en el vault.
+  - SDK: `previewPurchase`. `createPurchase` sigue sin existir (pendiente ya
+    anotado). OpenAPI regenerado; guía de partners § 7b.
+
+Documentación tocada: `fase-6/DECISIONES.md` (`C-125`), `fase-6/BITACORA.md`
+(estado, fila de T92 con su merge, fila y bloque de T93), `evidencia/T93.md`
+(nuevo), `docs/api/openapi.yaml`, `examples/cloudops-partner-integration.md`.
+`AGENTS.md` sin cambios. **1415 tests** (eran 1387), `typecheck` y `build`
+limpios.
+
+Pendiente:
+- **Merge de `cc/t93-purchase-preview`, con confirmación del usuario.** El push
+  redespliega.
+- **Sin probar contra producción:** la ruta nueva, porque necesita una API key
+  con `payments:preview` y emitir claves es del usuario (`P-10`).
+- **Sin correr desde T92: el caso 8b de la suite de aceptación**, el recorrido
+  completo de `C-113`. Vacía un rail real y escribe en producción.
+- **Siguiente propuesta aprobada, sin empezar: webhooks en vivo** — cerrar el
+  paquete huérfano `@agentpey/webhooks` de T48 (ningún `package.json` lo
+  importa; no hay tabla de endpoints). Diseño esbozado: tabla de endpoints,
+  rutas `/v1/webhook_endpoints`, outbox escrito en la misma transacción que el
+  cambio de estado, y el worker de T48 drenándola; solo los cuatro eventos con
+  disparador real; guardia de SSRF al entregar, no solo al registrar.
+- La tercera propuesta de la sesión (límite de tasa por API key en `/v1`) sigue
+  sin elegir.
+- Siguen: firmar y revocar con Freighter en producción; la hora local de T89;
+  quitar `/api/session/*`; rotar los dos secretos; compras en el SDK; tarjeta de
+  gasto por agente. Sigue abierta `C-122` (MPP Session), sin construir.

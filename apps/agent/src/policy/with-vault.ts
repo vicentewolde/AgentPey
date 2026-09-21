@@ -31,6 +31,15 @@ export function withVault(policyRail: PolicyRail, vault: MandateVault): PolicyRa
       return decision;
     },
 
+    /**
+     * Forwarded untouched, and deliberately **not** recorded (T93). The vault
+     * is the record of decisions that happened; a preview is a question about
+     * one that has not. Writing previews into the chain would fill a tenant's
+     * evidence with refusals nobody ever ran into, and make "how many times
+     * was this agent refused" unanswerable.
+     */
+    preview: (request) => policyRail.preview(request),
+
     // Forwarded untouched. A release is already an entry in this same vault —
     // `LocalPolicyRail.release` writes it through the ledger, which *is* the
     // vault — so wrapping it here would record it twice.

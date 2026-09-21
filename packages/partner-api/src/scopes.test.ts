@@ -47,3 +47,23 @@ describe("apiScopeCovers", () => {
     expect(apiScopeCovers([], "mandates:read")).toBe(false);
   });
 });
+
+describe("payments:preview — T93", () => {
+  it("is a permission a key can actually be granted", () => {
+    expect(areValidApiScopes(["payments:preview"])).toBe(true);
+  });
+
+  it("is not implied by payments:authorize — this list is flat, and stays flat", () => {
+    // Deliberate: a key that may spend is not thereby a key that may ask, and
+    // inventing a hierarchy for one pair would leave every later reader
+    // guessing which other pairs have one.
+    expect(apiScopeCovers(["payments:authorize"], "payments:preview")).toBe(false);
+  });
+
+  it("does not let a preview-only key spend", () => {
+    // The whole reason it is separate: a dashboard that shows people why a
+    // purchase would be refused must not hold the power to make one.
+    expect(apiScopeCovers(["payments:preview"], "payments:authorize")).toBe(false);
+    expect(apiScopeCovers(["payments:preview"], "payments:preview")).toBe(true);
+  });
+});

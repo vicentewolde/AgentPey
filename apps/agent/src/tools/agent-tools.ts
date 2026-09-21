@@ -15,7 +15,7 @@
  * The wire shapes — what a model sends and receives — are snake_case, matching
  * the tool names. TypeScript inside the package stays camelCase.
  */
-import type { AgentPassErrorCode } from "@agentpass/core";
+import type { AgentPassErrorCode, Scope } from "@agentpass/core";
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
 import type { AgentPayMandate } from "@agentpey/mandate";
 import type { Keypair } from "@stellar/stellar-sdk/base";
@@ -42,7 +42,12 @@ import { checkMandate, mandateCheckError } from "../mandate/check-mandate.js";
 import type { MandateState, MandateVerifier, UsableMandate } from "../mandate/verifier.js";
 import { checkOwnMandate } from "../mandate/verifier.js";
 import { executeBazaarPayment, fillRouteTemplate, mayHaveBeenPaid } from "../payment/x402.js";
-import { createLocalPolicyRail, policyRailError, type PolicyRail } from "../policy/policy-rail.js";
+import {
+  createLocalPolicyRail,
+  policyRailError,
+  type AuthorisationDecision,
+  type PolicyRail,
+} from "../policy/policy-rail.js";
 import { fromScaledAmount, multiplyAmount } from "../scope/amount.js";
 import { checkScope, scopeError } from "../scope/scope.js";
 import { createToolSet, defineTool, type ErasedTool, type ToolSet } from "./tool.js";
@@ -267,22 +272,33 @@ interface SignedPurchaseIntent {
   readonly freshMandate: AgentPayMandate;
 }
 
+/** Everything that exists before the rail is asked anything — see {@link prepareIntent}. */
+interface PreparedIntent {
+  readonly intent: PurchaseIntent;
+  readonly scope: Scope;
+  /** Re-verified here, moments before it is used (B-17) — never the startup one. */
+  readonly freshMandate: AgentPayMandate;
+}
+
 /**
- * Builds, authorises and signs one purchase intent — everything
- * `create_purchase_intent` does, factored out so `execute_payment` (G-4) can
- * reuse it exactly rather than re-deriving the same intent by a second path.
+ * Builds one purchase intent and runs everything that comes before the rail:
+ * the catalogue lookup, the structural checks of both authorities, and the
+ * live re-verification of the credential and the mandate.
  *
- * Runs `PolicyRail.authorise()` once, with no payment terms (M-14): neither
- * tool has a real `402` challenge yet at this point. `execute_payment` gets
- * one from the venue afterwards and authorises a second time with it —
- * `G-8` is what makes that re-verification of the same `intentId` count once,
- * not twice, against the daily limit.
+ * Shared by `buildSignedIntent` (which then authorises and signs) and
+ * `previewPurchase` (which then asks the rail what it *would* say, and signs
+ * nothing) — T93. One place builds an intent and decides what is checked
+ * before the rail sees it, so a preview cannot quietly answer a question
+ * about a different intent than a real purchase would make.
+ *
+ * @throws the same typed errors it always did: a scope or mandate refusal, or
+ * a credential/mandate that is no longer usable.
  */
-async function buildSignedIntent(
+async function prepareIntent(
   deps: PurchaseIntentDeps,
   productId: string,
   quantity: number,
-): Promise<SignedPurchaseIntent> {
+): Promise<PreparedIntent> {
   const { catalog, credential, mandate, signer, verifier, mandateVerifier, policyRail } = deps;
   const ttlSeconds = deps.intentTtlSeconds ?? DEFAULT_INTENT_TTL_SECONDS;
   const { scope, principal, id: subject } = credential.verified.credential.credentialSubject;
@@ -346,24 +362,86 @@ async function buildSignedIntent(
   const freshMandate = await checkOwnMandate(mandateVerifier, mandate.verified.source);
   if (!freshMandate.usable) throw freshMandate.problem;
 
+  return { intent, scope, freshMandate: freshMandate.verified.mandate };
+}
+
+/**
+ * Builds, authorises and signs one purchase intent — everything
+ * `create_purchase_intent` does, factored out so `execute_payment` (G-4) can
+ * reuse it exactly rather than re-deriving the same intent by a second path.
+ *
+ * Runs `PolicyRail.authorise()` once, with no payment terms (M-14): neither
+ * tool has a real `402` challenge yet at this point. `execute_payment` gets
+ * one from the venue afterwards and authorises a second time with it —
+ * `G-8` is what makes that re-verification of the same `intentId` count once,
+ * not twice, against the daily limit.
+ */
+async function buildSignedIntent(
+  deps: PurchaseIntentDeps,
+  productId: string,
+  quantity: number,
+): Promise<SignedPurchaseIntent> {
+  const prepared = await prepareIntent(deps, productId, quantity);
+
   // One point, all four checks, no partial credit (T19). No payment
   // terms yet: the mock catalogue has no 402 to reconcile against
   // (M-14) — a real venue adapter (T15) is what would supply them.
-  const decision = await policyRail.authorise({
-    intent,
-    scope,
-    mandate: freshMandate.verified.mandate,
+  const decision = await deps.policyRail.authorise({
+    intent: prepared.intent,
+    scope: prepared.scope,
+    mandate: prepared.freshMandate,
   });
   if (!decision.authorised) throw policyRailError(decision);
 
-  const signed = await signIntent(intent, signer);
+  const signed = await signIntent(prepared.intent, deps.signer);
 
   return {
     intent: signed.intent,
     jws: signed.jws,
     hash: signed.hash,
-    freshMandate: freshMandate.verified.mandate,
+    freshMandate: prepared.freshMandate,
   };
+}
+
+/** What a preview answers: the verdict, and the numbers a caller wants to show. */
+export interface PurchasePreview {
+  readonly decision: AuthorisationDecision;
+  /** The intent the verdict is about — built, never signed. */
+  readonly intent: PurchaseIntent;
+}
+
+/**
+ * Asks what a purchase *would* do, reserving nothing and signing nothing
+ * (T93).
+ *
+ * Everything `buildSignedIntent` checks before the rail is checked here too,
+ * by the same code: the product exists in the venue's catalogue, both
+ * authorities structurally permit it, and both are still live. Then the rail
+ * previews rather than authorises — every check, against today's real running
+ * total, with no spend recorded.
+ *
+ * **Nothing is signed.** `buildSignedIntent` ends with `signIntent`; this
+ * deliberately does not. A preview needs no signature — there is no venue to
+ * convince — and producing one would leave a signed, payable intent lying
+ * around for a question nobody committed to.
+ *
+ * A refusal is a **value**, not a throw: the refusal is the answer the caller
+ * asked for. The errors that do still throw are the ones that mean the
+ * question could not be asked at all — an unknown product, a credential or
+ * mandate that no longer verifies.
+ */
+export async function previewPurchase(
+  deps: PurchaseIntentDeps,
+  productId: string,
+  quantity: number,
+): Promise<PurchasePreview> {
+  const prepared = await prepareIntent(deps, productId, quantity);
+  const decision = await deps.policyRail.preview({
+    intent: prepared.intent,
+    scope: prepared.scope,
+    mandate: prepared.freshMandate,
+  });
+  return { decision, intent: prepared.intent };
 }
 
 /**
@@ -608,6 +686,29 @@ function purchaseIntentDepsOf(deps: AgentToolsDeps): PurchaseIntentDeps | undefi
     intentTtlSeconds: deps.intentTtlSeconds,
     now: deps.now,
   };
+}
+
+/** Asks what a purchase would do, without doing any of it — see {@link previewPurchase}. */
+export type PurchasePreviewer = (productId: string, quantity: number) => Promise<PurchasePreview>;
+
+/**
+ * A previewer, when this agent could buy at all — and `undefined` when it
+ * could not (T93).
+ *
+ * Withheld exactly as `create_purchase_intent` is withheld, and for the same
+ * reason: an agent whose credential or Mandate failed to verify has no
+ * business answering questions about what it would be allowed to buy. The
+ * absence is the answer, and `withheldBecause` already explains it.
+ *
+ * Not a tool. The tool set is what a model may call, and a preview is
+ * something the *platform* asks on a partner's behalf, on a route of its own
+ * — putting it in the tool set would hand the model a capability nobody asked
+ * for, near the one place that decides whether money moves.
+ */
+export function createPurchasePreviewer(deps: AgentToolsDeps): PurchasePreviewer | undefined {
+  const purchaseIntentDeps = purchaseIntentDepsOf(deps);
+  if (purchaseIntentDeps === undefined) return undefined;
+  return (productId, quantity) => previewPurchase(purchaseIntentDeps, productId, quantity);
 }
 
 /**

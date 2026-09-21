@@ -27,6 +27,7 @@ function requestFor(agent: string, intentId: string): AuthorisationRequest {
 function fakeRail(decision: AuthorisationDecision, release?: PolicyRail["release"]): PolicyRail {
   return {
     authorise: async () => decision,
+    preview: async () => decision,
     release:
       release ??
       (() => {

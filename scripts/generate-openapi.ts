@@ -7,6 +7,8 @@ import {
   consentSessionResourceSchema,
   createConsentSessionRequestSchema,
   createPurchaseRequestSchema,
+  previewPurchaseRequestSchema,
+  purchasePreviewResourceSchema,
   createTenantRequestSchema,
   errorEnvelopeSchema,
   mandateResourceSchema,
@@ -68,6 +70,7 @@ const consentSessionSuccessSchema = successEnvelopeComponent(schemaRef("ConsentS
 const mandateSuccessSchema = successEnvelopeComponent(schemaRef("MandateResource"));
 const mandateListSuccessSchema = successEnvelopeComponent({ type: "array", items: schemaRef("MandateResource") });
 const purchaseSuccessSchema = successEnvelopeComponent(schemaRef("PurchaseResource"));
+const purchasePreviewSuccessSchema = successEnvelopeComponent(schemaRef("PurchasePreviewResource"));
 const tenantActivitySuccessSchema = successEnvelopeComponent(schemaRef("TenantActivityResource"));
 
 const errorResponse = {
@@ -253,6 +256,26 @@ const document = {
         },
       },
     },
+    "/v1/purchases/preview": {
+      post: {
+        operationId: "previewPurchase",
+        summary: "Ask whether a purchase would be allowed",
+        description:
+          "Requires the payments:preview scope, which is separate from payments:authorize on purpose: a dashboard that only shows a person why a purchase would be refused never needs the permission to spend their money. Runs every check a real purchase runs — the venue registry, the credential's scope, the signed Mandate including its product allowlist, and both daily limits against today's real running total — and reserves nothing, signs nothing and pays nothing. A verdict of would_settle false is a 200, not a 4xx: the question was answered. Two limits, stated rather than discovered: reconciled is always false, because no merchant invoice is fetched, so a real purchase still compares price, asset and payTo against the signed Mandate and can refuse there; and a would_settle of true is not a reservation, so another purchase for the same agent may take that budget first. It is a separate route rather than a flag on POST /v1/purchases so that a request which loses the flag cannot become a real payment. No Idempotency-Key: nothing is created.",
+        security: bearerSecurity,
+        requestBody: {
+          required: true,
+          content: { [JSON_MEDIA_TYPE]: { schema: schemaRef("PreviewPurchaseRequest") } },
+        },
+        responses: {
+          "200": {
+            description: "The verdict, allowed or refused. Nothing was created.",
+            ...jsonContent("PurchasePreviewSuccessResponse"),
+          },
+          ...errorResponses,
+        },
+      },
+    },
     "/v1/purchases/{id}": {
       get: {
         operationId: "getPurchase",
@@ -313,9 +336,12 @@ const document = {
       MandateSuccessResponse: mandateSuccessSchema,
       MandateListSuccessResponse: mandateListSuccessSchema,
       CreatePurchaseRequest: toJsonSchema(createPurchaseRequestSchema),
+      PreviewPurchaseRequest: toJsonSchema(previewPurchaseRequestSchema),
       PurchaseResource: toJsonSchema(purchaseResourceSchema),
+      PurchasePreviewResource: toJsonSchema(purchasePreviewResourceSchema),
       TenantActivityResource: toJsonSchema(tenantActivityResourceSchema),
       PurchaseSuccessResponse: purchaseSuccessSchema,
+      PurchasePreviewSuccessResponse: purchasePreviewSuccessSchema,
       TenantActivitySuccessResponse: tenantActivitySuccessSchema,
     },
     securitySchemes: {

@@ -115,6 +115,29 @@ export interface PolicyRail {
    * give back — never silence, so a caller releasing the wrong id finds out.
    */
   release(input: ReleaseSpendInput): Promise<void>;
+  /**
+   * The same decision as {@link authorise}, reserving nothing (T93).
+   *
+   * Every check runs — `reconcileTerms` when there are terms, `checkScope`,
+   * `checkMandate`, and both daily limits against today's **real** running
+   * total — and a granted result means "this would be allowed", not "this is
+   * allowed and the budget is now yours". Nothing is recorded, so calling it
+   * twice costs nothing and calling it never changes what a later purchase
+   * can do.
+   *
+   * It exists because, without it, the only way to find out whether a
+   * purchase would be permitted was to attempt one — and an attempt that is
+   * granted reserves budget (`M-15`), so asking the question cost the person
+   * money they had not spent. A partner can now show someone why a purchase
+   * would be refused before they commit to it, and anyone evaluating AgentPey
+   * can watch the enforcement say no without a wallet or a funded account.
+   *
+   * **It is not a reservation and must not be treated as one.** Between a
+   * granted preview and the purchase that follows it, another purchase for
+   * the same agent may take the budget. `authorise` remains the only thing
+   * that decides.
+   */
+  preview(request: AuthorisationRequest): Promise<AuthorisationDecision>;
 }
 
 export interface LocalPolicyRailDeps {
@@ -195,9 +218,24 @@ export function createLocalPolicyRail(deps: LocalPolicyRailDeps): PolicyRail {
     );
   }
 
-  return {
-    async authorise(request: AuthorisationRequest): Promise<AuthorisationDecision> {
+  /**
+   * Every check, and **no way to record anything**.
+   *
+   * `reader` is typed as the read-only half of a `LockedSpendLedger`, so this
+   * function could not write a spend even if someone added a line trying to
+   * (T93). That is the whole reason it exists as its own function: `preview`
+   * and `authorise` have to reach the same verdict by the same code — a
+   * second implementation of "would this be allowed" is a second thing to
+   * keep in step with `checkMandate` — while only one of them has the power
+   * to reserve budget. Recording stays in `authorise`, outside this.
+   */
+  async function decide(
+    request: AuthorisationRequest,
+    reader: Pick<LockedSpendLedger, "spentOn" | "hasRecorded">,
+    at: Date,
+  ): Promise<AuthorisationDecision> {
       const { intent, scope, mandate, terms } = request;
+      const { spentOn, hasRecorded } = reader;
 
       // 1. Which purchase is this, and who collects it? Before whether it is
       //    permitted (M-14). `grant.payTo` is read straight off the mandate
@@ -234,9 +272,7 @@ export function createLocalPolicyRail(deps: LocalPolicyRailDeps): PolicyRail {
       const total = scoped.total;
       const subject = intent.agent;
 
-      // 4. The stateful half, in one critical section (M-15).
-      return criticalSection(subject, async ({ spentOn, hasRecorded, record }) => {
-        const at = clock();
+      {
         const spentToday = await spentOn(subject, currency, at);
 
         // A purchase can be authorised more than once for the same intentId
@@ -272,11 +308,6 @@ export function createLocalPolicyRail(deps: LocalPolicyRailDeps): PolicyRail {
         }
 
         // Recorded on authorising, not on paying: over-counting a purchase
-        // that falls through is fail-closed, under-counting is not (M-15).
-        // The ledger de-duplicates by intentId, so authorising the same intent
-        // twice counts once.
-        await record({ subject, intentId: intent.intentId, currency, amount: total, at });
-
         return {
           authorised: true,
           intentId: intent.intentId,
@@ -285,7 +316,63 @@ export function createLocalPolicyRail(deps: LocalPolicyRailDeps): PolicyRail {
           spentToday: underScope.total,
           reconciled: terms !== undefined,
         };
+      }
+  }
+
+  return {
+    async authorise(request: AuthorisationRequest): Promise<AuthorisationDecision> {
+      const subject = request.intent.agent;
+
+      // The stateful half, in one critical section (M-15): the read of
+      // today's total, the decision, and the recording of the spend.
+      return criticalSection(subject, async (locked) => {
+        const at = clock();
+        const decision = await decide(request, locked, at);
+        if (!decision.authorised) return decision;
+
+        // Recorded on authorising, not on paying: over-counting a purchase
+        // that falls through is fail-closed, under-counting is not (M-15) —
+        // and T92's `release` is what gives it back when the purchase
+        // provably never reached the network. The ledger de-duplicates by
+        // intentId, so authorising the same intent twice counts once.
+        await locked.record({
+          subject,
+          intentId: decision.intentId,
+          currency: decision.currency,
+          amount: decision.total,
+          at,
+        });
+        return decision;
       });
+    },
+
+    /**
+     * The same verdict, with nothing reserved and nothing signed (T93).
+     *
+     * **Deliberately outside the critical section.** A preview only reads, and
+     * a preview is explicitly not a promise: by the time a caller acts on it,
+     * another purchase for the same agent may have used the budget it saw. It
+     * answers "as of now, my own rules allow this", and taking the tenant's
+     * lock to say so would let a partner's dashboard queue behind — and
+     * slow down — the purchases that actually move money.
+     *
+     * A granted preview is therefore weaker than a granted authorisation in
+     * exactly one way, and the honest name for it is "would be allowed". The
+     * decision itself is not weaker: it is the same `decide`, over the same
+     * live total from the same ledger, not a copy that could drift.
+     *
+     * Nothing here can reserve budget, and that is a type error rather than a
+     * rule: `decide` receives only `spentOn` and `hasRecorded`.
+     */
+    async preview(request: AuthorisationRequest): Promise<AuthorisationDecision> {
+      return decide(
+        request,
+        {
+          spentOn: (subject, currency, at) => ledger.spentOn(subject, currency, at),
+          hasRecorded: (intentId) => ledger.hasRecorded(intentId),
+        },
+        clock(),
+      );
     },
 
     /**

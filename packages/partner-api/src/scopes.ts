@@ -25,6 +25,15 @@
  * has no business being able to *spend*, and the overwhelmingly common
  * integration — a dashboard — only ever needs the reads.
  *
+ * **T93 adds `payments:preview`**, by the same damage-separation rule. A
+ * preview spends nothing: it answers whether a purchase *would* be allowed,
+ * reserving no budget and signing nothing. Folding it into
+ * `payments:authorize` would mean a dashboard that only ever wants to show a
+ * person "this would be refused, because…" had to hold the permission to
+ * actually spend their money. It is deliberately **not implied by**
+ * `payments:authorize` either — this list is flat, and inventing a hierarchy
+ * for one pair would make every future reader wonder which other pairs have one.
+ *
  * `mandates:revoke` is still not included: revocation stays a wallet-signed
  * action the principal takes through the hosted flow, not something a
  * partner's API key can trigger on their behalf.
@@ -39,6 +48,7 @@ export const API_SCOPES = [
   "consent_sessions:write",
   "mandates:read",
   "payments:authorize",
+  "payments:preview",
   "payments:read",
   "vault:read",
 ] as const;

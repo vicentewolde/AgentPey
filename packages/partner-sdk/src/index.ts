@@ -7,12 +7,16 @@ import {
   createTenantRequestSchema,
   errorEnvelopeSchema,
   mandateResourceSchema,
+  previewPurchaseRequestSchema,
+  purchasePreviewResourceSchema,
   tenantResourceSchema,
   type AgentResource,
   type ConsentSessionResource,
   type CreateConsentSessionRequest,
   type CreateTenantRequest,
   type MandateResource,
+  type PreviewPurchaseRequest,
+  type PurchasePreviewResource,
   type TenantResource,
 } from "@agentpey/partner-api";
 import { randomUUID } from "node:crypto";
@@ -42,6 +46,24 @@ export interface PartnerClient {
   getConsentSession(id: string): Promise<ConsentSessionResource>;
   getMandate(id: string): Promise<MandateResource>;
   listMandates(tenantId: string): Promise<readonly MandateResource[]>;
+  /**
+   * Asks whether a purchase would be allowed, reserving nothing and paying
+   * nothing (T93). Needs the `payments:preview` scope.
+   *
+   * No `Idempotency-Key`: the route creates nothing, so there is nothing a
+   * replay could duplicate.
+   *
+   * **`would_settle: true` is not a promise.** Nothing is reserved, so the
+   * budget it saw may be gone by the time the real purchase runs; and no
+   * merchant invoice was fetched, so `reconciled` is always `false` — a real
+   * purchase still reconciles price, asset and payee against the signed
+   * Mandate, and can refuse there.
+   *
+   * There is deliberately no `createPurchase` here yet: `POST /v1/purchases`
+   * is reachable over plain HTTP and its absence from this client is a
+   * tracked gap, not a statement that a partner should only ever preview.
+   */
+  previewPurchase(input: PreviewPurchaseRequest): Promise<PurchasePreviewResource>;
 }
 
 function configError(message: string): AgentPassError {
@@ -168,5 +190,13 @@ export function createPartnerClient(options: PartnerClientOptions): PartnerClien
     getConsentSession: (id) => request(`/v1/consent_sessions/${encodedPathSegment(id)}`, consentSessionResourceSchema),
     getMandate: (id) => request(`/v1/mandates/${encodedPathSegment(id)}`, mandateResourceSchema),
     listMandates: (tenantId) => request(`/v1/mandates?${tenantQuery(tenantId)}`, z.array(mandateResourceSchema)),
+    previewPurchase: async (input) => {
+      const body = parseRequest(previewPurchaseRequestSchema, input, "previewPurchase");
+      return request("/v1/purchases/preview", purchasePreviewResourceSchema, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    },
   };
 }

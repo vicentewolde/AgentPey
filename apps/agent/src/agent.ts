@@ -18,7 +18,12 @@ import type { MandateSource, MandateState, MandateVerifier } from "./mandate/ver
 import { checkOwnMandate } from "./mandate/verifier.js";
 import { createInMemorySpendLedger, type SpendLedger } from "./ledger/spend-ledger.js";
 import type { PolicyRail } from "./policy/policy-rail.js";
-import { createAgentTools, type PaymentDeps } from "./tools/agent-tools.js";
+import {
+  createAgentTools,
+  createPurchasePreviewer,
+  type PaymentDeps,
+  type PurchasePreviewer,
+} from "./tools/agent-tools.js";
 import type { ToolSet } from "./tools/tool.js";
 
 export interface AgentConfig {
@@ -81,6 +86,13 @@ export interface Agent {
   readonly credential: CredentialState;
   /** The startup check's outcome for the principal's consent, T21. */
   readonly mandate: MandateState | undefined;
+  /**
+   * Asks what a purchase would do, reserving nothing and signing nothing
+   * (T93). `undefined` for exactly the agents that have no
+   * `create_purchase_intent` either — an agent that cannot buy does not get
+   * to answer questions about what it would be allowed to buy.
+   */
+  readonly preview: PurchasePreviewer | undefined;
 }
 
 /**
@@ -155,21 +167,26 @@ export async function createAgent(config: AgentConfig): Promise<Agent> {
 
   const ledger = config.ledger ?? createInMemorySpendLedger();
 
+  const toolDeps = {
+    catalog: config.catalog,
+    credential,
+    mandate,
+    mandateVerifier: config.mandateVerifier,
+    signer: config.signer,
+    verifier: config.verifier,
+    intentTtlSeconds: config.intentTtlSeconds,
+    now: config.now,
+    ledger,
+    payment: config.payment,
+    policyRail: config.policyRail,
+  };
+
   return {
     credential,
     mandate,
-    tools: createAgentTools({
-      catalog: config.catalog,
-      credential,
-      mandate,
-      mandateVerifier: config.mandateVerifier,
-      signer: config.signer,
-      verifier: config.verifier,
-      intentTtlSeconds: config.intentTtlSeconds,
-      now: config.now,
-      ledger,
-      payment: config.payment,
-      policyRail: config.policyRail,
-    }),
+    preview: createPurchasePreviewer(toolDeps),
+    // The same deps the previewer got: one description of what this agent is
+    // allowed to do, not two that could disagree.
+    tools: createAgentTools(toolDeps),
   };
 }

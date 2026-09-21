@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   createPurchaseRequestSchema,
+  previewPurchaseRequestSchema,
+  purchasePreviewResourceSchema,
   purchaseResourceSchema,
   toPurchaseResource,
   venueIdSchema,
@@ -229,5 +231,71 @@ describe("toPurchaseResource delivery", () => {
       const { delivery } = toPurchaseResource(stored({ ...SIGNALDESK_BODY, artifact_url }));
       expect(delivery?.artifact_url, artifact_url).toBeNull();
     }
+  });
+});
+
+/** T93: `POST /v1/purchases/preview`'s own request and response shapes. */
+describe("previewPurchaseRequestSchema", () => {
+  const valid = {
+    tenant_id: "ptn_00000000000000000000000001:00000000000000000000000001",
+    venue: "signaldesk:CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F",
+    product_id: "signaldesk:market-brief-xlm-usdc",
+    quantity: 1,
+  };
+
+  it("accepts the same purchase a partner would ask for", () => {
+    expect(previewPurchaseRequestSchema.parse(valid)).toEqual(valid);
+  });
+
+  it("accepts the partner's own ceiling, so the preview answers about the same purchase", () => {
+    expect(previewPurchaseRequestSchema.parse({ ...valid, max_total: "0.50" }).max_total).toBe("0.50");
+  });
+
+  it("refuses `dry_run` — the flag this route exists instead of", () => {
+    // `strictObject`: an integrator who believes a field is constraining the
+    // request has to find out loudly when it is not.
+    expect(previewPurchaseRequestSchema.safeParse({ ...valid, dry_run: true }).success).toBe(false);
+  });
+
+  it("refuses `route_params` — a preview never builds the merchant's paid URL", () => {
+    expect(previewPurchaseRequestSchema.safeParse({ ...valid, route_params: { pair: "XLM/USDC" } }).success).toBe(false);
+  });
+});
+
+describe("purchasePreviewResourceSchema", () => {
+  const verdict = {
+    tenant_id: "ptn_00000000000000000000000001:00000000000000000000000001",
+    would_settle: true,
+    agent_id: "agt_00000000000000000000000001",
+    mandate_id: "mdt_00000000000000000000000001",
+    code: null,
+    reason: null,
+    total: "0.3500000",
+    asset: "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+    spent_today: "0.3500000",
+    per_day_limit: "1.0000000",
+    reconciled: false as const,
+  };
+
+  it("carries a verdict with no purchase id — nothing was created", () => {
+    const parsed = purchasePreviewResourceSchema.parse(verdict);
+    expect(parsed.would_settle).toBe(true);
+    expect("id" in parsed).toBe(false);
+  });
+
+  it("cannot claim the merchant's invoice was reconciled, because it never fetched one", () => {
+    // `literal(false)`, not `boolean`: the one promise a preview must never
+    // be able to make (`M-14`).
+    expect(purchasePreviewResourceSchema.safeParse({ ...verdict, reconciled: true }).success).toBe(false);
+  });
+
+  it("carries the code and reason when it would be refused", () => {
+    const refused = purchasePreviewResourceSchema.parse({
+      ...verdict,
+      would_settle: false,
+      code: "MandateDailyLimitExceeded",
+      reason: "hoy ya se gastó el límite diario",
+    });
+    expect(refused.code).toBe("MandateDailyLimitExceeded");
   });
 });
