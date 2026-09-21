@@ -5623,3 +5623,27 @@ Pendiente:
   producción; la hora local de T89; quitar `/api/session/*`; rotar los dos
   secretos; `createPurchase` en el SDK; tarjeta de gasto por agente. Sigue
   abierta `C-122`.
+
+## 2026-09-21 — main (T95 mergeado)
+
+Agente: Claude Code.
+
+Qué: **T95 mergeado** a `main` y pusheado (`3fd91af..366dcf7`), a pedido del
+usuario, tras correr la integración del directorio (48/48). La primera corrida
+falló tres tests de T94 por el entorno, no por el código: el drenaje ya
+desplegado en producción comparte la tabla, y el reloj local va ~0,1 s detrás
+del de Postgres. Arreglados los tests (`366dcf7`); sin cambios de código de
+producción; sin filas de prueba remanentes.
+
+Pendiente:
+- **API key nueva** para poder usar en producción `payments:preview` (T93) y
+  `webhooks:*` (T94). Es del usuario (`P-10`); `pnpm run partner:create` ya
+  otorga todos los scopes.
+- Observado, sin cambiar: el outbox mezcla dos relojes (`next_attempt_at` por
+  defecto sale de Postgres; el reclamo y el backoff, de la app). En producción
+  el efecto es a lo sumo una pasada de 30 s de demora; se anota por si se
+  quiere un solo reloj.
+- Siguen: caso 8b de aceptación; Freighter en producción; hora local de T89;
+  quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
+  tarjeta de gasto por agente; limitar por IP los pedidos sin autenticar;
+  `C-122` abierta.

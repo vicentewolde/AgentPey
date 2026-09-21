@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado), T93 (`POST /v1/purchases/preview`, `C-125`, mergeado) T94 (webhooks en vivo, `C-126`, mergeado) y T95 (límite de tasa por API key, `C-127`) · **Sigue:** sin hito asignado. Las cuatro ideas de la sesión están construidas. Para usar T93, T94 y T95 en producción hace falta emitir una API key nueva · **Fase 6: en curso**
+**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado), T93 (`POST /v1/purchases/preview`, `C-125`, mergeado) T94 (webhooks en vivo, `C-126`, mergeado) y T95 (límite de tasa por API key, `C-127`, mergeado) · **Sigue:** sin hito asignado. Las cuatro ideas de la sesión están construidas. Para usar T93, T94 y T95 en producción hace falta emitir una API key nueva · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -219,7 +219,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T92 | `C-113`: el gasto de una compra que nunca llegó a la red se libera, y un rail sin saldo lo dice con su propio código en vez de parecer una caída del comercio | ✅ cerrado 2026-09-19 · mergeado a `main` (`b8e66a9`) (`C-124`, enmienda `M-23`) |
 | T93 | `POST /v1/purchases/preview`: el enforcement contesta si una compra se permitiría, sin reservar presupuesto, sin firmar y sin pagar — ruta y permiso propios | ✅ cerrado 2026-09-20 · mergeado a `main` (`dfe52b4`) (`C-125`) |
 | T94 | Webhooks en vivo: registro de endpoints con política de URL propia, outbox escrito en el mismo statement que el cambio, y un drenaje que entrega firmado — cierra el paquete huérfano de T48 | ✅ cerrado 2026-09-20 · mergeado a `main` (`3fd91af`) (`C-126`) |
-| T95 | Límite de tasa por API key en `/v1`: 120/min general, 10/min en las rutas que gastan o se conectan hacia afuera; el nivel sale del permiso y no hay ruta que se lo salte | ✅ cerrado 2026-09-20 (`C-127`) |
+| T95 | Límite de tasa por API key en `/v1`: 120/min general, 10/min en las rutas que gastan o se conectan hacia afuera; el nivel sale del permiso y no hay ruta que se lo salte | ✅ cerrado 2026-09-20 · mergeado a `main` (`366dcf7`) · integración 48/48 (`C-127`) |
 
 ---
 
