@@ -115,6 +115,28 @@ describe("loadConfig", () => {
     });
     expect(JSON.stringify(config)).not.toContain("SHOULDNOTMATTER");
   });
+
+  it("refuses ADAPTER=jumpseller without credentials, and keeps them out of errors", () => {
+    expect(() => loadConfig({ ...REQUIRED, ADAPTER: "jumpseller" })).toThrow(
+      /ADAPTER=jumpseller needs JUMPSELLER_LOGIN and JUMPSELLER_AUTHTOKEN/,
+    );
+    expect(() =>
+      loadConfig({ ...REQUIRED, ADAPTER: "jumpseller", JUMPSELLER_LOGIN: "store@example.com" }),
+    ).toThrow(/JUMPSELLER_AUTHTOKEN/);
+
+    const config = loadConfig({
+      ...REQUIRED,
+      ADAPTER: "jumpseller",
+      JUMPSELLER_LOGIN: "store@example.com",
+      JUMPSELLER_AUTHTOKEN: "TOKENSHOULDNOTLEAK",
+    });
+    expect(config.adapter).toBe("jumpseller");
+    expect(config.jumpseller).toEqual({ login: "store@example.com", authtoken: "TOKENSHOULDNOTLEAK" });
+  });
+
+  it("leaves jumpseller credentials undefined for the mock adapter", () => {
+    expect(loadConfig({ ...REQUIRED }).jumpseller).toBeUndefined();
+  });
 });
 
 describe("loadConfig (V-8)", () => {
