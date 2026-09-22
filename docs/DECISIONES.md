@@ -336,32 +336,40 @@ paga dejaría productos bloqueados).
 
 ---
 
-### V-16 · Método de envío gratis recreado por API, no editado · `Vigente` (día 3)
+### V-16 · El envío del storefront se configura a mano; el pedido por API no lo usa · `Vigente` (día 3)
 **Fecha:** 2026-09-22
 
-`PUT /shipping_methods/{id}.json` devuelve `400 "El tipo de método de envío
-seleccionado no es editable en este momento"` para un método creado a mano
-en el panel con `type: "free"` (el "Correo Ordinario" por defecto de
-Jumpseller, sin tarifa configurada — por eso el checkout manual del
-storefront tiraba "Falta el método de envío": ni ese ni Bluexpress, que es
-la integración real con el courier, podían calcular un precio).
+**Los métodos de envío de la tienda no se pueden configurar por la API.** El
+checkout manual del storefront fallaba ("Falta el método de envío", después
+"Este método de envío no está disponible para esta ubicación") porque el
+"Correo Ordinario" que trae Jumpseller por defecto no tiene tarifa y
+Bluexpress es la integración real con el courier, que sin cuenta conectada no
+cotiza. Ninguno se arregla desde `/shipping_methods.json`:
 
-**Motivo.** La API solo deja editar por `PUT` un método que ya es `type:
-"tables"` o `"external"`; uno creado como `"free"` desde el panel queda
-congelado. Se resolvió creando un método `tables` nuevo con el mismo nombre
-(`POST /shipping_methods.json`, `tables: [{basedon: "price", values:
-[{amount: 0, price: 0}]}]`, **sin la clave `locations`** — con `locations`
-poblado el POST devuelve `500` aunque el payload cumpla el schema del
-OpenAPI oficial) y borrando el viejo con `DELETE`, que sí funciona. Omitir
-`locations` hace que la tarifa aplique a cualquier destino (documentado:
-"si no se asigna a una zona, aparece en todas").
+- `POST` solo acepta `type: "external"` y `"tables"`. `"free"`, `"flat"` y
+  `"correos_chile"` devuelven `400 "Tipo de método de envío no válido"`.
+- `PUT` sobre un método creado en el panel como `type: "free"` devuelve `400
+  "El tipo de método de envío seleccionado no es editable en este momento"`,
+  incluso para cambiar solo `enabled`. `DELETE` sí funciona.
+- Un `tables` **con `locations` poblado devuelve `500`** en las cuatro formas
+  que admite el schema oficial (`{country}`, `{country, region}` con región
+  entero o string, y nombre de país). Sin `locations` el `POST` pasa, pero la
+  tabla queda sin ubicaciones y no aplica a ningún destino, que es
+  exactamente el error que ve el comprador.
+- No hay endpoint de zonas de envío.
 
-**Ojo:** un `POST` que devuelve `500` en este endpoint puede dejar un
-registro roto a medio crear en vez de no crear nada — hubo que barrer dos
-duplicados vacíos después. Si el adapter alguna vez toca este endpoint,
-revisar el resultado con un `GET` después de cualquier `500`, no asumir que
-no pasó nada.
+Un `POST` que devuelve `500` acá **igual deja un registro roto a medio
+crear**. Si el adapter alguna vez toca este endpoint, verificar con un `GET`
+después de cualquier `500` en vez de asumir que no pasó nada.
 
-**Alternativa descartada:** pedir a Vinny que lo arregle a mano en el
-panel. Es tres llamadas HTTP y queda igual de bien; se documenta acá en vez
-de generar otro paso manual.
+**Consecuencia para el adapter: ninguna.** `OrderCreateFields` acepta
+`shipping_method_name` y `shipping_price` como texto y número libres (sin
+`shipping_method_id`), así que la orden que crea el gateway declara su propio
+envío y nunca consulta la configuración de la tienda. El flujo del agente es
+independiente de esto; solo el checkout manual del storefront lo necesita, y
+eso es para grabar el video.
+
+**Alternativa descartada:** montar un método `type: "external"` apuntando a
+un `callback_url` del gateway. Funcionaría y es tentador (Vitrinee cotizando
+el envío), pero exige el gateway desplegado y público para algo que en la
+demo son cuatro clics en el panel.
