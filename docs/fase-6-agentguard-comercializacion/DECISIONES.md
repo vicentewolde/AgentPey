@@ -5491,3 +5491,71 @@ que el permiso firmado nombra ese comercio y ese producto, y nada más que eso.
 RealOps. No se usó todavía porque exige una API key con `payments:preview`, que
 aún no se emitió (es del usuario, `P-10`), y porque consumiría cupo de tasa por
 cada tarjeta dibujada.
+
+---
+
+### C-129 · T97: rotar la clave de `/v1` es emitir otra para el mismo partner, nunca crear un partner nuevo · `Vigente`
+**Fecha:** 2026-09-22 · **Hito:** T97 · La forma, de Claude Code; correr el script y cargar el secreto queda del usuario (`P-10`)
+
+**El problema.** T93, T94 y T95 agregaron tres permisos a la lista congelada
+(`payments:preview`, `webhooks:read`, `webhooks:write`). La lista es **plana a
+propósito**: `payments:authorize` no implica `payments:preview` (`C-125`). La
+clave que RealOps usa en producción se emitió el 2026-09-13, antes de que esos
+permisos existieran, así que tiene 9 de 12 y recibe `403` en las rutas nuevas.
+El código está mergeado y probado; nadie lo puede llamar.
+
+**La trampa que había que nombrar.** La bitácora venía diciendo "hace falta una
+API key nueva; `pnpm run partner:create` ya otorga todos los scopes". Eso es
+cierto y a la vez peligroso: `partner:create` **crea un partner nuevo**, y los
+tenants están namespaceados por partner — el id se deriva de él
+(`newTenantId(partnerId)`). Apuntar RealOps a la clave de un partner nuevo
+dejaría a cada cuenta existente sin su tenant, sin sus agentes y sin sus
+Mandatos firmados: seguirían en cadena y en el vault, bajo el partner viejo,
+invisibles para la aplicación. En un piloto que se muestra a gente, eso no es
+un detalle operativo, es perder la demo.
+
+**La decisión.** Un script aparte, `pnpm run partner:key`, que emite una clave
+para el partner **que ya existe**. `issueApiKey` siempre aceptó un `partnerId`;
+lo que faltaba era exponerlo sin obligar a crear un partner primero.
+
+#### Tres modos, y por qué el primero es el que más sirve
+
+- **Sin argumentos: diagnóstico.** Lee la clave de `.env.local`, la autentica
+  con el mismo `authenticate` de tiempo constante que usa `/v1`, y dice a qué
+  partner pertenece, qué permisos tiene, cuáles le faltan y qué ruta desbloquea
+  cada uno. Es la respuesta a "¿por qué no me anda esto?", que es la pregunta
+  que se hace de verdad.
+- **`--issue`:** emite la clave nueva para ese mismo partner.
+- **`--revoke apk_… --yes`:** revoca una vieja, después.
+
+#### El partner se descubre desde la clave desplegada, no se pregunta
+
+No hay `listPartners()` en el `Directory` y este hito no lo agrega. No hace
+falta: un operador sabe qué está desplegado, no qué es un `ptn_…`, y la clave
+desplegada es la respuesta autoritativa a "qué partner es esta instalación".
+El secreto se lee de `.env.local` y **nunca se imprime**; se usa sólo para
+resolver el `partnerId`. Tampoco se toma por argumento, para que no quede en el
+historial del shell.
+
+#### Emitir y revocar son dos comandos a propósito
+
+Entre uno y otro hay que desplegar y verificar. Un script que revocara la clave
+vieja al emitir la nueva dejaría producción caída durante todo el despliegue,
+cada vez. El solapamiento **es** la rotación, no un descuido.
+
+Revocar es lo único destructivo acá, así que: exige `--yes`, exige el id
+explícito, y **rechaza revocar la clave que está en `.env.local`** — revocar la
+credencial que esta instalación está usando nunca es la intención, y un error de
+tipeo que lo hiciera tumbaría producción.
+
+**Alternativa descartada:** agregar los permisos que faltan a la clave
+existente, en vez de emitir otra. Se descartó porque los permisos de una clave
+emitida son parte de lo que se autenticó: mutarlos en la base cambia
+retroactivamente lo que una credencial ya entregada puede hacer, sin que quede
+rastro de cuándo ni de qué tenía antes. Emitir y revocar deja las dos filas.
+
+**Sigue siendo del usuario (`P-10`):** correr el script contra la base de
+producción, guardar el secreto —se imprime una sola vez— y cargarlo en Render.
+Claude Code construye el mecanismo; las llaves son del usuario. Si Claude Code
+pudiera emitirse credenciales de producción solo, "RealOps pide, AgentPey
+decide" sería una frase y no una propiedad.

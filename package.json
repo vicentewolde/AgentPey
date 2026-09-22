@@ -18,6 +18,7 @@
     "demo:pay-real": "tsx --tsconfig tsconfig.scripts.json scripts/demo-real-payment.ts",
     "generate:openapi": "tsx --tsconfig tsconfig.scripts.json scripts/generate-openapi.ts",
     "partner:create": "tsx --tsconfig tsconfig.scripts.json scripts/create-partner.ts",
+    "partner:key": "tsx --tsconfig tsconfig.scripts.json scripts/issue-api-key.ts",
     "partner:return-origins": "tsx --tsconfig tsconfig.scripts.json scripts/partner-return-origins.ts",
     "web": "pnpm --filter @agentpey/web run dev",
     "build": "tsc -b",

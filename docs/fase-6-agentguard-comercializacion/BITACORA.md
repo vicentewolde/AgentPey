@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-22 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** · **Sigue:** sin hito asignado. Para usar T93, T94 y T95 en producción hace falta emitir una API key nueva · **Fase 6: en curso**
+**Fecha:** 2026-09-22 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** · **Sigue:** T97 sin mergear. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -221,6 +221,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T94 | Webhooks en vivo: registro de endpoints con política de URL propia, outbox escrito en el mismo statement que el cambio, y un drenaje que entrega firmado — cierra el paquete huérfano de T48 | ✅ cerrado 2026-09-20 · mergeado a `main` (`3fd91af`) (`C-126`) |
 | T95 | Límite de tasa por API key en `/v1`: 120/min general, 10/min en las rutas que gastan o se conectan hacia afuera; el nivel sale del permiso y no hay ruta que se lo salte | ✅ cerrado 2026-09-20 · mergeado a `main` (`366dcf7`) · integración 48/48 (`C-127`) |
 | T96 | F9: RealOps deja de estar cableado a un solo comercio. Un `agentKind` nuevo (`bazaar_shopper`) con su propio Mandato compra en el bazaar del embajador, y una pantalla de catálogo muestra la tienda entera marcando cada ítem contra el permiso firmado — lo que queda fuera abre el diff literal del permiso que habría que firmar | ✅ cerrado 2026-09-22 · mergeado a `main` (`6e8503b`) (`C-128`) |
+| T97 | `pnpm run partner:key`: diagnosticar qué permisos le faltan a la clave de `/v1` en uso, y emitir una nueva **para el mismo partner** — porque `partner:create` crea un partner nuevo y los tenants están namespaceados por partner | ✅ cerrado 2026-09-22 · **sin mergear** (`C-129`) |
 
 ---
 
@@ -4366,3 +4367,63 @@ IA", "paquete de créditos" y todo lo que ya funcionaba sigue funcionando igual.
 contestaría el contraste de cada tarjeta mejor que RealOps, porque lo
 contestaría AgentPey. Hace falta una API key con `payments:preview`, que es del
 usuario (`P-10`), y consumiría cupo de tasa por tarjeta dibujada.
+
+---
+
+## T97 — una clave nueva para el mismo partner, no un partner nuevo
+
+**Qué quedó funcionando, en palabras simples.** Los tres últimos hitos (T93,
+T94, T95) agregaron rutas a la API pública de AgentPey, y cada una exige un
+permiso que no existía cuando se emitió la clave que RealOps usa en producción.
+El código está construido y mergeado, pero nadie lo puede llamar: la clave tiene
+nueve de los doce permisos y recibe un "no tenés permiso" en las rutas nuevas.
+
+Ahora hay un comando, `pnpm run partner:key`, que **primero te dice qué pasa**:
+a qué partner pertenece la clave desplegada, qué permisos tiene, cuáles le
+faltan y qué ruta desbloquea cada uno. Corrido contra la base real confirmó
+exactamente eso: emitida el 13 de septiembre, le faltan los tres de T93 y T94.
+
+Con `--issue` emite una clave nueva **para ese mismo partner**. Con
+`--revoke` da de baja la vieja, después.
+
+### La trampa que esto evita, y que la bitácora venía recomendando
+
+Hasta hoy esta bitácora decía "hace falta una API key nueva, `partner:create` ya
+otorga todos los permisos". Era cierto y a la vez peligroso: ese comando crea un
+**partner nuevo**, y cada cuenta de RealOps está colgada del partner. Apuntar la
+aplicación a la clave de un partner nuevo habría dejado a cada persona sin su
+tenant, sin sus agentes y sin sus permisos firmados. Seguirían existiendo en
+cadena, bajo el partner viejo, pero la aplicación dejaría de verlos.
+
+Rotar una credencial tiene que significar "otra llave para la misma puerta", no
+"una puerta nueva".
+
+### Dos decisiones de forma que vale la pena conocer
+
+**Emitir y revocar son dos comandos, a propósito.** Entre uno y otro hay que
+desplegar la clave nueva y verificar que anda. Un comando que revocara la vieja
+al emitir la nueva dejaría el servicio caído durante todo el despliegue. Que las
+dos funcionen a la vez un rato **es** la rotación.
+
+**El secreto nunca se imprime al leerlo.** La clave que ya está desplegada se
+usa sólo para averiguar de qué partner es, con la misma verificación que usa la
+API. Y se lee del archivo de configuración en vez de pasarse como argumento,
+para que no quede en el historial de la terminal.
+
+Revocar es lo único que rompe algo, así que pide el id exacto, pide `--yes`, y
+**se niega a revocar la clave que la instalación está usando ahora mismo**.
+
+### Evidencia técnica
+
+- Decisión completa, con lo descartado, en `DECISIONES.md` → `C-129`.
+- Salidas crudas, incluida la corrida real contra producción, en
+  [`evidencia/T97.md`](evidencia/T97.md).
+- `typecheck` limpio, suite completa en verde. No toca código de producción:
+  agrega `scripts/issue-api-key.ts` y el comando `partner:key`.
+- `README.md` documenta el comando exacto, y avisa que `partner:create` crea un
+  partner nuevo.
+
+**Queda del usuario (`P-10`), y no se hizo acá:** correr
+`pnpm run partner:key -- --issue`, guardar el secreto —se imprime una sola
+vez— y cargarlo en Render. Claude Code construye el mecanismo; las llaves son
+del usuario.

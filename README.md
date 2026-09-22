@@ -252,7 +252,10 @@ merchant at [signaldesk.agentpey.com](https://signaldesk.agentpey.com) — three
 apps on one Render service, see `apps/gateway/README.md`.
 
 Phase 6 turns the pilot into something a third party can integrate: a
-partner gets an API key (`pnpm run partner:create`), calls `/v1` to create
+partner gets an API key (`pnpm run partner:create` for a new partner,
+`pnpm run partner:key` to inspect or rotate an existing partner's key —
+note that `partner:create` mints a *new* partner, and tenants are
+partner-scoped), calls `/v1` to create
 tenants and propose a spending grant, and a principal reviews and signs that
 grant by connecting their own wallet at a hosted `/consent/{id}` link — no
 partner ever touches a private key. Each tenant gets its own `policy_rail`,

@@ -5728,3 +5728,54 @@ Pendiente:
   producción; hora local de T89; quitar `/api/session/*`; rotar los dos
   secretos; `createPurchase` en el SDK; tarjeta de gasto por agente; limitar por
   IP los pedidos sin autenticar; `C-122` abierta.
+
+## 2026-09-22 (3) — cc/t97-issue-key
+
+Agente: Claude Code.
+
+Qué: **T97** (`C-129`) — `pnpm run partner:key`, para rotar la clave de `/v1`
+sin crear un partner nuevo.
+
+**Corrección a lo que esta bitácora venía recomendando.** Las entradas de T93,
+T94 y T95 decían "hace falta una API key nueva; `pnpm run partner:create` ya
+otorga todos los scopes". Seguir eso habría roto producción: `partner:create`
+crea un **partner nuevo**, y los tenants están namespaceados por partner
+(`newTenantId(partnerId)`), así que RealOps habría perdido de vista cada
+tenant, agente y Mandato firmado existente. Siguen en cadena y en el vault,
+bajo el partner viejo, pero invisibles para la app.
+
+El script nuevo:
+- sin argumentos, **diagnostica**: qué partner, qué permisos tiene la clave
+  desplegada, cuáles le faltan y qué ruta desbloquea cada uno;
+- `--issue`: emite una clave para **ese mismo** partner (`issueApiKey` siempre
+  aceptó un `partnerId`, sólo faltaba exponerlo);
+- `--revoke apk_… --yes`: da de baja una vieja, después del despliegue.
+
+Corrido contra la base real (sólo lectura):
+`ptn_01M2DPVEA88Q99SKWTGBDE3YK4 (RealOps)`, clave
+`apk_01M2DPVEPZPTMHE1ZAM2Z2Q5AN` del 2026-09-13, **9 de 12 permisos**, faltan
+`payments:preview`, `webhooks:read` y `webhooks:write`. El secreto de
+`.env.local` se usa para resolver el partner y **nunca se imprime**.
+
+Protecciones del modo destructivo: `--revoke` exige id explícito, exige `--yes`,
+y se niega a revocar la clave que está en `.env.local`.
+
+Documentación: `C-129`, bitácora (estado, fila y bloque de T97),
+`evidencia/T97.md`, `README.md` (comando exacto + la advertencia sobre
+`partner:create`). `AGENTS.md` sin cambios. `typecheck` limpio, suite completa
+en verde; no toca código de producción.
+
+Pendiente:
+- **Merge de T97** a `main` — esperando revisión del usuario.
+- **Del usuario (`P-10`), no se hizo acá:** correr
+  `pnpm run partner:key -- --issue`, guardar el secreto (se imprime una sola
+  vez), cargarlo en Render como `REALOPS_AGENTPEY_API_KEY` y en `.env.local`,
+  redeployar, verificar, y recién ahí revocar
+  `apk_01M2DPVEPZPTMHE1ZAM2Z2Q5AN`.
+- No hay `listPartners()` en el `Directory`, y este hito no lo agrega: el
+  partner se descubre desde la clave desplegada. Si alguna vez hace falta
+  administrar partners sin tener una clave a mano, ahí sí haría falta.
+- Siguen: caso 8b de aceptación; Freighter en producción; hora local de T89;
+  quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
+  tarjeta de gasto por agente; limitar por IP los pedidos sin autenticar;
+  `C-122` abierta.
