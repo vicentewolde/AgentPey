@@ -21,17 +21,47 @@ import { z } from "zod";
 import type { AgentKind, AgentPermissions } from "./accounts.js";
 import { bilingual, type Bilingual } from "./copy.js";
 
-/** Where the venue and asset come from. Not chosen in the UI: the pilot has one merchant. */
-export interface PilotTargets {
-  /** `signaldesk:G…` — the venue identity from `venues.json`. */
+/**
+ * What one kind of agent is pointed at: one merchant, its asset, the accounts
+ * it may pay, and the products it may buy there.
+ *
+ * **Why this is per kind and not global (T96).** It used to be one flat record:
+ * one venue, one asset, one payout account, with only the product list varying.
+ * That shape was the reason RealOps could offer nothing but SignalDesk — not
+ * the UI. A grant naming one venue authorises one venue, so a second merchant
+ * needed a second target, and therefore a second agent with its own Mandate.
+ *
+ * **No Mandate already signed is touched by this.** A kind keeps producing the
+ * same grant it always produced; there is simply another kind now. Two agents
+ * with two different powers is what the pilot means to show.
+ */
+export interface PilotTarget {
+  /** `signaldesk:G…` or `stellar-bazaar:C…` — the venue identity from `venues.json`. */
   readonly venueId: string;
-  /** `USDC:C…` — the asset id the venue quotes. */
+  /** `USDC:C…` — the asset id the venue quotes. Verified against the venue's own 402, not assumed. */
   readonly assetId: string;
-  /** The merchant's payout account. Compared against the 402 invoice by `reconcileTerms`. */
-  readonly payTo: string;
-  /** The product ids each agent kind is allowed to buy. */
-  readonly products: Readonly<Record<AgentKind, readonly string[]>>;
+  /**
+   * The merchant's payout accounts, compared against the 402 invoice by
+   * `reconcileTerms` (`M-14`).
+   *
+   * A list, not one account, because the bazaar is not one seller: each of its
+   * resources collects to its own Stellar account, none of which is the venue's
+   * own address. Listing them is what makes `payTo` mean something there — an
+   * empty or wrong list would let the merchant redirect the money.
+   */
+  readonly payTo: readonly string[];
+  /**
+   * The product ids this kind may buy, listed one by one (decided by the user,
+   * T96). `checkMandate` step 5 compares byte for byte, so a product the
+   * merchant publishes tomorrow is not buyable until a new permission is
+   * signed. That is deliberate: the refusal is what the catalogue screen has to
+   * show, and a venue-wide permission would leave it with nothing to say.
+   */
+  readonly products: readonly string[];
 }
+
+/** Every kind the pilot offers, and what each one is pointed at. */
+export type PilotTargets = Readonly<Record<AgentKind, PilotTarget>>;
 
 /**
  * The shape `POST /v1/consent_sessions` takes as its proposed grant. Mirrors
@@ -95,6 +125,21 @@ export const PURCHASE_ACTION = "intent:create";
 export const CURRENCY = "USDC";
 
 /**
+ * What a new agent is offered when it is set up from the catalogue rather than
+ * from the form (T96).
+ *
+ * The same numbers the "hire an agent" form already defaults to, so the two
+ * routes into an agent do not quietly grant different power. They are a
+ * starting point a person can change before signing, not a floor and not a
+ * recommendation: the limits that matter are the ones in the object they sign.
+ */
+export const DEFAULT_PERMISSIONS: AgentPermissions = {
+  perTx: "0.30",
+  perDay: "0.60",
+  validForDays: 30,
+};
+
+/**
  * Builds the grant, and the explanation of it, from one agent's permissions.
  *
  * The dates are computed from `now` rather than taken from the caller: a
@@ -108,14 +153,15 @@ export function translatePermissions(
   now: Date = new Date(),
 ): TranslatedPermissions {
   const validUntil = new Date(now.getTime() + permissions.validForDays * 24 * 60 * 60 * 1000);
-  const products = targets.products[kind];
+  const target = targets[kind];
+  const products = target.products;
 
   const grant: ProposedGrant = {
     actions: [PURCHASE_ACTION],
-    venues: [targets.venueId],
-    assets: [targets.assetId],
+    venues: [target.venueId],
+    assets: [target.assetId],
     products: [...products],
-    payTo: [targets.payTo],
+    payTo: [...target.payTo],
     limits: {
       perTx: permissions.perTx,
       perDay: permissions.perDay,
@@ -129,7 +175,7 @@ export function translatePermissions(
     {
       label: bilingual("Where it can buy", "Dónde puede comprar"),
       field: "venues",
-      value: targets.venueId,
+      value: target.venueId,
       enforcedBy: "signed",
       explanation: bilingual(
         "AgentPey resolves the merchant against its own registry and refuses any other before making a single call to it.",
@@ -149,7 +195,7 @@ export function translatePermissions(
     {
       label: bilingual("Which asset", "Con qué activo"),
       field: "assets",
-      value: targets.assetId,
+      value: target.assetId,
       enforcedBy: "signed",
       explanation: bilingual(
         "A payment in any other asset is refused, even if the merchant offers it.",
@@ -157,13 +203,13 @@ export function translatePermissions(
       ),
     },
     {
-      label: bilingual("Which account it can pay", "A qué cuenta puede pagar"),
+      label: bilingual("Which accounts it can pay", "A qué cuentas puede pagar"),
       field: "payTo",
-      value: targets.payTo,
+      value: target.payTo.join(", "),
       enforcedBy: "signed",
       explanation: bilingual(
-        "AgentPey requests the invoice from the merchant itself and checks the receiving account against this one before paying.",
-        "AgentPey pide él mismo la factura al comercio y compara la cuenta que cobra con esta antes de pagar.",
+        "AgentPey requests the invoice from the merchant itself and checks the collecting account against this list before paying. An account that is not here is refused even if the merchant asks for it.",
+        "AgentPey pide él mismo la factura al comercio y compara la cuenta que cobra contra esta lista antes de pagar. Una cuenta que no esté aquí se rechaza aunque el comercio la pida.",
       ),
     },
     {

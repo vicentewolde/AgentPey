@@ -4,16 +4,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMemoryStore, type RealOpsStore } from "./accounts.js";
 import { SESSION_COOKIE, createRealOpsServer } from "./app.js";
 import type { PilotTargets } from "./permissions.js";
+import { TEST_TARGETS } from "./testing.js";
 
-const TARGETS: PilotTargets = {
-  venueId: "signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  assetId: "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
-  payTo: "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  products: {
-    market_brief: ["signaldesk:market-brief-xlm-usdc"],
-    ai_credits: ["signaldesk:ai-credits-1000"],
-  },
-};
+const TARGETS = TEST_TARGETS;
 
 const store: RealOpsStore = createMemoryStore();
 const sent: { email: string; link: string }[] = [];
@@ -237,7 +230,7 @@ describe("agents", () => {
 
     // The grant itself, not a paraphrase of it.
     expect(html).toContain("signaldesk:market-brief-xlm-usdc");
-    expect(html).toContain(TARGETS.venueId);
+    expect(html).toContain(TARGETS.market_brief.venueId);
     expect(html).toContain("&quot;perTx&quot;: &quot;0.30&quot;");
     // And the honesty marks.
     expect(html).toContain("firmado");

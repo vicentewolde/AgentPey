@@ -5647,3 +5647,62 @@ Pendiente:
   quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
   tarjeta de gasto por agente; limitar por IP los pedidos sin autenticar;
   `C-122` abierta.
+
+## 2026-09-22 — cc/t96-bazaar-catalog
+
+Agente: Claude Code.
+
+Qué: **T96** (`C-128`) — RealOps deja de estar cableado a un solo comercio.
+
+- `PilotTargets` pasó de un registro plano (un venue, un asset, una cuenta de
+  cobro) a **una fila por `agentKind`**. Esa forma era la causa estructural del
+  muro, no la UI.
+- `agentKind` nuevo: **`bazaar_shopper`**, con su propio grant — venue del
+  bazaar, los dos product ids uno por uno, las **dos** cuentas de cobro del
+  bazaar, el mismo asset id. Ningún Mandato ya firmado se toca ni se re-firma.
+- Pantalla `/catalogo`: las dos categorías, el bazaar leído en vivo, cada
+  tarjeta contrastada contra el permiso firmado. `/catalogo/permiso?producto=…`
+  abre el diff literal del permiso que faltaría, con las marcas de
+  quién hace cumplir cada control.
+- Formulario por recurso → `route_params`. Los que RealOps se reserva (el
+  `account` de créditos) se escriben después de los del formulario, así que un
+  navegador no puede pisarlos; un parámetro que el comercio no declaró se
+  descarta.
+- `interpretInstruction`: cuatro productos en vez de dos, sigue rechazando lo
+  que no reconoce y lo que nombra más de uno.
+
+Verificado contra el comercio vivo (no por lectura):
+- El asset id del bazaar **es el mismo SAC** que el de SignalDesk. La
+  advertencia de `bazaar.ts` contrasta el bazaar con el *mock*, no con
+  SignalDesk.
+- `amount=100` y `amount=999999` cotizan lo mismo (0,001 USDC): un parámetro no
+  mueve el pago.
+- `ai-video-scriptwriter` está listado pero su ruta paga **404** en los dos
+  hosts. Sólo `swap-risk-quote` es comprable hoy.
+- **Bug propio encontrado en el navegador:** el preflight llenaba parámetros con
+  valores inventados y el bazaar contestaba `400` (valida antes de cotizar), así
+  que una tienda abierta se veía cerrada. Arreglado preguntando por la ruta
+  pelada, sin inventar nada.
+
+Documentación: `C-128`, bitácora (estado, fila y bloque de T96),
+`evidencia/T96.md`. `AGENTS.md` sin cambios — nada de esto cambia el contrato
+que Codex lee. **159 tests** en RealOps (eran 109), `typecheck` y `build`
+limpios.
+
+Por qué no se delegó a Codex: toca la forma del `grant` firmado, un `agentKind`
+que entra al Mandato y cuentas pagadoras nuevas. `CLAUDE.md` § 6 y `P-10` lo
+dejan en Claude Code, y el precedente de `B-25` es exactamente este tipo de
+archivo.
+
+Pendiente:
+- **Merge de T96** a `main` — esperando revisión del usuario.
+- Sin verificar en el navegador: el camino de comprar de verdad, porque firmar
+  desde la instancia local habría creado un tenant y una sesión de
+  consentimiento reales en producción. Cubierto por los 15 tests HTTP.
+- Anotado sin construir: usar `POST /v1/purchases/preview` (T93) para el
+  contraste de cada tarjeta, que lo contestaría AgentPey en vez de RealOps.
+  Necesita una API key con `payments:preview` (es del usuario, `P-10`).
+- Siguen: API key nueva para T93/T94/T95; caso 8b de aceptación; Freighter en
+  producción; hora local de T89; quitar `/api/session/*`; rotar los dos
+  secretos; `createPurchase` en el SDK; tarjeta de gasto por agente; limitar por
+  IP los pedidos sin autenticar; `C-122` abierta.

@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-20 · **Últimos hitos cerrados:** T90 (elegir qué agente compra), T91 (`payTo` obligatorio al crear un consentimiento por `/v1`, `C-123`, verificado en producción), T92 (liberar el gasto de una compra que nunca se pagó, y el rail sin saldo, `C-113` → `C-124`, mergeado), T93 (`POST /v1/purchases/preview`, `C-125`, mergeado) T94 (webhooks en vivo, `C-126`, mergeado) y T95 (límite de tasa por API key, `C-127`, mergeado) · **Sigue:** sin hito asignado. Las cuatro ideas de la sesión están construidas. Para usar T93, T94 y T95 en producción hace falta emitir una API key nueva · **Fase 6: en curso**
+**Fecha:** 2026-09-22 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`)** · **Sigue:** T96 sin mergear, a la espera de revisión. Para usar T93, T94 y T95 en producción hace falta emitir una API key nueva · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -220,6 +220,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T93 | `POST /v1/purchases/preview`: el enforcement contesta si una compra se permitiría, sin reservar presupuesto, sin firmar y sin pagar — ruta y permiso propios | ✅ cerrado 2026-09-20 · mergeado a `main` (`dfe52b4`) (`C-125`) |
 | T94 | Webhooks en vivo: registro de endpoints con política de URL propia, outbox escrito en el mismo statement que el cambio, y un drenaje que entrega firmado — cierra el paquete huérfano de T48 | ✅ cerrado 2026-09-20 · mergeado a `main` (`3fd91af`) (`C-126`) |
 | T95 | Límite de tasa por API key en `/v1`: 120/min general, 10/min en las rutas que gastan o se conectan hacia afuera; el nivel sale del permiso y no hay ruta que se lo salte | ✅ cerrado 2026-09-20 · mergeado a `main` (`366dcf7`) · integración 48/48 (`C-127`) |
+| T96 | F9: RealOps deja de estar cableado a un solo comercio. Un `agentKind` nuevo (`bazaar_shopper`) con su propio Mandato compra en el bazaar del embajador, y una pantalla de catálogo muestra la tienda entera marcando cada ítem contra el permiso firmado — lo que queda fuera abre el diff literal del permiso que habría que firmar | ✅ cerrado 2026-09-22 · **sin mergear** (`C-128`) |
 
 ---
 
@@ -4276,3 +4277,92 @@ Render la IP se puede falsificar si no se confía en el salto correcto; es otro
 problema.
 
 **Decisiones:** `C-127`. Esquema del directorio, versión 11.
+
+---
+
+## T96 — se puede comprar del bazaar, y el muro pasa a ser la mejor demostración del piloto
+
+**Qué quedó funcionando, en palabras simples.** Hasta ahora un agente contratado
+en RealOps sólo podía comprar las dos cosas de siempre. La causa no era la
+pantalla: el permiso firmado nombraba un solo comercio, así que aunque la página
+hubiera mostrado más productos, AgentPey los habría rechazado — y habría hecho
+bien. El muro estaba en el lugar correcto; lo que estaba mal era que fuera
+invisible y pareciera una falla.
+
+Ahora hay **una pantalla de catálogo con la tienda entera**: los dos productos
+de SignalDesk y los del bazaar del embajador, leídos en vivo de su propio
+catálogo. Y el giro que le da sentido: **cada tarjeta se muestra contrastada
+contra el permiso que la persona firmó de verdad.** Lo que el permiso cubre sale
+comprable, con un formulario que pregunta lo que el comercio necesita (qué par,
+qué monto, qué tono). Lo que no, sale marcado *fuera del permiso*, y al tocarlo
+se abre el permiso exacto que habría que firmar — el mismo objeto literal, con
+la misma marca de quién hace cumplir cada control: firmado, on-chain o RealOps.
+
+Así se ve la tienda completa, se ve qué puede tocar tu agente, y se ve
+exactamente cuánto poder nuevo le estarías dando.
+
+**Comprar del bazaar es un agente nuevo, no un permiso ampliado.** Ningún
+Mandato ya firmado se toca ni se vuelve a firmar. El agente del bazaar tiene su
+propio poder, visiblemente distinto, y que se vean los dos lado a lado es parte
+de lo que el piloto quiere mostrar.
+
+**El muro sigue de pie.** La pantalla lo hace visible; no lo hace pasable. Una
+cuenta sin permiso firmado para el bazaar no puede comprar ahí mandando el id
+del producto: RealOps responde que no y ni siquiera le pregunta a AgentPey. Y
+RealOps sigue sin llave, sin ver el Mandato y sin autorizar nada.
+
+### Lo que se verificó contra el comercio real, antes de firmar nada
+
+- **El asset id es el mismo.** El 402 vivo del bazaar nombra el mismo contrato
+  USDC que SignalDesk. La advertencia de `bazaar.ts` sobre issuers distintos es
+  real, pero contrasta el bazaar con el *mock*, no con SignalDesk.
+- **Las cuentas que cobran no son las mismas, y son dos.** Cada recurso del
+  bazaar cobra a su propia cuenta, y ninguna es la dirección del comercio. Por
+  eso el permiso lista las dos: con `payTo` obligatorio desde T91, una lista
+  incompleta dejaría al comercio redirigir el dinero.
+- **Un `amount` en los parámetros no mueve el pago.** El mismo recurso cotiza
+  0,001 USDC con `amount=100` y con `amount=999999`. Los parámetros eligen qué
+  te entregan, no cuánto se paga: el monto sale de la factura del comercio y se
+  vuelve a comparar contra el límite firmado.
+
+### Dos cosas que encontramos y no estaban previstas
+
+**El bazaar publica un producto que no está cobrando.** El scriptwriter de video
+aparece en el catálogo, pero su ruta de pago devuelve 404 en los dos hosts del
+comercio. De sus dos productos, hoy sólo uno se puede comprar de verdad. La
+tarjeta lo dice en vez de dejar que alguien se choque con el error.
+
+**Y la propia pantalla encontró un error nuestro.** La primera versión del
+chequeo llenaba los parámetros de la ruta con valores inventados para preguntar
+el precio, y el bazaar contestaba "parámetros inválidos" — valida antes de
+cotizar. Resultado: una tienda abierta se veía cerrada, justo en la pantalla
+hecha para distinguir esas dos cosas. Lo vimos en el navegador, no en un test.
+El arreglo no fue adivinar mejores valores —adivinar por la persona qué quiere
+comprar es lo único que este piloto no hace— sino preguntar por la ruta pelada,
+sin llenar un solo parámetro. Así se distingue "el comercio no sirve esto" de
+"tus datos de prueba no le gustaron".
+
+### Un cambio de conducta que conviene saber
+
+Escribir sólo "IA" ya no alcanza para pedir créditos. El bazaar vende un
+scriptwriter de video **con IA**, así que un "IA" suelto nombra dos productos
+distintos, y nombrar dos es no nombrar ninguno: vuelve como no entendido. Es a
+propósito — rechazar antes que adivinar entre dos comercios. "compra créditos de
+IA", "paquete de créditos" y todo lo que ya funcionaba sigue funcionando igual.
+
+### Evidencia técnica
+
+- Decisión completa, con lo descartado, en `DECISIONES.md` → `C-128`.
+- Salidas crudas, incluidos los `curl` contra el 402 real, en
+  [`evidencia/T96.md`](evidencia/T96.md).
+- `typecheck` y `build` limpios. **159 tests** en RealOps (eran 109): 50 nuevos
+  en `bazaar-catalog.test.ts`, `catalog.test.ts`, `catalog-http.test.ts` e
+  `instruction.test.ts`.
+- `PilotTargets` pasó de un registro plano a una fila por `agentKind` — esa
+  forma vieja era la causa estructural del muro. Los fixtures de los cuatro
+  tests que lo copiaban viven ahora una sola vez, en `testing.ts`.
+
+**Pendiente, anotado sin construir:** `POST /v1/purchases/preview` (T93)
+contestaría el contraste de cada tarjeta mejor que RealOps, porque lo
+contestaría AgentPey. Hace falta una API key con `payments:preview`, que es del
+usuario (`P-10`), y consumiría cupo de tasa por tarjeta dibujada.

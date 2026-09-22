@@ -45,8 +45,17 @@ export const aliasSchema = z
   .max(60)
   .regex(/^[^\u0000-\u001F\u007F]+$/, "an alias may not contain control characters");
 
-/** The two agents the pilot offers. Not a free-form string: an agent is one of these. */
-export const agentKindSchema = z.enum(["market_brief", "ai_credits"]);
+/**
+ * The agents the pilot offers. Not a free-form string: an agent is one of these.
+ *
+ * `bazaar_shopper` (T96) is the first kind named after a *merchant* rather than
+ * a product family. The two SignalDesk kinds each buy one fixed thing; this one
+ * shops a catalogue that the merchant publishes and can change. That difference
+ * is the point of the screen it feeds: what the catalogue offers and what a
+ * signed Mandate covers are two different sets, and the gap between them is
+ * visible instead of being a wall the person walks into.
+ */
+export const agentKindSchema = z.enum(["market_brief", "ai_credits", "bazaar_shopper"]);
 export type AgentKind = z.infer<typeof agentKindSchema>;
 
 export interface Account {

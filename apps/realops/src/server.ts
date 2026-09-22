@@ -14,6 +14,7 @@ import { createRealOpsServer, type MagicLinkDelivery } from "./app.js";
 import { createMemoryStore, EMAIL_RETENTION_DAYS, type RealOpsStore } from "./accounts.js";
 import { createPostgresStore, REALOPS_SCHEMA_SQL, sweepExpired, sweepStaleEmails, type SqlClient } from "./store-postgres.js";
 import type { PilotTargets } from "./permissions.js";
+import { createBazaarCatalog } from "./bazaar-catalog.js";
 
 const ENV_PATH = fileURLToPath(new URL("../../../.env.local", import.meta.url));
 const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
@@ -53,18 +54,59 @@ const baseUrl = env.get("REALOPS_PUBLIC_URL") ?? `http://localhost:${port}`;
 const signalDeskUrl = env.get("SIGNALDESK_PUBLIC_URL") ?? "https://signaldesk.agentpey.com";
 
 /**
- * The venue, asset and payout the pilot's grants name. Read from configuration
- * rather than hardcoded, but note what this does *not* buy: RealOps naming a
- * different venue would only produce a grant AgentPey refuses, because AgentPey
- * resolves the venue against its own `venues.json` and never against this.
+ * The USDC every venue in the pilot quotes: the Stellar Asset Contract, not a
+ * classic `G…` issuer.
+ *
+ * **Checked against the live 402, not copied from `venues.json` (T96).** The
+ * bazaar's own `bazaar.ts` warns that its asset id is a different object from
+ * the mock's, and the warning is right — but it contrasts the bazaar with the
+ * *mock*, whose USDC is a classic issuer. Against SignalDesk there is no
+ * divergence: the bazaar's `GET /api/x402/swap-risk` answered `402` naming this
+ * exact contract. `ids.ts` compares byte for byte, so this was verified rather
+ * than assumed before it went into a grant anybody signs.
+ */
+const PILOT_ASSET_ID = env.get("PILOT_ASSET_ID") ?? "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
+
+/**
+ * What each kind of agent is pointed at. Read from configuration rather than
+ * hardcoded, but note what this does *not* buy: RealOps naming a different
+ * venue would only produce a grant AgentPey refuses, because AgentPey resolves
+ * the venue against its own `venues.json` and never against this.
+ *
+ * Two merchants now, not one (T96). Each kind is one venue, and a grant names
+ * one venue, so the SignalDesk agents and the bazaar agent hold genuinely
+ * different powers — which is the thing the catalogue screen is there to show.
  */
 const targets: PilotTargets = {
-  venueId: env.get("PILOT_VENUE_ID") ?? "signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  assetId: env.get("PILOT_ASSET_ID") ?? "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
-  payTo: env.get("PILOT_PAY_TO") ?? "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  products: {
-    market_brief: ["signaldesk:market-brief-xlm-usdc"],
-    ai_credits: ["signaldesk:ai-credits-1000"],
+  market_brief: {
+    venueId: env.get("PILOT_VENUE_ID") ?? "signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
+    assetId: PILOT_ASSET_ID,
+    payTo: [env.get("PILOT_PAY_TO") ?? "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF"],
+    products: ["signaldesk:market-brief-xlm-usdc"],
+  },
+  ai_credits: {
+    venueId: env.get("PILOT_VENUE_ID") ?? "signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
+    assetId: PILOT_ASSET_ID,
+    payTo: [env.get("PILOT_PAY_TO") ?? "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF"],
+    products: ["signaldesk:ai-credits-1000"],
+  },
+  /**
+   * The ambassador's bazaar. Its venue id is the `stellar-bazaar` row of
+   * `venues.json`; its two payout accounts are neither that address nor each
+   * other, because each resource there collects to its own account. Both are
+   * listed, so `reconcileTerms` has something real to compare the invoice
+   * against.
+   */
+  bazaar_shopper: {
+    venueId: env.get("BAZAAR_VENUE_ID") ?? "stellar-bazaar:CBDWMXZEE44NJ3RA6RS7K4EK36KDFW5S7KHP276HCMM4I52MIUUHEF5B",
+    assetId: PILOT_ASSET_ID,
+    payTo: [
+      // `swap-risk-quote`
+      "GDVR2KDK5DSMNYZJKNISUIOBDC6FZK3XZOIQWSS7KL4BRMD5BMW6RMCQ",
+      // `ai-video-scriptwriter`
+      "GBYXQUSY7WA3DUXZSANGQ3HMER2EBMOK5IYPUJV4YY2UH7QS736J62LB",
+    ],
+    products: ["swap-risk-quote", "ai-video-scriptwriter"],
   },
 };
 
@@ -127,11 +169,26 @@ const agentpey =
     ? undefined
     : createAgentPeyClient({ baseUrl: agentpeyBaseUrl, apiKey: partnerKey });
 
+/**
+ * The bazaar's own catalogue, read live (T96).
+ *
+ * A third party RealOps talks to directly, which is exactly what makes it worth
+ * showing: it is not ours, it can change what it sells without telling us, and
+ * a signed Mandate does not widen when it does. Nothing it answers can cause a
+ * payment — the venue is resolved by AgentPey against `venues.json`, the price
+ * comes from the merchant's own 402, and the payout account is checked against
+ * the Mandate. The worst a hostile answer here can do is draw a wrong card.
+ */
+const bazaarCatalog = createBazaarCatalog({
+  baseUrl: env.get("BAZAAR_BASE_URL") ?? "https://stellar-bazaar-x402.vercel.app",
+});
+
 const server = createRealOpsServer({
   store,
   agentpey,
   agentpeyBaseUrl,
   targets,
+  bazaarCatalog,
   signalDeskUrl,
   baseUrl,
   delivery,

@@ -30,6 +30,14 @@ export const SUPPORTED_PAIR: string = KNOWN_PAIRS[0];
 
 export interface Interpretation {
   readonly kind: AgentKind;
+  /**
+   * The merchant's own product id, verbatim — what lands in a signed intent.
+   *
+   * Needed since T96, when a kind stopped being the same thing as a product:
+   * `bazaar_shopper` covers two products, so naming only the kind would leave
+   * the buyer to pick, which is exactly the guess this module refuses to make.
+   */
+  readonly productId: string;
   readonly quantity: number;
   /** Present for `market_brief`. */
   readonly pair?: string;
@@ -73,17 +81,47 @@ const NUMBER_WORDS: Readonly<Record<string, number>> = {
  * and `pack` covers `package`.
  */
 const BRIEF_STEMS = ["informe", "report", "brief", "mercado", "market"];
-const CREDIT_STEMS = ["credito", "credit", "paquete", "pack"];
 /**
- * Two-letter words are matched exactly. A prefix rule on `ia` or `ai` would
- * claim half the dictionary, and a vocabulary that matches too much is the
- * same failure as one that matches too little: it stops refusing.
+ * `ia` and `ai` used to be enough on their own to mean credits. They are not
+ * any more (T96): the bazaar sells an *AI* video scriptwriter, so a bare "ai"
+ * names two different products and naming two is naming none. A sentence now
+ * has to say credits, or pack, in either language — which every sentence the
+ * tests were written from already did. The rule this follows is the module's
+ * own: a vocabulary that matches too much stops refusing, and refusing is the
+ * whole job.
  */
-const CREDIT_EXACT = ["ia", "ai"];
+const CREDIT_STEMS = ["credito", "credit", "paquete", "pack"];
+/** The bazaar's swap risk quote. `riesgo`/`risk` alone would be too broad, so the pair of ideas is what matches. */
+const SWAP_STEMS = ["swap", "cotizacion", "quote"];
+/** The bazaar's video scriptwriter. `script` also covers `scriptwriter`; `guion` covers `guiones`. */
+const SCRIPT_STEMS = ["video", "guion", "script", "scriptwriter"];
 
 function namesAny(tokens: readonly string[], stems: readonly string[], exact: readonly string[] = []): boolean {
   return tokens.some((token) => exact.includes(token) || stems.some((stem) => token.startsWith(stem)));
 }
+
+/**
+ * The closed dictionary, one row per product the pilot can buy.
+ *
+ * A row is deliberately (kind, product) and not just kind: since T96 one kind
+ * (`bazaar_shopper`) covers more than one product, and the sentence has to say
+ * which. Adding a merchant's new product here is what makes it typeable; until
+ * then it is only clickable from the catalogue, which is the right default —
+ * a vocabulary grown by guessing is the failure mode, not the feature.
+ */
+interface ProductVocabulary {
+  readonly kind: AgentKind;
+  readonly productId: string;
+  readonly stems: readonly string[];
+  readonly exact?: readonly string[];
+}
+
+const VOCABULARY: readonly ProductVocabulary[] = [
+  { kind: "market_brief", productId: "signaldesk:market-brief-xlm-usdc", stems: BRIEF_STEMS },
+  { kind: "ai_credits", productId: "signaldesk:ai-credits-1000", stems: CREDIT_STEMS },
+  { kind: "bazaar_shopper", productId: "swap-risk-quote", stems: SWAP_STEMS },
+  { kind: "bazaar_shopper", productId: "ai-video-scriptwriter", stems: SCRIPT_STEMS },
+];
 
 const MAX_INSTRUCTION_LENGTH = 500;
 const MAX_QUANTITY = 5;
@@ -144,28 +182,33 @@ export function interpretInstruction(instruction: string): Interpretation {
   const normalised = normalise(instruction);
   const tokens = normalised.split(" ");
 
-  const wantsBrief = namesAny(tokens, BRIEF_STEMS);
-  const wantsCredits = namesAny(tokens, CREDIT_STEMS, CREDIT_EXACT);
+  const matched = VOCABULARY.filter((entry) => namesAny(tokens, entry.stems, entry.exact));
 
-  // Both, or neither, is a sentence this cannot read. Picking one would be the
-  // guess this module exists not to make.
-  if (wantsBrief === wantsCredits) {
-    throw wantsBrief
-      ? notRecognised("both_products", "the instruction asks for both products at once", instruction)
+  // None, or more than one, is a sentence this cannot read. Picking among them
+  // would be the guess this module exists not to make — and the sentence that
+  // names two products is now as ordinary as the one that names none, with
+  // four products in the dictionary instead of two.
+  if (matched.length !== 1) {
+    throw matched.length > 1
+      ? notRecognised("both_products", "the instruction asks for more than one product at once", instruction)
       : notRecognised("no_product", "no product recognised in the instruction", instruction);
   }
 
+  const entry = matched[0]!;
   const quantity = readQuantity(tokens);
 
-  if (wantsCredits) {
-    return { kind: agentKindSchema.parse("ai_credits"), quantity };
+  if (entry.kind !== "market_brief") {
+    // The bazaar's products need parameters a sentence does not reliably carry
+    // (which pair, which tone, how long). Reading the product is as far as this
+    // goes; the form asks for the rest rather than inventing it.
+    return { kind: agentKindSchema.parse(entry.kind), productId: entry.productId, quantity };
   }
 
   const pair = readPair(normalised);
   if (pair === undefined) {
     throw notRecognised("unknown_pair", `only ${KNOWN_PAIRS.join(", ")} is known; the pair has to be named`, instruction);
   }
-  return { kind: agentKindSchema.parse("market_brief"), quantity, pair };
+  return { kind: agentKindSchema.parse("market_brief"), productId: entry.productId, quantity, pair };
 }
 
 /** What the UI offers when the sentence was not understood: the two products, as buttons. */

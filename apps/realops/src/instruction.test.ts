@@ -25,7 +25,11 @@ describe("interpretInstruction", () => {
   });
 
   it("reads the credits, and does not mistake the pack size for a quantity", () => {
-    expect(interpretInstruction("compra 1000 creditos de IA")).toEqual({ kind: "ai_credits", quantity: 1 });
+    expect(interpretInstruction("compra 1000 creditos de IA")).toEqual({
+      kind: "ai_credits",
+      productId: "signaldesk:ai-credits-1000",
+      quantity: 1,
+    });
     expect(interpretInstruction("comprame el paquete de créditos")).toMatchObject({ kind: "ai_credits" });
   });
 
@@ -38,12 +42,72 @@ describe("interpretInstruction", () => {
   it("reads the same products in English", () => {
     expect(interpretInstruction("buy the XLM/USDC market report")).toEqual({
       kind: "market_brief",
+      productId: "signaldesk:market-brief-xlm-usdc",
       quantity: 1,
       pair: "XLM/USDC",
     });
     expect(interpretInstruction("I want two XLM/USDC reports").quantity).toBe(2);
-    expect(interpretInstruction("buy 1000 AI credits")).toEqual({ kind: "ai_credits", quantity: 1 });
-    expect(interpretInstruction("buy three credit packs")).toEqual({ kind: "ai_credits", quantity: 3 });
+    expect(interpretInstruction("buy 1000 AI credits")).toEqual({
+      kind: "ai_credits",
+      productId: "signaldesk:ai-credits-1000",
+      quantity: 1,
+    });
+    expect(interpretInstruction("buy three credit packs")).toEqual({
+      kind: "ai_credits",
+      productId: "signaldesk:ai-credits-1000",
+      quantity: 3,
+    });
+  });
+
+  /**
+   * T96. The bazaar's two products are typeable, in both languages, and each
+   * one comes back as its own product id — a kind alone stopped being enough
+   * the moment one kind covered two products.
+   */
+  it("reads the bazaar's products, each as its own product id", () => {
+    expect(interpretInstruction("compra una cotizacion de riesgo de swap")).toMatchObject({
+      kind: "bazaar_shopper",
+      productId: "swap-risk-quote",
+    });
+    expect(interpretInstruction("buy a swap risk quote")).toMatchObject({
+      kind: "bazaar_shopper",
+      productId: "swap-risk-quote",
+    });
+    expect(interpretInstruction("comprame un guion de video")).toMatchObject({
+      kind: "bazaar_shopper",
+      productId: "ai-video-scriptwriter",
+    });
+    expect(interpretInstruction("buy a video script")).toMatchObject({
+      kind: "bazaar_shopper",
+      productId: "ai-video-scriptwriter",
+    });
+  });
+
+  /**
+   * The rule held while the vocabulary grew. With four products instead of two,
+   * a sentence naming two of them is as ordinary as one naming none, and both
+   * come back refused rather than resolved to whichever matched first.
+   */
+  it("still refuses a sentence that names more than one of the four products", () => {
+    const problemOf = (instruction: string) => (refusalFor(instruction) as { details: { problem: string } }).details.problem;
+
+    expect(problemOf("compra el informe y un guion de video")).toBe("both_products");
+    expect(problemOf("buy a swap risk quote and some credits")).toBe("both_products");
+  });
+
+  /**
+   * `ai` and `ia` used to mean credits on their own. They cannot any more: the
+   * bazaar sells an *AI* video scriptwriter, so a bare "ai" names two products,
+   * and naming two is naming none. This is a deliberate narrowing — the pilot
+   * refuses a sentence it used to accept, rather than guessing between two
+   * merchants. Every sentence the tests were written from still works, because
+   * they all say credits, credits or pack.
+   */
+  it("no longer treats a bare AI as naming the credits", () => {
+    const problemOf = (instruction: string) => (refusalFor(instruction) as { details: { problem: string } }).details.problem;
+
+    expect(problemOf("compra IA")).toBe("no_product");
+    expect(interpretInstruction("compra creditos de IA")).toMatchObject({ kind: "ai_credits" });
   });
 
   it("says why it did not understand, as a key the page puts into words", () => {

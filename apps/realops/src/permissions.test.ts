@@ -9,18 +9,11 @@ import {
   translatePermissions,
   type PilotTargets,
 } from "./permissions.js";
+import { TEST_TARGETS } from "./testing.js";
 
 const NOW = new Date("2026-09-12T12:00:00.000Z");
 
-const TARGETS: PilotTargets = {
-  venueId: "signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  assetId: "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
-  payTo: "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  products: {
-    market_brief: ["signaldesk:market-brief-xlm-usdc"],
-    ai_credits: ["signaldesk:ai-credits-1000"],
-  },
-};
+const TARGETS = TEST_TARGETS;
 
 const PERMISSIONS: AgentPermissions = { perTx: "0.30", perDay: "0.60", validForDays: 30 };
 
@@ -49,10 +42,10 @@ describe("translatePermissions", () => {
 
     expect(grant).toMatchObject({
       actions: [PURCHASE_ACTION],
-      venues: [TARGETS.venueId],
-      assets: [TARGETS.assetId],
+      venues: [TARGETS.market_brief.venueId],
+      assets: [TARGETS.market_brief.assetId],
       products: ["signaldesk:market-brief-xlm-usdc"],
-      payTo: [TARGETS.payTo],
+      payTo: [...TARGETS.market_brief.payTo],
       limits: { perTx: "0.30", perDay: "0.60", currency: CURRENCY },
     });
   });

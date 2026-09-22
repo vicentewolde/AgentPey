@@ -28,6 +28,7 @@ import { z } from "zod";
 
 import {
   agentKindSchema,
+  type AgentConfig,
   agentPermissionsSchema,
   type AgentKind,
   aliasSchema,
@@ -46,8 +47,10 @@ import { bilingual, type Bilingual } from "./copy.js";
 import { INSTRUCTION_PROBLEMS, SUPPORTED_PAIR, interpretInstruction, type InstructionProblem } from "./instruction.js";
 import {
   agentsPage,
+  catalogPage,
   chooseAgentPage,
   errorPage,
+  grantDiffPage,
   homePage,
   linkSentPage,
   notRecognisedPage,
@@ -55,7 +58,9 @@ import {
   servicesPage,
   signInPage,
 } from "./pages.js";
-import { translatePermissions, type PilotTargets } from "./permissions.js";
+import { DEFAULT_PERMISSIONS, translatePermissions, type PilotTargets } from "./permissions.js";
+import { buildCatalog, findCard, type CatalogCard } from "./catalog.js";
+import type { BazaarCatalog } from "./bazaar-catalog.js";
 
 export const SESSION_COOKIE = "realops_session";
 
@@ -98,6 +103,15 @@ export interface RealOpsConfig {
    */
   readonly agentpeyBaseUrl: string;
   readonly targets: PilotTargets;
+  /**
+   * The bazaar's live catalogue, or `undefined` to run without it.
+   *
+   * Optional for the same reason `agentpey` is: the catalogue screen has to
+   * open when a third-party merchant is down, showing SignalDesk and saying
+   * plainly that the other half could not be read. A missing merchant is a
+   * message, not a crash.
+   */
+  readonly bazaarCatalog?: BazaarCatalog;
   readonly signalDeskUrl: string;
   /** This service's own origin, for building magic links. */
   readonly baseUrl: string;
@@ -165,6 +179,31 @@ const NOT_CONNECTED = bilingual(
   "Esta instancia todavía no está conectada a AgentPey.",
 );
 const NO_SUCH_AGENT = bilingual("That agent does not exist.", "Ese agente no existe.");
+const NO_SUCH_PRODUCT = bilingual(
+  "That product is not in the catalogue. It may have been withdrawn by the merchant.",
+  "Ese producto no está en el catálogo. Puede que el comercio lo haya retirado.",
+);
+const BAZAAR_UNAVAILABLE = bilingual(
+  "This instance is not reading the bazaar's catalogue.",
+  "Esta instancia no está leyendo el catálogo del bazaar.",
+);
+const MISSING_PARAMS = bilingual(
+  "The merchant needs every field filled in to serve that. Nothing was bought.",
+  "El comercio necesita todos los campos completos para entregar eso. No se compró nada.",
+);
+
+/**
+ * The name a new agent gets when it is set up from the catalogue.
+ *
+ * English, because a stored label is a stored string and the pages render both
+ * languages from `copy.ts` rather than from data. The person can see it on the
+ * review screen before signing anything.
+ */
+const AGENT_KIND_NAMES: Readonly<Record<AgentKind, Bilingual>> = {
+  market_brief: bilingual("Market report agent", "Agente de informes de mercado"),
+  ai_credits: bilingual("AI credits agent", "Agente de créditos de IA"),
+  bazaar_shopper: bilingual("Bazaar Shopper", "Comprador del Bazaar"),
+};
 const CANNOT_BUY_THAT = bilingual(
   "That agent cannot buy this. Choose again from My services.",
   "Ese agente no puede comprar esto. Vuelve a elegir desde Mis servicios.",
@@ -190,15 +229,63 @@ function problemOf(details: Readonly<Record<string, unknown>>): InstructionProbl
  * anything that decides. The price that comes back is still reconciled against
  * the signed Mandate like any other.
  */
-function routeParamsFor(
-  kind: AgentKind,
+/**
+ * The parameters RealOps supplies itself for a product, never the browser.
+ *
+ * The credits route credits an address: it is the *tenant's* opaque reference
+ * and never the person's email — SignalDesk has no business learning who
+ * anyone is — and never a value a form could carry, or a person could credit
+ * somebody else. The report's pair is the one pair the pilot knows.
+ *
+ * The bazaar's products get nothing here: every parameter they take belongs to
+ * the person, and comes from the form (T96).
+ */
+function serverParamsFor(
+  productId: string,
   pair: string | undefined,
   account: string,
 ): Readonly<Record<string, string | number>> {
-  // The credits route credits an address. It is the *tenant's* opaque
-  // reference and never the person's email — SignalDesk has no business
-  // learning who anyone is.
-  return kind === "market_brief" ? { pair: pair ?? SUPPORTED_PAIR } : { account };
+  if (productId === "signaldesk:market-brief-xlm-usdc") return { pair: pair ?? SUPPORTED_PAIR };
+  if (productId === "signaldesk:ai-credits-1000") return { account };
+  return {};
+}
+
+/** Every parameter a form may carry, capped so a form cannot be used as a sink. */
+const MAX_PARAM_LENGTH = 200;
+
+/**
+ * The route parameters a person filled in, read against what the merchant said
+ * it wants.
+ *
+ * A name the merchant did not declare is dropped rather than forwarded: the
+ * form is not a tunnel to the merchant's URL. A missing required one is
+ * reported, not defaulted, because a default here would be the same guess
+ * `interpretInstruction` refuses to make.
+ *
+ * None of this is a security boundary and it must not be mistaken for one. A
+ * parameter chooses *what is delivered*, never what is paid: the amount comes
+ * from the merchant's own 402 and is re-checked against the signed Mandate by
+ * `reconcileTerms`, which was verified against the live bazaar — the same
+ * resource quotes 0.001 USDC whether its `amount` parameter says 100 or
+ * 999999. The worst a wrong parameter can do is buy the wrong thing, within
+ * limits somebody signed.
+ */
+function readRouteParams(
+  card: CatalogCard,
+  form: URLSearchParams,
+): { readonly params: Record<string, string>; readonly missing: readonly string[] } {
+  const params: Record<string, string> = {};
+  const missing: string[] = [];
+  for (const input of card.inputs) {
+    if (card.serverFilled.includes(input.name)) continue;
+    const value = form.get(`param_${input.name}`)?.trim() ?? "";
+    if (value === "") {
+      if (input.required) missing.push(input.name);
+      continue;
+    }
+    params[input.name] = value.slice(0, MAX_PARAM_LENGTH);
+  }
+  return { params, missing };
 }
 
 export function createRealOpsServer(config: RealOpsConfig): Server {
@@ -212,6 +299,35 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     const session = await config.store.findSession(sessionId);
     if (!sessionIsLive(session, now())) return undefined;
     return config.store.findAccount(session!.accountId);
+  }
+
+  /**
+   * The shop as this account sees it.
+   *
+   * The bazaar read can fail, and a failure comes back as a message rather than
+   * an empty list: "the merchant published nothing" and "we could not ask the
+   * merchant" are different facts and the screen must not flatten them into
+   * one. The agents are read from this account's own rows and never from input.
+   */
+  async function catalogFor(account: Account): Promise<{
+    readonly cards: readonly CatalogCard[];
+    readonly agents: readonly AgentConfig[];
+    readonly bazaarError?: Bilingual;
+  }> {
+    const agents = await config.store.listAgents(account.id);
+    if (config.bazaarCatalog === undefined) {
+      return { cards: buildCatalog({ targets: config.targets, agents, bazaar: undefined }), agents, bazaarError: BAZAAR_UNAVAILABLE };
+    }
+    try {
+      const bazaar = await config.bazaarCatalog.list();
+      return { cards: buildCatalog({ targets: config.targets, agents, bazaar }), agents };
+    } catch (error) {
+      return {
+        cards: buildCatalog({ targets: config.targets, agents, bazaar: undefined }),
+        agents,
+        bazaarError: messageFor(error),
+      };
+    }
   }
 
   /** Opens a session for an account and lands the person on their agents. */
@@ -458,6 +574,79 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       return;
     }
 
+    /**
+     * The catalogue: the whole shop, marked against what is actually signed.
+     *
+     * The bazaar half is read live from a third party, so it can fail — and a
+     * failure shows as a message beside a working SignalDesk half, not as a
+     * broken page. Nothing here is an authorisation: every card's mark comes
+     * from the grant RealOps itself proposed and saw signed, and AgentPey still
+     * decides at purchase time.
+     */
+    if (method === "GET" && pathname === "/catalogo") {
+      const { cards, bazaarError } = await catalogFor(account);
+      sendHtml(response, 200, catalogPage({ cards, ...(bazaarError === undefined ? {} : { bazaarError }) }));
+      return;
+    }
+
+    /**
+     * The permission an item outside the grant would need, shown literally.
+     *
+     * The same object `translatePermissions` builds for the review screen, from
+     * the same function, so the two screens cannot describe different grants.
+     */
+    if (method === "GET" && pathname === "/catalogo/permiso") {
+      const productId = url.searchParams.get("producto");
+      const { cards } = await catalogFor(account);
+      const card = productId === null ? undefined : findCard(cards, productId);
+      if (card === undefined) {
+        sendHtml(response, 404, errorPage(404, NO_SUCH_PRODUCT));
+        return;
+      }
+      const translated = translatePermissions(card.kind, DEFAULT_PERMISSIONS, config.targets, now());
+      sendHtml(
+        response,
+        200,
+        grantDiffPage({
+          card,
+          agentName: AGENT_KIND_NAMES[card.kind],
+          grant: translated.grant,
+          controls: translated.controls,
+        }),
+      );
+      return;
+    }
+
+    /**
+     * Set up the agent an out-of-grant item would need.
+     *
+     * This creates a row and authorises nothing: the person lands back on the
+     * review screen, and signing still happens on AgentPey's domain with their
+     * own wallet. The kind is resolved from the product against `targets`, never
+     * taken from the form, so a posted product id cannot name a power RealOps
+     * does not already offer.
+     */
+    if (method === "POST" && pathname === "/catalogo/permiso") {
+      const form = await readForm(request);
+      const productId = form.get("product_id");
+      const { cards } = await catalogFor(account);
+      const card = productId === null ? undefined : findCard(cards, productId);
+      if (card === undefined) {
+        sendHtml(response, 404, errorPage(404, NO_SUCH_PRODUCT));
+        return;
+      }
+      if (card.coverage.state !== "outside") {
+        // Already has one. Sending them to it beats minting a second agent
+        // with the same power because a form was posted twice.
+        redirect(response, `/agentes/${card.coverage.agentId}`);
+        return;
+      }
+      const agent = newAgent(account.id, card.kind, AGENT_KIND_NAMES[card.kind].en, DEFAULT_PERMISSIONS, now());
+      await config.store.saveAgent(agent);
+      redirect(response, `/agentes/${agent.id}`);
+      return;
+    }
+
     if (method === "GET" && pathname === "/servicios") {
       const agents = await config.store.listAgents(account.id);
       const tenantId = agents.find((agent) => agent.tenantId !== null)?.tenantId ?? null;
@@ -493,21 +682,62 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     if (method === "POST" && pathname === "/instruccion") {
       const form = await readForm(request);
       const chosen = agentKindSchema.safeParse(form.get("kind"));
+      const posted = form.get("product_id");
       const instruction = form.get("instruction") ?? "";
 
+      // The catalogue's forms, and only they, carry a product id. It is
+      // resolved against the catalogue this account can see — never taken as
+      // the name of a product — so a posted id cannot reach a venue or a
+      // product no `PilotTarget` already names.
+      const { cards } = await catalogFor(account);
+
       let kind: AgentKind;
+      let productId: string;
       let quantity = 1;
       let pair: string | undefined;
-      if (chosen.success) {
+      let formParams: Readonly<Record<string, string>> = {};
+
+      if (posted !== null) {
+        const card = findCard(cards, posted);
+        if (card === undefined) {
+          sendHtml(response, 404, errorPage(404, NO_SUCH_PRODUCT));
+          return;
+        }
+        const read = readRouteParams(card, form);
+        if (read.missing.length > 0) {
+          sendHtml(response, 400, errorPage(400, MISSING_PARAMS));
+          return;
+        }
+        kind = card.kind;
+        productId = card.productId;
+        formParams = read.params;
+        pair = kind === "market_brief" ? SUPPORTED_PAIR : undefined;
+      } else if (chosen.success) {
         // The fallback buttons: a kind chosen explicitly, with nothing guessed.
         kind = chosen.data;
+        const firstOfKind = cards.find((card) => card.kind === kind);
+        if (firstOfKind === undefined) {
+          sendHtml(response, 404, errorPage(404, NO_SUCH_PRODUCT));
+          return;
+        }
+        productId = firstOfKind.productId;
         pair = kind === "market_brief" ? SUPPORTED_PAIR : undefined;
       } else {
         try {
           const read = interpretInstruction(instruction);
           kind = read.kind;
+          productId = read.productId;
           quantity = read.quantity;
           pair = read.pair;
+          // A typed sentence can name the bazaar's product but not its
+          // parameters (which pair, which tone, how long). Inventing them is
+          // the guess `interpretInstruction` exists not to make, so the person
+          // is sent to the card that asks.
+          const card = findCard(cards, productId);
+          if (card !== undefined && card.inputs.some((input) => !card.serverFilled.includes(input.name))) {
+            redirect(response, `/catalogo#${encodeURIComponent(productId)}`);
+            return;
+          }
         } catch (error) {
           if (isAgentPassError(error) && error.code === "InstructionNotUnderstood") {
             sendHtml(response, 200, notRecognisedPage(problemOf(error.details), String(error.details.instruction ?? "")));
@@ -531,8 +761,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           errorPage(
             409,
             bilingual(
-              "You do not have an agent with a signed permission for that. Set one up and sign it first.",
-              "No tienes un agente con permiso firmado para eso. Configura uno y fírmalo primero.",
+              "You do not have an agent with a signed permission for that. The catalogue shows exactly which permission it needs.",
+              "No tienes un agente con permiso firmado para eso. El catálogo muestra exactamente qué permiso necesita.",
             ),
           ),
         );
@@ -565,7 +795,14 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           chooseAgentPage({
             agents: candidates,
             kind,
-            ...(chosen.success ? { chosenKind: kind } : { instruction }),
+            // What was asked for, carried verbatim through the choice: the
+            // catalogue's product and its parameters, or the kind, or the
+            // sentence. Losing any of them here would buy something else.
+            ...(posted !== null
+              ? { productId, params: formParams }
+              : chosen.success
+                ? { chosenKind: kind }
+                : { instruction }),
             requestKey: requestKey.success ? requestKey.data : randomUUID(),
           }),
         );
@@ -580,10 +817,16 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       try {
         await config.agentpey.purchase({
           tenantId: agent.tenantId!,
-          venue: config.targets.venueId,
-          productId: config.targets.products[kind][0]!,
+          // The venue of the *kind* that is buying, not a global one (T96).
+          // AgentPey resolves it against its own `venues.json` regardless, so
+          // naming a venue it does not know produces a refusal, never a payment.
+          venue: config.targets[kind].venueId,
+          productId,
           quantity,
-          routeParams: routeParamsFor(kind, pair, account.externalRef),
+          // What RealOps owns first, so a form field can never override it:
+          // the credits route's `account` stays the tenant's opaque reference
+          // whatever a browser posts.
+          routeParams: { ...formParams, ...serverParamsFor(productId, pair, account.externalRef) },
           // Always the chosen agent's own Mandate, even when it is the only
           // one: AgentPey then goes through exactly the permission this page
           // says is buying, and a revoked one is refused rather than replaced.

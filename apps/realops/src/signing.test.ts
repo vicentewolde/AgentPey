@@ -5,16 +5,9 @@ import type { AgentPeyClient, ConsentSessionResource } from "./agentpey.js";
 import { createMemoryStore, type RealOpsStore } from "./accounts.js";
 import { createRealOpsServer } from "./app.js";
 import type { PilotTargets, ProposedGrant } from "./permissions.js";
+import { TEST_TARGETS } from "./testing.js";
 
-const TARGETS: PilotTargets = {
-  venueId: "signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  assetId: "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
-  payTo: "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  products: {
-    market_brief: ["signaldesk:market-brief-xlm-usdc"],
-    ai_credits: ["signaldesk:ai-credits-1000"],
-  },
-};
+const TARGETS = TEST_TARGETS;
 
 /** A fake `/v1` that records what it was asked, so the test can inspect the request. */
 function fakeAgentPey() {

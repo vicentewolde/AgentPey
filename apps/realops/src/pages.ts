@@ -24,6 +24,8 @@ import type { PurchaseResource, TenantActivity } from "./agentpey.js";
 import type { AgentConfig, Account, AgentKind } from "./accounts.js";
 import { bilingual, escape, tr, trHtml, type Bilingual } from "./copy.js";
 import { FALLBACK_CHOICES, type InstructionProblem } from "./instruction.js";
+import type { CatalogCard, CatalogVenue } from "./catalog.js";
+import type { ResourceAvailability, ResourceInput } from "./bazaar-catalog.js";
 import { explainRefusal } from "./refusals.js";
 import type { ExplainedControl, ProposedGrant } from "./permissions.js";
 
@@ -271,6 +273,7 @@ export function layout(input: LayoutInput): string {
   const nav =
     input.signedIn === true
       ? `<a href="/agentes">${tr(bilingual("My agents", "Mis agentes"))}</a>` +
+        `<a href="/catalogo">${tr(bilingual("Catalogue", "Catálogo"))}</a>` +
         `<a href="/servicios">${tr(bilingual("My services", "Mis servicios"))}</a>` +
         `<a href="/salir">${tr(bilingual("Sign out", "Salir"))}</a>`
       : "";
@@ -440,6 +443,13 @@ const AGENT_COPY: Readonly<Record<AgentKind, { readonly name: Bilingual; readonl
     what: bilingual(
       "Buys packs of 1000 product credits from SignalDesk. The credits are not transferable.",
       "Compra paquetes de 1000 créditos de producto en SignalDesk. Los créditos no son transferibles.",
+    ),
+  },
+  bazaar_shopper: {
+    name: bilingual("Bazaar Shopper", "Comprador del Bazaar"),
+    what: bilingual(
+      "Buys at the Stellar Bazaar, a merchant that is not ours. Its permission names that merchant and those products, and nothing of SignalDesk.",
+      "Compra en el Stellar Bazaar, un comercio que no es nuestro. Su permiso nombra ese comercio y esos productos, y nada de SignalDesk.",
     ),
   },
 };
@@ -826,6 +836,16 @@ export interface ChooseAgentInput {
   readonly chosenKind?: AgentKind;
   /** The key of the form that asked. Every choice sends it, so choosing stays one request. */
   readonly requestKey: string;
+  /**
+   * The product and the parameters the person already filled in, carried
+   * through the choice so choosing an agent does not lose them (T96).
+   *
+   * Before the catalogue there was nothing to carry: a kind named exactly one
+   * product and the parameters were RealOps' own. A bazaar card carries both,
+   * and dropping them here would silently buy something else.
+   */
+  readonly productId?: string;
+  readonly params?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -836,11 +856,16 @@ export interface ChooseAgentInput {
  * agent chosen; AgentPey then goes through that agent's Mandate and no other.
  */
 export function chooseAgentPage(input: ChooseAgentInput): string {
-  const carried = `<input type="hidden" name="request_key" value="${escape(input.requestKey)}">${
-    input.chosenKind !== undefined
-      ? `<input type="hidden" name="kind" value="${escape(input.chosenKind)}">`
-      : `<input type="hidden" name="instruction" value="${escape(input.instruction ?? "")}">`
-  }`;
+  const what =
+    input.productId !== undefined
+      ? `<input type="hidden" name="product_id" value="${escape(input.productId)}">` +
+        Object.entries(input.params ?? {})
+          .map(([name, value]) => `<input type="hidden" name="param_${escape(name)}" value="${escape(value)}">`)
+          .join("")
+      : input.chosenKind !== undefined
+        ? `<input type="hidden" name="kind" value="${escape(input.chosenKind)}">`
+        : `<input type="hidden" name="instruction" value="${escape(input.instruction ?? "")}">`;
+  const carried = `<input type="hidden" name="request_key" value="${escape(input.requestKey)}">${what}`;
 
   const cards = input.agents
     .map((agent) => {
@@ -924,6 +949,250 @@ export function errorPage(status: number, message: Bilingual): string {
   <h1>${status}</h1>
   <p class="lede">${tr(message)}</p>
   <p><a href="/">${tr(bilingual("← Back to home", "← Volver al inicio"))}</a></p>
+`,
+  });
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * The catalogue (T96)
+ *
+ * The screen the pilot was missing. It draws the whole shop — SignalDesk and
+ * the ambassador's bazaar — and marks every item against the permission that
+ * has actually been signed. An item the Mandate does not cover is not hidden
+ * and not an error message: it is a link to the exact, literal permission that
+ * would have to be signed for it, shown with the same `enforcedBy` marks the
+ * review screen uses.
+ *
+ * What the copy here must never say is that a covered item *will* be bought.
+ * RealOps asks; AgentPey decides, against the Mandate itself, at purchase
+ * time. Every line below is written to keep that distinction visible.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const AVAILABILITY_COPY: Readonly<Record<ResourceAvailability, Bilingual | null>> = {
+  sellable: null,
+  unavailable: bilingual(
+    "The merchant lists this but is not charging for it right now, so it cannot be bought.",
+    "El comercio lo publica pero no lo está cobrando ahora, así que no se puede comprar.",
+  ),
+  unknown: bilingual(
+    "We could not reach the merchant to check whether this is on sale. Asking for it may fail.",
+    "No pudimos contactar al comercio para saber si está a la venta. Pedirlo puede fallar.",
+  ),
+};
+
+const VENUE_COPY: Readonly<Record<CatalogVenue, { readonly name: Bilingual; readonly note: Bilingual }>> = {
+  signaldesk: {
+    name: bilingual("SignalDesk", "SignalDesk"),
+    note: bilingual(
+      "The pilot's own merchant. Two fixed products, the ones RealOps has always offered.",
+      "El comercio propio del piloto. Dos productos fijos, los que RealOps siempre ofreció.",
+    ),
+  },
+  bazaar: {
+    name: bilingual("Stellar Bazaar", "Stellar Bazaar"),
+    note: bilingual(
+      "An independent merchant, read live from its own catalogue. It can add or remove products without telling us, and what it lists is not what your agent may buy.",
+      "Un comercio independiente, leído en vivo desde su propio catálogo. Puede agregar o quitar productos sin avisarnos, y lo que publica no es lo que tu agente puede comprar.",
+    ),
+  },
+};
+
+/** One input the merchant requires, as a form field. Never a money field: the price is the merchant's. */
+function inputField(card: CatalogCard, input: ResourceInput): string {
+  const id = `${card.productId}-${input.name}`;
+  const help =
+    input.description === undefined
+      ? ""
+      : `<span class="meta">${escape(input.description)}</span>`;
+  const type = input.type.toLowerCase() === "number" ? "number" : "text";
+  return `<label for="${escape(id)}">${escape(input.name)}${input.required ? " *" : ""}</label>
+      ${help}
+      <input id="${escape(id)}" name="param_${escape(input.name)}" type="${type}"${input.required ? " required" : ""}
+             autocomplete="off" inputmode="${type === "number" ? "decimal" : "text"}">`;
+}
+
+/** What a card offers, given how it stands against the signed permission. */
+function cardAction(card: CatalogCard, requestKey: string): string {
+  if (card.coverage.state === "outside") {
+    return `<p class="push"><a class="button secondary" href="/catalogo/permiso?producto=${encodeURIComponent(card.productId)}">${tr(
+      bilingual("See the permission this needs →", "Ver el permiso que esto necesita →"),
+    )}</a></p>`;
+  }
+  if (card.coverage.state === "unsigned") {
+    return `<p class="push"><a class="button secondary" href="/agentes/${escape(card.coverage.agentId)}">${tr(
+      bilingual("Finish signing this permission →", "Terminar de firmar este permiso →"),
+    )}</a></p>`;
+  }
+  if (card.availability === "unavailable") {
+    return `<p class="push meta">${tr(
+      bilingual(
+        "Your agent's permission covers this, but the merchant is not selling it.",
+        "El permiso de tu agente lo cubre, pero el comercio no lo está vendiendo.",
+      ),
+    )}</p>`;
+  }
+  // Inputs RealOps fills itself are not drawn. A field a browser could edit is
+  // a value a browser controls, and the credits route's `account` is precisely
+  // the value that must stay RealOps'.
+  const fields = card.inputs.filter((input) => !card.serverFilled.includes(input.name));
+  return `<form class="push" method="post" action="/instruccion">
+      <input type="hidden" name="product_id" value="${escape(card.productId)}">
+      <input type="hidden" name="request_key" value="${escape(requestKey)}">
+      ${fields.map((input) => inputField(card, input)).join("\n      ")}
+      <button type="submit">${tr(bilingual("Ask the agent to buy it", "Pedirle al agente que lo compre"))}</button>
+    </form>`;
+}
+
+function coverageTag(card: CatalogCard): string {
+  if (card.coverage.state === "covered") {
+    return `<span class="tag tag-signed">${tr(bilingual("in the grant", "dentro del permiso"))}</span>`;
+  }
+  if (card.coverage.state === "unsigned") {
+    return `<span class="tag tag-realops">${tr(bilingual("not signed yet", "sin firmar todavía"))}</span>`;
+  }
+  return `<span class="tag tag-refused">${tr(bilingual("outside the grant", "fuera del permiso"))}</span>`;
+}
+
+function catalogCardHtml(card: CatalogCard, requestKey: string): string {
+  const availability = AVAILABILITY_COPY[card.availability];
+  return `<div class="card stack">
+      <div class="head-row"><h3>${tr(card.title)}</h3>${coverageTag(card)}</div>
+      <p class="meta"><code>${escape(card.productId)}</code></p>
+      <p>${tr(card.description)}</p>
+      <p class="meta">${trHtml(
+        `Merchant's listed price <strong>${escape(card.declaredAmount)} ${escape(card.declaredAsset)}</strong>. AgentPey ignores it and pays the merchant's own invoice, checked against your Mandate.`,
+        `Precio publicado por el comercio <strong>${escape(card.declaredAmount)} ${escape(card.declaredAsset)}</strong>. AgentPey lo ignora y paga la factura del propio comercio, verificada contra tu Mandato.`,
+      )}</p>
+      ${availability === null ? "" : `<p class="meta">${tr(availability)}</p>`}
+      ${cardAction(card, requestKey)}
+    </div>`;
+}
+
+export interface CatalogInput {
+  readonly cards: readonly CatalogCard[];
+  /** Why the bazaar half is missing, if it is. A failed read is not an empty shop. */
+  readonly bazaarError?: Bilingual;
+}
+
+export function catalogPage(input: CatalogInput): string {
+  // One key per rendered page, shared by every form on it (C-98, T84): sending
+  // the same form twice replays the purchase AgentPey already made instead of
+  // paying again.
+  const requestKey = randomUUID();
+
+  const section = (venue: CatalogVenue): string => {
+    const cards = input.cards.filter((card) => card.venue === venue);
+    const copy = VENUE_COPY[venue];
+    const body =
+      cards.length === 0
+        ? `<p class="card">${
+            venue === "bazaar" && input.bazaarError !== undefined
+              ? tr(input.bazaarError)
+              : tr(bilingual("Nothing on offer here right now.", "No hay nada a la venta aquí ahora mismo."))
+          }</p>`
+        : `<div class="grid">
+    ${cards.map((card) => catalogCardHtml(card, requestKey)).join("\n    ")}
+  </div>`;
+    return `<h2>${tr(copy.name)}</h2>
+  <p class="lede">${tr(copy.note)}</p>
+  ${body}`;
+  };
+
+  return layout({
+    title: bilingual("Catalogue", "Catálogo"),
+    signedIn: true,
+    body: `
+  <h1>${tr(bilingual("Catalogue", "Catálogo"))}</h1>
+  <p class="lede">${trHtml(
+    "Everything on sale, and what your agents may actually buy. An item marked <strong>outside the grant</strong> is not broken: no permission you signed covers it, so AgentPey would refuse it. Open it to see exactly how much more power you would be granting.",
+    "Todo lo que está a la venta, y lo que tus agentes realmente pueden comprar. Un ítem marcado <strong>fuera del permiso</strong> no está roto: ningún permiso que firmaste lo cubre, así que AgentPey lo rechazaría. Ábrelo para ver exactamente cuánto poder nuevo le estarías dando.",
+  )}</p>
+  <p class="meta">${tr(
+    bilingual(
+      "In the grant means the permission you signed names this merchant and this product. It is not a promise the purchase will go through: AgentPey decides at that moment, against your Mandate, and still refuses an expired or revoked permission, a day's limit already spent, or an invoice that does not match.",
+      "Dentro del permiso significa que el permiso que firmaste nombra este comercio y este producto. No es una promesa de que la compra se hará: AgentPey decide en ese momento, contra tu Mandato, y igual rechaza un permiso vencido o revocado, un límite diario ya gastado, o una factura que no cuadra.",
+    ),
+  )}</p>
+
+  ${section("signaldesk")}
+  ${section("bazaar")}
+`,
+  });
+}
+
+export interface GrantDiffInput {
+  readonly card: CatalogCard;
+  readonly agentName: Bilingual;
+  readonly grant: ProposedGrant;
+  readonly controls: readonly ExplainedControl[];
+}
+
+/**
+ * The permission an item outside the grant would need — the point of the whole
+ * screen.
+ *
+ * It renders the same literal object `reviewPage` does, from the same
+ * `translatePermissions`, because the person should see the thing that would be
+ * signed and not a description of it. Nothing is signed from here: this page
+ * only offers to create the agent, and signing still happens on AgentPey's
+ * domain with the person's own wallet.
+ */
+export function grantDiffPage(input: GrantDiffInput): string {
+  return layout({
+    title: bilingual("The permission this needs", "El permiso que esto necesita"),
+    signedIn: true,
+    body: `
+  <h1>${tr(input.card.title)}</h1>
+  <p class="lede">${trHtml(
+    "None of your signed permissions covers this. To buy it you would hire a <strong>new agent</strong>, with its own permission, and sign it. Your existing agents are not touched and nothing you already signed is changed or re-signed.",
+    "Ninguno de tus permisos firmados cubre esto. Para comprarlo contratarías un <strong>agente nuevo</strong>, con su propio permiso, y lo firmarías. Tus agentes actuales no se tocan y nada de lo que ya firmaste cambia ni se vuelve a firmar.",
+  )}</p>
+
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>${tr(bilingual("New permission", "Permiso nuevo"))}</th><th>${tr(bilingual("Value", "Valor"))}</th><th>${tr(bilingual("Enforced by", "Quién lo hace cumplir"))}</th></tr></thead>
+      <tbody>
+        ${input.controls
+          .map(
+            (control) => `<tr>
+          <td><strong>${tr(control.label)}</strong><br><span class="meta">${tr(control.explanation)}</span></td>
+          <td>${control.field === "validUntil" ? localTime(control.value) : `<code>${escape(control.value)}</code>`}</td>
+          <td><span class="tag ${ENFORCER_COPY[control.enforcedBy].cls}">${tr(ENFORCER_COPY[control.enforcedBy].tag)}</span></td>
+        </tr>`,
+          )
+          .join("\n        ")}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>${tr(bilingual("The permission, literally", "El permiso, literal"))}</h2>
+  <div class="split">
+    <div>
+      <p class="meta" style="margin-top:0">${tr(
+        bilingual(
+          "This is the object that would be sent to AgentPey, and the one your wallet would show you before signing. There is nothing else.",
+          "Este es el objeto que se enviaría a AgentPey y el que tu wallet te mostraría antes de firmar. No hay nada más.",
+        ),
+      )}</p>
+      <pre>${escape(JSON.stringify(input.grant, null, 2))}</pre>
+    </div>
+    <div class="card stack">
+      <p>${trHtml(
+        `<strong>${escape(input.agentName.en)}</strong> would be a separate agent. It could buy at that merchant, those products, up to those limits, and nothing else.`,
+        `<strong>${escape(input.agentName.es)}</strong> sería un agente aparte. Podría comprar en ese comercio, esos productos, hasta esos límites, y nada más.`,
+      )}</p>
+      <form method="post" action="/catalogo/permiso">
+        <input type="hidden" name="product_id" value="${escape(input.card.productId)}">
+        <button type="submit">${tr(bilingual("Set up this agent", "Configurar este agente"))}</button>
+      </form>
+      <p class="meta push">${tr(
+        bilingual(
+          "Setting it up does not authorize anything. You review it again and sign it on AgentPey's site with your wallet.",
+          "Configurarlo no autoriza nada. Lo revisas otra vez y lo firmas en el sitio de AgentPey con tu wallet.",
+        ),
+      )}</p>
+    </div>
+  </div>
 `,
   });
 }

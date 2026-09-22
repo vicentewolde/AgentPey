@@ -5358,3 +5358,136 @@ exactamente en el salto correcto — es un problema propio, no un agregado a
 este.
 
 `AGENTS.md` sin cambios: contrato de `/v1` y superficie de seguridad (`P-10`).
+
+---
+
+### C-128 · T96: comprar del bazaar es un agente nuevo con su propio Mandato, no un permiso ampliado · `Vigente`
+**Fecha:** 2026-09-22 · **Hito:** T96 · **Decidido por el usuario:** que sea un agente nuevo; que el mandato liste los product ids uno por uno; que los `route_params` sean de RealOps y no vayan firmados; el nombre `bazaar_shopper`; y que la pantalla marque con un preflight lo que el comercio no está cobrando
+
+**El muro.** Un agente contratado en `realops.agentpey.com` sólo podía comprar
+las dos cosas de SignalDesk, y la causa no era la interfaz: era el grant.
+`PILOT_VENUE_ID` cableaba RealOps a un solo comercio, `translatePermissions`
+firmaba `venues: [targets.venueId]` con ese único venue, y la compra mandaba
+`venue: config.targets.venueId`. Aunque la página hubiera mostrado más
+productos, AgentPey los habría rechazado — **y habría hecho bien**. El muro
+estaba en el lugar correcto; lo que estaba mal era que fuera invisible.
+
+#### Un agente nuevo, y ningún Mandato firmado se toca
+
+El bazaar entra como un `agentKind` propio, `bazaar_shopper`, con su propio
+grant y su propia firma. **No se re-firma nada.** La alternativa —ampliar el
+mandato existente para que nombrara los dos comercios— se descartó por dos
+razones: obligaría a re-firmar permisos que ya están en cadena, y borraría
+justamente lo que el piloto quiere mostrar, que son dos agentes con dos poderes
+distintos y visiblemente distintos.
+
+Por eso `PilotTargets` dejó de ser un registro plano (un venue, un asset, una
+cuenta de cobro, y sólo los productos variando) y pasó a ser **una fila por
+`agentKind`**: venue, asset, cuentas de cobro y productos, cada uno el suyo.
+Esa forma vieja era la causa estructural del muro.
+
+#### Los product ids van uno por uno, y eso es lo que hace la pantalla
+
+`checkMandate` salta el chequeo de producto cuando el grant no trae `products`
+(paso 5, herencia de `M-14`), así que omitirlo habría dado permiso por venue
+entero. Se eligió listarlos: `["swap-risk-quote", "ai-video-scriptwriter"]`,
+comparados byte a byte.
+
+**Lo que se pierde, dicho:** un recurso que el bazaar publique mañana no es
+comprable hasta firmar un permiso nuevo. Eso es deliberado. Es exactamente lo
+que la pantalla de catálogo tiene para mostrar — la tarjeta sale marcada *fuera
+del permiso* y al abrirla aparece el objeto literal que habría que firmar, con
+la misma marca de quién hace cumplir cada control que usa la pantalla de
+revisión. Un permiso por venue habría dejado a esa pantalla sin nada que decir.
+
+**Alternativa descartada:** listar sólo `swap-risk-quote`, el único que hoy
+funciona. Se descartó porque el diff que la pantalla ofrece firmar prometería
+algo que, firmado, igual fallaría en el 402.
+
+#### Los `route_params` son de RealOps, sin firmar, y por qué eso no abre un hueco
+
+El par, el monto, el tono y la duración viajan como `route_params` y **no van en
+el mandato**. La pregunta que había que contestar antes era si un `amount` en
+los parámetros puede convertirse en el monto del pago. **No puede, y se
+verificó contra el 402 real**, no por lectura: el mismo recurso del bazaar
+cotiza `10000` stroops (0,001 USDC) con `amount=100` y con `amount=999999`. El
+parámetro queda atado a la factura por `inputHash`, pero el precio lo fija el
+comercio. El monto que se paga sale del 402 del propio comercio y lo vuelve a
+comparar `reconcileTerms` contra el `perTx` firmado.
+
+Los parámetros eligen **qué te entregan**, no **cuánto se paga**: caen a la
+izquierda de la frontera de `PILOTO-F9.md` § 4.1, donde equivocarse no cuesta
+plata. Lo peor que puede hacer un parámetro equivocado es comprar la cosa
+equivocada, dentro de límites que alguien firmó.
+
+Aun así el formulario no es un túnel: un parámetro que el comercio no declaró se
+descarta en vez de reenviarse, y los que RealOps se reserva —el `account` de la
+ruta de créditos, que es la referencia opaca del tenant— se escriben **después**
+de los del formulario, así que un navegador no puede acreditarle a otra persona.
+
+**Alternativa descartada:** firmar los valores admitidos en el grant. Cerraría
+del todo la puerta, pero convertiría el mandato en una lista de combinaciones
+—un par, un tono, una duración— y obligaría a re-firmar por cada consulta nueva.
+
+#### El asset id: verificado contra el 402, no copiado de `venues.json`
+
+`bazaar.ts` advierte que el asset id del bazaar no es el mismo objeto que el del
+mock aunque sea el mismo activo, y tiene razón — pero contrasta el bazaar con el
+**mock**, cuyo USDC es un issuer clásico `G…`. Contra SignalDesk no hay
+divergencia. El 402 vivo del bazaar nombra
+`CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`, el mismo SAC que
+`venues.json` ya le da a las dos filas. `ids.ts` compara byte a byte, así que
+esto se verificó antes de que entrara a un grant que alguien firma.
+
+Lo que sí cambia es `payTo`: el bazaar **no es un solo vendedor**. Cada recurso
+cobra a su propia cuenta (`GDVR2KDK…RMCQ` y `GBYXQUSY…62LB`), y ninguna es la
+dirección del venue. Por eso `PilotTarget.payTo` es una lista y no una cuenta:
+con T91 (`C-123`) `payTo` es obligatorio al crear un consentimiento por `/v1`, y
+una lista incompleta o equivocada dejaría al comercio redirigir el dinero.
+
+#### El preflight, y el error que encontró la propia pantalla
+
+Un recurso listado no es un recurso que el comercio esté cobrando:
+`ai-video-scriptwriter` anuncia `/api/script`, que responde **404** en los dos
+hosts del bazaar. Así que la tarjeta se marca, con un pedido de lectura que no
+paga nada.
+
+La primera versión del preflight **llenaba los parámetros de la ruta con valores
+inventados**, y el bazaar contestó `400 INVALID_QUOTE_INPUT`: valida antes de
+cotizar. Resultado — una tienda abierta se veía cerrada, justo en la pantalla
+construida para distinguir esas dos cosas. Lo encontró la pantalla misma, no un
+test. La corrección no fue adivinar mejores valores (adivinar por la persona qué
+quiere comprar es lo único que este piloto no hace) sino **preguntar por la ruta
+pelada, sin llenar un solo parámetro**: `/api/x402/swap-risk` responde `400`
+(la sirve, validando) y `/api/script` responde `404` (no la sirve). Un `5xx` o
+un fallo de red es `unknown`, que no es lo mismo que una negativa y la pantalla
+lo dice distinto.
+
+#### El vocabulario se amplió, y una frase que antes se aceptaba ahora se rechaza
+
+`interpretInstruction` pasó de dos familias a un diccionario cerrado de cuatro
+productos, y sigue devolviendo `InstructionNotRecognised` ante lo que no
+reconoce o ante una frase que nombra más de uno.
+
+**Un cambio de conducta que hay que decir en voz alta:** `ia` y `ai` sueltos ya
+no significan créditos. El bazaar vende un scriptwriter de video **con IA**, así
+que un `ai` pelado nombra dos productos, y nombrar dos es no nombrar ninguno.
+"compra IA" ahora vuelve como `no_product`. Es un estrechamiento deliberado —
+rechazar en vez de adivinar entre dos comercios— y ninguna frase de las que los
+tests ya cubrían dejó de funcionar, porque todas dicen créditos, credits o pack.
+
+#### Lo que la pantalla tiene prohibido afirmar
+
+El contraste de cada tarjeta sale de lo que **RealOps mismo propuso y vio
+firmar** (`translatePermissions`, la misma función pura que dibuja la pantalla
+de revisión, para que no puedan divergir). No es una segunda opinión sobre
+autorización y la copia lo dice: AgentPey decide en el momento de la compra,
+contra el Mandato, y sigue rechazando un permiso vencido o revocado, un límite
+diario ya gastado, o una factura que no cuadra. *Dentro del permiso* significa
+que el permiso firmado nombra ese comercio y ese producto, y nada más que eso.
+
+**Pendiente anotado, sin construir:** `POST /v1/purchases/preview` (T93,
+`C-125`) contestaría esa pregunta mejor, porque la contestaría AgentPey y no
+RealOps. No se usó todavía porque exige una API key con `payments:preview`, que
+aún no se emitió (es del usuario, `P-10`), y porque consumiría cupo de tasa por
+cada tarjeta dibujada.

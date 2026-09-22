@@ -4,19 +4,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { AgentPeyClient, PurchaseResource, TenantActivity } from "./agentpey.js";
 import { createMemoryStore, type RealOpsStore } from "./accounts.js";
 import { createRealOpsServer } from "./app.js";
-import type { PilotTargets } from "./permissions.js";
+import { SIGNALDESK_VENUE_ID, TEST_TARGETS } from "./testing.js";
 
-const VENUE = "signaldesk:GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF";
+const VENUE = SIGNALDESK_VENUE_ID;
 
-const TARGETS: PilotTargets = {
-  venueId: VENUE,
-  assetId: "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
-  payTo: "GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF",
-  products: {
-    market_brief: ["signaldesk:market-brief-xlm-usdc"],
-    ai_credits: ["signaldesk:ai-credits-1000"],
-  },
-};
+const TARGETS = TEST_TARGETS;
 
 interface PurchaseCall {
   readonly tenantId: string;
