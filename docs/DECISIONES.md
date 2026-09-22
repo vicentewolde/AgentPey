@@ -333,3 +333,35 @@ que es lo que hay en la demo.
 **Alternativa descartada:** reservar en la plataforma (Jumpseller no tiene
 reservas en su API) o bloquear stock al emitir el 402 (un agente que nunca
 paga dejaría productos bloqueados).
+
+---
+
+### V-16 · Método de envío gratis recreado por API, no editado · `Vigente` (día 3)
+**Fecha:** 2026-09-22
+
+`PUT /shipping_methods/{id}.json` devuelve `400 "El tipo de método de envío
+seleccionado no es editable en este momento"` para un método creado a mano
+en el panel con `type: "free"` (el "Correo Ordinario" por defecto de
+Jumpseller, sin tarifa configurada — por eso el checkout manual del
+storefront tiraba "Falta el método de envío": ni ese ni Bluexpress, que es
+la integración real con el courier, podían calcular un precio).
+
+**Motivo.** La API solo deja editar por `PUT` un método que ya es `type:
+"tables"` o `"external"`; uno creado como `"free"` desde el panel queda
+congelado. Se resolvió creando un método `tables` nuevo con el mismo nombre
+(`POST /shipping_methods.json`, `tables: [{basedon: "price", values:
+[{amount: 0, price: 0}]}]`, **sin la clave `locations`** — con `locations`
+poblado el POST devuelve `500` aunque el payload cumpla el schema del
+OpenAPI oficial) y borrando el viejo con `DELETE`, que sí funciona. Omitir
+`locations` hace que la tarifa aplique a cualquier destino (documentado:
+"si no se asigna a una zona, aparece en todas").
+
+**Ojo:** un `POST` que devuelve `500` en este endpoint puede dejar un
+registro roto a medio crear en vez de no crear nada — hubo que barrer dos
+duplicados vacíos después. Si el adapter alguna vez toca este endpoint,
+revisar el resultado con un `GET` después de cualquier `500`, no asumir que
+no pasó nada.
+
+**Alternativa descartada:** pedir a Vinny que lo arregle a mano en el
+panel. Es tres llamadas HTTP y queda igual de bien; se documenta acá en vez
+de generar otro paso manual.
