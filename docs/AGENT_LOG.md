@@ -5779,3 +5779,27 @@ Pendiente:
   quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
   tarjeta de gasto por agente; limitar por IP los pedidos sin autenticar;
   `C-122` abierta.
+
+## 2026-09-22 (4) — main (T97 mergeado)
+
+Agente: Claude Code.
+
+Qué: **T97 mergeado** a `main` en fast-forward (`8202862..b978804`), a pedido
+del usuario. Rama `cc/t97-issue-key` borrada.
+
+Con esto `pnpm run partner:key` vive en `main`: ya no hace falta pararse en una
+rama para correrlo.
+
+Pendiente:
+- **Pushear `main` a `origin`.**
+- **Del usuario (`P-10`), en este orden:** `pnpm run partner:key -- --issue` →
+  guardar el secreto (se imprime una sola vez) → cargarlo en Render como
+  `REALOPS_AGENTPEY_API_KEY` → redeployar → verificar una compra real →
+  actualizar `.env.local` → recién entonces
+  `pnpm run partner:key -- --revoke apk_01M2DPVEPZPTMHE1ZAM2Z2Q5AN --yes`.
+  Las dos claves funcionan a la vez en el medio; ese solapamiento es la
+  rotación.
+- Siguen: caso 8b de aceptación; Freighter en producción; hora local de T89;
+  quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
+  tarjeta de gasto por agente; limitar por IP los pedidos sin autenticar;
+  `C-122` abierta.
