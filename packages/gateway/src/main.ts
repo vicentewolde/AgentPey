@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 import { JumpsellerStoreAdapter, MockStoreAdapter, type StoreAdapter } from "@vitrinee/adapters";
 import { MANIFEST_PATH, VitrineeError, isVitrineeError } from "@vitrinee/core";
@@ -7,22 +7,41 @@ import { MANIFEST_PATH, VitrineeError, isVitrineeError } from "@vitrinee/core";
 import { createApp } from "./app.js";
 import { loadConfig, type GatewayConfig } from "./config.js";
 
+/**
+ * The repo root: the nearest ancestor holding pnpm-workspace.yaml. `pnpm
+ * gateway` runs with the cwd set to the *package*, so resolving against
+ * process.cwd() alone would miss the .env.local and the deployments file
+ * that both live at the root.
+ */
+function repoRoot(from = process.cwd()): string {
+  let dir = from;
+  for (let i = 0; i < 8; i += 1) {
+    if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return from;
+}
+
+const root = repoRoot();
+
 // Secrets live in .env.local, gitignored. Any real environment (Render) sets
 // variables directly and has no file.
-const envFile = resolve(process.cwd(), ".env.local");
+const envFile = resolve(root, ".env.local");
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 // The registry id is public and committed in deployments/testnet.json; the
 // env var only overrides it.
 if (process.env["RECEIPT_REGISTRY_ID"] === undefined || process.env["RECEIPT_REGISTRY_ID"] === "") {
-  const deployments = resolve(process.cwd(), "deployments/testnet.json");
+  const deployments = resolve(root, "deployments/testnet.json");
   if (existsSync(deployments)) {
     const id = (JSON.parse(readFileSync(deployments, "utf8")) as { receiptRegistry?: { contractId?: string } | null }).receiptRegistry?.contractId;
     if (id !== undefined) process.env["RECEIPT_REGISTRY_ID"] = id;
   }
 }
-process.env["ORDERS_FILE"] ??= resolve(process.cwd(), ".vitrinee/orders.json");
-process.env["MOCK_ORDERS_FILE"] ??= resolve(process.cwd(), ".vitrinee/mock-store.json");
+process.env["ORDERS_FILE"] ??= resolve(root, ".vitrinee/orders.json");
+process.env["MOCK_ORDERS_FILE"] ??= resolve(root, ".vitrinee/mock-store.json");
 
 function createAdapter(config: GatewayConfig): StoreAdapter {
   switch (config.adapter) {

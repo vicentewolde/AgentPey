@@ -1,0 +1,26 @@
+{
+  "name": "@vitrinee/console",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "RealOps console: an x402 buyer platform that browses a Vitrinee storefront's live bazaar and buys from it in the browser.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@vitrinee/agent": "workspace:*",
+    "@vitrinee/anchor": "workspace:*",
+    "@vitrinee/core": "workspace:*",
+    "@x402/stellar": "2.26.0",
+    "express": "^5.2.0",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3"
+  }
+}

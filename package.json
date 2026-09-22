@@ -21,7 +21,9 @@
     "test:integration": "pnpm -r --stream --if-present test:integration",
     "deploy:registry": "tsx --tsconfig tsconfig.scripts.json scripts/deploy-registry.ts",
     "test:contracts": "cd contracts && cargo test",
-    "demo:verify": "tsx --tsconfig apps/agent/tsconfig.json apps/agent/src/verify-cli.ts"
+    "demo:verify": "tsx --tsconfig apps/agent/tsconfig.json apps/agent/src/verify-cli.ts",
+    "console": "pnpm --filter @vitrinee/console run dev",
+    "start:console": "pnpm --filter @vitrinee/console run start"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

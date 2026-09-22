@@ -7,12 +7,31 @@
 import type { ManifestProduct } from "@vitrinee/core";
 import { VitrineeError } from "@vitrinee/core";
 
+/** Mirrors the `buyer.shipping` object the gateway's checkout accepts. */
+export interface ShippingDetails {
+  name?: string;
+  address?: string;
+  city?: string;
+  region?: string;
+  /** ISO 3166-1 alpha-2. */
+  country: string;
+  notes?: string;
+}
+
 export interface PurchaseIntent {
   product: ManifestProduct;
   quantity: number;
-  shipping: { city?: string; country: string };
+  shipping: ShippingDetails;
   /** Why this product won, for the terminal. */
   reasons: string[];
+}
+
+/**
+ * An intent a caller already knows: a console where a human clicked the
+ * product needs no matcher, but the rest of the purchase is identical.
+ */
+export function directIntent(product: ManifestProduct, quantity: number, shipping: ShippingDetails): PurchaseIntent {
+  return { product, quantity, shipping, reasons: ["elegido desde el catálogo"] };
 }
 
 const STOPWORDS = new Set([
@@ -61,7 +80,7 @@ const SHIPPING_RE =
 
 const TRAILING_STOP = new Set(["y", "con", "por", "para", "en", "a", "de"]);
 
-export function parseShipping(instruction: string): { city?: string; country: string } {
+export function parseShipping(instruction: string): ShippingDetails {
   const match = SHIPPING_RE.exec(instruction);
   const raw = match?.[1];
   if (raw === undefined) return { country: "CL" };

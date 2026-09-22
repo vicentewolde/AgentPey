@@ -32,6 +32,12 @@ export interface BuyOptions {
   /** Per-payment cap in USDC, the agent's own guard rail. */
   maxUsdc: string;
   dryRun?: boolean;
+  /**
+   * Skip the natural-language matcher: the caller already knows what to buy.
+   * Only the id and quantity are trusted — the price is re-read from the live
+   * manifest, so a stale console tab can never quote its own number.
+   */
+  intent?: PurchaseIntent;
   /** Wait for the anchor and verify the receipt (default true). */
   verify?: boolean;
   anchorTimeoutMs?: number;
@@ -76,6 +82,17 @@ const short = (account: string): string => `${account.slice(0, 4)}…${account.s
 const clp = (value: string): string => Number(value).toLocaleString("es-CL");
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** Re-reads a caller-supplied intent's product from the manifest just fetched. */
+function relivePrice(manifest: StorefrontManifest, intent: PurchaseIntent): PurchaseIntent {
+  const live = manifest.products.find((p) => p.id === intent.product.id);
+  if (live === undefined) {
+    throw new VitrineeError("ProductNotFound", `el producto "${intent.product.id}" ya no está en el catálogo de la tienda`, {
+      details: { productId: intent.product.id },
+    });
+  }
+  return { ...intent, product: live };
+}
+
 export async function buy(options: BuyOptions): Promise<BuyResult> {
   const log = options.log ?? (() => {});
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -100,7 +117,7 @@ export async function buy(options: BuyOptions): Promise<BuyResult> {
   mark("manifest");
 
   // 2. Decide what to buy.
-  const intent = parseIntent(manifest.products, options.instruction);
+  const intent = options.intent === undefined ? parseIntent(manifest.products, options.instruction) : relivePrice(manifest, options.intent);
   const { product } = intent;
   const totalAtomic = BigInt(product.priceUSDCAtomic) * BigInt(intent.quantity);
   log(`  instrucción  "${options.instruction}"`);
