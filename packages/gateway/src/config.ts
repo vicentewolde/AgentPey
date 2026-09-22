@@ -17,7 +17,9 @@ const optionalString = z
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4021),
-  ADAPTER: z.enum(["mock"]).default("mock"),
+  ADAPTER: z.enum(["mock", "jumpseller"]).default("mock"),
+  JUMPSELLER_LOGIN: optionalString,
+  JUMPSELLER_AUTHTOKEN: optionalString,
   PUBLIC_BASE_URL: optionalString.pipe(z.url().optional()),
   MERCHANT_NAME: z.string().min(1).default("Bazar Cordillera"),
   MERCHANT_STELLAR_ACCOUNT: stellarAccountSchema,
@@ -46,7 +48,7 @@ const envSchema = z.object({
 
 export interface GatewayConfig {
   port: number;
-  adapter: "mock";
+  adapter: "mock" | "jumpseller";
   publicBaseUrl: string | undefined;
   merchant: { name: string; stellarAccount: string; country: string; currency: string };
   /** The receipt-signing key. Holds XLM for anchor fees, never USDC (V-8). */
@@ -59,6 +61,8 @@ export interface GatewayConfig {
   receiptRegistryId: string;
   manifestCacheSeconds: number;
   mockOrdersFile: string | undefined;
+  /** Present only when ADAPTER=jumpseller; loadConfig refuses that adapter without it. */
+  jumpseller: { login: string; authtoken: string } | undefined;
   /** Where the gateway's own order records live. `undefined` keeps them in memory only. */
   ordersFile: string | undefined;
 }
@@ -87,6 +91,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
   } catch {
     throw new VitrineeError("ConfigError", "invalid environment: MERCHANT_SIGNING_SECRET: not a Stellar secret seed");
   }
+  if (e.ADAPTER === "jumpseller" && (e.JUMPSELLER_LOGIN === undefined || e.JUMPSELLER_AUTHTOKEN === undefined)) {
+    throw new VitrineeError(
+      "ConfigError",
+      "ADAPTER=jumpseller needs JUMPSELLER_LOGIN and JUMPSELLER_AUTHTOKEN (both in .env.local)",
+    );
+  }
   if (signingAccount === e.MERCHANT_STELLAR_ACCOUNT) {
     throw new VitrineeError("ConfigError", "MERCHANT_SIGNING_SECRET must not be the payTo account's key (V-8)");
   }
@@ -109,6 +119,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     receiptRegistryId: e.RECEIPT_REGISTRY_ID,
     manifestCacheSeconds: e.MANIFEST_CACHE_SECONDS,
     mockOrdersFile: e.MOCK_ORDERS_FILE,
+    jumpseller:
+      e.JUMPSELLER_LOGIN === undefined || e.JUMPSELLER_AUTHTOKEN === undefined
+        ? undefined
+        : { login: e.JUMPSELLER_LOGIN, authtoken: e.JUMPSELLER_AUTHTOKEN },
     ordersFile: e.ORDERS_FILE,
   };
 }

@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { MockStoreAdapter, type StoreAdapter } from "@vitrinee/adapters";
-import { MANIFEST_PATH, isVitrineeError } from "@vitrinee/core";
+import { JumpsellerStoreAdapter, MockStoreAdapter, type StoreAdapter } from "@vitrinee/adapters";
+import { MANIFEST_PATH, VitrineeError, isVitrineeError } from "@vitrinee/core";
 
 import { createApp } from "./app.js";
 import { loadConfig, type GatewayConfig } from "./config.js";
@@ -28,6 +28,16 @@ function createAdapter(config: GatewayConfig): StoreAdapter {
   switch (config.adapter) {
     case "mock":
       return new MockStoreAdapter({ ordersFile: config.mockOrdersFile });
+    case "jumpseller": {
+      if (config.jumpseller === undefined) {
+        throw new VitrineeError("ConfigError", "ADAPTER=jumpseller needs JUMPSELLER_LOGIN and JUMPSELLER_AUTHTOKEN");
+      }
+      return new JumpsellerStoreAdapter({
+        credentials: config.jumpseller,
+        currency: config.merchant.currency,
+        onWarning: (message, details) => log(message, details),
+      });
+    }
   }
 }
 
