@@ -1,0 +1,29 @@
+{
+  "name": "vitrinee",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "test": "pnpm -r --stream test",
+    "gateway": "pnpm --filter @vitrinee/gateway run dev",
+    "start:gateway": "pnpm --filter @vitrinee/gateway run start",
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "clean": "tsc -b --clean && rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^3.2.0"
+  }
+}

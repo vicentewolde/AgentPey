@@ -1,0 +1,29 @@
+{
+  "name": "@vitrinee/adapters",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "StoreAdapter interface and implementations: mock, jumpseller.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@vitrinee/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}

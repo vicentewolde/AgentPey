@@ -1,0 +1,8 @@
+# TypeScript side only. `contracts/` is a separate Cargo workspace with no package.json.
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# vitest pulls esbuild, whose postinstall resolves the prebuilt platform binary.
+allowBuilds:
+  esbuild: true

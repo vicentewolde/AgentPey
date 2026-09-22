@@ -1,0 +1,18 @@
+{
+  "network": "testnet",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "horizonUrl": "https://horizon-testnet.stellar.org",
+  "protocolVersion": 28,
+  "usdc": {
+    "code": "USDC",
+    "issuer": "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+    "contractId": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    "decimals": 7
+  },
+  "facilitator": {
+    "name": "Built on Stellar (OpenZeppelin Channels)",
+    "url": "https://channels.openzeppelin.com/x402/testnet"
+  },
+  "receiptRegistry": null
+}
