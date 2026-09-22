@@ -12,6 +12,22 @@ export default tseslint.config(
     },
   },
   {
+    // The dashboard is plain browser JavaScript, not Node.
+    files: ["apps/dashboard/public/**/*.js"],
+    languageOptions: {
+      globals: {
+        document: "readonly",
+        window: "readonly",
+        fetch: "readonly",
+        atob: "readonly",
+        Node: "readonly",
+        TextDecoder: "readonly",
+        setInterval: "readonly",
+        Uint8Array: "readonly",
+      },
+    },
+  },
+  {
     // Tests read loosely-typed JSON responses; production code may not.
     files: ["**/*.test.ts"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },

@@ -4,6 +4,8 @@ import { MANIFEST_PATH, VitrineeError, isVitrineeError } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddleware } from "@x402/express";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { z, ZodError } from "zod";
 
 import { AnchorWorker, type Anchorer } from "./anchoring.js";
@@ -108,6 +110,17 @@ export function createApp({
     res.set("Cache-Control", cacheHeader);
     res.json(buildManifest({ config, products, baseUrl: baseUrlOf(req), now: now() }));
   });
+
+  // The dashboard ships as static files served from this same origin: one
+  // deploy, no CORS, nothing to configure on stage (docs/DECISIONES.md, V-18).
+  // `src/` and `dist/` sit at the same depth, so one path works in both.
+  const dashboardDir = fileURLToPath(new URL("../../../apps/dashboard/public", import.meta.url));
+  if (existsSync(dashboardDir)) {
+    app.use("/dashboard", express.static(dashboardDir, { index: "index.html", maxAge: "5m" }));
+    app.get("/", (_req, res) => res.redirect(302, "/dashboard/"));
+  } else {
+    log("dashboard files not found; /dashboard will 404", { dashboardDir });
+  }
 
   app.get("/discovery/resources", async (req, res) => {
     const products = await catalog.get();

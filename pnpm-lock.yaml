@@ -70,6 +70,39 @@ importers:
         specifier: ^3.2.0
         version: 3.2.7(@types/node@24.13.6)(supports-color@7.2.0)(tsx@4.23.15)
 
+  apps/console:
+    dependencies:
+      '@vitrinee/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@vitrinee/anchor':
+        specifier: workspace:*
+        version: link:../../packages/anchor
+      '@vitrinee/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@x402/stellar':
+        specifier: 2.26.0
+        version: 2.26.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      express:
+        specifier: ^5.2.0
+        version: 5.2.1(supports-color@7.2.0)
+      zod:
+        specifier: ^4.6.0
+        version: 4.6.5
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
+      tsx:
+        specifier: ^4.20.0
+        version: 4.23.15
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+
+  apps/dashboard: {}
+
   packages/adapters:
     dependencies:
       '@vitrinee/core':

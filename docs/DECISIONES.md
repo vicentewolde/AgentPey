@@ -407,3 +407,30 @@ para aparecer en el bazaar del facilitator de OpenZeppelin. Es lo
 espec-correcto y queda como stretch, pero depende de que ese facilitator
 implemente el bazaar, y la discovery extension es lo primero que el brief
 manda a cortar (regla 8).
+
+---
+
+### V-18 · Un solo servicio: el gateway sirve el dashboard · `Vigente` (día 4)
+**Fecha:** 2026-09-22
+
+`apps/dashboard` son tres archivos estáticos (HTML, CSS, JS de navegador, sin
+framework ni paso de build) que el gateway sirve en `/dashboard` con
+`express.static`. `render.yaml` declara **un** servicio web, no dos.
+
+**Motivo.** Dos servicios significan dos despliegues que se pueden
+desincronizar, una variable con la URL del otro, y CORS que configurar — tres
+cosas que se rompen en vivo, y el video se graba una sola vez. Sirviéndolo
+desde el mismo origen, cada `fetch` del dashboard es relativo (`/orders`,
+`/receipts/:hash/verify`) y no hay nada que configurar. Sin build step, la
+página que se despliega es exactamente la que está en el repo: no hay un
+bundler entre lo que se lee y lo que corre.
+
+La ruta se resuelve con `new URL("../../../apps/dashboard/public",
+import.meta.url)`, que apunta al mismo lugar desde `src/` y desde `dist/`
+porque están a la misma profundidad. Si el directorio no existe, el gateway
+lo dice en el log y sigue sirviendo la API: un dashboard ausente no tumba la
+tienda.
+
+**Alternativa descartada:** un static site aparte en Render (gratis, y separa
+responsabilidades) o una SPA con Vite. Mejor arquitectura para un producto que
+crece; peor apuesta para una demo de 3 minutos que se graba el día 29.
