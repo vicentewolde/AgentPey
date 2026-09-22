@@ -6,3 +6,9 @@ packages:
 # vitest pulls esbuild, whose postinstall resolves the prebuilt platform binary.
 allowBuilds:
   esbuild: true
+
+# @x402/express lists @x402/paywall as a peer for its optional browser paywall; the
+# gateway serves JSON only and never loads it.
+peerDependencyRules:
+  ignoreMissing:
+    - "@x402/paywall"

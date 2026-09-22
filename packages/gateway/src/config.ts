@@ -30,8 +30,11 @@ const envSchema = z.object({
     .pipe(z.array(countryCodeSchema).min(1)),
   FACILITATOR_URL: z.url().default(OPENZEPPELIN_FACILITATOR_TESTNET),
   FACILITATOR_API_KEY: optionalString,
+  FACILITATOR_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  CHECKOUT_MAX_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
   MANIFEST_CACHE_SECONDS: z.coerce.number().int().nonnegative().default(60),
   MOCK_ORDERS_FILE: optionalString,
+  ORDERS_FILE: optionalString,
 });
 
 export interface GatewayConfig {
@@ -41,14 +44,19 @@ export interface GatewayConfig {
   merchant: { name: string; stellarAccount: string; country: string; currency: string };
   fx: { rate: string; base: "USD"; quote: string };
   policies: { refundWindowSeconds: number; shippingCountries: string[] };
-  facilitator: { url: string; apiKey: string | undefined };
+  facilitator: { url: string; apiKey: string | undefined; timeoutMs: number };
+  checkout: { maxTimeoutSeconds: number };
   manifestCacheSeconds: number;
   mockOrdersFile: string | undefined;
+  /** Where the gateway's own order records live. `undefined` keeps them in memory only. */
+  ordersFile: string | undefined;
 }
 
 /**
  * Reads configuration from the environment. Failures name the variable and
  * the rule, never the value: a malformed secret must not end up in a log.
+ * Note what is *not* here: MERCHANT_PAYOUT_SECRET. The gateway has no reason
+ * to read it (docs/DECISIONES.md, V-8).
  */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig {
   const parsed = envSchema.safeParse(env);
@@ -81,8 +89,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
       refundWindowSeconds: e.REFUND_WINDOW_SECONDS,
       shippingCountries: e.SHIPPING_COUNTRIES,
     },
-    facilitator: { url: e.FACILITATOR_URL, apiKey: e.FACILITATOR_API_KEY },
+    facilitator: { url: e.FACILITATOR_URL, apiKey: e.FACILITATOR_API_KEY, timeoutMs: e.FACILITATOR_TIMEOUT_MS },
+    checkout: { maxTimeoutSeconds: e.CHECKOUT_MAX_TIMEOUT_SECONDS },
     manifestCacheSeconds: e.MANIFEST_CACHE_SECONDS,
     mockOrdersFile: e.MOCK_ORDERS_FILE,
+    ordersFile: e.ORDERS_FILE,
   };
 }

@@ -1,0 +1,27 @@
+{
+  "name": "@vitrinee/agent",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Demo buyer: a standard x402 client that reads an instruction in Spanish and buys from a Vitrinee storefront.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "buy": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:integration": "RUN_INTEGRATION=1 vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@vitrinee/core": "workspace:*",
+    "@x402/core": "2.26.0",
+    "@x402/stellar": "2.26.0"
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "^17.1.0",
+    "@vitrinee/adapters": "workspace:*",
+    "@vitrinee/gateway": "workspace:*",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}

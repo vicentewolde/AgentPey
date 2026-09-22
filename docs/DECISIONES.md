@@ -34,7 +34,7 @@ resuelve el caso multi-plataforma.
 
 El catálogo está en CLP; el agente paga en USDC. La conversión usa una tasa
 fija declarada en el manifest (`fx.rate`, `fx.source: "demo-fixed"`), leída
-de `FX_RATE_CLP_USD`.
+de `FX_RATE_CLP_USD`. Valor de demo confirmado por Vinny: **950 CLP/USD**.
 
 **Motivo.** Un oráculo (Reflector u otro) agrega una dependencia externa, un
 punto de fallo en el video y una discusión de "qué tasa es la correcta" que no
@@ -138,8 +138,8 @@ mismo `priceUSDCAtomic` en los tres lugares, siempre.
 
 ---
 
-### V-8 · Dos llaves del merchant: `payTo` y firma · `Pendiente` (confirmar con Vinny, día 1)
-**Fecha:** 2026-09-22
+### V-8 · Dos llaves del merchant: `payTo` y firma · `Vigente`
+**Fecha:** 2026-09-22 · **Confirmada por Vinny:** 2026-09-22
 
 `MERCHANT_STELLAR_ACCOUNT` recibe los pagos y no tiene secreto en el gateway.
 `MERCHANT_SIGNING_SECRET` es una llave distinta: firma los recibos JWS y paga
@@ -152,9 +152,9 @@ contradicen. Separarlas mantiene [V-4](#v-4) literal: la llave que el gateway
 guarda no puede mover fondos del merchant, solo emitir recibos y pagar fees de
 anchor con su propio XLM.
 
-**Alternativa:** una sola llave. Menos variables, pero el gateway podría
-vaciar la cuenta del merchant. Se registra como decisión abierta hasta que
-Vinny confirme.
+**Alternativa descartada:** una sola llave. Menos variables, pero el gateway
+podría vaciar la cuenta del merchant. Vinny confirmó las dos llaves el mismo
+día 0.
 
 ---
 
@@ -174,3 +174,75 @@ Alinear SDK y protocolo evita explicar un desfase en el video.
 **Alternativa descartada:** 27.0.6 como AgentPey, que sigue siendo lo que
 `stellar contract init` escribe. Funciona en protocolo 28, pero no hay razón
 para arrancar un proyecto nuevo un major atrás.
+
+---
+
+### V-10 · Flujo `upfront`: el facilitator liquida antes de que corra el handler · `Vigente`
+**Fecha:** 2026-09-22
+
+`POST /checkout/:productId` declara `extra.paymentFlow: "upfront"`. El SDK
+llama a `settle` del facilitator **antes** de ejecutar el handler; el handler
+recupera el resultado (tx hash, pagador) desde un libro en memoria que llena
+el hook `onAfterSettle`, correlacionado por la transacción firmada que viaja
+en `PAYMENT-SIGNATURE`. Solo entonces se crea la orden en la plataforma.
+
+**Motivo.** El flujo por defecto (`authorization`) es verify → handler →
+settle: la orden se crearía antes de que el dinero se mueva, y si el settle
+falla habría que cancelarla en Jumpseller; además el cuerpo de la respuesta
+se genera antes del settle, así que no podría incluir el tx hash. Con
+`upfront`, ninguna orden existe sin pago liquidado, y la respuesta lleva todo
+en una sola vuelta. Verificado en los tipos y en el código de `@x402/express`
+2.26.0: el middleware no expone `beforeHandlerSettlement` al handler, de ahí
+el libro de settlements. Nota: en `upfront` el SDK no llama a `verify`; la
+validez la establece `settle`.
+
+**Consecuencia asumida.** Si la plataforma falla *después* del pago, el
+gateway responde 200 con `status: "paid_unfulfilled"` y guarda el registro
+para cumplimiento manual. Responder ≥ 400 haría creer al agente que no pagó.
+
+**El pagador se lee de la transacción firmada** (`from` del `transfer`
+SEP-41), o del `payer` que informa el facilitator; el `buyer.stellarAccount`
+del body es solo un último recurso. El recibo no puede fiarse de lo que el
+cliente declara.
+
+**Alternativa descartada:** escribir el middleware Express a mano para leer
+`beforeHandlerSettlement` directo. Menos indirección, pero reimplementa el
+buffering de respuesta del SDK ([V-6](#v-6)).
+
+---
+
+### V-11 · Jumpseller: orden creada pagada, tx hash en `additional_information` y en el historial · `Pendiente` (día 3)
+**Fecha:** 2026-09-22
+
+El adapter crea la orden con `POST /orders.json` (`status: "Paid"`,
+`customer`, `products[{id, qty, price}]`) y a continuación `PUT
+/orders/{id}.json` con el tx hash y el pagador en `additional_information`,
+más una entrada en `POST /orders/{id}/history.json`.
+
+**Motivo.** Verificado en el OpenAPI oficial (`Jumpseller/api-docs`):
+`OrderCreateFields` no admite `additional_information` ni `payment_method_name`
+(solo lectura), y `PUT` solo permite `status`, `shipment_status`,
+`tracking_*`, `additional_information` y `additional_fields`. Dos llamadas
+son el camino que la API ofrece; no se inventan campos. El plan trial expone
+la API completa (tienda `vitrinee.jumpseller.com`, plan pro en trial).
+
+**Alternativa descartada:** `additional_fields` con etiqueta propia. Sirve
+igual, pero `additional_information` se ve en el panel sin configurar nada.
+
+---
+
+### V-12 · El secreto de la cuenta `payTo` existe solo para `bootstrap` · `Vigente`
+**Fecha:** 2026-09-22
+
+`pnpm bootstrap` genera la cuenta `payTo` del merchant, abre su trustline USDC
+(imposible sin firmar con ella) y guarda el secreto en
+`MERCHANT_PAYOUT_SECRET` dentro de `.env.local`. **El gateway no lee esa
+variable**; `loadConfig` tiene un test que lo asegura.
+
+**Motivo.** [V-4](#v-4) y [V-8](#v-8) prometen que el gateway no puede mover
+fondos del merchant. En la demo el merchant es Vinny, y Vinny necesita poder
+mirar y mover su USDC de testnet después del video; una llave que nadie
+guarda es una cuenta que nadie puede usar.
+
+**Camino a producción:** el merchant trae su propia cuenta ya fondeada y con
+trustline; `bootstrap` no la genera ni la conoce. Registrado en el roadmap.

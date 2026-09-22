@@ -47,10 +47,17 @@ hackathon "Find Your Way" (Tellus, Stellar), entrega el 30 de septiembre de 2026
 
 ```bash
 pnpm install
-pnpm check                # typecheck + lint + tests rápidos
-pnpm gateway              # gateway en dev (tsx watch); necesita MERCHANT_STELLAR_ACCOUNT
+pnpm check                # typecheck + lint + tests rápidos (sin red)
+pnpm bootstrap            # cuentas testnet + trustlines → .env.local (idempotente)
+pnpm gateway              # gateway en dev (tsx watch), lee .env.local
+pnpm demo:buy -- "compra el hoodie talla M y envíalo a Ñuñoa" [--dry-run]
+pnpm test:integration     # compra real contra testnet (RUN_INTEGRATION=1)
 pnpm build && pnpm start:gateway
 ```
+
+Cuentas de la demo (públicas, en `.env.local`): `MERCHANT_STELLAR_ACCOUNT`
+(payTo), `MERCHANT_SIGNING_ACCOUNT` (firma recibos), `AGENT_ACCOUNT`
+(comprador). El gateway nunca lee `MERCHANT_PAYOUT_SECRET` (V-12).
 
 ## Convenciones de código
 

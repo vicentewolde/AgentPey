@@ -13,9 +13,11 @@ Built in eight days (22–30 September 2026) for the **"Find Your Way"**
 hackathon (Tellus Cooperative, Stellar ecosystem). **Stellar testnet only, by
 design** — see [docs/CONTEXTO.md](docs/CONTEXTO.md).
 
-**Estado: día 0 cerrado** (2026-09-22). El monorepo compila y prueba; el
-manifest se sirve desde un adapter mock. El pago x402 llega el día 1. Bitácora
-en [docs/BITACORA.md](docs/BITACORA.md).
+**Estado: día 1 cerrado** (2026-09-22). Un agente x402 estándar compra en
+la tienda mock pagando USDC real de testnet a través del facilitator "Built on
+Stellar": [primera compra](https://stellar.expert/explorer/testnet/tx/ef86ca2fb6b3fbbe32e89b23c7159a4b13dc02e251bb83a7e75e0ac68f86080f)
+(9,46 USDC, 24 s). Recibo firmado y anclaje en Soroban llegan el día 2.
+Bitácora en [docs/BITACORA.md](docs/BITACORA.md).
 
 ---
 
@@ -64,22 +66,33 @@ en [docs/BITACORA.md](docs/BITACORA.md).
 | `deployments/testnet.json` | El único artefacto compartido entre TypeScript y Rust: red, USDC, facilitator, contrato desplegado. |
 | `docs/` | [CONTEXTO](docs/CONTEXTO.md) · [DECISIONES](docs/DECISIONES.md) · [BITACORA](docs/BITACORA.md) · [evidencia/](docs/evidencia/) |
 
-## Correr el día 0
+## Correr
 
-Requisitos: Node ≥ 22, pnpm 11 (`corepack enable`).
+Requisitos: Node ≥ 22, pnpm 11 (`corepack enable`), una API key de testnet del
+facilitator ([generar](https://channels.openzeppelin.com/testnet/gen)).
 
 ```bash
 pnpm install
-pnpm check            # typecheck + lint + tests
+pnpm check                      # typecheck + lint + tests (sin red)
+cp .env.example .env.local      # pega FACILITATOR_API_KEY
+pnpm bootstrap                  # crea y fondea merchant, llave de firma y agente; abre trustlines USDC
 ```
 
-Servir el manifest desde el adapter mock (cualquier cuenta Stellar válida
-sirve como `payTo` por ahora; `pnpm bootstrap` la genera el día 1):
+`bootstrap` termina imprimiendo la cuenta del agente: fondéala con USDC de
+testnet en https://faucet.circle.com (formulario web). Luego, en dos
+terminales:
 
 ```bash
-MERCHANT_STELLAR_ACCOUNT=GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5 pnpm gateway
-curl -s localhost:4021/.well-known/agent-storefront.json | jq .
+pnpm gateway                    # http://localhost:4021, adapter mock
 ```
+
+```bash
+pnpm demo:buy -- "compra el hoodie talla M y envíalo a Ñuñoa"
+```
+
+Flags del agente: `--dry-run` (se detiene en el 402, sin firmar), `--max-usdc 100`
+(tope por pago; el SDK trae 1 USD por defecto), `--gateway URL`, `--json`.
+Compra real contra testnet como test: `pnpm test:integration`.
 
 Variables de entorno: [.env.example](.env.example).
 

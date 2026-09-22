@@ -1,35 +1,22 @@
-import type { AddressInfo } from "node:net";
-
 import { MockStoreAdapter } from "@vitrinee/adapters";
 import { MANIFEST_PATH, USDC_TESTNET, storefrontManifestSchema } from "@vitrinee/core";
-import type { Express } from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
+import { fakeFacilitator } from "./test/fake-facilitator.js";
+import { listen } from "./test/listen.js";
 
 const MERCHANT = USDC_TESTNET.issuer;
 
-function listen(app: Express): Promise<{ url: string; close: () => Promise<void> }> {
-  return new Promise((resolve) => {
-    const server = app.listen(0, () => {
-      const { port } = server.address() as AddressInfo;
-      resolve({
-        url: `http://127.0.0.1:${port}`,
-        close: () => new Promise((done) => server.close(() => done())),
-      });
-    });
-  });
-}
-
-describe("gateway (day 0 routes)", () => {
+describe("gateway (free routes)", () => {
   const config = loadConfig({
     MERCHANT_STELLAR_ACCOUNT: MERCHANT,
     FX_RATE_CLP_USD: "950",
     SHIPPING_COUNTRIES: "CL, AR",
   });
   const adapter = new MockStoreAdapter();
-  const app = createApp({ config, adapter, now: () => new Date("2026-09-22T15:00:00.000Z") });
+  const app = createApp({ config, adapter, facilitator: fakeFacilitator(), now: () => new Date("2026-09-22T15:00:00.000Z") });
   let url = "";
   let close: () => Promise<void> = async () => {};
 
@@ -80,6 +67,10 @@ describe("gateway (day 0 routes)", () => {
     const noRoute = await fetch(`${url}/nothing`);
     expect(noRoute.status).toBe(404);
     expect(await noRoute.json()).toMatchObject({ error: "NotFound" });
+
+    const noOrder = await fetch(`${url}/orders/ord_nope`);
+    expect(noOrder.status).toBe(404);
+    expect(await noOrder.json()).toMatchObject({ error: "OrderNotFound" });
   });
 
   it("honours PUBLIC_BASE_URL for absolute endpoints", async () => {
@@ -87,7 +78,9 @@ describe("gateway (day 0 routes)", () => {
       MERCHANT_STELLAR_ACCOUNT: MERCHANT,
       PUBLIC_BASE_URL: "https://vitrinee.example.com/",
     });
-    const { url: localUrl, close: closeLocal } = await listen(createApp({ config: publicConfig, adapter }));
+    const { url: localUrl, close: closeLocal } = await listen(
+      createApp({ config: publicConfig, adapter, facilitator: fakeFacilitator() }),
+    );
     try {
       const manifest = storefrontManifestSchema.parse(await (await fetch(`${localUrl}${MANIFEST_PATH}`)).json());
       expect(manifest.endpoints.catalog).toBe("https://vitrinee.example.com/catalog");
@@ -108,14 +101,16 @@ describe("loadConfig", () => {
     expect(() => loadConfig({})).toThrow(/MERCHANT_STELLAR_ACCOUNT/);
   });
 
-  it("applies defaults", () => {
-    const config = loadConfig({ MERCHANT_STELLAR_ACCOUNT: MERCHANT });
+  it("applies defaults and never reads the payout secret", () => {
+    const config = loadConfig({ MERCHANT_STELLAR_ACCOUNT: MERCHANT, MERCHANT_PAYOUT_SECRET: "SHOULDNOTMATTER" });
     expect(config).toMatchObject({
       port: 4021,
       adapter: "mock",
       fx: { rate: "950", base: "USD", quote: "CLP" },
       policies: { refundWindowSeconds: 864000, shippingCountries: ["CL"] },
-      facilitator: { url: "https://channels.openzeppelin.com/x402/testnet", apiKey: undefined },
+      facilitator: { url: "https://channels.openzeppelin.com/x402/testnet", apiKey: undefined, timeoutMs: 60000 },
+      checkout: { maxTimeoutSeconds: 300 },
     });
+    expect(JSON.stringify(config)).not.toContain("SHOULDNOTMATTER");
   });
 });

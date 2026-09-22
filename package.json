@@ -9,16 +9,20 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p tsconfig.scripts.json",
     "lint": "eslint .",
-    "test": "pnpm -r --stream test",
+    "test": "pnpm -r --stream test && vitest run",
     "gateway": "pnpm --filter @vitrinee/gateway run dev",
     "start:gateway": "pnpm --filter @vitrinee/gateway run start",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "clean": "tsc -b --clean && rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo"
+    "clean": "tsc -b --clean && rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo",
+    "bootstrap": "tsx --tsconfig tsconfig.scripts.json scripts/bootstrap.ts",
+    "demo:buy": "tsx --tsconfig apps/agent/tsconfig.json apps/agent/src/cli.ts",
+    "test:integration": "pnpm -r --stream --if-present test:integration"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@stellar/stellar-sdk": "^17.1.0",
     "@types/node": "^24.0.0",
     "eslint": "^9.0.0",
     "tsx": "^4.20.0",
