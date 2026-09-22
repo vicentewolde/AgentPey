@@ -5706,3 +5706,26 @@ Pendiente:
   producción; hora local de T89; quitar `/api/session/*`; rotar los dos
   secretos; `createPurchase` en el SDK; tarjeta de gasto por agente; limitar por
   IP los pedidos sin autenticar; `C-122` abierta.
+
+## 2026-09-22 (2) — main (T96 mergeado)
+
+Agente: Claude Code.
+
+Qué: **T96 mergeado** a `main` en fast-forward (`ed32d4a..6e8503b`), a pedido del
+usuario. Rama `cc/t96-bazaar-catalog` borrada. Sin pushear todavía a `origin`.
+
+Pendiente:
+- **Pushear `main` a `origin`** — pendiente de confirmación del usuario. Si se
+  va a delegar algo de esto a Codex, hay que pushear primero: su worktree parte
+  de `origin/main`.
+- Sin verificar en el navegador: el camino de comprar de verdad, porque firmar
+  desde la instancia local habría creado un tenant y una sesión de
+  consentimiento reales en producción. Cubierto por los 15 tests HTTP de
+  `catalog-http.test.ts`.
+- Anotado sin construir: usar `POST /v1/purchases/preview` (T93) para el
+  contraste de cada tarjeta, que lo contestaría AgentPey en vez de RealOps.
+  Necesita una API key con `payments:preview` (es del usuario, `P-10`).
+- Siguen: API key nueva para T93/T94/T95; caso 8b de aceptación; Freighter en
+  producción; hora local de T89; quitar `/api/session/*`; rotar los dos
+  secretos; `createPurchase` en el SDK; tarjeta de gasto por agente; limitar por
+  IP los pedidos sin autenticar; `C-122` abierta.
