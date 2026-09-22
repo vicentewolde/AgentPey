@@ -5712,12 +5712,11 @@ Pendiente:
 Agente: Claude Code.
 
 Qué: **T96 mergeado** a `main` en fast-forward (`ed32d4a..6e8503b`), a pedido del
-usuario. Rama `cc/t96-bazaar-catalog` borrada. Sin pushear todavía a `origin`.
+usuario, y **pusheado** por el usuario a `origin` (`ed32d4a..3581c11`). Rama
+`cc/t96-bazaar-catalog` borrada. `origin/main` al día: una sesión de Codex que
+arranque ahora parte de un worktree que ya incluye T96.
 
 Pendiente:
-- **Pushear `main` a `origin`** — pendiente de confirmación del usuario. Si se
-  va a delegar algo de esto a Codex, hay que pushear primero: su worktree parte
-  de `origin/main`.
 - Sin verificar en el navegador: el camino de comprar de verdad, porque firmar
   desde la instancia local habría creado un tenant y una sesión de
   consentimiento reales en producción. Cubierto por los 15 tests HTTP de
