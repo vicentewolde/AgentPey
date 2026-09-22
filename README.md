@@ -13,12 +13,18 @@ Built in eight days (22–30 September 2026) for the **"Find Your Way"**
 hackathon (Tellus Cooperative, Stellar ecosystem). **Stellar testnet only, by
 design** — see [docs/CONTEXTO.md](docs/CONTEXTO.md).
 
-**Estado: día 2 cerrado** (2026-09-22). Un agente x402 estándar compra
-pagando USDC de testnet, la tienda firma un recibo, su hash queda anclado en
-el contrato [`receipt-registry`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5)
-y cualquiera puede verificarlo sin confiar en la tienda. Tienda real
-(Jumpseller) el día 3.
-Bitácora en [docs/BITACORA.md](docs/BITACORA.md).
+**Estado: día 4** (2026-09-22). Un agente x402 estándar compra pagando USDC de
+testnet, la tienda firma un recibo, su hash queda anclado en el contrato
+[`receipt-registry`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5)
+y cualquiera puede verificarlo sin confiar en la tienda. El catálogo sale de
+una tienda Jumpseller real. Hay un panel para el merchant y una consola de
+compra para el lado comprador.
+
+⚠️ **Un bloqueo abierto:** el plan *trial* de Jumpseller no permite crear
+pedidos por API (`403` en `POST /orders.json`). Todo lo demás de la integración
+funciona —catálogo, manifest, precios, stock— y el gateway corre con
+`ADAPTER=mock` mientras tanto. Detalle en
+[BITACORA](docs/BITACORA.md) y [V-16](docs/DECISIONES.md).
 
 ---
 
@@ -53,60 +59,123 @@ Bitácora en [docs/BITACORA.md](docs/BITACORA.md).
   firmado, y ancla su SHA-256 en el contrato `receipt-registry`. Cualquiera
   puede verificar el recibo con `GET /receipts/:hash/verify`.
 
+El formato del manifest y del recibo está especificado en
+[docs/SPEC-agent-storefront.md](docs/SPEC-agent-storefront.md).
+
 ## Estructura
 
 | Carpeta | Qué es |
 |---|---|
 | `packages/core` | Esquemas del manifest y del recibo, conversión CLP→USDC con enteros, errores tipados, `did:stellar`. **Sin I/O.** |
-| `packages/adapters` | Interfaz `StoreAdapter` e implementaciones: `mock` (día 0), `jumpseller` (día 3). |
-| `packages/gateway` | Servidor Express: manifest, catálogo, checkout x402, órdenes, verificación de recibos. |
+| `packages/adapters` | Interfaz `StoreAdapter` e implementaciones: `mock` y `jumpseller`. |
+| `packages/gateway` | Servidor Express: manifest, catálogo, checkout x402, órdenes, verificación, discovery y el panel estático. |
 | `packages/anchor` | Cliente Soroban RPC del `receipt-registry` y verificación de recibos (firma, anclaje, pago). |
-| `apps/agent` | Agente demo: cliente x402 que recibe una instrucción en español y compra (día 1). |
-| `apps/dashboard` | Panel del merchant (día 4). |
+| `apps/agent` | Agente demo: cliente x402 que recibe una instrucción en español y compra. |
+| `apps/dashboard` | Panel del merchant: pedidos, recibo decodificado, verificación en un clic. Estático; lo sirve el gateway ([V-18](docs/DECISIONES.md)). |
+| `apps/console` | Consola RealOps: el **lado comprador**, un navegador que lee el bazaar de la tienda y compra con el mismo `buy()` del agente. |
 | `contracts/receipt-registry` | Contrato Soroban en Rust: `anchor`, `get`, `count`. Sin admin. |
 | `deployments/testnet.json` | El único artefacto compartido entre TypeScript y Rust: red, USDC, facilitator, contrato desplegado. |
-| `docs/` | [CONTEXTO](docs/CONTEXTO.md) · [DECISIONES](docs/DECISIONES.md) · [BITACORA](docs/BITACORA.md) · [evidencia/](docs/evidencia/) |
+| `docs/` | [CONTEXTO](docs/CONTEXTO.md) · [SPEC](docs/SPEC-agent-storefront.md) · [DECISIONES](docs/DECISIONES.md) · [BITACORA](docs/BITACORA.md) · [evidencia/](docs/evidencia/) |
 
-## Correr
+## Correr, desde cero
 
-Requisitos: Node ≥ 22, pnpm 11 (`corepack enable`), una API key de testnet del
-facilitator ([generar](https://channels.openzeppelin.com/testnet/gen)).
+Requisitos: Node ≥ 22, pnpm 11 (`corepack enable`), y una API key de testnet
+del facilitator ([generar](https://channels.openzeppelin.com/testnet/gen) —
+no se puede recuperar después de crearla).
+
+**1. Instalar y comprobar que todo compila.** Sin red, sin cuentas, sin nada.
 
 ```bash
 pnpm install
-pnpm check                      # typecheck + lint + tests (sin red)
-cp .env.example .env.local      # pega FACILITATOR_API_KEY
-pnpm bootstrap                  # crea y fondea merchant, llave de firma y agente; abre trustlines USDC
-pnpm deploy:registry            # opcional: el contrato ya está en deployments/testnet.json
+pnpm check
 ```
 
-`bootstrap` termina imprimiendo la cuenta del agente: fondéala con USDC de
-testnet en https://faucet.circle.com (formulario web). Luego, en dos
-terminales:
+**2. Configurar.** Copia el ejemplo y pega tu API key del facilitator; el resto
+lo rellena `bootstrap`.
 
 ```bash
-pnpm gateway                    # http://localhost:4021, adapter mock
+cp .env.example .env.local && chmod 600 .env.local
 ```
+
+**3. Crear y fondear las cuentas de testnet.** Idempotente: si ya existen, no
+hace nada.
+
+```bash
+pnpm bootstrap
+```
+
+Crea tres cuentas —la del merchant que cobra, la que firma recibos y la del
+agente comprador—, las fondea con friendbot y abre sus trustlines de USDC.
+Son tres a propósito: la llave que el gateway guarda **no puede mover los
+fondos del merchant** ([V-8](docs/DECISIONES.md), [V-12](docs/DECISIONES.md)).
+
+**4. Fondear al agente con USDC.** Es el único paso manual: el faucet de
+Circle es un formulario web con captcha. `bootstrap` imprime la cuenta del
+agente al terminar; pégala en <https://faucet.circle.com>.
+
+**5. Levantar el gateway.**
+
+```bash
+pnpm gateway                    # http://localhost:4021
+```
+
+Usa el adapter que diga `ADAPTER` en tu `.env.local`, que llega como `mock`:
+seis productos en disco, sin red. Para servir el catálogo de una tienda
+Jumpseller real, pon `JUMPSELLER_LOGIN` y `JUMPSELLER_AUTHTOKEN` en
+`.env.local` y:
+
+```bash
+ADAPTER=jumpseller pnpm gateway
+```
+
+Las variables de la línea de comandos ganan sobre `.env.local`.
+
+**6. Comprar.** En otra terminal:
 
 ```bash
 pnpm demo:buy -- "compra el hoodie talla M y envíalo a Ñuñoa"
 ```
 
 El agente imprime el pago, el recibo, el anclaje y los tres checks de
-verificación, y guarda el recibo en `.vitrinee/last-receipt.jws`. Luego:
+verificación, y guarda el recibo en `.vitrinee/last-receipt.jws`.
+
+**7. Verificar sin confiar en la tienda.**
 
 ```bash
-pnpm demo:verify                # verifica ese recibo sin pasar por el gateway: firma, Soroban, Horizon
-```
-
-```bash
+pnpm demo:verify                # firma, Soroban y Horizon, sin pasar por el gateway
 pnpm demo:verify -- --tamper    # baja el monto sin re-firmar: los tres checks en rojo
 ```
 
 Flags del agente: `--dry-run` (se detiene en el 402, sin firmar), `--max-usdc 100`
 (tope por pago; el SDK trae 1 USD por defecto), `--no-verify`, `--gateway URL`,
-`--json`. Ciclo completo contra testnet como test: `pnpm test:integration`.
-Tests del contrato: `pnpm test:contracts`.
+`--json`.
+
+### Las dos pantallas
+
+**Panel del merchant** — <http://localhost:4021/dashboard/>, ya corriendo con
+el gateway. Pedidos, monto en USDC, link a la transacción, estado del anclaje;
+al abrir un pedido, el recibo decodificado y un botón que corre las tres
+verificaciones. Se refresca solo, así que un anclaje se ve pasar de
+*pendiente* a *anclado* en vivo.
+
+**Consola de compra (lado comprador)** — lee el bazaar de la tienda y compra
+desde el navegador con el mismo `buy()` del agente:
+
+```bash
+pnpm console                    # http://localhost:4022
+```
+
+⚠️ Esa consola guarda `AGENT_SECRET_KEY` en su propio proceso para poder
+firmar. Es la llave del comprador de demo: **no la expongas en una URL
+pública** o cualquiera podría gastar su USDC de testnet.
+
+### Tests
+
+```bash
+pnpm check                      # typecheck + lint + 109 tests, sin red
+pnpm test:integration           # compra + anclaje + verificación reales (~1 USDC en stickers)
+pnpm test:contracts             # cargo test en contracts/
+```
 
 ### Rutas del gateway
 
@@ -114,23 +183,39 @@ Tests del contrato: `pnpm test:contracts`.
 |---|---|
 | `GET /.well-known/agent-storefront.json` | Manifest: merchant, `did:stellar` de firma, settlement x402, tasa, productos, registro de recibos |
 | `GET /catalog`, `GET /products/:id` | Catálogo con precios en CLP y USDC atómico |
+| `GET /discovery/resources` | Recursos pagables en el formato bazaar de x402 ([V-17](docs/DECISIONES.md)) |
 | `POST /checkout/:productId` | 402 x402 → pago → orden + recibo firmado. Acepta `Idempotency-Key` |
 | `GET /orders`, `GET /orders/:orderId` | Estado de la orden, del settlement y del anclaje |
 | `GET /receipts/:hash/verify` | Tres checks sobre un recibo emitido por esta tienda |
 | `POST /receipts/verify` | Tres checks sobre cualquier recibo (`{ "receiptJws": "..." }`) |
+| `GET /dashboard/` | Panel del merchant |
 
 Variables de entorno: [.env.example](.env.example).
+
+## Desplegar
+
+[`render.yaml`](render.yaml) declara **un** servicio: el gateway sirve la API,
+el manifest y el panel desde el mismo origen, así no hay dos despliegues que
+se desincronicen ni CORS que configurar ([V-18](docs/DECISIONES.md)).
+
+En Render: **New → Blueprint**, conecta el repo, elige la rama. Render pide
+los valores marcados `sync: false` (ninguno vive en el repo). Después del
+primer deploy, pon la URL pública en `PUBLIC_BASE_URL` — sin eso el manifest
+publica las URLs internas del contenedor.
+
+El plan free tiene disco efímero: los pedidos sobreviven un reinicio solo
+mientras viva la instancia. Suficiente para una demo en testnet.
 
 ## Criterios del hackathon → evidencia
 
 | Criterio | Evidencia en Vitrinee | Estado |
 |---|---|---|
-| Ejecución técnica | Monorepo con tests TS + Rust, CI, walkthrough reproducible, deploy público, integración contra plataforma real | día 0: tests TS + CI |
-| Uso significativo de Stellar | Settlement x402/USDC con auth entries Soroban, contrato `receipt-registry`, `did:stellar` del merchant, verificación contra Horizon/RPC | ✅ día 1–2 |
-| Originalidad | Único proyecto del lado vendedor para e-commerce LATAM; formato `agent-storefront.json`; discovery x402 (puente al RFP "x402 Facilitator with Bazaar Discovery" de SCF) | día 0: formato definido |
-| Impacto | Cualquier tienda Jumpseller/Woo recibe agentes sin código propio; testimonio de merchant real | día 3 |
-| Experiencia de usuario | Un comando para comprar, un panel para el merchant, recibos verificables con un clic, todo en español | día 1–4 |
-| Presentación | Video de 3 min con demo en vivo, README bilingüe, diagrama, evidencia cruda | día 6–7 |
+| Ejecución técnica | Monorepo con 109 tests TS + 11 Rust, CI, este walkthrough, `render.yaml`, adapter contra plataforma real | ✅ días 0–4 |
+| Uso significativo de Stellar | Settlement x402/USDC con auth entries Soroban, contrato `receipt-registry`, `did:stellar` del merchant, verificación contra Horizon/RPC | ✅ días 1–2 |
+| Originalidad | Único proyecto del lado vendedor para e-commerce LATAM; formato `agent-storefront.json` especificado; discovery en el formato bazaar de x402 | ✅ día 3 |
+| Impacto | Cualquier tienda Jumpseller recibe agentes sin escribir código; catálogo real cargado y servido | ⚠️ día 3 — pedido bloqueado por el plan trial |
+| Experiencia de usuario | Un comando para comprar, un panel para el merchant, una consola para el comprador, recibos verificables con un clic, todo en español | ✅ día 4 |
+| Presentación | Video de 3 min con demo en vivo, README, diagrama, evidencia cruda por día | días 6–7 |
 
 ## Licencia
 

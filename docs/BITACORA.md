@@ -11,7 +11,7 @@
 
 | | |
 |---|---|
-| Tests TypeScript | **108** rápidos (core 31 · adapters 23 · anchor 10 · gateway 27 · agent 8 · scripts 10 más config) |
+| Tests TypeScript | **109** rápidos (core 31 · adapters 23 · anchor 10 · gateway 27 · agent 8 · scripts 10) |
 | Tests de integración | **2** contra testnet real (402 real · compra real) |
 | Tests Rust | **11** (`receipt-registry`) |
 | Red | testnet, protocolo 28 |
