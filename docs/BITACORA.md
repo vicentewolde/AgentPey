@@ -7,11 +7,11 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-22 · **Último día cerrado:** 2 (adelantado al 22) · **Siguiente:** día 3, "tienda real" (Jumpseller)
+**Fecha:** 2026-09-22 · **Último día cerrado:** 2 (adelantado al 22) · **En curso:** día 3, "tienda real" (Jumpseller) — **bloqueado por el plan trial de Jumpseller**
 
 | | |
 |---|---|
-| Tests TypeScript | **84** rápidos (core 31 · adapters 6 · anchor 10 · gateway 19 · agent 8 · scripts 10) |
+| Tests TypeScript | **108** rápidos (core 31 · adapters 23 · anchor 10 · gateway 27 · agent 8 · scripts 10 más config) |
 | Tests de integración | **2** contra testnet real (402 real · compra real) |
 | Tests Rust | **11** (`receipt-registry`) |
 | Red | testnet, protocolo 28 |
@@ -24,12 +24,55 @@
 | 0 | mar 22 | `pnpm test` verde; manifest servido desde el mock | ✅ cerrado |
 | 1 | mié 23 | Compra x402 real con tx hash en stellar.expert | ✅ cerrado el 22 |
 | 2 | jue 24 | Recibo firmado, hash anclado, verificación en verde y en rojo | ✅ cerrado el 22 |
-| 3 | vie 25 | Pedido real en Jumpseller segundos después del pago | pendiente |
+| 3 | vie 25 | Pedido real en Jumpseller segundos después del pago | ⚠️ parcial — ver abajo |
 | 4 | sáb 26 | URL pública; dashboard; agente contra el deploy | pendiente |
 | 5 | dom 27 | Walkthrough reproducible en máquina limpia | pendiente |
 | 6 | lun 28 | README final, roadmap, guion, alcance congelado | pendiente |
 | 7 | mar 29 | Video, QA, `v1.0.0`, `main` congelado 20:00 | pendiente |
 | 8 | mié 30 | Entrega en Stellar Passport | pendiente |
+
+---
+
+## Día 3 · "La tienda real" — parcial mar 22
+
+**Qué significa.** El catálogo que el agente lee ya no es inventado: son seis
+productos cargados en una tienda Jumpseller de verdad, con su stock, sus
+fotos y sus precios en pesos. El agente los ve, los cotiza en USDC y puede
+llegar hasta el 402. Lo que todavía no puede es cerrar el pedido en la
+plataforma, y no por culpa del código.
+
+**Qué se entregó.**
+
+- Catálogo cargado en `vitrinee.jumpseller.com`: 6 productos que cumplen las
+  reglas del agente (sin variantes, SKU propio en mayúsculas, precio entero,
+  stock explícito, una imagen, envío físico). Los 5 demo de Jumpseller
+  quedaron deshabilitados. Ids en
+  [evidencia/jumpseller-import/CATALOGO.md](evidencia/jumpseller-import/CATALOGO.md).
+- `adapters/jumpseller`: lectura de catálogo y creación de pedidos pagados en
+  las tres llamadas que la API ofrece ([V-11](DECISIONES.md)). Filtra lo que
+  un agente no puede referenciar. Ningún float toca un monto.
+- Manifest y `/catalog` sirviendo el catálogo real con `ADAPTER=jumpseller`.
+- `GET /discovery/resources` en la forma de `@x402/extensions`, documentado
+  como espejo local y no como el bazaar oficial ([V-17](DECISIONES.md)).
+- [SPEC-agent-storefront.md](SPEC-agent-storefront.md) v0.1.
+
+**Qué se rompió, y es serio.** **El plan trial de Jumpseller no deja crear
+pedidos por API.** `POST /orders.json` devuelve `403 "No puedes crear pedidos
+durante el período de prueba"`. Todo lo demás de la API funciona con el trial
+—leer y crear productos, leer la tienda— pero lo único bloqueado es
+exactamente el hito del día. El adapter traduce ese 403 a un error que dice
+qué hacer en vez de filtrar un 403 crudo al agente.
+
+Caminos, en orden de preferencia: escribirle a soporte de Jumpseller (el
+propio mensaje de error lo sugiere, y es gratis), suscribir un plan, o correr
+la demo con `ADAPTER=mock`. Los tres siguen abiertos; decidible hasta el día
+5. Además el trial **vence cerca del 29**, justo sobre el video.
+
+**Lo que no depende de esto:** checkout x402 real, recibo firmado, anclaje en
+Soroban y verificación — cuatro de los seis criterios del hackathon — siguen
+funcionando contra testnet sin tocar Jumpseller.
+
+Detalle: [evidencia/DIA-3.md](evidencia/DIA-3.md).
 
 ---
 
