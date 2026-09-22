@@ -1,5 +1,8 @@
 /**
- * RealOps console — the buyer side, in a browser.
+ * Buyer console — the buyer side, in a browser.
+ *
+ * The buyer here is deliberately generic: any standard x402 client, not a
+ * named platform. That is the whole claim of the project (brief § 2.3).
  *
  * A platform that wants to buy from any Vitrinee storefront: it reads the
  * store's bazaar (`/discovery/resources`) and its manifest, shows the live
@@ -61,7 +64,7 @@ app.use(express.static(publicDir, { index: "index.html" }));
 /** Who this console is and which storefront it is pointed at. */
 app.get("/api/session", (_req, res) => {
   res.json({
-    platform: "RealOps",
+    platform: "Comprador x402",
     gatewayUrl: GATEWAY_URL,
     payerAccount,
     canPay: SECRET !== undefined,
@@ -209,7 +212,7 @@ app.use((error: unknown, _req: Request, res: Response, _next: express.NextFuncti
 
 app.listen(PORT, () => {
   const line = readFileSync(resolve(publicDir, "index.html"), "utf8").length > 0 ? "" : " (sin UI)";
-  process.stdout.write(`\nRealOps console  http://localhost:${PORT}${line}\n`);
+  process.stdout.write(`\nComprador x402  http://localhost:${PORT}${line}\n`);
   process.stdout.write(`  storefront     ${GATEWAY_URL}\n`);
   process.stdout.write(`  pagador        ${payerAccount ?? "(sin AGENT_SECRET_KEY: solo dry run)"}\n`);
   process.stdout.write(`  tope           ${MAX_USDC} USDC por pago\n\n`);

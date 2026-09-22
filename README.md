@@ -72,7 +72,7 @@ El formato del manifest y del recibo está especificado en
 | `packages/anchor` | Cliente Soroban RPC del `receipt-registry` y verificación de recibos (firma, anclaje, pago). |
 | `apps/agent` | Agente demo: cliente x402 que recibe una instrucción en español y compra. |
 | `apps/dashboard` | Panel del merchant: pedidos, recibo decodificado, verificación en un clic. Estático; lo sirve el gateway ([V-18](docs/DECISIONES.md)). |
-| `apps/console` | Consola RealOps: el **lado comprador**, un navegador que lee el bazaar de la tienda y compra con el mismo `buy()` del agente. |
+| `apps/console` | Consola del comprador: el **lado comprador**, un cliente x402 estándar en el navegador que lee el bazaar de la tienda y compra con el mismo `buy()` del agente. |
 | `contracts/receipt-registry` | Contrato Soroban en Rust: `anchor`, `get`, `count`. Sin admin. |
 | `deployments/testnet.json` | El único artefacto compartido entre TypeScript y Rust: red, USDC, facilitator, contrato desplegado. |
 | `docs/` | [CONTEXTO](docs/CONTEXTO.md) · [SPEC](docs/SPEC-agent-storefront.md) · [DECISIONES](docs/DECISIONES.md) · [BITACORA](docs/BITACORA.md) · [evidencia/](docs/evidencia/) |

@@ -1,4 +1,4 @@
-/** The buyer as a library: what the CLI and the RealOps console both drive. */
+/** The buyer as a library: what the CLI and the buyer console both drive. */
 export { buy, type BuyOptions, type BuyResult } from "./buy.js";
 export { directIntent, parseIntent, type PurchaseIntent, type ShippingDetails } from "./matcher.js";
 export { reportVerification } from "./report.js";

@@ -13,7 +13,10 @@ services:
     runtime: node
     plan: free
     region: oregon
-    branch: main
+    # El trabajo del día 3–4 vive en day-3-jumpseller-catalog, que sigue
+    # abierta hasta resolver lo de Jumpseller. Cambiar a `main` al mergear,
+    # o el auto-deploy se queda siguiendo una rama vieja.
+    branch: day-3-jumpseller-catalog
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
     startCommand: pnpm start:gateway
     healthCheckPath: /health

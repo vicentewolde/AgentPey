@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "RealOps console: an x402 buyer platform that browses a Vitrinee storefront's live bazaar and buys from it in the browser.",
+  "description": "Buyer console: a standard x402 client that browses a Vitrinee storefront's live bazaar and buys from it in the browser.",
   "type": "module",
   "scripts": {
     "build": "tsc -b",
