@@ -373,3 +373,37 @@ eso es para grabar el video.
 un `callback_url` del gateway. Funcionaría y es tentador (Vitrinee cotizando
 el envío), pero exige el gateway desplegado y público para algo que en la
 demo son cuatro clics en el panel.
+
+---
+
+### V-17 · `/discovery/resources` es un espejo local, no el bazaar de x402 · `Vigente` (día 3)
+**Fecha:** 2026-09-22
+
+El brief asume que la "discovery extension" es un endpoint del gateway. Leído
+`@x402/extensions` 2.26.0, el modelo real es otro: **el catálogo vive en el
+facilitator**. Un resource server se declara dentro de sus respuestas 402
+(`declareDiscoveryExtension` + `bazaarResourceServerExtension`) y el cliente
+consulta al facilitator con
+`withBazaar(client).extensions.bazaar.listResources()`, que devuelve
+`DiscoveryResourcesResponse`. No hay en la especificación ningún endpoint para
+que una tienda liste sus propios recursos.
+
+`GET /discovery/resources` se sirve igual, con la forma exacta de
+`DiscoveryResourcesResponse` (`x402Version`, `items[]`, `pagination`) y cada
+producto como un `DiscoveryResource` con sus `PaymentRequirements` reales.
+Queda claro en el código y acá que es un espejo local, no un estándar
+inventado. Responde la pregunta que un agente con el manifest en la mano sí
+hace —"qué puedo comprar y cuánto cuesta cada cosa"— en un formato que ya
+parsea.
+
+Dos detalles: solo aparece lo que el checkout aceptaría vender (un producto
+con `stock: 0` sigue en el manifest, donde el cero es información, pero no
+acá, donde sería una oferta que el checkout va a rechazar); y el precio
+publicado es **unitario**, marcado con `extra.unitPrice`, porque el checkout
+recotiza por `quantity`.
+
+**Alternativa descartada:** declarar la extensión en las rutas de checkout
+para aparecer en el bazaar del facilitator de OpenZeppelin. Es lo
+espec-correcto y queda como stretch, pero depende de que ese facilitator
+implemente el bazaar, y la discovery extension es lo primero que el brief
+manda a cortar (regla 8).

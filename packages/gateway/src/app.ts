@@ -9,6 +9,7 @@ import { z, ZodError } from "zod";
 import { AnchorWorker, type Anchorer } from "./anchoring.js";
 import { checkoutRoutes, completeCheckout, orderResponse, preflightCheckout, type CheckoutDeps } from "./checkout.js";
 import type { GatewayConfig } from "./config.js";
+import { listResources, paginationFrom } from "./discovery.js";
 import { buildManifest, createCatalogCache, toManifestProduct } from "./manifest.js";
 import { OrderStore } from "./orders.js";
 import { Reservations } from "./reservations.js";
@@ -106,6 +107,13 @@ export function createApp({
     const products = await catalog.get();
     res.set("Cache-Control", cacheHeader);
     res.json(buildManifest({ config, products, baseUrl: baseUrlOf(req), now: now() }));
+  });
+
+  app.get("/discovery/resources", async (req, res) => {
+    const products = await catalog.get();
+    const { limit, offset } = paginationFrom(req.query as Record<string, unknown>);
+    res.set("Cache-Control", cacheHeader);
+    res.json(listResources({ config, products, baseUrl: baseUrlOf(req), now: now(), limit, offset }));
   });
 
   app.get("/catalog", async (_req, res) => {

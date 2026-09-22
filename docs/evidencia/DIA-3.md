@@ -71,3 +71,41 @@ justo el hito del día. El adapter traduce ese 403 a un `AdapterError` con
 `details.trialBlocked` y un mensaje que dice qué hacer, en vez de filtrar un
 error crudo al agente. Decisión pendiente de Vinny; ver
 [DECISIONES.md § V-16](../DECISIONES.md) para lo que sí se resolvió del envío.
+
+## Manifest y discovery servidos desde Jumpseller
+
+Gateway con `ADAPTER=jumpseller`, catálogo real:
+
+```
+{"message":"vitrinee gateway listening","adapter":"jumpseller",
+ "manifest":"/.well-known/agent-storefront.json"}
+```
+
+`GET /.well-known/agent-storefront.json` → los 6 productos con precio en CLP
+y en USDC a la tasa de demo (950 CLP/USD):
+
+```
+  "id": "37282902", "sku": "HOOD-CORD-M",
+  "priceLocal": "34990", "priceUSDC": "36.8315789",
+  "priceUSDCAtomic": "368315789", "stock": 12,
+  "images": ["https://images.jumpseller.com/store/vitrinee/37282902/HOOD-CORD-M.jpg?1790098207"],
+  "checkoutRoute": "/checkout/37282902"
+```
+
+`GET /discovery/resources?limit=2` → forma `DiscoveryResourcesResponse` de
+`@x402/extensions`, con los `PaymentRequirements` reales por producto:
+
+```
+{"x402Version": 2,
+ "items": [{"resource": ".../checkout/37282902", "type": "http",
+   "accepts": [{"scheme": "exact", "network": "stellar:testnet",
+     "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+     "amount": "368315789", "payTo": "GC5ZY7UJ...VCII",
+     "maxTimeoutSeconds": 300,
+     "extra": {"paymentFlow": "upfront", "unitPrice": true, "quantityParam": "quantity"}}],
+   "serviceName": "Bazar Cordillera", "tags": ["ecommerce","retail","cl"]}],
+ "pagination": {"limit": 2, "offset": 0, "total": 6}}
+```
+
+Por qué ese endpoint existe y por qué no es el bazaar oficial:
+[DECISIONES.md § V-17](../DECISIONES.md).
