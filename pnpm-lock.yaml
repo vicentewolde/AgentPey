@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.6
+      '@vitrinee/anchor':
+        specifier: workspace:*
+        version: link:packages/anchor
       eslint:
         specifier: ^9.0.0
         version: 9.39.5(supports-color@7.2.0)
@@ -35,6 +38,12 @@ importers:
 
   apps/agent:
     dependencies:
+      '@stellar/stellar-sdk':
+        specifier: ^17.1.0
+        version: 17.1.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      '@vitrinee/anchor':
+        specifier: workspace:*
+        version: link:../../packages/anchor
       '@vitrinee/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -45,9 +54,6 @@ importers:
         specifier: 2.26.0
         version: 2.26.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
     devDependencies:
-      '@stellar/stellar-sdk':
-        specifier: ^17.1.0
-        version: 17.1.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
       '@vitrinee/adapters':
         specifier: workspace:*
         version: link:../../packages/adapters
@@ -66,6 +72,22 @@ importers:
 
   packages/adapters:
     dependencies:
+      '@vitrinee/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@24.13.6)(supports-color@7.2.0)(tsx@4.23.15)
+
+  packages/anchor:
+    dependencies:
+      '@stellar/stellar-sdk':
+        specifier: ^17.1.0
+        version: 17.1.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
       '@vitrinee/core':
         specifier: workspace:*
         version: link:../core
@@ -101,6 +123,9 @@ importers:
       '@vitrinee/adapters':
         specifier: workspace:*
         version: link:../adapters
+      '@vitrinee/anchor':
+        specifier: workspace:*
+        version: link:../anchor
       '@vitrinee/core':
         specifier: workspace:*
         version: link:../core

@@ -16,6 +16,7 @@ const CATALOG = [
   product("gorro-andes", "GOR-ANDES", "Gorro Andes de lana", "Gorro tejido a mano."),
   product("cafe-nunoa-250", "CAF-NUN-250", "Café de grano Ñuñoa 250 g", "Tueste medio, origen Colombia."),
   product("botella-patagonia-500", "BOT-PAT-500", "Botella térmica Patagonia 500 ml", "Acero inoxidable."),
+  product("stickers-cordillera", "STK-CORD-5", "Pack de stickers Cordillera", "Cinco stickers de vinilo mate."),
 ];
 
 describe("parseQuantity", () => {
@@ -55,6 +56,7 @@ describe("matchProduct", () => {
     expect(matchProduct(CATALOG, "compra 2 gorros de lana").product.id).toBe("gorro-andes");
     expect(matchProduct(CATALOG, "compra BOT-PAT-500").product.id).toBe("botella-patagonia-500");
     expect(matchProduct(CATALOG, "compra la botella térmica").product.id).toBe("botella-patagonia-500");
+    expect(matchProduct(CATALOG, "compra el pack de stickers").product.id).toBe("stickers-cordillera");
   });
 
   it("does not let the shipping city pollute the match", () => {

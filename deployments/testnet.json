@@ -14,5 +14,14 @@
     "name": "Built on Stellar (OpenZeppelin Channels)",
     "url": "https://channels.openzeppelin.com/x402/testnet"
   },
-  "receiptRegistry": null
+  "receiptRegistry": {
+    "contractId": "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5",
+    "wasmHash": "e0a871502c4bdf5a396483664f32b5006083648b7ac9546c9ce2a7ed105ac13f",
+    "deployer": "GCT7ODWJ7PF3JVWYOFJYUENQBHG6B267LIY4HWZU3BVI66W2TMURCXTW",
+    "schemaVersion": 1,
+    "uploadTxHash": "ca422da28faf02fe3454eeeb0476258bef8e7b695bf7bb70198655e8fb0db092",
+    "deployTxHash": "5ff704ce9b24108fc4ecf584941475ead92db372e760348188443a817f714252",
+    "deployedAt": "2026-09-22T14:35:44.184Z",
+    "protocolVersion": 28
+  }
 }

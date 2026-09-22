@@ -9,15 +9,17 @@
     "build": "tsc -b",
     "buy": "tsx src/cli.ts",
     "test": "vitest run",
-    "test:integration": "RUN_INTEGRATION=1 vitest run --config vitest.integration.config.ts"
+    "test:integration": "RUN_INTEGRATION=1 vitest run --config vitest.integration.config.ts",
+    "verify": "tsx src/verify-cli.ts"
   },
   "dependencies": {
+    "@stellar/stellar-sdk": "^17.1.0",
+    "@vitrinee/anchor": "workspace:*",
     "@vitrinee/core": "workspace:*",
     "@x402/core": "2.26.0",
     "@x402/stellar": "2.26.0"
   },
   "devDependencies": {
-    "@stellar/stellar-sdk": "^17.1.0",
     "@vitrinee/adapters": "workspace:*",
     "@vitrinee/gateway": "workspace:*",
     "tsx": "^4.20.0",

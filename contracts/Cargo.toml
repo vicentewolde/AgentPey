@@ -1,0 +1,25 @@
+# Cargo workspace for the on-chain side. Rooted here, not at the repo root:
+# `contracts/` has no package.json and is invisible to pnpm.
+[workspace]
+resolver = "2"
+members = ["receipt-registry"]
+
+[workspace.dependencies]
+# 28.0.0 matches testnet's protocol 28. Build the wasm with
+# `stellar contract build` (CLI 28): plain `cargo build` for wasm is refused
+# by this SDK (docs/DECISIONES.md, V-9). `cargo test` works directly.
+soroban-sdk = "28.0.0"
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true

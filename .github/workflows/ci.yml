@@ -20,6 +20,19 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
 
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - run: cargo test
+
   secrets:
     runs-on: ubuntu-latest
     steps:

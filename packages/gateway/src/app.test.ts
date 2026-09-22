@@ -5,18 +5,16 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { fakeFacilitator } from "./test/fake-facilitator.js";
+import { MERCHANT, REGISTRY_ID, SIGNER, fakeRegistry, testConfig } from "./test/fixtures.js";
 import { listen } from "./test/listen.js";
 
-const MERCHANT = USDC_TESTNET.issuer;
+const REQUIRED = { MERCHANT_STELLAR_ACCOUNT: MERCHANT, MERCHANT_SIGNING_SECRET: SIGNER.secret(), RECEIPT_REGISTRY_ID: REGISTRY_ID };
 
 describe("gateway (free routes)", () => {
-  const config = loadConfig({
-    MERCHANT_STELLAR_ACCOUNT: MERCHANT,
-    FX_RATE_CLP_USD: "950",
-    SHIPPING_COUNTRIES: "CL, AR",
-  });
+  const config = testConfig({ SHIPPING_COUNTRIES: "CL, AR" });
   const adapter = new MockStoreAdapter();
-  const app = createApp({ config, adapter, facilitator: fakeFacilitator(), now: () => new Date("2026-09-22T15:00:00.000Z") });
+  const { anchorer, registry } = fakeRegistry();
+  const app = createApp({ config, adapter, facilitator: fakeFacilitator(), anchorer, registry, now: () => new Date("2026-09-22T15:00:00.000Z") });
   let url = "";
   let close: () => Promise<void> = async () => {};
 
@@ -30,15 +28,17 @@ describe("gateway (free routes)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("public, max-age=60");
     const manifest = storefrontManifestSchema.parse(await res.json());
+    // did = the signing key (V-8); stellarAccount = payTo. They are different accounts.
     expect(manifest.merchant).toMatchObject({
-      did: `did:stellar:testnet:${MERCHANT}`,
+      did: `did:stellar:testnet:${SIGNER.publicKey()}`,
       stellarAccount: MERCHANT,
       country: "CL",
       currency: "CLP",
     });
     expect(manifest.settlement.assetContract).toBe(USDC_TESTNET.contractId);
     expect(manifest.policies.shippingCountries).toEqual(["CL", "AR"]);
-    expect(manifest.products).toHaveLength(5);
+    expect(manifest.receipts).toEqual({ format: "jws", alg: "EdDSA", anchoredValue: "sha256(compact-jws)", registry: REGISTRY_ID });
+    expect(manifest.products).toHaveLength(6);
     expect(manifest.endpoints.checkout).toBe(`${url}/checkout/{productId}`);
     expect(manifest.generatedAt).toBe("2026-09-22T15:00:00.000Z");
   });
@@ -74,12 +74,9 @@ describe("gateway (free routes)", () => {
   });
 
   it("honours PUBLIC_BASE_URL for absolute endpoints", async () => {
-    const publicConfig = loadConfig({
-      MERCHANT_STELLAR_ACCOUNT: MERCHANT,
-      PUBLIC_BASE_URL: "https://vitrinee.example.com/",
-    });
+    const publicConfig = testConfig({ PUBLIC_BASE_URL: "https://vitrinee.example.com/" });
     const { url: localUrl, close: closeLocal } = await listen(
-      createApp({ config: publicConfig, adapter, facilitator: fakeFacilitator() }),
+      createApp({ config: publicConfig, adapter, facilitator: fakeFacilitator(), anchorer, registry }),
     );
     try {
       const manifest = storefrontManifestSchema.parse(await (await fetch(`${localUrl}${MANIFEST_PATH}`)).json());
@@ -92,17 +89,20 @@ describe("gateway (free routes)", () => {
 
 describe("loadConfig", () => {
   it("names the variable that is wrong without echoing its value", () => {
-    expect(() => loadConfig({ MERCHANT_STELLAR_ACCOUNT: "SECRETLOOKINGVALUE" })).toThrow(
+    expect(() => loadConfig({ ...REQUIRED, MERCHANT_STELLAR_ACCOUNT: "SECRETLOOKINGVALUE" })).toThrow(
       /MERCHANT_STELLAR_ACCOUNT: not a Stellar account/,
     );
-    expect(() => loadConfig({ MERCHANT_STELLAR_ACCOUNT: "SECRETLOOKINGVALUE" })).not.toThrow(
+    expect(() => loadConfig({ ...REQUIRED, MERCHANT_STELLAR_ACCOUNT: "SECRETLOOKINGVALUE" })).not.toThrow(
       /SECRETLOOKINGVALUE/,
     );
+    expect(() => loadConfig({ ...REQUIRED, MERCHANT_SIGNING_SECRET: "SBADBADBAD" })).toThrow(/MERCHANT_SIGNING_SECRET: not a Stellar secret/);
+    expect(() => loadConfig({ ...REQUIRED, MERCHANT_SIGNING_SECRET: "SBADBADBAD" })).not.toThrow(/SBADBADBAD/);
     expect(() => loadConfig({})).toThrow(/MERCHANT_STELLAR_ACCOUNT/);
+    expect(() => loadConfig({})).toThrow(/RECEIPT_REGISTRY_ID/);
   });
 
   it("applies defaults and never reads the payout secret", () => {
-    const config = loadConfig({ MERCHANT_STELLAR_ACCOUNT: MERCHANT, MERCHANT_PAYOUT_SECRET: "SHOULDNOTMATTER" });
+    const config = loadConfig({ ...REQUIRED, MERCHANT_PAYOUT_SECRET: "SHOULDNOTMATTER" });
     expect(config).toMatchObject({
       port: 4021,
       adapter: "mock",
@@ -110,7 +110,17 @@ describe("loadConfig", () => {
       policies: { refundWindowSeconds: 864000, shippingCountries: ["CL"] },
       facilitator: { url: "https://channels.openzeppelin.com/x402/testnet", apiKey: undefined, timeoutMs: 60000 },
       checkout: { maxTimeoutSeconds: 300 },
+      signing: { account: SIGNER.publicKey() },
+      receiptRegistryId: REGISTRY_ID,
     });
     expect(JSON.stringify(config)).not.toContain("SHOULDNOTMATTER");
+  });
+});
+
+describe("loadConfig (V-8)", () => {
+  it("refuses a signing key that is the payTo account", async () => {
+    const { Keypair } = await import("@stellar/stellar-sdk");
+    const same = Keypair.random();
+    expect(() => loadConfig({ ...REQUIRED, MERCHANT_STELLAR_ACCOUNT: same.publicKey(), MERCHANT_SIGNING_SECRET: same.secret() })).toThrow(/must not be the payTo/);
   });
 });

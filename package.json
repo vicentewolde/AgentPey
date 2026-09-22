@@ -18,12 +18,16 @@
     "clean": "tsc -b --clean && rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo apps/*/*.tsbuildinfo",
     "bootstrap": "tsx --tsconfig tsconfig.scripts.json scripts/bootstrap.ts",
     "demo:buy": "tsx --tsconfig apps/agent/tsconfig.json apps/agent/src/cli.ts",
-    "test:integration": "pnpm -r --stream --if-present test:integration"
+    "test:integration": "pnpm -r --stream --if-present test:integration",
+    "deploy:registry": "tsx --tsconfig tsconfig.scripts.json scripts/deploy-registry.ts",
+    "test:contracts": "cd contracts && cargo test",
+    "demo:verify": "tsx --tsconfig apps/agent/tsconfig.json apps/agent/src/verify-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@stellar/stellar-sdk": "^17.1.0",
     "@types/node": "^24.0.0",
+    "@vitrinee/anchor": "workspace:*",
     "eslint": "^9.0.0",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",

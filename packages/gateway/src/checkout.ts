@@ -10,22 +10,28 @@ import {
   formatUnits,
   localToUsdcAtomic,
   parseDecimal,
+  signReceipt,
   stellarAccountSchema,
+  stellarDid,
   stellarExpertTxUrl,
   timesQuantity,
   usdcAtomicToDecimal,
+  type ReceiptClaims,
 } from "@vitrinee/core";
 import type { HTTPRequestContext, RoutesConfig } from "@x402/core/server";
 import type { Price } from "@x402/core/types";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { z } from "zod";
 
+import type { AnchorWorker } from "./anchoring.js";
 import type { GatewayConfig } from "./config.js";
 import type { OrderRecord, OrderStore } from "./orders.js";
 import { payerFromTransactionXdr } from "./payer.js";
+import type { Reservations } from "./reservations.js";
 import { paymentKeyFromHeader, type SettlementLedger } from "./settlements.js";
 
 export const CHECKOUT_ROUTE = "POST /checkout/:productId";
+export const RECEIPT_TYP = "vitrinee-receipt/0.1" as const;
 
 export const checkoutBodySchema = z.object({
   quantity: z.int().positive().max(100).default(1),
@@ -49,6 +55,8 @@ export const checkoutBodySchema = z.object({
 
 export type CheckoutBody = z.infer<typeof checkoutBodySchema>;
 
+const idempotencyKeySchema = z.string().min(1).max(255).regex(/^[\x21-\x7e]+$/, "printable ASCII, no spaces");
+
 export interface CheckoutQuote {
   product: Product;
   quantity: number;
@@ -62,8 +70,18 @@ export interface CheckoutDeps {
   adapter: StoreAdapter;
   orders: OrderStore;
   ledger: SettlementLedger;
+  anchors: AnchorWorker;
+  reservations: Reservations;
+  /** Idempotency keys whose paid request is being processed right now. */
+  inFlight: Set<string>;
   now: () => Date;
   log: (message: string, fields?: Record<string, unknown>) => void;
+}
+
+interface CheckoutLocals {
+  quote: CheckoutQuote;
+  body: CheckoutBody;
+  idempotencyKey: string | null;
 }
 
 export function productIdFromPath(path: string): string | undefined {
@@ -81,14 +99,16 @@ export async function quoteCheckout(
   deps: Pick<CheckoutDeps, "config" | "adapter">,
   productId: string,
   body: CheckoutBody,
+  reserved = 0,
 ): Promise<CheckoutQuote> {
   const product = await deps.adapter.getProduct(productId);
   if (product === null) {
     throw new VitrineeError("ProductNotFound", `no product with id "${productId}"`, { details: { productId } });
   }
-  if (product.stock !== null && product.stock < body.quantity) {
-    throw new VitrineeError("OutOfStock", `only ${product.stock} left of "${product.name}"`, {
-      details: { productId, available: product.stock, requested: body.quantity },
+  const available = product.stock === null ? null : product.stock - reserved;
+  if (available !== null && available < body.quantity) {
+    throw new VitrineeError("OutOfStock", `only ${Math.max(available, 0)} left of "${product.name}"`, {
+      details: { productId, available: Math.max(available, 0), requested: body.quantity },
     });
   }
   const unitAtomic = localToUsdcAtomic(product.priceLocal, product.currency, deps.config.fx);
@@ -98,19 +118,73 @@ export async function quoteCheckout(
   return { product, quantity: body.quantity, unitAtomic, totalAtomic, totalLocal };
 }
 
+function readIdempotencyKey(req: Request): string | null {
+  const raw = req.header("idempotency-key");
+  if (raw === undefined) return null;
+  const parsed = idempotencyKeySchema.safeParse(raw.trim());
+  if (!parsed.success) {
+    throw new VitrineeError("ValidationError", "Idempotency-Key must be 1–255 printable ASCII characters", { details: {} });
+  }
+  return parsed.data;
+}
+
 /**
- * Runs before the x402 middleware: a request that can never be fulfilled is
- * refused here with a plain 400/404/409, so nobody is asked to pay for it.
+ * Runs before the x402 middleware. Refuses what can never be sold with a
+ * plain 400/404/409, so nobody is asked to pay for it; answers a repeated
+ * Idempotency-Key with the order it already produced; and holds stock for
+ * paid requests while their settlement is in flight.
  */
-export function preflightCheckout(deps: Pick<CheckoutDeps, "config" | "adapter">): RequestHandler {
+export function preflightCheckout(deps: CheckoutDeps): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     const productId = productIdFromPath(req.path);
     if (productId === undefined) {
       throw new VitrineeError("ValidationError", "malformed checkout path", { details: { path: req.path } });
     }
     const body = checkoutBodySchema.parse(req.body ?? {});
-    const quote = await quoteCheckout(deps, productId, body);
-    res.locals["checkout"] = { quote, body };
+    const idempotencyKey = readIdempotencyKey(req);
+
+    if (idempotencyKey !== null) {
+      const existing = deps.orders.findByIdempotencyKey(idempotencyKey);
+      if (existing !== undefined) {
+        if (existing.product.id !== productId || existing.quantity !== body.quantity) {
+          throw new VitrineeError("IdempotencyConflict", "this Idempotency-Key was already used for a different purchase", {
+            details: { orderId: existing.orderId },
+          });
+        }
+        res.set("Idempotent-Replayed", "true");
+        res.status(200).json(orderResponse(existing));
+        return;
+      }
+    }
+
+    const paying = req.header("payment-signature") !== undefined || req.header("x-payment") !== undefined;
+    const quote = await quoteCheckout(deps, productId, body, deps.reservations.reserved(productId));
+
+    if (paying) {
+      if (idempotencyKey !== null) {
+        if (deps.inFlight.has(idempotencyKey)) {
+          throw new VitrineeError("IdempotencyConflict", "a payment with this Idempotency-Key is already being processed", { details: {} });
+        }
+        deps.inFlight.add(idempotencyKey);
+      }
+      if (!deps.reservations.tryReserve(productId, body.quantity, quote.product.stock)) {
+        if (idempotencyKey !== null) deps.inFlight.delete(idempotencyKey);
+        throw new VitrineeError("OutOfStock", `the last units of "${quote.product.name}" are being bought right now`, {
+          details: { productId, requested: body.quantity },
+        });
+      }
+      let released = false;
+      const release = (): void => {
+        if (released) return;
+        released = true;
+        deps.reservations.release(productId, body.quantity);
+        if (idempotencyKey !== null) deps.inFlight.delete(idempotencyKey);
+      };
+      res.once("finish", release);
+      res.once("close", release);
+    }
+
+    res.locals["checkout"] = { quote, body, idempotencyKey } satisfies CheckoutLocals;
     next();
   };
 }
@@ -174,22 +248,49 @@ export function checkoutRoutes(deps: Pick<CheckoutDeps, "config" | "adapter">): 
 }
 
 function newOrderId(now: Date): string {
-  const stamp = now.getTime().toString(36);
-  const rand = randomBytes(5).toString("hex");
-  return `ord_${stamp}${rand}`;
+  return `ord_${now.getTime().toString(36)}${randomBytes(5).toString("hex")}`;
+}
+
+export function buildReceiptClaims(record: OrderRecord, config: GatewayConfig, issuedAt: Date): ReceiptClaims {
+  return {
+    typ: RECEIPT_TYP,
+    orderId: record.orderId,
+    platformOrderId: record.platformOrderId,
+    platform: record.platform,
+    merchantDid: stellarDid(config.signing.account),
+    merchantAccount: config.merchant.stellarAccount,
+    payerAccount: record.settlement.payer,
+    network: STELLAR_TESTNET_CAIP2,
+    asset: record.settlement.asset,
+    amountUSDC: record.amountUSDC,
+    amountUSDCAtomic: record.amountUSDCAtomic,
+    settlementTxHash: record.settlement.txHash,
+    items: [
+      {
+        productId: record.product.id,
+        sku: record.product.sku,
+        name: record.product.name,
+        quantity: record.quantity,
+        unitPriceUSDC: usdcAtomicToDecimal(BigInt(record.unitPriceUSDCAtomic)),
+        unitPriceUSDCAtomic: record.unitPriceUSDCAtomic,
+      },
+    ],
+    issuedAt: issuedAt.toISOString(),
+    refundWindowEndsAt: new Date(issuedAt.getTime() + config.policies.refundWindowSeconds * 1000).toISOString(),
+  };
 }
 
 /**
  * Runs after the facilitator settled the payment. Creates the platform
- * order, records the sale, and answers with everything the agent needs to
- * prove it. Never answers ≥ 400 once money moved: a platform failure is
- * recorded as `paid_unfulfilled` for the merchant to fulfil by hand.
+ * order, signs the receipt, queues its anchor, and answers with everything
+ * the agent needs to prove the purchase. Never answers ≥ 400 once money
+ * moved: a platform failure is recorded as `paid_unfulfilled` (V-10).
  */
 export function completeCheckout(deps: CheckoutDeps): RequestHandler {
   return async (req: Request, res: Response) => {
-    const locals = res.locals["checkout"] as { quote: CheckoutQuote; body: CheckoutBody } | undefined;
+    const locals = res.locals["checkout"] as CheckoutLocals | undefined;
     if (locals === undefined) throw new Error("checkout preflight did not run");
-    const { quote, body } = locals;
+    const { quote, body, idempotencyKey } = locals;
 
     const paymentHeader = req.header("payment-signature") ?? req.header("x-payment");
     const key = paymentKeyFromHeader(paymentHeader);
@@ -199,11 +300,17 @@ export function completeCheckout(deps: CheckoutDeps): RequestHandler {
       throw new Error("payment settled but no settlement record was found for this request");
     }
 
-    const payer =
-      settlement.payer ?? (key === undefined ? undefined : payerFromTransactionXdr(key)) ?? body.buyer.stellarAccount;
-    if (payer === undefined) {
-      throw new Error("payment settled but the payer account could not be determined");
+    // One settlement, one order — whatever the facilitator or a replay says.
+    const duplicate = deps.orders.findBySettlementTx(settlement.txHash);
+    if (duplicate !== undefined) {
+      deps.log("settlement already fulfilled, returning existing order", { orderId: duplicate.orderId, txHash: settlement.txHash });
+      res.set("Idempotent-Replayed", "true");
+      res.status(200).json(orderResponse(duplicate));
+      return;
     }
+
+    const payer = settlement.payer ?? (key === undefined ? undefined : payerFromTransactionXdr(key)) ?? body.buyer.stellarAccount;
+    if (payer === undefined) throw new Error("payment settled but the payer account could not be determined");
 
     const now = deps.now();
     const orderId = newOrderId(now);
@@ -217,6 +324,7 @@ export function completeCheckout(deps: CheckoutDeps): RequestHandler {
       orderId,
       status: "paid",
       createdAt: now.toISOString(),
+      idempotencyKey,
       product: { id: quote.product.id, sku: quote.product.sku, name: quote.product.name },
       quantity: quote.quantity,
       unitPriceUSDCAtomic: quote.unitAtomic.toString(),
@@ -260,20 +368,21 @@ export function completeCheckout(deps: CheckoutDeps): RequestHandler {
     } catch (error) {
       record.status = "paid_unfulfilled";
       record.platformError = error instanceof Error ? error.message : String(error);
-      deps.log("platform order failed after settlement", {
-        orderId,
-        txHash: settlement.txHash,
-        error: record.platformError,
-      });
+      deps.log("platform order failed after settlement", { orderId, txHash: settlement.txHash, error: record.platformError });
     }
 
+    record.receipt = signReceipt(buildReceiptClaims(record, deps.config, deps.now()), deps.config.signing.secret);
+    record.anchor = { status: "pending", attempts: 0, registry: deps.config.receiptRegistryId };
+
     await deps.orders.put(record);
+    deps.anchors.enqueue(orderId);
     deps.log("checkout completed", {
       orderId,
       status: record.status,
       platformOrderId: record.platformOrderId,
       txHash: settlement.txHash,
       amountUSDC: record.amountUSDC,
+      receiptHash: record.receipt.hash,
     });
     res.status(200).json(orderResponse(record));
   };
@@ -295,7 +404,7 @@ export function orderResponse(record: OrderRecord): Record<string, unknown> {
     platformOrderId: record.platformOrderId,
     platformError: record.platformError,
     settlement: record.settlement,
-    receipt: record.receipt,
+    receipt: record.receipt === null ? null : { ...record.receipt, verifyPath: `/receipts/${record.receipt.hash}/verify` },
     anchor: record.anchor,
   };
 }

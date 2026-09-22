@@ -32,6 +32,7 @@ export function sampleManifest(): StorefrontManifest {
     },
     fx: { base: "USD", quote: "CLP", rate: "950", source: "demo-fixed", asOf: "2026-09-22T12:00:00.000Z" },
     policies: { refundWindowSeconds: 864000, shippingCountries: ["CL"] },
+    receipts: { format: "jws", alg: "EdDSA", anchoredValue: "sha256(compact-jws)", registry: "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5" },
     products: [
       {
         id: "hoodie-cordillera-m",

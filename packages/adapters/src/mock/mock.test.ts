@@ -32,11 +32,11 @@ afterEach(async () => {
 });
 
 describe("MockStoreAdapter", () => {
-  it("lists five products and finds one by id", async () => {
+  it("lists six products and finds one by id", async () => {
     const adapter = new MockStoreAdapter();
     const products = await adapter.listProducts();
-    expect(products).toHaveLength(5);
-    expect(products.map((p) => p.currency)).toEqual(["CLP", "CLP", "CLP", "CLP", "CLP"]);
+    expect(products).toHaveLength(6);
+    expect(new Set(products.map((p) => p.currency))).toEqual(new Set(["CLP"]));
     expect(await adapter.getProduct("hoodie-cordillera-m")).toMatchObject({
       sku: "HOOD-CORD-M",
       priceLocal: "34990",

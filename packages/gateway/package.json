@@ -20,6 +20,7 @@
   "dependencies": {
     "@stellar/stellar-sdk": "^17.1.0",
     "@vitrinee/adapters": "workspace:*",
+    "@vitrinee/anchor": "workspace:*",
     "@vitrinee/core": "workspace:*",
     "@x402/core": "2.26.0",
     "@x402/express": "2.26.0",

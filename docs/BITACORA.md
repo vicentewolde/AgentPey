@@ -7,15 +7,15 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-22 · **Último día cerrado:** 1 (adelantado al 22) · **Siguiente:** día 2, "recibo y anclaje"
+**Fecha:** 2026-09-22 · **Último día cerrado:** 2 (adelantado al 22) · **Siguiente:** día 3, "tienda real" (Jumpseller)
 
 | | |
 |---|---|
-| Tests TypeScript | **57** rápidos (core 23 · adapters 6 · gateway 11 · agent 9 · scripts 8) |
+| Tests TypeScript | **84** rápidos (core 31 · adapters 6 · anchor 10 · gateway 19 · agent 8 · scripts 10) |
 | Tests de integración | **2** contra testnet real (402 real · compra real) |
-| Tests Rust | 0 (día 2) |
+| Tests Rust | **11** (`receipt-registry`) |
 | Red | testnet, protocolo 28 |
-| Contrato desplegado | ninguno aún |
+| Contrato desplegado | `receipt-registry` [`CADILO6Q…ZTM5`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5) |
 
 ### Plan
 
@@ -23,13 +23,56 @@
 |---|---|---|---|
 | 0 | mar 22 | `pnpm test` verde; manifest servido desde el mock | ✅ cerrado |
 | 1 | mié 23 | Compra x402 real con tx hash en stellar.expert | ✅ cerrado el 22 |
-| 2 | jue 24 | Recibo firmado, hash anclado, verificación en verde y en rojo | pendiente |
+| 2 | jue 24 | Recibo firmado, hash anclado, verificación en verde y en rojo | ✅ cerrado el 22 |
 | 3 | vie 25 | Pedido real en Jumpseller segundos después del pago | pendiente |
 | 4 | sáb 26 | URL pública; dashboard; agente contra el deploy | pendiente |
 | 5 | dom 27 | Walkthrough reproducible en máquina limpia | pendiente |
 | 6 | lun 28 | README final, roadmap, guion, alcance congelado | pendiente |
 | 7 | mar 29 | Video, QA, `v1.0.0`, `main` congelado 20:00 | pendiente |
 | 8 | mié 30 | Entrega en Stellar Passport | pendiente |
+
+---
+
+## Día 2 · "Recibo y anclaje" — cerrado mar 22 (dos días antes del plan)
+
+**Qué significa.** Cada compra deja una prueba que nadie puede falsificar
+ni borrar. La tienda firma un recibo con su llave, y la huella de ese recibo
+queda escrita en un contrato de Stellar. Cualquiera, sin pedirle permiso a la
+tienda, puede comprobar tres cosas: que la tienda lo firmó, que lo registró
+en la blockchain, y que el pago que dice existió de verdad. Si alguien cambia
+un solo número del recibo, las tres comprobaciones fallan.
+
+**Qué quedó demostrable.**
+
+- Contrato `receipt-registry` desplegado en testnet
+  ([`CADILO6Q…ZTM5`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5)),
+  11 tests Rust, sin admin ni upgrade (V-3). `pnpm deploy:registry` es
+  idempotente y exige `--redeploy` explícito.
+- Compra real → recibo JWS firmado por la llave de firma del merchant →
+  hash anclado en Soroban en ~5 s → verificación ✅✅✅, en 14,6 s de punta a
+  punta ([evidencia](evidencia/DIA-2.md)).
+- `pnpm demo:verify` verifica el recibo sin pasar por el gateway;
+  `pnpm demo:verify -- --tamper` baja el monto sin re-firmar y da ❌❌❌.
+- `Idempotency-Key`, una tx = una orden, reserva de stock mientras el pago
+  está en vuelo (V-15). Reintentos de anclaje con estado visible en la orden.
+- CI ahora corre también `cargo test`.
+
+**Qué se construyó.** `contracts/receipt-registry`; `packages/anchor`
+(cliente RPC, check contra Horizon, `verifyReceipt`); JWS EdDSA en
+`packages/core`; en el gateway: firma de recibos, cola de anclaje, rutas de
+verificación, idempotencia y reservas; en el agente: espera del anclaje,
+reporte de verificación y el comando `demo:verify`.
+
+**Qué se rompió / se aprendió.**
+
+- `stellar-sdk` 17 cambió la representación XDR (uniones como objetos
+  `{type, campo}`, enums como propiedades). El fallback que lee el pagador
+  desde la transacción firmada usaba la API vieja y habría fallado en
+  silencio; ahora tiene un test con el sobre real de la primera compra.
+- El tiempo total varía entre 14 y 22 s según cuánto tarde el facilitator en
+  liquidar (7–13 s). El guion debería decir "unos veinte segundos".
+- Se agregó un sexto producto barato para las pruebas reales (V-14). Saldo
+  del agente tras hoy: ~8,45 USDC.
 
 ---
 

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { MockStoreAdapter, type StoreAdapter } from "@vitrinee/adapters";
@@ -11,6 +11,18 @@ import { loadConfig, type GatewayConfig } from "./config.js";
 // variables directly and has no file.
 const envFile = resolve(process.cwd(), ".env.local");
 if (existsSync(envFile)) process.loadEnvFile(envFile);
+
+// The registry id is public and committed in deployments/testnet.json; the
+// env var only overrides it.
+if (process.env["RECEIPT_REGISTRY_ID"] === undefined || process.env["RECEIPT_REGISTRY_ID"] === "") {
+  const deployments = resolve(process.cwd(), "deployments/testnet.json");
+  if (existsSync(deployments)) {
+    const id = (JSON.parse(readFileSync(deployments, "utf8")) as { receiptRegistry?: { contractId?: string } | null }).receiptRegistry?.contractId;
+    if (id !== undefined) process.env["RECEIPT_REGISTRY_ID"] = id;
+  }
+}
+process.env["ORDERS_FILE"] ??= resolve(process.cwd(), ".vitrinee/orders.json");
+process.env["MOCK_ORDERS_FILE"] ??= resolve(process.cwd(), ".vitrinee/mock-store.json");
 
 function createAdapter(config: GatewayConfig): StoreAdapter {
   switch (config.adapter) {
@@ -27,13 +39,17 @@ try {
   const config = loadConfig();
   const adapter = createAdapter(config);
   const app = createApp({ config, adapter, log });
+  const resumed = app.anchors.resume();
   app.listen(config.port, () => {
     log("vitrinee gateway listening", {
       port: config.port,
       adapter: adapter.name,
       merchant: config.merchant.stellarAccount,
+      signing: config.signing.account,
+      receiptRegistry: config.receiptRegistryId,
       facilitator: config.facilitator.url,
       facilitatorKey: config.facilitator.apiKey === undefined ? "missing" : "set",
+      anchorsResumed: resumed,
       manifest: MANIFEST_PATH,
     });
   });

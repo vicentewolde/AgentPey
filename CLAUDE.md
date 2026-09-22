@@ -50,8 +50,11 @@ pnpm install
 pnpm check                # typecheck + lint + tests rápidos (sin red)
 pnpm bootstrap            # cuentas testnet + trustlines → .env.local (idempotente)
 pnpm gateway              # gateway en dev (tsx watch), lee .env.local
+pnpm deploy:registry      # receipt-registry (idempotente; --redeploy solo con permiso de Vinny)
 pnpm demo:buy -- "compra el hoodie talla M y envíalo a Ñuñoa" [--dry-run]
-pnpm test:integration     # compra real contra testnet (RUN_INTEGRATION=1)
+pnpm demo:verify [-- --tamper]   # verifica el último recibo sin pasar por el gateway
+pnpm test:integration     # compra + anclaje + verificación reales contra testnet (compra stickers, ~1 USDC)
+pnpm test:contracts       # cargo test en contracts/
 pnpm build && pnpm start:gateway
 ```
 
@@ -68,3 +71,11 @@ Cuentas de la demo (públicas, en `.env.local`): `MERCHANT_STELLAR_ACCOUNT`
   código, nunca se elige en la ruta.
 - Tests: vitest por paquete, sin red. `test:integration` (día 1) corre contra
   testnet real y no entra en CI.
+
+- `stellar-sdk` 17 usa XDR nuevo: uniones como objetos `{ type, <campo> }`
+  (p. ej. `op.func.type === "hostFunctionTypeInvokeContract"`), enums como
+  propiedades estáticas (`xdr.ContractDataDurability.persistent`, sin `()`).
+  Para decodificar, preferir `scValToNative`.
+- El layout de storage de `receipt-registry` se lee directo desde
+  `packages/anchor/src/scval.ts`; si cambia el contrato, subir
+  `STORAGE_SCHEMA_VERSION` en ambos lados.

@@ -47,7 +47,7 @@ precios en USDC. Ambas van al roadmap.
 
 ---
 
-### V-3 · `receipt-registry` sin admin ni upgrade · `Pendiente` (día 2)
+### V-3 · `receipt-registry` sin admin ni upgrade · `Vigente`
 **Fecha:** 2026-09-22
 
 El contrato Soroban expone `anchor(hash, merchant, amount, order_ref)`,
@@ -63,6 +63,12 @@ Sin upgrade, el código que un revisor lee es el que corre.
 OpenZeppelin). Da mantenibilidad a costa de la garantía que vende el producto.
 Si hay que cambiar el contrato, se despliega uno nuevo y el manifest apunta al
 nuevo id.
+
+**Implementado el 22 de septiembre:** `CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5`,
+wasm `e0a87150…ac13f`, 11 tests Rust. `anchor` también rechaza montos ≤ 0 y
+`order_ref` vacío o de más de 64 bytes; un hash ya anclado no se puede
+reanclar ni por otro merchant. Entradas persistentes con TTL extendido a
+120 días en cada escritura.
 
 ---
 
@@ -84,7 +90,7 @@ en el roadmap, sin custodia.
 
 ---
 
-### V-5 · Anclaje asíncrono con reintentos · `Pendiente` (día 2)
+### V-5 · Anclaje asíncrono con reintentos · `Vigente`
 **Fecha:** 2026-09-22
 
 Tras el pago, el gateway crea la orden, emite el recibo y **responde** con
@@ -98,6 +104,13 @@ se emite; el anchor lo hace verificable por terceros.
 
 **Alternativa descartada:** anchor síncrono. Más simple de explicar, peor
 experiencia y más frágil en vivo.
+
+**Implementado el 22 de septiembre:** una cola serializada (todas las anclas
+las firma la misma cuenta; dos en vuelo chocarían por número de secuencia),
+reintentos a 2, 5 y 15 s, estado `pending → anchored | failed` con
+`lastError` en la orden, y reanudación al arrancar. Si el contrato responde
+`AlreadyAnchored` (un intento anterior sí llegó), se trata como éxito. En la
+práctica el anclaje confirma 4–5 s después de responder el checkout.
 
 ---
 
@@ -246,3 +259,77 @@ guarda es una cuenta que nadie puede usar.
 
 **Camino a producción:** el merchant trae su propia cuenta ya fondeada y con
 trustline; `bootstrap` no la genera ni la conoce. Registrado en el roadmap.
+
+---
+
+### V-13 · Tres checks de verificación, cada uno independiente del gateway · `Vigente`
+**Fecha:** 2026-09-22
+
+Un recibo es válido solo si pasa los tres:
+
+1. **Firma**: EdDSA sobre Ed25519 con la llave que está dentro del
+   `did:stellar` del `kid`, y ese DID debe ser el `merchantDid` del recibo
+   (si no, cualquiera podría firmar con su propia llave). Puro, sin red.
+2. **Anclaje**: `sha256(jws compacto)` está en `receipt-registry`, anclado
+   por la cuenta del DID, con el mismo monto y `order_ref = orderId`.
+3. **Pago**: la tx de settlement que cita el recibo existe en Horizon, fue
+   exitosa, y sus efectos muestran al pagador debitado y al merchant
+   acreditado exactamente ese USDC.
+
+El registro se lee con `getLedgerEntries` sobre la clave de storage
+(`DataKey::Receipt(hash)`), no simulando `get`: así un verificador no
+necesita cuenta fuente ni llave alguna. La contrapartida es que el cliente
+conoce el layout del storage; queda amarrado a `STORAGE_SCHEMA_VERSION = 1`.
+
+`GET /receipts/:hash/verify` verifica un recibo que el gateway emitió;
+`POST /receipts/verify` verifica **cualquier** recibo, incluido uno editado,
+y `pnpm demo:verify` corre los mismos tres checks localmente sin tocar el
+gateway. Lo último es el argumento del pitch: el principal del agente no
+tiene que confiar en la tienda.
+
+**Alternativa descartada:** VC-JWT completo (`vc`, `@context`,
+`credentialSubject`). Se mantiene un JWS con claims propios y `typ`
+explícito; la envoltura VC no agrega verificabilidad y sí peso. Un paso a VC
+queda en el roadmap si un wallet lo pide.
+
+---
+
+### V-14 · Un sexto producto barato en el mock, para las pruebas reales · `Vigente`
+**Fecha:** 2026-09-22
+
+El brief pedía 5 productos en el adapter mock. Se agregó un sexto: "Pack de
+stickers Cordillera", 990 CLP = 1,0421053 USDC. `pnpm test:integration`
+compra ese producto.
+
+**Motivo.** Cada corrida de integración mueve USDC real de testnet, y el
+faucet de Circle da 20 USDC por solicitud con captcha. Con el café (9,46 USDC)
+alcanzaban dos corridas; con los stickers, unas diecinueve. El producto del
+video sigue siendo el hoodie.
+
+**Alternativa descartada:** comprar el café y pedirle a Vinny que rellene
+el faucet cada dos pruebas.
+
+---
+
+### V-15 · Idempotencia en tres capas y reserva de stock durante el settle · `Vigente`
+**Fecha:** 2026-09-22
+
+1. **`Idempotency-Key`** (opcional, 1–255 ASCII imprimible): si ya produjo
+   una orden, el checkout responde esa misma orden con
+   `Idempotent-Replayed: true` **antes** del 402, sin volver a cobrar; si se
+   reusa para otra compra, 409 `IdempotencyConflict`; si hay un pago en vuelo
+   con esa clave, 409.
+2. **Una transacción de settlement, una orden**: si el tx hash ya tiene
+   orden, se devuelve esa. Defensa ante un facilitator que devuelva el mismo
+   settle dos veces.
+3. **Una firma, un settle**: el libro de settlements entrega cada resultado
+   una sola vez; y el facilitator rechaza una auth entry ya usada.
+
+Además, mientras un pago está en vuelo sus unidades quedan reservadas: un
+segundo comprador del último stock recibe 409 antes de pagar, en vez de pagar
+y quedar `paid_unfulfilled`. La reserva vive en memoria de un solo proceso,
+que es lo que hay en la demo.
+
+**Alternativa descartada:** reservar en la plataforma (Jumpseller no tiene
+reservas en su API) o bloquear stock al emitir el 402 (un agente que nunca
+paga dejaría productos bloqueados).

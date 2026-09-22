@@ -56,8 +56,9 @@ export const storefrontManifestSchema = z.strictObject({
   generatedAt: z.iso.datetime(),
   merchant: z.strictObject({
     name: z.string().min(1),
+    /** The merchant's receipt-signing key (V-8). Verifies receipts; cannot move funds. */
     did: stellarDidSchema,
-    /** Where payments land. Vitrinee never holds this account's secret. */
+    /** Where payments land (payTo). Vitrinee never holds this account's secret. */
     stellarAccount: stellarAccountSchema,
     country: countryCodeSchema,
     currency: currencyCodeSchema,
@@ -81,6 +82,16 @@ export const storefrontManifestSchema = z.strictObject({
   policies: z.strictObject({
     refundWindowSeconds: z.int().nonnegative(),
     shippingCountries: z.array(countryCodeSchema),
+  }),
+  /**
+   * How purchases are proven. The receipt is a compact JWS signed by the key
+   * in `merchant.did`; its SHA-256 is anchored in `registry` (Soroban).
+   */
+  receipts: z.strictObject({
+    format: z.literal("jws"),
+    alg: z.literal("EdDSA"),
+    anchoredValue: z.literal("sha256(compact-jws)"),
+    registry: stellarContractIdSchema,
   }),
   products: z.array(manifestProductSchema),
   endpoints: z.strictObject({

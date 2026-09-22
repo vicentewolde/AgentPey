@@ -3,30 +3,18 @@
  * `pnpm demo:buy -- "compra el hoodie talla M y envíalo a Ñuñoa"`
  *
  * Flags: --gateway <url> (default GATEWAY_URL or http://localhost:4021),
- *        --max-usdc <n> (default 100), --dry-run, --json.
- * Reads AGENT_SECRET_KEY from .env.local at the repo root.
+ *        --max-usdc <n> (default 100), --dry-run, --no-verify, --json.
+ * Reads AGENT_SECRET_KEY from .env.local at the repo root. Saves the receipt
+ * to .vitrinee/last-receipt.jws for `pnpm demo:verify`.
  */
-import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 
 import { isVitrineeError } from "@vitrinee/core";
 
 import { buy } from "./buy.js";
-
-function loadRepoEnv(): void {
-  let dir = process.cwd();
-  for (let i = 0; i < 6; i += 1) {
-    const candidate = resolve(dir, ".env.local");
-    if (existsSync(candidate)) {
-      process.loadEnvFile(candidate);
-      return;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) return;
-    dir = parent;
-  }
-}
+import { LAST_RECEIPT_PATH, loadRepoEnv } from "./env.js";
 
 loadRepoEnv();
 
@@ -42,6 +30,7 @@ const { values, positionals } = parseArgs({
     gateway: { type: "string", default: process.env["GATEWAY_URL"] ?? "http://localhost:4021" },
     "max-usdc": { type: "string", default: process.env["AGENT_MAX_USDC"] ?? "100" },
     "dry-run": { type: "boolean", default: false },
+    "no-verify": { type: "boolean", default: false },
     json: { type: "boolean", default: false },
   },
 });
@@ -49,7 +38,7 @@ const { values, positionals } = parseArgs({
 // A stray "--" can arrive when a package manager forwards arguments; it is never part of the order.
 const instruction = positionals.filter((p) => p !== "--").join(" ").trim();
 if (instruction === "") {
-  process.stderr.write('uso: pnpm demo:buy -- "compra el hoodie talla M y envíalo a Ñuñoa" [--dry-run] [--max-usdc 100] [--gateway URL]\n');
+  process.stderr.write('uso: pnpm demo:buy -- "compra el hoodie talla M y envíalo a Ñuñoa" [--dry-run] [--no-verify] [--max-usdc 100] [--gateway URL]\n');
   process.exit(2);
 }
 
@@ -66,12 +55,33 @@ try {
     signerSecret: process.env["AGENT_SECRET_KEY"],
     maxUsdc: values["max-usdc"],
     dryRun: values["dry-run"],
+    verify: !values["no-verify"],
     log: out,
   });
+  if (result.order?.receiptJws != null) {
+    const path = LAST_RECEIPT_PATH();
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${result.order.receiptJws}\n`, { mode: 0o600 });
+    out(`  guardado     ${path} (para pnpm demo:verify)`);
+  }
   out("");
   if (values.json) {
-    process.stdout.write(`${JSON.stringify({ intent: { product: result.intent.product.id, quantity: result.intent.quantity, shipping: result.intent.shipping }, requirements: result.requirements, order: result.order ?? null, elapsedMs: Math.round(result.elapsedMs) }, null, 2)}\n`);
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          intent: { product: result.intent.product.id, quantity: result.intent.quantity, shipping: result.intent.shipping },
+          requirements: result.requirements,
+          order: result.order === undefined ? null : { ...result.order, raw: undefined },
+          verification: result.verification ?? null,
+          elapsedMs: Math.round(result.elapsedMs),
+          timings: result.timings,
+        },
+        null,
+        2,
+      )}\n`,
+    );
   }
+  if (result.verification !== undefined && !result.verification.valid) process.exitCode = 1;
 } catch (error) {
   out("");
   if (isVitrineeError(error)) {

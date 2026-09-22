@@ -6,6 +6,7 @@ export const aliases = {
   "@vitrinee/core": fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url)),
   "@vitrinee/adapters": fileURLToPath(new URL("../../packages/adapters/src/index.ts", import.meta.url)),
   "@vitrinee/gateway": fileURLToPath(new URL("../../packages/gateway/src/index.ts", import.meta.url)),
+  "@vitrinee/anchor": fileURLToPath(new URL("../../packages/anchor/src/index.ts", import.meta.url)),
 };
 
 export default defineConfig({

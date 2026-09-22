@@ -48,7 +48,7 @@ export function buildManifest({ config, products, baseUrl, now }: BuildManifestI
     generatedAt: asOf,
     merchant: {
       name: config.merchant.name,
-      did: stellarDid(config.merchant.stellarAccount, "testnet"),
+      did: stellarDid(config.signing.account, "testnet"),
       stellarAccount: config.merchant.stellarAccount,
       country: config.merchant.country,
       currency: config.merchant.currency,
@@ -63,6 +63,7 @@ export function buildManifest({ config, products, baseUrl, now }: BuildManifestI
     },
     fx: { base: "USD", quote: config.fx.quote, rate: config.fx.rate, source: "demo-fixed", asOf },
     policies: config.policies,
+    receipts: { format: "jws", alg: "EdDSA", anchoredValue: "sha256(compact-jws)", registry: config.receiptRegistryId },
     products: products.map((product) => toManifestProduct(product, config)),
     endpoints: {
       catalog: `${origin}/catalog`,

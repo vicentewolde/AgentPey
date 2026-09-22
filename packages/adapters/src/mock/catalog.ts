@@ -1,7 +1,7 @@
 import type { Product } from "../types.js";
 
 /**
- * Bazar Cordillera — a fictional shop in Ñuñoa, Santiago. Five products with
+ * Bazar Cordillera — a fictional shop in Ñuñoa, Santiago. Six products with
  * the shape a Jumpseller store would expose, priced in CLP (no decimals).
  * Used by tests and as the fallback adapter if the real platform is down.
  */
@@ -57,5 +57,17 @@ export const MOCK_CATALOG: readonly Product[] = [
     currency: "CLP",
     stock: 2,
     images: ["https://static.example.com/vitrinee/botella-patagonia-500.jpg"],
+  },
+  {
+    // The cheapest item on purpose: real-testnet integration runs buy it, so
+    // one faucet drip (20 USDC) covers ~19 runs instead of two (V-14).
+    id: "stickers-cordillera",
+    sku: "STK-CORD-5",
+    name: "Pack de stickers Cordillera",
+    description: "Cinco stickers de vinilo mate con paisajes de la cordillera, resistentes al agua.",
+    priceLocal: "990",
+    currency: "CLP",
+    stock: 200,
+    images: ["https://static.example.com/vitrinee/stickers-cordillera.jpg"],
   },
 ];
