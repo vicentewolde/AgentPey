@@ -47,23 +47,27 @@ const NETWORK_PASSPHRASE = Networks.TESTNET;
 const FRIENDBOT_URL = "https://friendbot.stellar.org";
 
 /**
- * The pilot's numbers, decided with the user in `C-80` and chosen together
- * rather than one at a time: the funding, the two on-chain limits and
- * SignalDesk's prices only make sense as a set.
+ * The on-chain backstop of every tenant rail: `3.00` per transfer and `3.00`
+ * per day since 2026-09-23 (`C-133`), the same as the sponsored credit
+ * (`C-131`). They were `0.30`/`0.60` (`C-80`), under which no real product of
+ * a Vitrinee store (the cheapest is 1.0421053 USDC) could ever be paid, however
+ * much the rail held.
  *
- * They are picked so that **a second purchase of the report exceeds the daily
- * cap within one sitting** — acceptance case 4 of the F9 brief becomes
- * something an external tester can actually reach, instead of something that
- * needs a contrived amount or a day of waiting. The report costs `0.25` and
- * the credit pack `0.10`; a `0.60` daily cap allows two reports and refuses
- * the third.
+ * **The Mandate is the limit that decides, not these.** `LocalPolicyRail`
+ * refuses against the principal's signed `grant.limits` before anything is
+ * signed, and RealOps proposes `0.30`/`0.60` there by default. That is also
+ * what acceptance case 4 of the F9 brief exercises: a second report exceeding
+ * the daily cap is refused by the Mandate, so it holds with these numbers too.
+ * What these add is the guarantee that, whatever happens off-chain, the
+ * network itself never lets a rail move more than its day's credit.
  *
  * These are written into the contract at construction, so a rail already
- * deployed keeps whatever it was built with — the handful created in T58
- * still carry the old `0.002`/`0.01` and are not worth migrating.
+ * deployed keeps whatever it was built with: `0.30`/`0.60` for rails from
+ * T77 to 2026-09-23, `0.002`/`0.01` for the handful from T58. None is
+ * migrated; a tenant that must buy something dearer needs a new rail.
  */
-const PER_TX = "0.3000000";
-const PER_DAY = "0.6000000";
+const PER_TX = "3.0000000";
+const PER_DAY = "3.0000000";
 const VALID_DAYS = 365;
 
 /**
