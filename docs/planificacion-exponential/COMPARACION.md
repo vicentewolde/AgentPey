@@ -71,12 +71,27 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 
 | T | Método | M1 días | M2 alcance | M3 corregidas | M4 líneas/archivos | M5 rondas | M6 bloqueos | M7 claridad | M8 min | M9 control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T100 | ANTERIOR | | | | | | | 4 | 60 | |
+| T100 | ANTERIOR | 0,05 | 2 | | 1.026 líneas / 23 archivos (612 / 16 sin `docs/`) | 0 | 2 | 4 | 60 | pendiente |
 | T101 | ANTERIOR | | | | | | | | | |
 | T102 | ANTERIOR | | | | | | | | | |
 
 Notas por ticket (bloqueos, qué cambió, por qué) van debajo, una entrada por
 hito, al cerrarlo.
+
+**T100** (mergeado 2026-09-23 ~17:50 UTC; ticket creado 16:31 UTC).
+- M1: 0,05 días (unas 1,3 horas). Hito chico y con las decisiones maduras
+  (`C-130`, `C-132`); no es comparable con un hito que parte de cero.
+- M2 = 2: `C-134` (T102 pasa antes que T101, Vitrinee en
+  `vitrinee.agentpey.com` dentro del servicio único) y `C-135` (forma del kind
+  de Vitrinee en RealOps). La primera sí cambia el alcance del plan; la
+  segunda precisa el del hito.
+- M5 = 0: el usuario aprobó el merge a la primera. En el mismo mensaje pidió
+  sumar las frases escritas para los productos de la tienda; eso se hizo
+  después del merge, en su propia rama, y no se cuenta como ronda.
+- M6 = 2: el deploy vivo de Vitrinee no tenía T99 (reordenó los hitos), y
+  `scripts/register-venue.ts` estaba roto desde T79. Ninguno estaba en el
+  ticket ni en `C-130`.
+- M9: pendiente del usuario.
 
 ## Conclusión
 
