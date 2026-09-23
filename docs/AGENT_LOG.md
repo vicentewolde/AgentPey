@@ -6246,3 +6246,21 @@ Pendiente:
 - Del usuario: M9 de T100, M7 y M8 de T102 (COMPARACION.md); la clave de
   partner (`pnpm run partner:key`) si quiere mostrar preview o webhooks.
 - Costo mensual nuevo: +18 USD del plan, +0,25 USD del dominio.
+
+## 2026-09-23 (13) — cc/t101-compra-real-jumpseller (en curso)
+
+Agente: Claude Code.
+
+Qué: T101 empezado. Dos intentos reales del usuario desde RealOps, ninguno
+movió plata: el primero rechazado por `RailInsufficientFunds` (correcto, rail
+con 3 USDC); el segundo, con 23 USDC en el rail, cortado por el tope de 1 USD
+que trae `x402Client` por defecto. Arreglo `C-139`: el tope pasa a ser el monto
+autorizado y un error de la librería antes de firmar sale como
+`PaymentNotCreated` (gasto devuelto, compra registrada). Tests nuevos que
+fallan con el código anterior.
+
+Pendiente:
+- Merge del arreglo y deploy; después repetir la compra.
+- El segundo intento dejó 13,67 contados en el día del agente (no se toca el
+  vault a mano). Hasta las 00:00 UTC caben 11,33: el gorro no, el café sí.
+- Después: pedido en Jumpseller, tres checks del recibo, cierre de T101.

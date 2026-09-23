@@ -6003,3 +6003,47 @@ para que los deploys entraran, se cambió el plan, y se volvió a cargar. Tal co
 `C-136` prevé, sin el adaptador el gateway no arranca Vitrinee y el resto queda
 en 200. Nota de proceso: el panel de Render pierde el foco de la lista de
 variables al hacer scroll; conviene verificar la fila borrada antes de guardar.
+
+---
+
+### C-139 · El cliente x402 paga como máximo lo que AgentPey autorizó, y un error suyo antes de firmar es un rechazo tipado · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T101 · Claude Code; hallado por el usuario en la primera compra real
+
+**Qué pasó.** La primera compra real de la tienda (el gorro, 13,67 USDC)
+terminó en RealOps con un `502`: `All payment requirements were rejected by
+spendControls.maxAmountPerPayment ($1, including USDC)`. `x402Client` trae un
+tope propio de 1 USD por pago. Todo lo que el piloto pagó antes costaba menos,
+así que nunca se vio. El error saltó después de que AgentPey autorizara el pago
+contra el Mandato y antes de firmar nada: no se movió plata. Pero era un
+`Error` sin tipo, y eso tuvo dos efectos. `mayHaveBeenPaid` lo leyó como "puede
+que se haya pagado" (T92 falla cerrado a propósito), así que **el gasto
+reservado quedó contado** en el tope del día del agente; y `/v1` respondió `500`
+sin registrar la compra.
+
+**Qué se decide.**
+
+1. **El tope de la librería pasa a ser exactamente lo autorizado**, no se
+   apaga: `spendControlsFor(requirements)` limita el pago a ese monto, en ese
+   activo, y al cliente solo le llega la opción de pago que se reconcilió
+   (`accepts: [requirements]`). Así la librería no puede elegir otra oferta del
+   comercio ni pagar más de lo que el Mandato, `reconcileTerms` y el rail en la
+   red ya aceptaron.
+2. **Un error sin tipo antes de la puerta se tipa** como `PaymentNotCreated`
+   con `paymentSent: false`: la función sabe de qué lado de la puerta cayó, que
+   es justo para lo que existe el marcador. El gasto se devuelve y la compra
+   queda registrada como rechazo, con texto en RealOps en los dos idiomas.
+   **Después de la puerta no cambia nada**: un error sin tipo sigue sin tipo y
+   `mayHaveBeenPaid` sigue fallando cerrado.
+
+**Verificado:** tres tests nuevos en `x402.test.ts` que fallan con el código
+anterior (13,67 llega al esquema y a la puerta; con dos ofertas, al cliente solo
+le llega la autorizada; un error del esquema sale `PaymentNotCreated` y
+liberable) y pasan con el nuevo. `pnpm typecheck` y `pnpm test` en verde.
+
+**Lo que ya pasó no se arregla solo.** El intento del gorro de las 20:2x UTC
+dejó 13,67 contados en el día de ese agente. No se toca el vault a mano: el día
+se reinicia a las 00:00 UTC. Hasta entonces caben 11,33 más.
+
+**Alternativa descartada: `spendControls: false`.** Arregla el síntoma, pero
+deja al cliente sin tope propio: si algún día eligiera otra oferta del comercio,
+nada en la librería lo frenaría.
