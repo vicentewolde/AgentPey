@@ -5730,7 +5730,7 @@ partner que llame a la API directo.
 
 ---
 
-### C-133 · Los límites grabados en cada rail de tenant suben a 3,00 por compra y 3,00 por día · `Vigente`
+### C-133 · Los límites grabados en cada rail de tenant suben a 3,00 por compra y 3,00 por día · `Superada` por `C-137` en los números (25,00/25,00); el razonamiento sigue
 **Fecha:** 2026-09-23 · **Hito:** después de T99 · Opción (a) propuesta por Claude Code, elegida por el usuario
 
 `PER_TX` y `PER_DAY` de `apps/web/src/tenant-rail.ts` pasan de `0.30`/`0.60`
@@ -5818,7 +5818,7 @@ local y un túnel público.** Probaría la compra pero no el deploy, y la fila d
 
 ---
 
-### C-135 · El kind de Vitrinee en RealOps: seis productos, 3,00/3,00 por defecto, y la cantidad es la de la compra · `Vigente`
+### C-135 · El kind de Vitrinee en RealOps: seis productos, 3,00/3,00 por defecto, y la cantidad es la de la compra · `Vigente`; el default pasó a 25,00/25,00 con `C-137`
 **Fecha:** 2026-09-23 · **Hito:** T100 · Recomendación de Claude Code, aceptada por el usuario
 
 **Qué se decide.** RealOps ofrece un cuarto `agentKind`, `vitrinee_shopper`
@@ -5873,3 +5873,37 @@ la persona sin decírselo.
 3,00/3,00.** Los de SignalDesk y el bazaar compran cosas de 0,001 a 0,25 USDC;
 proponerles diez veces más permiso del que necesitan iría contra lo que la
 pantalla de revisión existe para mostrar.
+
+---
+
+### C-137 · Los rails de tenant nuevos nacen con 25,00 por compra y 25,00 por día; el crédito patrocinado sigue en 3 · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** preparación de T101 · **Decidido por el usuario** ("máximo unos 20" USDC para fondear), la forma de Claude Code
+
+**Qué cambia.** `PER_TX`/`PER_DAY` de `apps/web/src/tenant-rail.ts` pasan de
+`3,00`/`3,00` (`C-133`) a **`25,00`/`25,00`**, y el permiso que RealOps propone
+por defecto al "Comprador de la tienda" también (`C-135`). El crédito
+patrocinado por tenant **no cambia**: 3 USDC (`C-131`).
+
+**Motivo.** Con 3,00 por compra, de la tienda real solo se podían comprar los
+stickers. El usuario puede cargar como máximo unos 20 USDC al rail del tenant de
+la demo: con los 3 patrocinados, ese rail tendría 23. Con 25 de límite, todo
+producto menos el hoodie (36,83) cabe en una compra: la botella (21,04), la
+polera (15,78), el gorro (13,67), el café (9,46) o los stickers.
+
+**Por qué subir el límite y no el crédito.** Un rail no puede mover más de lo
+que tiene. Para un tenant que vive del crédito patrocinado, 25 de límite no
+cambia nada: 3 USDC sigue siendo todo lo que puede perder. Subir el crédito, en
+cambio, drenaría la reserva por cada tenant, porque lo que un rail no gasta no
+vuelve (`C-61`). Así, la plata extra va solo al rail que la necesita, cargada a
+mano por el usuario.
+
+**El costo, dicho en voz alta.** El respaldo en la red de un rail que alguien
+fondee de más ya no ataja a los 3,00 sino a los 25,00. El Mandato sigue siendo
+el límite que decide, y la prueba de aceptación del tope diario sigue
+esperando rechazos del Mandato, no del contrato.
+
+**Qué no cambia.** Los rails ya desplegados conservan lo que tienen. La compra
+de T101 necesita un tenant creado **después** de que esto llegue a producción.
+
+**Alternativa descartada: crédito de 20 por tenant.** 7 cupos × 20 = 140 USDC
+de la reserva, para que la mayoría quede sin usar en rails de visitantes.

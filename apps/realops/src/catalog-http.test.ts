@@ -526,11 +526,11 @@ describe("buying from the Vitrinee store (T100)", () => {
     expect(purchases).toHaveLength(before);
   });
 
-  it("proposes the store's own defaults, 3.00 per purchase and per day, for the permission it needs", async () => {
+  it("proposes the store's own defaults, 25.00 per purchase and per day, for the permission it needs", async () => {
     const cookie = await signIn("permiso-tienda@ejemplo.cl");
     const html = await (await fetch(`${baseUrl}/catalogo/permiso?producto=37283001`, { headers: { cookie } })).text();
     expect(html).toContain(VITRINEE_VENUE_ID);
-    expect(html).toContain("3.00 USDC");
+    expect(html).toContain("25.00 USDC");
     expect(html).not.toContain("0.30 USDC");
   });
 

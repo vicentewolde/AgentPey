@@ -140,17 +140,18 @@ export const DEFAULT_PERMISSIONS: AgentPermissions = {
 };
 
 /**
- * What the Vitrinee kind is offered instead (T100).
+ * What the Vitrinee kind is offered instead (T100, `C-137`).
  *
  * The cheapest product of the real store costs 1.0421053 USDC, so a permission
- * of 0.30 per purchase would cover nothing there. 3.00/3.00 are the credit and
- * the on-chain limits every new tenant rail is born with (`C-131`, `C-133`):
- * proposing more would be proposing a Mandate the rail itself cannot honour.
+ * of 0.30 per purchase would cover nothing there. 25.00/25.00 are the on-chain
+ * limits every new tenant rail is born with (`C-137`): proposing more would be
+ * proposing a Mandate the rail itself cannot honour. What the rail holds is a
+ * separate matter, 3 USDC of sponsored credit unless someone tops it up.
  * Still a starting point the person can change before signing.
  */
 export const VITRINEE_DEFAULT_PERMISSIONS: AgentPermissions = {
-  perTx: "3.00",
-  perDay: "3.00",
+  perTx: "25.00",
+  perDay: "25.00",
   validForDays: 30,
 };
 

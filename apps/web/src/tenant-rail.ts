@@ -47,11 +47,18 @@ const NETWORK_PASSPHRASE = Networks.TESTNET;
 const FRIENDBOT_URL = "https://friendbot.stellar.org";
 
 /**
- * The on-chain backstop of every tenant rail: `3.00` per transfer and `3.00`
- * per day since 2026-09-23 (`C-133`), the same as the sponsored credit
- * (`C-131`). They were `0.30`/`0.60` (`C-80`), under which no real product of
- * a Vitrinee store (the cheapest is 1.0421053 USDC) could ever be paid, however
- * much the rail held.
+ * The on-chain backstop of every tenant rail: `25.00` per transfer and `25.00`
+ * per day since 2026-09-23 (`C-137`). Before that, the same day: `3.00`/`3.00`
+ * (`C-133`), and `0.30`/`0.60` before it (`C-80`).
+ *
+ * **Why higher than the sponsored credit (still 3 USDC, `C-131`).** A rail can
+ * never move more than it holds, so for a tenant living on the sponsored
+ * credit these numbers change nothing: 3 USDC is still all it can lose. They
+ * matter only for a rail somebody tops up by hand, which is how the demo
+ * tenant buys a real product from the Vitrinee store: every one except the
+ * 36.83 USDC hoodie fits under 25. Raising the credit instead would drain the
+ * reserve for every tenant, because what a rail does not spend never comes
+ * back (`C-61`).
  *
  * **The Mandate is the limit that decides, not these.** `LocalPolicyRail`
  * refuses against the principal's signed `grant.limits` before anything is
@@ -62,12 +69,13 @@ const FRIENDBOT_URL = "https://friendbot.stellar.org";
  * network itself never lets a rail move more than its day's credit.
  *
  * These are written into the contract at construction, so a rail already
- * deployed keeps whatever it was built with: `0.30`/`0.60` for rails from
- * T77 to 2026-09-23, `0.002`/`0.01` for the handful from T58. None is
+ * deployed keeps whatever it was built with: `3.00`/`3.00` for rails built
+ * under `C-133`, `0.30`/`0.60` for rails from T77 to 2026-09-23, `0.002`/`0.01`
+ * for the handful from T58. None is
  * migrated; a tenant that must buy something dearer needs a new rail.
  */
-const PER_TX = "3.0000000";
-const PER_DAY = "3.0000000";
+const PER_TX = "25.0000000";
+const PER_DAY = "25.0000000";
 const VALID_DAYS = 365;
 
 /**
