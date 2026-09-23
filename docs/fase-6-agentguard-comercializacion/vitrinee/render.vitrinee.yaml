@@ -1,0 +1,77 @@
+# Render blueprint · https://render.com/docs/blueprint-spec
+#
+# One service. The gateway serves the API, the manifest and the dashboard from
+# the same origin, so there is no second deploy to keep in sync and no CORS to
+# configure (docs/fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md, VT-18).
+#
+# Secrets are NOT in this file. `sync: false` means Render asks for the value
+# once, in its dashboard, and keeps it out of the repo. Everything with a
+# `value` here is public by design: account ids, a contract id, a demo rate.
+services:
+  - type: web
+    name: vitrinee-gateway
+    runtime: node
+    plan: free
+    region: oregon
+    # El trabajo del día 3–4 vive en day-3-jumpseller-catalog, que sigue
+    # abierta hasta resolver lo de Jumpseller. Cambiar a `main` al mergear,
+    # o el auto-deploy se queda siguiendo una rama vieja.
+    branch: day-3-jumpseller-catalog
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm vitrinee:start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Render assigns the port; the gateway reads it.
+      - key: PORT
+        value: "10000"
+      # Absolute URLs in the manifest must be the public ones, not the
+      # container's own host. Set this to the service URL after the first
+      # deploy, or to the custom domain.
+      - key: PUBLIC_BASE_URL
+        sync: false
+
+      - key: ADAPTER
+        value: mock
+      # Only read when ADAPTER=jumpseller.
+      - key: JUMPSELLER_LOGIN
+        sync: false
+      - key: JUMPSELLER_AUTHTOKEN
+        sync: false
+
+      - key: MERCHANT_NAME
+        value: Bazar Cordillera
+      - key: MERCHANT_COUNTRY
+        value: CL
+      - key: MERCHANT_CURRENCY
+        value: CLP
+      - key: FX_RATE_CLP_USD
+        value: "950"
+      # Public: where the USDC lands. The gateway never holds its secret (VT-4, VT-12).
+      - key: MERCHANT_STELLAR_ACCOUNT
+        sync: false
+      # Signs receipts and pays anchor fees. Cannot move the merchant's funds (VT-8).
+      - key: MERCHANT_SIGNING_SECRET
+        sync: false
+
+      - key: FACILITATOR_URL
+        value: https://channels.openzeppelin.com/x402/testnet
+      - key: FACILITATOR_API_KEY
+        sync: false
+
+      - key: RECEIPT_REGISTRY_ID
+        value: CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5
+      - key: STELLAR_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: STELLAR_HORIZON_URL
+        value: https://horizon-testnet.stellar.org
+
+      # The free plan has an ephemeral disk: orders survive a restart only
+      # while the instance lives. Acceptable for a testnet demo; a real
+      # deployment puts ORDERS_FILE on a persistent disk or a database.
+      - key: ORDERS_FILE
+        value: /tmp/vitrinee/orders.json
+      - key: MOCK_ORDERS_FILE
+        value: /tmp/vitrinee/mock-store.json

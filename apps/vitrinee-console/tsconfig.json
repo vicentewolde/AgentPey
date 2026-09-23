@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../../packages/vitrinee-core" },
+    { "path": "../../packages/vitrinee-anchor" },
+    { "path": "../agent" }
+  ]
+}

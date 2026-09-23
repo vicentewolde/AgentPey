@@ -1,0 +1,9 @@
+{
+  "name": "@vitrinee/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Static dashboard: orders, decoded receipts, three-check verification. Served by the gateway.",
+  "type": "module",
+  "files": ["public"]
+}

@@ -1,0 +1,50 @@
+name: vitrinee
+
+# Scoped to Vitrinee: the rest of AgentPey has no CI yet, and turning one on
+# for the whole repo is not a side effect this feature should have
+# (docs/DECISIONES.md, P-12).
+on:
+  push:
+    paths:
+      - "packages/vitrinee-*/**"
+      - "apps/vitrinee-*/**"
+      - "scripts/vitrinee/**"
+      - "contracts/receipt-registry/**"
+      - "deployments/vitrinee-testnet.json"
+      - "eslint.config.mjs"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/vitrinee.yml"
+  pull_request:
+    paths:
+      - "packages/vitrinee-*/**"
+      - "apps/vitrinee-*/**"
+      - "scripts/vitrinee/**"
+      - "contracts/receipt-registry/**"
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run vitrinee:typecheck
+      - run: pnpm run vitrinee:lint
+      - run: pnpm run vitrinee:test
+
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts/receipt-registry
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts/receipt-registry
+      - run: cargo test
