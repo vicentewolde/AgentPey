@@ -58,6 +58,21 @@ contrato de ejecución esté congelado y mergeado (T73) se te delegarán piezas
 acotadas: la UI de RealOps, el comercio SignalDesk, fixtures y tests. Hasta
 entonces, si una tarea parece de F9, preguntá antes de escribir nada.
 
+**Vitrinee, desde 2026-09-23 (T98):** Vitrinee se fusionó en este repo
+(`docs/DECISIONES.md § P-12`) y es la puerta del vendedor para comercios reales.
+Antes de tocar cualquier ruta con `vitrinee` en el nombre, leé
+[`docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md`](docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md).
+Sin visto bueno explícito, no toques: el checkout
+(`packages/vitrinee-gateway/src/checkout.ts`, que decide cuándo un pago ya
+liquidado se convierte en pedido y recibo), la firma y verificación de recibos
+(`packages/vitrinee-core/src/receipt.ts`, `jws.ts`, `packages/vitrinee-anchor`),
+el contrato `contracts/receipt-registry`, las llaves del merchant
+(`scripts/vitrinee/`, `.env.vitrinee.*`), `deployments/vitrinee-testnet.json`,
+ni la creación de pedidos del adaptador de Jumpseller. Es custodia, firma y
+flujo de fondos: el mismo perímetro de `P-10`. Sus secretos van en
+`.env.vitrinee.local`, **nunca** en `.env.local`, y sus decisiones usan el
+prefijo `VT-`.
+
 **Por qué esto es explícito y no una formalidad:** el agente anterior en este
 rol (Devin) generó, en una rama que terminó borrada por completo, un
 adaptador que se saltaba `checkMandate` — un bypass de seguridad real, no

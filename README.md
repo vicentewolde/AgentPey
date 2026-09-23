@@ -5,6 +5,51 @@ verifiable agent identity through spending policy, signed mandates, real
 commerce, and verifiable evidence. See **[ROADMAP.md](ROADMAP.md)** for the
 phases, what is done, and what comes next.
 
+## Vitrinee: real stores join without writing code
+
+AgentPey is the **buyer** with rules: identity, a signed Mandate, a
+`policy_rail` smart account that enforces spending limits inside the transfer
+itself, and an evidence vault. **Vitrinee is the seller's door.** It connects
+to a real e-commerce platform (Jumpseller today) through the store's own API,
+publishes the catalogue as `/.well-known/agent-storefront.json`, charges via
+x402 in USDC on Stellar testnet, creates the real order on the platform, and
+returns a signed receipt whose SHA-256 is anchored in a Soroban contract.
+
+The store installs nothing. The only thing it hands over is its platform API
+credentials. Anyone can verify a receipt without trusting the store or
+Vitrinee: the signature against the merchant's `did:stellar`, the anchor in
+[`receipt-registry`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5),
+and the settlement transaction on Stellar.
+
+```bash
+pnpm run vitrinee
+```
+
+```bash
+pnpm run vitrinee:buy -- "compra un pack de stickers"
+```
+
+```bash
+pnpm run vitrinee:verify
+```
+
+Secrets live in `.env.vitrinee.local` (template:
+[`.env.vitrinee.example`](.env.vitrinee.example)). A live instance runs at
+<https://vitrinee-gateway.onrender.com> (manifest at
+[`/.well-known/agent-storefront.json`](https://vitrinee-gateway.onrender.com/.well-known/agent-storefront.json),
+orders and one-click verification at
+[`/dashboard/`](https://vitrinee-gateway.onrender.com/dashboard/)). The free
+Render plan sleeps after ~15 minutes idle; the first request then takes ~50 s.
+
+**Status.** Vitrinee was built in its own repository and merged here with its
+full history on 2026-09-23 (`P-12`). It already sells to any standard x402
+client, and real purchases settle and anchor on testnet. AgentPey's own buyer
+cannot pay it yet: three small incompatibilities, all on Vitrinee's side, are
+the next milestone (`C-130`). Full walkthrough, in Spanish:
+[`docs/fase-6-agentguard-comercializacion/vitrinee/README.md`](docs/fase-6-agentguard-comercializacion/vitrinee/README.md).
+Manifest format:
+[`SPEC-agent-storefront.md`](docs/fase-6-agentguard-comercializacion/vitrinee/SPEC-agent-storefront.md).
+
 Everything below describes **Phase 1 — AgentPass**, which is complete and runs
 end to end. Its code lives at the root of this repo (`packages/`, `contracts/`);
 later phases add siblings there rather than parallel trees.

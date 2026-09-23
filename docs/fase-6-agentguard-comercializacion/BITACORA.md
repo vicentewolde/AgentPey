@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-22 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** · **Sigue:** sin hito asignado. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, sin mergear a `main`)** · **Sigue:** T99, que el comprador de AgentPey pueda pagarle a Vitrinee (`C-130`). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -222,6 +222,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T95 | Límite de tasa por API key en `/v1`: 120/min general, 10/min en las rutas que gastan o se conectan hacia afuera; el nivel sale del permiso y no hay ruta que se lo salte | ✅ cerrado 2026-09-20 · mergeado a `main` (`366dcf7`) · integración 48/48 (`C-127`) |
 | T96 | F9: RealOps deja de estar cableado a un solo comercio. Un `agentKind` nuevo (`bazaar_shopper`) con su propio Mandato compra en el bazaar del embajador, y una pantalla de catálogo muestra la tienda entera marcando cada ítem contra el permiso firmado — lo que queda fuera abre el diff literal del permiso que habría que firmar | ✅ cerrado 2026-09-22 · mergeado a `main` (`6e8503b`) (`C-128`) |
 | T97 | `pnpm run partner:key`: diagnosticar qué permisos le faltan a la clave de `/v1` en uso, y emitir una nueva **para el mismo partner** — porque `partner:create` crea un partner nuevo y los tenants están namespaceados por partner | ✅ cerrado 2026-09-22 · mergeado a `main` (`b978804`) (`C-129`) |
+| T98 | Vitrinee se fusiona en AgentPey con su historia completa (20 commits como ancestros reales, igual que AgentPass en `P-1`) y pasa a ser la forma en que un comercio real se suma sin escribir código. Corre desde la raíz con `pnpm run vitrinee:*`; toda la suite de AgentPey y la de Vitrinee en verde | ✅ cerrado 2026-09-23 · en `cc/t98-vitrinee`, **esperando revisión para mergear** (`P-12`, `C-130`) |
 
 ---
 
@@ -4427,3 +4428,63 @@ Revocar es lo único que rompe algo, así que pide el id exacto, pide `--yes`, y
 `pnpm run partner:key -- --issue`, guardar el secreto —se imprime una sola
 vez— y cargarlo en Render. Claude Code construye el mecanismo; las llaves son
 del usuario.
+
+## T98 — Vitrinee pasa a ser parte de AgentPey
+
+**Qué quedó funcionando, en palabras simples.** Vitrinee era un proyecto aparte:
+un servidor que convierte una tienda online real (hoy, una tienda Jumpseller) en
+un comercio al que un agente puede comprarle, cobrando en USDC sobre Stellar,
+creando el pedido de verdad en la tienda y dejando un recibo firmado que nadie
+puede falsificar. Se construyó en su propio repositorio porque las reglas del
+hackathon parecían exigir un repo nuevo. La organización confirmó que no, y el
+usuario decidió presentar **AgentPey**, con Vitrinee adentro.
+
+Desde hoy Vitrinee vive en este repositorio. **Es la forma en que un comercio
+real se suma a AgentPey sin escribir código.** No se copiaron archivos: los 20
+commits de Vitrinee quedaron como parte real de la historia de AgentPey, igual
+que se hizo con AgentPass al principio del proyecto. Cualquiera puede ver, en
+este mismo repo, cómo se construyó día a día.
+
+Todo se corre desde la misma carpeta que el resto de AgentPey, con comandos que
+empiezan con `vitrinee`: `pnpm run vitrinee` levanta el servidor de la tienda,
+`pnpm run vitrinee:buy` hace una compra de prueba, `pnpm run vitrinee:verify`
+comprueba un recibo contra la cadena. Se probó así, no solo se escribió:
+el recibo de la compra real del 23 de septiembre se verificó desde esta carpeta,
+y el servidor levantó con el catálogo real de la tienda Jumpseller.
+
+### Lo que todavía no funciona, y es lo que sigue
+
+**El agente de AgentPey todavía no le puede comprar a Vitrinee.** Hoy Vitrinee
+funciona con su propio cliente de prueba, pero el comprador de AgentPey habla un
+dialecto un poco distinto en tres puntos: cómo pregunta qué hay a la venta, cómo
+pide el precio, y desde qué tipo de cuenta paga. El tercero es el importante: si
+hoy AgentPey le pagara a Vitrinee, el pago se haría y **después** fallaría el
+recibo. Los tres se arreglan del lado de Vitrinee, para que agregar la tienda a
+AgentPey siga siendo una fila de configuración (`C-130`). Eso es T99.
+
+### Tres cuidados que vale la pena conocer
+
+**Los secretos de Vitrinee están en su propio archivo.** Los dos proyectos
+usaban el mismo nombre de variable para la llave de su agente, pero son cuentas
+distintas. Si compartieran archivo, el agente de prueba de Vitrinee firmaría con
+la llave del agente de AgentPey. Vitrinee ahora lee `.env.vitrinee.local`.
+
+**Se verificó que AgentPey no cambió.** Toda la suite de AgentPey pasa, igual
+que antes. Y ninguna dependencia de AgentPey cambió de versión: se comprobó una
+por una, no a ojo.
+
+**El servidor público de Vitrinee todavía se despliega desde el repo viejo.**
+Por eso ese repo **no** se archiva todavía. Moverlo es un hito aparte (T102).
+
+### Evidencia técnica
+
+- Decisión estructural completa, con los cinco desvíos de `P-1` y sus motivos,
+  en `docs/DECISIONES.md` → `P-12`. El papel de Vitrinee, el plan de
+  integración y las tres incompatibilidades, en `DECISIONES.md` → `C-130`.
+- Salidas crudas en [`evidencia/T98.md`](evidencia/T98.md).
+- Documentación de Vitrinee en [`vitrinee/`](vitrinee/). Para trabajar en ella:
+  [`vitrinee/INSTRUCCIONES.md`](vitrinee/INSTRUCCIONES.md).
+- `typecheck` limpio en todo el repo, suite completa de AgentPey en verde, los
+  109 tests de Vitrinee en verde, y los tres conjuntos de tests de Rust (11 +
+  22 + 32) en verde.
+

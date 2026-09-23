@@ -5803,3 +5803,58 @@ Pendiente:
   quitar `/api/session/*`; rotar los dos secretos; `createPurchase` en el SDK;
   tarjeta de gasto por agente; limitar por IP los pedidos sin autenticar;
   `C-122` abierta.
+
+## 2026-09-23 — cc/t98-vitrinee
+
+Agente: Claude Code (sesión abierta desde `~/dev/Vitrinee`, trabajando sobre
+`~/dev/AgentPay` con rutas absolutas).
+
+Qué: **T98** (`P-12`, `C-130`) — **Vitrinee se fusionó en AgentPey con su
+historia completa** y pasa a ser una funcionalidad suya: la forma en que un
+comercio real se suma sin escribir código. Decisión del usuario: la entrega al
+hackathon "Find Your Way" es AgentPey, y **manda AgentPey**.
+
+- Antes de abrir la rama: se pusheó `main` (T97, que el log anterior dejaba
+  pendiente). `main` local = `origin/main` = `66f84f8`.
+- Método de `P-1`: en el repo Vitrinee, rama **local** `agentpey-merge`
+  (`7f08999`, no pusheada) que solo reubica archivos. Después
+  `git merge --allow-unrelated-histories` acá (`f1b1364`), **sin conflictos**:
+  los 20 commits de Vitrinee son ancestros reales.
+- Integración (`125e2ef`): scripts `vitrinee:*` en la raíz, referencias de
+  TypeScript, eslint solo para Vitrinee, `.vitrinee/` ignorado,
+  `receipt-registry` excluido de `contracts/Cargo.toml`.
+- Documentación: `P-12`, `C-130`, bitácora y `evidencia/T98.md` de la Fase 6,
+  `CLAUDE.md` (fila en "Lee esto", alcance, sección "Vitrinee: lo
+  imprescindible", comandos), `AGENTS.md` (zonas de Vitrinee que Codex no toca),
+  `README.md` (sección en inglés), `ROADMAP.md` §4.6.
+- Local, no versionado: `.env.vitrinee.local` (modo 600, copiado del
+  `.env.local` del repo viejo) y `.vitrinee/` (pedidos y último recibo).
+
+Verificado (no por lectura): `pnpm typecheck` y `pnpm test` de todo AgentPey
+en verde; `pnpm run vitrinee:check` 109/109; `cargo test` 11 + 22 + 32;
+`pnpm run vitrinee:verify` del recibo real del 23/09 en verde desde esta
+carpeta; el gateway levantó contra la tienda Jumpseller real leyendo las
+cuentas de `.env.vitrinee.local`. Ninguna dependencia de AgentPey cambió de
+versión en el lockfile.
+
+Por qué no se delegó a Codex: estructura del repo, llaves del merchant, firma
+de recibos y narrativa de la entrega. `CLAUDE.md` § 6 y `P-10`.
+
+Pendiente:
+- **Merge de T98 a `main`** — esperando revisión del usuario (regla 1).
+- **T99** (`C-130`): que el comprador de AgentPey pueda pagarle a Vitrinee.
+  Tres arreglos del lado de Vitrinee: discovery en formato `ServiceCard`,
+  checkout por `GET`, pagador `C…` (hoy el pago se liquidaría y **después**
+  fallaría el recibo). Primero probar contra el facilitator un settlement
+  desde un `policy_rail`.
+- **T100–T102**: venue en `venues.json` + `agentKind` en RealOps; compra real
+  desde `POST /v1/purchases`; deploy desde el `render.yaml` de AgentPey
+  (respetando `envKeys`/`env-filter.ts`, `C-88`, `C-114`).
+- **Del usuario:** pagar un mes de Jumpseller (`VT-21`) para desbloquear
+  `POST /orders.json`; **no archivar ni borrar** `vicentewolde/Vitrinee`: el
+  deploy vivo sale de su rama `day-3-jumpseller-catalog`; abrir las próximas
+  sesiones de Claude Code en `~/dev/AgentPay`.
+- Observaciones sin arreglar, anteriores a T98: `cargo test` en `contracts/`
+  reescribe 30 snapshots de `policy-rail` (valor aleatorio por corrida; se
+  restauraron); `ROADMAP.md:460` tiene un link roto a `../docs/DECISIONES.md`.
+- Sin tocar: `.codex/` y `logo agentpey/`, sin trackear, ya estaban.

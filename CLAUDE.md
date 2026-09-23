@@ -35,6 +35,7 @@ imposible de saltar por prompt injection.
 | [docs/fase-6-agentguard-comercializacion/PLATAFORMA-PARTNERS.md](docs/fase-6-agentguard-comercializacion/PLATAFORMA-PARTNERS.md) | **El plano de la plataforma para partners** (T37): modelo de entidades, brechas contra el repo real, plan de diez fases con puertas de aprobación |
 | [docs/fase-6-agentguard-comercializacion/PILOTO-F9.md](docs/fase-6-agentguard-comercializacion/PILOTO-F9.md) | **Propuesta de F9, el piloto externo público** (T72): arquitectura de RealOps/SignalDesk/AgentPey, la regla "RealOps pide, AgentPey decide", los hitos T73–T83 y las nueve decisiones que esperan al usuario |
 | [docs/fase-6-agentguard-comercializacion/DECISIONES.md](docs/fase-6-agentguard-comercializacion/DECISIONES.md) | Decisiones de la Fase 6 (prefijo `C-`) |
+| [docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md](docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md) | **Vitrinee**, fusionada en T98 (`P-12`): cómo un comercio real se suma a AgentPey sin escribir código. **Léelo antes de tocar cualquier `*vitrinee*`** — tiene reglas propias (secretos, prefijo `VT-`, contrato aparte) |
 | [docs/AGENT_LOG.md](docs/AGENT_LOG.md) | **Leer siempre, antes de tocar nada.** Bitácora corta compartida entre Claude Code y Codex: qué se hizo, en qué branch, qué queda pendiente |
 | [docs/fase-0-fundamentos/metodologia-claude-codex.html](docs/fase-0-fundamentos/metodologia-claude-codex.html) | Resumen visual del protocolo de coordinación Claude Code ↔ Codex — roles, el ciclo vía git, qué hace el usuario en cada punto. Abrir en el navegador |
 | [README.md](README.md) | Cómo correr el proyecto |
@@ -67,7 +68,7 @@ imposible de saltar por prompt injection.
    integrable por terceros (multi-tenancy, superficie de API, publicación de
    paquetes) entró en alcance el 2026-09-09, a pedido explícito del
    usuario** — Fase 6, ver `docs/DECISIONES.md` → `P-6` y
-   `docs/fase-6-agentguard-comercializacion/`. Sigue fuera: AgentGuard
+   `docs/fase-6-agentguard-comercializacion/`. **Vitrinee —la puerta del vendedor para comercios reales— y la entrega de AgentPey al hackathon "Find Your Way" entraron en alcance el 2026-09-23, a pedido explícito del usuario** — ver `docs/DECISIONES.md` → `P-12` y `docs/fase-6-agentguard-comercializacion/DECISIONES.md` → `C-130`. Sigue fuera: AgentGuard
    (monitoreo/kill-switch en tiempo de ejecución) sin alcance definido; la
    cohorte de alumnos, comunidad aliada, demo grabable y formulario de Build
    Award, sin prioridad desde `P-3`; cualquier cosa en mainnet o con rieles
@@ -146,6 +147,26 @@ dos herramientas pise trabajo de la otra ni pierda contexto:
 - Sin credenciales hardcodeadas. Todo por `.env.local`; `.env.example` versionado.
 - Cada README documenta el **comando exacto**, no una descripción del comando.
 
+## Vitrinee: lo imprescindible
+
+Vitrinee es una funcionalidad de AgentPey desde T98: la forma en que un comercio
+real (Jumpseller hoy) se suma sin escribir código. **Manda este archivo**; las
+reglas propias de Vitrinee están en
+[`docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md`](docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md).
+Las cinco que más fácil se rompen:
+
+1. **Secretos en `.env.vitrinee.local`, nunca en `.env.local`.** Los dos archivos
+   tienen `AGENT_SECRET_KEY` para cuentas distintas.
+2. **Decisiones de Vitrinee con prefijo `VT-`**, no `V-`, que es de la Fase 5.
+3. **`contracts/receipt-registry` es su propio workspace de Cargo** (soroban-sdk
+   28, el resto 27). No se agrega a `contracts/Cargo.toml` ni se redespliega sin
+   permiso del usuario.
+4. **Dinero en enteros** (`bigint`, unidades atómicas) en todo Vitrinee. Sus
+   errores son `VitrineeError`, no `AgentPassError`: unificarlos es una decisión
+   que se propone, no se toma.
+5. **El deploy vivo de Vitrinee sale todavía del repo viejo**
+   `vicentewolde/Vitrinee`. No archivarlo ni borrarlo hasta T102 (`C-130`).
+
 ## Comandos
 
 ```bash
@@ -179,6 +200,31 @@ pnpm run test:integration
 ```bash
 cd contracts && cargo test
 ```
+
+Vitrinee, desde la misma raíz:
+
+```bash
+pnpm run vitrinee:check
+```
+
+```bash
+pnpm run vitrinee
+```
+
+```bash
+pnpm run vitrinee:buy -- "compra un pack de stickers"
+```
+
+```bash
+pnpm run vitrinee:verify
+```
+
+```bash
+pnpm run vitrinee:test:contracts
+```
+
+`vitrinee:check` es typecheck + lint + tests de Vitrinee, sin red. `pnpm test`
+de AgentPey ya incluye los tests de Vitrinee.
 
 `rustup` viene de Homebrew y es keg-only; hace falta
 `export PATH="/opt/homebrew/opt/rustup/bin:$PATH"` para que exista `cargo`.

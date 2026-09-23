@@ -5559,3 +5559,85 @@ producción, guardar el secreto —se imprime una sola vez— y cargarlo en Rend
 Claude Code construye el mecanismo; las llaves son del usuario. Si Claude Code
 pudiera emitirse credenciales de producción solo, "RealOps pide, AgentPey
 decide" sería una frase y no una propiedad.
+
+---
+
+### C-130 · Vitrinee es cómo un comercio real se suma a AgentPey: entra como venue de `F7`, y la compatibilidad la pone Vitrinee · `Pendiente`
+**Fecha:** 2026-09-23 · **Hito:** T98 (decisión); la integración, desde T99 · Del usuario la dirección; de Claude Code la forma
+
+**El papel.** AgentPey es el **comprador** con reglas: identidad, Mandato,
+`policy_rail`, vault. Hasta hoy compraba en comercios x402 de servicios digitales
+(el bazaar del embajador, SignalDesk). Vitrinee, fusionada en `P-12`, es la
+**puerta del vendedor**: convierte una tienda de e-commerce real (Jumpseller hoy)
+en un comercio x402 con catálogo legible por máquina, pedido real en la
+plataforma y recibo firmado y anclado. Juntas, una compra de un agente de
+AgentPey deja **evidencia de los dos lados**: el vault prueba que el comprador
+estaba autorizado, y el recibo de Vitrinee prueba que el vendedor vendió.
+
+**La frase correcta, porque la intuitiva está mal.** La API de partners `/v1`
+es del lado comprador (`tenants`, `agents`, `mandates`, `consent-sessions`,
+`purchases`): un partner es una empresa cuyos usuarios tienen agentes. **Una
+tienda no se conecta por `/v1`.** Lo que se demuestra es:
+
+> Una tienda Jumpseller real se vuelve comprable por agentes **sin código de
+> ningún lado**: la tienda solo le entrega sus credenciales de API a Vitrinee,
+> y AgentPey la agrega como comercio con una fila en `venues.json` (`F7`, sin
+> tocar ningún `.ts`). Un partner llama a `POST /v1/purchases` y el agente
+> compra un producto físico de verdad.
+
+Así quedan demostradas las dos promesas de "sin código propio" a la vez: la del
+partner, que se integra por API, y la del comercio, que se agrega por
+configuración.
+
+**Por qué la compatibilidad va del lado de Vitrinee.** Hoy el comprador de
+AgentPey **no puede** pagarle a Vitrinee. Hay tres incompatibilidades,
+verificadas leyendo el código de los dos lados:
+
+1. **Discovery.** `apps/agent/src/catalog/x402-catalog.ts` lee
+   `GET /api/discovery/search` en formato `ServiceCard` del stellar-bazaar.
+   Vitrinee expone `/discovery/resources` en el formato de `@x402/extensions`
+   (`VT-17`).
+2. **Método.** `requestPaymentChallenge` (`apps/agent/src/payment/x402.ts`) pide
+   el 402 con un `GET` sin body. El checkout de Vitrinee es `POST` con JSON.
+3. **Pagador `C…`.** AgentPey paga desde un `policy_rail`, una cuenta contrato.
+   El recibo de Vitrinee valida `payerAccount` solo como `G…`
+   (`packages/vitrinee-core/src/receipt.ts`). El pago se liquidaría y **después**
+   fallaría la firma del recibo: el peor momento posible para fallar.
+
+Arreglarlas en AgentPey rompería la promesa de `F7` para este comercio: habría
+que escribir un adaptador de catálogo y un camino de pago nuevos. Arreglarlas en
+Vitrinee la mantiene, y además le sirven a cualquier cliente x402: un checkout
+por `GET` es lo que usan casi todos los ejemplos de x402, y aceptar un pagador
+`C…` le sirve a cualquier smart account.
+
+**La dirección de despacho.** Un pedido físico la necesita y el comprador de
+AgentPey compraba servicios digitales. El camino ya existe: el `ServiceCard`
+declara sus `input`, RealOps arma con ellos un formulario por producto y los
+manda como `route_params` (T96). Vitrinee tiene que declarar `quantity`, nombre,
+dirección, ciudad y región como `input` de su `ServiceCard`.
+
+**Plan, un hito cada uno, parando al cierre de cada uno (regla 1):**
+
+- **T99** · Compatibilidad en Vitrinee: `/api/discovery/search` en formato
+  `ServiceCard` con sus `input`, checkout también por `GET` con `route_params`, y
+  pagador `C…` aceptado de punta a punta. Antes de escribir código, probar contra
+  el facilitator que un settlement desde un `policy_rail` a Vitrinee funciona.
+- **T100** · Vitrinee como venue: fila en `venues.json` con
+  `scripts/register-venue.ts`, y un `agentKind` en RealOps con su grant (venue,
+  productos, `payTo` del merchant). Toca la forma del grant firmado: se queda en
+  Claude Code (`P-10`, precedente `B-25`).
+- **T101** · Compra real de punta a punta desde `POST /v1/purchases` hasta el
+  panel de Jumpseller. Depende de que el usuario pague el plan de Jumpseller
+  (`VT-21`): el trial responde `403` a `POST /orders.json`.
+- **T102** · Deploy de Vitrinee desde el `render.yaml` de AgentPey, y recién
+  entonces archivar el repo viejo (`P-12`). Ojo: las apps del piloto corren en
+  **un solo** servicio de Render con un único juego de secretos, y
+  `apps/gateway/src/hosts.ts` (`envKeys`) y `env-filter.ts` deciden qué claves
+  recibe cada una (`C-88`, `C-114`). La llave de firma de recibos de Vitrinee no
+  puede quedar al alcance de otra app, ni al revés. Decidir si Vitrinee entra a
+  ese servicio o va en uno propio es parte del hito.
+
+**Alternativa descartada: presentar Vitrinee y AgentPey como dos proyectos.** El
+formulario del hackathon pide un solo repo. Además, cada mitad sola cuenta media
+historia: AgentPey sin comercio real compra servicios de prueba, y Vitrinee sin
+AgentPey vende a un script de 40 líneas sin reglas de gasto.

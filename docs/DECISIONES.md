@@ -517,3 +517,85 @@ nombre e identidad visual definitivos. Descartada por el mismo motivo que
 `P-8`/`P-9` — el blast radius (repo, paquetes publicados, servicio
 desplegado) amerita una sesión propia con el usuario presente, no
 encadenarla a la revisión de un kit de marca.
+
+---
+
+### P-12 · Vitrinee se fusiona en AgentPey con su historia completa, como funcionalidad de AgentPey · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T98 · Decidido por el usuario; la forma, de Claude Code
+
+**Qué pasó.** Vitrinee se construyó como repo propio
+(`github.com/vicentewolde/Vitrinee`, 22–23 de septiembre) porque el brief del
+hackathon "Find Your Way" (Tellus, Stellar) pedía un repo nuevo, creado después
+del 14 de septiembre. La organización confirmó después que un proyecto existente
+califica. El usuario decidió que **la entrega es AgentPey**, y que Vitrinee pasa
+a ser una funcionalidad suya: **la forma en que un comercio real se suma a
+AgentPey sin escribir código**. Regla explícita del usuario: **manda AgentPey**.
+
+**Cómo se fusionó: igual que AgentPass en `P-1`.** Los 20 commits de Vitrinee
+son ancestros reales de la historia (`git merge --allow-unrelated-histories`,
+merge `f1b1364`), no una copia de archivos. Antes del merge, un commit en el lado
+de Vitrinee (`7f08999`) movió cada archivo a su lugar definitivo, así que el
+merge no tuvo ningún conflicto. El código queda como **hermanos**, no como
+carpeta paralela, que es lo que `P-1` exige:
+
+| Antes (repo Vitrinee) | Ahora (AgentPey) |
+|---|---|
+| `packages/{core,adapters,anchor,gateway}` | `packages/vitrinee-*` |
+| `apps/{agent,console,dashboard}` | `apps/vitrinee-*` |
+| `contracts/` (workspace de Cargo) | `contracts/receipt-registry/` |
+| `scripts/` | `scripts/vitrinee/` |
+| `deployments/testnet.json` | `deployments/vitrinee-testnet.json` |
+| `docs/`, `README.md`, `CLAUDE.md`, el brief | `docs/fase-6-agentguard-comercializacion/vitrinee/` |
+| `.env.local` | `.env.vitrinee.local` |
+| `pnpm gateway`, `pnpm demo:buy`, … | `pnpm run vitrinee`, `pnpm run vitrinee:buy`, … |
+
+**Cinco desvíos respecto de `P-1`, cada uno con su motivo:**
+
+1. **Secretos en `.env.vitrinee.local`, no en `.env.local`.** Los dos proyectos
+   usan `AGENT_SECRET_KEY` para cuentas **distintas**. Compartir el archivo haría
+   que el agente de prueba de Vitrinee firmara con la llave del agente de
+   AgentPey. El patrón `.env.*.local` que AgentPey ya ignora lo cubre.
+2. **`deployments/vitrinee-testnet.json` aparte.** `P-1` quiere un solo archivo de
+   despliegue. Pero el script de Vitrinee que lo escribe reemplaza el archivo
+   entero con su propio esquema: sobre el de AgentPey, borraría los contratos de
+   AgentPey. Unificarlos exige primero cambiar ese script; queda anotado.
+3. **`receipt-registry` es su propio workspace de Cargo**, excluido de
+   `contracts/Cargo.toml`. Se desplegó compilado con `soroban-sdk` 28.0.0; los
+   contratos de AgentPey fijan 27.0.6. Dos SDK en un solo lockfile re-resolverían
+   el grafo de los otros contratos, y recompilarlo en otro entorno podría cambiar
+   el wasm que ya está vivo en testnet.
+4. **Prefijo `VT-` para las decisiones de Vitrinee.** Usaban `V-`, que en AgentPey
+   es de la Fase 5 (MandateVault). Se renumeró uno a uno (`V-7` → `VT-7`) en el
+   código y en los documentos. Los mensajes de commit anteriores a la fusión
+   siguen diciendo `V-n`: la historia no se reescribe.
+5. **Lint y CI solo para Vitrinee.** Vitrinee corría eslint y GitHub Actions;
+   AgentPey no tiene ninguno de los dos. Encenderlos para todo el repo sería
+   cambiar la forma de trabajar de AgentPey como efecto secundario de una
+   fusión. `eslint.config.mjs` y `.github/workflows/vitrinee.yml` están
+   acotados a las rutas de Vitrinee. Extenderlos es otra decisión.
+
+**Lo que no cambió.** Los paquetes siguen llamándose `@vitrinee/*` (renombrarlos
+es cosmético y tocaría cada import). Vitrinee sigue usando `VitrineeError` y no
+`AgentPassError`: unificar los errores es una decisión aparte, que no se toma sin
+proponerla. **Ninguna dependencia de AgentPey cambió de versión** con el nuevo
+lockfile, verificado versión por versión.
+
+**Lo que queda en el repo viejo, a propósito.** El deploy vivo
+(`vitrinee-gateway.onrender.com`) sigue desplegándose desde
+`vicentewolde/Vitrinee`, rama `day-3-jumpseller-catalog`. Moverlo al
+`render.yaml` de AgentPey es un hito aparte: agregar un servicio a ese blueprint
+puede crear uno nuevo en Render con variables vacías. **Hasta entonces, no
+archivar ni borrar el repo Vitrinee.**
+
+**Alternativa descartada: traer Vitrinee como una carpeta `vitrinee/` aislada**
+con su propio workspace (`git subtree add`). Era lo más rápido y lo que Claude
+Code propuso primero, antes de leer `P-1`. Descartada porque es exactamente la
+"carpeta paralela" que `P-1` prohíbe, y porque aislaría a Vitrinee justo de lo
+que tiene que compartir con AgentPey: el workspace, el comprador de `apps/agent`
+y la narrativa de una sola pila.
+
+**Otra alternativa descartada: fusionar sin reubicar antes.** Habría producido
+conflictos en `packages/core`, `apps/agent`, `apps/gateway`, `contracts/`,
+`deployments/testnet.json`, `docs/DECISIONES.md` y todos los archivos de la raíz,
+resueltos a mano en medio de un merge. Reubicar primero en un commit revisable
+deja el merge limpio y cada decisión de ruta visible por separado.

@@ -549,6 +549,15 @@ tenant fondeado por el propio principal, elegido entre cuatro alternativas
 (`C-20`). Sigue sin definir el alcance de AgentGuard, y sigue vigente que
 nada de esto cruza a mainnet.
 
+**Desde T98 (2026-09-23) la Fase 6 incluye Vitrinee**, fusionada con su
+historia completa como AgentPass en `P-1` (ver `docs/DECISIONES.md` → `P-12`).
+Vitrinee es la **puerta del vendedor**: la forma en que un comercio real
+(Jumpseller hoy) se suma a AgentPey sin escribir código. Entró en alcance a
+pedido explícito del usuario, junto con la entrega de AgentPey al hackathon
+"Find Your Way" (Tellus, Stellar). El plan para que el comprador de AgentPey le
+compre de punta a punta es T99–T102 (`C-130`); su documentación vive en
+[docs/fase-6-agentguard-comercializacion/vitrinee/](docs/fase-6-agentguard-comercializacion/vitrinee/).
+
 **Texto original de esta sección, vigente para la parte de AgentGuard —
 todavía sin alcance definido.** Esta fase existe en el plan por una razón
 distinta a las anteriores: para que quede escrito, desde ahora, que **no se
