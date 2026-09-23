@@ -90,11 +90,31 @@ const BRIEF_STEMS = ["informe", "report", "brief", "mercado", "market"];
  * own: a vocabulary that matches too much stops refusing, and refusing is the
  * whole job.
  */
-const CREDIT_STEMS = ["credito", "credit", "paquete", "pack"];
+const CREDIT_STEMS = ["credito", "credit"];
 /** The bazaar's swap risk quote. `riesgo`/`risk` alone would be too broad, so the pair of ideas is what matches. */
 const SWAP_STEMS = ["swap", "cotizacion", "quote"];
 /** The bazaar's video scriptwriter. `script` also covers `scriptwriter`; `guion` covers `guiones`. */
 const SCRIPT_STEMS = ["video", "guion", "script", "scriptwriter"];
+
+/**
+ * The real store behind Vitrinee (T100). One row per product, in both
+ * languages, by what the thing *is*, never by the store's brand words:
+ * "Cordillera" names both the hoodie and the stickers, so it names neither.
+ *
+ * `pack` and `paquete` used to mean the credits on their own. They cannot any
+ * more: "compra un pack de stickers" is the sentence the store's own demo
+ * uses, and with `pack` in both rows it named two products, which is naming
+ * none. Same narrowing as `ai` in T96, same reason. Every credits sentence
+ * the tests were written from still reads, because each also says credits.
+ * `polera` and `poleron` are different garments in Chile and neither is a
+ * prefix of the other, which is what keeps the two rows apart.
+ */
+const HOODIE_STEMS = ["hoodie", "poleron", "sudadera"];
+const TSHIRT_STEMS = ["polera", "camiseta", "tshirt", "shirt"];
+const BEANIE_STEMS = ["gorro", "beanie"];
+const COFFEE_STEMS = ["cafe", "coffee"];
+const BOTTLE_STEMS = ["botella", "bottle", "termo", "thermos"];
+const STICKER_STEMS = ["sticker", "calcomania", "pegatina"];
 
 function namesAny(tokens: readonly string[], stems: readonly string[], exact: readonly string[] = []): boolean {
   return tokens.some((token) => exact.includes(token) || stems.some((stem) => token.startsWith(stem)));
@@ -121,6 +141,14 @@ const VOCABULARY: readonly ProductVocabulary[] = [
   { kind: "ai_credits", productId: "signaldesk:ai-credits-1000", stems: CREDIT_STEMS },
   { kind: "bazaar_shopper", productId: "swap-risk-quote", stems: SWAP_STEMS },
   { kind: "bazaar_shopper", productId: "ai-video-scriptwriter", stems: SCRIPT_STEMS },
+  // Jumpseller's own product ids for vitrinee.jumpseller.com (T100). They
+  // need a shipping address, so a sentence only ever leads to the card.
+  { kind: "vitrinee_shopper", productId: "37282902", stems: HOODIE_STEMS },
+  { kind: "vitrinee_shopper", productId: "37282997", stems: TSHIRT_STEMS },
+  { kind: "vitrinee_shopper", productId: "37282998", stems: BEANIE_STEMS, exact: ["hat"] },
+  { kind: "vitrinee_shopper", productId: "37282999", stems: COFFEE_STEMS },
+  { kind: "vitrinee_shopper", productId: "37283000", stems: BOTTLE_STEMS },
+  { kind: "vitrinee_shopper", productId: "37283001", stems: STICKER_STEMS },
 ];
 
 const MAX_INSTRUCTION_LENGTH = 500;
@@ -199,8 +227,9 @@ export function interpretInstruction(instruction: string): Interpretation {
 
   if (entry.kind !== "market_brief") {
     // The bazaar's products need parameters a sentence does not reliably carry
-    // (which pair, which tone, how long). Reading the product is as far as this
-    // goes; the form asks for the rest rather than inventing it.
+    // (which pair, which tone, how long), and the store's need a shipping
+    // address. Reading the product and the quantity is as far as this goes;
+    // the form asks for the rest rather than inventing it.
     return { kind: agentKindSchema.parse(entry.kind), productId: entry.productId, quantity };
   }
 

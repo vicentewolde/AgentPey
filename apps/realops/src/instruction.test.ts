@@ -110,6 +110,46 @@ describe("interpretInstruction", () => {
     expect(interpretInstruction("compra creditos de IA")).toMatchObject({ kind: "ai_credits" });
   });
 
+  /**
+   * T100. The real store's six products are typeable, in both languages, each
+   * as its own Jumpseller id and with the quantity the sentence names.
+   */
+  it("reads the store's products, each as its own product id", () => {
+    const read = (instruction: string) => {
+      const { kind, productId, quantity } = interpretInstruction(instruction);
+      return { kind, productId, quantity };
+    };
+    expect(read("compra un pack de stickers")).toEqual({ kind: "vitrinee_shopper", productId: "37283001", quantity: 1 });
+    expect(read("compra dos packs de stickers")).toEqual({ kind: "vitrinee_shopper", productId: "37283001", quantity: 2 });
+    expect(read("buy two sticker packs")).toEqual({ kind: "vitrinee_shopper", productId: "37283001", quantity: 2 });
+    expect(read("quiero un polerón")).toMatchObject({ productId: "37282902" });
+    expect(read("buy a hoodie")).toMatchObject({ productId: "37282902" });
+    expect(read("compra una polera talla L")).toMatchObject({ productId: "37282997" });
+    expect(read("buy a t-shirt")).toMatchObject({ productId: "37282997" });
+    expect(read("comprame un gorro de lana")).toMatchObject({ productId: "37282998" });
+    expect(read("buy a beanie")).toMatchObject({ productId: "37282998" });
+    expect(read("compra café de grano")).toMatchObject({ productId: "37282999" });
+    expect(read("buy some coffee")).toMatchObject({ productId: "37282999" });
+    expect(read("compra una botella térmica")).toMatchObject({ productId: "37283000" });
+    expect(read("buy a water bottle")).toMatchObject({ productId: "37283000" });
+  });
+
+  /**
+   * `pack` alone used to mean the credits. With the store's stickers sold by
+   * the pack, it names two products, so it names none; credits still read
+   * whenever the sentence says credits.
+   */
+  it("no longer treats a bare pack as naming the credits", () => {
+    const problemOf = (instruction: string) => (refusalFor(instruction) as { details: { problem: string } }).details.problem;
+
+    expect(problemOf("compra un pack")).toBe("no_product");
+    expect(interpretInstruction("compra un pack de creditos")).toMatchObject({ kind: "ai_credits" });
+    expect(interpretInstruction("buy a credit pack")).toMatchObject({ kind: "ai_credits" });
+    // The store's brand word names two of its products, so it names neither.
+    expect(problemOf("compra algo de la cordillera")).toBe("no_product");
+    expect(problemOf("compra un poleron y un gorro")).toBe("both_products");
+  });
+
   it("says why it did not understand, as a key the page puts into words", () => {
     const problemOf = (instruction: string) => (refusalFor(instruction) as { details: { problem: string } }).details.problem;
 

@@ -4740,3 +4740,21 @@ después si el video lo necesita.
   5 (era 4, el nuevo fija la fila real). `pnpm typecheck` y `pnpm test` de todo
   AgentPey en verde; `vitrinee:lint` limpio.
 - Salidas crudas en [`evidencia/T100.md`](evidencia/T100.md).
+
+### Después del merge, el mismo día: la tienda también se pide escribiendo
+
+El usuario aprobó T100, se mergeó a `main` (`9e4627b`) y pidió que las frases
+escritas reconozcan los productos de la tienda. Ahora "compra dos packs de
+stickers", "buy a hoodie" o "quiero un gorro de lana" llevan a la tarjeta de ese
+producto en el catálogo, con la cantidad ya puesta, y ahí se completa la
+dirección. La frase nunca compra sola: una compra física necesita una dirección
+que la frase no trae, y RealOps no la inventa.
+
+Un cambio que se nota: **"pack" solo ya no significa créditos de IA.** "Compra
+un pack de stickers" es justo la frase de la tienda, y con "pack" en los dos
+lados se leía como dos productos y se rechazaba. Las frases de créditos siguen
+funcionando porque todas dicen "créditos". Es el mismo recorte que T96 hizo con
+"IA". De paso se corrigió un texto viejo: el rechazo decía "pide los dos
+productos a la vez", y hace rato que hay más de dos.
+
+Rama `cc/t100-frases-tienda`. RealOps 175 tests (eran 171).

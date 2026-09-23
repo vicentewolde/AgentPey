@@ -921,7 +921,7 @@ export function chooseAgentPage(input: ChooseAgentInput): string {
 const PROBLEM_COPY: Readonly<Record<InstructionProblem, Bilingual>> = {
   empty: bilingual("You did not write an instruction", "No escribiste ninguna instrucción"),
   too_long: bilingual("The instruction is too long", "La instrucción es demasiado larga"),
-  both_products: bilingual("The instruction asks for both products at once", "La instrucción pide los dos productos a la vez"),
+  both_products: bilingual("The instruction asks for more than one product at once", "La instrucción pide más de un producto a la vez"),
   no_product: bilingual("I did not recognize any product in the instruction", "No reconocí ningún producto en la instrucción"),
   unknown_pair: bilingual("I only know XLM/USDC. Name the pair explicitly", "Solo conozco XLM/USDC. Indica el par explícitamente"),
 };
@@ -1012,7 +1012,7 @@ const VENUE_COPY: Readonly<Record<CatalogVenue, { readonly name: Bilingual; read
 };
 
 /** One input the merchant requires, as a form field. Never a money field: the price is the merchant's. */
-function inputField(card: CatalogCard, input: ResourceInput): string {
+function inputField(card: CatalogCard, input: ResourceInput, quantity = 1): string {
   const id = `${card.productId}-${input.name}`;
   const help =
     input.description === undefined
@@ -1022,7 +1022,7 @@ function inputField(card: CatalogCard, input: ResourceInput): string {
   // whole number of units, starting at one, that the agent signs for.
   if (input.name === QUANTITY_INPUT) {
     return `<label for="${escape(id)}">${tr(bilingual("Quantity", "Cantidad"))}</label>
-      <input id="${escape(id)}" name="param_${escape(input.name)}" type="number" min="1" max="20" step="1" value="1" required
+      <input id="${escape(id)}" name="param_${escape(input.name)}" type="number" min="1" max="20" step="1" value="${quantity}" required
              autocomplete="off" inputmode="numeric">`;
   }
   const type = input.type.toLowerCase() === "number" ? "number" : "text";
@@ -1033,7 +1033,7 @@ function inputField(card: CatalogCard, input: ResourceInput): string {
 }
 
 /** What a card offers, given how it stands against the signed permission. */
-function cardAction(card: CatalogCard, requestKey: string): string {
+function cardAction(card: CatalogCard, requestKey: string, quantity = 1): string {
   if (card.coverage.state === "outside") {
     return `<p class="push"><a class="button secondary" href="/catalogo/permiso?producto=${encodeURIComponent(card.productId)}">${tr(
       bilingual("See the permission this needs →", "Ver el permiso que esto necesita →"),
@@ -1059,7 +1059,7 @@ function cardAction(card: CatalogCard, requestKey: string): string {
   return `<form class="push" method="post" action="/instruccion">
       <input type="hidden" name="product_id" value="${escape(card.productId)}">
       <input type="hidden" name="request_key" value="${escape(requestKey)}">
-      ${fields.map((input) => inputField(card, input)).join("\n      ")}
+      ${fields.map((input) => inputField(card, input, quantity)).join("\n      ")}
       <button type="submit">${tr(bilingual("Ask the agent to buy it", "Pedirle al agente que lo compre"))}</button>
     </form>`;
 }
@@ -1074,9 +1074,10 @@ function coverageTag(card: CatalogCard): string {
   return `<span class="tag tag-refused">${tr(bilingual("outside the grant", "fuera del permiso"))}</span>`;
 }
 
-function catalogCardHtml(card: CatalogCard, requestKey: string): string {
+function catalogCardHtml(card: CatalogCard, requestKey: string, quantity = 1): string {
   const availability = AVAILABILITY_COPY[card.availability];
-  return `<div class="card stack">
+  // The id is the anchor a typed sentence lands on (`/catalogo#<product id>`).
+  return `<div class="card stack" id="${escape(card.productId)}">
       <div class="head-row"><h3>${tr(card.title)}</h3>${coverageTag(card)}</div>
       <p class="meta"><code>${escape(card.productId)}</code></p>
       <p>${tr(card.description)}</p>
@@ -1085,7 +1086,7 @@ function catalogCardHtml(card: CatalogCard, requestKey: string): string {
         `Precio publicado por el comercio <strong>${escape(card.declaredAmount)} ${escape(card.declaredAsset)}</strong>. AgentPey lo ignora y paga la factura del propio comercio, verificada contra tu Mandato.`,
       )}</p>
       ${availability === null ? "" : `<p class="meta">${tr(availability)}</p>`}
-      ${cardAction(card, requestKey)}
+      ${cardAction(card, requestKey, quantity)}
     </div>`;
 }
 
@@ -1095,6 +1096,8 @@ export interface CatalogInput {
   readonly bazaarError?: Bilingual;
   /** Why the Vitrinee store's section is missing, if it is (T100). */
   readonly vitrineeError?: Bilingual;
+  /** The product and quantity a typed sentence named, to open its card already filled in. */
+  readonly prefill?: { readonly productId: string; readonly quantity: number };
 }
 
 export function catalogPage(input: CatalogInput): string {
@@ -1118,7 +1121,9 @@ export function catalogPage(input: CatalogInput): string {
               : tr(bilingual("Nothing on offer here right now.", "No hay nada a la venta aquí ahora mismo."))
           }</p>`
         : `<div class="grid">
-    ${cards.map((card) => catalogCardHtml(card, requestKey)).join("\n    ")}
+    ${cards
+      .map((card) => catalogCardHtml(card, requestKey, input.prefill?.productId === card.productId ? input.prefill.quantity : 1))
+      .join("\n    ")}
   </div>`;
     return `<h2>${tr(copy.name)}</h2>
   <p class="lede">${tr(copy.note)}</p>

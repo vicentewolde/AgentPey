@@ -636,6 +636,19 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
      */
     if (method === "GET" && pathname === "/catalogo") {
       const { cards, bazaarError, vitrineeError } = await catalogFor(account);
+      // A typed sentence lands here with the product and quantity it named.
+      // Only a prefill: an unknown product or an odd number is ignored, never
+      // an error, because nothing is bought until the person sends the form.
+      const prefillProduct = url.searchParams.get("producto");
+      const prefillQuantity = Number(url.searchParams.get("cantidad"));
+      const prefill =
+        prefillProduct !== null &&
+        findCard(cards, prefillProduct) !== undefined &&
+        Number.isInteger(prefillQuantity) &&
+        prefillQuantity >= 1 &&
+        prefillQuantity <= MAX_FORM_QUANTITY
+          ? { productId: prefillProduct, quantity: prefillQuantity }
+          : undefined;
       sendHtml(
         response,
         200,
@@ -643,6 +656,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           cards,
           ...(bazaarError === undefined ? {} : { bazaarError }),
           ...(vitrineeError === undefined ? {} : { vitrineeError }),
+          ...(prefill === undefined ? {} : { prefill }),
         }),
       );
       return;
@@ -797,9 +811,12 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           // parameters (which pair, which tone, how long). Inventing them is
           // the guess `interpretInstruction` exists not to make, so the person
           // is sent to the card that asks.
+          // The quantity the sentence named travels with it, so the card opens
+          // with it already filled in; the person still sees and can change it.
           const card = findCard(cards, productId);
           if (card !== undefined && card.inputs.some((input) => !card.serverFilled.includes(input.name))) {
-            redirect(response, `/catalogo#${encodeURIComponent(productId)}`);
+            const query = new URLSearchParams({ producto: productId, cantidad: String(quantity) });
+            redirect(response, `/catalogo?${query.toString()}#${encodeURIComponent(productId)}`);
             return;
           }
         } catch (error) {

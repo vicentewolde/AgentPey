@@ -5850,8 +5850,19 @@ comercio como único `payTo`. Tres detalles con motivo propio:
 **Qué no cambia.** Ningún Mandato ya firmado: hay un kind nuevo, no uno
 modificado. El lector del catálogo es el mismo del bazaar
 (`createBazaarCatalog`), porque Vitrinee publica el mismo feed (`VT-24`); solo
-cambia la URL. Las frases escritas no reconocen los productos de la tienda: se
-compra desde la tarjeta, que es la que pide la dirección.
+cambia la URL.
+
+**Ajuste, 2026-09-23, después del merge de T100, a pedido del usuario: las
+frases escritas.** `interpretInstruction` reconoce los seis productos de la
+tienda por lo que son, en los dos idiomas (polerón/hoodie, polera/t-shirt,
+gorro/beanie, café/coffee, botella/bottle, sticker), nunca por la marca
+("Cordillera" nombra dos productos). Una frase lleva a la tarjeta con la
+cantidad que nombró (`/catalogo?producto=…&cantidad=…#…`) y no compra: la
+dirección la pone la persona. Para que "compra un pack de stickers" se lea,
+`pack` y `paquete` dejan de significar créditos por sí solos; las frases de
+créditos siguen leyéndose porque dicen "créditos". Descartado: que la frase
+compre directo con una dirección guardada, porque RealOps no guarda
+direcciones y no debería empezar a hacerlo para esto.
 
 **Alternativa descartada: no mostrar el campo de cantidad y comprar siempre
 uno.** Más simple, pero el video quiere poder pedir dos packs de stickers, y un

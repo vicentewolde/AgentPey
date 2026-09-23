@@ -488,6 +488,34 @@ describe("buying from the Vitrinee store (T100)", () => {
     expect(purchases).toHaveLength(before);
   });
 
+  /**
+   * A typed sentence names the product and the quantity but not the address,
+   * so it opens the card with the quantity filled in, and buys nothing yet.
+   */
+  it("takes a typed sentence to the store's card, with the quantity it named, and buys nothing", async () => {
+    const cookie = await signIn("frase-tienda@ejemplo.cl");
+    await signAgent(cookie, "vitrinee_shopper");
+    const before = purchases.length;
+
+    const typed = await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra dos packs de stickers" }, cookie));
+    expect(typed.status).toBe(302);
+    const location = typed.headers.get("location")!;
+    expect(location).toBe("/catalogo?producto=37283001&cantidad=2#37283001");
+    expect(purchases).toHaveLength(before);
+
+    const html = await (await fetch(`${baseUrl}${location.split("#")[0]}`, { headers: { cookie } })).text();
+    expect(html).toContain('id="37283001"');
+    expect(html).toMatch(/name="param_quantity" type="number" min="1" max="20" step="1" value="2"/);
+  });
+
+  it("ignores a prefill it cannot trust, and still draws the catalogue", async () => {
+    const cookie = await signIn("prefill-raro@ejemplo.cl");
+    await signAgent(cookie, "vitrinee_shopper");
+    const html = await (await fetch(`${baseUrl}/catalogo?producto=37283001&cantidad=999`, { headers: { cookie } })).text();
+    expect(html).toContain('id="37283001"');
+    expect(html).not.toContain('value="999"');
+  });
+
   /** A signed bazaar agent is another venue's permission: the store stays outside it. */
   it("does not let a bazaar agent buy at the store", async () => {
     const cookie = await signIn("bazaar-en-tienda@ejemplo.cl");
