@@ -5650,6 +5650,13 @@ a pedido del usuario), el crédito de un rail de tenant no alcanza para los
 precios reales, y `quantity` viaja dos veces. El plan de esta decisión no
 cambia.
 
+**Ajuste, 2026-09-23 (T100).** El deploy vivo de Vitrinee
+(`vitrinee-gateway.onrender.com`) sale del repo viejo y no tiene la
+compatibilidad de T99, así que la compra real de T101 no puede hacerse contra
+él. El orden pasa a **T100 → T102 → T101**, y archivar el repo viejo se vuelve
+un ticket aparte, bloqueado por T101. Dónde se despliega y en qué URL quedó
+decidido en `C-134`. El resto del plan no cambia.
+
 **Alternativa descartada: presentar Vitrinee y AgentPey como dos proyectos.** El
 formulario del hackathon pide un solo repo. Además, cada mitad sola cuenta media
 historia: AgentPey sin comercio real compra servicios de prueba, y Vitrinee sin
@@ -5758,3 +5765,100 @@ del Mandato de su agente. El respaldo sería exactamente lo que la persona
 firmó, pero toca custodia, es más trabajo del que entra antes del 29, y un rail
 no sigue a un Mandato nuevo: habría que desplegar otro. Queda anotada como la
 forma correcta a largo plazo.
+
+---
+
+### C-134 · Vitrinee entra al servicio único de Render, en `vitrinee.agentpey.com`, y el deploy va antes que la compra real · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T100 (decisión; la fila de `venues.json` ya la usa), se ejecuta en T102 · Del usuario; la forma, de Claude Code
+
+**Qué se decide.** Tres cosas que `C-130` dejaba abiertas para T102:
+
+1. **Dónde corre Vitrinee.** Como cuarto proceso del servicio único de Render
+   del piloto (`apps/gateway`, `C-88`, `C-114`), no en un servicio propio. Un
+   `AppTarget` más en `hosts.ts`, con su lista de `envKeys`: la llave de firma
+   de recibos (`MERCHANT_SIGNING_SECRET`) y la clave del facilitator llegan
+   solo al proceso de Vitrinee, y a ese proceso no llega ninguna llave de
+   AgentPey (`AGENT_SECRET_KEY`, `MASTER_MNEMONIC`, `ISSUER_SECRET_KEY`), igual
+   que hoy con SignalDesk.
+2. **En qué URL.** `https://vitrinee.agentpey.com`, un dominio más del plan
+   Starter que ya se paga; Render no cobra por dominios. La fila `vitrinee` de
+   `venues.json` ya la nombra (T100), porque un venue se resuelve por origen y
+   la fila tiene que decir la URL definitiva.
+3. **En qué orden.** T102 (el deploy) antes que T101 (la compra real). El
+   deploy vivo de hoy sale del repo viejo, rama `day-3`, y no tiene T99:
+   `/api/discovery/search` responde 404, así que el comprador de AgentPey no
+   puede pagarle. Archivar el repo viejo pasa a un ticket propio, bloqueado
+   por T101, porque no se apaga un deploy que funciona hasta que el nuevo probó
+   la compra.
+
+**Motivo.** El usuario prefirió `vitrinee.agentpey.com` "si se puede gratis con
+el mismo servicio que pago". Se puede: el servicio Starter admite más dominios
+sin costo y ya está caliente, que es lo que un video necesita; un servicio
+`free` aparte, como el de hoy, se duerme a los 15 minutos y arranca en frío. Y
+la separación de llaves que `C-130` exigía ya existe en este servicio por
+construcción: `env-filter.ts` copia a cada hijo solo los nombres de su lista.
+
+**Lo que se cede, dicho en voz alta.** Vitrinee comparte contenedor con
+AgentPey: el aislamiento es por variables de entorno de cada proceso, no por
+máquina. Es el mismo nivel que SignalDesk aceptó en `C-88`, y para un piloto en
+testnet alcanza; un comercio real en producción querría su propio servicio. Y
+los pedidos de Vitrinee viven en un archivo JSON (`ORDERS_FILE`) que en Render
+es efímero: un redeploy los pierde, igual que hoy. Pasarlos a Postgres queda
+anotado, no entra antes del 29.
+
+**Alternativa descartada: mantener el servicio `vitrinee-gateway` propio y
+apuntarlo a este repo, con `vitrinee.agentpey.com` como dominio.** Aísla por
+máquina y no toca `hosts.ts`, pero en plan `free` arranca en frío, y en Starter
+sería un segundo plan pago: justo lo que T86 eliminó. Y obliga a mantener dos
+juegos de secretos en dos servicios.
+
+**Otra alternativa descartada: hacer T101 con AgentPey y Vitrinee corriendo
+local y un túnel público.** Probaría la compra pero no el deploy, y la fila de
+`venues.json` tendría que nombrar la URL del túnel, que no es la del video.
+
+---
+
+### C-135 · El kind de Vitrinee en RealOps: seis productos, 3,00/3,00 por defecto, y la cantidad es la de la compra · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T100 · Recomendación de Claude Code, aceptada por el usuario
+
+**Qué se decide.** RealOps ofrece un cuarto `agentKind`, `vitrinee_shopper`
+("Comprador de la tienda"), cuyo grant nombra el venue `vitrinee:GC5ZY7…`, los
+**seis** ids de Jumpseller de la tienda, uno por uno, y la cuenta de cobro del
+comercio como único `payTo`. Tres detalles con motivo propio:
+
+1. **Los seis productos, no un subconjunto.** El catálogo de RealOps muestra la
+   tienda entera y marca cada tarjeta contra el permiso firmado; un producto
+   fuera de todo target se descarta en vez de dibujarse como prohibido para
+   siempre. Con los seis en el grant, todos se ven, y los que el rail no puede
+   pagar (todo menos los stickers, con 3 USDC) los rechaza el Mandato en el
+   momento de comprar, que es la demostración correcta: el permiso decide, no la
+   pantalla.
+2. **3,00/3,00 por defecto para este kind**, en vez de los 0,30/0,60 de los
+   otros tres. El producto más barato cuesta 1,0421053 USDC; con 0,30 el
+   permiso no cubriría nada. Y 3,00 es lo que cada rail de tenant nuevo recibe y
+   tiene grabado (`C-131`, `C-133`): proponer más sería proponer un Mandato que
+   el propio rail no puede honrar. Sigue siendo un punto de partida que la
+   persona cambia antes de firmar. Los otros kinds no cambian.
+3. **La cantidad se lee como la de la compra.** Vitrinee declara `quantity`
+   como `input` de su ruta y `C-132` hizo que AgentPey lo llene con la cantidad
+   firmada y rechace una copia distinta. RealOps toma el campo del formulario
+   (entero de 1 a 20, 1 si se deja vacío) como `quantity` de la compra y **no**
+   lo manda en `route_params`. Un solo número, en el lugar que se firma. Los
+   otros cuatro campos (nombre, dirección, ciudad, región) viajan como
+   `route_params`, de la persona, igual que los del bazaar.
+
+**Qué no cambia.** Ningún Mandato ya firmado: hay un kind nuevo, no uno
+modificado. El lector del catálogo es el mismo del bazaar
+(`createBazaarCatalog`), porque Vitrinee publica el mismo feed (`VT-24`); solo
+cambia la URL. Las frases escritas no reconocen los productos de la tienda: se
+compra desde la tarjeta, que es la que pide la dirección.
+
+**Alternativa descartada: no mostrar el campo de cantidad y comprar siempre
+uno.** Más simple, pero el video quiere poder pedir dos packs de stickers, y un
+campo que el comercio declara y RealOps esconde sería una decisión tomada por
+la persona sin decírselo.
+
+**Otra alternativa descartada: subir el default de los cuatro kinds a
+3,00/3,00.** Los de SignalDesk y el bazaar compran cosas de 0,001 a 0,25 USDC;
+proponerles diez veces más permiso del que necesitan iría contra lo que la
+pantalla de revisión existe para mostrar.

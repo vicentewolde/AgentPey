@@ -71,7 +71,7 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 
 | T | Método | M1 días | M2 alcance | M3 corregidas | M4 líneas/archivos | M5 rondas | M6 bloqueos | M7 claridad | M8 min | M9 control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T100 | ANTERIOR | | | | | | | | | |
+| T100 | ANTERIOR | | | | | | | 4 | 60 | |
 | T101 | ANTERIOR | | | | | | | | | |
 | T102 | ANTERIOR | | | | | | | | | |
 

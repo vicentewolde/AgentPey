@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** · **Sigue:** T100, Vitrinee como venue en `venues.json` y un `agentKind` en RealOps (`C-130`), Los tres puntos abiertos de T99 quedaron resueltos el mismo día: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23), así que T101 no tiene bloqueo externo. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", `C-134`, `C-135`; PR abierto)** · **Sigue:** T102 antes que T101 (reordenados el 2026-09-23, `C-134`): el deploy vivo de Vitrinee sale del repo viejo y no tiene la compatibilidad de T99, así que primero se despliega Vitrinee desde este repo en `vitrinee.agentpey.com`, como cuarto proceso del servicio único de Render, y recién después va la compra real. Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -224,6 +224,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T97 | `pnpm run partner:key`: diagnosticar qué permisos le faltan a la clave de `/v1` en uso, y emitir una nueva **para el mismo partner** — porque `partner:create` crea un partner nuevo y los tenants están namespaceados por partner | ✅ cerrado 2026-09-22 · mergeado a `main` (`b978804`) (`C-129`) |
 | T98 | Vitrinee se fusiona en AgentPey con su historia completa (20 commits como ancestros reales, igual que AgentPass en `P-1`) y pasa a ser la forma en que un comercio real se suma sin escribir código. Corre desde la raíz con `pnpm run vitrinee:*`; toda la suite de AgentPey y la de Vitrinee en verde | ✅ cerrado 2026-09-23 · mergeado a `main` (`9ecec52`) (`P-12`, `C-130`) |
 | T99 | Vitrinee habla el dialecto del comprador de AgentPey: discovery en formato `ServiceCard` con los datos de despacho como `input`, checkout también por `GET`, y pagador `C…` aceptado de punta a punta (recibo, lectura del pagador y el check de settlement, que era un cuarto punto de quiebre que `C-130` no listaba). Probado primero contra el facilitator y después de punta a punta en testnet, con código real de los dos lados | ✅ cerrado 2026-09-23 · mergeado a `main` (`24a2c1b`); después, el `resource.url` sin query en `cc/t99-resource-url` (`VT-22` a `VT-25`) |
+| T100 | Vitrinee como venue: fila `vitrinee` en `venues.json` agregada con `scripts/register-venue.ts` (que estaba roto desde T79 y se arregló), y en RealOps una tercera sección del catálogo leída en vivo de la tienda real más un cuarto `agentKind`, `vitrinee_shopper`, con grant propio (venue, seis productos, `payTo`), 3,00/3,00 por defecto y la cantidad leída como la de la compra (`C-132`). Ningún `.ts` del comprador cambió | ✅ cerrado 2026-09-23 · PR abierto contra `main` (`C-134`, `C-135`) |
 
 ---
 
@@ -4654,3 +4655,88 @@ sigue valiendo: la rechaza el permiso firmado, no el contrato. Lo que se cede:
 si el control del lado de AgentPey fallara, la red ya no atajaría el gasto a
 los 0,30, sino a los 3,00. La opción (b) queda anotada como la forma correcta a
 largo plazo.
+
+---
+
+## T100 · La tienda real ya está en el catálogo de RealOps · cerrado 2026-09-23, PR abierto
+
+**Qué quedó funcionando, en palabras simples.** Hasta hoy, AgentPey sabía
+comprarle a Vitrinee (T99) pero no sabía que la tienda existía: no estaba en
+su lista de comercios, y RealOps, que es donde una persona ve qué puede comprar
+su agente, no la mostraba. Ahora la tienda real de Jumpseller (Bazar
+Cordillera, conectada por Vitrinee) es un comercio más de AgentPey, agregado
+como una fila de configuración, y RealOps la muestra como una tercera sección
+del catálogo, con sus seis productos leídos en vivo, sus precios en USDC, y por
+cada uno la opción de ver y firmar exactamente el permiso que un agente
+necesitaría para comprarlo. Ese permiso nombra la tienda, sus seis productos y
+la cuenta donde cobra, y propone 3 USDC por compra y por día, que es lo que un
+rail de tenant nuevo puede pagar.
+
+Se probó en el navegador con RealOps corriendo local y el gateway de Vitrinee
+leyendo la tienda real de Jumpseller: la sección aparece después del bazaar,
+las seis tarjetas dicen "fuera del permiso" para una cuenta sin agentes, y la
+página del permiso muestra el grant literal con `vitrinee:GC5ZY7…`, los seis
+ids y 3,00/3,00.
+
+### El script de alta de comercios estaba roto
+
+`scripts/register-venue.ts`, el que hace verdad la promesa de "un comercio es
+una fila, no código", escribía el campo `contractId`. Ese campo se renombró a
+`address` en T79, cuando entró SignalDesk cobrando en una cuenta `G…`, y el
+script nunca se actualizó: desde entonces cualquier uso fallaba con
+`InvalidVenueRegistry` antes de escribir nada. Se arregló (flag `--address`), se
+corrió de verdad para agregar la fila de Vitrinee, y se comprobó contra una
+copia del registro que un slug repetido y un flag desconocido se rechazan sin
+tocar el archivo.
+
+### La fila apunta a donde va a vivir Vitrinee, no a donde vive hoy
+
+Un comercio se resuelve por origen: la URL de la fila tiene que ser la del
+deploy que va a atender las compras. Y el deploy vivo de hoy
+(`vitrinee-gateway.onrender.com`) sale del repo viejo, sin la compatibilidad de
+T99: `/api/discovery/search` responde 404. Con eso, la compra real de T101 no
+podía hacerse contra ese deploy, y T102 (el deploy desde este repo) estaba
+bloqueado por T101. Era circular. Decidiste la opción (a): T102 pasa antes que
+T101, archivar el repo viejo se vuelve un ticket aparte bloqueado por T101, y
+Vitrinee se despliega en `vitrinee.agentpey.com` como cuarto proceso del
+servicio único de Render, con su llave de firma aislada igual que las de
+SignalDesk (`C-134`). La fila ya nombra esa URL.
+
+### La cantidad viaja una sola vez
+
+Vitrinee pide `quantity` como dato de su ruta, y `C-132` dejó que AgentPey lo
+llene con la cantidad de la compra. RealOps ahora lee ese campo como la
+cantidad de la compra (1 a 20, con 1 por defecto) y **no** lo manda como
+parámetro de ruta: un solo número, en el lugar que se firma. Una cantidad
+inválida se rechaza antes de pedirle nada a nadie. Los otros cuatro campos
+(nombre, dirección, ciudad, región) siguen siendo de la persona y viajan como
+`route_params`, igual que los del bazaar.
+
+### Lo que no cambió
+
+Ningún `.ts` de `apps/agent` ni de `apps/web`: la tienda entró por
+`venues.json`, que es lo que `C-130` quería demostrar. Ningún Mandato ya
+firmado cambia: hay un kind nuevo, no un kind modificado. Las frases escritas
+("compra un pack de stickers") no reconocen los productos de la tienda; se
+compra desde la tarjeta, que es la que pide la dirección. Se puede agregar
+después si el video lo necesita.
+
+### Evidencia técnica
+
+- Decisiones nuevas: [`C-134`](DECISIONES.md) (Vitrinee en el servicio único,
+  en `vitrinee.agentpey.com`, y el orden T102 → T101) y [`C-135`](DECISIONES.md)
+  (el kind de Vitrinee en RealOps: seis productos, 3,00/3,00, la cantidad es la
+  de la compra). Nota de ajuste en `C-130`.
+- Fila nueva en `apps/agent/src/catalog/venues.json`:
+  `vitrinee` · `GC5ZY7UJ…DCIVCII` · `https://vitrinee.agentpey.com` ·
+  `USDC:CBIELTK…QDAMA`.
+- RealOps: `vitrinee_shopper` en `accounts.ts`; target en `server.ts` y
+  `testing.ts`; `QUANTITY_INPUT` y `liveCards` en `catalog.ts`;
+  `defaultPermissionsFor` en `permissions.ts`; tercera sección y campo de
+  cantidad en `pages.ts`; `readLive`/`catalogFor` y `readRouteParams` en
+  `app.ts`. Env: `VITRINEE_BASE_URL`, `VITRINEE_VENUE_ID`, `VITRINEE_PAY_TO`
+  en `hosts.ts`, `render.yaml` y `.env.example`.
+- Tests: RealOps 171 (eran 159); `scripts/vitrinee/agentpey-contract.test.ts`
+  5 (era 4, el nuevo fija la fila real). `pnpm typecheck` y `pnpm test` de todo
+  AgentPey en verde; `vitrinee:lint` limpio.
+- Salidas crudas en [`evidencia/T100.md`](evidencia/T100.md).

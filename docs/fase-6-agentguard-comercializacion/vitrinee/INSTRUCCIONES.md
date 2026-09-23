@@ -123,14 +123,28 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
-## Estado al 2026-09-23 (T99 mergeado)
+## Estado al 2026-09-23 (T100 cerrado, PR abierto)
 
 - **Deploy vivo:** `https://vitrinee-gateway.onrender.com`, con `ADAPTER=mock`.
   **Todavía se despliega desde el repo viejo** `vicentewolde/Vitrinee`, rama
-  `day-3-jumpseller-catalog`. Pasarlo al `render.yaml` de AgentPey es un hito
-  pendiente. Hasta entonces, **no archivar ni borrar ese repo**: el deploy
-  depende de él. El blueprint de referencia está en
-  [render.vitrinee.yaml](render.vitrinee.yaml).
+  `day-3-jumpseller-catalog`, y **no tiene la compatibilidad de T99**
+  (`/api/discovery/search` responde 404). Pasarlo al `render.yaml` de AgentPey
+  es T102, que va **antes** que la compra real de T101 (`C-134`): Vitrinee
+  entra al servicio único de Render como cuarto proceso del gateway, en
+  `https://vitrinee.agentpey.com`, con su llave de firma aislada por `envKeys`.
+  Hasta que ese deploy sirva el manifest y el discovery, **no archivar ni
+  borrar el repo viejo**: el deploy depende de él. El blueprint de referencia
+  del servicio propio está en [render.vitrinee.yaml](render.vitrinee.yaml).
+- **Vitrinee es un venue de AgentPey desde T100:** fila `vitrinee` en
+  `apps/agent/src/catalog/venues.json`, con `address` = la cuenta de cobro del
+  comercio (`MERCHANT_STELLAR_ACCOUNT`, el `payTo` de todo 402), `baseUrl`
+  `https://vitrinee.agentpey.com` y USDC de testnet. Agregada con
+  `scripts/register-venue.ts`, que estaba roto desde T79 y se arregló en T100.
+  `scripts/vitrinee/agentpey-contract.test.ts` fija esa fila: si cambias la
+  cuenta de cobro o la URL del deploy, ese test avisa. Y RealOps la muestra
+  como tercera sección del catálogo, leída en vivo de
+  `GET /api/discovery/search`, con un `agentKind` propio (`vitrinee_shopper`,
+  `C-135`).
 - **Tienda real:** `vitrinee.jumpseller.com`, 6 productos cargados. Plan
   `basic` pagado el 2026-09-23 ([VT-21](DECISIONES.md)): `POST /orders.json` ya
   no responde `403`. Todavía no se creó ningún pedido real por API.
@@ -144,9 +158,7 @@ sus paquetes están en el mismo workspace.
   en testnet contra el adaptador `mock`, y cubierto sin red por
   `scripts/vitrinee/agentpey-contract.test.ts`, que corre el código real de
   AgentPey contra la app real de Vitrinee. **Si cambias el discovery o el
-  checkout, ese test es el que avisa que rompiste a AgentPey.** Falta registrar
-  la tienda como venue (T100): hasta entonces `toPaymentTerms` de AgentPey no
-  la conoce.
+  checkout, ese test es el que avisa que rompiste a AgentPey.**
 - **Los puntos abiertos de T99 quedaron resueltos el mismo día:** la dirección
   de despacho ya no le llega al facilitator ([VT-25](DECISIONES.md)); cada rail
   de tenant nuevo nace con 3 USDC y límites de 3,00/3,00, así que el producto

@@ -6083,3 +6083,56 @@ Pendiente:
 - Sigue T100 (`/start-ticket cmuebkyxg0005l704z3bdfdws`).
 - Sin cambios: partner key en Render, fondear la reserva, `ROADMAP.md:460`,
   snapshots de `policy-rail`, `.codex/` y `logo agentpey/` sin trackear.
+
+## 2026-09-23 (8) — cc/t100-vitrinee-venue
+
+Agente: Claude Code.
+
+Qué: **T100 cerrado**, PR abierto contra `main` (URL en
+`docs/planificacion-exponential/SYNC.md`), sin mergear: espera el OK del
+usuario (regla 1).
+- `scripts/register-venue.ts` estaba roto desde T79 (escribía `contractId`,
+  el esquema pide `address`). Arreglado y usado de verdad: fila `vitrinee` en
+  `apps/agent/src/catalog/venues.json` (`GC5ZY7UJ…DCIVCII`,
+  `https://vitrinee.agentpey.com`, USDC testnet).
+- RealOps: cuarto `agentKind` `vitrinee_shopper` con grant propio (venue, seis
+  ids de Jumpseller, `payTo`), 3,00/3,00 por defecto (`C-135`); tercera
+  sección del catálogo leída en vivo con el mismo lector del bazaar; la
+  `quantity` del formulario es la de la compra y no viaja en `route_params`
+  (`C-132`). Env `VITRINEE_BASE_URL`/`VENUE_ID`/`PAY_TO` en `hosts.ts`,
+  `render.yaml`, `.env.example`. Ningún `.ts` de `apps/agent` ni `apps/web`.
+- **Hallazgo que reordena los hitos (`C-134`):** el deploy vivo de Vitrinee
+  (repo viejo, rama `day-3`) no tiene T99 (`/api/discovery/search` → 404). El
+  usuario eligió: T102 antes que T101; Vitrinee al servicio único de Render en
+  `vitrinee.agentpey.com` como cuarto proceso del gateway; archivar el repo
+  viejo pasa a un ticket aparte bloqueado por T101.
+
+Verificado: `pnpm typecheck` y `pnpm test` en verde (RealOps 171, eran 159;
+`agentpey-contract.test.ts` 5, era 4); `vitrinee:lint` limpio; RealOps local
+contra el gateway de Vitrinee con `ADAPTER=jumpseller` muestra los seis
+productos reales y el permiso con 3,00/3,00 (evidencia/T100.md § 5).
+
+Por qué no se delegó a Codex: toca la forma del grant firmado (`P-10`, `B-25`).
+
+Exponential: T100 `IN_PROGRESS` → `QA` con el PR; T102 desbloqueado de T101,
+bloqueado por T100, retitulado, fecha al 27; T101 bloqueado además por T102,
+fecha al 28; ticket nuevo `cmuedg4ld000pl004tv0q2n5o` "Archivar el repo viejo"
+(CHORE, bloqueado por T101) con acción `cmuedg7ot000vl004mbbiwtbk` al 30.
+SYNC.md y COMPARACION.md (M7 4, M8 60) al día.
+
+Pendiente:
+- **Merge de `cc/t100-vitrinee-venue`** con OK del usuario; después `DONE` en
+  Exponential, KR `cmuebnega001ll304ot6yas1y` a 1, M1/M2/M4/M5/M6/M9 en
+  COMPARACION.md.
+- **T102 (antes que T101):** `AppTarget` de Vitrinee en `hosts.ts` con sus
+  `envKeys`, dominio `vitrinee.agentpey.com` en `render.yaml`, test de
+  `env-filter`. Del usuario: CNAME en el DNS y los secretos de Vitrinee en el
+  servicio `AgentPey` de Render (`P-10`). Ojo: agregar variables al blueprint
+  no crea un servicio nuevo, pero mostrar el diff antes de pushear igual.
+- T101 después: tenant nuevo (`C-131`/`C-133`), Mandato con `perTx` ≥ 1,05,
+  direcciones de prueba. Reserva con 50,48 USDC (Horizon, 2026-09-23 17:26Z):
+  alcanza.
+- `AGENTS.md` no necesita cambios por `C-134`/`C-135`: no menciona kinds ni
+  `register-venue`; sus reglas de Vitrinee siguen valiendo.
+- Sin cambios: partner key en Render, `ROADMAP.md:460`, snapshots de
+  `policy-rail`, `.codex/` y `logo agentpey/` sin trackear.
