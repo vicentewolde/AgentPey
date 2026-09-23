@@ -6136,3 +6136,32 @@ Pendiente:
   `register-venue`; sus reglas de Vitrinee siguen valiendo.
 - Sin cambios: partner key en Render, `ROADMAP.md:460`, snapshots de
   `policy-rail`, `.codex/` y `logo agentpey/` sin trackear.
+
+## 2026-09-23 (9) — main (T100 mergeado) y cc/t100-frases-tienda
+
+Agente: Claude Code.
+
+Qué:
+- **T100 mergeado** a `main` en fast-forward (`265f549..9e4627b`), pusheado,
+  PR [#23](https://github.com/vicentewolde/AgentPey/pull/23) marcado como
+  mergeado, rama borrada local y remota. Con OK del usuario.
+- En **`cc/t100-frases-tienda`**, a pedido del usuario: las frases escritas
+  reconocen los seis productos de la tienda y llevan a la tarjeta con la
+  cantidad puesta; `pack`/`paquete` solos ya no significan créditos (ajuste en
+  `C-135`). RealOps 175 tests.
+
+Verificado: `pnpm typecheck` y `pnpm test` en verde.
+
+Exponential: T100 `DONE`; acción `cmuebnzs4…` `COMPLETED`; KR
+`cmuebnega001ll304ot6yas1y` en 1 ("T100 mergeado"). COMPARACION.md con M1,
+M2, M4, M5, M6 de T100; M9 pendiente del usuario.
+
+Pendiente:
+- **Merge de `cc/t100-frases-tienda`**: esperando OK del usuario.
+- **Decisión del usuario sobre el monto:** con 3 USDC por rail y 3,00/3,00 de
+  límites, solo los stickers son comprables. Propuesto en el chat: límites de
+  rails nuevos 40,00 por compra / 100,00 por día, crédito patrocinado sin
+  cambio (3 USDC), y el rail del tenant de la demo fondeado a mano con 100 USDC.
+  Toca `C-131`/`C-133`/`C-135`: no se implementa sin su elección.
+- T102, después T101, después archivar el repo viejo (ver entrada (8)).
+- M9 de T100.
