@@ -26,16 +26,24 @@ export const SYSTEM_KEYS: readonly string[] = ["PATH", "HOME", "LANG", "LC_ALL",
  * @param appKeys This app's own `AppTarget.envKeys` — the only app-specific names allowed through.
  * @param overrides Applied last, so a caller can force a value (the internal `PORT` `spawnApp` assigns)
  * even if `source` happens to define the same name for something else.
+ * @param aliases This app's own `AppTarget.envAliases`, `{ childName: sourceName }`: the value
+ * stored under `sourceName` reaches the child as `childName`, and `sourceName` itself does not.
+ * Applied after `appKeys` and before `overrides`.
  */
 export function filterEnv(
   source: NodeJS.ProcessEnv,
   appKeys: readonly string[],
   overrides: Readonly<Record<string, string>> = {},
+  aliases: Readonly<Record<string, string>> = {},
 ): Record<string, string> {
   const result: Record<string, string> = {};
   for (const key of [...SYSTEM_KEYS, ...appKeys]) {
     const value = source[key];
     if (value !== undefined) result[key] = value;
+  }
+  for (const [childName, sourceName] of Object.entries(aliases)) {
+    const value = source[sourceName];
+    if (value !== undefined) result[childName] = value;
   }
   return { ...result, ...overrides };
 }

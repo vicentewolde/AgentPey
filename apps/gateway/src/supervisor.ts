@@ -45,7 +45,7 @@ function forwardTagged(stream: NodeJS.ReadableStream | null, tag: string, out: N
  * actually spawning a process that could exit.
  */
 export function spawnApp(target: AppTarget, repoRoot: string, tsxBin: string, sourceEnv: NodeJS.ProcessEnv): SpawnedApp {
-  const env = filterEnv(sourceEnv, target.envKeys, { PORT: String(target.port) });
+  const env = filterEnv(sourceEnv, target.envKeys, { PORT: String(target.port) }, target.envAliases);
   const child = spawn(tsxBin, [target.entry], { cwd: repoRoot, env, stdio: ["ignore", "pipe", "pipe"] });
   forwardTagged(child.stdout, target.name, process.stdout);
   forwardTagged(child.stderr, target.name, process.stderr);

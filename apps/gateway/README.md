@@ -1,9 +1,18 @@
 # Gateway
 
-One Render service, three apps. `agentpey.com`, `realops.agentpey.com` and
-`signaldesk.agentpey.com` all point at this one service; this process spawns
-`apps/web`, `apps/realops` and `apps/signaldesk` as three separate children
-and forwards each request to the right one by its `Host` header.
+One Render service, four apps. `agentpey.com`, `realops.agentpey.com`,
+`signaldesk.agentpey.com` and `vitrinee.agentpey.com` all point at this one
+service; this process spawns `apps/web`, `apps/realops`, `apps/signaldesk` and
+`packages/vitrinee-gateway` as separate children and forwards each request to
+the right one by its `Host` header.
+
+**Vitrinee is different in three ways (T102, `C-136`).** Its variables are
+stored as `VITRINEE_<NAME>` and handed to its process alone as `<NAME>`
+(`envAliases` in `hosts.ts`), because it reads generic names like `ADAPTER` and
+`PUBLIC_BASE_URL`. It is only started when its secrets are set
+(`requiredEnv`); until then its host answers `503`. And it is not critical: if
+it exits, its host answers `503` and the other three keep serving, instead of
+the whole service restarting.
 
 **Why this exists.** Before T86 the three apps were three separate Render
 services — three Starter plans to keep all of them warm. `agentpey-web`,
@@ -34,8 +43,9 @@ prints the host → app map it built.
 Visiting it locally: point each hostname at `127.0.0.1` (an `/etc/hosts`
 entry, or a `Host` header set by hand) and the gateway forwards to whichever
 app that hostname is configured for. `GATEWAY_AGENTPEY_HOST`,
-`GATEWAY_REALOPS_HOST` and `GATEWAY_SIGNALDESK_HOST` override the three
-hostnames it matches, for testing with names other than the real ones.
+`GATEWAY_REALOPS_HOST`, `GATEWAY_SIGNALDESK_HOST` and `GATEWAY_VITRINEE_HOST`
+override the hostnames it matches, for testing with names other than the real
+ones.
 
 ```bash
 pnpm --filter @agentpey/gateway test

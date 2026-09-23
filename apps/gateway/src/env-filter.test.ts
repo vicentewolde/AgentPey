@@ -45,4 +45,18 @@ describe("filterEnv", () => {
 
     for (const value of Object.values(env)) expect(typeof value).toBe("string");
   });
+
+  it("renames an aliased value for the child, and does not pass the stored name along", () => {
+    const env = filterEnv({ ...source, VITRINEE_ADAPTER: "jumpseller" }, [], {}, { ADAPTER: "VITRINEE_ADAPTER" });
+
+    expect(env).toMatchObject({ ADAPTER: "jumpseller" });
+    expect(env).not.toHaveProperty("VITRINEE_ADAPTER");
+  });
+
+  it("skips an alias whose stored name is not set, and lets an override beat an alias", () => {
+    const env = filterEnv(source, [], { PORT: "4104" }, { ADAPTER: "VITRINEE_ADAPTER", PORT: "VITRINEE_PORT" });
+
+    expect(env).not.toHaveProperty("ADAPTER");
+    expect(env.PORT).toBe("4104");
+  });
 });

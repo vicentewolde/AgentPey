@@ -2,6 +2,8 @@
 # `realops.agentpey.com` and `signaldesk.agentpey.com` all point here, and
 # `apps/gateway` spawns `apps/web`, `apps/realops` and `apps/signaldesk` as
 # three separate OS processes, forwarding each request by its `Host` header.
+# Since T102, `vitrinee.agentpey.com` too: the Vitrinee store gateway is a
+# fourth process (`C-134`), started only once its secrets are set (`C-136`).
 #
 # Before T86 these were three services (`agentpey-web`, `agentpey-realops`,
 # `agentpey-signaldesk`), and keeping all three warm meant three Starter plans.
@@ -39,6 +41,9 @@ services:
       # apps/agent/src/catalog/venues.json: a venue is resolved by origin, so a
       # different hostname is a different venue and is refused.
       - signaldesk.agentpey.com
+      # T102 — must match the `baseUrl` of the `vitrinee` row in venues.json,
+      # for the same reason as SignalDesk's above.
+      - vitrinee.agentpey.com
     envVars:
       # pnpm@11.24.0 (pinned via packageManager in package.json) requires
       # Node >=22.13 to run under Corepack — 22.11.0 makes Corepack crash
@@ -168,3 +173,50 @@ services:
       # SIGNALDESK_PUBLIC_URL is declared once, under RealOps above: one Render
       # service has one value per name, and both apps are handed it. SignalDesk
       # builds the delivery and receipt links it returns from it.
+
+      # ---- Vitrinee (packages/vitrinee-gateway, vitrinee.agentpey.com) -------
+      # T102 — the store gateway that turns the real Jumpseller shop into an
+      # x402 merchant (`C-130`, `C-134`). Every name carries a `VITRINEE_`
+      # prefix: Vitrinee reads generic names (`ADAPTER`, `PUBLIC_BASE_URL`,
+      # `MERCHANT_SIGNING_SECRET`…), one service has one value per name, and
+      # `apps/gateway/src/hosts.ts` (`envAliases`) hands these to Vitrinee's
+      # process alone, renamed back. No other app is given any of them, and
+      # Vitrinee is given none of AgentPey's (`C-136`).
+      #
+      # Until the four secrets below are set, the gateway does not start
+      # Vitrinee and its host answers 503; the rest of the pilot is unaffected.
+      - key: VITRINEE_ADAPTER
+        value: jumpseller
+      # The child sits behind this gateway; absolute URLs in the manifest must
+      # be the public ones.
+      - key: VITRINEE_PUBLIC_BASE_URL
+        value: https://vitrinee.agentpey.com
+      - key: VITRINEE_MERCHANT_NAME
+        value: Bazar Cordillera
+      - key: VITRINEE_MERCHANT_COUNTRY
+        value: CL
+      - key: VITRINEE_MERCHANT_CURRENCY
+        value: CLP
+      - key: VITRINEE_FX_RATE_CLP_USD
+        value: "950"
+      - key: VITRINEE_SHIPPING_COUNTRIES
+        value: CL
+      # Public: where the USDC lands, and the `address` of the `vitrinee` row
+      # in venues.json. The gateway never holds its secret (VT-8, VT-12).
+      - key: VITRINEE_MERCHANT_STELLAR_ACCOUNT
+        value: GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII
+      - key: VITRINEE_FACILITATOR_URL
+        value: https://channels.openzeppelin.com/x402/testnet
+      # Public, also in deployments/vitrinee-testnet.json.
+      - key: VITRINEE_RECEIPT_REGISTRY_ID
+        value: CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5
+      # Secrets — set these in the Render dashboard, from .env.vitrinee.local.
+      # Signs receipts and pays anchor fees; cannot move the merchant's funds (VT-8).
+      - key: VITRINEE_MERCHANT_SIGNING_SECRET
+        sync: false
+      - key: VITRINEE_FACILITATOR_API_KEY
+        sync: false
+      - key: VITRINEE_JUMPSELLER_LOGIN
+        sync: false
+      - key: VITRINEE_JUMPSELLER_AUTHTOKEN
+        sync: false

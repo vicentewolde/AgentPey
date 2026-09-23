@@ -33,7 +33,7 @@
  * the other two's — see `env-filter.ts`, which does the actual copying.
  */
 
-export type AppName = "web" | "realops" | "signaldesk";
+export type AppName = "web" | "realops" | "signaldesk" | "vitrinee";
 
 export interface AppTarget {
   readonly name: AppName;
@@ -50,6 +50,32 @@ export interface AppTarget {
    * all three, same as when they were three separate services).
    */
   readonly envKeys: readonly string[];
+  /**
+   * Variables this app reads under a generic name, stored in the container
+   * under a prefixed one: `{ childName: containerName }` (T102, `C-136`).
+   *
+   * Vitrinee was written as its own service and reads `PORT`, `ADAPTER`,
+   * `PUBLIC_BASE_URL`, `MERCHANT_SIGNING_SECRET`… One Render service has one
+   * value per name, and `PUBLIC_BASE_URL` is already a name `apps/web` may
+   * read. So in the container its variables carry a `VITRINEE_` prefix, and
+   * only this app's child receives them, renamed back. No other app lists a
+   * `VITRINEE_` secret, which is what keeps the receipt-signing key out of
+   * their reach.
+   */
+  readonly envAliases?: Readonly<Record<string, string>>;
+  /**
+   * Container variables that must be present for this app to be started at
+   * all. Missing one, the gateway does not spawn it and its host answers
+   * `503`: an app started without its secrets would exit at once, and a
+   * critical exit takes the whole service down (`server.ts`).
+   */
+  readonly requiredEnv?: readonly string[];
+  /**
+   * Whether this app exiting brings the whole gateway down (the T86 policy).
+   * `false` only for a merchant the pilot can run without: a store that
+   * crashed must not take AgentPey, RealOps and SignalDesk with it.
+   */
+  readonly critical: boolean;
 }
 
 export const WEB_TARGET: AppTarget = {
@@ -72,6 +98,7 @@ export const WEB_TARGET: AppTarget = {
     // override, so it is allowed through if it is ever set.
     "PUBLIC_BASE_URL",
   ],
+  critical: true,
 };
 
 export const REALOPS_TARGET: AppTarget = {
@@ -95,6 +122,7 @@ export const REALOPS_TARGET: AppTarget = {
     "REALOPS_AGENTPEY_API_KEY",
     "AGENTPEY_BASE_URL",
   ],
+  critical: true,
 };
 
 export const SIGNALDESK_TARGET: AppTarget = {
@@ -102,21 +130,71 @@ export const SIGNALDESK_TARGET: AppTarget = {
   port: 4103,
   entry: "apps/signaldesk/src/server.ts",
   envKeys: ["SIGNALDESK_SECRET_KEY", "SIGNALDESK_FACILITATOR_SECRET", "DATABASE_URL", "SIGNALDESK_PUBLIC_URL"],
+  critical: true,
+};
+
+/**
+ * Vitrinee (T102, `C-134`, `C-136`): the store gateway that turns a real
+ * Jumpseller shop into an x402 merchant. It holds the key that signs receipts
+ * and pays their anchors, and the facilitator's API key; neither reaches any
+ * other app, and none of AgentPey's keys reach it. Every variable comes
+ * through `envAliases`: it reads no container name directly, not even
+ * `DATABASE_URL`, because it keeps its orders in its own file.
+ */
+export const VITRINEE_TARGET: AppTarget = {
+  name: "vitrinee",
+  port: 4104,
+  entry: "packages/vitrinee-gateway/src/main.ts",
+  envKeys: [],
+  envAliases: {
+    ADAPTER: "VITRINEE_ADAPTER",
+    PUBLIC_BASE_URL: "VITRINEE_PUBLIC_BASE_URL",
+    JUMPSELLER_LOGIN: "VITRINEE_JUMPSELLER_LOGIN",
+    JUMPSELLER_AUTHTOKEN: "VITRINEE_JUMPSELLER_AUTHTOKEN",
+    MERCHANT_NAME: "VITRINEE_MERCHANT_NAME",
+    MERCHANT_STELLAR_ACCOUNT: "VITRINEE_MERCHANT_STELLAR_ACCOUNT",
+    MERCHANT_SIGNING_SECRET: "VITRINEE_MERCHANT_SIGNING_SECRET",
+    MERCHANT_COUNTRY: "VITRINEE_MERCHANT_COUNTRY",
+    MERCHANT_CURRENCY: "VITRINEE_MERCHANT_CURRENCY",
+    FX_RATE_CLP_USD: "VITRINEE_FX_RATE_CLP_USD",
+    SHIPPING_COUNTRIES: "VITRINEE_SHIPPING_COUNTRIES",
+    FACILITATOR_URL: "VITRINEE_FACILITATOR_URL",
+    FACILITATOR_API_KEY: "VITRINEE_FACILITATOR_API_KEY",
+    RECEIPT_REGISTRY_ID: "VITRINEE_RECEIPT_REGISTRY_ID",
+    ORDERS_FILE: "VITRINEE_ORDERS_FILE",
+  },
+  requiredEnv: [
+    "VITRINEE_MERCHANT_STELLAR_ACCOUNT",
+    "VITRINEE_MERCHANT_SIGNING_SECRET",
+    "VITRINEE_FACILITATOR_API_KEY",
+    "VITRINEE_JUMPSELLER_LOGIN",
+    "VITRINEE_JUMPSELLER_AUTHTOKEN",
+  ],
+  critical: false,
 };
 
 /** Every app this gateway runs, in the order they are started. */
-export const APP_TARGETS: readonly AppTarget[] = [WEB_TARGET, REALOPS_TARGET, SIGNALDESK_TARGET];
+export const APP_TARGETS: readonly AppTarget[] = [WEB_TARGET, REALOPS_TARGET, SIGNALDESK_TARGET, VITRINEE_TARGET];
+
+/**
+ * The required variables `env` is missing for `target`, by name, never by
+ * value. Empty means the app can be started.
+ */
+export function missingEnv(target: AppTarget, env: NodeJS.ProcessEnv): readonly string[] {
+  return (target.requiredEnv ?? []).filter((key) => env[key] === undefined || env[key] === "");
+}
 
 export interface HostMapConfig {
   readonly agentpeyHost: string;
   readonly realopsHost: string;
   readonly signaldeskHost: string;
+  readonly vitrineeHost: string;
 }
 
 export type HostMap = ReadonlyMap<string, AppTarget>;
 
 /**
- * @throws Error if two of the three configured hostnames collide (case-insensitively) —
+ * @throws Error if two of the configured hostnames collide (case-insensitively) —
  * a config that would make one app permanently unreachable, so it fails at startup rather than silently.
  */
 export function buildHostMap(config: HostMapConfig): HostMap {
@@ -124,6 +202,7 @@ export function buildHostMap(config: HostMapConfig): HostMap {
     [config.agentpeyHost, WEB_TARGET],
     [config.realopsHost, REALOPS_TARGET],
     [config.signaldeskHost, SIGNALDESK_TARGET],
+    [config.vitrineeHost, VITRINEE_TARGET],
   ];
   const map = new Map<string, AppTarget>();
   for (const [host, target] of entries) {
