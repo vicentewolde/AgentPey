@@ -17,8 +17,8 @@ design** — see [docs/CONTEXTO.md](docs/CONTEXTO.md).
 testnet, la tienda firma un recibo, su hash queda anclado en el contrato
 [`receipt-registry`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5)
 y cualquiera puede verificarlo sin confiar en la tienda. El catálogo sale de
-una tienda Jumpseller real. Hay un panel para el merchant y una consola de
-compra para el lado comprador.
+una tienda Jumpseller real. Hay un panel de pedidos y verificación, y una
+consola de compra para el lado comprador.
 
 ⚠️ **Un bloqueo abierto:** el plan *trial* de Jumpseller no permite crear
 pedidos por API (`403` en `POST /orders.json`). Todo lo demás de la integración
@@ -71,7 +71,7 @@ El formato del manifest y del recibo está especificado en
 | `packages/gateway` | Servidor Express: manifest, catálogo, checkout x402, órdenes, verificación, discovery y el panel estático. |
 | `packages/anchor` | Cliente Soroban RPC del `receipt-registry` y verificación de recibos (firma, anclaje, pago). |
 | `apps/agent` | Agente demo: cliente x402 que recibe una instrucción en español y compra. |
-| `apps/dashboard` | Panel del merchant: pedidos, recibo decodificado, verificación en un clic. Estático; lo sirve el gateway ([V-18](docs/DECISIONES.md)). |
+| `apps/dashboard` | Panel de pedidos y verificación: recibo decodificado, anclaje, los tres checks en un clic. Para quien presenta la demo y para quien audita al agente, no para operar la tienda. Estático; lo sirve el gateway ([V-18](docs/DECISIONES.md)). |
 | `apps/console` | Consola del comprador: el **lado comprador**, un cliente x402 estándar en el navegador que lee el bazaar de la tienda y compra con el mismo `buy()` del agente. |
 | `contracts/receipt-registry` | Contrato Soroban en Rust: `anchor`, `get`, `count`. Sin admin. |
 | `deployments/testnet.json` | El único artefacto compartido entre TypeScript y Rust: red, USDC, facilitator, contrato desplegado. |
@@ -150,13 +150,28 @@ Flags del agente: `--dry-run` (se detiene en el 402, sin firmar), `--max-usdc 10
 (tope por pago; el SDK trae 1 USD por defecto), `--no-verify`, `--gateway URL`,
 `--json`.
 
-### Las dos pantallas
+### Quién mira qué
 
-**Panel del merchant** — <http://localhost:4021/dashboard/>, ya corriendo con
-el gateway. Pedidos, monto en USDC, link a la transacción, estado del anclaje;
-al abrir un pedido, el recibo decodificado y un botón que corre las tres
-verificaciones. Se refresca solo, así que un anclaje se ve pasar de
-*pendiente* a *anclado* en vivo.
+Cada actor tiene su pantalla, y el dueño de la tienda **no** necesita una
+nueva:
+
+| Actor | Dónde mira | Qué ve |
+|---|---|---|
+| **El dueño de la tienda** | El panel de Jumpseller de siempre | Un pedido pagado, igual al de un cliente humano: producto, stock descontado, dirección. El hash de la transacción queda en las notas del pedido para conciliar ([V-11](docs/DECISIONES.md)). No instala nada ni aprende nada nuevo. |
+| **Quien le dio la plata al agente** (su *principal*) | El recibo, y `pnpm demo:verify` o `POST /receipts/verify` | La prueba de qué compró su agente, a quién y por cuánto, verificable **sin confiar** en la tienda ni en Vitrinee. Jumpseller no tiene dónde mostrar esto: no conoce firmas, anclajes ni Stellar. |
+| **Quien presenta la demo** | <http://localhost:4021/dashboard/> | El circuito entero en una pantalla y sin terminal. |
+
+**Panel de pedidos y verificación** — <http://localhost:4021/dashboard/>, ya
+corriendo con el gateway. Pedidos, monto en USDC, link a la transacción,
+estado del anclaje; al abrir un pedido, el recibo decodificado y un botón que
+corre las tres verificaciones contra la cadena. Se refresca solo, así que un
+anclaje se ve pasar de *pendiente* a *anclado* en vivo. Muestra lo que un
+panel de e-commerce no tiene campos para mostrar; no reemplaza al de
+Jumpseller.
+
+En el deploy gratuito de Render el disco es efímero: si el servicio se duerme
+o se reinicia, esta lista vuelve a cero. Los pagos y los anclajes siguen en
+Stellar; lo que se pierde es la copia local que el panel lista.
 
 **Consola de compra (lado comprador)** — lee el bazaar de la tienda y compra
 desde el navegador con el mismo `buy()` del agente:
@@ -188,7 +203,7 @@ pnpm test:contracts             # cargo test en contracts/
 | `GET /orders`, `GET /orders/:orderId` | Estado de la orden, del settlement y del anclaje |
 | `GET /receipts/:hash/verify` | Tres checks sobre un recibo emitido por esta tienda |
 | `POST /receipts/verify` | Tres checks sobre cualquier recibo (`{ "receiptJws": "..." }`) |
-| `GET /dashboard/` | Panel del merchant |
+| `GET /dashboard/` | Panel de pedidos y verificación |
 
 Variables de entorno: [.env.example](.env.example).
 
@@ -214,7 +229,7 @@ mientras viva la instancia. Suficiente para una demo en testnet.
 | Uso significativo de Stellar | Settlement x402/USDC con auth entries Soroban, contrato `receipt-registry`, `did:stellar` del merchant, verificación contra Horizon/RPC | ✅ días 1–2 |
 | Originalidad | Único proyecto del lado vendedor para e-commerce LATAM; formato `agent-storefront.json` especificado; discovery en el formato bazaar de x402 | ✅ día 3 |
 | Impacto | Cualquier tienda Jumpseller recibe agentes sin escribir código; catálogo real cargado y servido | ⚠️ día 3 — pedido bloqueado por el plan trial |
-| Experiencia de usuario | Un comando para comprar, un panel para el merchant, una consola para el comprador, recibos verificables con un clic, todo en español | ✅ día 4 |
+| Experiencia de usuario | Un comando para comprar, la tienda sigue en su panel de siempre, un panel de verificación, una consola para el comprador, recibos verificables con un clic, todo en español | ✅ día 4 |
 | Presentación | Video de 3 min con demo en vivo, README, diagrama, evidencia cruda por día | días 6–7 |
 
 ## Licencia
