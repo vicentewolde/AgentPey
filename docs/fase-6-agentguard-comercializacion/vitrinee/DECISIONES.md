@@ -509,7 +509,7 @@ dos semanas.
 
 ---
 
-### VT-21 · Se paga un mes de Jumpseller; no se cambia de plataforma · `Pendiente`
+### VT-21 · Se paga un mes de Jumpseller; no se cambia de plataforma · `Vigente`
 **Fecha:** 2026-09-22 · **Confirmada por Vinny:** 2026-09-22
 
 "Pedido real en una tienda real" queda **dentro del MVP**. Para desbloquearlo se
@@ -531,6 +531,11 @@ Que la pregunta se pueda hacer sin rehacer el producto es la evidencia de que
 [VT-1](#vt-1) estaba bien: la plataforma es una decisión de adapter, no una
 apuesta fundacional. WooCommerce sigue siendo el segundo adapter del roadmap,
 justamente para probar esa portabilidad.
+
+**Implementado el 2026-09-23.** El usuario pagó; la tienda quedó en plan
+`basic`, `subscription_status: subscribed`. Verificado sin crear nada real: un
+`POST /orders.json` con un producto inexistente responde `400` ("No se encontró
+el producto") en vez del `403` del trial, y el conteo de pedidos sigue en 0.
 
 **Alternativa descartada:** correr la demo con `ADAPTER=mock`. Gratis, y obliga
 a explicar en el video por qué la "tienda real" es un mock — el único criterio

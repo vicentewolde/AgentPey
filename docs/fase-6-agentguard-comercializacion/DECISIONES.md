@@ -5627,8 +5627,9 @@ dirección, ciudad y región como `input` de su `ServiceCard`.
   productos, `payTo` del merchant). Toca la forma del grant firmado: se queda en
   Claude Code (`P-10`, precedente `B-25`).
 - **T101** · Compra real de punta a punta desde `POST /v1/purchases` hasta el
-  panel de Jumpseller. Depende de que el usuario pague el plan de Jumpseller
-  (`VT-21`): el trial responde `403` a `POST /orders.json`.
+  panel de Jumpseller. Dependía de que el usuario pagara el plan de Jumpseller
+  (`VT-21`). **Pagado el 2026-09-23** (plan `basic`, `subscribed`); verificado
+  que `POST /orders.json` ya no responde `403` sino que valida el pedido.
 - **T102** · Deploy de Vitrinee desde el `render.yaml` de AgentPey, y recién
   entonces archivar el repo viejo (`P-12`). Ojo: las apps del piloto corren en
   **un solo** servicio de Render con un único juego de secretos, y

@@ -5858,3 +5858,27 @@ Pendiente:
   reescribe 30 snapshots de `policy-rail` (valor aleatorio por corrida; se
   restauraron); `ROADMAP.md:460` tiene un link roto a `../docs/DECISIONES.md`.
 - Sin tocar: `.codex/` y `logo agentpey/`, sin trackear, ya estaban.
+
+## 2026-09-23 (2) — main (T98 mergeado)
+
+Agente: Claude Code.
+
+Qué: **T98 mergeado** a `main` en fast-forward (`66f84f8..9ecec52`), a pedido
+del usuario. Rama `cc/t98-vitrinee` borrada, local y en `origin`.
+
+Además, **Jumpseller pagado por el usuario** (`VT-21`, ahora `Vigente`). Tienda
+en plan `basic`, `subscribed`. Verificado sin crear nada real: `POST
+/orders.json` con un producto inexistente responde `400` en vez del `403` del
+trial, y el conteo de pedidos sigue en 0. T101 ya no tiene bloqueo externo.
+
+**Desde ahora el usuario trabaja solo desde `~/dev/AgentPay`.** `~/dev/Vitrinee`
+queda únicamente como origen del deploy vivo hasta T102; no se desarrolla ahí.
+
+Pendiente:
+- **T99** (`C-130`): que el comprador de AgentPey pueda pagarle a Vitrinee —
+  discovery `ServiceCard`, checkout por `GET`, pagador `C…`. Empezar probando
+  contra el facilitator un settlement desde un `policy_rail` hacia la cuenta
+  `payTo` de Vitrinee.
+- T100–T102 según `C-130`.
+- Observaciones de T98 sin arreglar: snapshots aleatorios de `policy-rail`;
+  link roto en `ROADMAP.md:460`.

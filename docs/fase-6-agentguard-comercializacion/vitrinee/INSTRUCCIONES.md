@@ -123,7 +123,7 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
-## Estado al 2026-09-23
+## Estado al 2026-09-23 (T98 mergeado)
 
 - **Deploy vivo:** `https://vitrinee-gateway.onrender.com`, con `ADAPTER=mock`.
   **Todavía se despliega desde el repo viejo** `vicentewolde/Vitrinee`, rama
@@ -131,9 +131,9 @@ sus paquetes están en el mismo workspace.
   pendiente. Hasta entonces, **no archivar ni borrar ese repo**: el deploy
   depende de él. El blueprint de referencia está en
   [render.vitrinee.yaml](render.vitrinee.yaml).
-- **Tienda real:** `vitrinee.jumpseller.com`, 6 productos cargados. El plan
-  trial bloquea `POST /orders.json` con `403`. [VT-21](DECISIONES.md): pagar un
-  mes de Jumpseller.
+- **Tienda real:** `vitrinee.jumpseller.com`, 6 productos cargados. Plan
+  `basic` pagado el 2026-09-23 ([VT-21](DECISIONES.md)): `POST /orders.json` ya
+  no responde `403`. Todavía no se creó ningún pedido real por API.
 - **Integración con el comprador de AgentPey: no existe todavía.** Hay tres
   incompatibilidades verificadas en código, todas del lado de Vitrinee:
   1. *Discovery.* AgentPey lee `GET /api/discovery/search` en formato

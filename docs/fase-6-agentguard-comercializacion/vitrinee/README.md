@@ -26,11 +26,9 @@ y cualquiera puede verificarlo sin confiar en la tienda. El catálogo sale de
 una tienda Jumpseller real. Hay un panel de pedidos y verificación, y una
 consola de compra para el lado comprador.
 
-⚠️ **Un bloqueo abierto:** el plan *trial* de Jumpseller no permite crear
-pedidos por API (`403` en `POST /orders.json`). Todo lo demás de la integración
-funciona —catálogo, manifest, precios, stock— y el gateway corre con
-`ADAPTER=mock` mientras tanto. Detalle en
-[BITACORA](BITACORA.md) y [VT-16](DECISIONES.md).
+**Jumpseller desbloqueado (2026-09-23):** la tienda pasó a un plan pagado y la
+API ya acepta crear pedidos ([VT-21](DECISIONES.md)). El deploy público sigue
+corriendo con `ADAPTER=mock` hasta cargar ahí las credenciales de la tienda.
 
 ---
 
