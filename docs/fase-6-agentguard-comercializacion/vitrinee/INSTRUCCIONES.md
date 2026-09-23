@@ -147,10 +147,12 @@ sus paquetes están en el mismo workspace.
   checkout, ese test es el que avisa que rompiste a AgentPey.** Falta registrar
   la tienda como venue (T100): hasta entonces `toPaymentTerms` de AgentPey no
   la conoce.
-- **Puntos abiertos de T99, del usuario:** el crédito de 1 USDC de un rail de
-  tenant no alcanza para el producto más barato de la tienda real
-  (1,0421 USDC); y `quantity` viaja dos veces. El tercero (la dirección de
-  despacho le llegaba al facilitator) quedó resuelto con [VT-25](DECISIONES.md). Detalle en la
+- **Los puntos abiertos de T99 quedaron resueltos el mismo día:** la dirección
+  de despacho ya no le llega al facilitator ([VT-25](DECISIONES.md)); cada rail
+  de tenant nuevo nace con 3 USDC y límites de 3,00/3,00, así que el producto
+  más barato de la tienda (1,0421 USDC) se puede pagar (`C-131`, `C-133` de la
+  Fase 6); y AgentPey pone la `quantity` de la compra en la ruta (`C-132`).
+  Un tenant creado antes de eso tiene un rail que no alcanza. Detalle en la
   [bitácora de la Fase 6](../BITACORA.md), bloque T99.
 - **Pendiente de decidir:** qué pasa con `apps/vitrinee-console` y
   `apps/vitrinee-agent` cuando RealOps y el agente de AgentPey compren en

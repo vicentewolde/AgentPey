@@ -3049,7 +3049,7 @@ corre un número.
 
 ---
 
-### C-80 · Los números del piloto: 1 USDC por tenant, límites del rail 0.30/0.60, precios 0.25 y 0.10 · `Vigente`, salvo el fondeo por tenant (3 USDC desde `C-131`)
+### C-80 · Los números del piloto: 1 USDC por tenant, límites del rail 0.30/0.60, precios 0.25 y 0.10 · `Vigente` en precios, tope y alerta; el fondeo (3 USDC, `C-131`) y los límites del rail (3.00/3.00, `C-133`) cambiaron el 2026-09-23
 **Fecha:** 2026-09-12 · **Decidido por el usuario**
 
 `PILOTO-F9.md` § 12.2 dejó anotado que los tres números —cuánto se fondea
@@ -5720,3 +5720,41 @@ explica en los dos idiomas.
 **Alternativa descartada:** que RealOps llene la de la ruta con la de la compra,
 que era la primera recomendación en T99. Dejaba igual de expuesto a cualquier
 partner que llame a la API directo.
+
+---
+
+### C-133 · Los límites grabados en cada rail de tenant suben a 3,00 por compra y 3,00 por día · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** después de T99 · Opción (a) propuesta por Claude Code, elegida por el usuario
+
+`PER_TX` y `PER_DAY` de `apps/web/src/tenant-rail.ts` pasan de `0.30`/`0.60`
+(`C-80`) a `3.00`/`3.00`: los mismos 3 USDC del crédito patrocinado (`C-131`).
+Se graban en el contrato al desplegar cada rail, así que solo valen para los
+rails nuevos.
+
+**Motivo.** Con `0.30` por compra, el contrato rechazaba cualquier pago a
+Vitrinee, tuviera el rail el saldo que tuviera: el producto más barato de la
+tienda real cuesta 1,0421053 USDC. Subir el crédito sin esto no servía.
+
+**Por qué no se rompe lo que dependía de `0.60`.** `C-80` eligió esos números
+para que el caso de aceptación 4 (una segunda compra del informe supera el tope
+diario) se pudiera alcanzar en una sesión. Esa prueba no depende del contrato:
+`scripts/f9-acceptance.ts` espera `ScopeDailyLimitExceeded` o
+`MandateDailyLimitExceeded`, rechazos del permiso firmado que ocurren antes de
+firmar nada, y RealOps propone `0.30`/`0.60` en el Mandato por defecto. El
+Mandato sigue siendo el límite que decide; el contrato es el respaldo que
+garantiza que, pase lo que pase fuera de la red, un rail no mueve más que su
+crédito del día.
+
+**El costo, dicho en voz alta.** Para un tenant de SignalDesk con el Mandato por
+defecto, el respaldo en la red queda diez veces más holgado que su permiso. Si
+el control del lado de AgentPey fallara (el tipo de bug de `B-25`), la red ya no
+lo atajaría a los `0.30`, sino a los `3.00`.
+
+**Qué no cambia.** Los rails que ya existen conservan `0.30`/`0.60` y 1 USDC.
+La compra de T101 necesita un tenant creado después de este cambio.
+
+**Alternativa descartada, para después:** que cada rail nazca con los límites
+del Mandato de su agente. El respaldo sería exactamente lo que la persona
+firmó, pero toca custodia, es más trabajo del que entra antes del 29, y un rail
+no sigue a un Mandato nuevo: habría que desplegar otro. Queda anotada como la
+forma correcta a largo plazo.

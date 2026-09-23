@@ -6008,3 +6008,35 @@ Pendiente:
   con USDC de testnet del faucet de Circle.
 - En T100: RealOps tiene que tomar la cantidad del campo `quantity` del
   formulario de Vitrinee, o no mostrarlo (`C-132`).
+
+## 2026-09-23 (6) — main (cc/t99-credit-quantity y cc/c80-rail-limits mergeados)
+
+Agente: Claude Code.
+
+Qué, a pedido del usuario:
+- **`cc/t99-credit-quantity` mergeado** a `main` (`631a043..3bdf6ac`):
+  crédito de 3 USDC por tenant (`C-131`) y una sola `quantity` (`C-132`).
+- **`C-133`**, opción (a): `PER_TX`/`PER_DAY` de los rails de tenant
+  (`apps/web/src/tenant-rail.ts`) de 0,30/0,60 a **3,00/3,00**. Solo rails
+  nuevos. El caso de aceptación del tope diario sigue valiendo: espera rechazos
+  del Mandato (`Scope…`/`Mandate…DailyLimitExceeded`), no del contrato.
+  Mergeado en fast-forward al terminar, como pidió el usuario.
+
+Verificado: `pnpm typecheck` y `pnpm test` de todo AgentPey en verde. No se
+desplegó un rail de prueba (gastaría 3 USDC de la reserva en un rail
+huérfano); la prueba en la red es T101.
+
+Por qué no se delegó a Codex: límites en la red y fondos patrocinados (`P-10`).
+
+Pendiente:
+- **Render:** `render.yaml` no desactiva el auto-deploy, así que lo más
+  probable es que producción ya tome 3 USDC y 3,00/3,00 para los tenants
+  nuevos. Conviene confirmarlo en el panel de Render.
+- **Del usuario:** fondear la reserva `GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K`
+  desde el faucet de Circle (quedan 7 cupos × 3 USDC = 21; hay 30,48).
+- T101 necesita un tenant creado después de `C-131`/`C-133`, con un Mandato
+  cuyo `perTx` cubra el precio.
+- La opción (b) de `C-133` (límites del rail desde el Mandato) queda para
+  después del hackathon.
+- T100: venue en `venues.json`, `agentKind` de Vitrinee en RealOps, y que
+  RealOps tome la cantidad del campo `quantity` (`C-132`).

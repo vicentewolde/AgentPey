@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** · **Sigue:** T100, Vitrinee como venue en `venues.json` y un `agentKind` en RealOps (`C-130`), después de que el usuario decida los límites que el contrato del rail le graba a cada tenant (0,30 por compra: ningún producto real de Vitrinee cabe). El crédito por tenant ya subió a 3 USDC (`C-131`) y la `quantity` duplicada quedó resuelta (`C-132`). Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23), así que T101 no tiene bloqueo externo. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** · **Sigue:** T100, Vitrinee como venue en `venues.json` y un `agentKind` en RealOps (`C-130`), Los tres puntos abiertos de T99 quedaron resueltos el mismo día: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23), así que T101 no tiene bloqueo externo. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -4647,3 +4647,10 @@ tu decisión `C-80`. Opciones:
 Recomiendo **(a)** para llegar al 29, y dejar (b) anotado para después. En los
 dos casos, la compra de T101 necesita un tenant creado **después** del cambio:
 los rails que ya existen conservan 0,30 y 1 USDC.
+
+**El usuario eligió (a), y quedó aplicada** (`C-133`). Los rails nuevos nacen
+con 3,00 por compra y 3,00 por día. La prueba de aceptación del tope diario
+sigue valiendo: la rechaza el permiso firmado, no el contrato. Lo que se cede:
+si el control del lado de AgentPey fallara, la red ya no atajaría el gasto a
+los 0,30, sino a los 3,00. La opción (b) queda anotada como la forma correcta a
+largo plazo.
