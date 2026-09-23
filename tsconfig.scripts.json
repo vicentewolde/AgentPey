@@ -13,7 +13,8 @@
       "@agentpey/agent": ["./apps/agent/src/index.ts"],
       "@agentpey/directory": ["./packages/directory/src/index.ts"],
       "@agentpey/mandate": ["./packages/mandate/src/index.ts"],
-      "@agentpey/partner-api": ["./packages/partner-api/src/index.ts"]
+      "@agentpey/partner-api": ["./packages/partner-api/src/index.ts"],
+      "@vitrinee/core": ["./packages/vitrinee-core/src/index.ts"]
     }
   },
   "include": ["scripts/**/*"]

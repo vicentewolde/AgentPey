@@ -17,6 +17,12 @@
     { "path": "./apps/status-dashboard" },
     { "path": "./apps/signaldesk" },
     { "path": "./apps/realops" },
-    { "path": "./apps/gateway" }
+    { "path": "./apps/gateway" },
+    { "path": "./packages/vitrinee-core" },
+    { "path": "./packages/vitrinee-adapters" },
+    { "path": "./packages/vitrinee-anchor" },
+    { "path": "./packages/vitrinee-gateway" },
+    { "path": "./apps/vitrinee-agent" },
+    { "path": "./apps/vitrinee-console" }
   ]
 }

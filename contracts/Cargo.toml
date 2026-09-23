@@ -3,6 +3,9 @@
 [workspace]
 resolver = "2"
 members = ["agent-registry", "policy-rail"]
+# Vitrinee's receipt-registry is its own single-crate workspace: it was built
+# and deployed against soroban-sdk 28.0.0, these pin 27.0.6 (docs/DECISIONES.md, P-12).
+exclude = ["receipt-registry"]
 
 [workspace.dependencies]
 # Resolved, not assumed. Testnet runs protocol 28 (getVersionInfo, 2026-09-01)

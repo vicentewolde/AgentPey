@@ -24,3 +24,6 @@ credential.jws
 
 # os
 .DS_Store
+
+# Vitrinee's local runtime state: order records, last receipt, mock stock
+.vitrinee/
