@@ -4788,6 +4788,16 @@ Vitrinee se escribió como servicio propio y lee nombres como `ADAPTER` o
 gateway le entrega a Vitrinee cada valor con el nombre que ella espera. Su
 código no cambió.
 
+### Mientras tanto: los rails nuevos pueden pagar productos de verdad
+
+El usuario decidió cargar como máximo unos 20 USDC al rail del tenant de la
+demo. Los rails de tenant nuevos nacen ahora con un límite de 25 por compra y 25
+por día (`C-137`), y RealOps propone lo mismo al "Comprador de la tienda". El
+crédito que regala la reserva sigue en 3: un rail no puede gastar más de lo que
+tiene, así que para un visitante normal nada cambia. Con los 20 cargados a mano,
+la demo puede comprar cualquier producto de la tienda menos el hoodie. Va en su
+propio PR (`cc/c137-limites-25`), porque es de T101 y no de T102.
+
 ### Lo que no se hizo aquí
 
 El repo viejo no se archiva todavía: su deploy sigue siendo el único que
