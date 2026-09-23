@@ -615,8 +615,8 @@ una imagen de otro sitio no pueden poner.
 en la URL. El middleware x402 usa esa URL como `resource.url` del 402 y el
 cliente la copia al payload que manda al facilitator. Confirmado en la prueba
 de T99: la URL con la dirección llegó al facilitator. Además, AgentPey guarda
-esa URL como `delivery.resource_url` en el registro de la compra. Queda para
-que el usuario decida (ver la bitácora de T99).
+esa URL como `delivery.resource_url` en el registro de la compra. **Resuelto
+en parte por [VT-25](#vt-25)**: el facilitator ya no la recibe.
 
 **Alternativa descartada:** que AgentPey haga el checkout por `POST` cuando el
 comercio lo pida. Obligaba a un camino de pago nuevo en AgentPey solo para este
@@ -658,3 +658,38 @@ firmar**: falla cerrado, pero con un error poco claro para quien compra.
 **Alternativa descartada:** un adaptador de catálogo propio para Vitrinee en
 AgentPey, leyendo el manifest. Funcionaba, y rompía la promesa de `F7` para
 este comercio.
+
+---
+
+### VT-25 · El `resource.url` del 402 nunca lleva la query · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T99, después del cierre · Recomendación de Claude Code, aprobada por el usuario
+
+El 402 del checkout anuncia como `resource.url` la dirección del checkout sin
+query: `…/checkout/37282902`, no `…/checkout/37282902?name=…&address=…`. Se
+hace dándole a x402 cada request con un adaptador cuyo `getUrl()` corta la
+query (`QueryFreeResourceServer` en `packages/vitrinee-gateway/src/x402.ts`),
+montado con `paymentMiddlewareFromHTTPServer`, que es API pública de
+`@x402/express`. Todo lo demás que x402 lee del request queda igual, incluida
+la query de la que sale el precio.
+
+**Motivo.** Con el checkout por `GET` ([VT-23](#vt-23)) el nombre y la
+dirección de despacho van en la query. x402 usaba la URL completa como
+`resource.url`, y el cliente copia ese objeto tal cual al payload que le manda
+al facilitator. En la prueba de T99 la dirección le llegó a OpenZeppelin, un
+tercero que solo necesita mover USDC. Con este cambio, la misma compra en
+testnet le mandó `…/checkout/stickers-cordillera` y liquidó igual (tx
+`db37c9e7cbaf7f7b3dea8e2dc9372dfb5e9e68ceaa3ce31ffb17a4b1d4f82ede`).
+
+**Qué no cubre.** AgentPey guarda la URL completa como
+`delivery.resource_url` en el registro de la compra, que es del partner que
+mandó esos datos. Y la URL completa sigue pasando por cualquier log de acceso
+entre el agente y la tienda. Para el video del 29 se usan direcciones de
+prueba igual.
+
+**Alternativas descartadas.** `RouteConfig.resource`: es un texto fijo por
+ruta, así que sería el mismo para todos los productos, y sin `PUBLIC_BASE_URL`
+(en local) no habría valor y la query volvería a filtrarse. Reescribir
+`req.originalUrl` antes del middleware: funcionaba, pero dependía de un
+detalle interno del adaptador de Express. Pedir la dirección después de pagar:
+lo más limpio, pero cambia `C-130` y el formulario de RealOps, y no entra antes
+del 29.

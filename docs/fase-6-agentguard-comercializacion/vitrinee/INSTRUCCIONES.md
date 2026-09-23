@@ -123,7 +123,7 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
-## Estado al 2026-09-23 (T99 cerrado, sin mergear)
+## Estado al 2026-09-23 (T99 mergeado)
 
 - **Deploy vivo:** `https://vitrinee-gateway.onrender.com`, con `ADAPTER=mock`.
   **Todavía se despliega desde el repo viejo** `vicentewolde/Vitrinee`, rama
@@ -135,7 +135,7 @@ sus paquetes están en el mismo workspace.
   `basic` pagado el 2026-09-23 ([VT-21](DECISIONES.md)): `POST /orders.json` ya
   no responde `403`. Todavía no se creó ningún pedido real por API.
 - **Integración con el comprador de AgentPey: compatible desde T99**
-  (2026-09-23, sin mergear al escribir esto). Vitrinee sirve su catálogo como
+  (2026-09-23, en `main`). Vitrinee sirve su catálogo como
   `ServiceCard` en `GET /api/discovery/search`, con `quantity`, `name`,
   `address`, `city` y `region` como `input` ([VT-24](DECISIONES.md)); el
   checkout acepta `GET` con esos datos en la query ([VT-23](DECISIONES.md)); y
@@ -147,10 +147,10 @@ sus paquetes están en el mismo workspace.
   checkout, ese test es el que avisa que rompiste a AgentPey.** Falta registrar
   la tienda como venue (T100): hasta entonces `toPaymentTerms` de AgentPey no
   la conoce.
-- **Puntos abiertos de T99, del usuario:** la dirección de despacho viaja en la
-  URL y le llega al facilitator; el crédito de 1 USDC de un rail de tenant no
-  alcanza para el producto más barato de la tienda real (1,0421 USDC); y
-  `quantity` viaja dos veces. Detalle en la
+- **Puntos abiertos de T99, del usuario:** el crédito de 1 USDC de un rail de
+  tenant no alcanza para el producto más barato de la tienda real
+  (1,0421 USDC); y `quantity` viaja dos veces. El tercero (la dirección de
+  despacho le llegaba al facilitator) quedó resuelto con [VT-25](DECISIONES.md). Detalle en la
   [bitácora de la Fase 6](../BITACORA.md), bloque T99.
 - **Pendiente de decidir:** qué pasa con `apps/vitrinee-console` y
   `apps/vitrinee-agent` cuando RealOps y el agente de AgentPey compren en

@@ -5940,3 +5940,33 @@ Pendiente:
   Vitrinee sigue corriendo el código anterior a T99 hasta T102.
 - Sin cambios desde T98: snapshots aleatorios de `policy-rail`; link roto en
   `ROADMAP.md:460`; `.codex/` y `logo agentpey/` sin trackear.
+
+## 2026-09-23 (4) — main (T99 mergeado) y cc/t99-resource-url
+
+Agente: Claude Code.
+
+Qué: **T99 mergeado** a `main` en fast-forward (`10fd8a0..24a2c1b`) a pedido
+del usuario, pusheado; rama `cc/t99-vitrinee-compat` borrada (nunca estuvo en
+`origin`).
+
+Después, también a pedido del usuario, se aplicó la recomendación del punto
+abierto 1 de T99 en **`cc/t99-resource-url`** (`VT-25`): el 402 de Vitrinee
+anuncia `resource.url` **sin query**, así el cliente x402 ya no le copia al
+facilitator el nombre y la dirección de despacho del checkout por `GET`.
+`QueryFreeResourceServer` (`packages/vitrinee-gateway/src/x402.ts`) le pasa a
+x402 cada request con un adaptador cuyo `getUrl()` corta la query, montado con
+`paymentMiddlewareFromHTTPServer` (API pública de `@x402/express`).
+
+Verificado (no por lectura): test nuevo que falla con el código anterior y pasa
+con el nuevo; compra real en testnet con el facilitator de OpenZeppelin (pago
+`db37c9e7…`, tres checks del recibo en verde, `resource.url` enviado sin la
+dirección); `vitrinee:check` 130/130; `pnpm typecheck` y `pnpm test` de todo
+AgentPey en verde.
+
+Pendiente:
+- **Merge de `cc/t99-resource-url` a `main`** — esperando OK del usuario.
+- Direcciones de prueba en el video del 29: AgentPey sigue guardando la URL
+  completa en `delivery.resource_url`, y la URL pasa por los logs de acceso.
+- Siguen abiertos los puntos 2 (crédito de 1 USDC por rail vs. 1,0421 USDC del
+  producto más barato) y 3 (`quantity` duplicada) de T99, del usuario, antes de
+  T100/T101.

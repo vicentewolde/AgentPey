@@ -5643,11 +5643,12 @@ resueltas del lado de Vitrinee, sin tocar AgentPey (`VT-22`, `VT-23`,
 `VT-24`), y el settlement desde un `policy_rail` se probó contra el facilitator
 antes de escribir código. Apareció un **cuarto** punto de quiebre que esta
 decisión no listaba: el check de settlement de la verificación del recibo, que
-no reconocía el débito de una cuenta contrato en Horizon. Quedan tres puntos
+no reconocía el débito de una cuenta contrato en Horizon. Quedaron tres puntos
 abiertos para el usuario, anotados en la bitácora (bloque T99): la dirección de
-despacho en la URL llega al facilitator, el crédito de un rail de tenant no
-alcanza para los precios reales, y `quantity` viaja dos veces. El plan de esta
-decisión no cambia.
+despacho en la URL llegaba al facilitator (resuelto el mismo día con `VT-25`,
+a pedido del usuario), el crédito de un rail de tenant no alcanza para los
+precios reales, y `quantity` viaja dos veces. El plan de esta decisión no
+cambia.
 
 **Alternativa descartada: presentar Vitrinee y AgentPey como dos proyectos.** El
 formulario del hackathon pide un solo repo. Además, cada mitad sola cuenta media

@@ -369,11 +369,12 @@ solo lo que se puede vender ahora.
   especificación.
 - **El agente fija su tope.** `priceUSDCAtomic` es una afirmación de la
   tienda; la política de gasto es del comprador.
-- **La puerta `GET` pone los datos de despacho en la URL.** El middleware x402
-  usa la URL completa como `resource.url` del 402, y el cliente la copia al
-  payload que manda al facilitator: nombre y dirección le llegan a él, y a
-  cualquier log de acceso en el camino. Con `POST` no pasa, porque la dirección
-  va en el cuerpo. Pendiente de decidir (T99).
+- **La puerta `GET` pone los datos de despacho en la URL.** Por eso el
+  `resource.url` del 402 es la dirección del checkout **sin query**: el
+  cliente copia ese objeto al payload que manda al facilitator, y la dirección
+  del comprador no tiene por qué llegarle ([VT-25](DECISIONES.md)). La URL
+  completa sí pasa por cualquier log de acceso en el camino. Con `POST` no
+  pasa, porque la dirección va en el cuerpo.
 
 Fuera de alcance en `0.1`: carros de varios productos, descuentos y cupones,
 suscripciones, devoluciones automatizadas, autenticación del comprador más
