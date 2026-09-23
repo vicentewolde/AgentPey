@@ -140,6 +140,8 @@ export type AgentPassErrorCode =
   | "SpendAlreadySettled"
   /** The agent's `policy_rail` does not hold enough USDC to pay for this purchase. */
   | "RailInsufficientFunds"
+  /** The x402 client could not build the payment, before anything was signed or sent: nothing was paid. */
+  | "PaymentNotCreated"
   /** A webhook endpoint's URL is not one this platform will send to — wrong scheme, a port, or an address that does not route publicly. */
   | "WebhookUrlNotAllowed"
   /** No webhook endpoint visible to this partner has that id. */

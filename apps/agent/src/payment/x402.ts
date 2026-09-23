@@ -33,8 +33,8 @@
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
 import type { Scope } from "@agentpass/core";
 import type { AgentPayMandate } from "@agentpey/mandate";
-import { x402Client, x402HTTPClient } from "@x402/core/client";
-import type { PaymentRequired, PaymentRequirements, SettleResponse } from "@x402/core/types";
+import { x402Client, x402HTTPClient, type SpendControls } from "@x402/core/client";
+import type { PaymentRequired, PaymentRequirements, SchemeNetworkClient, SettleResponse } from "@x402/core/types";
 import { ExactStellarScheme, STELLAR_TESTNET_CAIP2, createEd25519Signer } from "@x402/stellar";
 
 import { mapAssetContract, type BazaarServiceRoute } from "../catalog/bazaar.js";
@@ -120,6 +120,32 @@ export interface ExecuteBazaarPaymentDeps {
   readonly payer?: PolicyRailPayer;
   /** Injected for tests; defaults to the global `fetch`. */
   readonly fetchImpl?: typeof fetch;
+  /**
+   * Tests only: the scheme that builds the payment, in place of the real
+   * Stellar one, which needs a network to build a transaction. Production
+   * never sets it; `payer` and `signerSecret` decide the scheme there.
+   */
+  readonly schemeForTests?: SchemeNetworkClient;
+}
+
+/**
+ * The x402 client's own spend controls, set to exactly what was authorised
+ * (T101, `C-139`).
+ *
+ * `x402Client` ships a default cap of 1 USD per payment. Every purchase before
+ * T101 cost less, so it never showed; the first real product of the Vitrinee
+ * store (13.67 USDC) was refused by it, as a plain `Error`, after AgentPey had
+ * already authorised the payment against the Mandate. Turning it off would be
+ * the easy fix. Instead the cap becomes the one amount AgentPey authorised, on
+ * the one asset it reconciled: the library can never pay more than the
+ * Mandate, `reconcileTerms` and the on-chain rail already agreed to, and the
+ * three layers that decide keep deciding.
+ */
+export function spendControlsFor(requirements: PaymentRequirements): SpendControls {
+  return {
+    maxAmountPerPayment: false,
+    allowedAssets: [{ network: requirements.network, asset: requirements.asset, maxAmountPerPayment: requirements.amount }],
+  };
 }
 
 export interface ExecuteBazaarPaymentInput {
@@ -210,7 +236,19 @@ export const PAYMENT_SENT_DETAIL = "paymentSent";
  * every existing `hasErrorCode(...)` check upstream keeps matching.
  */
 function withPaymentSent(error: unknown, paymentSent: boolean): unknown {
-  if (!isAgentPassError(error)) return error;
+  // An untyped error from a dependency (the x402 client, the Stellar SDK)
+  // thrown before the door is still a failure before anything was sent: this
+  // function knows which side of the door it fell on, which is the whole
+  // point of the flag (T101, `C-139`). Before, it escaped untyped: the spend
+  // stayed counted and `/v1` answered 500 with no purchase record. After the
+  // door it is left untyped on purpose, so `mayHaveBeenPaid` fails closed.
+  if (!isAgentPassError(error)) {
+    if (paymentSent) return error;
+    return new AgentPassError("PaymentNotCreated", "the payment could not be built, and nothing was sent", {
+      cause: error,
+      details: { [PAYMENT_SENT_DETAIL]: false, cause: error instanceof Error ? error.message : String(error) },
+    });
+  }
   return new AgentPassError(error.code, error.message, {
     cause: error.cause,
     details: { ...error.details, [PAYMENT_SENT_DETAIL]: paymentSent },
@@ -276,9 +314,10 @@ export async function executeBazaarPayment(
   const challenge = await requestPaymentChallenge(input.resourceUrl, fetchImpl);
 
   const scheme =
-    deps.payer === undefined
+    deps.schemeForTests ??
+    (deps.payer === undefined
       ? new ExactStellarScheme(createEd25519Signer(deps.signerSecret, STELLAR_TESTNET_CAIP2))
-      : new PolicyRailStellarScheme(deps.payer);
+      : new PolicyRailStellarScheme(deps.payer));
   const client = x402Client.fromConfig({ schemes: [{ network: STELLAR_TESTNET_CAIP2, client: scheme }] });
   const httpClient = new x402HTTPClient(client);
 
@@ -303,7 +342,11 @@ export async function executeBazaarPayment(
   // Signing happens here, and this is where a rail with no USDC fails: the
   // transfer is simulated before it can be signed, and the simulation is
   // refused. Nothing has been sent yet, so this is still releasable.
-  const paymentPayload = await httpClient.createPaymentPayload(paymentRequired);
+  // Only the requirement that was reconciled and authorised reaches the
+  // client, capped at its own amount (`C-139`): the client can neither pick
+  // another of the venue's offers nor pay more than this one.
+  client.setSpendControls(spendControlsFor(requirements));
+  const paymentPayload = await httpClient.createPaymentPayload({ ...paymentRequired, accepts: [requirements] });
   const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
 
   // The door. Everything from here on may have moved money.

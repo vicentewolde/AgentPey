@@ -1,13 +1,21 @@
 import { AgentPassError, hasErrorCode, stellarAddressToDid, type Scope } from "@agentpass/core";
 import { createMandate, type AgentPayMandate } from "@agentpey/mandate";
 import { Keypair } from "@stellar/stellar-sdk/base";
-import type { PaymentRequirements } from "@x402/core/types";
+import type { PaymentPayloadResult, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
+import { findDefaultAsset } from "@x402/stellar";
 import { describe, expect, it, vi } from "vitest";
 
 import { BAZAAR_USDC, BAZAAR_USDC_ISSUER, BAZAAR_VENUE_ID, type BazaarServiceRoute } from "../catalog/bazaar.js";
 import type { PurchaseIntent } from "../intent/intent.js";
 import type { AuthorisationDecision, AuthorisationRequest, PolicyRail } from "../policy/policy-rail.js";
-import { PAYMENT_SENT_DETAIL, executeBazaarPayment, fillRouteTemplate, mayHaveBeenPaid, toPaymentTerms } from "./x402.js";
+import {
+  PAYMENT_SENT_DETAIL,
+  executeBazaarPayment,
+  fillRouteTemplate,
+  mayHaveBeenPaid,
+  spendControlsFor,
+  toPaymentTerms,
+} from "./x402.js";
 
 const principal = Keypair.random();
 const agent = Keypair.random();
@@ -425,5 +433,121 @@ describe("executeBazaarPayment — the payment door (C-113, T92)", () => {
     }) as typeof fetch;
     const error = await failureFrom(unreachable, vi.fn());
     expect(mayHaveBeenPaid(error)).toBe(false);
+  });
+});
+
+/**
+ * T101 (`C-139`). The first real product of the Vitrinee store costs 13.67
+ * USDC, and `x402Client`'s default cap of 1 USD refused it with a plain
+ * `Error` after AgentPey had authorised it: the spend stayed counted and
+ * `/v1` answered 500. These run the real client with a fake scheme, because
+ * the real Stellar one needs a network to build a transaction.
+ */
+describe("executeBazaarPayment — the x402 client's own spend controls (C-139, T101)", () => {
+  const STORE_AMOUNT = "136736842"; // 13.6736842 USDC, the store's beanie
+
+  function challengeWith(accepts: readonly PaymentRequirements[]): Response {
+    const body = { ...REAL_CHALLENGE_BODY, accepts };
+    return new Response(JSON.stringify(body), {
+      status: 402,
+      headers: { "content-type": "application/json", "payment-required": Buffer.from(JSON.stringify(body)).toString("base64") },
+    });
+  }
+
+  const authorised = async () => ({
+    authorised: true as const,
+    intentId: "8b0851b3-94e9-45b0-ba36-000000000001",
+    total: "13.6736842",
+    currency: "USDC",
+    spentToday: "13.6736842",
+    reconciled: true,
+  });
+
+  function fakeScheme(build: (requirements: PaymentRequirements) => Promise<PaymentPayloadResult>): SchemeNetworkClient & { calls: PaymentRequirements[] } {
+    const calls: PaymentRequirements[] = [];
+    return {
+      scheme: "exact",
+      findDefaultAsset,
+      calls,
+      async createPaymentPayload(x402Version: number, requirements: PaymentRequirements) {
+        calls.push(requirements);
+        return build(requirements);
+      },
+    } as SchemeNetworkClient & { calls: PaymentRequirements[] };
+  }
+
+  const builds = async () => ({ x402Version: 2, payload: { transaction: "ZmFrZQ==" } }) as PaymentPayloadResult;
+
+  async function run(scheme: SchemeNetworkClient, fetchImpl: typeof fetch): Promise<unknown> {
+    try {
+      await executeBazaarPayment(
+        { policyRail: fakeRail(authorised), signerSecret: THROWAWAY_SECRET, fetchImpl, schemeForTests: scheme },
+        { resourceUrl: RESOURCE_URL, intent: intentFor(), scope: scopeFor(), mandate: mandateFor(), venueId: BAZAAR_VENUE_ID },
+      );
+      return expect.unreachable("expected executeBazaarPayment to throw at the fake venue");
+    } catch (error) {
+      return error;
+    }
+  }
+
+  it("lets an authorised payment above 1 USD reach the scheme, and the door", async () => {
+    const scheme = fakeScheme(builds);
+    const unreachableAfterPaying = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    let first = true;
+    const fetchImpl = (async (...args: Parameters<typeof fetch>) => {
+      if (first) {
+        first = false;
+        return challengeWith([{ ...REAL_REQUIREMENTS, amount: STORE_AMOUNT }]);
+      }
+      return unreachableAfterPaying(...args);
+    }) as typeof fetch;
+
+    const error = await run(scheme, fetchImpl);
+
+    expect(scheme.calls.map((requirements) => requirements.amount)).toEqual([STORE_AMOUNT]);
+    // It got past building the payment: the failure is the resend, after the
+    // door, so the spend is (correctly) not releasable.
+    expect(mayHaveBeenPaid(error)).toBe(true);
+    expect(hasErrorCode(error, "NetworkError")).toBe(true);
+  });
+
+  it("hands the client only the requirement that was authorised, never a dearer offer from the same venue", async () => {
+    const scheme = fakeScheme(builds);
+    let first = true;
+    const fetchImpl = (async () => {
+      if (first) {
+        first = false;
+        return challengeWith([
+          { ...REAL_REQUIREMENTS, amount: STORE_AMOUNT },
+          { ...REAL_REQUIREMENTS, amount: "500000000" },
+        ]);
+      }
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+
+    await run(scheme, fetchImpl);
+
+    expect(scheme.calls).toHaveLength(1);
+    expect(scheme.calls[0]!.amount).toBe(STORE_AMOUNT);
+  });
+
+  it("types a dependency's failure before the door as PaymentNotCreated, so the spend is released", async () => {
+    const scheme = fakeScheme(async () => {
+      throw new Error("simulation failed for a reason this code has never seen");
+    });
+    const error = await run(scheme, fetchChallengeThen(challengeWith([{ ...REAL_REQUIREMENTS, amount: STORE_AMOUNT }])));
+
+    expect(hasErrorCode(error, "PaymentNotCreated")).toBe(true);
+    expect(mayHaveBeenPaid(error)).toBe(false);
+    expect((error as AgentPassError).details[PAYMENT_SENT_DETAIL]).toBe(false);
+  });
+
+  it("caps the client at exactly the authorised amount, on exactly the reconciled asset", () => {
+    expect(spendControlsFor({ ...REAL_REQUIREMENTS, amount: STORE_AMOUNT })).toEqual({
+      maxAmountPerPayment: false,
+      allowedAssets: [{ network: "stellar:testnet", asset: BAZAAR_USDC_ISSUER, maxAmountPerPayment: STORE_AMOUNT }],
+    });
   });
 });
