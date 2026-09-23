@@ -6165,3 +6165,36 @@ Pendiente:
   Toca `C-131`/`C-133`/`C-135`: no se implementa sin su elección.
 - T102, después T101, después archivar el repo viejo (ver entrada (8)).
 - M9 de T100.
+
+## 2026-09-23 (10) — main (frases mergeadas) y cc/t102-vitrinee-deploy
+
+Agente: Claude Code.
+
+Qué:
+- `cc/t100-frases-tienda` mergeado a `main` (`d9ed9a5`), PR #24 mergeado, rama
+  borrada. Con OK del usuario.
+- **T102 en PR** (`cc/t102-vitrinee-deploy`): Vitrinee es el cuarto proceso
+  del gateway (`VITRINEE_TARGET`, puerto 4104) en `vitrinee.agentpey.com`.
+  Variables con prefijo `VITRINEE_` que solo le llegan a ella (`envAliases`),
+  arranque solo con sus secretos (`requiredEnv`), y su caída no tumba al piloto
+  (`critical: false`) (`C-136`). `render.yaml`: dominio y 14 variables.
+  `AGENTS.md`: una línea en el reparto de claves.
+
+Verificado: tests del gateway 27 (eran 18); `pnpm typecheck` y `pnpm test` en
+verde; en local con las piezas reales del gateway, manifest/discovery/402 por
+`Host: vitrinee.agentpey.com` y 503 sin la llave de firma
+(`evidencia/T102.md`).
+
+Por qué no se delegó a Codex: reparto de claves y llave de firma (`P-10`).
+
+Exponential: T102 `IN_PROGRESS` (inicio 2026-09-23) → `QA` con el PR.
+
+Pendiente, en este orden:
+1. **Del usuario, antes del merge:** en el servicio `AgentPey` de Render,
+   cargar `VITRINEE_MERCHANT_SIGNING_SECRET`, `VITRINEE_FACILITATOR_API_KEY`,
+   `VITRINEE_JUMPSELLER_LOGIN`, `VITRINEE_JUMPSELLER_AUTHTOKEN` (valores de
+   `.env.vitrinee.local`); agregar el dominio `vitrinee.agentpey.com`; CNAME
+   `vitrinee` en Vercel Domains hacia el mismo destino que `realops`.
+2. Merge de T102, verificar en vivo, evidencia § 4, `DONE`.
+3. Decisión de montos para T101 (el usuario dijo "máximo unos 20").
+4. T101; archivar el repo viejo; M7/M8 de T102 y M9 de T100 y T102.

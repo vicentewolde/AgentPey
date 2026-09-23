@@ -5876,6 +5876,53 @@ pantalla de revisión existe para mostrar.
 
 ---
 
+### C-136 · Vitrinee en el gateway: variables con prefijo, arranque solo con sus secretos, y su caída no tumba al piloto · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T102 · La forma, de Claude Code, dentro de lo que el usuario decidió en `C-134`
+
+**Qué se decide.** Tres reglas para el cuarto proceso del gateway
+(`apps/gateway/src/hosts.ts`, `VITRINEE_TARGET`):
+
+1. **Sus variables llevan prefijo `VITRINEE_` en Render**, y el gateway se las
+   pasa al proceso de Vitrinee con el nombre que lee (`envAliases`:
+   `MERCHANT_SIGNING_SECRET` ← `VITRINEE_MERCHANT_SIGNING_SECRET`). Vitrinee
+   nació como servicio propio y lee nombres genéricos (`PORT`, `ADAPTER`,
+   `PUBLIC_BASE_URL`, `FACILITATOR_URL`…). Un servicio de Render tiene un
+   valor por nombre, y `PUBLIC_BASE_URL` ya es un nombre que `apps/web` puede
+   leer. Con prefijo no hay choque posible, y el aislamiento se ve en el
+   nombre: ningún `envKeys` de otra app nombra un `VITRINEE_`, y Vitrinee no
+   recibe ningún nombre directo del contenedor, ni siquiera `DATABASE_URL`.
+2. **Solo se arranca si están sus secretos** (`requiredEnv`: la cuenta de
+   cobro, la llave de firma, la clave del facilitator y las credenciales de
+   Jumpseller). Si falta uno, el gateway no la arranca y su dominio responde
+   `503`. El blueprint puede llegar a producción antes que los secretos; sin
+   esto, Vitrinee saldría al instante por configuración inválida, y por la
+   regla de T86 eso reiniciaría el servicio entero en bucle.
+3. **No es crítica** (`critical: false`). Si su proceso sale, su dominio
+   responde `503` y AgentPey, RealOps y SignalDesk siguen sirviendo. La regla
+   de T86 ("si un hijo cae, cae todo y Render reinicia") sigue igual para las
+   tres apps del piloto: sin cualquiera de ellas el piloto no funciona. Sin la
+   tienda, sí.
+
+**Por qué no cambia el código de Vitrinee.** La traducción de nombres vive en
+el gateway, que es el que sabe que comparte contenedor. Vitrinee sigue leyendo
+`.env.vitrinee.local` en local, igual que antes, y su propio blueprint de
+referencia (`render.vitrinee.yaml`) sigue siendo válido tal cual.
+
+**Verificado en local** con las piezas reales del gateway (tabla de hosts,
+filtro, supervisor y proxy): con los secretos, `vitrinee.agentpey.com` sirve
+manifest, discovery y checkout, y el proceso no recibe ni el valor de
+`AGENT_SECRET_KEY` ni ningún nombre `VITRINEE_`; sin la llave de firma, no se
+arranca y el dominio responde `503` (`evidencia/T102.md`).
+
+**Alternativa descartada: renombrar las variables en el código de Vitrinee.**
+Resolvía el choque, pero rompía su `.env.vitrinee.example`, su blueprint propio
+y su historia, para arreglar un problema que es del contenedor compartido.
+
+**Otra alternativa descartada: mantener la regla de T86 también para
+Vitrinee.** Un pedido que hiciera caer a la tienda tumbaría la demo entera, y
+el orden de despliegue (blueprint antes que secretos) dejaría el piloto
+reiniciándose hasta que alguien cargue las cuatro claves.
+
 ### C-137 · Los rails de tenant nuevos nacen con 25,00 por compra y 25,00 por día; el crédito patrocinado sigue en 3 · `Vigente`
 **Fecha:** 2026-09-23 · **Hito:** preparación de T101 · **Decidido por el usuario** ("máximo unos 20" USDC para fondear), la forma de Claude Code
 

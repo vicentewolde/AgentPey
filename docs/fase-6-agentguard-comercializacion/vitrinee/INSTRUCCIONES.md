@@ -123,18 +123,27 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
-## Estado al 2026-09-23 (T100 cerrado, PR abierto)
+## Estado al 2026-09-23 (T102 en PR)
 
-- **Deploy vivo:** `https://vitrinee-gateway.onrender.com`, con `ADAPTER=mock`.
-  **Todavía se despliega desde el repo viejo** `vicentewolde/Vitrinee`, rama
-  `day-3-jumpseller-catalog`, y **no tiene la compatibilidad de T99**
-  (`/api/discovery/search` responde 404). Pasarlo al `render.yaml` de AgentPey
-  es T102, que va **antes** que la compra real de T101 (`C-134`): Vitrinee
-  entra al servicio único de Render como cuarto proceso del gateway, en
-  `https://vitrinee.agentpey.com`, con su llave de firma aislada por `envKeys`.
-  Hasta que ese deploy sirva el manifest y el discovery, **no archivar ni
-  borrar el repo viejo**: el deploy depende de él. El blueprint de referencia
-  del servicio propio está en [render.vitrinee.yaml](render.vitrinee.yaml).
+- **Deploy desde AgentPey (T102, `C-134`, `C-136`):** Vitrinee corre como
+  cuarto proceso del servicio único de Render (`apps/gateway`), en
+  `https://vitrinee.agentpey.com`, con `ADAPTER=jumpseller`. Está descrito en el
+  `render.yaml` raíz. **En Render sus variables llevan prefijo `VITRINEE_`**
+  (`VITRINEE_MERCHANT_SIGNING_SECRET`, `VITRINEE_FACILITATOR_API_KEY`,
+  `VITRINEE_JUMPSELLER_LOGIN`, `VITRINEE_JUMPSELLER_AUTHTOKEN` como secretos, y
+  las públicas con valor en el blueprint); el gateway se las pasa a Vitrinee con
+  el nombre sin prefijo que lee (`envAliases` en `apps/gateway/src/hosts.ts`), y
+  a ninguna otra app. Localmente nada cambia: sigue leyendo
+  `.env.vitrinee.local`. Si faltan sus secretos, el gateway no la arranca y su
+  dominio responde 503; si se cae, responde 503 y el resto del piloto sigue.
+  Los pedidos viven en un archivo en el disco efímero de Render: un redeploy
+  los borra.
+- **Deploy viejo:** `https://vitrinee-gateway.onrender.com`, desde el repo
+  viejo `vicentewolde/Vitrinee`, rama `day-3-jumpseller-catalog`, con
+  `ADAPTER=mock` y **sin la compatibilidad de T99**. **No archivar ni borrar
+  el repo viejo** hasta que la compra real de T101 pase por el deploy nuevo:
+  es el ticket "Archivar el repo viejo", bloqueado por T101. El blueprint del
+  servicio viejo queda de referencia en [render.vitrinee.yaml](render.vitrinee.yaml).
 - **Vitrinee es un venue de AgentPey desde T100:** fila `vitrinee` en
   `apps/agent/src/catalog/venues.json`, con `address` = la cuenta de cobro del
   comercio (`MERCHANT_STELLAR_ACCOUNT`, el `payTo` de todo 402), `baseUrl`

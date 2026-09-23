@@ -47,7 +47,11 @@ servicio de Render, que tiene un único juego de variables con todos los
 secretos. Esos archivos deciden qué claves recibe cada app. Agregar una clave
 de AgentPey a la lista de SignalDesk, por ejemplo, rompería en la práctica la
 separación que hace creíble al comercio (`C-88`, `C-114`), aunque ningún código
-importe del otro lado. Es gestión de claves, dentro de `P-10`.
+importe del otro lado. Es gestión de claves, dentro de `P-10`. Desde T102
+(`C-136`) Vitrinee es la cuarta app de ese servicio: sus variables llevan
+prefijo `VITRINEE_` y le llegan solo a ella por `envAliases`. Nunca pongas un
+nombre `VITRINEE_` en el `envKeys` de otra app, ni una clave de AgentPey en el
+de Vitrinee.
 
 **F9 (piloto externo público), desde 2026-09-12:** no inicies código ni
 diseño de F9 por tu cuenta — ni RealOps Agent, ni SignalDesk, ni el catálogo
