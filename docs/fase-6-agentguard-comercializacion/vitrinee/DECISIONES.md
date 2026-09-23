@@ -693,3 +693,38 @@ ruta, así que sería el mismo para todos los productos, y sin `PUBLIC_BASE_URL`
 detalle interno del adaptador de Express. Pedir la dirección después de pagar:
 lo más limpio, pero cambia `C-130` y el formulario de RealOps, y no entra antes
 del 29.
+
+---
+
+## VT-26 · Un pedido pagado y sin cumplir se reintenta sin volver a cobrar, y su recibo no se toca · `Vigente`
+
+**Fecha:** 2026-09-23 · **Hito:** T101 · Pedido por el usuario tras la primera compra real
+
+**Qué pasó.** La primera compra real (café, 9,4631579 USDC) se pagó y el recibo
+salió con las tres comprobaciones en verde, pero Jumpseller respondió
+`404 Account not found` al crear el pedido (`platformError`). `VT-10` ya
+preveía eso: la plata no se pierde y el pedido queda `paid_unfulfilled`. Lo que
+no existía era cómo cumplirlo después: había que hacerlo a mano.
+
+**Qué se decide.** `POST /orders/:orderId/fulfil`. Solo actúa sobre un pedido
+`paid_unfulfilled`; lo que le manda a la plataforma sale del registro del
+pedido, nunca de quien llama; no cobra ni toca el pago. Si la plataforma acepta,
+el pedido pasa a `paid` con su `platformOrderId`; si vuelve a rechazar, queda
+igual con el motivo nuevo y responde `200`. Un pedido que no existe responde
+`404`; uno que no está esperando, o que ya se está cumpliendo, `400`. Dos
+llamadas a la vez no pueden crear dos pedidos.
+
+**El recibo no se vuelve a firmar.** Sigue diciendo `platformOrderId: null`. Es
+lo que se firmó y se ancló en Soroban al pagar: prueba el pago y la venta, y
+volver a firmarlo cambiaría el hash ya anclado. Lo que cambia es el registro del
+pedido. Quien quiera saber si además hay pedido en la plataforma mira
+`/orders/:id`, no el recibo.
+
+**Sin autenticación, a propósito.** No recibe datos y solo puede hacer lo que el
+comprador ya pagó. El peor caso de llamarla de más es que se cree el pedido que
+ya estaba pagado. Si algún día acepta parámetros, deja de ser aceptable.
+
+**Alternativa descartada: un comando local.** Los pedidos viven en un archivo
+del disco efímero de Render, así que un script en otra máquina no los ve.
+**Otra: volver a firmar el recibo con el pedido.** Rompe la relación entre el
+hash anclado y lo que se le entregó al comprador.

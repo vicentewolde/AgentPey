@@ -249,6 +249,85 @@ describe("POST /checkout/:productId — failures after the money moved", () => {
     }
   });
 
+  describe("POST /orders/:orderId/fulfil (VT-26)", () => {
+    /** An adapter that refuses until told to work, counting how many orders it really created. */
+    function flaky() {
+      const mock = new MockStoreAdapter();
+      let works = false;
+      let created = 0;
+      const adapter: StoreAdapter = {
+        name: "flaky",
+        listProducts: () => mock.listProducts(),
+        getProduct: (id) => mock.getProduct(id),
+        getOrder: () => Promise.resolve(null),
+        createOrder: async (input) => {
+          if (!works) throw new VitrineeError("AdapterError", "Jumpseller responded 404 on /orders.json: Account not found.");
+          created += 1;
+          return mock.createOrder(input);
+        },
+      };
+      return { adapter, fix: () => { works = true; }, created: () => created };
+    }
+    const fulfil = (url: string, orderId: string) => fetch(`${url}/orders/${orderId}/fulfil`, { method: "POST" });
+
+    it("creates the platform order for a paid sale, keeps the receipt as anchored, and never charges again", async () => {
+      const store = flaky();
+      const env = await start({ adapter: store.adapter });
+      try {
+        const paid = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+        await env.app.anchors.idle();
+        expect(paid["status"]).toBe("paid_unfulfilled");
+        const receiptHash = paid["receipt"]["hash"];
+
+        // Still refused: the order stays as it was, with the newer reason.
+        const again = await fulfil(env.url, paid["orderId"]);
+        expect(again.status).toBe(200);
+        expect(await again.json()).toMatchObject({ status: "paid_unfulfilled", platformOrderId: null });
+        expect(store.created()).toBe(0);
+
+        store.fix();
+        const done = (await (await fulfil(env.url, paid["orderId"])).json()) as Record<string, any>;
+        expect(done).toMatchObject({ status: "paid", platformError: null });
+        expect(done["platformOrderId"]).not.toBeNull();
+        expect(done["receipt"]["hash"]).toBe(receiptHash);
+        expect(done["settlement"]).toEqual(paid["settlement"]);
+        expect(store.created()).toBe(1);
+      } finally {
+        await env.close();
+      }
+    });
+
+    it("refuses an order that is not waiting, and one that does not exist, without touching the platform", async () => {
+      const store = flaky();
+      store.fix();
+      const env = await start({ adapter: store.adapter });
+      try {
+        const ok = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+        expect(ok["status"]).toBe("paid");
+        const before = store.created();
+        expect((await fulfil(env.url, ok["orderId"])).status).toBe(400);
+        expect((await fulfil(env.url, "ord_nope")).status).toBe(404);
+        expect(store.created()).toBe(before);
+      } finally {
+        await env.close();
+      }
+    });
+
+    it("cannot create two platform orders when called twice at once", async () => {
+      const store = flaky();
+      const env = await start({ adapter: store.adapter });
+      try {
+        const paid = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+        store.fix();
+        const [a, b] = await Promise.all([fulfil(env.url, paid["orderId"]), fulfil(env.url, paid["orderId"])]);
+        expect([a.status, b.status].sort()).toEqual([200, 400]);
+        expect(store.created()).toBe(1);
+      } finally {
+        await env.close();
+      }
+    });
+  });
+
   it("retries a failed anchor and then gives up with the reason recorded", async () => {
     const flaky = fakeRegistry({ failTimes: 1 });
     const env = await start({ anchorer: flaky.anchorer, registry: flaky.registry });

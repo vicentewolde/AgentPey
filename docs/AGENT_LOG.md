@@ -6264,3 +6264,23 @@ Pendiente:
 - El segundo intento dejó 13,67 contados en el día del agente (no se toca el
   vault a mano). Hasta las 00:00 UTC caben 11,33: el gorro no, el café sí.
 - Después: pedido en Jumpseller, tres checks del recibo, cierre de T101.
+
+## 2026-09-23 (14) — cc/t101-compra-real-jumpseller (en curso)
+
+Agente: Claude Code.
+
+Qué: `C-139` mergeado (#28) y desplegado. Tercer intento del usuario con un
+agente nuevo de 50/día: el café **se pagó** (tx `b8506514…`), recibo con tres
+checks verdes en vivo. **Jumpseller responde `404 Account not found` a
+`POST /orders.json`**, reproducido con curl y las credenciales locales, incluso
+con el pedido mínimo: el pedido `ord_muektgpgee1ebc73e5` quedó
+`paid_unfulfilled`. Se agregó `POST /orders/:id/fulfil` (`VT-26`) para
+reintentar sin cobrar; tests nuevos.
+
+Pendiente:
+- Merge del reintento y deploy; luego, cuando Jumpseller lo habilite,
+  `curl -X POST https://vitrinee.agentpey.com/orders/ord_muektgpgee1ebc73e5/fulfil`.
+  Ojo: los pedidos viven en el disco efímero de Render: un redeploy antes del
+  reintento borra el registro (el pago y el recibo siguen en la cadena).
+- Del usuario: soporte de Jumpseller / panel de la cuenta; decidir el plan B.
+- T101 abierto. Métricas de T100/T101/T102 pendientes del usuario.

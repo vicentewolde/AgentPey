@@ -457,6 +457,76 @@ export function completeCheckout(deps: CheckoutDeps): RequestHandler {
   };
 }
 
+/**
+ * Tries again to create the platform order for a sale that was paid and could
+ * not be fulfilled (`VT-26`, T101). Money never moves here: the settlement is
+ * already in the record, and everything sent to the platform comes from that
+ * record, never from the caller.
+ *
+ * The receipt is left exactly as it was issued and anchored: it proves the
+ * payment and the sale, and still says `platformOrderId: null`. Re-signing it
+ * would change the hash that is already anchored on-chain. What changes is
+ * the order record: `platformOrderId`, `status: "paid"`, and no error.
+ *
+ * Two callers at once cannot both create a platform order: the second is
+ * refused while the first is in flight, and after it the status is no longer
+ * `paid_unfulfilled`. A platform that refuses again leaves the order as it
+ * was, with the newer reason, and answers `200` like the first attempt did.
+ */
+export async function fulfilOrder(deps: CheckoutDeps, orderId: string): Promise<OrderRecord> {
+  const record = deps.orders.get(orderId);
+  if (record === undefined) throw new VitrineeError("OrderNotFound", `no order with id "${orderId}"`, { details: { orderId } });
+  if (record.status !== "paid_unfulfilled") {
+    throw new VitrineeError("ValidationError", `order "${orderId}" is not waiting to be fulfilled`, {
+      details: { orderId, status: record.status },
+    });
+  }
+  const lock = `fulfil:${orderId}`;
+  if (deps.inFlight.has(lock)) {
+    throw new VitrineeError("ValidationError", `order "${orderId}" is being fulfilled right now`, { details: { orderId } });
+  }
+  deps.inFlight.add(lock);
+  try {
+    let platformOrderId: string | undefined;
+    let failure: string | undefined;
+    try {
+      const platformOrder = await deps.adapter.createOrder({
+        productId: record.product.id,
+        quantity: record.quantity,
+        buyer: record.buyer,
+        reference: record.orderId,
+        paymentRef: {
+          txHash: record.settlement.txHash,
+          network: record.settlement.network,
+          asset: record.settlement.asset,
+          amountUSDCAtomic: record.settlement.amountAtomic,
+          payerAccount: record.settlement.payer,
+        },
+      });
+      platformOrderId = platformOrder.platformOrderId;
+    } catch (error) {
+      failure = error instanceof Error ? error.message : String(error);
+    }
+    const updated = await deps.orders.update(orderId, (order) => {
+      if (platformOrderId !== undefined) {
+        order.platformOrderId = platformOrderId;
+        order.platformError = null;
+        order.status = "paid";
+      } else {
+        order.platformError = failure ?? "unknown error";
+      }
+    });
+    deps.log(platformOrderId === undefined ? "fulfilment retry failed" : "order fulfilled on retry", {
+      orderId,
+      platformOrderId: platformOrderId ?? null,
+      error: failure ?? null,
+    });
+    return updated ?? record;
+  } finally {
+    deps.inFlight.delete(lock);
+  }
+}
+
 /** What `/orders/:id` and the checkout answer with. One shape, so the agent needs one parser. */
 export function orderResponse(record: OrderRecord): Record<string, unknown> {
   return {

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { z, ZodError } from "zod";
 
 import { AnchorWorker, type Anchorer } from "./anchoring.js";
-import { checkoutRoutes, completeCheckout, orderResponse, preflightCheckout, type CheckoutDeps } from "./checkout.js";
+import { checkoutRoutes, completeCheckout, fulfilOrder, orderResponse, preflightCheckout, type CheckoutDeps } from "./checkout.js";
 import type { GatewayConfig } from "./config.js";
 import { SERVICE_CARD_PATH, listResources, listServiceCards, paginationFrom } from "./discovery.js";
 import { buildManifest, createCatalogCache, toManifestProduct } from "./manifest.js";
@@ -181,6 +181,13 @@ export function createApp({
       throw new VitrineeError("OrderNotFound", `no order with id "${orderId}"`, { details: { orderId } });
     }
     res.json(orderResponse(record));
+  });
+
+  // A sale that was paid and could not be fulfilled (`paid_unfulfilled`) is
+  // retried here, without charging again (VT-26). It takes no input: what is
+  // sent to the platform is what the order record already holds.
+  app.post("/orders/:orderId/fulfil", async (req, res) => {
+    res.json(orderResponse(await fulfilOrder(deps, String(req.params.orderId))));
   });
 
   // A receipt this gateway issued, looked up by the hash that is anchored.

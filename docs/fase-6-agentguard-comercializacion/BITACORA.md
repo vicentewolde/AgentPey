@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101, la compra real, ya contra `vitrinee.agentpey.com` en vivo (reordenados el 2026-09-23, `C-134`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -4827,3 +4827,50 @@ funciona hasta que el nuevo esté en vivo y la compra de T101 pase por él.
   tabla real de apps. `pnpm typecheck` y `pnpm test` de todo AgentPey en verde.
 - `AGENTS.md`: una línea nueva en el reparto de claves.
 - Salidas crudas en [`evidencia/T102.md`](evidencia/T102.md).
+
+---
+
+## T101 · La compra real, de punta a punta, menos el pedido en Jumpseller · en curso 2026-09-23
+
+**Qué quedó funcionando, en palabras simples.** Un agente de AgentPey compró de
+verdad un café de la tienda real: el permiso firmado por el usuario lo dejó
+comprar, el pago salió de la cuenta de gasto del agente hacia la tienda (9,46
+USDC, visible en Stellar), la tienda registró el pedido y entregó un recibo firmado
+y anclado, y las tres comprobaciones del recibo dan verde en el sitio en vivo.
+**Lo único que no pasó es que el pedido aparezca en el panel de Jumpseller**: su
+API responde `404 Account not found` al crear cualquier pedido. Lo reproduje
+fuera de Vitrinee con las mismas credenciales, así que no es nuestro formato ni
+nuestro código. Falta que Jumpseller lo habilite.
+
+### Cómo se llegó, con tres intentos
+
+1. **Sin plata en el rail.** El primer intento pidió el gorro (13,67) con 3 USDC
+   en el rail: `RailInsufficientFunds`, correcto, sin pagar.
+2. **El tope escondido de la librería (`C-139`).** Con 23 USDC, el pago se cortó
+   con un `502`: la librería x402 trae un tope propio de 1 USD por pago, que nada
+   había tocado antes. Ocurría antes de firmar, pero el error no tenía nombre, y
+   dejó el gasto contado en el día. Ahora el tope es lo autorizado, y un error así
+   sale con nombre y devuelve el gasto.
+3. **Los dos intentos cortados sumaban 23,13 del tope de 25.** El siguiente café
+   se rechazó por el tope diario del Mandato, la regla funcionando. El usuario
+   contrató un agente nuevo con 50 por día y compró: pagó.
+
+### Lo que se agregó
+
+Un reintento para pedidos pagados y sin cumplir (`VT-26`): no cobra otra vez y no
+toca el recibo. Cuando Jumpseller funcione, el pedido `ord_muektgpgee1ebc73e5`
+se completa con una llamada.
+
+### Lo que falta para cerrar T101
+
+- Jumpseller habilita la creación de pedidos por API (del usuario: soporte y el
+  panel de la cuenta).
+- Reintentar el pedido, ver la orden en el panel, y cerrar métricas.
+- Si no llega antes del 29: la tienda simulada como plan B, decisión del usuario.
+
+### Evidencia técnica
+
+- Decisiones: [`C-139`](DECISIONES.md), [`VT-26`](vitrinee/DECISIONES.md).
+- Pago `b8506514c0087fcf2d142bea6029e4858a3c7ac55253adc280f2c0a8c2aa3a93`; pedido
+  `ord_muektgpgee1ebc73e5`; recibo `b961157ce416e0f5f10b53974ff3cd3a11b5d2197aa0ba3216e22dcdc86f5815`.
+- Salidas crudas en [`evidencia/T101.md`](evidencia/T101.md).
