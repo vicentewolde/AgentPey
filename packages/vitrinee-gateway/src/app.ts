@@ -2,7 +2,7 @@ import type { StoreAdapter } from "@vitrinee/adapters";
 import { ReceiptRegistryClient, verifyReceipt, type RegistryReader } from "@vitrinee/anchor";
 import { MANIFEST_PATH, VitrineeError, isVitrineeError } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
-import { paymentMiddleware } from "@x402/express";
+import { paymentMiddlewareFromHTTPServer } from "@x402/express";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,7 +16,7 @@ import { buildManifest, createCatalogCache, toManifestProduct } from "./manifest
 import { OrderStore } from "./orders.js";
 import { Reservations } from "./reservations.js";
 import { SettlementLedger } from "./settlements.js";
-import { createFacilitatorClient, createX402Server } from "./x402.js";
+import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
 
 export interface AppDeps {
   config: GatewayConfig;
@@ -162,8 +162,10 @@ export function createApp({
   //    `GET` reads the query, `POST` the JSON body; both land on one schema (VT-23).
   app.get("/checkout/:productId", preflightCheckout(deps));
   app.post("/checkout/:productId", preflightCheckout(deps));
-  // 2. x402: 402 challenge, then settle (upfront) before the handler.
-  app.use(paymentMiddleware(checkoutRoutes(deps), x402, undefined, undefined, syncFacilitatorOnStart));
+  // 2. x402: 402 challenge, then settle (upfront) before the handler. The
+  //    402's `resource.url` never carries the query, where GET puts the
+  //    buyer's address (VT-25).
+  app.use(paymentMiddlewareFromHTTPServer(new QueryFreeResourceServer(x402, checkoutRoutes(deps)), undefined, undefined, syncFacilitatorOnStart));
   // 3. Money moved: create the platform order, sign the receipt, queue the anchor.
   app.get("/checkout/:productId", completeCheckout(deps));
   app.post("/checkout/:productId", completeCheckout(deps));

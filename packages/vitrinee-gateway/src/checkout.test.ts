@@ -333,6 +333,31 @@ describe("GET /checkout/:productId — the door x402 clients use (VT-23)", () =>
     }
   });
 
+  it("keeps the buyer's address out of resource.url, the object a client forwards to the facilitator (VT-25)", async () => {
+    const facilitator = fakeFacilitator();
+    const env = await start({ facilitator });
+    try {
+      const resource = `${env.url}/checkout/hoodie-cordillera-m?quantity=2&${SHIPPING}`;
+      const challenge = await fetch(resource);
+      const required = decodePaymentRequiredHeader(challenge.headers.get("payment-required")!);
+      expect(required.resource.url).toBe(`${env.url}/checkout/hoodie-cordillera-m`);
+      // The query is still what the price is computed from.
+      expect(required.accepts[0]!.amount).toBe("736631578");
+
+      const paid = await fetch(resource, { headers: await payFor(challenge) });
+      expect(paid.status).toBe(200);
+      const sent = JSON.stringify([...facilitator.verifyCalls, ...facilitator.settleCalls]);
+      expect(sent).not.toContain("Irarr");
+      expect(sent).not.toContain("address=");
+      expect(facilitator.settleCalls[0]!.payload.resource?.url).toBe(`${env.url}/checkout/hoodie-cordillera-m`);
+      // The order still got the address: it only stopped travelling to the facilitator.
+      const order = (await paid.json()) as { platformOrderId: string };
+      expect(order.platformOrderId).toBe("mock-0001");
+    } finally {
+      await env.close();
+    }
+  });
+
   it("refuses a malformed query, an unknown product and missing stock before asking for money", async () => {
     const facilitator = fakeFacilitator();
     const env = await start({ facilitator });

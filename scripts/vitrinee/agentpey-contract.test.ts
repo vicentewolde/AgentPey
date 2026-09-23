@@ -91,7 +91,10 @@ describe("AgentPey's buyer against a Vitrinee store", () => {
     const resourceUrl = fillRouteTemplate(server.url, route, { quantity: 2, ...SHIPPING });
 
     const challenge = await requestPaymentChallenge(resourceUrl);
-    const [accepted] = readChallenge(challenge).accepts;
+    const required = readChallenge(challenge);
+    const [accepted] = required.accepts;
+    // The shipping details fill the route, but never the resource a client forwards to the facilitator (VT-25).
+    expect(required.resource).toMatchObject({ url: `${server.url}/checkout/hoodie-cordillera-m` });
     // `toPaymentTerms` would see exactly this: the card's unit price × 2, to the card's destination.
     expect(accepted).toMatchObject({
       scheme: "exact",
