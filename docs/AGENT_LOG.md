@@ -6040,3 +6040,41 @@ Pendiente:
   después del hackathon.
 - T100: venue en `venues.json`, `agentKind` de Vitrinee en RealOps, y que
   RealOps tome la cantidad del campo `quantity` (`C-132`).
+
+## 2026-09-23 (7) — cc/planificacion-exponential
+
+Agente: Claude Code.
+
+Qué: **adopción de Exponential como tablero de planificación (`P-13`)**, a
+pedido del usuario, sin código de la aplicación. En el repo:
+`docs/planificacion-exponential/` (README con el ritual y quién manda en qué,
+SYNC.md con la tabla hito ↔ ticket, COMPARACION.md con el experimento y sus
+métricas), `P-13` en `docs/DECISIONES.md`, fila en `CLAUDE.md`, `.exponential/`
+en `.gitignore`. En Exponential, desde el CLI: producto `agentpey`, Feature
+"Hackathon Find Your Way" (`cmuebjyws0001l704hg8wwa4f`), tickets T100/T101/T102
+con rama `cc/`, dependencias y comentario "método ANTERIOR", ticket de deuda
+(opción b de `C-133`), metas 96 y 97 con KR, seis acciones con fecha (tres del
+usuario, tres enlazadas a los tickets). Los nueve tickets del producto
+`vitrinee` (repo viejo) quedaron `ARCHIVED` con comentario, elegido por el
+usuario. Los CUID están en SYNC.md.
+
+Por qué: el usuario quiere un tablero visual y medir si planificar con
+grill → PRD → tickets mejora sobre el método de hitos T. T100–T102 son la línea
+base.
+
+Hallazgos del CLI (1.18.1): no crea proyectos; `epics create` falla por un
+`productId` que el CLI no manda (se usó un Feature); `tickets comment add` usa
+`-m`; los tickets no tienen fechas (van en acciones enlazadas).
+
+Exponential: todo lo de arriba es nuevo. Nada se borró.
+
+Pendiente:
+- **Del usuario:** crear el proyecto `AgentPey` en la web. Después, Claude Code
+  enlaza metas (`goals update --project`) y acciones (`actions update -p`).
+- **Merge de `cc/planificacion-exponential`** — esperando OK del usuario.
+- Paso 4 del plan: primer hito `EXPONENTIAL` con `/grill-with-docs`, `/to-prd`,
+  `/to-expo`, cuando el usuario diga qué trabajo planificar. Si no alcanza
+  antes del 29, después del video.
+- Sigue T100 (`/start-ticket cmuebkyxg0005l704z3bdfdws`).
+- Sin cambios: partner key en Render, fondear la reserva, `ROADMAP.md:460`,
+  snapshots de `policy-rail`, `.codex/` y `logo agentpey/` sin trackear.

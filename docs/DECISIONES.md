@@ -599,3 +599,61 @@ conflictos en `packages/core`, `apps/agent`, `apps/gateway`, `contracts/`,
 `deployments/testnet.json`, `docs/DECISIONES.md` y todos los archivos de la raíz,
 resueltos a mano en medio de un merge. Reubicar primero en un commit revisable
 deja el merge limpio y cada decisión de ruta visible por separado.
+
+---
+
+### P-13 · Exponential como tablero de planificación, en un experimento contra el método de hitos T · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** ninguno; afecta cómo se definen los hitos desde T103 · Decidido por el usuario; la forma, de Claude Code
+
+**Qué cambia.** El usuario adopta Exponential (exponential.im) como tablero
+visual de AgentPey: prioridad, orden y fechas de los hitos se manejan ahí. El
+repo sigue siendo el registro: alcance, decisiones, bitácora y evidencia no se
+mueven. Los dos se mantienen sincronizados a mano, con un ritual al abrir y al
+cerrar cada sesión, descrito en
+[`docs/planificacion-exponential/README.md`](planificacion-exponential/README.md).
+La tabla de correspondencia entre hitos T y tickets vive en
+[`SYNC.md`](planificacion-exponential/SYNC.md).
+
+**Quién manda en qué.** Exponential manda en prioridad, orden, fechas y estado
+de las tareas del usuario. El repo manda en alcance, decisiones y qué se hizo.
+Si difieren, Claude Code lo muestra y el usuario decide; ninguna de las dos
+herramientas sobreescribe a la otra sola.
+
+**El experimento.** T100, T101 y T102, definidos en `C-130` con el método
+anterior, son la línea base. Los hitos siguientes se planifican con
+`/grill-with-docs`, `/to-prd` y `/to-expo`, con tickets verticales que continúan
+la numeración T. Cada ticket se marca `ANTERIOR` o `EXPONENTIAL` en SYNC.md y se
+mide con las métricas de
+[`COMPARACION.md`](planificacion-exponential/COMPARACION.md). Cierra con tres
+hitos de cada método o el 2026-10-31, lo que llegue primero. Los criterios para
+quedarse con un método u otro están escritos antes de medir, en el mismo
+archivo.
+
+**Cómo se adaptan las skills.** Los tickets nacen con rama `cc/t<n>-<slug>`
+(`P-2`), así `/start-ticket` la respeta. `/ship-ticket` solo abre el PR y pasa
+el ticket a `QA`; el merge sigue siendo fast-forward manual después de la
+revisión del usuario (regla 1 de `CLAUDE.md`), y `DONE` lo escribe Claude Code.
+Los PRD se escriben en `docs/fase-<n>-…/prd/`, en español, antes de publicarse
+en Exponential; si difieren, manda el repo.
+
+**Qué se creó el 2026-09-23.** Producto `agentpey`; un Feature que agrupa T100
+a T102 para el video del 29; los tres tickets con rama, dependencias y un
+comentario que los marca como línea base; un ticket de deuda para la opción (b)
+de `C-133`; dos metas ("Video demo SCF: 29 de septiembre" y "Primer partner
+piloto real en testnet") con key results; y seis acciones con fecha, tres del
+usuario y tres que le ponen fecha a los hitos. Los nueve tickets del producto
+`vitrinee`, creados desde el repo viejo antes de `P-12`, quedaron `ARCHIVED`
+con un comentario que apunta acá.
+
+**Lo que no cambia.** `CLAUDE.md` tiene prioridad sobre cualquier skill. Codex
+no toca Exponential: su protocolo (`P-4`, `P-5`) sigue por git y `AGENT_LOG.md`.
+
+**Alternativa descartada: migrar la bitácora a Exponential y dejar el repo solo
+con código.** Descartada porque `DECISIONES.md` y `BITACORA.md` son la
+narrativa de la postulación a SCF y el contexto que un chat nuevo necesita; un
+tablero no reemplaza un documento con motivos y alternativas.
+
+**Otra alternativa descartada: un script de sincronización desde el primer
+día.** Se pospone hasta ver qué se desincroniza de verdad en tres o cuatro
+sesiones; escribirlo ahora sería diseñar contra un problema que todavía no se
+vio.

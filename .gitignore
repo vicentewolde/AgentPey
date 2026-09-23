@@ -27,3 +27,6 @@ credential.jws
 
 # Vitrinee's local runtime state: order records, last receipt, mock stock
 .vitrinee/
+
+# Exponential (/start-ticket marker)
+.exponential/
