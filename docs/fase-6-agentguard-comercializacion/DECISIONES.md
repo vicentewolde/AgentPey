@@ -3049,7 +3049,7 @@ corre un número.
 
 ---
 
-### C-80 · Los números del piloto: 1 USDC por tenant, límites del rail 0.30/0.60, precios 0.25 y 0.10 · `Vigente`
+### C-80 · Los números del piloto: 1 USDC por tenant, límites del rail 0.30/0.60, precios 0.25 y 0.10 · `Vigente`, salvo el fondeo por tenant (3 USDC desde `C-131`)
 **Fecha:** 2026-09-12 · **Decidido por el usuario**
 
 `PILOTO-F9.md` § 12.2 dejó anotado que los tres números —cuánto se fondea
@@ -5654,3 +5654,69 @@ cambia.
 formulario del hackathon pide un solo repo. Además, cada mitad sola cuenta media
 historia: AgentPey sin comercio real compra servicios de prueba, y Vitrinee sin
 AgentPey vende a un script de 40 líneas sin reglas de gasto.
+
+---
+
+### C-131 · El crédito patrocinado por tenant sube de 1 a 3 USDC · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** después de T99 · **Pedido por el usuario**
+
+`SPONSORED_FUNDING_PER_TENANT` pasa de `1.0000000` a `3.0000000`
+(`packages/activity/src/index.ts`). Es lo único que cambia de `C-80`: el tope
+de 20 tenants, la alerta con 5 de margen, los precios de SignalDesk y los
+límites grabados en el rail siguen igual.
+
+**Motivo.** T99 mostró que el producto más barato de la tienda Jumpseller real
+cuesta 1,0421053 USDC (990 CLP a 950), más que el crédito entero de un
+tenant. El usuario pidió más holgura. 3 USDC alcanza para dos packs de stickers
+con margen.
+
+**Por qué 3 y no más.** La reserva tenía 30,484 USDC y ya había patrocinado 13
+de 20 rails el 2026-09-23. Los 7 cupos que quedan a 3 USDC son 21 USDC: caben en
+el saldo actual sin refondear. Lo que sobra en un rail no vuelve (`C-61`), así
+que cada USDC de más por tenant es drenaje real de la reserva.
+
+**Qué no cambia sola.** Un rail ya desplegado conserva lo que recibió. Y el
+crédito **no alcanza para comprarle a Vitrinee mientras el rail tenga
+`perTx` 0,30**: el contrato rechaza cualquier pago mayor, tenga el saldo que
+tenga. Eso queda propuesto al usuario, no decidido (bitácora, bloque T99).
+
+**Alternativa descartada:** 5 USDC. Más holgura, pero 7 × 5 = 35 USDC supera la
+reserva de hoy, y el precheck de `tenant-rail.ts` empezaría a negar patrocinio
+antes del tope.
+
+---
+
+### C-132 · La `quantity` de la ruta es la de la compra: AgentPey la completa, y rechaza una distinta · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** después de T99 · Recomendación de Claude Code, aceptada por el usuario
+
+Cuando la ruta paga de un comercio declara un `input` llamado `quantity` (como
+la de Vitrinee, `VT-24`), `executeTenantPurchase` lo llena con la `quantity`
+de la compra, la que firma el intent (`withPurchaseQuantity` en
+`apps/web/src/tenant-purchase.ts`). Si el que llama también manda
+`route_params.quantity`, tiene que ser el mismo número; si no, la compra se
+rechaza con el código nuevo **`RouteParamConflict`**, antes de pedirle nada al
+comercio y devolviendo el gasto reservado. Una ruta sin `quantity` queda
+exactamente como la mandó el que llama.
+
+**Motivo.** La cantidad viajaba dos veces, y si diferían el comercio cotizaba
+otro total y `reconcileTerms` rechazaba antes de firmar: sin perder plata, pero
+con un error que no nombraba ninguno de los dos números. Arreglarlo en AgentPey
+y no en RealOps lo cubre para cualquier partner que llame a
+`POST /v1/purchases`, que es por donde compra T101.
+
+**Por qué rechazar y no sobrescribir.** Quien escribió `quantity: 2` en la ruta
+y `1` en la compra quería decir algo. Pagar una unidad mientras cree que compró
+dos es justo la sorpresa que esto evita.
+
+**Lo que queda para T100.** El formulario de RealOps arma un campo por cada
+`input`, así que va a pedir `quantity` aparte, y hoy RealOps compra siempre 1
+desde el catálogo. En T100, cuando se agregue el `agentKind` de Vitrinee, RealOps
+tiene que tomar la cantidad de la compra de ese campo, o no mostrarlo. Hasta
+entonces, un 2 en ese campo se rechaza con `RouteParamConflict`, y RealOps lo
+explica en los dos idiomas.
+
+**La vista previa no cambia.** No recibe `route_params` por decisión (`C-125`).
+
+**Alternativa descartada:** que RealOps llene la de la ruta con la de la compra,
+que era la primera recomendación en T99. Dejaba igual de expuesto a cualquier
+partner que llame a la API directo.

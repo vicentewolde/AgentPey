@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** · **Sigue:** T100, Vitrinee como venue en `venues.json` y un `agentKind` en RealOps (`C-130`), después de que el usuario decida los dos puntos abiertos de T99 (cómo se fondea un rail para precios reales, y `quantity` duplicada). Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23), así que T101 no tiene bloqueo externo. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** · **Sigue:** T100, Vitrinee como venue en `venues.json` y un `agentKind` en RealOps (`C-130`), después de que el usuario decida los límites que el contrato del rail le graba a cada tenant (0,30 por compra: ningún producto real de Vitrinee cabe). El crédito por tenant ya subió a 3 USDC (`C-131`) y la `quantity` duplicada quedó resuelta (`C-132`). Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23), así que T101 no tiene bloqueo externo. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -4613,3 +4613,37 @@ nueva: [`VT-25`](vitrinee/DECISIONES.md).
 
 Quedan abiertos los puntos 2 (el crédito del rail no alcanza para los precios
 reales) y 3 (`quantity` viaja dos veces).
+
+### Después del cierre, otra vez: más crédito, y una sola cantidad
+
+El usuario mergeó el arreglo de la dirección y pidió dos cosas más.
+
+**Más crédito para cada tenant: de 1 a 3 USDC** (`C-131`). Alcanza para dos packs
+de stickers con margen, y los 7 cupos de patrocinio que quedan caben en lo que
+tiene la reserva hoy (30,48 USDC). Solo lo reciben los rails que se creen desde
+ahora.
+
+**La cantidad ya no viaja dos veces** (`C-132`). Si el comercio pide la cantidad
+en su ruta, AgentPey pone la de la compra. Si quien llama manda otra distinta,
+la compra se rechaza antes de pedirle nada al comercio, con un motivo que
+RealOps explica en los dos idiomas (`RouteParamConflict`).
+
+**Un obstáculo que el crédito solo no resuelve.** El rail de cada tenant nace
+con límites grabados en el contrato: 0,30 USDC por compra y 0,60 por día
+(`C-80`). La red rechaza cualquier pago mayor, tenga el saldo que tenga, así que
+los stickers de 1,04 USDC siguen sin poder comprarse. No lo cambié: es parte de
+tu decisión `C-80`. Opciones:
+
+- **(a) Subir los límites del contrato para los rails nuevos a 3,00 por compra y
+  3,00 por día**, lo mismo que el crédito. El límite principal sigue siendo el
+  Mandato que firma la persona (en RealOps, 0,30/0,60 por defecto), y la prueba
+  de aceptación del tope diario lo usa a él, así que no se rompe. Costo: para un
+  tenant de SignalDesk, el respaldo en la red queda más holgado que su Mandato.
+- **(b) Que cada rail nazca con los límites del Mandato de su agente.** El
+  respaldo en la red sería exactamente lo que la persona firmó. Es más trabajo,
+  toca custodia, y un rail no cambia de límites si después se firma un Mandato
+  nuevo: habría que desplegar otro.
+
+Recomiendo **(a)** para llegar al 29, y dejar (b) anotado para después. En los
+dos casos, la compra de T101 necesita un tenant creado **después** del cambio:
+los rails que ya existen conservan 0,30 y 1 USDC.

@@ -5970,3 +5970,41 @@ Pendiente:
 - Siguen abiertos los puntos 2 (crédito de 1 USDC por rail vs. 1,0421 USDC del
   producto más barato) y 3 (`quantity` duplicada) de T99, del usuario, antes de
   T100/T101.
+
+## 2026-09-23 (5) — main (cc/t99-resource-url mergeado) y cc/t99-credit-quantity
+
+Agente: Claude Code.
+
+Qué:
+- **`cc/t99-resource-url` mergeado** a `main` en fast-forward
+  (`24a2c1b..631a043`), pusheado, rama borrada. A pedido del usuario.
+- En **`cc/t99-credit-quantity`**, también a pedido del usuario:
+  - **`C-131`**: `SPONSORED_FUNDING_PER_TENANT` de 1 a **3 USDC**. Reserva
+    30,484 USDC, 13 de 20 rails ya patrocinados: los 7 cupos que quedan (21
+    USDC) caben. Solo afecta a rails nuevos.
+  - **`C-132`**: `withPurchaseQuantity` en `apps/web/src/tenant-purchase.ts`.
+    Si la ruta del comercio declara `quantity`, se llena con la de la compra; si
+    el que llama manda otra, se rechaza con el código nuevo
+    `RouteParamConflict` (en `packages/core`, explicado en RealOps,
+    `CODIGOS-DE-RECHAZO.md` regenerado).
+
+Verificado: `pnpm typecheck` y `pnpm test` de todo AgentPey en verde (`apps/web`
+250, eran 246).
+
+Por qué no se delegó a Codex: fondos patrocinados y el camino de compra de
+`/v1` (`P-10`).
+
+Pendiente:
+- **Merge de `cc/t99-credit-quantity`** — esperando OK del usuario. Ojo: si
+  Render despliega desde `main`, el crédito de 3 USDC rige para los tenants
+  nuevos de producción desde el merge.
+- **Decisión del usuario, bloquea T101:** el contrato graba `perTx` 0,30 y
+  `perDay` 0,60 en cada rail de tenant (`C-80`, `tenant-rail.ts`); ningún
+  producto real de Vitrinee cabe. Recomendado: subir a 3,00/3,00 para rails
+  nuevos (el Mandato sigue siendo el límite principal). Opciones en la
+  bitácora, bloque T99.
+- La compra de T101 necesita un tenant creado después de ese cambio.
+- **Del usuario:** fondear la reserva `GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K`
+  con USDC de testnet del faucet de Circle.
+- En T100: RealOps tiene que tomar la cantidad del campo `quantity` del
+  formulario de Vitrinee, o no mostrarlo (`C-132`).
