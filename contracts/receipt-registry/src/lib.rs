@@ -6,14 +6,14 @@
 //! anyone holding the receipt can check that the merchant committed to it at
 //! a given ledger — and that nobody changed a byte since.
 //!
-//! Deliberately small (docs/DECISIONES.md, V-3): no admin, no upgrade, no
+//! Deliberately small (docs/fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md, VT-3): no admin, no upgrade, no
 //! constructor. Nobody can delete or rewrite an anchored receipt, including
 //! the merchant that anchored it and whoever deployed this contract.
 
 use soroban_sdk::{contract, contracterror, contractevent, contractimpl, contracttype, Address, Bytes, BytesN, Env};
 
 /// Bumped whenever the persistent storage layout changes incompatibly.
-/// Off-chain readers decode `DataKey::Receipt` directly (packages/anchor).
+/// Off-chain readers decode `DataKey::Receipt` directly (packages/vitrinee-anchor).
 pub const STORAGE_SCHEMA_VERSION: u32 = 1;
 
 /// Longest `order_ref` accepted, in bytes. Vitrinee order ids are ~24 bytes.

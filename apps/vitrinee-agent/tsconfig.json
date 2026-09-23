@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/vitrinee-core"
+    },
+    {
+      "path": "../../packages/vitrinee-adapters"
+    },
+    {
+      "path": "../../packages/vitrinee-anchor"
+    },
+    {
+      "path": "../../packages/vitrinee-gateway"
+    }
+  ]
+}

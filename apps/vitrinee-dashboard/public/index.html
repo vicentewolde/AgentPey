@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vitrinee · pedidos</title>
+    <meta name="description" content="Pedidos pagados por agentes, con su recibo firmado y su anclaje en Stellar." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <div>
+          <h1>Vitrinee</h1>
+          <p id="merchant-line" class="muted">cargando tienda…</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span id="net-badge" class="badge">testnet</span>
+        <span id="refresh-state" class="muted small" aria-live="polite"></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="stats" id="stats" aria-label="Resumen">
+        <div class="stat"><span class="stat-value" id="stat-orders">—</span><span class="stat-label">pedidos</span></div>
+        <div class="stat"><span class="stat-value" id="stat-usdc">—</span><span class="stat-label">USDC cobrados</span></div>
+        <div class="stat"><span class="stat-value" id="stat-anchored">—</span><span class="stat-label">anclados</span></div>
+        <div class="stat"><span class="stat-value" id="stat-products">—</span><span class="stat-label">productos en venta</span></div>
+      </section>
+
+      <section class="panel" aria-labelledby="orders-title">
+        <div class="panel-head">
+          <h2 id="orders-title">Pedidos</h2>
+          <p class="muted small">Se actualiza solo cada 5 s. Un anclaje pasa de <em>pendiente</em> a <em>anclado</em> en unos segundos.</p>
+        </div>
+        <div id="orders-empty" class="empty" hidden>
+          <p>Todavía no hay pedidos.</p>
+          <p class="muted small">Corre <code>pnpm vitrinee:buy -- "compra el hoodie talla M"</code> y aparecen acá.</p>
+        </div>
+        <div class="table-wrap">
+          <table id="orders-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Producto</th>
+                <th class="num">USDC</th>
+                <th>En la tienda</th>
+                <th>Pago</th>
+                <th>Anclaje</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="detail" aria-labelledby="detail-title">
+      <form method="dialog" class="detail-close"><button value="cerrar" aria-label="Cerrar">✕</button></form>
+      <h2 id="detail-title">Pedido</h2>
+      <div id="detail-body"></div>
+    </dialog>
+
+    <footer>
+      <p class="muted small">
+        Testnet. Ningún valor real cambia de manos.
+        <a id="manifest-link" href="/.well-known/agent-storefront.json">manifest</a> ·
+        <a href="/catalog">catálogo</a> ·
+        <a href="/discovery/resources">discovery</a>
+      </p>
+    </footer>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

@@ -14,3 +14,31 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+
+# Its own single-crate Cargo workspace, excluded from `contracts/Cargo.toml`.
+# The deployed contract was built against soroban-sdk 28.0.0; the sibling
+# contracts pin 27.0.6. Two SDKs in one lockfile would re-resolve the other
+# contracts' graph for no gain, and rebuilding this one anywhere else could
+# change the wasm that is already live on testnet
+# (docs/fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md, VT-9).
+[workspace]
+resolver = "2"
+
+[workspace.dependencies]
+# Build the wasm with `stellar contract build` (CLI 28): plain `cargo build`
+# for wasm is refused by this SDK. `cargo test` works directly.
+soroban-sdk = "28.0.0"
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
