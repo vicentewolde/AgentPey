@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   PERDAY_WARNING_RATIO,
+  SPONSORED_FUNDING_PER_TENANT,
   SPONSORED_RAILS_WARNING_HEADROOM,
   readSponsoredCreditStatus,
   activeMandate,
@@ -194,7 +195,9 @@ describe("readSponsoredCreditStatus", () => {
 
   it("reports the balance as the binding constraint when it is the smaller one", async () => {
     const directory = { countFundedRails: async () => 0 };
-    const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => "3.0000000");
+    // Enough for three tenants and a bit, whatever one tenant's funding is.
+    const reserve = (Number(SPONSORED_FUNDING_PER_TENANT) * 3.5).toFixed(7);
+    const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => reserve);
     expect(status.remaining).toBe(3);
     expect(status.nearExhaustion).toBe(true);
   });

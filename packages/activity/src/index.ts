@@ -140,7 +140,12 @@ export function recentRefusals(records: readonly VaultRecord[], limit = 20): rea
  * have to agree, and two copies of "twenty" is two numbers that can drift
  * apart in exactly the situation where being wrong is expensive.
  */
-export const SPONSORED_FUNDING_PER_TENANT = "1.0000000";
+/**
+ * 3 USDC since 2026-09-23 (`C-131`): 1 USDC (`C-80`) was less than the cheapest
+ * real product a Vitrinee store sells (1.0421053 USDC). A rail already funded
+ * keeps what it got; only rails deployed from now on start with this.
+ */
+export const SPONSORED_FUNDING_PER_TENANT = "3.0000000";
 export const MAX_SPONSORED_RAILS = 20;
 /** Warn while there is still credit for this many more tenants, not at exhaustion. */
 export const SPONSORED_RAILS_WARNING_HEADROOM = 5;
