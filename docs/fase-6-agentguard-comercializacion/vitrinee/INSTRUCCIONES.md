@@ -123,7 +123,7 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
-## Estado al 2026-09-23 (T102 en PR)
+## Estado al 2026-09-23 (T102 en vivo)
 
 - **Deploy desde AgentPey (T102, `C-134`, `C-136`):** Vitrinee corre como
   cuarto proceso del servicio único de Render (`apps/gateway`), en
@@ -134,7 +134,10 @@ sus paquetes están en el mismo workspace.
   las públicas con valor en el blueprint); el gateway se las pasa a Vitrinee con
   el nombre sin prefijo que lee (`envAliases` en `apps/gateway/src/hosts.ts`), y
   a ninguna otra app. Localmente nada cambia: sigue leyendo
-  `.env.vitrinee.local`. Si faltan sus secretos, el gateway no la arranca y su
+  `.env.vitrinee.local`. **Está en vivo** desde el 2026-09-23. El servicio de
+  Render se subió a 1 CPU y 2 GB (`C-138`): con 512 MB no cabían las cuatro apps.
+  Ojo: el servicio no lee `render.yaml`, así que las variables `VITRINEE_` hay
+  que cargarlas también en el panel. Si faltan sus secretos, el gateway no la arranca y su
   dominio responde 503; si se cae, responde 503 y el resto del piloto sigue.
   Los pedidos viven en un archivo en el disco efímero de Render: un redeploy
   los borra.

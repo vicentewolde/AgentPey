@@ -6222,3 +6222,27 @@ Pendiente:
   `VITRINEE_PUBLIC_BASE_URL=https://vitrinee.agentpey.com`.
 - Merge de `cc/t102-cierre`, verificación en vivo, `DONE` de T102, métricas.
 - Después: T101.
+
+## 2026-09-23 (12) — main (T102 en vivo) y cc/t102-en-vivo
+
+Agente: Claude Code.
+
+Qué, con OK del usuario:
+- `cc/t102-cierre` mergeado (`8c3d5e3`, PR #27). Su deploy y el de las
+  variables fallaron por **memoria** (512 MB) al arrancar Vitrinee.
+- Con Claude en Chrome: `VITRINEE_ADAPTER` borrada, plan `0.5c-512mb` →
+  `1c-2g` (25 USD/mes, elegido por el usuario, `C-138`), adaptador vuelto a
+  cargar. **Vitrinee en vivo** en `vitrinee.agentpey.com`: manifest, 6 productos
+  reales, 402. Memoria ~22 % de 2 GB. Los otros tres hosts, siempre en 200.
+
+Exponential: T102 `DONE`, acción `cmuebo32v…` completada, KR en 2.
+
+Pendiente:
+- Merge de `cc/t102-en-vivo` (solo documentación).
+- **T101**: crear el tenant (después de C-131/C-133/C-137, ya en producción),
+  Mandato con `perTx` ≥ 1,05, fondear su rail con ≤ 20 USDC, dirección de prueba,
+  comprar desde `POST /v1/purchases`; el usuario mira el panel de Jumpseller.
+- Archivar el repo viejo (después de T101); apagar el servicio gratis viejo.
+- Del usuario: M9 de T100, M7 y M8 de T102 (COMPARACION.md); la clave de
+  partner (`pnpm run partner:key`) si quiere mostrar preview o webhooks.
+- Costo mensual nuevo: +18 USD del plan, +0,25 USD del dominio.

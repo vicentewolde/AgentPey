@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** que el usuario cargue los secretos de Vitrinee y el dominio en Render, mergear T102 y verificar el deploy vivo; después T101, la compra real (reordenados el 2026-09-23, `C-134`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101, la compra real, ya contra `vitrinee.agentpey.com` en vivo (reordenados el 2026-09-23, `C-134`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -225,7 +225,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T98 | Vitrinee se fusiona en AgentPey con su historia completa (20 commits como ancestros reales, igual que AgentPass en `P-1`) y pasa a ser la forma en que un comercio real se suma sin escribir código. Corre desde la raíz con `pnpm run vitrinee:*`; toda la suite de AgentPey y la de Vitrinee en verde | ✅ cerrado 2026-09-23 · mergeado a `main` (`9ecec52`) (`P-12`, `C-130`) |
 | T99 | Vitrinee habla el dialecto del comprador de AgentPey: discovery en formato `ServiceCard` con los datos de despacho como `input`, checkout también por `GET`, y pagador `C…` aceptado de punta a punta (recibo, lectura del pagador y el check de settlement, que era un cuarto punto de quiebre que `C-130` no listaba). Probado primero contra el facilitator y después de punta a punta en testnet, con código real de los dos lados | ✅ cerrado 2026-09-23 · mergeado a `main` (`24a2c1b`); después, el `resource.url` sin query en `cc/t99-resource-url` (`VT-22` a `VT-25`) |
 | T100 | Vitrinee como venue: fila `vitrinee` en `venues.json` agregada con `scripts/register-venue.ts` (que estaba roto desde T79 y se arregló), y en RealOps una tercera sección del catálogo leída en vivo de la tienda real más un cuarto `agentKind`, `vitrinee_shopper`, con grant propio (venue, seis productos, `payTo`), 3,00/3,00 por defecto y la cantidad leída como la de la compra (`C-132`). Ningún `.ts` del comprador cambió | ✅ cerrado 2026-09-23 · mergeado a `main` (`9e4627b`); después, frases escritas (`d9ed9a5`) (`C-134`, `C-135`) |
-| T102 | Vitrinee se despliega desde el `render.yaml` de AgentPey: cuarto proceso del gateway en `vitrinee.agentpey.com`, variables con prefijo `VITRINEE_` que solo le llegan a ella, arranque solo con sus secretos, y una caída suya no tumba al piloto | 🟡 PR abierto 2026-09-23 · falta cargar secretos y dominio en Render, mergear y verificar en vivo (`C-136`) |
+| T102 | Vitrinee se despliega desde el `render.yaml` de AgentPey: cuarto proceso del gateway en `vitrinee.agentpey.com`, variables con prefijo `VITRINEE_` que solo le llegan a ella, arranque solo con sus secretos, y una caída suya no tumba al piloto | ✅ cerrado 2026-09-23 · mergeado (`c2eaae4`, `8c3d5e3`) y verificado en vivo en `vitrinee.agentpey.com`; el servicio de Render subió a 1 CPU y 2 GB por memoria (`C-136`, `C-138`) |
 
 ---
 
@@ -4762,7 +4762,7 @@ Rama `cc/t100-frases-tienda`. RealOps 175 tests (eran 171).
 
 ---
 
-## T102 · Vitrinee se despliega desde AgentPey, en `vitrinee.agentpey.com` · PR abierto 2026-09-23, falta el deploy
+## T102 · Vitrinee se despliega desde AgentPey, en `vitrinee.agentpey.com` · cerrado 2026-09-23, en vivo
 
 **Qué quedó funcionando, en palabras simples.** La tienda Vitrinee ya no
 necesita el repo viejo para existir en internet: el mismo servicio de Render
@@ -4797,6 +4797,17 @@ crédito que regala la reserva sigue en 3: un rail no puede gastar más de lo qu
 tiene, así que para un visitante normal nada cambia. Con los 20 cargados a mano,
 la demo puede comprar cualquier producto de la tienda menos el hoodie. Va en su
 propio PR (`cc/c137-limites-25`), porque es de T101 y no de T102.
+
+### Lo que salió al desplegar
+
+**Vitrinee ya está en vivo** en `vitrinee.agentpey.com`: sirve su manifest, el
+catálogo de seis productos reales con sus precios, y responde el cobro (402).
+Costó dos tropiezos. El servicio de Render no lee `render.yaml`, así que las
+variables públicas hubo que cargarlas a mano (y el gateway ahora exige el
+adaptador para arrancarla). Y con Vitrinee dentro, el servicio pasó los 512 MB:
+Render descartó dos deploys y dejó corriendo el anterior. Se subió a 1 CPU y
+2 GB, 25 USD al mes en vez de 7 (`C-138`, elegido por el usuario); ahora la
+memoria ronda el 22 %. El dominio adicional cuesta 0,25 USD al mes.
 
 ### Lo que no se hizo aquí
 

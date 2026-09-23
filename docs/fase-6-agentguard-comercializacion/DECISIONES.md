@@ -5971,3 +5971,35 @@ de T101 necesita un tenant creado **después** de que esto llegue a producción.
 
 **Alternativa descartada: crédito de 20 por tenant.** 7 cupos × 20 = 140 USDC
 de la reserva, para que la mayoría quede sin usar en rails de visitantes.
+
+---
+
+### C-138 · El servicio único de Render sube a 1 CPU y 2 GB para que quepa Vitrinee · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T102 · **Elegido por el usuario** (opción A de tres), ejecutado por Claude Code con Chrome
+
+**Qué pasó.** Con las variables de Vitrinee cargadas, el gateway arrancó su
+cuarto proceso y el servicio pasó los 512 MB del plan Starter: `Out of memory
+(used over 512Mi)`, y Render dio por fallidos los dos deploys siguientes
+(el de las variables y el de `8c3d5e3`), dejando corriendo el anterior. Antes de
+Vitrinee, Metrics ya mostraba el servicio entre 88 % y 93 % de esos 512 MB con
+tres apps. Vitrinee necesita unos 100 MB; corrida compilada con `node` en vez de
+`tsx` no bajó (138 MB contra 97 MB medidos en local), así que no había arreglo
+de código.
+
+**Qué se decide.** Subir el servicio `AgentPey` de `0.5c-512mb` (7 USD al mes) a
+**`1c-2g`: 1 CPU y 2 GB, 25 USD al mes**, 18 más. Con Vitrinee y las otras tres
+apps, la memoria queda cerca del 22 % de 2 GB.
+
+**Alternativas descartadas.** (B) Vitrinee en su propio servicio Starter, 7 USD
+más: la aísla por máquina, pero deja el servicio actual al 90 % de memoria, que
+es un riesgo en pleno video. (C) Reusar el servicio gratis viejo apuntado a este
+repo: 0 USD, pero se duerme a los 15 minutos. Ambas cambian `C-134`.
+
+**Reversible.** El plan se puede bajar después del 29; ojo, con Vitrinee activa
+hay que bajar solo si se vuelve a medir la memoria.
+
+**Cómo se ejecutó, y qué se aprendió.** Se borró `VITRINEE_ADAPTER` de Render
+para que los deploys entraran, se cambió el plan, y se volvió a cargar. Tal como
+`C-136` prevé, sin el adaptador el gateway no arranca Vitrinee y el resto queda
+en 200. Nota de proceso: el panel de Render pierde el foco de la lista de
+variables al hacer scroll; conviene verificar la fila borrada antes de guardar.

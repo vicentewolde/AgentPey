@@ -73,7 +73,7 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 |---|---|---|---|---|---|---|---|---|---|---|
 | T100 | ANTERIOR | 0,05 | 2 | | 1.026 líneas / 23 archivos (612 / 16 sin `docs/`) | 0 | 2 | 4 | 60 | pendiente |
 | T101 | ANTERIOR | | | | | | | | | |
-| T102 | ANTERIOR | | | | | | | | | |
+| T102 | ANTERIOR | 0,12 | 2 | | 576 líneas / 15 archivos (332 / 8 sin `docs/`), más 81 / 6 del ajuste | 0 | 3 | pendiente | pendiente | pendiente |
 
 Notas por ticket (bloqueos, qué cambió, por qué) van debajo, una entrada por
 hito, al cerrarlo.
@@ -97,3 +97,14 @@ hito, al cerrarlo.
 
 Pendiente. Se escribe al cerrar el experimento, con los números de arriba y la
 decisión (`P-`) que resulte.
+
+**T102** (ticket creado 16:31 UTC, `DONE` 2026-09-23 ~21:10 UTC).
+- M1: 0,19 días (unas 4,6 horas), con esperas de Render y del usuario incluidas.
+- M2 = 2: se reordenó antes de empezar (`C-134`, de T100) y la memoria obligó a
+  `C-138` (plan de 2 GB) después de mergear.
+- M5 = 0: sin cambios pedidos en la revisión; sí dos PR (#25 y #27) porque el
+  primer deploy mostró un fallo.
+- M6 = 3, ninguno en el ticket: el servicio de Render no sincroniza
+  `render.yaml`; el dominio adicional cuesta 0,25 USD al mes (el ticket decía
+  gratis); y Vitrinee no cabe en 512 MB.
+- M7, M8, M9: pendientes del usuario.
