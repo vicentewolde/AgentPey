@@ -5,14 +5,25 @@
  * Usage:
  *   pnpm exec tsx --tsconfig tsconfig.scripts.json scripts/register-venue.ts \
  *     --slug reference-merchant \
- *     [--contract-id C...] \
+ *     [--address G...|C...] \
  *     [--base-url https://merchant.example] \
  *     --asset USDC:G... [--asset EURC:C...] \
  *     [--registry /path/to/venues.json]
  *
- * Omitting `--contract-id` derives a deterministic, well-formed but undeployed
+ * `--address` is the venue's on-chain identity: the classic account it is
+ * paid at (`G...`, what SignalDesk and a Vitrinee store use) or a Soroban
+ * contract (`C...`, the bazaar). It is the second half of the `VenueId` a
+ * Mandate names, so it has to be the address the merchant's own 402 quotes
+ * as `payTo` when that is how the venue is identified.
+ *
+ * Omitting `--address` derives a deterministic, well-formed but undeployed
  * contract id from the slug. It follows the mock/bazaar convention: an identity
  * for configuration, never a claim that a contract has been deployed.
+ *
+ * The row's field was `contractId` until T79 renamed it `address` in
+ * `registry.ts` (a venue paid at a `G...` account is not a contract); this
+ * script kept writing the old name and every run failed the schema check.
+ * Found, and fixed, when T100 first needed it for a real venue.
  */
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
@@ -29,7 +40,7 @@ const DEFAULT_REGISTRY_PATH = resolve(REPO_ROOT, "apps/agent/src/catalog/venues.
 
 interface RegisterVenueArgs {
   readonly slug: string;
-  readonly contractId: string;
+  readonly address: string;
   readonly baseUrl: string | undefined;
   readonly assets: readonly { readonly code: string; readonly issuer: string }[];
   readonly registryPath: string;
@@ -42,7 +53,7 @@ function invalidArguments(message: string, details?: Record<string, unknown>): A
 function usage(): string {
   return [
     "Usage: pnpm exec tsx --tsconfig tsconfig.scripts.json scripts/register-venue.ts",
-    "  --slug <slug> [--contract-id <C...>] [--base-url <url>]",
+    "  --slug <slug> [--address <G...|C...>] [--base-url <url>]",
     "  --asset <CODE:G...|C...> [--asset <CODE:G...|C...> ...] [--registry <path>]",
   ].join("\n");
 }
@@ -82,7 +93,7 @@ function parseAsset(value: string): { readonly code: string; readonly issuer: st
 }
 
 function parseArgs(argv: readonly string[]): RegisterVenueArgs {
-  const allowedFlags = new Set(["--slug", "--contract-id", "--base-url", "--asset", "--registry"]);
+  const allowedFlags = new Set(["--slug", "--address", "--base-url", "--asset", "--registry"]);
   for (const value of argv) {
     if (value.startsWith("--") && !allowedFlags.has(value)) {
       throw invalidArguments(`unknown argument ${value}`, { argument: value, usage: usage() });
@@ -101,7 +112,7 @@ function parseArgs(argv: readonly string[]): RegisterVenueArgs {
 
   return {
     slug,
-    contractId: oneFlag(argv, "--contract-id") ?? deriveContractId(slug),
+    address: oneFlag(argv, "--address") ?? deriveContractId(slug),
     baseUrl: oneFlag(argv, "--base-url"),
     assets,
     registryPath: resolve(oneFlag(argv, "--registry") ?? DEFAULT_REGISTRY_PATH),
@@ -128,7 +139,7 @@ async function readRegistry(path: string): Promise<unknown> {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const row = { slug: args.slug, contractId: args.contractId, ...(args.baseUrl === undefined ? {} : { baseUrl: args.baseUrl }), assets: args.assets };
+  const row = { slug: args.slug, address: args.address, ...(args.baseUrl === undefined ? {} : { baseUrl: args.baseUrl }), assets: args.assets };
   const parsedRow = registryVenueSchema.safeParse(row);
   if (!parsedRow.success) {
     throw new AgentPassError("InvalidVenueRegistry", "the new venue row does not match the registry schema", {

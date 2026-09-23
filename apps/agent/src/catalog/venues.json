@@ -20,5 +20,16 @@
         "issuer": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA"
       }
     ]
+  },
+  {
+    "slug": "vitrinee",
+    "address": "GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII",
+    "baseUrl": "https://vitrinee.agentpey.com",
+    "assets": [
+      {
+        "code": "USDC",
+        "issuer": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA"
+      }
+    ]
   }
 ]
