@@ -109,3 +109,33 @@ y en USDC a la tasa de demo (950 CLP/USD):
 
 Por qué ese endpoint existe y por qué no es el bazaar oficial:
 [DECISIONES.md § V-17](../DECISIONES.md).
+
+## Deploy en Render, verificado (día 4)
+
+Servicio desplegado desde `render.yaml` en `https://vitrinee-gateway.onrender.com`,
+`ADAPTER=mock`. Compra real corrida desde la terminal contra el deploy, no
+contra `localhost`:
+
+```
+pnpm demo:buy -- "compra un pack de stickers" --gateway https://vitrinee-gateway.onrender.com
+
+pedido    ord_mue4x2l7d170751c7e · mock mock-0001 · paid
+pago      https://stellar.expert/explorer/testnet/tx/144695336ddea0f8c36b2e9b8266b970d2afb72a3ed8af324b536c13df5214b7
+anclaje   ledger 4829257
+recibo    sha256 7e2aa07c324d7af4476289ecac7e707cf678450663c82ea629e7542011948de6
+  ✅ firma · ✅ anclaje · ✅ pago
+```
+
+Verificado además fuera del gateway, contra Horizon directo:
+
+```
+settlement tx 144695…14b7: successful=true, ledger 4829256
+anchor tx     973537…38fa7: successful=true, ledger 4829257
+```
+
+Y `GET /receipts/{hash}/verify` contra el deploy responde las tres
+comprobaciones en verde, coincidiendo con Horizon. El panel
+(`/dashboard/`) muestra el pedido con el anclaje en estado `anclado`.
+
+Cierra el hito del día 4: "alguien externo puede leer el manifest y comprar
+con un cliente x402 propio", contra producción.
