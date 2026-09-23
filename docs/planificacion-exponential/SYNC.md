@@ -16,7 +16,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 
 | T | Ticket (CUID) | Título | Método | Estado | Creado | Inicio | Cierre | Doc | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| T100 | `cmuebkyxg0005l704z3bdfdws` | Vitrinee como venue en `venues.json` y `agentKind` en RealOps | ANTERIOR | `QA` | 2026-09-23 | 2026-09-23 | | [C-130](../fase-6-agentguard-comercializacion/DECISIONES.md), [C-134, C-135](../fase-6-agentguard-comercializacion/DECISIONES.md) | (se completa al abrir el PR) |
+| T100 | `cmuebkyxg0005l704z3bdfdws` | Vitrinee como venue en `venues.json` y `agentKind` en RealOps | ANTERIOR | `QA` | 2026-09-23 | 2026-09-23 | | [C-130](../fase-6-agentguard-comercializacion/DECISIONES.md), [C-134, C-135](../fase-6-agentguard-comercializacion/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/23) |
 | T101 | `cmuebl14w0009l704htgreq46` | Compra real de punta a punta: `POST /v1/purchases` hasta el panel de Jumpseller | ANTERIOR | `READY_TO_PLAN` | 2026-09-23 | | | [C-130](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T102 | `cmuebl38n000dl704hy8rw3gc` | Deploy de Vitrinee desde el `render.yaml` de AgentPey, en `vitrinee.agentpey.com` | ANTERIOR | `READY_TO_PLAN` | 2026-09-23 | | | [C-130, C-134](../fase-6-agentguard-comercializacion/DECISIONES.md), [P-12](../DECISIONES.md) | |
 
