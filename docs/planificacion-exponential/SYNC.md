@@ -9,8 +9,8 @@
 
 Workspace `personal-cmud6knil0045l704wuoc5b1r` · Producto `agentpey`
 (`cmuebiyap0001l3045w8q3i5x`) · Feature "Hackathon Find Your Way"
-(`cmuebjyws0001l704hg8wwa4f`) · Proyecto `AgentPey`: **pendiente, lo crea el
-usuario en la web**.
+(`cmuebjyws0001l704hg8wwa4f`) · Proyecto `AgentPey` (`cmuebvdko001xl30497cuhc1z`, creado por el usuario en
+la web el 2026-09-23): contiene las seis acciones y las dos metas.
 
 ## Hitos
 
@@ -50,13 +50,16 @@ Ramas ya seteadas: `cc/t100-vitrinee-venue`, `cc/t101-compra-real-jumpseller`,
 
 ## Fuera del experimento
 
-Producto `vitrinee` (`cmudavioj006ekz04z3uogakq`): nueve tickets del repo viejo,
-`ARCHIVED` el 2026-09-23 con un comentario que apunta a `P-12` y a T100–T102.
-Su Feature "Vitrinee para el developer con un agente" se conserva como registro
-del PRD original.
+Producto `vitrinee` (`cmudavioj006ekz04z3uogakq`): lo que tenía del repo viejo
+(nueve tickets y el Feature "Vitrinee para el developer con un agente") se
+**borró** el 2026-09-23 a pedido del usuario; el PRD original sigue en el repo,
+en `docs/fase-6-agentguard-comercializacion/vitrinee/PRD.md`. Quedan por borrar
+desde la web, porque el CLI no lo hace: el producto vacío y la página
+"PRD · Vitrinee para el developer con un agente" (`cmudaxo5l007qkz04ynt5psiz`).
 
 ## Última sincronización
 
 - **2026-09-23**, Claude Code, sesión de adopción (`P-13`). Se creó todo lo de
-  arriba desde el CLI. Pendiente: enlazar acciones y metas al proyecto
-  `AgentPey` cuando el usuario lo cree en la web.
+  arriba desde el CLI. Misma sesión, después: el usuario creó el proyecto
+  `AgentPey` en la web; metas y acciones quedaron enlazadas a él; se borraron
+  los tickets y el Feature viejos de `vitrinee`.

@@ -6068,10 +6068,15 @@ Hallazgos del CLI (1.18.1): no crea proyectos; `epics create` falla por un
 
 Exponential: todo lo de arriba es nuevo. Nada se borró.
 
+Misma sesión, después: el usuario creó el proyecto `AgentPey`
+(`cmuebvdko001xl30497cuhc1z`); metas 96 y 97 y las seis acciones quedaron
+enlazadas a él. A pedido del usuario se **borraron** (no solo archivaron) los
+nueve tickets y el Feature viejos del producto `vitrinee`. Rama mergeada a
+`main` en fast-forward con OK del usuario.
+
 Pendiente:
-- **Del usuario:** crear el proyecto `AgentPey` en la web. Después, Claude Code
-  enlaza metas (`goals update --project`) y acciones (`actions update -p`).
-- **Merge de `cc/planificacion-exponential`** — esperando OK del usuario.
+- **Del usuario, en la web:** borrar el producto `vitrinee` vacío y la página
+  "PRD · Vitrinee para el developer con un agente"; el CLI no borra ninguno.
 - Paso 4 del plan: primer hito `EXPONENTIAL` con `/grill-with-docs`, `/to-prd`,
   `/to-expo`, cuando el usuario diga qué trabajo planificar. Si no alcanza
   antes del 29, después del video.
