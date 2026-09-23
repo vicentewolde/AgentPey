@@ -434,3 +434,104 @@ tienda.
 **Alternativa descartada:** un static site aparte en Render (gratis, y separa
 responsabilidades) o una SPA con Vite. Mejor arquitectura para un producto que
 crece; peor apuesta para una demo de 3 minutos que se graba el día 29.
+
+---
+
+### V-19 · El merchant trae su propia cuenta Stellar; Vitrinee no la genera · `Pendiente`
+**Fecha:** 2026-09-22 · **Confirmada por Vinny:** 2026-09-22
+
+La tienda recibe **USDC en una cuenta Stellar propia**, creada por el merchant
+en Freighter y custodiada por él. `MERCHANT_STELLAR_ACCOUNT` pasa a ser un dato
+de entrada del despliegue, no una salida de `pnpm bootstrap`. La conversión a
+CLP, si la tienda la quiere, es asunto de la tienda con un tercero licenciado:
+Vitrinee no la ofrece, no la intermedia y no la documenta como propia.
+
+**Motivo.** Es la única forma de sostener [V-4](#v-4) sin excepciones. En el
+momento en que Vitrinee recibiera USDC para entregar pesos, sería custodio e
+intermediario y entraría de lleno en la Ley 21.521, que
+[CONTEXTO.md](CONTEXTO.md) promete evitar por diseño. Con la llave en Freighter,
+el gateway no sólo *no usa* el secreto del merchant: no lo conoce.
+
+Activa el "camino a producción" que [V-12](#v-12) dejaba en el roadmap.
+`MERCHANT_PAYOUT_SECRET` y la generación en `bootstrap` siguen existiendo como
+modo de conveniencia para una máquina limpia sin cuenta previa, pero dejan de
+ser el camino por defecto de la demo.
+
+**Consecuencia.** `bootstrap` debe aceptar una `payTo` externa y, en ese modo,
+no generar ni escribir secreto alguno. Debe además **verificar** que la cuenta
+existe, está fondeada y tiene trustline USDC, y fallar con un mensaje accionable
+si no — un `payTo` sin trustline hace fallar el settlement después de que el
+agente ya firmó.
+
+**Costo asumido.** El onboarding de una tienda real incluye "abre Freighter,
+fondea, agrega el activo USDC". No es cero, y es la fricción número uno para la
+tienda número dos. Se asume a cambio de no ser custodio.
+
+**Alternativa descartada:** que Vitrinee reciba USDC y liquide CLP al merchant.
+Resuelve la fricción de golpe y es lo que la tienda quiere; convierte a Vitrinee
+en un sujeto regulado por la CMF y mata la tesis de "no hay nada que robar".
+
+---
+
+### V-20 · El usuario del MVP es el developer con un agente, no el consumidor final · `Vigente`
+**Fecha:** 2026-09-22 · **Confirmada por Vinny:** 2026-09-22
+
+Vitrinee se construye para **quien ya tiene un agente** y necesita que compre
+algo real: un equipo de producto con un agente en operación (Exponential es el
+caso identificable), o un developer que hoy prueba su agente contra endpoints de
+juguete. El agente de consumidor genérico que descubre tiendas y recomienda
+dónde comprar es **roadmap**, no MVP.
+
+**Motivo.** Es el único usuario al que Vitrinee llega sin permiso de nadie: no
+depende de que una plataforma de consumidor acepte a la tienda en su índice. Es
+también el único para quien el recibo firmado y el anclaje son el argumento de
+compra y no un extra — un agente que compra por cuenta de una empresa tiene que
+rendirle cuentas a su principal, y ése es exactamente el documento que Vitrinee
+emite. Para un consumidor comprando un hoodie, esa mitad del producto sobra.
+
+**Lo que esto descarta explícitamente.** Vitrinee **no resuelve la demanda** de
+la tienda. No promete compradores, no rankea, no recomienda y no cobra comisión
+sobre venta referida. Prometer eso convertiría el gateway en un marketplace, que
+[CONTEXTO.md](CONTEXTO.md) declara que Vitrinee no es.
+
+**El hedge, que es barato.** El manifest ya es un feed legible por máquina. Si
+una plataforma de comercio agéntico publica su spec de comerciantes, Vitrinee la
+sirve como **otro formato de salida del mismo catálogo**, sin tocar el checkout
+ni el recibo. Junto con tratar el esquema de pago como reemplazable, es todo el seguro contra haber apostado al riel equivocado.
+
+**Hipótesis sin verificar.** Vinny menciona un agente "Muse" de Meta llegando a
+Chile. No se pudo confirmar que ese producto exista. Queda anotado como
+hipótesis de distribución, no como plan, y nada del MVP depende de él.
+
+**Alternativa descartada:** vender a la tienda la promesa de que los compradores
+van a llegar. Es lo que la tienda quiere oír, es falso hoy, y lo descubriría en
+dos semanas.
+
+---
+
+### V-21 · Se paga un mes de Jumpseller; no se cambia de plataforma · `Pendiente`
+**Fecha:** 2026-09-22 · **Confirmada por Vinny:** 2026-09-22
+
+"Pedido real en una tienda real" queda **dentro del MVP**. Para desbloquearlo se
+suscribe un plan pagado de Jumpseller por un mes, que resuelve a la vez el `403`
+en `POST /orders.json` y el vencimiento del trial cerca del 29 — el día del
+video. Antes de pagar hay que preguntarle a soporte si un plan pagado
+efectivamente habilita la creación de pedidos por API: el mensaje del 403 lo
+sugiere, no lo confirma. Si la respuesta tarda más de un día, se paga igual.
+
+**Motivo.** Se evaluó cambiar a una plataforma más usada (Tiendanube/Nuvemshop y
+Shopify son mayores en LatAm; WooCommerce tiene la base instalada más grande).
+Se descartó: lo que llevan tres días de trabajo en Jumpseller no es el adapter
+sino el conocimiento de sus límites reales ([V-11](#v-11), [V-16](#v-16)), que
+sólo se aprende chocando. En una plataforma nueva se empieza a chocar de cero
+con cuatro días restantes. El recurso escaso es el tiempo, no la plata. Además
+la tienda chilena en Jumpseller es la historia del pitch.
+
+Que la pregunta se pueda hacer sin rehacer el producto es la evidencia de que
+[V-1](#v-1) estaba bien: la plataforma es una decisión de adapter, no una
+apuesta fundacional. WooCommerce sigue siendo el segundo adapter del roadmap,
+justamente para probar esa portabilidad.
+
+**Alternativa descartada:** correr la demo con `ADAPTER=mock`. Gratis, y obliga
+a explicar en el video por qué la "tienda real" es un mock — el único criterio
+que el proyecto entero existe para demostrar.
