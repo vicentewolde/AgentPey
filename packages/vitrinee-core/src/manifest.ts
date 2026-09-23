@@ -28,6 +28,18 @@ export const stellarAccountSchema = z
 export const stellarContractIdSchema = z
   .string()
   .refine(isStellarContractId, { message: "not a Stellar contract id (C...)" });
+/**
+ * Who can pay an x402 `exact` transfer: a classic account (G...) or a smart
+ * account (C...), such as AgentPey's `policy_rail`. SEP-41 `transfer` takes
+ * either as `from`, and the facilitator settles both (VT-22). Only the payer
+ * widens: the merchant and the receipt signer stay classic accounts, because
+ * `did:stellar` is an Ed25519 key.
+ */
+export const stellarPayerSchema = z
+  .string()
+  .refine((value) => isStellarAccount(value) || isStellarContractId(value), {
+    message: "not a Stellar account (G...) or contract (C...) address",
+  });
 export const stellarDidSchema = z.string().regex(STELLAR_DID_RE, "did:stellar:<network>:G... expected");
 export const countryCodeSchema = z.string().regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2 expected");
 export const currencyCodeSchema = z.string().regex(/^[A-Z]{3}$/, "ISO 4217 code expected");

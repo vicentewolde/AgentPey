@@ -1,7 +1,7 @@
 import type { Product } from "@vitrinee/adapters";
 import { describe, expect, it } from "vitest";
 
-import { listResources, paginationFrom, X402_VERSION } from "./discovery.js";
+import { SERVICE_CARD_INPUT, listResources, listServiceCards, paginationFrom, X402_VERSION } from "./discovery.js";
 import { testConfig } from "./test/fixtures.js";
 
 const config = testConfig();
@@ -74,5 +74,59 @@ describe("paginationFrom", () => {
     expect(paginationFrom({ limit: "9999" })).toEqual({ limit: 200, offset: 0 });
     expect(paginationFrom({ limit: "-1", offset: "abc" })).toEqual({ limit: 50, offset: 0 });
     expect(paginationFrom({ limit: ["10"] })).toEqual({ limit: 50, offset: 0 });
+  });
+});
+
+describe("listServiceCards", () => {
+  const cards = (products: Product[], query?: string) =>
+    listServiceCards({ config, products, ...(query === undefined ? {} : { query }) }).results.map((row) => row.resource);
+
+  it("answers in the ServiceCard shape AgentPey's catalogue reads, one card per purchasable product", () => {
+    const response = listServiceCards({ config, products: [product(), product({ id: "2", stock: 0 })] });
+    expect(response.ok).toBe(true);
+    expect(response.results).toEqual([
+      {
+        resource: {
+          id: "37282902",
+          name: "Hoodie Cordillera talla M",
+          description: "Polerón con capucha de algodón orgánico.",
+          // The unit price, in decimal: AgentPey multiplies by the quantity it signs for.
+          payment: { asset: "USDC", amount: "36.8315789", destination: config.merchant.stellarAccount },
+          routeTemplate: "/checkout/37282902?quantity={quantity}&name={name}&address={address}&city={city}&region={region}",
+          input: SERVICE_CARD_INPUT,
+        },
+      },
+    ]);
+  });
+
+  it("declares every placeholder of the route as a required input, and nothing else", () => {
+    const [card] = cards([product()]);
+    const placeholders = [...card!.routeTemplate.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+    expect(placeholders).toEqual(card!.input.map((field) => field.name));
+    expect(card!.input.every((field) => field.required)).toBe(true);
+    expect(card!.input.find((field) => field.name === "quantity")?.type).toBe("number");
+  });
+
+  it("encodes a product id that is not URL-safe in the route, never as a placeholder", () => {
+    expect(cards([product({ id: "a b/c" })])[0]!.routeTemplate).toMatch(/^\/checkout\/a%20b%2Fc\?/);
+  });
+
+  it("filters by the bazaar's ?query=, with * meaning everything", () => {
+    const products = [product(), product({ id: "9", name: "Café Ñuñoa 250 g", description: "Grano tostado." })];
+    expect(cards(products, "*")).toHaveLength(2);
+    expect(cards(products, "")).toHaveLength(2);
+    expect(cards(products, "CAFÉ").map((card) => card.id)).toEqual(["9"]);
+    expect(cards(products, "tostado").map((card) => card.id)).toEqual(["9"]);
+    expect(cards(products, "zapatos")).toEqual([]);
+  });
+
+  it("keeps a card inside the limits AgentPey parses, so one long row cannot take the store off its catalogue", () => {
+    const [card] = cards([product({ name: `Hoodie\n${"x".repeat(300)}`, description: `a\u0007b\n${"y".repeat(3000)}` })]);
+    expect(card!.name).toHaveLength(200);
+    // eslint-disable-next-line no-control-regex
+    expect(card!.name).not.toMatch(/[\u0000-\u001F]/);
+    expect(card!.description).toHaveLength(2000);
+    expect(card!.description.startsWith("a b\n")).toBe(true);
+    expect(cards([product({ name: "\u0001\u0002" })])).toEqual([]);
   });
 });

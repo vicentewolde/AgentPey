@@ -16,6 +16,7 @@ import {
   stellarAccountSchema,
   stellarContractIdSchema,
   stellarDidSchema,
+  stellarPayerSchema,
 } from "./manifest.js";
 
 export const RECEIPT_TYPE = "vitrinee-receipt/0.1";
@@ -44,7 +45,8 @@ export const receiptClaimsSchema = z.strictObject({
   platform: z.string().min(1),
   merchantDid: stellarDidSchema,
   merchantAccount: stellarAccountSchema,
-  payerAccount: stellarAccountSchema,
+  /** G... or C...: a smart account such as AgentPey's `policy_rail` pays too (VT-22). */
+  payerAccount: stellarPayerSchema,
   network: z.literal(STELLAR_TESTNET_CAIP2),
   asset: stellarContractIdSchema,
   amountUSDC: decimalStringSchema,

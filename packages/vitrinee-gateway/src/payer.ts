@@ -1,9 +1,12 @@
 import { FeeBumpTransaction, Networks, TransactionBuilder, scValToNative } from "@stellar/stellar-sdk";
+import { isStellarAccount, isStellarContractId } from "@vitrinee/core";
 
 /**
  * Who paid, read from the transaction the payer signed: the `from` argument
  * of the SEP-41 `transfer` the x402 payload carries. Never trusts the body.
- * Accepts the inner transaction or a fee bump around it.
+ * Accepts the inner transaction or a fee bump around it. The payer is a
+ * classic account (G...) or a smart account (C...) such as AgentPey's
+ * `policy_rail` (VT-22).
  */
 export function payerFromTransactionXdr(xdrBase64: string): string | undefined {
   try {
@@ -17,7 +20,7 @@ export function payerFromTransactionXdr(xdrBase64: string): string | undefined {
     const first = fn.invokeContract.args[0];
     if (first === undefined) return undefined;
     const from: unknown = scValToNative(first);
-    return typeof from === "string" && from.startsWith("G") ? from : undefined;
+    return typeof from === "string" && (isStellarAccount(from) || isStellarContractId(from)) ? from : undefined;
   } catch {
     return undefined;
   }

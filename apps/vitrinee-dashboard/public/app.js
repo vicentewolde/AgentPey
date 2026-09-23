@@ -151,7 +151,9 @@ function showDetail(orderId) {
   );
   if (order.settlement?.txHash) {
     add("Transacción", link(`${EXPLORER}/tx/${order.settlement.txHash}`, order.settlement.txHash));
-    add("Pagador", link(`${EXPLORER}/account/${order.settlement.payer}`, short(order.settlement.payer, 8, 8)));
+    // A smart account payer (C..., AgentPey's policy_rail) lives under /contract/ (VT-22).
+    const payerKind = String(order.settlement.payer ?? "").startsWith("C") ? "contract" : "account";
+    add("Pagador", link(`${EXPLORER}/${payerKind}/${order.settlement.payer}`, short(order.settlement.payer, 8, 8)));
     add("Recibió", link(`${EXPLORER}/account/${order.settlement.payTo}`, short(order.settlement.payTo, 8, 8)));
   }
   if (order.anchor) {

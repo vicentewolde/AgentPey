@@ -15,6 +15,8 @@ export interface SettlementCheck {
 interface HorizonEffect {
   type: string;
   account?: string;
+  /** Set on `contract_debited`/`contract_credited`: the smart account the USDC left or reached. */
+  contract?: string;
   amount?: string;
   asset_code?: string;
   asset_issuer?: string;
@@ -45,10 +47,18 @@ export async function checkSettlement(
   const effects = ((await res.json()) as { _embedded: { records: HorizonEffect[] } })._embedded.records;
 
   const expected = BigInt(claims.amountUSDCAtomic);
+  const amountMatches = (e: HorizonEffect): boolean => usdc(e) && e.amount !== undefined && parseDecimal(e.amount, 7) === expected;
   const moved = (type: string, account: string): boolean =>
-    effects.some((e) => e.type === type && e.account === account && usdc(e) && e.amount !== undefined && parseDecimal(e.amount, 7) === expected);
+    effects.some((e) => e.type === type && e.account === account && amountMatches(e));
+  // A smart account payer (C..., e.g. AgentPey's policy_rail) is debited as
+  // `contract_debited`, and that effect's `account` is the transaction's
+  // source, the facilitator's channel. Matching on `account` there would
+  // credit the payment to whoever submitted it (VT-22).
+  const payerDebited = claims.payerAccount.startsWith("C")
+    ? effects.some((e) => e.type === "contract_debited" && e.contract === claims.payerAccount && amountMatches(e))
+    : moved("account_debited", claims.payerAccount);
 
-  if (!moved("account_debited", claims.payerAccount)) {
+  if (!payerDebited) {
     return { ok: false, reason: "the payer was not debited the receipt's USDC amount in that transaction", ledger: tx.ledger };
   }
   if (!moved("account_credited", claims.merchantAccount)) {

@@ -11,7 +11,7 @@ import { z, ZodError } from "zod";
 import { AnchorWorker, type Anchorer } from "./anchoring.js";
 import { checkoutRoutes, completeCheckout, orderResponse, preflightCheckout, type CheckoutDeps } from "./checkout.js";
 import type { GatewayConfig } from "./config.js";
-import { listResources, paginationFrom } from "./discovery.js";
+import { SERVICE_CARD_PATH, listResources, listServiceCards, paginationFrom } from "./discovery.js";
 import { buildManifest, createCatalogCache, toManifestProduct } from "./manifest.js";
 import { OrderStore } from "./orders.js";
 import { Reservations } from "./reservations.js";
@@ -47,7 +47,7 @@ const verifyBodySchema = z.object({ receiptJws: z.string().min(1).max(20_000) })
 /**
  * The HTTP surface of a Vitrinee storefront: free routes (manifest, catalog,
  * product, orders, receipt verification) and the one paid route,
- * `POST /checkout/:productId`, guarded by the x402 middleware.
+ * `/checkout/:productId` by `POST` or `GET`, guarded by the x402 middleware.
  */
 export function createApp({
   config,
@@ -129,6 +129,14 @@ export function createApp({
     res.json(listResources({ config, products, baseUrl: baseUrlOf(req), now: now(), limit, offset }));
   });
 
+  // The ServiceCard feed AgentPey's catalogue adapter reads (VT-24).
+  app.get(SERVICE_CARD_PATH, async (req, res) => {
+    const products = await catalog.get();
+    const query = typeof req.query["query"] === "string" ? req.query["query"] : undefined;
+    res.set("Cache-Control", cacheHeader);
+    res.json(listServiceCards({ config, products, ...(query === undefined ? {} : { query }) }));
+  });
+
   app.get("/catalog", async (_req, res) => {
     const products = await catalog.get();
     res.set("Cache-Control", cacheHeader);
@@ -144,11 +152,20 @@ export function createApp({
     res.json({ product: toManifestProduct(product, config) });
   });
 
+  // Express answers HEAD with the GET handlers, but the x402 middleware only
+  // guards the methods it was configured for: a HEAD would slip past it and
+  // reach step 3 with no settlement. Nothing about a purchase is a HEAD.
+  app.head("/checkout/:productId", (_req, res) => {
+    res.set("Allow", "GET, POST").status(405).json({ error: "MethodNotAllowed", message: "checkout takes GET or POST" });
+  });
   // 1. Refuse what can never be sold, replay idempotent requests, hold stock.
+  //    `GET` reads the query, `POST` the JSON body; both land on one schema (VT-23).
+  app.get("/checkout/:productId", preflightCheckout(deps));
   app.post("/checkout/:productId", preflightCheckout(deps));
   // 2. x402: 402 challenge, then settle (upfront) before the handler.
   app.use(paymentMiddleware(checkoutRoutes(deps), x402, undefined, undefined, syncFacilitatorOnStart));
   // 3. Money moved: create the platform order, sign the receipt, queue the anchor.
+  app.get("/checkout/:productId", completeCheckout(deps));
   app.post("/checkout/:productId", completeCheckout(deps));
 
   app.get("/orders", (_req, res) => {

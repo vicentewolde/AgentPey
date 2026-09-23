@@ -11,14 +11,14 @@ import {
   localToUsdcAtomic,
   parseDecimal,
   signReceipt,
-  stellarAccountSchema,
   stellarDid,
+  stellarPayerSchema,
   stellarExpertTxUrl,
   timesQuantity,
   usdcAtomicToDecimal,
   type ReceiptClaims,
 } from "@vitrinee/core";
-import type { HTTPRequestContext, RoutesConfig } from "@x402/core/server";
+import type { HTTPRequestContext, RouteConfig, RoutesConfig } from "@x402/core/server";
 import type { Price } from "@x402/core/types";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { z } from "zod";
@@ -31,13 +31,20 @@ import type { Reservations } from "./reservations.js";
 import { paymentKeyFromHeader, type SettlementLedger } from "./settlements.js";
 
 export const CHECKOUT_ROUTE = "POST /checkout/:productId";
+/**
+ * The same checkout, driven by the query string. x402 clients, AgentPey's
+ * among them, ask for the 402 with a bodyless `GET` and retry the same URL
+ * with the payment header; a `POST`-only checkout was invisible to them
+ * (C-130, VT-23).
+ */
+export const CHECKOUT_GET_ROUTE = "GET /checkout/:productId";
 export const RECEIPT_TYP = "vitrinee-receipt/0.1" as const;
 
 export const checkoutBodySchema = z.object({
   quantity: z.int().positive().max(100).default(1),
   buyer: z
     .object({
-      stellarAccount: stellarAccountSchema.optional(),
+      stellarAccount: stellarPayerSchema.optional(),
       email: z.email().optional(),
       shipping: z
         .object({
@@ -54,6 +61,61 @@ export const checkoutBodySchema = z.object({
 });
 
 export type CheckoutBody = z.infer<typeof checkoutBodySchema>;
+
+/**
+ * The flat query a `GET` checkout reads: the names Vitrinee's `ServiceCard`
+ * declares as `input` (see `discovery.ts`), plus the optional ones a client
+ * may add by hand. Each one is a single string: a repeated parameter arrives
+ * as an array and is refused, rather than one of its values being chosen.
+ */
+const checkoutQuerySchema = z.object({
+  quantity: z.string().regex(/^\d{1,3}$/, "quantity must be a whole number").optional(),
+  email: z.string().optional(),
+  name: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  region: z.string().optional(),
+  country: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const SHIPPING_FIELDS = ["name", "address", "city", "region", "country", "notes"] as const;
+
+/**
+ * Maps a `GET` checkout's query onto the `POST` body's shape and validates it
+ * with the very same schema, so the two doors cannot drift apart on what they
+ * accept. An empty value counts as absent: a form field left blank is not an
+ * address.
+ */
+export function checkoutBodyFromQuery(query: unknown): CheckoutBody {
+  const flat = checkoutQuerySchema.parse(query ?? {});
+  const present = (value: string | undefined): string | undefined => (value === undefined || value.trim() === "" ? undefined : value.trim());
+  const shipping = Object.fromEntries(
+    SHIPPING_FIELDS.flatMap((field) => {
+      const value = present(flat[field]);
+      return value === undefined ? [] : [[field, value]];
+    }),
+  );
+  const email = present(flat.email);
+  const quantity = present(flat.quantity);
+  return checkoutBodySchema.parse({
+    ...(quantity === undefined ? {} : { quantity: Number(quantity) }),
+    buyer: {
+      ...(email === undefined ? {} : { email }),
+      ...(Object.keys(shipping).length === 0 ? {} : { shipping }),
+    },
+  });
+}
+
+/** The checkout request, from whichever door it came through. Anything but `GET` reads the JSON body. */
+export function checkoutBodyFor(method: string, body: unknown, query: unknown): CheckoutBody {
+  return method.toUpperCase() === "GET" ? checkoutBodyFromQuery(query) : checkoutBodySchema.parse(body ?? {});
+}
+
+/** The same, read through x402's HTTP adapter: what the price and the 402 body see. */
+function checkoutBodyFromContext(context: HTTPRequestContext): CheckoutBody {
+  return checkoutBodyFor(context.adapter.getMethod(), context.adapter.getBody?.(), context.adapter.getQueryParams?.());
+}
 
 const idempotencyKeySchema = z.string().min(1).max(255).regex(/^[\x21-\x7e]+$/, "printable ASCII, no spaces");
 
@@ -140,7 +202,10 @@ export function preflightCheckout(deps: CheckoutDeps): RequestHandler {
     if (productId === undefined) {
       throw new VitrineeError("ValidationError", "malformed checkout path", { details: { path: req.path } });
     }
-    const body = checkoutBodySchema.parse(req.body ?? {});
+    // A checkout answer is about one purchase: never let a cache between the
+    // agent and this gateway replay a 402 or an order, least of all on `GET`.
+    res.set("Cache-Control", "no-store");
+    const body = checkoutBodyFor(req.method, req.body, req.query);
     const idempotencyKey = readIdempotencyKey(req);
 
     if (idempotencyKey !== null) {
@@ -196,53 +261,57 @@ export function checkoutPrice(deps: Pick<CheckoutDeps, "config" | "adapter">) {
     if (productId === undefined) {
       throw new VitrineeError("ValidationError", "malformed checkout path", { details: { path: context.path } });
     }
-    const body = checkoutBodySchema.parse(context.adapter.getBody?.() ?? {});
+    const body = checkoutBodyFromContext(context);
     const quote = await quoteCheckout(deps, productId, body);
     return { amount: quote.totalAtomic.toString(), asset: USDC_TESTNET.contractId };
   };
 }
 
 export function checkoutRoutes(deps: Pick<CheckoutDeps, "config" | "adapter">): RoutesConfig {
+  const route = checkoutRouteConfig(deps);
+  // One config object behind both doors: the same price, payTo and 402 body.
+  return { [CHECKOUT_ROUTE]: route, [CHECKOUT_GET_ROUTE]: route };
+}
+
+function checkoutRouteConfig(deps: Pick<CheckoutDeps, "config" | "adapter">): RouteConfig {
   const { config } = deps;
   return {
-    [CHECKOUT_ROUTE]: {
-      accepts: [
-        {
-          scheme: "exact",
-          network: STELLAR_TESTNET_CAIP2,
-          payTo: config.merchant.stellarAccount,
-          price: checkoutPrice(deps),
-          maxTimeoutSeconds: config.checkout.maxTimeoutSeconds,
-          // Settle before the handler runs: the platform order is only ever
-          // created for money that already moved (docs/fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md, VT-10).
-          extra: { paymentFlow: "upfront" },
-        },
-      ],
-      description: `Compra en ${config.merchant.name} — pago x402 en USDC sobre Stellar testnet`,
-      mimeType: "application/json",
-      unpaidResponseBody: async (context: HTTPRequestContext) => {
-        const productId = productIdFromPath(context.path) ?? "";
-        const body = checkoutBodySchema.parse(context.adapter.getBody?.() ?? {});
-        const quote = await quoteCheckout(deps, productId, body);
-        return {
-          contentType: "application/json",
-          body: {
-            error: "PaymentRequired",
-            message: `Pago requerido: ${usdcAtomicToDecimal(quote.totalAtomic)} USDC por ${quote.quantity} × ${quote.product.name}. Reintenta con el header PAYMENT-SIGNATURE.`,
-            quote: {
-              productId: quote.product.id,
-              name: quote.product.name,
-              quantity: quote.quantity,
-              totalLocal: quote.totalLocal,
-              currency: quote.product.currency,
-              amountUSDC: usdcAtomicToDecimal(quote.totalAtomic),
-              amountUSDCAtomic: quote.totalAtomic.toString(),
-              payTo: config.merchant.stellarAccount,
-              network: STELLAR_TESTNET_CAIP2,
-            },
-          },
-        };
+    accepts: [
+      {
+        scheme: "exact",
+        network: STELLAR_TESTNET_CAIP2,
+        payTo: config.merchant.stellarAccount,
+        price: checkoutPrice(deps),
+        maxTimeoutSeconds: config.checkout.maxTimeoutSeconds,
+        // Settle before the handler runs: the platform order is only ever
+        // created for money that already moved (docs/fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md, VT-10).
+        extra: { paymentFlow: "upfront" },
       },
+    ],
+    description: `Compra en ${config.merchant.name} — pago x402 en USDC sobre Stellar testnet`,
+    mimeType: "application/json",
+    unpaidResponseBody: async (context: HTTPRequestContext) => {
+      const productId = productIdFromPath(context.path) ?? "";
+      const body = checkoutBodyFromContext(context);
+      const quote = await quoteCheckout(deps, productId, body);
+      return {
+        contentType: "application/json",
+        body: {
+          error: "PaymentRequired",
+          message: `Pago requerido: ${usdcAtomicToDecimal(quote.totalAtomic)} USDC por ${quote.quantity} × ${quote.product.name}. Reintenta con el header PAYMENT-SIGNATURE.`,
+          quote: {
+            productId: quote.product.id,
+            name: quote.product.name,
+            quantity: quote.quantity,
+            totalLocal: quote.totalLocal,
+            currency: quote.product.currency,
+            amountUSDC: usdcAtomicToDecimal(quote.totalAtomic),
+            amountUSDCAtomic: quote.totalAtomic.toString(),
+            payTo: config.merchant.stellarAccount,
+            network: STELLAR_TESTNET_CAIP2,
+          },
+        },
+      };
     },
   };
 }

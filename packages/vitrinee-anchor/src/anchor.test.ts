@@ -101,6 +101,31 @@ describe("checkSettlement", () => {
     const elsewhere = await checkSettlement({ ...claims(), merchantAccount: PAYER }, { horizonUrl: "https://h", fetchImpl: fakeHorizon([GOOD_EFFECTS[0]!]) });
     expect(elsewhere).toMatchObject({ ok: false, reason: expect.stringMatching(/merchant was not credited/) });
   });
+
+  // The shape Horizon gave for T99's real settlement from AgentPey's
+  // policy_rail: the contract is in `contract`, and `account` is the
+  // facilitator's channel that submitted the transaction.
+  const RAIL = "CANSQJH7KPQTBUXPA42BBWZGZRKLWQZUFVF3SLQOUWKHEX4L3JP7YEDA";
+  const CHANNEL = "GDUUIFI46QEUYMC3D3GKNT6CRQFX4WZ3WZWYYD4O2GZZJ23Y3CP3VU3K";
+  const RAIL_EFFECTS = [
+    { type: "contract_debited", account: CHANNEL, contract: RAIL, amount: "9.4631579", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+    { type: "account_credited", account: MERCHANT, amount: "9.4631579", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+  ];
+
+  it("passes for a smart account payer debited as contract_debited", async () => {
+    const result = await checkSettlement({ ...claims(), payerAccount: RAIL }, { horizonUrl: "https://h", fetchImpl: fakeHorizon(RAIL_EFFECTS) });
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it("never credits a contract payment to the channel that submitted it, nor to another contract", async () => {
+    const channel = await checkSettlement({ ...claims(), payerAccount: CHANNEL }, { horizonUrl: "https://h", fetchImpl: fakeHorizon(RAIL_EFFECTS) });
+    expect(channel).toMatchObject({ ok: false, reason: expect.stringMatching(/payer was not debited/) });
+    const other = await checkSettlement(
+      { ...claims(), payerAccount: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA" },
+      { horizonUrl: "https://h", fetchImpl: fakeHorizon(RAIL_EFFECTS) },
+    );
+    expect(other).toMatchObject({ ok: false, reason: expect.stringMatching(/payer was not debited/) });
+  });
 });
 
 describe("verifyReceipt", () => {

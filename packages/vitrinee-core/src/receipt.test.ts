@@ -51,6 +51,19 @@ describe("receipt claims", () => {
   });
 });
 
+describe("receipt payer", () => {
+  it("accepts a smart account (C...) payer such as AgentPey's policy_rail", () => {
+    const rail = { ...sampleClaims(), payerAccount: "CANSQJH7KPQTBUXPA42BBWZGZRKLWQZUFVF3SLQOUWKHEX4L3JP7YEDA" };
+    expect(receiptClaimsSchema.safeParse(rail).success).toBe(true);
+  });
+
+  it("still refuses a payer that is neither, and a contract as the merchant", () => {
+    expect(receiptClaimsSchema.safeParse({ ...sampleClaims(), payerAccount: "not-an-address" }).success).toBe(false);
+    const merchant = { ...sampleClaims(), merchantAccount: USDC_TESTNET.contractId };
+    expect(receiptClaimsSchema.safeParse(merchant).success).toBe(false);
+  });
+});
+
 describe("receiptHash", () => {
   it("is the sha256 of the compact JWS and changes with any byte", () => {
     const jws = "eyJhbGciOiJFZERTQSJ9.eyJ0eXAiOiJ2aXRyaW5lZS1yZWNlaXB0LzAuMSJ9.c2ln";

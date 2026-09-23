@@ -290,3 +290,120 @@ describe("POST /checkout/:productId — failures after the money moved", () => {
     }
   });
 });
+
+describe("GET /checkout/:productId — the door x402 clients use (VT-23)", () => {
+  // AgentPey's shared policy_rail: a smart account, the payer of T99's real settlement.
+  const RAIL = "CANSQJH7KPQTBUXPA42BBWZGZRKLWQZUFVF3SLQOUWKHEX4L3JP7YEDA";
+  const SHIPPING = "name=Ana%20P%C3%A9rez&address=Av.%20Irarr%C3%A1zaval%201234&city=%C3%91u%C3%B1oa&region=Metropolitana";
+
+  /** Horizon's view of a policy_rail settlement: `contract_debited`, with the facilitator's channel as `account`. */
+  function railHorizon(amount: string): typeof fetch {
+    return (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith(`/transactions/${FAKE_TX_HASH}`)) return Response.json({ successful: true, ledger: 4_899_999, created_at: "2026-09-23T12:00:00Z" });
+      if (url.includes(`/transactions/${FAKE_TX_HASH}/effects`)) {
+        return Response.json({
+          _embedded: {
+            records: [
+              { type: "contract_debited", account: "GDUUIFI46QEUYMC3D3GKNT6CRQFX4WZ3WZWYYD4O2GZZJ23Y3CP3VU3K", contract: RAIL, amount, asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+              { type: "account_credited", account: MERCHANT, amount, asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+            ],
+          },
+        });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+  }
+
+  it("answers a bodyless GET with the 402 for the query's quantity, and nothing is cached", async () => {
+    const env = await start();
+    try {
+      const two = await fetch(`${env.url}/checkout/hoodie-cordillera-m?quantity=2&${SHIPPING}`);
+      expect(two.status).toBe(402);
+      expect(two.headers.get("cache-control")).toBe("no-store");
+      const required = decodePaymentRequiredHeader(two.headers.get("payment-required")!);
+      expect(required.accepts[0]).toMatchObject({ scheme: "exact", amount: "736631578", payTo: MERCHANT, extra: { paymentFlow: "upfront" } });
+      expect(await two.json()).toMatchObject({ error: "PaymentRequired", quote: { quantity: 2, amountUSDC: "73.6631578" } });
+
+      // No query at all is one unit, exactly like an empty POST body.
+      const bare = await fetch(`${env.url}/checkout/hoodie-cordillera-m`);
+      expect(decodePaymentRequiredHeader(bare.headers.get("payment-required")!).accepts[0]!.amount).toBe("368315789");
+    } finally {
+      await env.close();
+    }
+  });
+
+  it("refuses a malformed query, an unknown product and missing stock before asking for money", async () => {
+    const facilitator = fakeFacilitator();
+    const env = await start({ facilitator });
+    try {
+      for (const query of ["quantity=0", "quantity=abc", "quantity=1.5", "quantity=101", "quantity=1&quantity=2", "city=a&city=b"]) {
+        const bad = await fetch(`${env.url}/checkout/hoodie-cordillera-m?${query}`);
+        expect({ query, status: bad.status }).toEqual({ query, status: 400 });
+      }
+      expect((await fetch(`${env.url}/checkout/does-not-exist?quantity=1`)).status).toBe(404);
+      const tooMany = await fetch(`${env.url}/checkout/botella-patagonia-500?quantity=3`);
+      expect(tooMany.status).toBe(409);
+      expect(await tooMany.json()).toMatchObject({ error: "OutOfStock", details: { available: 2, requested: 3 } });
+      expect(facilitator.settleCalls).toHaveLength(0);
+    } finally {
+      await env.close();
+    }
+  });
+
+  it("settles a policy_rail (C...) payment and carries the payer into the order, the receipt and its verification", async () => {
+    const facilitator = fakeFacilitator({ verify: { payer: RAIL }, settle: { payer: RAIL } });
+    const adapter = new MockStoreAdapter();
+    const env = await start({ facilitator, adapter, horizonFetch: railHorizon("21.0421053") });
+    try {
+      const resource = `${env.url}/checkout/botella-patagonia-500?quantity=1&${SHIPPING}`;
+      const challenge = await fetch(resource);
+      const paid = await fetch(resource, { headers: await payFor(challenge) });
+      expect(paid.status).toBe(200);
+      expect(paid.headers.get("cache-control")).toMatch(/\bno-store\b/);
+      const order = (await paid.json()) as Record<string, any>;
+      expect(order).toMatchObject({ status: "paid", quantity: 1, amountUSDCAtomic: "210421053", settlement: { payer: RAIL, payTo: MERCHANT } });
+
+      // The platform order got the shipping address from the query, and the rail as the payer.
+      const platformOrder = await adapter.getOrder(order["platformOrderId"] as string);
+      expect(platformOrder).toMatchObject({
+        quantity: 1,
+        buyer: { stellarAccount: RAIL, shipping: { name: "Ana Pérez", address: "Av. Irarrázaval 1234", city: "Ñuñoa", region: "Metropolitana", country: "CL" } },
+        paymentRef: { payerAccount: RAIL },
+      });
+
+      // Signing the receipt used to be where a C... payer failed, after the money had moved.
+      const { jws, hash } = order["receipt"] as { jws: string; hash: string };
+      expect(checkReceiptSignature(jws)).toMatchObject({ ok: true, claims: { payerAccount: RAIL } });
+      await env.app.anchors.idle();
+      const verified = (await (await fetch(`${env.url}/receipts/${hash}/verify`)).json()) as Record<string, any>;
+      expect(verified).toMatchObject({ valid: true, checks: { signature: { ok: true }, anchored: { ok: true }, settlement: { ok: true } } });
+    } finally {
+      await env.close();
+    }
+  });
+
+  it("a POST reads only its body: a query on it changes nothing", async () => {
+    const env = await start();
+    try {
+      const posted = await post(`${env.url}/checkout/hoodie-cordillera-m?quantity=5`, {});
+      expect(decodePaymentRequiredHeader(posted.headers.get("payment-required")!).accepts[0]!.amount).toBe("368315789");
+    } finally {
+      await env.close();
+    }
+  });
+
+  it("refuses HEAD, which would otherwise slip past the payment middleware", async () => {
+    const facilitator = fakeFacilitator();
+    const env = await start({ facilitator });
+    try {
+      const head = await fetch(`${env.url}/checkout/hoodie-cordillera-m?quantity=1`, { method: "HEAD" });
+      expect(head.status).toBe(405);
+      expect(head.headers.get("allow")).toBe("GET, POST");
+      expect(env.deps.orders!.list()).toHaveLength(0);
+      expect(facilitator.settleCalls).toHaveLength(0);
+    } finally {
+      await env.close();
+    }
+  });
+});
