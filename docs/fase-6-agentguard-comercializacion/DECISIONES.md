@@ -5780,8 +5780,11 @@ forma correcta a largo plazo.
    solo al proceso de Vitrinee, y a ese proceso no llega ninguna llave de
    AgentPey (`AGENT_SECRET_KEY`, `MASTER_MNEMONIC`, `ISSUER_SECRET_KEY`), igual
    que hoy con SignalDesk.
-2. **En qué URL.** `https://vitrinee.agentpey.com`, un dominio más del plan
-   Starter que ya se paga; Render no cobra por dominios. La fila `vitrinee` de
+2. **En qué URL.** `https://vitrinee.agentpey.com`, un dominio más del
+   servicio Starter que ya se paga. **Corrección del mismo día:** Render sí
+   cobra. El workspace incluye 2 dominios personalizados, ya estaban usados, y
+   cada adicional cuesta 0,25 USD al mes (visto en el panel del servicio,
+   2026-09-23). El registro DNS en Vercel no tiene costo. La fila `vitrinee` de
    `venues.json` ya la nombra (T100), porque un venue se resuelve por origen y
    la fila tiene que decir la URL definitiva.
 3. **En qué orden.** T102 (el deploy) antes que T101 (la compra real). El
@@ -5792,8 +5795,9 @@ forma correcta a largo plazo.
    la compra.
 
 **Motivo.** El usuario prefirió `vitrinee.agentpey.com` "si se puede gratis con
-el mismo servicio que pago". Se puede: el servicio Starter admite más dominios
-sin costo y ya está caliente, que es lo que un video necesita; un servicio
+el mismo servicio que pago". No es gratis del todo (0,25 USD al mes por el
+dominio, ver arriba; se le preguntó al usuario antes de agregarlo), pero el
+servicio Starter ya está caliente, que es lo que un video necesita; un servicio
 `free` aparte, como el de hoy, se duerme a los 15 minutos y arranca en frío. Y
 la separación de llaves que `C-130` exigía ya existe en este servicio por
 construcción: `env-filter.ts` copia a cada hijo solo los nombres de su lista.
