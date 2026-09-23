@@ -183,16 +183,36 @@ tienda agrega encima.
 ```
 POST {checkout}          → 402 Payment Required  (+ challenge x402)
 POST {checkout} + firma  → 200 OK                (+ orden y recibo)
+
+GET  {checkout}?…        → 402 Payment Required  (+ challenge x402)
+GET  {checkout}?… + firma→ 200 OK                (+ orden y recibo)
 ```
 
-Cuerpo de la petición, JSON:
+Dos puertas para la misma compra ([VT-23](DECISIONES.md)). `POST` lee un
+cuerpo JSON; `GET` lee la query, que es lo que hacen casi todos los clientes
+x402: piden el 402 sin cuerpo y reintentan **la misma URL** con la firma. Las
+dos pasan por el mismo esquema, así que aceptan exactamente lo mismo. Cada
+puerta lee solo su fuente: un `POST` ignora la query. `HEAD` responde `405`.
+Las respuestas del checkout llevan `Cache-Control: no-store`.
+
+Cuerpo de la petición `POST`, JSON:
 
 | Campo | Tipo | Por defecto |
 |---|---|---|
 | `quantity` | entero 1–100 | `1` |
-| `buyer.stellarAccount` | `G…` | la cuenta que firmó el pago |
+| `buyer.stellarAccount` | `G…` o `C…` | la cuenta que firmó el pago |
 | `buyer.email` | email | — |
 | `buyer.shipping` | objeto con `name`, `address`, `city`, `region`, `country`, `notes` | `country: "CL"` |
+
+Query de la petición `GET`, plana: `quantity`, `email`, `name`, `address`,
+`city`, `region`, `country` y `notes`, con los mismos tipos y valores por
+defecto que arriba. Un valor vacío cuenta como ausente; un parámetro repetido
+es `400`, en vez de elegir uno de sus valores.
+
+**El pagador puede ser una cuenta contrato** (`C…`), como el `policy_rail` de
+AgentPey: el `transfer` SEP-41 acepta cualquiera de las dos como `from`, y el
+facilitator liquida las dos ([VT-22](DECISIONES.md)). La tienda, en cambio,
+cobra y firma siempre con cuentas clásicas (`G…`).
 
 El precio del manifest es **por unidad**. La tienda recotiza con `quantity` al
 emitir el challenge, y el agente paga lo que dice el challenge, no lo que
@@ -224,7 +244,7 @@ transacción de settlement.
   "platform": "jumpseller",
   "platformOrderId": "5001",     // null si la plataforma rechazó la orden
   "platformError": null,
-  "settlement": { "txHash": "…", "network": "stellar:testnet", "payer": "G…" },
+  "settlement": { "txHash": "…", "network": "stellar:testnet", "payer": "G… o C…" },
   "receipt": { "jws": "eyJ…", "hash": "…", "verifyPath": "/receipts/…/verify" },
   "anchor": { "status": "pending" }   // pending | anchored | failed
 }
@@ -258,7 +278,11 @@ dice el resultado de cada una por separado ([VT-13](DECISIONES.md)):
 1. **Firma.** El JWS valida contra la llave derivada de `merchant.did`.
 2. **Ancla.** `sha256(jws)` está en el contrato `receipts.registry`, con
    estado anclado.
-3. **Settlement.** `settlementTxHash` existe en la red y corresponde.
+3. **Settlement.** `settlementTxHash` existe en la red y corresponde: debitó
+   al pagador y acreditó al merchant exactamente el monto del recibo. Un
+   pagador `C…` aparece en Horizon como `contract_debited`, con el contrato en
+   `contract`; el campo `account` de ese efecto es quien envió la transacción
+   (el facilitator), y no cuenta como pagador ([VT-22](DECISIONES.md)).
 
 Las tres se pueden correr **sin la tienda**: el DID da la llave, el contrato
 es público y la transacción está en Stellar. Una tienda que desaparece no
@@ -273,7 +297,7 @@ emitió el recibo.
   "typ": "vitrinee-receipt/0.1",
   "orderId": "…", "platformOrderId": "…" | null, "platform": "jumpseller",
   "merchantDid": "did:stellar:testnet:G…", "merchantAccount": "G…",
-  "payerAccount": "G…",
+  "payerAccount": "G…" | "C…",
   "network": "stellar:testnet", "asset": "C…",
   "amountUSDC": "36.8315789", "amountUSDCAtomic": "368315789",
   "settlementTxHash": "…",
@@ -300,6 +324,39 @@ vender ahora** (un agotado sigue en el manifest, donde el cero informa, pero
 no acá, donde sería una oferta condenada), y el precio publicado es unitario,
 marcado con `extra.unitPrice`.
 
+### 6.1 El feed de `ServiceCard`
+
+`GET /api/discovery/search?query=…` responde los mismos productos en el formato
+`ServiceCard` (`bazaar.service-card/v0`), el que lee el catálogo de AgentPey
+para cualquier comercio x402 ([VT-24](DECISIONES.md), `C-130`):
+
+```jsonc
+{
+  "ok": true,
+  "results": [{ "resource": {
+    "id": "37282902",
+    "name": "Hoodie Cordillera talla M",          // hasta 200 caracteres, sin controles
+    "description": "…",                            // hasta 2000
+    "payment": { "asset": "USDC", "amount": "36.8315789", "destination": "G…" },
+    "routeTemplate": "/checkout/37282902?quantity={quantity}&name={name}&address={address}&city={city}&region={region}",
+    "input": [
+      { "name": "quantity", "type": "number", "required": true },
+      { "name": "name",     "type": "string", "required": true },
+      { "name": "address",  "type": "string", "required": true },
+      { "name": "city",     "type": "string", "required": true },
+      { "name": "region",   "type": "string", "required": true }
+    ]
+  } }]
+}
+```
+
+`payment.amount` es el precio **unitario** en USDC decimal. `routeTemplate`
+lleva un marcador por cada `input` y nada más, y apunta a la puerta `GET` del
+checkout. `quantity` tiene que coincidir con la cantidad que el comprador firma:
+si no, el 402 cotiza otro total. `query=*` o vacío lista todo; otro valor filtra
+por nombre y descripción, sin distinguir mayúsculas. Mismas reglas que § 6:
+solo lo que se puede vender ahora.
+
 ## 7. Seguridad y límites
 
 - **Todo por HTTPS.** Un manifest servido por HTTP es un manifest que alguien
@@ -312,6 +369,11 @@ marcado con `extra.unitPrice`.
   especificación.
 - **El agente fija su tope.** `priceUSDCAtomic` es una afirmación de la
   tienda; la política de gasto es del comprador.
+- **La puerta `GET` pone los datos de despacho en la URL.** El middleware x402
+  usa la URL completa como `resource.url` del 402, y el cliente la copia al
+  payload que manda al facilitator: nombre y dirección le llegan a él, y a
+  cualquier log de acceso en el camino. Con `POST` no pasa, porque la dirección
+  va en el cuerpo. Pendiente de decidir (T99).
 
 Fuera de alcance en `0.1`: carros de varios productos, descuentos y cupones,
 suscripciones, devoluciones automatizadas, autenticación del comprador más
@@ -326,7 +388,10 @@ vez de adivinar.
 ## 9. Estado de esta versión
 
 `0.1` es un borrador escrito junto a su primera implementación, contra una
-tienda Jumpseller real, en 8 días. Lo que está acá funciona; lo que no está
+tienda Jumpseller real, en 8 días. Revisado en T99 (2026-09-23) con cambios
+compatibles hacia adelante: la puerta `GET`, el pagador `C…` y el feed de
+`ServiceCard`. Un recibo emitido antes sigue siendo válido; un verificador
+escrito para la versión anterior rechazaría un recibo con pagador `C…`. Lo que está acá funciona; lo que no está
 probablemente falta. Las partes con más probabilidad de cambiar: `fx` cuando
 haya oráculos, `policies` cuando las devoluciones dejen de ser una promesa, y
 § 6 si x402 publica un endpoint de discovery del lado del servidor.

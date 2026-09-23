@@ -5882,3 +5882,61 @@ Pendiente:
 - T100–T102 según `C-130`.
 - Observaciones de T98 sin arreglar: snapshots aleatorios de `policy-rail`;
   link roto en `ROADMAP.md:460`.
+
+## 2026-09-23 (3) — cc/t99-vitrinee-compat
+
+Agente: Claude Code.
+
+Qué: **T99** (`C-130`) — **el comprador de AgentPey ya puede pagarle a
+Vitrinee.** Todo del lado de Vitrinee; `apps/agent`, `apps/web` y
+`apps/realops` sin tocar, así que agregar la tienda sigue siendo una fila de
+`venues.json` (`F7`).
+
+- **Antes de escribir código**, settlement real desde el `policy_rail`
+  compartido (`CANSQ…`) al `payTo` de Vitrinee (`GC5ZY…`) por el facilitator de
+  OpenZeppelin, con los requisitos armados por el servidor x402 de Vitrinee y
+  el pago firmado por `PolicyRailStellarScheme`: liquidó (tx `42d738d4…`). El
+  primer intento, con 0,01 USDC, lo rechazó el rail (`PerTxExceeded`, su
+  `perTx` es 0,002).
+- Discovery `ServiceCard` en `GET /api/discovery/search`, con `quantity`,
+  `name`, `address`, `city`, `region` como `input` obligatorios (`VT-24`).
+- Checkout también por `GET`, query → mismo esquema zod que el `POST`;
+  `Cache-Control: no-store`; `HEAD` → `405` porque se saltaba el middleware
+  x402 (`VT-23`).
+- Pagador `C…` de punta a punta: recibo, `payer.ts`, y el check de settlement,
+  que era un **cuarto** punto de quiebre no listado en `C-130` (Horizon marca
+  `contract_debited` con el canal del facilitator en `account`) (`VT-22`).
+- Test de contrato nuevo, sin red: `scripts/vitrinee/agentpey-contract.test.ts`
+  corre el código real de AgentPey contra la app real de Vitrinee.
+- Compra de punta a punta en testnet con el adaptador `mock` (ningún pedido en
+  Jumpseller): pago `9f11b96b…`, ancla `582b5b50…`, los tres checks del recibo
+  en verde.
+- Docs: `VT-22`–`VT-24`, nota de avance en `C-130` (la decisión no cambia),
+  `SPEC-agent-storefront.md` (sigue en `0.1`), bitácora y `evidencia/T99.md`
+  de la Fase 6, `INSTRUCCIONES.md` y `README.md` de Vitrinee, `README.md`
+  raíz. `AGENTS.md`: se sumó `payer.ts` a lo que Codex no toca sin visto bueno.
+
+Verificado (no por lectura): `pnpm run vitrinee:check` 128/128 (eran 109);
+`pnpm typecheck` y `pnpm test` de todo AgentPey en verde. No se corrió
+`vitrinee:test:integration` (el camino `POST` no cambió; cuesta ~1 USDC).
+
+Por qué no se delegó a Codex: pagador, recibo, verificación y checkout son
+custodia y flujo de fondos (`P-10`, `CLAUDE.md` § 6).
+
+Pendiente:
+- **Merge de T99 a `main`** — esperando OK del usuario (regla 1).
+- **Tres decisiones del usuario antes de T100/T101** (bitácora, bloque T99):
+  1. Con el checkout por `GET`, la dirección de despacho va en la URL: x402 la
+     copia a `resource.url`, le llega al facilitator, y AgentPey la guarda en
+     `delivery.resource_url`. Recomendado: `resource` fijo sin query en la ruta
+     de Vitrinee, y direcciones de prueba en el video.
+  2. Un rail de tenant recibe 1 USDC (`SPONSORED_FUNDING_PER_TENANT`); el
+     producto más barato de la tienda real cuesta 1,0421 USDC. T101 fallaría
+     con `RailInsufficientFunds`.
+  3. `quantity` viaja dos veces (compra y `route_params`); si difieren,
+     `reconcileTerms` rechaza antes de firmar. En T100, que RealOps llene una
+     con la otra.
+- T100 (venue + `agentKind`), T101, T102 según `C-130`. El deploy de Render de
+  Vitrinee sigue corriendo el código anterior a T99 hasta T102.
+- Sin cambios desde T98: snapshots aleatorios de `policy-rail`; link roto en
+  `ROADMAP.md:460`; `.codex/` y `logo agentpey/` sin trackear.

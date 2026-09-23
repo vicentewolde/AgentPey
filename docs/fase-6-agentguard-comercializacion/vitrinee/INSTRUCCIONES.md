@@ -46,7 +46,7 @@ Vitrinee es un comercio x402 más, que se agrega por configuración (`F7`).
 | `apps/vitrinee-dashboard` | Panel de pedidos y verificación, HTML/JS estático |
 | `apps/vitrinee-console` | Consola de compra en el navegador. Hace el papel que en AgentPey hace RealOps; su futuro está pendiente (ver abajo) |
 | `contracts/receipt-registry` | Contrato Soroban. **Su propio workspace de Cargo**, excluido de `contracts/Cargo.toml` |
-| `scripts/vitrinee/` | `bootstrap`, `deploy-registry` y sus librerías |
+| `scripts/vitrinee/` | `bootstrap`, `deploy-registry` y sus librerías, y el test de contrato con el comprador de AgentPey (`agentpey-contract.test.ts`, T99) |
 | `deployments/vitrinee-testnet.json` | Id del `receipt-registry` desplegado. Archivo propio: el script que lo escribe reemplaza el archivo entero y pisaría el de AgentPey |
 
 Los paquetes siguen llamándose `@vitrinee/*`. Renombrarlos a `@agentpey/*` es
@@ -123,7 +123,7 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
-## Estado al 2026-09-23 (T98 mergeado)
+## Estado al 2026-09-23 (T99 cerrado, sin mergear)
 
 - **Deploy vivo:** `https://vitrinee-gateway.onrender.com`, con `ADAPTER=mock`.
   **Todavía se despliega desde el repo viejo** `vicentewolde/Vitrinee`, rama
@@ -134,21 +134,24 @@ sus paquetes están en el mismo workspace.
 - **Tienda real:** `vitrinee.jumpseller.com`, 6 productos cargados. Plan
   `basic` pagado el 2026-09-23 ([VT-21](DECISIONES.md)): `POST /orders.json` ya
   no responde `403`. Todavía no se creó ningún pedido real por API.
-- **Integración con el comprador de AgentPey: no existe todavía.** Hay tres
-  incompatibilidades verificadas en código, todas del lado de Vitrinee:
-  1. *Discovery.* AgentPey lee `GET /api/discovery/search` en formato
-     `ServiceCard` del stellar-bazaar (`apps/agent/src/catalog/x402-catalog.ts`).
-     Vitrinee expone `/discovery/resources` en el formato de `@x402/extensions`.
-  2. *Método.* AgentPey pide el 402 con `GET` sin body
-     (`requestPaymentChallenge` en `apps/agent/src/payment/x402.ts`). El
-     checkout de Vitrinee es `POST` con JSON.
-  3. *Pagador `C…`.* AgentPey paga desde un `policy_rail`, que es una cuenta
-     contrato. El recibo de Vitrinee valida `payerAccount` solo como `G…`: el
-     pago se liquidaría y **después** fallaría la firma del recibo.
-
-  La dirección de despacho de un pedido físico puede llegar por los `input` del
-  `ServiceCard`: RealOps ya arma un formulario por producto con ellos y los
-  manda como `route_params` (T96).
+- **Integración con el comprador de AgentPey: compatible desde T99**
+  (2026-09-23, sin mergear al escribir esto). Vitrinee sirve su catálogo como
+  `ServiceCard` en `GET /api/discovery/search`, con `quantity`, `name`,
+  `address`, `city` y `region` como `input` ([VT-24](DECISIONES.md)); el
+  checkout acepta `GET` con esos datos en la query ([VT-23](DECISIONES.md)); y
+  un pagador `C…` pasa de punta a punta: recibo, lectura del pagador y el check
+  de settlement, que busca `contract_debited` ([VT-22](DECISIONES.md)). Probado
+  en testnet contra el adaptador `mock`, y cubierto sin red por
+  `scripts/vitrinee/agentpey-contract.test.ts`, que corre el código real de
+  AgentPey contra la app real de Vitrinee. **Si cambias el discovery o el
+  checkout, ese test es el que avisa que rompiste a AgentPey.** Falta registrar
+  la tienda como venue (T100): hasta entonces `toPaymentTerms` de AgentPey no
+  la conoce.
+- **Puntos abiertos de T99, del usuario:** la dirección de despacho viaja en la
+  URL y le llega al facilitator; el crédito de 1 USDC de un rail de tenant no
+  alcanza para el producto más barato de la tienda real (1,0421 USDC); y
+  `quantity` viaja dos veces. Detalle en la
+  [bitácora de la Fase 6](../BITACORA.md), bloque T99.
 - **Pendiente de decidir:** qué pasa con `apps/vitrinee-console` y
   `apps/vitrinee-agent` cuando RealOps y el agente de AgentPey compren en
   Vitrinee. Se mantienen: prueban que Vitrinee funciona con cualquier cliente

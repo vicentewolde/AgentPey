@@ -203,7 +203,9 @@ pnpm vitrinee:test:contracts             # cargo test en contracts/
 | `GET /.well-known/agent-storefront.json` | Manifest: merchant, `did:stellar` de firma, settlement x402, tasa, productos, registro de recibos |
 | `GET /catalog`, `GET /products/:id` | Catálogo con precios en CLP y USDC atómico |
 | `GET /discovery/resources` | Recursos pagables en el formato bazaar de x402 ([VT-17](DECISIONES.md)) |
+| `GET /api/discovery/search` | Los mismos productos como `ServiceCard`, el formato que lee el catálogo de AgentPey, con los datos de despacho como `input` ([VT-24](DECISIONES.md)) |
 | `POST /checkout/:productId` | 402 x402 → pago → orden + recibo firmado. Acepta `Idempotency-Key` |
+| `GET /checkout/:productId?quantity=…&name=…` | La misma compra con los datos en la query, como la piden los clientes x402 ([VT-23](DECISIONES.md)). El pagador puede ser `G…` o `C…` ([VT-22](DECISIONES.md)) |
 | `GET /orders`, `GET /orders/:orderId` | Estado de la orden, del settlement y del anclaje |
 | `GET /receipts/:hash/verify` | Tres checks sobre un recibo emitido por esta tienda |
 | `POST /receipts/verify` | Tres checks sobre cualquier recibo (`{ "receiptJws": "..." }`) |

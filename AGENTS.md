@@ -64,7 +64,8 @@ Antes de tocar cualquier ruta con `vitrinee` en el nombre, leé
 [`docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md`](docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md).
 Sin visto bueno explícito, no toques: el checkout
 (`packages/vitrinee-gateway/src/checkout.ts`, que decide cuándo un pago ya
-liquidado se convierte en pedido y recibo), la firma y verificación de recibos
+liquidado se convierte en pedido y recibo, y `payer.ts`, que decide quién pagó,
+incluido un pagador `C…` desde T99 / `VT-22`), la firma y verificación de recibos
 (`packages/vitrinee-core/src/receipt.ts`, `jws.ts`, `packages/vitrinee-anchor`),
 el contrato `contracts/receipt-registry`, las llaves del merchant
 (`scripts/vitrinee/`, `.env.vitrinee.*`), `deployments/vitrinee-testnet.json`,

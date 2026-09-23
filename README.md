@@ -43,9 +43,14 @@ Render plan sleeps after ~15 minutes idle; the first request then takes ~50 s.
 
 **Status.** Vitrinee was built in its own repository and merged here with its
 full history on 2026-09-23 (`P-12`). It already sells to any standard x402
-client, and real purchases settle and anchor on testnet. AgentPey's own buyer
-cannot pay it yet: three small incompatibilities, all on Vitrinee's side, are
-the next milestone (`C-130`). Full walkthrough, in Spanish:
+client, and real purchases settle and anchor on testnet. Since T99 AgentPey's
+own buyer can pay it too, from a `policy_rail` smart account: Vitrinee serves
+its catalogue as `ServiceCard`s at `GET /api/discovery/search`, takes checkout
+by `GET` with the shipping details in the query, and accepts a `C…` payer in
+the receipt and its verification (`VT-22`–`VT-24`). Tested end to end on
+testnet against the mock store. The Render deploy above still runs the code
+from before T99 until it moves here (T102), and registering Vitrinee as an
+AgentPey venue is the next milestone (T100, `C-130`). Full walkthrough, in Spanish:
 [`docs/fase-6-agentguard-comercializacion/vitrinee/README.md`](docs/fase-6-agentguard-comercializacion/vitrinee/README.md).
 Manifest format:
 [`SPEC-agent-storefront.md`](docs/fase-6-agentguard-comercializacion/vitrinee/SPEC-agent-storefront.md).

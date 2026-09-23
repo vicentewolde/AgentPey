@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** · **Sigue:** T99, que el comprador de AgentPey pueda pagarle a Vitrinee (`C-130`). Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23), así que T101 no tiene bloqueo externo. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-24`, sin mergear, esperando revisión)** · **Sigue:** T100, Vitrinee como venue en `venues.json` y un `agentKind` en RealOps (`C-130`), después de que el usuario decida los tres puntos abiertos de T99 (la dirección de despacho en la URL, cómo se fondea un rail para precios reales, y `quantity` duplicada). Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23), así que T101 no tiene bloqueo externo. Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -223,6 +223,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T96 | F9: RealOps deja de estar cableado a un solo comercio. Un `agentKind` nuevo (`bazaar_shopper`) con su propio Mandato compra en el bazaar del embajador, y una pantalla de catálogo muestra la tienda entera marcando cada ítem contra el permiso firmado — lo que queda fuera abre el diff literal del permiso que habría que firmar | ✅ cerrado 2026-09-22 · mergeado a `main` (`6e8503b`) (`C-128`) |
 | T97 | `pnpm run partner:key`: diagnosticar qué permisos le faltan a la clave de `/v1` en uso, y emitir una nueva **para el mismo partner** — porque `partner:create` crea un partner nuevo y los tenants están namespaceados por partner | ✅ cerrado 2026-09-22 · mergeado a `main` (`b978804`) (`C-129`) |
 | T98 | Vitrinee se fusiona en AgentPey con su historia completa (20 commits como ancestros reales, igual que AgentPass en `P-1`) y pasa a ser la forma en que un comercio real se suma sin escribir código. Corre desde la raíz con `pnpm run vitrinee:*`; toda la suite de AgentPey y la de Vitrinee en verde | ✅ cerrado 2026-09-23 · mergeado a `main` (`9ecec52`) (`P-12`, `C-130`) |
+| T99 | Vitrinee habla el dialecto del comprador de AgentPey: discovery en formato `ServiceCard` con los datos de despacho como `input`, checkout también por `GET`, y pagador `C…` aceptado de punta a punta (recibo, lectura del pagador y el check de settlement, que era un cuarto punto de quiebre que `C-130` no listaba). Probado primero contra el facilitator y después de punta a punta en testnet, con código real de los dos lados | ✅ cerrado 2026-09-23 · rama `cc/t99-vitrinee-compat`, **sin mergear** (`VT-22`, `VT-23`, `VT-24`) |
 
 ---
 
@@ -4488,3 +4489,104 @@ Por eso ese repo **no** se archiva todavía. Moverlo es un hito aparte (T102).
   109 tests de Vitrinee en verde, y los tres conjuntos de tests de Rust (11 +
   22 + 32) en verde.
 
+
+## T99 · El comprador de AgentPey ya puede pagarle a Vitrinee · cerrado 2026-09-23, sin mergear
+
+**Qué quedó funcionando, en palabras simples.** Hasta ayer, el agente de
+AgentPey y la tienda Vitrinee no se entendían en tres cosas: cómo el agente
+pregunta qué hay a la venta, cómo pide el precio, y desde qué tipo de cuenta
+paga. Ahora sí se entienden, y se probó con una compra de verdad en testnet: el
+agente leyó el catálogo de la tienda con el mismo código que usa para cualquier
+otro comercio, pidió el precio, pagó desde su cuenta con límites de gasto
+(el `policy_rail`), la tienda registró el pedido con la dirección de despacho,
+firmó el recibo y lo dejó anclado en la cadena. Después se verificó ese recibo
+con las tres comprobaciones independientes, y las tres dieron bien.
+
+Todo el arreglo se hizo del lado de Vitrinee. AgentPey no cambió ni una línea,
+así que agregar la tienda a AgentPey sigue siendo una fila de configuración.
+
+Ese pedido de prueba se hizo contra la tienda simulada, no contra Jumpseller:
+crear un pedido real es T101.
+
+### Lo primero fue comprobar que el pago en sí era posible
+
+Si el servicio que liquida los pagos (el facilitator de OpenZeppelin, el que usa
+Vitrinee) no aceptaba un pago desde una cuenta contrato, todo lo demás sobraba.
+Antes de escribir código se probó con el código real de los dos lados: liquidó
+a la primera, 0,001 USDC del rail compartido de AgentPey a la cuenta de la
+tienda. El primer intento lo rechazó **el propio rail**, porque su tope por
+compra es de 0,002 USDC y se intentó con 0,01: el límite funcionando, no una
+falla.
+
+### Encontramos un cuarto problema que no estaba en la lista
+
+La lista de `C-130` decía que el recibo fallaría con un pagador contrato. Era
+cierto, y había algo más: la verificación del recibo también fallaba. Cuando
+paga una cuenta contrato, el registro público de Stellar (Horizon) anota el pago
+de otra forma, y pone como "cuenta" a quien envió la transacción, que es el
+facilitator. La verificación buscaba al pagador en el lugar equivocado. Se
+arregló, y hay una prueba que asegura que el facilitator nunca cuenta como el
+que pagó.
+
+### Tres cosas que tienes que decidir antes de T100 y T101
+
+**1. La dirección de despacho viaja en la URL, y le llega al facilitator.** Así
+pide el precio el agente de AgentPey, y así lo decidía `C-130`. Pero la
+librería x402 copia esa URL completa al pago que se le manda al facilitator de
+OpenZeppelin, y AgentPey la guarda en el registro de la compra. Se comprobó en
+la prueba real. No lo cambié, porque es una decisión tuya. Opciones:
+
+- **(a) Aceptarlo para el hackathon** y usar direcciones de prueba en el video.
+  Cero trabajo. Una dirección real de alguien terminaría en los registros de un
+  tercero.
+- **(b) Que Vitrinee le dé a x402 una URL de recurso fija, sin la query.** Un
+  cambio chico en Vitrinee. La librería solo acepta una URL fija por ruta, así
+  que sería la misma para todos los productos: el facilitator ya no ve la
+  dirección, y tampoco qué producto se compró por la URL (el monto y el
+  destinatario sí los ve). AgentPey igual guardaría la URL completa en su
+  registro, que es del partner.
+- **(c) Pedir la dirección después de pagar**, no en la URL. Lo más limpio,
+  pero cambia `C-130` y el formulario de RealOps: no entra antes del 29.
+
+Recomiendo **(b)**, y para el video, direcciones de prueba igual.
+
+**2. Con los precios reales, el rail de un tenant no alcanza.** Cada tenant
+nuevo recibe 1 USDC de crédito de testnet para su rail. El producto más barato
+de la tienda Jumpseller real, los stickers, cuesta 990 CLP, que al tipo de
+cambio configurado (950) son **1,0421 USDC**. La compra de T101 fallaría con
+"saldo insuficiente". Opciones: subir el crédito del tenant de la demo, cargarle
+saldo a mano a su rail, o agregar a la tienda un producto más barato para la
+demo. Es una decisión sobre plata patrocinada y sobre qué se muestra en el
+video, así que es tuya.
+
+**3. La cantidad viaja dos veces.** Una vez como la cantidad de la compra (la
+que queda firmada) y otra en la URL. Si alguien pone cantidades distintas,
+AgentPey rechaza **antes de firmar nada**, así que no se pierde plata, pero el
+error no se entiende. En T100 conviene que RealOps llene la de la URL con la de
+la compra.
+
+### Otras dos cosas que conviene saber
+
+**El checkout por `GET` no deja pasar `HEAD`.** Una petición `HEAD` se habría
+saltado el cobro y habría respondido un error confuso. No creaba pedidos, pero
+se cerró igual.
+
+**Una tienda con un nombre de producto muy largo no rompe el catálogo.**
+AgentPey rechaza el catálogo entero si una sola fila no cumple sus reglas, así
+que Vitrinee recorta nombre y descripción en la tarjeta. El texto completo sigue
+en el manifest.
+
+### Evidencia técnica
+
+- Decisiones nuevas en [`vitrinee/DECISIONES.md`](vitrinee/DECISIONES.md):
+  `VT-22` (pagador `C…`), `VT-23` (checkout por `GET`), `VT-24` (feed
+  `ServiceCard`). La especificación del storefront sigue en `0.1`, revisada.
+- Settlement previo contra el facilitator: tx
+  `42d738d476613d5dc1de14d7eb3032837ae9ffd02b0e1d6e424dd96e8c4ba761`. Compra de
+  punta a punta: pago `9f11b96b41066a28aa0ba500a2a9b3f497a33d9599e6454efd4257d16e3847bb`,
+  ancla `582b5b50cbcace7e69e58e2bc434f4c44ef13405bc1bf5fde1d1239fad9e4c90`.
+- Test de contrato nuevo, sin red, con el código real de AgentPey contra la app
+  real de Vitrinee: `scripts/vitrinee/agentpey-contract.test.ts`.
+- Vitrinee: 128 tests en verde (eran 109). `pnpm typecheck` y `pnpm test` de
+  todo AgentPey en verde.
+- Salidas crudas en [`evidencia/T99.md`](evidencia/T99.md).

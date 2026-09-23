@@ -540,3 +540,121 @@ el producto") en vez del `403` del trial, y el conteo de pedidos sigue en 0.
 **Alternativa descartada:** correr la demo con `ADAPTER=mock`. Gratis, y obliga
 a explicar en el video por qué la "tienda real" es un mock — el único criterio
 que el proyecto entero existe para demostrar.
+
+---
+
+### VT-22 · El pagador puede ser una cuenta contrato (`C…`), de punta a punta · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T99 (`C-130`)
+
+`payerAccount` del recibo, `buyer.stellarAccount` del checkout, la lectura del
+pagador desde la transacción firmada (`payer.ts`) y el check de settlement de
+la verificación aceptan una cuenta clásica (`G…`) **o** una cuenta contrato
+(`C…`). La tienda sigue cobrando (`payTo`) y firmando recibos (`merchantDid`)
+con cuentas clásicas: `did:stellar` es una llave Ed25519 y una cuenta contrato
+no la tiene.
+
+**Motivo, probado antes de escribir código.** AgentPey paga desde un
+`policy_rail`, que es una cuenta contrato. La pregunta que decidía si T99
+servía era si el facilitator de Vitrinee (OpenZeppelin) liquida un pago `exact`
+desde un `C…`. Se probó con el código real de los dos lados: requisitos armados
+por el propio servidor x402 de Vitrinee, pago firmado por
+`PolicyRailStellarScheme` de AgentPey, `verify` y `settle` contra ese
+facilitator. Liquidó: tx
+`42d738d476613d5dc1de14d7eb3032837ae9ffd02b0e1d6e424dd96e8c4ba761`, 0,001 USDC
+del rail `CANSQ…` al `payTo` `GC5ZY…`. Antes de este cambio el pago se habría
+liquidado y **después** habría fallado la firma del recibo, con la plata ya
+movida.
+
+**Lo que `C-130` no listaba.** Además del recibo, se rompía el check 3 de la
+verificación: Horizon registra el débito de una cuenta contrato como
+`contract_debited`, con el `C…` en el campo `contract`, y pone en `account` a
+quien envió la transacción, que es el canal del facilitator. Comparar contra
+`account`, como se hacía para `G…`, habría dado el recibo por inválido, y
+aceptar ese `account` habría atribuido el pago al facilitator. El check
+compara contra `contract` para un pagador `C…`, y hay un test que prueba que el
+canal nunca cuenta como pagador.
+
+**La especificación sigue en `0.1`.** Es un cambio compatible hacia adelante:
+todo recibo emitido antes sigue siendo válido. Queda anotado en el propio
+`SPEC-agent-storefront.md` que un verificador escrito antes rechazaría un
+recibo con pagador `C…`.
+
+**Alternativa descartada:** que AgentPey pague a Vitrinee desde la cuenta
+clásica del agente, sin `policy_rail`. Resolvía el recibo sin tocar Vitrinee,
+pero sacaba de la compra justamente el límite que se hace cumplir en la red
+(`M-21`, `M-22`), que es la mitad de la historia de AgentPey.
+
+---
+
+### VT-23 · El checkout acepta también `GET`, con los datos en la query · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T99 (`C-130`)
+
+`/checkout/:productId` responde por `GET` además de por `POST`. `GET` lee la
+query (`quantity`, `name`, `address`, `city`, `region`, `country`, `email`,
+`notes`), la traduce a la forma del cuerpo del `POST` y la valida con **el
+mismo esquema zod**, así las dos puertas no pueden aceptar cosas distintas.
+Cada puerta lee solo su fuente. Las respuestas del checkout llevan
+`Cache-Control: no-store`. `HEAD` responde `405`.
+
+**Motivo.** `requestPaymentChallenge` de AgentPey pide el 402 con un `GET` sin
+cuerpo, y `executeBazaarPayment` reintenta la misma URL con la firma. Es lo que
+hacen casi todos los clientes x402, así que la puerta le sirve a cualquiera, no
+solo a AgentPey.
+
+**Por qué `HEAD` es `405` y no se deja pasar.** Express atiende `HEAD` con los
+handlers de `GET`, pero el middleware x402 solo protege los métodos que tiene
+configurados. Un `HEAD` se habría saltado el cobro y habría llegado al paso que
+crea el pedido. No se creaba nada (ese paso exige un settlement registrado),
+pero respondía un `500` con un mensaje que decía que el pago se había liquidado.
+
+**Por qué no es un riesgo de CSRF.** Un `GET` que cambia estado suele serlo.
+Acá el cambio de estado exige la cabecera `PAYMENT-SIGNATURE`, que un link o
+una imagen de otro sitio no pueden poner.
+
+**Costo abierto, sin decidir:** con `GET`, nombre y dirección de despacho van
+en la URL. El middleware x402 usa esa URL como `resource.url` del 402 y el
+cliente la copia al payload que manda al facilitator. Confirmado en la prueba
+de T99: la URL con la dirección llegó al facilitator. Además, AgentPey guarda
+esa URL como `delivery.resource_url` en el registro de la compra. Queda para
+que el usuario decida (ver la bitácora de T99).
+
+**Alternativa descartada:** que AgentPey haga el checkout por `POST` cuando el
+comercio lo pida. Obligaba a un camino de pago nuevo en AgentPey solo para este
+comercio, que es exactamente lo que `F7` y `C-130` quieren evitar.
+
+---
+
+### VT-24 · Discovery también en formato `ServiceCard`, con los datos de despacho como `input` · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** T99 (`C-130`)
+
+`GET /api/discovery/search` responde los productos que se pueden vender ahora
+en el formato `ServiceCard` que lee el catálogo de AgentPey para cualquier
+comercio x402. Cada tarjeta trae el precio **unitario** en USDC decimal, el
+`payTo` como `destination`, un `routeTemplate` a la puerta `GET` del checkout y
+cinco `input` obligatorios: `quantity` (`number`), `name`, `address`, `city` y
+`region`. `/discovery/resources` ([VT-17](#vt-17)) se queda, para los clientes
+que hablan `@x402/extensions`.
+
+**Motivo.** Con este formato, agregar una tienda Vitrinee a AgentPey es una
+fila en `venues.json`, sin código de ningún lado (`F7`). RealOps ya arma un
+formulario por producto con los `input` y los manda como `route_params` (T96).
+
+**Por qué todos obligatorios.** `fillRouteTemplate` de AgentPey rechaza un
+marcador que el que llama no llenó, así que un `input` opcional dentro del
+`routeTemplate` fallaría siempre que falte. `country` no se declara: la tienda
+despacha solo a Chile y el checkout pone `CL` por defecto. `email` tampoco: el
+adaptador de Jumpseller ya inventa uno de prueba a partir del pagador.
+
+**Por qué recortar nombre y descripción.** AgentPey valida el feed entero o
+nada: un nombre de más de 200 caracteres o con un carácter de control sacaría
+todos los productos de la tienda de su catálogo. La tarjeta es un resumen; el
+manifest conserva el texto completo.
+
+**Acoplamiento anotado para T100.** `quantity` viaja dos veces: como la
+cantidad de la compra (la que firma el intent) y como `route_param`. Si no
+coinciden, el 402 cotiza otro total y `reconcileTerms` rechaza **antes de
+firmar**: falla cerrado, pero con un error poco claro para quien compra.
+
+**Alternativa descartada:** un adaptador de catálogo propio para Vitrinee en
+AgentPey, leyendo el manifest. Funcionaba, y rompía la promesa de `F7` para
+este comercio.
