@@ -5784,7 +5784,9 @@ forma correcta a largo plazo.
    servicio Starter que ya se paga. **Corrección del mismo día:** Render sí
    cobra. El workspace incluye 2 dominios personalizados, ya estaban usados, y
    cada adicional cuesta 0,25 USD al mes (visto en el panel del servicio,
-   2026-09-23). El registro DNS en Vercel no tiene costo. La fila `vitrinee` de
+   2026-09-23). El registro DNS en Vercel no tiene costo. El usuario aprobó el
+   cargo y el dominio se agregó ese mismo día; Render lo verificó contra el
+   CNAME `vitrinee` → `agentpey.onrender.com`. La fila `vitrinee` de
    `venues.json` ya la nombra (T100), porque un venue se resuelve por origen y
    la fila tiene que decir la URL definitiva.
 3. **En qué orden.** T102 (el deploy) antes que T101 (la compra real). El
@@ -5906,6 +5908,17 @@ pantalla de revisión existe para mostrar.
    de T86 ("si un hijo cae, cae todo y Render reinicia") sigue igual para las
    tres apps del piloto: sin cualquiera de ellas el piloto no funciona. Sin la
    tienda, sí.
+
+**Ajuste tras el primer deploy, mismo día.** El servicio `AgentPey` se creó a
+mano en Render y **no sincroniza `render.yaml`**: los cuatro secretos llegaron
+porque el usuario los cargó, pero ninguna de las variables públicas con valor
+en el blueprint. El gateway no arrancó Vitrinee (`missing
+VITRINEE_MERCHANT_STELLAR_ACCOUNT`) y el resto del piloto siguió en 200, que es
+lo que la regla 2 existe para proteger. Con eso a la vista, `VITRINEE_ADAPTER`
+pasa a ser obligatoria aunque no sea secreta: sin ella Vitrinee usa su tienda
+simulada, y un deploy de producción vendiendo productos de mentira es peor que
+uno que no arranca. El blueprint queda como documentación de lo que el panel
+debe tener.
 
 **Por qué no cambia el código de Vitrinee.** La traducción de nombres vive en
 el gateway, que es el que sabe que comparte contenedor. Vitrinee sigue leyendo

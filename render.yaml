@@ -185,6 +185,12 @@ services:
       #
       # Until the four secrets below are set, the gateway does not start
       # Vitrinee and its host answers 503; the rest of the pilot is unaffected.
+      #
+      # The AgentPey service was created by hand and does not sync this file:
+      # the public values below are documentation, and have to be entered in
+      # the dashboard too. Found on the first deploy (T102). Vitrinee also
+      # refuses to start without VITRINEE_ADAPTER, so it can never fall back
+      # to its mock store in production.
       - key: VITRINEE_ADAPTER
         value: jumpseller
       # The child sits behind this gateway; absolute URLs in the manifest must

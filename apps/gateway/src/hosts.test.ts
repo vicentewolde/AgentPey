@@ -145,6 +145,7 @@ describe("which secrets each child actually receives", () => {
 
 describe("missingEnv", () => {
   const COMPLETE = {
+    VITRINEE_ADAPTER: "jumpseller",
     VITRINEE_MERCHANT_STELLAR_ACCOUNT: "G",
     VITRINEE_MERCHANT_SIGNING_SECRET: "S",
     VITRINEE_FACILITATOR_API_KEY: "k",
@@ -159,7 +160,13 @@ describe("missingEnv", () => {
   /** The rollout window: the blueprint is deployed before the secrets are loaded. */
   it("names what is missing, and treats an empty value as missing", () => {
     expect(missingEnv(VITRINEE_TARGET, { ...COMPLETE, VITRINEE_MERCHANT_SIGNING_SECRET: "" })).toEqual(["VITRINEE_MERCHANT_SIGNING_SECRET"]);
-    expect(missingEnv(VITRINEE_TARGET, {})).toHaveLength(5);
+    expect(missingEnv(VITRINEE_TARGET, {})).toHaveLength(6);
+  });
+
+  /** What the first real deploy looked like: the four secrets set, none of the public values. */
+  it("does not start Vitrinee on its mock store just because the adapter was never set", () => {
+    const { VITRINEE_ADAPTER: _adapter, VITRINEE_MERCHANT_STELLAR_ACCOUNT: _account, ...secretsOnly } = COMPLETE;
+    expect(missingEnv(VITRINEE_TARGET, secretsOnly)).toEqual(["VITRINEE_ADAPTER", "VITRINEE_MERCHANT_STELLAR_ACCOUNT"]);
   });
 
   it("never holds back the three apps the pilot cannot run without", () => {

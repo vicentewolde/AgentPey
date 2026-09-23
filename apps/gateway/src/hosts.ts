@@ -163,7 +163,13 @@ export const VITRINEE_TARGET: AppTarget = {
     RECEIPT_REGISTRY_ID: "VITRINEE_RECEIPT_REGISTRY_ID",
     ORDERS_FILE: "VITRINEE_ORDERS_FILE",
   },
+  // `VITRINEE_ADAPTER` is here although it is not a secret: Vitrinee defaults
+  // to its mock store when it is unset, and a production deploy quietly
+  // selling the mock's products is worse than one that does not start. Found
+  // on the first deploy (T102): the Render service does not sync render.yaml,
+  // so none of its public values arrived.
   requiredEnv: [
+    "VITRINEE_ADAPTER",
     "VITRINEE_MERCHANT_STELLAR_ACCOUNT",
     "VITRINEE_MERCHANT_SIGNING_SECRET",
     "VITRINEE_FACILITATOR_API_KEY",

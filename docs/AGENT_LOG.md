@@ -6198,3 +6198,27 @@ Pendiente, en este orden:
 2. Merge de T102, verificar en vivo, evidencia § 4, `DONE`.
 3. Decisión de montos para T101 (el usuario dijo "máximo unos 20").
 4. T101; archivar el repo viejo; M7/M8 de T102 y M9 de T100 y T102.
+
+## 2026-09-23 (11) — main (C-137 y T102 mergeados) y cc/t102-cierre
+
+Agente: Claude Code.
+
+Qué, con OK del usuario:
+- `cc/c137-limites-25` mergeado (`83b7c42`, PR #26): rails nuevos 25,00/25,00,
+  crédito patrocinado sigue en 3 (`C-137`). Ya en producción.
+- Dominio `vitrinee.agentpey.com` agregado en Render con Claude en Chrome
+  (0,25 USD/mes, aprobado por el usuario), verificado con su CNAME en Vercel.
+- T102 rebaseado sobre `main` (conflicto al final de `DECISIONES.md`, C-136
+  antes que C-137), tests en verde, mergeado (`c2eaae4`, PR #25).
+
+Hallazgo del primer deploy: el servicio de Render **no sincroniza
+`render.yaml`**. Llegaron los cuatro secretos, no las variables públicas;
+Vitrinee no arrancó (503) y el resto quedó en 200. En `cc/t102-cierre`:
+`VITRINEE_ADAPTER` obligatoria para no caer nunca en la tienda simulada.
+
+Pendiente:
+- **Del usuario:** cargar en Render `VITRINEE_ADAPTER=jumpseller`,
+  `VITRINEE_MERCHANT_STELLAR_ACCOUNT=GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII`,
+  `VITRINEE_PUBLIC_BASE_URL=https://vitrinee.agentpey.com`.
+- Merge de `cc/t102-cierre`, verificación en vivo, `DONE` de T102, métricas.
+- Después: T101.
