@@ -1,6 +1,10 @@
 /**
  * Reading the bazaar's live catalogue — the "discover" layer, and nothing else.
  *
+ * Since T100 it reads any merchant that publishes the same `ServiceCard` feed:
+ * a Vitrinee store does (`VT-24`), so `server.ts` builds one of these per
+ * live venue. The name stays, because the shape is the bazaar's.
+ *
  * **This whole file sits on the harmless side of the boundary** (`PILOTO-F9.md`
  * § 4.1). It talks to a third party over the network and believes nothing it
  * says. What it produces is a list of *candidates* for a screen to draw. It

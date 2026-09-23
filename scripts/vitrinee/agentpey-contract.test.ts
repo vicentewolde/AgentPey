@@ -12,6 +12,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { makeVenueId } from "../../apps/agent/src/catalog/ids.js";
+import { DEFAULT_VENUE_REGISTRY } from "../../apps/agent/src/catalog/default-registry.js";
 import { loadVenueRegistry } from "../../apps/agent/src/catalog/registry.js";
 import { createX402Catalog, getX402ServiceRoute } from "../../apps/agent/src/catalog/x402-catalog.js";
 import { fillRouteTemplate, requestPaymentChallenge } from "../../apps/agent/src/payment/x402.js";
@@ -67,6 +68,23 @@ function vitrineeVenue() {
   ]);
   return { venueId: makeVenueId("vitrinee", MERCHANT), registry };
 }
+
+describe("the vitrinee row of venues.json (T100)", () => {
+  /**
+   * The row registered with `scripts/register-venue.ts`, pinned: the asset is
+   * the USDC contract every Vitrinee 402 quotes, and the origin is where T102
+   * deploys the store. A venue is resolved by origin, so a row naming another
+   * host would make every purchase refuse before a single request.
+   */
+  it("names the USDC every Vitrinee checkout quotes, at the origin T102 deploys to", () => {
+    const row = [...DEFAULT_VENUE_REGISTRY.venues.values()].find((venue) => venue.venueId.startsWith("vitrinee:"));
+    expect(row).toBeDefined();
+    expect(row!.baseUrl).toBe("https://vitrinee.agentpey.com");
+    expect(row!.byCode.get("USDC")).toBe(`USDC:${USDC_TESTNET.contractId}`);
+    // Its address is the store's payout account: a classic `G…` account, the 402's `payTo`.
+    expect(row!.venueId.split(":")[1]).toMatch(/^G[A-Z2-7]{55}$/);
+  });
+});
 
 describe("AgentPey's buyer against a Vitrinee store", () => {
   it("reads the store's catalogue through the generic x402 adapter, with no Vitrinee-specific code", async () => {

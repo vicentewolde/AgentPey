@@ -30,8 +30,20 @@ import { bilingual, type Bilingual } from "./copy.js";
 import type { CheckedResource, ResourceAvailability, ResourceInput } from "./bazaar-catalog.js";
 import type { PilotTargets } from "./permissions.js";
 
-/** The two groups the shop is drawn in. A merchant, not a product taxonomy. */
-export type CatalogVenue = "signaldesk" | "bazaar";
+/** The three groups the shop is drawn in. A merchant, not a product taxonomy. */
+export type CatalogVenue = "signaldesk" | "bazaar" | "vitrinee";
+
+/**
+ * The one route input that is not a route parameter (T100, `C-132`).
+ *
+ * A Vitrinee store prices per unit and declares `quantity` as an input of its
+ * paid route. AgentPey fills that input from the purchase's own quantity, the
+ * one the intent is signed for, and refuses a `route_params.quantity` that
+ * says otherwise (`RouteParamConflict`). So RealOps reads this field as the
+ * purchase's quantity and never forwards it as a route parameter: one number,
+ * carried once, in the place that gets signed.
+ */
+export const QUANTITY_INPUT = "quantity";
 
 /**
  * How an item stands against this account's signed permissions.
@@ -171,16 +183,52 @@ export interface BuildCatalogInput {
   readonly agents: readonly AgentConfig[];
   /** The bazaar's live rows, or `undefined` when the read failed. Empty is a different fact. */
   readonly bazaar: readonly CheckedResource[] | undefined;
+  /** The Vitrinee store's live rows (T100), read through the same feed. Same convention. */
+  readonly vitrinee: readonly CheckedResource[] | undefined;
 }
 
 /**
- * The whole shop, in the order it is drawn: SignalDesk first, then the bazaar.
+ * The cards of a merchant whose catalogue is read live.
  *
- * A bazaar row naming a product no grant could ever cover is dropped rather
- * than drawn as permanently forbidden. Offering to sign a permission for a
- * product that is not in any `PilotTarget` would be offering a grant RealOps
- * cannot build, and a button that cannot work is worse than an absence.
+ * A row naming a product no grant could ever cover is dropped rather than
+ * drawn as permanently forbidden. Offering to sign a permission for a product
+ * that is not in any `PilotTarget` would be offering a grant RealOps cannot
+ * build, and a button that cannot work is worse than an absence.
  */
+function liveCards(
+  venue: CatalogVenue,
+  venueId: string,
+  rows: readonly CheckedResource[] | undefined,
+  input: BuildCatalogInput,
+): readonly CatalogCard[] {
+  return (rows ?? []).flatMap((resource) => {
+    const kind = kindFor(input.targets, venueId, resource.id);
+    if (kind === undefined) return [];
+    return [
+      {
+        venue,
+        productId: resource.id,
+        kind,
+        venueId,
+        // The merchant's own words, in whatever language it wrote them. Shown
+        // identically in both, because inventing a translation of a third
+        // party's product description would be putting words in its mouth.
+        title: bilingual(resource.name, resource.name),
+        description: bilingual(resource.description, resource.description),
+        declaredAmount: resource.declaredAmount,
+        declaredAsset: resource.declaredAsset,
+        inputs: resource.inputs,
+        // A live merchant's resources ask for nothing RealOps owns: every
+        // parameter is the person's to choose, which is why they need a form.
+        serverFilled: [],
+        availability: resource.availability,
+        coverage: coverageOf(input.agents, kind),
+      },
+    ];
+  });
+}
+
+/** The whole shop, in the order it is drawn: SignalDesk first, then the bazaar, then the Vitrinee store. */
 export function buildCatalog(input: BuildCatalogInput): readonly CatalogCard[] {
   const signaldesk: CatalogCard[] = SIGNALDESK_PRODUCTS.map((product) => ({
     venue: "signaldesk" as const,
@@ -199,34 +247,10 @@ export function buildCatalog(input: BuildCatalogInput): readonly CatalogCard[] {
     coverage: coverageOf(input.agents, product.kind),
   }));
 
-  const bazaarVenueId = input.targets.bazaar_shopper.venueId;
-  const bazaar: CatalogCard[] = (input.bazaar ?? []).flatMap((resource) => {
-    const kind = kindFor(input.targets, bazaarVenueId, resource.id);
-    if (kind === undefined) return [];
-    return [
-      {
-        venue: "bazaar" as const,
-        productId: resource.id,
-        kind,
-        venueId: bazaarVenueId,
-        // The merchant's own words, in whatever language it wrote them. Shown
-        // identically in both, because inventing a translation of a third
-        // party's product description would be putting words in its mouth.
-        title: bilingual(resource.name, resource.name),
-        description: bilingual(resource.description, resource.description),
-        declaredAmount: resource.declaredAmount,
-        declaredAsset: resource.declaredAsset,
-        inputs: resource.inputs,
-        // The bazaar's resources ask for nothing RealOps owns: every parameter
-        // is the person's to choose, which is why they need a form at all.
-        serverFilled: [],
-        availability: resource.availability,
-        coverage: coverageOf(input.agents, kind),
-      },
-    ];
-  });
+  const bazaar = liveCards("bazaar", input.targets.bazaar_shopper.venueId, input.bazaar, input);
+  const vitrinee = liveCards("vitrinee", input.targets.vitrinee_shopper.venueId, input.vitrinee, input);
 
-  return [...signaldesk, ...bazaar];
+  return [...signaldesk, ...bazaar, ...vitrinee];
 }
 
 /** The one card a product id names, among the ones this account can see. */

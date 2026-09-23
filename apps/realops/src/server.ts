@@ -108,6 +108,19 @@ const targets: PilotTargets = {
     ],
     products: ["swap-risk-quote", "ai-video-scriptwriter"],
   },
+  /**
+   * The real store connected through Vitrinee (T100, `C-130`). Its venue id is
+   * the `vitrinee` row of `venues.json`: the store's own payout account, which
+   * is also the only `payTo` its 402 ever names. The product ids are
+   * Jumpseller's, listed one by one like the bazaar's: a product the store adds
+   * tomorrow is not buyable until a new permission names it.
+   */
+  vitrinee_shopper: {
+    venueId: env.get("VITRINEE_VENUE_ID") ?? "vitrinee:GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII",
+    assetId: PILOT_ASSET_ID,
+    payTo: [env.get("VITRINEE_PAY_TO") ?? "GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII"],
+    products: ["37282902", "37282997", "37282998", "37282999", "37283000", "37283001"],
+  },
 };
 
 async function buildStore(): Promise<{ store: RealOpsStore; client?: SqlClient }> {
@@ -183,12 +196,26 @@ const bazaarCatalog = createBazaarCatalog({
   baseUrl: env.get("BAZAAR_BASE_URL") ?? "https://stellar-bazaar-x402.vercel.app",
 });
 
+/**
+ * The Vitrinee store's catalogue, read live through the same feed (T100).
+ *
+ * Vitrinee publishes its products as the same `ServiceCard` feed the bazaar
+ * does (`VT-24`), so the same reader serves. Its base URL has to be the
+ * `baseUrl` of the `vitrinee` row in `venues.json`: AgentPey resolves a venue
+ * by origin, and a catalogue read from one host for a purchase made at another
+ * would show products the Mandate does not cover.
+ */
+const vitrineeCatalog = createBazaarCatalog({
+  baseUrl: env.get("VITRINEE_BASE_URL") ?? "https://vitrinee.agentpey.com",
+});
+
 const server = createRealOpsServer({
   store,
   agentpey,
   agentpeyBaseUrl,
   targets,
   bazaarCatalog,
+  vitrineeCatalog,
   signalDeskUrl,
   baseUrl,
   delivery,

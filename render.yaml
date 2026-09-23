@@ -141,6 +141,16 @@ services:
         value: USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
       - key: PILOT_PAY_TO
         value: GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF
+      # T100 — the real store connected through Vitrinee. Public values: the
+      # store's payout account (the `address` of the `vitrinee` row in
+      # venues.json, and the only `payTo` its 402 names) and where its
+      # catalogue is read from. The origin must match that row's `baseUrl`.
+      - key: VITRINEE_BASE_URL
+        value: https://vitrinee.agentpey.com
+      - key: VITRINEE_VENUE_ID
+        value: vitrinee:GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII
+      - key: VITRINEE_PAY_TO
+        value: GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII
       # Without this, magic links are shown on screen and the address is NOT
       # verified — the page says so. Optional, like the sender below
       # (`RealOps <no-reply@agentpey.com>` when unset).

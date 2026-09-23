@@ -87,6 +87,11 @@ export const REALOPS_TARGET: AppTarget = {
     "PILOT_VENUE_ID",
     "PILOT_ASSET_ID",
     "PILOT_PAY_TO",
+    // T100: the Vitrinee store RealOps reads live and proposes grants for.
+    // Public values, like the three above; no secret of Vitrinee's is here.
+    "VITRINEE_BASE_URL",
+    "VITRINEE_VENUE_ID",
+    "VITRINEE_PAY_TO",
     "REALOPS_AGENTPEY_API_KEY",
     "AGENTPEY_BASE_URL",
   ],

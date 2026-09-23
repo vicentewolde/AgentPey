@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { newAgent, type AgentConfig } from "./accounts.js";
 import type { CheckedResource } from "./bazaar-catalog.js";
 import { buildCatalog, coverageOf, findCard, kindFor } from "./catalog.js";
-import { BAZAAR_VENUE_ID, SIGNALDESK_VENUE_ID, TEST_TARGETS } from "./testing.js";
+import { BAZAAR_VENUE_ID, SIGNALDESK_VENUE_ID, TEST_TARGETS, VITRINEE_PAY_TO, VITRINEE_VENUE_ID } from "./testing.js";
 
 const NOW = new Date("2026-09-22T12:00:00.000Z");
 const PERMISSIONS = { perTx: "0.30", perDay: "0.60", validForDays: 30 };
@@ -42,6 +42,44 @@ const BAZAAR_ROWS: readonly CheckedResource[] = [
   },
 ];
 
+/** Two of the real store's products, shaped exactly as its ServiceCard feed answered on 2026-09-23. */
+const VITRINEE_ROWS: readonly CheckedResource[] = [
+  {
+    id: "37283001",
+    name: "Pack de stickers Cordillera",
+    description: "Seis stickers de vinilo.",
+    declaredAmount: "1.0421053",
+    declaredAsset: "USDC",
+    declaredPayTo: VITRINEE_PAY_TO,
+    routeTemplate: "/checkout/37283001?quantity={quantity}&name={name}&address={address}&city={city}&region={region}",
+    inputs: [
+      { name: "quantity", type: "number", required: true },
+      { name: "name", type: "string", required: true },
+      { name: "address", type: "string", required: true },
+      { name: "city", type: "string", required: true },
+      { name: "region", type: "string", required: true },
+    ],
+    availability: "sellable",
+  },
+  {
+    id: "37282902",
+    name: "Hoodie Cordillera talla M",
+    description: "Polerón con capucha.",
+    declaredAmount: "36.8315789",
+    declaredAsset: "USDC",
+    declaredPayTo: VITRINEE_PAY_TO,
+    routeTemplate: "/checkout/37282902?quantity={quantity}&name={name}&address={address}&city={city}&region={region}",
+    inputs: [
+      { name: "quantity", type: "number", required: true },
+      { name: "name", type: "string", required: true },
+      { name: "address", type: "string", required: true },
+      { name: "city", type: "string", required: true },
+      { name: "region", type: "string", required: true },
+    ],
+    availability: "sellable",
+  },
+];
+
 describe("kindFor", () => {
   it("resolves a product to the kind whose grant names it, at that venue", () => {
     expect(kindFor(TEST_TARGETS, SIGNALDESK_VENUE_ID, "signaldesk:market-brief-xlm-usdc")).toBe("market_brief");
@@ -56,6 +94,13 @@ describe("kindFor", () => {
   it("does not resolve a product at the wrong venue", () => {
     expect(kindFor(TEST_TARGETS, SIGNALDESK_VENUE_ID, "swap-risk-quote")).toBeUndefined();
     expect(kindFor(TEST_TARGETS, BAZAAR_VENUE_ID, "signaldesk:market-brief-xlm-usdc")).toBeUndefined();
+    // The store's product ids are Jumpseller's; at the bazaar's venue they name nothing (T100).
+    expect(kindFor(TEST_TARGETS, BAZAAR_VENUE_ID, "37283001")).toBeUndefined();
+  });
+
+  it("resolves the real store's products to the Vitrinee kind, at the store's venue (T100)", () => {
+    expect(kindFor(TEST_TARGETS, VITRINEE_VENUE_ID, "37283001")).toBe("vitrinee_shopper");
+    expect(kindFor(TEST_TARGETS, VITRINEE_VENUE_ID, "37282902")).toBe("vitrinee_shopper");
   });
 
   it("does not resolve a product no target names", () => {
@@ -99,7 +144,7 @@ describe("coverageOf", () => {
 
 describe("buildCatalog", () => {
   it("draws both merchants, with the bazaar's own product ids verbatim", () => {
-    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS });
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS, vitrinee: undefined });
 
     expect(cards.map((card) => card.productId)).toEqual([
       "signaldesk:market-brief-xlm-usdc",
@@ -120,6 +165,7 @@ describe("buildCatalog", () => {
       targets: TEST_TARGETS,
       agents: [signed("market_brief")],
       bazaar: BAZAAR_ROWS,
+      vitrinee: undefined,
     });
 
     expect(findCard(cards, "signaldesk:market-brief-xlm-usdc")!.coverage.state).toBe("covered");
@@ -133,6 +179,7 @@ describe("buildCatalog", () => {
       targets: TEST_TARGETS,
       agents: [signed("bazaar_shopper")],
       bazaar: BAZAAR_ROWS,
+      vitrinee: undefined,
     });
 
     expect(findCard(cards, "swap-risk-quote")!.coverage.state).toBe("covered");
@@ -146,12 +193,12 @@ describe("buildCatalog", () => {
    * anything else, this line is where it would start.
    */
   it("carries the merchant's declared price as display only", () => {
-    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS });
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS, vitrinee: undefined });
     expect(findCard(cards, "swap-risk-quote")!.declaredAmount).toBe("0.001");
   });
 
   it("keeps the merchant's availability so the screen can say it is not for sale", () => {
-    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS });
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS, vitrinee: undefined });
     expect(findCard(cards, "ai-video-scriptwriter")!.availability).toBe("unavailable");
     expect(findCard(cards, "swap-risk-quote")!.availability).toBe("sellable");
   });
@@ -163,12 +210,12 @@ describe("buildCatalog", () => {
    */
   it("drops a bazaar row no grant could ever cover", () => {
     const rows: readonly CheckedResource[] = [{ ...BAZAAR_ROWS[0]!, id: "added-yesterday" }];
-    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: rows });
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: rows, vitrinee: undefined });
     expect(cards.every((card) => card.venue === "signaldesk")).toBe(true);
   });
 
   it("still draws SignalDesk when the bazaar could not be read", () => {
-    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: undefined });
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: undefined, vitrinee: undefined });
     expect(cards).toHaveLength(2);
     expect(cards.every((card) => card.venue === "signaldesk")).toBe(true);
   });
@@ -178,9 +225,55 @@ describe("buildCatalog", () => {
    * became a form field, a browser could credit somebody else.
    */
   it("keeps SignalDesk's own parameters out of the person's hands, and the bazaar's in them", () => {
-    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS });
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS, vitrinee: undefined });
     expect(findCard(cards, "signaldesk:ai-credits-1000")!.serverFilled).toEqual(["account"]);
     expect(findCard(cards, "signaldesk:market-brief-xlm-usdc")!.serverFilled).toEqual(["pair"]);
     expect(findCard(cards, "swap-risk-quote")!.serverFilled).toEqual([]);
+  });
+
+  /**
+   * T100: the store is the third section, its cards are its own products
+   * verbatim, and the store's kind, not the bazaar's, is what covers them.
+   */
+  it("draws the Vitrinee store after the bazaar, covered only by its own kind", () => {
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [signed("bazaar_shopper")], bazaar: BAZAAR_ROWS, vitrinee: VITRINEE_ROWS });
+
+    expect(cards.map((card) => card.productId)).toEqual([
+      "signaldesk:market-brief-xlm-usdc",
+      "signaldesk:ai-credits-1000",
+      "swap-risk-quote",
+      "ai-video-scriptwriter",
+      "37283001",
+      "37282902",
+    ]);
+    const stickers = findCard(cards, "37283001")!;
+    expect(stickers).toMatchObject({ venue: "vitrinee", kind: "vitrinee_shopper", venueId: VITRINEE_VENUE_ID, declaredAmount: "1.0421053" });
+    // A signed bazaar agent covers nothing at the store: another venue is another permission.
+    expect(stickers.coverage.state).toBe("outside");
+    expect(findCard(cards, "swap-risk-quote")!.coverage.state).toBe("covered");
+  });
+
+  it("marks the store covered once its own agent is signed", () => {
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [signed("vitrinee_shopper")], bazaar: BAZAAR_ROWS, vitrinee: VITRINEE_ROWS });
+    expect(findCard(cards, "37283001")!.coverage.state).toBe("covered");
+    expect(findCard(cards, "37282902")!.coverage.state).toBe("covered");
+    expect(findCard(cards, "swap-risk-quote")!.coverage.state).toBe("outside");
+  });
+
+  /** Every input of a physical order is the person's, including the quantity: RealOps fills none of them. */
+  it("leaves the store's shipping inputs, and its quantity, in the person's hands", () => {
+    const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: undefined, vitrinee: VITRINEE_ROWS });
+    const stickers = findCard(cards, "37283001")!;
+    expect(stickers.serverFilled).toEqual([]);
+    expect(stickers.inputs.map((input) => input.name)).toEqual(["quantity", "name", "address", "city", "region"]);
+  });
+
+  it("still draws the store when the bazaar could not be read, and the other way round", () => {
+    const withoutBazaar = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: undefined, vitrinee: VITRINEE_ROWS });
+    expect(withoutBazaar.filter((card) => card.venue === "vitrinee")).toHaveLength(2);
+    expect(withoutBazaar.some((card) => card.venue === "bazaar")).toBe(false);
+    const withoutStore = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: BAZAAR_ROWS, vitrinee: undefined });
+    expect(withoutStore.some((card) => card.venue === "vitrinee")).toBe(false);
+    expect(withoutStore.filter((card) => card.venue === "bazaar")).toHaveLength(2);
   });
 });

@@ -58,9 +58,9 @@ import {
   servicesPage,
   signInPage,
 } from "./pages.js";
-import { DEFAULT_PERMISSIONS, translatePermissions, type PilotTargets } from "./permissions.js";
-import { buildCatalog, findCard, type CatalogCard } from "./catalog.js";
-import type { BazaarCatalog } from "./bazaar-catalog.js";
+import { defaultPermissionsFor, translatePermissions, type PilotTargets } from "./permissions.js";
+import { buildCatalog, findCard, QUANTITY_INPUT, type CatalogCard } from "./catalog.js";
+import type { BazaarCatalog, CheckedResource } from "./bazaar-catalog.js";
 
 export const SESSION_COOKIE = "realops_session";
 
@@ -112,6 +112,8 @@ export interface RealOpsConfig {
    * message, not a crash.
    */
   readonly bazaarCatalog?: BazaarCatalog;
+  /** The Vitrinee store's live catalogue (T100), or `undefined` to run without it. Same posture as the bazaar's. */
+  readonly vitrineeCatalog?: BazaarCatalog;
   readonly signalDeskUrl: string;
   /** This service's own origin, for building magic links. */
   readonly baseUrl: string;
@@ -187,6 +189,14 @@ const BAZAAR_UNAVAILABLE = bilingual(
   "This instance is not reading the bazaar's catalogue.",
   "Esta instancia no está leyendo el catálogo del bazaar.",
 );
+const VITRINEE_UNAVAILABLE = bilingual(
+  "This instance is not reading the store's catalogue.",
+  "Esta instancia no está leyendo el catálogo de la tienda.",
+);
+const BAD_QUANTITY = bilingual(
+  "The quantity has to be a whole number between 1 and 20. Nothing was bought.",
+  "La cantidad tiene que ser un número entero entre 1 y 20. No se compró nada.",
+);
 const MISSING_PARAMS = bilingual(
   "The merchant needs every field filled in to serve that. Nothing was bought.",
   "El comercio necesita todos los campos completos para entregar eso. No se compró nada.",
@@ -203,6 +213,7 @@ const AGENT_KIND_NAMES: Readonly<Record<AgentKind, Bilingual>> = {
   market_brief: bilingual("Market report agent", "Agente de informes de mercado"),
   ai_credits: bilingual("AI credits agent", "Agente de créditos de IA"),
   bazaar_shopper: bilingual("Bazaar Shopper", "Comprador del Bazaar"),
+  vitrinee_shopper: bilingual("Store Shopper", "Comprador de la tienda"),
 };
 const CANNOT_BUY_THAT = bilingual(
   "That agent cannot buy this. Choose again from My services.",
@@ -252,6 +263,8 @@ function serverParamsFor(
 
 /** Every parameter a form may carry, capped so a form cannot be used as a sink. */
 const MAX_PARAM_LENGTH = 200;
+/** The most units one purchase may ask for from a form. The same cap `interpretInstruction` reads from a sentence. */
+const MAX_FORM_QUANTITY = 20;
 
 /**
  * The route parameters a person filled in, read against what the merchant said
@@ -273,19 +286,40 @@ const MAX_PARAM_LENGTH = 200;
 function readRouteParams(
   card: CatalogCard,
   form: URLSearchParams,
-): { readonly params: Record<string, string>; readonly missing: readonly string[] } {
+): {
+  readonly params: Record<string, string>;
+  readonly missing: readonly string[];
+  /** The purchase's quantity when the merchant declares one (`C-132`); `undefined` when it does not. */
+  readonly quantity: number | undefined;
+  readonly badQuantity: boolean;
+} {
   const params: Record<string, string> = {};
   const missing: string[] = [];
+  let quantity: number | undefined;
+  let badQuantity = false;
   for (const input of card.inputs) {
     if (card.serverFilled.includes(input.name)) continue;
     const value = form.get(`param_${input.name}`)?.trim() ?? "";
+    // The quantity is the purchase's, never a route parameter: AgentPey fills
+    // the merchant's `quantity` from the signed intent and refuses one that
+    // disagrees (`C-132`). Read here, sent once, in the place that gets signed.
+    if (input.name === QUANTITY_INPUT) {
+      if (value === "") {
+        quantity = 1;
+      } else if (/^\d{1,2}$/.test(value) && Number(value) >= 1 && Number(value) <= MAX_FORM_QUANTITY) {
+        quantity = Number(value);
+      } else {
+        badQuantity = true;
+      }
+      continue;
+    }
     if (value === "") {
       if (input.required) missing.push(input.name);
       continue;
     }
     params[input.name] = value.slice(0, MAX_PARAM_LENGTH);
   }
-  return { params, missing };
+  return { params, missing, quantity, badQuantity };
 }
 
 export function createRealOpsServer(config: RealOpsConfig): Server {
@@ -302,32 +336,49 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
   }
 
   /**
+   * One live merchant's rows, or the reason they are missing.
+   *
+   * A read can fail, and a failure comes back as a message rather than an
+   * empty list: "the merchant published nothing" and "we could not ask the
+   * merchant" are different facts and the screen must not flatten them into
+   * one.
+   */
+  async function readLive(
+    catalog: BazaarCatalog | undefined,
+    unavailable: Bilingual,
+  ): Promise<{ readonly rows: readonly CheckedResource[] | undefined; readonly error?: Bilingual }> {
+    if (catalog === undefined) return { rows: undefined, error: unavailable };
+    try {
+      return { rows: await catalog.list() };
+    } catch (error) {
+      return { rows: undefined, error: messageFor(error) };
+    }
+  }
+
+  /**
    * The shop as this account sees it.
    *
-   * The bazaar read can fail, and a failure comes back as a message rather than
-   * an empty list: "the merchant published nothing" and "we could not ask the
-   * merchant" are different facts and the screen must not flatten them into
-   * one. The agents are read from this account's own rows and never from input.
+   * The two live merchants are read together, so a slow one does not add its
+   * wait to the other's. The agents are read from this account's own rows and
+   * never from input.
    */
   async function catalogFor(account: Account): Promise<{
     readonly cards: readonly CatalogCard[];
     readonly agents: readonly AgentConfig[];
     readonly bazaarError?: Bilingual;
+    readonly vitrineeError?: Bilingual;
   }> {
-    const agents = await config.store.listAgents(account.id);
-    if (config.bazaarCatalog === undefined) {
-      return { cards: buildCatalog({ targets: config.targets, agents, bazaar: undefined }), agents, bazaarError: BAZAAR_UNAVAILABLE };
-    }
-    try {
-      const bazaar = await config.bazaarCatalog.list();
-      return { cards: buildCatalog({ targets: config.targets, agents, bazaar }), agents };
-    } catch (error) {
-      return {
-        cards: buildCatalog({ targets: config.targets, agents, bazaar: undefined }),
-        agents,
-        bazaarError: messageFor(error),
-      };
-    }
+    const [agents, bazaar, vitrinee] = await Promise.all([
+      config.store.listAgents(account.id),
+      readLive(config.bazaarCatalog, BAZAAR_UNAVAILABLE),
+      readLive(config.vitrineeCatalog, VITRINEE_UNAVAILABLE),
+    ]);
+    return {
+      cards: buildCatalog({ targets: config.targets, agents, bazaar: bazaar.rows, vitrinee: vitrinee.rows }),
+      agents,
+      ...(bazaar.error === undefined ? {} : { bazaarError: bazaar.error }),
+      ...(vitrinee.error === undefined ? {} : { vitrineeError: vitrinee.error }),
+    };
   }
 
   /** Opens a session for an account and lands the person on their agents. */
@@ -584,8 +635,16 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
      * decides at purchase time.
      */
     if (method === "GET" && pathname === "/catalogo") {
-      const { cards, bazaarError } = await catalogFor(account);
-      sendHtml(response, 200, catalogPage({ cards, ...(bazaarError === undefined ? {} : { bazaarError }) }));
+      const { cards, bazaarError, vitrineeError } = await catalogFor(account);
+      sendHtml(
+        response,
+        200,
+        catalogPage({
+          cards,
+          ...(bazaarError === undefined ? {} : { bazaarError }),
+          ...(vitrineeError === undefined ? {} : { vitrineeError }),
+        }),
+      );
       return;
     }
 
@@ -603,7 +662,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         sendHtml(response, 404, errorPage(404, NO_SUCH_PRODUCT));
         return;
       }
-      const translated = translatePermissions(card.kind, DEFAULT_PERMISSIONS, config.targets, now());
+      const translated = translatePermissions(card.kind, defaultPermissionsFor(card.kind), config.targets, now());
       sendHtml(
         response,
         200,
@@ -641,7 +700,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         redirect(response, `/agentes/${card.coverage.agentId}`);
         return;
       }
-      const agent = newAgent(account.id, card.kind, AGENT_KIND_NAMES[card.kind].en, DEFAULT_PERMISSIONS, now());
+      const agent = newAgent(account.id, card.kind, AGENT_KIND_NAMES[card.kind].en, defaultPermissionsFor(card.kind), now());
       await config.store.saveAgent(agent);
       redirect(response, `/agentes/${agent.id}`);
       return;
@@ -708,8 +767,13 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           sendHtml(response, 400, errorPage(400, MISSING_PARAMS));
           return;
         }
+        if (read.badQuantity) {
+          sendHtml(response, 400, errorPage(400, BAD_QUANTITY));
+          return;
+        }
         kind = card.kind;
         productId = card.productId;
+        quantity = read.quantity ?? 1;
         formParams = read.params;
         pair = kind === "market_brief" ? SUPPORTED_PAIR : undefined;
       } else if (chosen.success) {

@@ -24,7 +24,7 @@ import type { PurchaseResource, TenantActivity } from "./agentpey.js";
 import type { AgentConfig, Account, AgentKind } from "./accounts.js";
 import { bilingual, escape, tr, trHtml, type Bilingual } from "./copy.js";
 import { FALLBACK_CHOICES, type InstructionProblem } from "./instruction.js";
-import type { CatalogCard, CatalogVenue } from "./catalog.js";
+import { QUANTITY_INPUT, type CatalogCard, type CatalogVenue } from "./catalog.js";
 import type { ResourceAvailability, ResourceInput } from "./bazaar-catalog.js";
 import { explainRefusal } from "./refusals.js";
 import type { ExplainedControl, ProposedGrant } from "./permissions.js";
@@ -450,6 +450,13 @@ const AGENT_COPY: Readonly<Record<AgentKind, { readonly name: Bilingual; readonl
     what: bilingual(
       "Buys at the Stellar Bazaar, a merchant that is not ours. Its permission names that merchant and those products, and nothing of SignalDesk.",
       "Compra en el Stellar Bazaar, un comercio que no es nuestro. Su permiso nombra ese comercio y esos productos, y nada de SignalDesk.",
+    ),
+  },
+  vitrinee_shopper: {
+    name: bilingual("Store Shopper", "Comprador de la tienda"),
+    what: bilingual(
+      "Buys physical products from a real store connected through Vitrinee, shipped to the address you give. Its permission names that store and its products only.",
+      "Compra productos físicos en una tienda real conectada por Vitrinee, enviados a la dirección que indiques. Su permiso nombra solo esa tienda y sus productos.",
     ),
   },
 };
@@ -995,6 +1002,13 @@ const VENUE_COPY: Readonly<Record<CatalogVenue, { readonly name: Bilingual; read
       "Un comercio independiente, leído en vivo desde su propio catálogo. Puede agregar o quitar productos sin avisarnos, y lo que publica no es lo que tu agente puede comprar.",
     ),
   },
+  vitrinee: {
+    name: bilingual("Bazar Cordillera, via Vitrinee", "Bazar Cordillera, vía Vitrinee"),
+    note: bilingual(
+      "A real store, read live from its own catalogue. It ships physical products, so each purchase asks for a name and an address; the quantity you enter is the one the agent signs for. Prices are in USDC on Stellar testnet.",
+      "Una tienda real, leída en vivo desde su propio catálogo. Envía productos físicos, así que cada compra pide un nombre y una dirección; la cantidad que escribas es la que el agente firma. Los precios están en USDC de Stellar testnet.",
+    ),
+  },
 };
 
 /** One input the merchant requires, as a form field. Never a money field: the price is the merchant's. */
@@ -1004,6 +1018,13 @@ function inputField(card: CatalogCard, input: ResourceInput): string {
     input.description === undefined
       ? ""
       : `<span class="meta">${escape(input.description)}</span>`;
+  // The merchant's `quantity` is the purchase's own quantity (`C-132`): a
+  // whole number of units, starting at one, that the agent signs for.
+  if (input.name === QUANTITY_INPUT) {
+    return `<label for="${escape(id)}">${tr(bilingual("Quantity", "Cantidad"))}</label>
+      <input id="${escape(id)}" name="param_${escape(input.name)}" type="number" min="1" max="20" step="1" value="1" required
+             autocomplete="off" inputmode="numeric">`;
+  }
   const type = input.type.toLowerCase() === "number" ? "number" : "text";
   return `<label for="${escape(id)}">${escape(input.name)}${input.required ? " *" : ""}</label>
       ${help}
@@ -1070,8 +1091,10 @@ function catalogCardHtml(card: CatalogCard, requestKey: string): string {
 
 export interface CatalogInput {
   readonly cards: readonly CatalogCard[];
-  /** Why the bazaar half is missing, if it is. A failed read is not an empty shop. */
+  /** Why the bazaar section is missing, if it is. A failed read is not an empty shop. */
   readonly bazaarError?: Bilingual;
+  /** Why the Vitrinee store's section is missing, if it is (T100). */
+  readonly vitrineeError?: Bilingual;
 }
 
 export function catalogPage(input: CatalogInput): string {
@@ -1080,14 +1103,18 @@ export function catalogPage(input: CatalogInput): string {
   // paying again.
   const requestKey = randomUUID();
 
+  const readError = (venue: CatalogVenue): Bilingual | undefined =>
+    venue === "bazaar" ? input.bazaarError : venue === "vitrinee" ? input.vitrineeError : undefined;
+
   const section = (venue: CatalogVenue): string => {
     const cards = input.cards.filter((card) => card.venue === venue);
     const copy = VENUE_COPY[venue];
+    const error = readError(venue);
     const body =
       cards.length === 0
         ? `<p class="card">${
-            venue === "bazaar" && input.bazaarError !== undefined
-              ? tr(input.bazaarError)
+            error !== undefined
+              ? tr(error)
               : tr(bilingual("Nothing on offer here right now.", "No hay nada a la venta aquí ahora mismo."))
           }</p>`
         : `<div class="grid">
@@ -1116,6 +1143,7 @@ export function catalogPage(input: CatalogInput): string {
 
   ${section("signaldesk")}
   ${section("bazaar")}
+  ${section("vitrinee")}
 `,
   });
 }

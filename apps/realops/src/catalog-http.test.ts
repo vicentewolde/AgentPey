@@ -14,7 +14,7 @@ import type { AgentPeyClient, PurchaseResource } from "./agentpey.js";
 import { createMemoryStore, type RealOpsStore } from "./accounts.js";
 import { createRealOpsServer } from "./app.js";
 import type { BazaarCatalog, CheckedResource } from "./bazaar-catalog.js";
-import { BAZAAR_VENUE_ID, SIGNALDESK_VENUE_ID, TEST_TARGETS } from "./testing.js";
+import { BAZAAR_VENUE_ID, SIGNALDESK_VENUE_ID, TEST_TARGETS, VITRINEE_PAY_TO, VITRINEE_VENUE_ID } from "./testing.js";
 
 const ROWS: readonly CheckedResource[] = [
   {
@@ -48,8 +48,37 @@ const ROWS: readonly CheckedResource[] = [
 interface PurchaseCall {
   readonly venue: string;
   readonly productId: string;
+  readonly quantity: number;
   readonly routeParams?: Readonly<Record<string, string | number>>;
 }
+
+/** The real store's cheapest product, as its ServiceCard feed answered on 2026-09-23 (T100). */
+const STORE_ROWS: readonly CheckedResource[] = [
+  {
+    id: "37283001",
+    name: "Pack de stickers Cordillera",
+    description: "Seis stickers de vinilo.",
+    declaredAmount: "1.0421053",
+    declaredAsset: "USDC",
+    declaredPayTo: VITRINEE_PAY_TO,
+    routeTemplate: "/checkout/37283001?quantity={quantity}&name={name}&address={address}&city={city}&region={region}",
+    inputs: [
+      { name: "quantity", type: "number", required: true },
+      { name: "name", type: "string", required: true },
+      { name: "address", type: "string", required: true },
+      { name: "city", type: "string", required: true },
+      { name: "region", type: "string", required: true },
+    ],
+    availability: "sellable",
+  },
+];
+let storeFails = false;
+const vitrineeCatalog: BazaarCatalog = {
+  async list() {
+    if (storeFails) throw new Error("the store is down");
+    return STORE_ROWS;
+  },
+};
 
 const purchases: PurchaseCall[] = [];
 let consentSeq = 0;
@@ -124,6 +153,7 @@ const server = createRealOpsServer({
   agentpey,
   targets: TEST_TARGETS,
   bazaarCatalog,
+  vitrineeCatalog,
   signalDeskUrl: "https://signaldesk.example",
   agentpeyBaseUrl: "https://agentpey.example",
   baseUrl: "http://127.0.0.1",
@@ -182,6 +212,8 @@ describe("the catalogue screen", () => {
     expect(html).toContain("signaldesk:market-brief-xlm-usdc");
     expect(html).toContain("swap-risk-quote");
     expect(html).toContain("ai-video-scriptwriter");
+    // The third merchant (T100): the real store's own product id.
+    expect(html).toContain("37283001");
     // Everything is outside the grant, and says so in both languages.
     expect(html).toContain("outside the grant");
     expect(html).toContain("fuera del permiso");
@@ -406,5 +438,86 @@ describe("buying from the catalogue", () => {
 
     expect(response.status).toBe(404);
     expect(purchases).toHaveLength(before);
+  });
+});
+
+describe("buying from the Vitrinee store (T100)", () => {
+  const SHIPPING = { param_name: "Ana Pérez", param_address: "Av. Irarrázaval 1234", param_city: "Ñuñoa", param_region: "Metropolitana" };
+
+  it("sends the store's venue, its product id, the shipping details, and the quantity once, as the purchase's", async () => {
+    const cookie = await signIn("compra-tienda@ejemplo.cl");
+    await signAgent(cookie, "vitrinee_shopper");
+    const before = purchases.length;
+
+    await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "2", ...SHIPPING }, cookie));
+
+    const call = purchases[before]!;
+    expect(call.venue).toBe(VITRINEE_VENUE_ID);
+    expect(call.productId).toBe("37283001");
+    // C-132: the quantity is the purchase's own, the one that gets signed. It
+    // is never also a route parameter, so it cannot travel twice and disagree.
+    expect(call.quantity).toBe(2);
+    expect(call.routeParams).toEqual({ name: "Ana Pérez", address: "Av. Irarrázaval 1234", city: "Ñuñoa", region: "Metropolitana" });
+  });
+
+  it("buys one unit when the quantity field is left empty", async () => {
+    const cookie = await signIn("una-unidad@ejemplo.cl");
+    await signAgent(cookie, "vitrinee_shopper");
+    const before = purchases.length;
+    await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "", ...SHIPPING }, cookie));
+    expect(purchases[before]!.quantity).toBe(1);
+  });
+
+  it("refuses a quantity that is not a small whole number, and buys nothing", async () => {
+    const cookie = await signIn("cantidad-rara@ejemplo.cl");
+    await signAgent(cookie, "vitrinee_shopper");
+    const before = purchases.length;
+    for (const bad of ["0", "1.5", "999", "-1", "dos"]) {
+      const response = await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: bad, ...SHIPPING }, cookie));
+      expect(response.status, bad).toBe(400);
+    }
+    expect(purchases).toHaveLength(before);
+  });
+
+  it("refuses an order with the shipping details missing, and buys nothing", async () => {
+    const cookie = await signIn("sin-direccion@ejemplo.cl");
+    await signAgent(cookie, "vitrinee_shopper");
+    const before = purchases.length;
+    const response = await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "1", param_name: "Ana" }, cookie));
+    expect(response.status).toBe(400);
+    expect(purchases).toHaveLength(before);
+  });
+
+  /** A signed bazaar agent is another venue's permission: the store stays outside it. */
+  it("does not let a bazaar agent buy at the store", async () => {
+    const cookie = await signIn("bazaar-en-tienda@ejemplo.cl");
+    await signAgent(cookie, "bazaar_shopper");
+    const before = purchases.length;
+    const response = await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "1", ...SHIPPING }, cookie));
+    expect(response.status).toBe(409);
+    expect(purchases).toHaveLength(before);
+  });
+
+  it("proposes the store's own defaults, 3.00 per purchase and per day, for the permission it needs", async () => {
+    const cookie = await signIn("permiso-tienda@ejemplo.cl");
+    const html = await (await fetch(`${baseUrl}/catalogo/permiso?producto=37283001`, { headers: { cookie } })).text();
+    expect(html).toContain(VITRINEE_VENUE_ID);
+    expect(html).toContain("3.00 USDC");
+    expect(html).not.toContain("0.30 USDC");
+  });
+
+  it("says so, and keeps the other two merchants, when the store cannot be read", async () => {
+    const cookie = await signIn("tienda-caida@ejemplo.cl");
+    storeFails = true;
+    try {
+      const html = await catalogue(cookie);
+      expect(html).toContain("swap-risk-quote");
+      expect(html).toContain("signaldesk:market-brief-xlm-usdc");
+      expect(html).not.toContain("37283001");
+      // The section is drawn with a reason, in both languages, not left blank.
+      expect(html).toContain("Bazar Cordillera");
+    } finally {
+      storeFails = false;
+    }
   });
 });

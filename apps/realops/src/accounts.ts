@@ -54,8 +54,13 @@ export const aliasSchema = z
  * is the point of the screen it feeds: what the catalogue offers and what a
  * signed Mandate covers are two different sets, and the gap between them is
  * visible instead of being a wall the person walks into.
+ *
+ * `vitrinee_shopper` (T100) buys physical goods from a real store connected
+ * through Vitrinee (`C-130`). Like the bazaar kind it is named after a merchant
+ * and shops a live catalogue; unlike it, every product needs a shipping
+ * address, so its purchases always go through the catalogue's form.
  */
-export const agentKindSchema = z.enum(["market_brief", "ai_credits", "bazaar_shopper"]);
+export const agentKindSchema = z.enum(["market_brief", "ai_credits", "bazaar_shopper", "vitrinee_shopper"]);
 export type AgentKind = z.infer<typeof agentKindSchema>;
 
 export interface Account {

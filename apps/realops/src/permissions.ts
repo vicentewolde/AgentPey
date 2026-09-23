@@ -140,6 +140,26 @@ export const DEFAULT_PERMISSIONS: AgentPermissions = {
 };
 
 /**
+ * What the Vitrinee kind is offered instead (T100).
+ *
+ * The cheapest product of the real store costs 1.0421053 USDC, so a permission
+ * of 0.30 per purchase would cover nothing there. 3.00/3.00 are the credit and
+ * the on-chain limits every new tenant rail is born with (`C-131`, `C-133`):
+ * proposing more would be proposing a Mandate the rail itself cannot honour.
+ * Still a starting point the person can change before signing.
+ */
+export const VITRINEE_DEFAULT_PERMISSIONS: AgentPermissions = {
+  perTx: "3.00",
+  perDay: "3.00",
+  validForDays: 30,
+};
+
+/** The permissions a kind is offered when set up from the catalogue. */
+export function defaultPermissionsFor(kind: AgentKind): AgentPermissions {
+  return kind === "vitrinee_shopper" ? VITRINEE_DEFAULT_PERMISSIONS : DEFAULT_PERMISSIONS;
+}
+
+/**
  * Builds the grant, and the explanation of it, from one agent's permissions.
  *
  * The dates are computed from `now` rather than taken from the caller: a
