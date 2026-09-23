@@ -110,6 +110,8 @@ export type AgentPassErrorCode =
   | "PurchaseCeilingExceeded"
   /** The paid route needs an input this purchase did not supply. */
   | "RouteParamMissing"
+  /** A route input contradicts the purchase itself: its `quantity` is not the one the intent signs for (`C-132`). */
+  | "RouteParamConflict"
   /** The pilot's sponsored testnet credit is exhausted, or its cap on sponsored rails is reached. */
   | "SponsoredCreditExhausted"
   /** The mandate's spending limit is denominated in a different asset than the price. */

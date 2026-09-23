@@ -90,7 +90,9 @@ export interface TenantPurchaseRequest {
    * Values for the `{name}` placeholders in the venue's paid route. A route
    * that declares a required input this does not cover is refused with
    * `RouteParamMissing` rather than fetched with a hole in the URL: a venue
-   * asked for a parameter, and sending it an empty one is guessing.
+   * asked for a parameter, and sending it an empty one is guessing. A route
+   * `quantity` is filled from {@link quantity}; one supplied here must match
+   * it, or the purchase is refused with `RouteParamConflict` (`C-132`).
    */
   readonly routeParams?: Readonly<Record<string, string | number>>;
   /**
@@ -449,6 +451,51 @@ function scopeFromCredential(record: CredentialRecord): Scope {
   return parsed.data.credentialSubject.scope;
 }
 
+/** The route input that names how many units the merchant should price (`C-132`). */
+const QUANTITY_PARAM = "quantity";
+
+/**
+ * The purchase's own quantity, carried into a paid route that asks for one
+ * (`C-132`).
+ *
+ * A venue that sells more than one unit per payment, such as a Vitrinee
+ * store (`VT-24`), declares `quantity` as a route input and prices the `402`
+ * by it. The purchase already has a quantity: the one the intent signs for.
+ * Asking a caller to send it twice invites the two to differ, and when they
+ * did the venue quoted another total and `reconcileTerms` refused it before
+ * signing, with an error that named neither number. So the purchase's own
+ * quantity fills the route; a caller that also sends one must send the same.
+ *
+ * Refusing a different value, rather than overwriting it, is the point: a
+ * caller who wrote `quantity: 2` in the route and `1` in the purchase meant
+ * something, and paying for one unit while they believe they bought two is
+ * the surprise this exists to prevent. Nothing is signed or spent either way.
+ *
+ * A route that declares no `quantity` input is left exactly as supplied.
+ *
+ * @throws AgentPassError `RouteParamConflict` when the caller's route
+ * `quantity` is not the purchase's quantity.
+ */
+export function withPurchaseQuantity(
+  route: { readonly input: readonly { readonly name: string }[] },
+  supplied: Readonly<Record<string, string | number>>,
+  quantity: number,
+): Readonly<Record<string, string | number>> {
+  if (!route.input.some((field) => field.name === QUANTITY_PARAM)) return supplied;
+  const given = supplied[QUANTITY_PARAM];
+  if (given !== undefined) {
+    const text = String(given).trim();
+    if (!/^\d+$/.test(text) || Number(text) !== quantity) {
+      throw new AgentPassError(
+        "RouteParamConflict",
+        "the route's quantity is not the quantity this purchase is for",
+        { details: { param: QUANTITY_PARAM, routeValue: given, purchaseQuantity: quantity } },
+      );
+    }
+  }
+  return { ...supplied, [QUANTITY_PARAM]: quantity };
+}
+
 /**
  * Checks the caller covered every input the venue's paid route declares as
  * required, before a URL is built from it.
@@ -697,8 +744,9 @@ export async function executeTenantPurchase(
   let resourceUrl: string;
   try {
     const route = await getX402ServiceRoute({ venueId, registry, baseUrl }, request.productId);
-    requireRouteParams(route, request.routeParams ?? {});
-    resourceUrl = fillRouteTemplate(baseUrl, route, request.routeParams ?? {});
+    const routeParams = withPurchaseQuantity(route, request.routeParams ?? {}, request.quantity);
+    requireRouteParams(route, routeParams);
+    resourceUrl = fillRouteTemplate(baseUrl, route, routeParams);
   } catch (error) {
     await releaseUnpaidSpend(policyRail, intentResult.intent_id, refusalCodeOf(error));
     return asRefusal(error, intentResult.intent_id, agentId, mandateId);

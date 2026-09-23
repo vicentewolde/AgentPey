@@ -9,7 +9,7 @@ puede usar en un programa. La persona no ve el código como explicación: RealOp
 lo traduce a las dos frases de esta tabla, en español o en inglés, y deja el
 código en letra chica como detalle técnico.
 
-Son 57 códigos, agrupados por la capa que dice que no, en el orden en que
+Son 58 códigos, agrupados por la capa que dice que no, en el orden en que
 una compra pasa por ellas. Un código que no esté acá se muestra con una frase
 que dice que la página todavía no sabe explicarlo, y el motivo original queda
 como detalle técnico.
@@ -24,6 +24,7 @@ como detalle técnico.
 | `InvalidProduct` | El comercio respondió algo que AgentPey no pudo leer, así que no le pagó. | Inténtalo de nuevo en un momento. |
 | `MerchantRejectedRequest` | El comercio rechazó el pedido antes de cotizarlo, así que no se pagó nada. | Es un problema entre esta plataforma y el comercio, no tuyo. Ya quedó registrado. |
 | `RouteParamMissing` | El comercio pide un dato que esta plataforma no le envió. | Es un problema nuestro, no tuyo. Ya quedó registrado. |
+| `RouteParamConflict` | La cantidad que se le iba a mandar al comercio no coincidía con la de la compra, así que no se pagó nada. | Es un problema nuestro, no tuyo. Ya quedó registrado. |
 | `InvalidVenueId` | El comercio está mal configurado en AgentPey, así que no se pagó nada. | Es un problema nuestro, no tuyo. Ya quedó registrado. |
 | `InvalidAssetId` | La moneda de pago está mal configurada en AgentPey, así que no se pagó nada. | Es un problema nuestro, no tuyo. Ya quedó registrado. |
 | `InvalidVenueRegistry` | La lista de comercios de AgentPey está mal configurada, así que no se pagó nada. | Es un problema nuestro, no tuyo. Ya quedó registrado. |

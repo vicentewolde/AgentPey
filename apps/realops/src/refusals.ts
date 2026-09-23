@@ -116,6 +116,13 @@ export const REFUSAL_GROUPS: readonly RefusalGroup[] = [
         bilingual("The merchant needs a value this platform did not send.", "El comercio pide un dato que esta plataforma no le envió."),
         OURS,
       ),
+      RouteParamConflict: explained(
+        bilingual(
+          "The quantity sent to the merchant did not match the quantity being bought, so nothing was paid.",
+          "La cantidad que se le iba a mandar al comercio no coincidía con la de la compra, así que no se pagó nada.",
+        ),
+        OURS,
+      ),
       InvalidVenueId: explained(
         bilingual("The merchant is set up wrongly on AgentPey, so nothing was paid.", "El comercio está mal configurado en AgentPey, así que no se pagó nada."),
         OURS,

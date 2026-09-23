@@ -82,6 +82,11 @@ export const createPurchaseRequestSchema = z.strictObject({
    * a hole in the URL: the merchant asked for a parameter, and sending it an
    * empty one is guessing.
    *
+   * A route that declares a `quantity` input gets this purchase's
+   * `quantity` without being asked (T99, `C-132`). Sending one here is
+   * allowed only if it is the same number; a different one is refused
+   * (`RouteParamConflict`) before anything is signed.
+   *
    * Not a way in for anything that decides: these fill a URL the merchant
    * itself published, and the price that comes back is still reconciled
    * against the signed Mandate like any other.

@@ -22,6 +22,7 @@ import {
   releaseUnpaidSpend,
   resolveNamedMandate,
   selectMandateFor,
+  withPurchaseQuantity,
   withheldBecause,
   type AgentDocumentStates,
   type TenantPurchaseDeps,
@@ -598,5 +599,47 @@ describe("releasing the spend of a purchase that never paid", () => {
     expect(refusalCodeOf(new AgentPassError("MerchantRejectedRequest", "no"))).toBe("MerchantRejectedRequest");
     expect(refusalCodeOf(new Error("a plain error"))).toBe("UnexpectedError");
     expect(refusalCodeOf("a thrown string")).toBe("UnexpectedError");
+  });
+});
+
+describe("a route quantity is the purchase's quantity, never a second one (C-132)", () => {
+  // The shape a Vitrinee store publishes (VT-24).
+  const VITRINEE_ROUTE = {
+    input: [
+      { name: "quantity", type: "number", required: true },
+      { name: "name", type: "string", required: true },
+    ],
+  };
+  const catch_ = (fn: () => unknown): AgentPassError => {
+    try {
+      fn();
+    } catch (error) {
+      if (error instanceof AgentPassError) return error;
+      throw error;
+    }
+    throw new Error("expected a refusal");
+  };
+
+  it("fills a route's quantity from the purchase when the caller sends none", () => {
+    expect(withPurchaseQuantity(VITRINEE_ROUTE, { name: "Ana" }, 2)).toEqual({ name: "Ana", quantity: 2 });
+  });
+
+  it("accepts the same number sent again, as a string or a number", () => {
+    expect(withPurchaseQuantity(VITRINEE_ROUTE, { name: "Ana", quantity: "2" }, 2)).toEqual({ name: "Ana", quantity: 2 });
+    expect(withPurchaseQuantity(VITRINEE_ROUTE, { name: "Ana", quantity: 2 }, 2)).toEqual({ name: "Ana", quantity: 2 });
+  });
+
+  it("refuses a different or malformed route quantity, rather than paying for a number the caller did not mean", () => {
+    for (const given of [3, "3", "2.0", "two", "", -2]) {
+      const error = catch_(() => withPurchaseQuantity(VITRINEE_ROUTE, { quantity: given }, 2));
+      expect(error.code).toBe("RouteParamConflict");
+      expect(error.details).toMatchObject({ param: "quantity", routeValue: given, purchaseQuantity: 2 });
+    }
+  });
+
+  it("leaves a route that declares no quantity exactly as supplied", () => {
+    const signalDesk = { input: [{ name: "pair", type: "string", required: true }] };
+    const supplied = { pair: "XLM/USDC", quantity: 7 };
+    expect(withPurchaseQuantity(signalDesk, supplied, 1)).toBe(supplied);
   });
 });
