@@ -6401,3 +6401,38 @@ Pendiente:
   `VITRINEE_PLATFORM_HOST`, `VITRINEE_ROOT_COMERCIO` en Render; dominio
   comodín y tres CNAME; M7 de T103 (claridad del ticket, 1 a 5).
 - Después: verificación en vivo, `DONE`, y T104.
+
+## 2026-09-24 (3) — main (PR #29 y PR #30 mergeados) y cc/t103-merge-log
+
+Agente: Claude Code.
+
+Qué, con OK del usuario:
+- **PR #29** (`VT-26`, reintento sin volver a cobrar) mergeado a `main` en
+  fast-forward (`26d466c`).
+- **PR #30** (T103) rebasado sobre ese `main` y mergeado en fast-forward
+  (`20754f4`). Conflictos solo de documentación, todos por agregados al final
+  del mismo archivo: `vitrinee/DECISIONES.md` (`VT-26` antes de `VT-27`),
+  `AGENT_LOG.md` y `BITACORA.md` (T101 antes de T103). Un primer intento dejó
+  marcas de conflicto en un commit; se abortó y se rehizo el rebase limpio,
+  verificado commit por commit. Con `VT-26` y T103 juntos: typecheck, `pnpm
+  test` (gateway de Vitrinee 68) y `vitrinee:lint` en verde.
+- Ramas `cc/t101-compra-real-jumpseller`, `cc/t103-plataforma-comercios` y
+  `cc/t103-vitrinee-multi-comercio` borradas, local y remota.
+
+Verificado en vivo después del deploy: `vitrinee.agentpey.com` sirve manifest
+(6 productos), discovery y el reintento (`POST /orders/:id/fulfil` responde
+`OrderNotFound` a un pedido inexistente); los otros tres hosts en 200. Como se
+esperaba, `ord_muektgpgee1ebc73e5` ya no está en el disco: lo reconstruye
+`pnpm run vitrinee:platform-setup -- --import-order …` (`VT-30`).
+
+Exponential: T101 enlazado a PR #29, sigue `IN_PROGRESS`; T103 sigue `QA`.
+Comentario en los dos.
+
+Pendiente, del usuario, en este orden:
+1. `pnpm run vitrinee:platform-setup -- --import-order docs/fase-6-agentguard-comercializacion/evidencia/T103-ord_muektgpgee1ebc73e5.json`
+2. En Render: `VITRINEE_DATABASE_URL`, `VITRINEE_MASTER_KEY` (los dos que
+   imprime), `VITRINEE_PLATFORM_HOST=vitrinee.agentpey.com`,
+   `VITRINEE_ROOT_COMERCIO=bazar-cordillera`.
+3. Dominio comodín `*.vitrinee.agentpey.com` en Render y tres CNAME en Vercel.
+4. M7 de T103.
+Después: verificación en vivo de T103, `DONE`, y T104.
