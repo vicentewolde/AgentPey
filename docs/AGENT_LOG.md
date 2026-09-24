@@ -22,6 +22,23 @@ Por qué: <motivo>
 Pendiente: <qué queda para la próxima sesión>
 ```
 
+## 2026-09-10 — codex/vault-amount-tests
+
+Agente: Codex
+
+Qué: se agregaron tests unitarios dedicados para los helpers puros de
+`packages/vault/src/internal/amount.ts`: escalado de montos, hashes, clave
+diaria UTC y el error `InvalidAmount`.
+
+Por qué: esas funciones solo estaban cubiertas indirectamente desde
+`vault.test.ts`; este test deja explícitos sus invariantes sin tocar la cadena
+ni los backends del vault.
+
+Verificado: `pnpm typecheck` y `pnpm test` en verde (750 tests en total).
+
+Pendiente: PR [#4](https://github.com/vicentewolde/AgentPay/pull/4) abierto;
+esperar revisión antes de mergear.
+
 ## 2026-09-07 — codex/sdk-config-tests
 
 Agente: Codex
