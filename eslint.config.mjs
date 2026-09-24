@@ -9,7 +9,7 @@ const VITRINEE_TS = [
   "apps/vitrinee-*/**/*.ts",
   "scripts/vitrinee/**/*.ts",
 ];
-const DASHBOARD_JS = ["apps/vitrinee-dashboard/public/**/*.js"];
+const DASHBOARD_JS = ["apps/vitrinee-dashboard/public/**/*.js", "apps/vitrinee-portal/public/**/*.js"];
 
 export default tseslint.config(
   { ignores: ["**/dist/**", "**/node_modules/**", "**/*.tsbuildinfo"] },
@@ -27,7 +27,7 @@ export default tseslint.config(
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
   {
-    // The dashboard is plain browser JavaScript, not Node.
+    // The dashboard and the owners' portal are plain browser JavaScript, not Node.
     files: DASHBOARD_JS,
     extends: [js.configs.recommended],
     languageOptions: {
@@ -40,6 +40,11 @@ export default tseslint.config(
         TextDecoder: "readonly",
         setInterval: "readonly",
         Uint8Array: "readonly",
+        location: "readonly",
+        btoa: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        CustomEvent: "readonly",
       },
     },
   },

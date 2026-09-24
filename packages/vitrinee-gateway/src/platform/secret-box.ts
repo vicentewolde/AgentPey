@@ -15,7 +15,7 @@
  *
  * Nothing here logs, and no error message carries a plaintext or the key.
  */
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 
 import { VitrineeError } from "@vitrinee/core";
 
@@ -68,6 +68,19 @@ export function createSecretBox(masterKey: string): SecretBox {
       }
     },
   };
+}
+
+/**
+ * A key for another purpose (the portal's session cookies, T105), derived from
+ * the master key with HKDF so the master key itself never signs anything else
+ * and one derived key says nothing about another.
+ */
+export function deriveKey(masterKey: string, purpose: string): Buffer {
+  const key = Buffer.from(masterKey.trim(), "base64");
+  if (key.length !== KEY_BYTES) {
+    throw new VitrineeError("ConfigError", `MASTER_KEY must be ${KEY_BYTES} bytes, base64-encoded (pnpm run vitrinee:master-key)`);
+  }
+  return Buffer.from(hkdfSync("sha256", key, Buffer.alloc(0), `vitrinee:${purpose}`, KEY_BYTES));
 }
 
 /** A fresh master key, base64. What `pnpm run vitrinee:master-key` prints. */

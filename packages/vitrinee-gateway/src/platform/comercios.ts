@@ -31,7 +31,7 @@ export type StoreCredentials = z.infer<typeof storeCredentialsSchema>;
 
 export const comercioSchema = z.strictObject({
   id: z.string().regex(/^com_[a-z0-9]+$/),
-  slug: z.string().refine(isComercioSlug, "lowercase letters, digits and single hyphens, at most 40"),
+  slug: z.string().refine(isComercioSlug, "lowercase letters, digits and single hyphens, at most 31 (C-145)"),
   name: z.string().min(1).max(120),
   /** Where the merchant is paid. Their own account, from their own wallet (VT-4, VT-19). */
   payTo: stellarAccountSchema,

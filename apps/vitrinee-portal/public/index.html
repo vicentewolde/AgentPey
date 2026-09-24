@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en" data-title-en="Vitrinee · Sell to AI agents" data-title-es="Vitrinee · Vende a agentes de IA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrinee · Sell to AI agents</title>
+<meta name="description" content="Connect your Jumpseller store to AI agents that pay in USDC on Stellar testnet. No code.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the agentpey.com subdomains. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #fbfaf8;
+    --paper-2: #f2f0ea;
+    --ink: #0f1211;
+    --ink-2: #434946;
+    --ink-3: #707875;
+    --rule: #e3e0d9;
+    --accent: #0a7a56;
+    --accent-wash: #e9f3ee;
+    --danger: #b3261e;
+    --danger-wash: #fbeceb;
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html[lang="en"] [data-tr="es"],
+  html[lang="es"] [data-tr="en"] { display: none; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-underline-offset: 2px; }
+  .wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 56px) 72px; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo { width: 22px; height: 22px; border-radius: 6px; background: var(--ink); display: inline-block; position: relative; flex: none; }
+  .mark .logo::after { content: ""; position: absolute; inset: 6px 6px auto auto; width: 7px; height: 7px; border-radius: 50%; background: #3ddc97; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
+  @media (max-width: 560px) { .mark .tagline { display: none; } }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .apps { display: flex; gap: 16px; }
+  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .apps a:hover { color: var(--accent); }
+  .lang { display: flex; align-items: center; gap: 8px; }
+  .lang button { appearance: none; background: none; border: 0; padding: 2px 1px; font: 500 11.5px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
+  .lang span { color: var(--rule); font-size: 11.5px; }
+  html[lang="en"] .lang button[data-set-lang="en"],
+  html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
+
+  .hero { padding: clamp(30px, 6vw, 54px) 0 28px; }
+  .eyebrow { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  h1 { margin: 14px 0 0; font-family: var(--serif); font-size: clamp(2.25rem, 7vw, 3.4rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; max-width: 20ch; }
+  .intro { max-width: 70ch; margin: 16px 0 0; color: var(--ink-2); }
+
+  .panel { border-top: 1px solid var(--rule); padding: 28px 0; }
+  .panel-kicker { margin: 0; color: var(--ink-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
+  h2 { margin: 6px 0 8px; font-family: var(--serif); font-size: 1.75rem; font-weight: 400; letter-spacing: -0.015em; line-height: 1.15; }
+  h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+  .lead { max-width: 72ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
+
+  .btn { appearance: none; display: inline-block; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: var(--paper); cursor: pointer; font: 500 14px var(--sans); padding: 11px 18px; text-decoration: none; }
+  .btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+  .btn:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-3); cursor: not-allowed; }
+  .btn.secondary { background: transparent; border-color: var(--rule); color: var(--ink); }
+  .btn.secondary:hover:not(:disabled) { background: var(--paper-2); border-color: var(--ink-3); }
+  .btn:focus-visible, .lang button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .status { min-height: 1.5em; margin: 14px 0 0; color: var(--ink-2); font-size: 14px; }
+  .status.ok { color: var(--accent); }
+  .status.err { color: var(--danger); }
+  .account { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+
+  form { display: grid; gap: 16px; max-width: 640px; }
+  label { display: grid; gap: 6px; font-size: 14px; font-weight: 500; }
+  .hint { font-weight: 400; color: var(--ink-3); font-size: 13px; }
+  input { font: 15px var(--sans); padding: 10px 12px; border: 1px solid var(--rule); border-radius: 7px; background: #fff; color: var(--ink); width: 100%; }
+  input.mono { font-family: var(--mono); font-size: 14px; }
+  .slug-row { display: flex; align-items: center; border: 1px solid var(--rule); border-radius: 7px; background: #fff; overflow: hidden; }
+  .slug-row input { border: 0; border-radius: 0; min-width: 0; }
+  .slug-row span { padding: 0 12px; color: var(--ink-3); font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  .slug-state { font-size: 13px; font-weight: 400; min-height: 1.2em; }
+  .slug-state.ok { color: var(--accent); }
+  .slug-state.err { color: var(--danger); }
+
+  .checks { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; max-width: 640px; }
+  .checks li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; font-size: 14px; color: var(--ink-3); }
+  .checks li .icon { width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--rule); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .checks li.running { color: var(--ink); }
+  .checks li.running .icon { border-color: var(--ink-3); border-top-color: transparent; animation: spin 0.9s linear infinite; }
+  .checks li.ok { color: var(--ink); }
+  .checks li.ok .icon { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .checks li.fail { color: var(--danger); }
+  .checks li.fail .icon { background: var(--danger); border-color: var(--danger); color: #fff; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .checks li.running .icon { animation: none; } }
+
+  .notice { border-left: 3px solid var(--accent); background: var(--accent-wash); color: var(--ink-2); margin: 18px 0 0; padding: 13px 15px; font-size: 14px; max-width: 72ch; }
+  .notice.err { border-color: var(--danger); background: var(--danger-wash); color: var(--danger); }
+  .notice a { font-weight: 500; }
+
+  .store { border: 1px solid var(--rule); border-radius: 10px; background: #fff; padding: 18px; margin: 0 0 16px; }
+  .store-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  .store-url { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--accent-wash); color: var(--accent); }
+  .pill.off { background: var(--paper-2); color: var(--ink-3); }
+  .pill.warn { background: #fdf3dc; color: #7a5a0a; }
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 10px 9px 0; border-top: 1px dashed var(--rule); vertical-align: top; }
+  th { color: var(--ink-3); font-weight: 500; font-size: 12.5px; border-top: 0; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .empty { color: var(--ink-3); font-size: 14px; margin: 10px 0 0; }
+  .muted { color: var(--ink-3); }
+  .small { font-size: 13px; }
+</style>
+</head>
+<body>
+<script src="https://unpkg.com/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
+
+<main class="wrap">
+  <div class="top">
+    <a class="mark" href="/">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Vitrinee</span>
+      <span class="tagline"><span data-tr="en">by AgentPey</span><span data-tr="es">de AgentPey</span></span>
+    </a>
+    <div class="utils">
+      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://agentpey.com">AgentPey</a></nav>
+      <div class="lang">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+      </div>
+    </div>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · for merchants</span><span data-tr="es">Stellar Testnet · para comercios</span></p>
+    <h1><span data-tr="en">Sell to AI agents from your Jumpseller store</span><span data-tr="es">Vende a agentes de IA desde tu tienda Jumpseller</span></h1>
+    <p class="intro">
+      <span data-tr="en">Connect your store in a couple of minutes, without writing code. Agents pay in USDC straight to your wallet, the order reaches your store, and every sale comes with a signed receipt anchored on Stellar.</span>
+      <span data-tr="es">Conecta tu tienda en un par de minutos, sin escribir código. Los agentes pagan en USDC directo a tu wallet, el pedido llega a tu tienda y cada venta trae un recibo firmado y anclado en Stellar.</span>
+    </p>
+  </header>
+
+  <section class="panel" id="signin-panel">
+    <p class="panel-kicker"><span data-tr="en">01 · Your wallet</span><span data-tr="es">01 · Tu wallet</span></p>
+    <h2><span data-tr="en">Sign in with the wallet you get paid in</span><span data-tr="es">Entra con la wallet donde recibes tus pagos</span></h2>
+    <p class="lead">
+      <span data-tr="en">The account you connect is where your sales are paid. No password and no email: you sign a message in Freighter to prove the account is yours. It never moves funds.</span>
+      <span data-tr="es">La cuenta que conectes es donde se pagan tus ventas. Sin contraseña ni email: firmas un mensaje en Freighter para probar que la cuenta es tuya. Nunca mueve fondos.</span>
+    </p>
+    <div class="actions" id="signin-actions">
+      <button id="signin-btn" class="btn" type="button"><span data-tr="en">Connect Freighter</span><span data-tr="es">Conectar Freighter</span></button>
+    </div>
+    <div id="signed-in" hidden>
+      <p class="account"><span data-tr="en">Signed in as</span><span data-tr="es">Conectado como</span> <span id="account"></span></p>
+      <div class="actions"><button id="signout-btn" class="btn secondary" type="button"><span data-tr="en">Sign out</span><span data-tr="es">Salir</span></button></div>
+    </div>
+    <p id="signin-status" class="status" role="status"></p>
+  </section>
+
+  <section class="panel" id="stores-panel" hidden>
+    <p class="panel-kicker"><span data-tr="en">02 · Your stores</span><span data-tr="es">02 · Tus tiendas</span></p>
+    <h2><span data-tr="en">What agents bought from you</span><span data-tr="es">Lo que te compraron los agentes</span></h2>
+    <div id="stores"></div>
+    <p id="stores-empty" class="empty" hidden>
+      <span data-tr="en">You have no store on Vitrinee yet. Add one below.</span>
+      <span data-tr="es">Todavía no tienes tiendas en Vitrinee. Agrega una abajo.</span>
+    </p>
+  </section>
+
+  <section class="panel" id="add-panel" hidden>
+    <p class="panel-kicker"><span data-tr="en">03 · Add a store</span><span data-tr="es">03 · Agrega una tienda</span></p>
+    <h2><span data-tr="en">Connect your Jumpseller store</span><span data-tr="es">Conecta tu tienda Jumpseller</span></h2>
+    <p class="lead">
+      <span data-tr="en">You find your API login and token in your Jumpseller admin panel, in the API section. We test them right away and store them encrypted; they are never shown again.</span>
+      <span data-tr="es">Tu login y tu token de API están en el panel de administración de Jumpseller, en la sección API. Los probamos en el momento y los guardamos cifrados; nunca se vuelven a mostrar.</span>
+    </p>
+    <form id="add-form" novalidate>
+      <label>
+        <span><span data-tr="en">Store name</span><span data-tr="es">Nombre de la tienda</span></span>
+        <input id="f-name" name="name" maxlength="120" autocomplete="organization" required data-placeholder-en="Bazar Cordillera" data-placeholder-es="Bazar Cordillera">
+      </label>
+      <label>
+        <span><span data-tr="en">Address for agents</span><span data-tr="es">Dirección para los agentes</span></span>
+        <div class="slug-row"><input id="f-slug" name="slug" class="mono" maxlength="31" autocomplete="off" spellcheck="false" required><span id="slug-suffix"></span></div>
+        <span id="slug-state" class="slug-state" aria-live="polite"></span>
+      </label>
+      <label>
+        <span><span data-tr="en">Jumpseller API login</span><span data-tr="es">Login de la API de Jumpseller</span></span>
+        <input id="f-login" name="login" class="mono" autocomplete="off" spellcheck="false" required>
+      </label>
+      <label>
+        <span><span data-tr="en">Jumpseller API token</span><span data-tr="es">Token de la API de Jumpseller</span></span>
+        <input id="f-token" name="authtoken" class="mono" type="password" autocomplete="off" spellcheck="false" required>
+      </label>
+      <div class="actions"><button id="add-btn" class="btn" type="submit"><span data-tr="en">Check and publish my store</span><span data-tr="es">Revisar y publicar mi tienda</span></button></div>
+    </form>
+    <ol class="checks" id="checks" hidden>
+      <li data-check="slug"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">The address is valid and free</span><span data-tr="es">La dirección es válida y está libre</span></span></li>
+      <li data-check="payout"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">Your wallet can receive USDC on Stellar testnet</span><span data-tr="es">Tu wallet puede recibir USDC en Stellar testnet</span></span></li>
+      <li data-check="store"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">Your Jumpseller credentials read the catalogue</span><span data-tr="es">Tus credenciales de Jumpseller leen el catálogo</span></span></li>
+      <li data-check="signing"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">Your receipt-signing key is created and funded</span><span data-tr="es">Tu llave para firmar recibos queda creada y fondeada</span></span></li>
+    </ol>
+    <p id="add-result" class="notice" role="status" hidden></p>
+  </section>
+</main>
+
+<script src="/portal/app.js"></script>
+
+<script>
+  /* EN/ES switch. Text lives in [data-tr] pairs; attributes that cannot hold markup carry data-*-en / data-*-es. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      var holders = document.querySelectorAll("[data-placeholder-en]");
+      for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
+</script>
+</body>
+</html>

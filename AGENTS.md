@@ -54,8 +54,12 @@ nombre `VITRINEE_` en el `envKeys` de otra app, ni una clave de AgentPey en el
 de Vitrinee. Desde T103 (`C-143`, `VT-27`) eso incluye `VITRINEE_DATABASE_URL`
 (un rol de Postgres que solo ve el esquema `vitrinee`; Vitrinee nunca recibe el
 `DATABASE_URL` de AgentPey) y `VITRINEE_MASTER_KEY` (sella las llaves de firma
-y credenciales de cada comercio). Nada de `packages/vitrinee-gateway/src/platform/`
+y credenciales de cada comercio y, desde T105, deriva la llave de las sesiones
+del portal). Nada de `packages/vitrinee-gateway/src/platform/`
 ni de `scripts/vitrinee/platform-setup.ts` se toca sin Claude Code (`P-10`).
+Desde T105 (`VT-31`) eso incluye el portal de dueños: la entrada con wallet
+(`platform/wallet-session.ts`), el alta con sus cuatro pruebas
+(`platform/onboarding.ts`) y su página (`apps/vitrinee-portal/`).
 Desde T104 (`C-141`, `C-145`), `apps/agent/src/catalog/venues.json` tiene una
 fila de plataforma y `apps/agent/src/catalog/platforms.ts` convierte su
 directorio en comercios pagables: los dos son parte de lo que decide a quién se

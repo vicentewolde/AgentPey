@@ -1,7 +1,8 @@
 /**
  * The HTTP front of the multi-merchant platform (T103, C-142): reads the
  * `Host`, hands a store's request to that comercio's store, and keeps the
- * portal host for the platform's own routes.
+ * portal host for the platform's own routes: the owners' portal (T105), the
+ * public directory (C-141) and the health check.
  *
  * During the transition to the directory (T104), the portal host can still
  * serve one comercio's store (`ROOT_COMERCIO`), so the venue row AgentPey has
@@ -12,6 +13,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 
 import type { ComercioStore } from "./comercios.js";
 import { routeHost } from "./hosts.js";
+import { createPortalRouter, type PortalOptions } from "./portal.js";
 import type { StorefrontPool } from "./storefronts.js";
 
 /** Where the portal publishes its directory of comercios (C-141). AgentPey's `venues.json` names this URL. */
@@ -23,13 +25,19 @@ export interface PlatformAppOptions {
   /** Read for the public directory. */
   comercios: ComercioStore;
   rootComercio: string | undefined;
+  /**
+   * The owners' portal on the platform host (T105): sign-in with the wallet,
+   * registration, panel. Unset, the platform host serves only the directory.
+   */
+  portal?: Omit<PortalOptions, "platformHost" | "comercios" | "log">;
   log?: (message: string, fields?: Record<string, unknown>) => void;
 }
 
-export function createPlatformApp({ platformHost, pool, comercios, rootComercio, log = () => {} }: PlatformAppOptions): Express {
+export function createPlatformApp({ platformHost, pool, comercios, rootComercio, portal, log = () => {} }: PlatformAppOptions): Express {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", true);
+  const portalRouter = portal === undefined ? undefined : createPortalRouter({ ...portal, platformHost, comercios, log });
 
   const serveStore = async (slug: string, req: Request, res: Response, next: NextFunction) => {
     const store = await pool.get(slug);
@@ -39,6 +47,8 @@ export function createPlatformApp({ platformHost, pool, comercios, rootComercio,
     store(req, res, next);
   };
 
+  // The host decides first: a store's subdomain goes to that store and never
+  // reaches the portal or the directory below.
   app.use(async (req, res, next) => {
     try {
       const route = routeHost(req.get("host"), platformHost);
@@ -46,6 +56,18 @@ export function createPlatformApp({ platformHost, pool, comercios, rootComercio,
       if (route.kind === "unknown") {
         throw new VitrineeError("ComercioNotFound", "this host is not a store of this platform");
       }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Only the portal host gets this far. The portal answers its own paths and
+  // passes every other one on.
+  if (portalRouter !== undefined) app.use(portalRouter);
+
+  app.use(async (req, res, next) => {
+    try {
       if (req.path === DIRECTORY_PATH && req.method === "GET") {
         // Public by design, and nothing in it is private: the slug, the name,
         // where the store is, the account it is paid at and the key that signs

@@ -6,12 +6,15 @@ import { MANIFEST_PATH, isVitrineeError } from "@vitrinee/core";
 import { createAdapter } from "./adapters.js";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { seedComercioFromEnv } from "./platform/comercios.js";
+import { seedComercioFromEnv, type Comercio } from "./platform/comercios.js";
 import { loadPlatformSettings, type PlatformSettings } from "./platform/config.js";
+import { storeCatalogueReader } from "./platform/onboarding.js";
 import { createPlatformApp } from "./platform/platform-app.js";
 import { PostgresComercioStore, PostgresOrderPersistence, createVitrineePool, migrate } from "./platform/postgres.js";
-import { createSecretBox } from "./platform/secret-box.js";
+import { createSecretBox, deriveKey } from "./platform/secret-box.js";
+import { testnet } from "./platform/stellar-network.js";
 import { StorefrontPool } from "./platform/storefronts.js";
+import { WalletSessions } from "./platform/wallet-session.js";
 
 /**
  * The repo root: the nearest ancestor holding pnpm-workspace.yaml. `pnpm
@@ -83,7 +86,9 @@ function runSingleStore(): void {
  * The multi-merchant platform (T103): comercios and orders in Vitrinee's own
  * schema (C-143), secrets sealed with the master key (VT-27), one store per
  * subdomain (C-142). The store the single-store gateway ran is registered as
- * the first comercio from the same variables, once.
+ * the first comercio from the same variables, once. The portal host serves the
+ * owners' portal (T105): wallet sign-in, registration with its four checks, and
+ * the panel of orders.
  */
 async function runPlatform(settings: PlatformSettings): Promise<void> {
   const pool = createVitrineePool(settings.databaseUrl);
@@ -93,14 +98,30 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
   const seeded = await seedComercioFromEnv(process.env, comercios, box, new Date());
   if (seeded !== undefined) log(seeded.created ? "seed comercio registered" : "seed comercio already registered", { slug: seeded.comercio.slug });
 
+  const ordersFor = (comercio: Comercio) => new PostgresOrderPersistence(pool, comercio.id);
   const storefronts = new StorefrontPool({
     comercios,
     box,
     env: process.env,
-    ordersFor: (comercio) => new PostgresOrderPersistence(pool, comercio.id),
+    ordersFor,
     log,
   });
-  const app = createPlatformApp({ platformHost: settings.platformHost, pool: storefronts, comercios, rootComercio: settings.rootComercio, log });
+  const app = createPlatformApp({
+    platformHost: settings.platformHost,
+    pool: storefronts,
+    comercios,
+    rootComercio: settings.rootComercio,
+    portal: {
+      sessions: new WalletSessions({ sessionKey: deriveKey(settings.masterKey, "portal-session") }),
+      ordersFor,
+      onboarding: {
+        box,
+        stellar: testnet({ ...(process.env["STELLAR_HORIZON_URL"] ? { horizonUrl: process.env["STELLAR_HORIZON_URL"] } : {}) }),
+        readCatalogue: storeCatalogueReader(),
+      },
+    },
+    log,
+  });
   const listed = await comercios.list();
   app.listen(settings.port, () => {
     log("vitrinee platform listening", {

@@ -18,6 +18,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@agentpass/core": "workspace:*",
     "@stellar/stellar-sdk": "^17.1.0",
     "@vitrinee/adapters": "workspace:*",
     "@vitrinee/anchor": "workspace:*",

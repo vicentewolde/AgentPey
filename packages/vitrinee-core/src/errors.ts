@@ -21,6 +21,14 @@ export const ERROR_CODES = [
   "ComercioConflict",
   "SecretUnreadable",
   "StorageError",
+  // Merchant onboarding on the portal (T105, VT-29). One code per check, so
+  // the portal can say exactly what to fix.
+  "SessionRequired",
+  "WalletProofInvalid",
+  "SlugUnavailable",
+  "PayoutAccountNotReady",
+  "StoreCredentialsRejected",
+  "SigningKeyNotFunded",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -43,6 +51,13 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   // A sealed secret that will not open is our fault, never the caller's.
   SecretUnreadable: 500,
   StorageError: 503,
+  SessionRequired: 401,
+  WalletProofInvalid: 401,
+  SlugUnavailable: 409,
+  PayoutAccountNotReady: 422,
+  StoreCredentialsRejected: 422,
+  // Friendbot or Horizon failed us; the owner did nothing wrong.
+  SigningKeyNotFunded: 502,
 };
 
 export interface VitrineeErrorOptions {
