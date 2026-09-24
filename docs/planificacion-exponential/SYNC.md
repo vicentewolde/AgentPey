@@ -61,9 +61,9 @@ misma vive en `cc/t103-plataforma-comercios` (solo documentación).
 | `cmueyu1ka002njx04fln2263j` | Dominio comodín `*.vitrinee.agentpey.com` en Render y tres CNAME en Vercel | 2026-09-25 | T103 |
 | `cmueyu4ag002tjx04voxe3jom` | Decidir PR #29 si el rescate del pedido de T101 no funciona | 2026-09-25 | T103 |
 | `cmueyu6h3002zjx04gslskp9g` | T103 · fecha objetivo | 2026-09-26 | T103 |
-| `cmueyu8l60035jx041ogelaea` | Crear la segunda tienda Jumpseller en prueba gratuita | 2026-09-26 | T105 |
+| `cmueyu8l60035jx041ogelaea` | Crear la segunda tienda Jumpseller en prueba gratuita (**completada** 2026-09-24) | 2026-09-26 | T105 |
 | `cmueyub38003bjx04igqgkjgo` | T104 · fecha objetivo | 2026-09-27 | T104 |
-| `cmueyucwc003hjx042fystisz` | T105 · fecha objetivo | 2026-09-28 | T105 |
+| `cmueyucwc003hjx042fystisz` | T105 · fecha objetivo (**completada** 2026-09-24) | 2026-09-28 | T105 |
 | `cmueyueuv003njx04dsnuo7uf` | Trámite de la app de Jumpseller (portal de partners, publicación, tienda de desarrollo) | 2026-09-30 | App OAuth |
 
 ## Metas
