@@ -855,7 +855,8 @@ pierde, el comercio queda afuera; si se filtra, cualquiera entra.
    el middleware x402 espera. Las URLs salen del `Host` del pedido.
 4. **La raíz sigue sirviendo a Bazar Cordillera** (`ROOT_COMERCIO`) mientras
    AgentPey y RealOps apunten a `vitrinee.agentpey.com`. Se quita en T104,
-   cuando lean el directorio (`C-141`).
+   cuando lean el directorio (`C-141`). **Cumplido en T104** (`C-145`): sale de
+   `render.yaml` y el usuario la borra del panel de Render.
 5. **El pedido pendiente de T101 se reconstruye**, no se copia de un disco: su
    vista pública (respaldada en
    [`evidencia/T103-ord_muektgpgee1ebc73e5.json`](../evidencia/T103-ord_muektgpgee1ebc73e5.json))

@@ -6274,3 +6274,54 @@ esperar a Jumpseller.
 
 **Alternativa descartada: un solo hito grande.** Nada demostrable hasta el
 final, y sin un punto natural donde cortar si el tiempo no alcanza.
+
+---
+
+### C-145 · Cómo AgentPey y RealOps leen el directorio de Vitrinee: comercios con prefijo, URL construida, cobro fijado a su cuenta, y un comprador por tienda · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** T104 · La forma, de Claude Code, dentro de `C-141`
+
+**En AgentPey.**
+
+1. **La fila de plataforma** (`kind: "platform"` en `venues.json`) fija el host
+   (`vitrinee.agentpey.com`), la URL del directorio y los activos. La fila fija
+   `vitrinee:GC5ZY…` desaparece: su id chocaría con los comercios de la
+   plataforma, y `loadVenueRegistry` rechaza cualquier fila fija que use el slug
+   de una plataforma como prefijo.
+2. **El id de un comercio es `vitrinee-<slug>:<cuenta de cobro>`.** El prefijo
+   deja escrito en el permiso firmado de qué plataforma viene, y ningún comercio
+   puede hacerse pasar por un comercio fijo. Como un slug de comercio en AgentPey
+   tiene como máximo 40 caracteres, **el slug de Vitrinee baja de 40 a 31**
+   (hoy solo existe `bazar-cordillera`, de 16).
+3. **La URL de la tienda la construye AgentPey**, `https://<slug>.<host>`, y
+   descarta la entrada del directorio que diga otra cosa. `http` solo para una
+   plataforma `localhost`, para pruebas locales.
+4. **El cobro queda fijado a la cuenta del id**: `toPaymentTerms` rechaza, antes
+   de firmar nada, un 402 cuyo `payTo` sea otro, aunque el Mandato no nombre
+   cuentas. Se descubrió de paso que `toPaymentTerms` resolvía el activo contra
+   `venues.json` fijo; ahora recibe el registro expandido.
+5. **El directorio se lee solo cuando hace falta**: para una compra, solo si el
+   id empieza con el prefijo de una plataforma; se reusa 30 segundos; si no se
+   puede leer, esa plataforma no aporta comercios y la compra se rechaza
+   (`VenueNotRegistered`), nunca se adivina.
+
+**En RealOps.**
+
+6. **Un comprador de tienda compra en una sola tienda**, la de la tarjeta desde
+   la que se contrató; el agente guarda su `comercio`. Ya no se contrata desde la
+   lista general de tipos, donde no hay tienda elegida.
+7. **El catálogo dibuja una sección por tienda del directorio**, y el permiso de
+   un comprador se arma con su tienda, su cuenta y los productos que lista en
+   ese momento (`C-135` sigue: un producto nuevo no se compra hasta que un
+   permiso nuevo lo nombre). Una tarjeta cuyo id de producto se repite entre
+   tiendas no se dibuja: sería ambigua en cada formulario.
+8. **Los compradores de tienda contratados antes de T104** nombran el venue
+   viejo `vitrinee:GC5ZY…`. Sus páginas siguen abriendo; AgentPey rechaza sus
+   compras. Para el video se contrata uno nuevo desde la tarjeta de Bazar
+   Cordillera (ya anticipado en `C-142`).
+
+**Alternativa descartada: mantener la fila fija de Bazar Cordillera junto a la
+plataforma.** Dos ids para la misma tienda y la misma cuenta, uno de ellos sin
+directorio detrás: justo la ambigüedad que el registro existe para impedir.
+
+**Otra alternativa descartada: que RealOps muestre un selector de tienda al
+contratar.** Una pantalla más para el mismo dato que la tarjeta ya trae.
