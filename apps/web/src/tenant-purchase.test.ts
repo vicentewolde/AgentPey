@@ -214,6 +214,65 @@ describe("the venue registry is the only thing that makes a venue payable", () =
   });
 });
 
+describe("a merchant of a platform is payable only once the platform's directory names it (T104, C-141)", () => {
+  const payTo = Keypair.random().publicKey();
+  const platformRegistry = loadVenueRegistry([
+    {
+      kind: "platform",
+      slug: "vitrinee",
+      host: "vitrinee.example",
+      directoryUrl: "https://vitrinee.example/api/comercios",
+      assets: [{ code: "USDC", issuer: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA" }],
+    },
+  ]);
+  const directoryFetch = (comercios: unknown[]) => {
+    const calls: string[] = [];
+    const fn = (async (input: string | URL | Request) => {
+      calls.push(String(input));
+      return new Response(JSON.stringify({ comercios }), { status: 200 });
+    }) as typeof fetch;
+    return { fn, calls };
+  };
+  const listed = { slug: "bazar", name: "Bazar", url: "https://bazar.vitrinee.example", payTo };
+
+  it("refuses a merchant the directory does not name", async () => {
+    const { fn } = directoryFetch([listed]);
+    const directory = fakeDirectory({});
+    const outcome = await executeTenantPurchase(
+      { ...deps({}), directory, registry: platformRegistry, fetchImpl: fn },
+      request({ venue: `vitrinee-otro:${payTo}` }),
+    );
+    expect(outcome.kind === "refused" && outcome.code).toBe("VenueNotRegistered");
+    expect(directory.reads).toBe(0);
+  });
+
+  it("refuses a listed merchant named with another payout account", async () => {
+    const { fn } = directoryFetch([listed]);
+    const outcome = await executeTenantPurchase(
+      { ...deps({}), registry: platformRegistry, fetchImpl: fn },
+      request({ venue: `vitrinee-bazar:${Keypair.random().publicKey()}` }),
+    );
+    expect(outcome.kind === "refused" && outcome.code).toBe("VenueNotRegistered");
+  });
+
+  it("lets a listed merchant through the venue check, to the tenant's own documents", async () => {
+    const { fn, calls } = directoryFetch([listed]);
+    const outcome = await executeTenantPurchase(
+      { ...deps({}), registry: platformRegistry, fetchImpl: fn },
+      request({ venue: `vitrinee-bazar:${payTo}` }),
+    );
+    // Past the venue: what stops it now is that this tenant has no credential.
+    expect(outcome.kind === "refused" && outcome.code).toBe("CredentialNotFound");
+    expect(calls).toEqual(["https://vitrinee.example/api/comercios"]);
+  });
+
+  it("never reads a directory for a venue outside every platform", async () => {
+    const { fn, calls } = directoryFetch([listed]);
+    await executeTenantPurchase({ ...deps({}), registry: platformRegistry, fetchImpl: fn }, request({ venue: UNREGISTERED_VENUE }));
+    expect(calls).toEqual([]);
+  });
+});
+
 describe("a tenant with no documents cannot buy", () => {
   it("refuses when the tenant has no credential", async () => {
     const outcome = await executeTenantPurchase(deps({}), request());

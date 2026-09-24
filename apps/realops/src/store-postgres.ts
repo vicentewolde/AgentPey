@@ -70,6 +70,10 @@ export const REALOPS_SCHEMA_SQL: readonly string[] = [
    )`,
 
   `create index if not exists realops_agents_account_idx on realops_agents (account_id)`,
+
+  // T104: the Vitrinee store a store shopper buys at. Null for every other kind
+  // and for a store shopper hired before the platform existed.
+  `alter table realops_agents add column if not exists comercio text`,
 ];
 
 interface AccountRow {
@@ -101,6 +105,7 @@ interface AgentRow {
   readonly tenant_id: string | null;
   readonly consent_session_id: string | null;
   readonly mandate_id: string | null;
+  readonly comercio: string | null;
   readonly created_at: Date;
 }
 
@@ -114,6 +119,7 @@ function toAgent(row: AgentRow): AgentConfig {
     tenantId: row.tenant_id,
     consentSessionId: row.consent_session_id,
     mandateId: row.mandate_id,
+    comercio: row.comercio ?? null,
     createdAt: row.created_at,
   };
 }
@@ -216,8 +222,8 @@ export function createPostgresStore(client: SqlClient): RealOpsStore {
     async saveAgent(agent) {
       await client.query(
         `insert into realops_agents
-           (id, account_id, kind, label, permissions, tenant_id, consent_session_id, mandate_id, created_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           (id, account_id, kind, label, permissions, tenant_id, consent_session_id, mandate_id, created_at, comercio)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          on conflict (id) do update
            set label = excluded.label, permissions = excluded.permissions,
                tenant_id = excluded.tenant_id, consent_session_id = excluded.consent_session_id,
@@ -232,6 +238,7 @@ export function createPostgresStore(client: SqlClient): RealOpsStore {
           agent.consentSessionId,
           agent.mandateId,
           agent.createdAt,
+          agent.comercio,
         ],
       );
     },

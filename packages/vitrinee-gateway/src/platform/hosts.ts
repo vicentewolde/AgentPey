@@ -14,7 +14,12 @@
 
 /** Same shape as a venue slug in AgentPey's registry: lowercase, digits, single hyphens. */
 export const COMERCIO_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export const COMERCIO_SLUG_MAX = 40;
+/**
+ * 31, not 40: AgentPey names a comercio's venue `vitrinee-<slug>`, and a venue
+ * slug is at most 40 characters (T104, C-145). The gateway in front still
+ * accepts up to 40 labels; a longer one simply names no comercio.
+ */
+export const COMERCIO_SLUG_MAX = 31;
 
 export type HostRoute = { kind: "portal" } | { kind: "store"; slug: string } | { kind: "unknown" };
 

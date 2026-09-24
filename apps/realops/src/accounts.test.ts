@@ -138,6 +138,7 @@ describe("the account store", () => {
       tenantId: null,
       consentSessionId: null,
       mandateId: null,
+      comercio: null,
       createdAt: NOW,
     });
 

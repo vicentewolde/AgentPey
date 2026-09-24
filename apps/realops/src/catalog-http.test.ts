@@ -14,7 +14,8 @@ import type { AgentPeyClient, PurchaseResource } from "./agentpey.js";
 import { createMemoryStore, type RealOpsStore } from "./accounts.js";
 import { createRealOpsServer } from "./app.js";
 import type { BazaarCatalog, CheckedResource } from "./bazaar-catalog.js";
-import { BAZAAR_VENUE_ID, SIGNALDESK_VENUE_ID, TEST_TARGETS, VITRINEE_PAY_TO, VITRINEE_VENUE_ID } from "./testing.js";
+import type { Storefront, StorefrontDirectory } from "./storefronts.js";
+import { BAZAAR_VENUE_ID, OTHER_STORE_PAY_TO, OTHER_STORE_VENUE_ID, SIGNALDESK_VENUE_ID, STORE_VENUE_ID, TEST_TARGETS, VITRINEE_PAY_TO } from "./testing.js";
 
 const ROWS: readonly CheckedResource[] = [
   {
@@ -73,10 +74,26 @@ const STORE_ROWS: readonly CheckedResource[] = [
   },
 ];
 let storeFails = false;
+let directoryFails = false;
 const vitrineeCatalog: BazaarCatalog = {
   async list() {
     if (storeFails) throw new Error("the store is down");
     return STORE_ROWS;
+  },
+};
+/** A second store on the platform, with a product of its own (T104). */
+const OTHER_ROWS: readonly CheckedResource[] = [{ ...STORE_ROWS[0]!, id: "otra-9001", name: "Tazón de cerámica", declaredPayTo: OTHER_STORE_PAY_TO, routeTemplate: (STORE_ROWS[0]!.routeTemplate ?? "").replace("37283001", "otra-9001") }];
+const STOREFRONTS: readonly Storefront[] = [
+  { slug: "bazar-cordillera", name: "Bazar Cordillera", venueId: STORE_VENUE_ID, payTo: VITRINEE_PAY_TO, baseUrl: "https://bazar-cordillera.vitrinee.example", catalog: vitrineeCatalog },
+  { slug: "otra-tienda", name: "Otra Tienda", venueId: OTHER_STORE_VENUE_ID, payTo: OTHER_STORE_PAY_TO, baseUrl: "https://otra-tienda.vitrinee.example", catalog: { list: async () => OTHER_ROWS } },
+];
+const storefronts: StorefrontDirectory = {
+  async list() {
+    if (directoryFails) throw new Error("the directory is down");
+    return STOREFRONTS;
+  },
+  async get(slug) {
+    return (await this.list()).find((store) => store.slug === slug);
   },
 };
 
@@ -153,7 +170,7 @@ const server = createRealOpsServer({
   agentpey,
   targets: TEST_TARGETS,
   bazaarCatalog,
-  vitrineeCatalog,
+  storefronts,
   signalDeskUrl: "https://signaldesk.example",
   agentpeyBaseUrl: "https://agentpey.example",
   baseUrl: "http://127.0.0.1",
@@ -194,6 +211,15 @@ async function signAgent(cookie: string, kind: string): Promise<string> {
     `${baseUrl}/agentes`,
     form({ kind, label: "Mi agente", perTx: "0.30", perDay: "0.60", validForDays: "30" }, cookie),
   );
+  const agentId = created.headers.get("location")!.slice("/agentes/".length);
+  await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
+  await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+  return agentId;
+}
+
+/** Hires a store shopper the only way there is (T104): from a product card of its store, then signs it. */
+async function signStoreAgent(cookie: string, productId = "37283001"): Promise<string> {
+  const created = await fetch(`${baseUrl}/catalogo/permiso`, form({ product_id: productId }, cookie));
   const agentId = created.headers.get("location")!.slice("/agentes/".length);
   await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
   await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
@@ -446,13 +472,13 @@ describe("buying from the Vitrinee store (T100)", () => {
 
   it("sends the store's venue, its product id, the shipping details, and the quantity once, as the purchase's", async () => {
     const cookie = await signIn("compra-tienda@ejemplo.cl");
-    await signAgent(cookie, "vitrinee_shopper");
+    await signStoreAgent(cookie);
     const before = purchases.length;
 
     await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "2", ...SHIPPING }, cookie));
 
     const call = purchases[before]!;
-    expect(call.venue).toBe(VITRINEE_VENUE_ID);
+    expect(call.venue).toBe(STORE_VENUE_ID);
     expect(call.productId).toBe("37283001");
     // C-132: the quantity is the purchase's own, the one that gets signed. It
     // is never also a route parameter, so it cannot travel twice and disagree.
@@ -462,7 +488,7 @@ describe("buying from the Vitrinee store (T100)", () => {
 
   it("buys one unit when the quantity field is left empty", async () => {
     const cookie = await signIn("una-unidad@ejemplo.cl");
-    await signAgent(cookie, "vitrinee_shopper");
+    await signStoreAgent(cookie);
     const before = purchases.length;
     await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "", ...SHIPPING }, cookie));
     expect(purchases[before]!.quantity).toBe(1);
@@ -470,7 +496,7 @@ describe("buying from the Vitrinee store (T100)", () => {
 
   it("refuses a quantity that is not a small whole number, and buys nothing", async () => {
     const cookie = await signIn("cantidad-rara@ejemplo.cl");
-    await signAgent(cookie, "vitrinee_shopper");
+    await signStoreAgent(cookie);
     const before = purchases.length;
     for (const bad of ["0", "1.5", "999", "-1", "dos"]) {
       const response = await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: bad, ...SHIPPING }, cookie));
@@ -481,7 +507,7 @@ describe("buying from the Vitrinee store (T100)", () => {
 
   it("refuses an order with the shipping details missing, and buys nothing", async () => {
     const cookie = await signIn("sin-direccion@ejemplo.cl");
-    await signAgent(cookie, "vitrinee_shopper");
+    await signStoreAgent(cookie);
     const before = purchases.length;
     const response = await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "1", param_name: "Ana" }, cookie));
     expect(response.status).toBe(400);
@@ -494,7 +520,7 @@ describe("buying from the Vitrinee store (T100)", () => {
    */
   it("takes a typed sentence to the store's card, with the quantity it named, and buys nothing", async () => {
     const cookie = await signIn("frase-tienda@ejemplo.cl");
-    await signAgent(cookie, "vitrinee_shopper");
+    await signStoreAgent(cookie);
     const before = purchases.length;
 
     const typed = await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra dos packs de stickers" }, cookie));
@@ -510,7 +536,7 @@ describe("buying from the Vitrinee store (T100)", () => {
 
   it("ignores a prefill it cannot trust, and still draws the catalogue", async () => {
     const cookie = await signIn("prefill-raro@ejemplo.cl");
-    await signAgent(cookie, "vitrinee_shopper");
+    await signStoreAgent(cookie);
     const html = await (await fetch(`${baseUrl}/catalogo?producto=37283001&cantidad=999`, { headers: { cookie } })).text();
     expect(html).toContain('id="37283001"');
     expect(html).not.toContain('value="999"');
@@ -529,9 +555,60 @@ describe("buying from the Vitrinee store (T100)", () => {
   it("proposes the store's own defaults, 25.00 per purchase and per day, for the permission it needs", async () => {
     const cookie = await signIn("permiso-tienda@ejemplo.cl");
     const html = await (await fetch(`${baseUrl}/catalogo/permiso?producto=37283001`, { headers: { cookie } })).text();
-    expect(html).toContain(VITRINEE_VENUE_ID);
+    expect(html).toContain(STORE_VENUE_ID);
     expect(html).toContain("25.00 USDC");
     expect(html).not.toContain("0.30 USDC");
+  });
+
+  it("does not let one store's shopper buy at another store", async () => {
+    const cookie = await signIn("dos-tiendas@ejemplo.cl");
+    await signStoreAgent(cookie, "37283001");
+    const before = purchases.length;
+    const response = await fetch(`${baseUrl}/instruccion`, form({ product_id: "otra-9001", param_quantity: "1", ...SHIPPING }, cookie));
+    expect(response.status).toBe(409);
+    expect(purchases).toHaveLength(before);
+  });
+
+  it("sends the other store's own venue when its own shopper buys there", async () => {
+    const cookie = await signIn("otra-tienda@ejemplo.cl");
+    await signStoreAgent(cookie, "otra-9001");
+    const before = purchases.length;
+    await fetch(`${baseUrl}/instruccion`, form({ product_id: "otra-9001", param_quantity: "1", ...SHIPPING }, cookie));
+    expect(purchases[before]!.venue).toBe(OTHER_STORE_VENUE_ID);
+  });
+
+  it("draws one section per store the directory names, and binds a hired shopper to its store", async () => {
+    const cookie = await signIn("secciones@ejemplo.cl");
+    const html = await catalogue(cookie);
+    expect(html).toContain("<h3>Bazar Cordillera</h3>");
+    expect(html).toContain("<h3>Otra Tienda</h3>");
+    const agentId = await signStoreAgent(cookie, "otra-9001");
+    const account = await store.findAccountByEmail("secciones@ejemplo.cl");
+    const agent = await store.findAgent(account!.id, agentId);
+    expect(agent?.comercio).toBe("otra-tienda");
+    expect(agent?.label).toContain("Otra Tienda");
+    const review = await (await fetch(`${baseUrl}/agentes/${agentId}`, { headers: { cookie } })).text();
+    expect(review).toContain(OTHER_STORE_VENUE_ID);
+    expect(review).not.toContain(STORE_VENUE_ID);
+  });
+
+  it("refuses to hire a store shopper from the general form, where no store is chosen", async () => {
+    const cookie = await signIn("sin-tienda@ejemplo.cl");
+    const response = await fetch(`${baseUrl}/agentes`, form({ kind: "vitrinee_shopper", label: "X", perTx: "1", perDay: "1", validForDays: "30" }, cookie));
+    expect(response.status).toBe(400);
+  });
+
+  it("says so, and keeps the other merchants, when the directory cannot be read", async () => {
+    const cookie = await signIn("directorio-caido@ejemplo.cl");
+    directoryFails = true;
+    try {
+      const html = await catalogue(cookie);
+      expect(html).toContain("swap-risk-quote");
+      expect(html).not.toContain("37283001");
+      expect(html).toContain("Stores on Vitrinee");
+    } finally {
+      directoryFails = false;
+    }
   });
 
   it("says so, and keeps the other two merchants, when the store cannot be read", async () => {

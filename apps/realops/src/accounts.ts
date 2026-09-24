@@ -98,6 +98,13 @@ export interface AgentConfig {
   readonly tenantId: string | null;
   readonly consentSessionId: string | null;
   readonly mandateId: string | null;
+  /**
+   * For a store shopper (`vitrinee_shopper`, T104): the slug of the one Vitrinee
+   * store it buys at, fixed when it is hired from that store's card. `null` for
+   * every other kind, and for a store shopper hired before T104, whose grant
+   * names the old single-store venue that AgentPey no longer pays.
+   */
+  readonly comercio: string | null;
   readonly createdAt: Date;
 }
 
@@ -230,7 +237,14 @@ export function newAccount(email: string, alias: string, now: Date = new Date())
   };
 }
 
-export function newAgent(accountId: string, kind: AgentKind, label: string, permissions: AgentPermissions, now: Date = new Date()): AgentConfig {
+export function newAgent(
+  accountId: string,
+  kind: AgentKind,
+  label: string,
+  permissions: AgentPermissions,
+  now: Date = new Date(),
+  comercio: string | null = null,
+): AgentConfig {
   return {
     id: `rag_${ulid()}`,
     accountId,
@@ -240,6 +254,7 @@ export function newAgent(accountId: string, kind: AgentKind, label: string, perm
     tenantId: null,
     consentSessionId: null,
     mandateId: null,
+    comercio,
     createdAt: now,
   };
 }

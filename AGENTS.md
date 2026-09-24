@@ -56,6 +56,10 @@ de Vitrinee. Desde T103 (`C-143`, `VT-27`) eso incluye `VITRINEE_DATABASE_URL`
 `DATABASE_URL` de AgentPey) y `VITRINEE_MASTER_KEY` (sella las llaves de firma
 y credenciales de cada comercio). Nada de `packages/vitrinee-gateway/src/platform/`
 ni de `scripts/vitrinee/platform-setup.ts` se toca sin Claude Code (`P-10`).
+Desde T104 (`C-141`, `C-145`), `apps/agent/src/catalog/venues.json` tiene una
+fila de plataforma y `apps/agent/src/catalog/platforms.ts` convierte su
+directorio en comercios pagables: los dos son parte de lo que decide a quién se
+le puede pagar, y tampoco se tocan sin Claude Code.
 
 **F9 (piloto externo público), desde 2026-09-12:** no inicies código ni
 diseño de F9 por tu cuenta — ni RealOps Agent, ni SignalDesk, ni el catálogo

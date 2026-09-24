@@ -45,11 +45,18 @@ export const DEFAULT_INDEX_TTL_MS = 30_000;
 export interface AgentPeyDiscoveryOptions {
   readonly registry: VenueRegistry;
   /**
+   * When given, the registry each index build uses: `registry` with every
+   * platform's current merchants added (`platforms.ts`, T104). Without it, the
+   * index covers `registry` as it is.
+   */
+  readonly resolveRegistry?: (registry: VenueRegistry) => Promise<VenueRegistry>;
+  /**
    * Builds the catalogue adapter for one venue — injected rather than
    * constructed here so the index can be tested without a network, and so the
-   * caller decides the timeout policy (`fetchWithTimeout`).
+   * caller decides the timeout policy (`fetchWithTimeout`). Receives the
+   * registry the venue was resolved in.
    */
-  readonly catalogFor: (venueId: VenueId) => CatalogAdapter;
+  readonly catalogFor: (venueId: VenueId, registry: VenueRegistry) => CatalogAdapter;
   /** Called for each venue that failed, so one merchant being down is visible and not silent. */
   readonly onVenueError?: (venueId: VenueId, error: unknown) => void;
   readonly cacheTtlMs?: number;
@@ -79,13 +86,14 @@ export function createAgentPeyDiscovery(options: AgentPeyDiscoveryOptions): Cata
   let cached: CachedIndex | undefined;
 
   async function buildIndex(): Promise<readonly ServiceCandidate[]> {
-    const venues = [...options.registry.venues.values()].filter((venue) => venue.baseUrl !== undefined);
+    const registry = options.resolveRegistry === undefined ? options.registry : await options.resolveRegistry(options.registry);
+    const venues = [...registry.venues.values()].filter((venue) => venue.baseUrl !== undefined);
     if (venues.length === 0) return [];
 
     const results = await Promise.allSettled(
       venues.map(async (venue) => ({
         venue,
-        products: await options.catalogFor(venue.venueId).listProducts(),
+        products: await options.catalogFor(venue.venueId, registry).listProducts(),
       })),
     );
 
@@ -101,7 +109,7 @@ export function createAgentPeyDiscovery(options: AgentPeyDiscoveryOptions): Cata
       }
 
       for (const product of result.value.products) {
-        const candidate = toCandidate(options.registry, {
+        const candidate = toCandidate(registry, {
           source: "agentpey",
           // The venue's own base URL: this index names *where* a service
           // lives and *which* product it is, and leaves the paid route to

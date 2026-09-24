@@ -106,7 +106,7 @@ describe("the multi-merchant platform (T103, C-142)", () => {
     comercioA = sealComercio({ slug: "tienda-a", name: "Tienda A", payTo: a.payTo, signingSecret: a.signer.secret(), credentials: { kind: "mock" } }, box, now);
     await comercios.create(comercioA);
     await comercios.create(sealComercio({ slug: "tienda-b", name: "Tienda B", payTo: b.payTo, signingSecret: b.signer.secret(), credentials: { kind: "mock" } }, box, now));
-    ({ url: base, close } = await listen(createPlatformApp({ platformHost: PLATFORM, pool: pool(), rootComercio: "tienda-a" })));
+    ({ url: base, close } = await listen(createPlatformApp({ platformHost: PLATFORM, pool: pool(), comercios, rootComercio: "tienda-a" })));
   });
   afterAll(() => close());
 
@@ -131,6 +131,22 @@ describe("the multi-merchant platform (T103, C-142)", () => {
     expect(unknown.body).toMatchObject({ error: "ComercioNotFound" });
     expect((await call(base, "tienda-a.vitrinee.test.attacker.example", MANIFEST_PATH)).status).toBe(404);
     expect((await call(base, "x.tienda-a.vitrinee.test", MANIFEST_PATH)).status).toBe(404);
+  });
+
+  it("publishes the directory of active comercios on the portal, with nothing private in it (C-141)", async () => {
+    const r = await call(base, PLATFORM, "/api/comercios");
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({
+      platformHost: PLATFORM,
+      comercios: [
+        { slug: "tienda-a", name: "Tienda A", url: "http://tienda-a.vitrinee.test", payTo: a.payTo, signingDid: `did:stellar:testnet:${a.signer.publicKey()}` },
+        { slug: "tienda-b", name: "Tienda B", url: "http://tienda-b.vitrinee.test", payTo: b.payTo, signingDid: `did:stellar:testnet:${b.signer.publicKey()}` },
+      ],
+    });
+    expect(JSON.stringify(r.body)).not.toContain(a.signer.secret());
+    expect(JSON.stringify(r.body)).not.toContain("v1:");
+    // Only the portal publishes it: a store's host has no such route.
+    expect((await call(base, "tienda-a.vitrinee.test", "/api/comercios")).status).toBe(404);
   });
 
   it("keeps the portal host for the platform, still serving the transitional root comercio", async () => {
@@ -159,7 +175,7 @@ describe("the multi-merchant platform (T103, C-142)", () => {
   });
 
   it("finds the same orders after a restart, because they live in storage, not in the process", async () => {
-    const fresh = await listen(createPlatformApp({ platformHost: PLATFORM, pool: pool(), rootComercio: undefined }));
+    const fresh = await listen(createPlatformApp({ platformHost: PLATFORM, pool: pool(), comercios, rootComercio: undefined }));
     try {
       const orders = (await call(fresh.url, "tienda-a.vitrinee.test", "/orders")).body as { orders: unknown[] };
       expect(orders.orders).toHaveLength(1);

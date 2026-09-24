@@ -119,6 +119,10 @@ export const REALOPS_TARGET: AppTarget = {
     "VITRINEE_BASE_URL",
     "VITRINEE_VENUE_ID",
     "VITRINEE_PAY_TO",
+    // T104: the Vitrinee platform's public directory of stores, read the same
+    // way AgentPey reads it. Public values, like the three above.
+    "VITRINEE_DIRECTORY_URL",
+    "VITRINEE_PLATFORM_HOST",
     "REALOPS_AGENTPEY_API_KEY",
     "AGENTPEY_BASE_URL",
   ],

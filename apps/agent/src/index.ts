@@ -65,12 +65,17 @@ export {
   mapAssetCodeForVenue,
   mapAssetIssuerForVenue,
   registryAssetSchema,
+  registryPlatformSchema,
   registryVenueSchema,
   venueRegistrySchema,
+  type RegistryPlatformRow,
   type RegistryVenueRow,
+  type ResolvedPlatform,
   type ResolvedVenue,
   type VenueRegistry,
 } from "./catalog/registry.js";
+
+export { DEFAULT_DIRECTORY_TTL_MS, expandPlatformVenues, type PlatformExpansionOptions } from "./catalog/platforms.js";
 
 export { DEFAULT_VENUE_REGISTRY } from "./catalog/default-registry.js";
 

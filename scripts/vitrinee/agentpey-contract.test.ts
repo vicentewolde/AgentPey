@@ -9,17 +9,25 @@
  * break the promise of `F7` for this store: that adding it is a row in
  * `venues.json` and no code.
  */
+import { request as httpRequest } from "node:http";
+
+import { Keypair } from "@stellar/stellar-sdk";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { makeVenueId } from "../../apps/agent/src/catalog/ids.js";
 import { DEFAULT_VENUE_REGISTRY } from "../../apps/agent/src/catalog/default-registry.js";
+import { expandPlatformVenues } from "../../apps/agent/src/catalog/platforms.js";
 import { loadVenueRegistry } from "../../apps/agent/src/catalog/registry.js";
 import { createX402Catalog, getX402ServiceRoute } from "../../apps/agent/src/catalog/x402-catalog.js";
-import { fillRouteTemplate, requestPaymentChallenge } from "../../apps/agent/src/payment/x402.js";
+import { fillRouteTemplate, requestPaymentChallenge, toPaymentTerms } from "../../apps/agent/src/payment/x402.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { OrderStore } from "../../packages/vitrinee-gateway/src/orders.js";
 import { FAKE_TX_HASH, fakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { MERCHANT, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { MemoryComercioStore, sealComercio } from "../../packages/vitrinee-gateway/src/platform/comercios.js";
+import { createPlatformApp } from "../../packages/vitrinee-gateway/src/platform/platform-app.js";
+import { createSecretBox, generateMasterKey } from "../../packages/vitrinee-gateway/src/platform/secret-box.js";
+import { StorefrontPool } from "../../packages/vitrinee-gateway/src/platform/storefronts.js";
+import { MERCHANT, REGISTRY_ID, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 import { MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
 import { USDC_TESTNET, checkReceiptSignature } from "../../packages/vitrinee-core/src/index.js";
@@ -69,20 +77,91 @@ function vitrineeVenue() {
   return { venueId: makeVenueId("vitrinee", MERCHANT), registry };
 }
 
-describe("the vitrinee row of venues.json (T100)", () => {
+describe("the vitrinee platform row of venues.json (T104, C-141)", () => {
   /**
-   * The row registered with `scripts/register-venue.ts`, pinned: the asset is
-   * the USDC contract every Vitrinee 402 quotes, and the origin is where T102
-   * deploys the store. A venue is resolved by origin, so a row naming another
-   * host would make every purchase refuse before a single request.
+   * Since T104 AgentPey trusts the Vitrinee platform, not each store: one
+   * platform row, pinned here. Its host is where every store's subdomain
+   * lives, its directory is the portal's public list, and its only asset is
+   * the USDC every Vitrinee 402 quotes. A merchant's venue exists only once
+   * the directory names it (`platforms.ts`).
    */
-  it("names the USDC every Vitrinee checkout quotes, at the origin T102 deploys to", () => {
-    const row = [...DEFAULT_VENUE_REGISTRY.venues.values()].find((venue) => venue.venueId.startsWith("vitrinee:"));
-    expect(row).toBeDefined();
-    expect(row!.baseUrl).toBe("https://vitrinee.agentpey.com");
-    expect(row!.byCode.get("USDC")).toBe(`USDC:${USDC_TESTNET.contractId}`);
-    // Its address is the store's payout account: a classic `G…` account, the 402's `payTo`.
-    expect(row!.venueId.split(":")[1]).toMatch(/^G[A-Z2-7]{55}$/);
+  it("names the platform's host, its directory and the USDC every Vitrinee checkout quotes", () => {
+    const platform = DEFAULT_VENUE_REGISTRY.platforms?.get("vitrinee");
+    expect(platform).toBeDefined();
+    expect(platform!.host).toBe("vitrinee.agentpey.com");
+    expect(platform!.directoryUrl).toBe("https://vitrinee.agentpey.com/api/comercios");
+    expect([...platform!.byCode.entries()]).toEqual([["USDC", `USDC:${USDC_TESTNET.contractId}`]]);
+    // No fixed row left for the old single store: its id would collide with the platform's merchants.
+    expect([...DEFAULT_VENUE_REGISTRY.venues.keys()].some((id) => id.startsWith("vitrinee"))).toBe(false);
+  });
+});
+
+describe("AgentPey reads the Vitrinee platform's directory (T104)", () => {
+  /** `fetch` cannot set `Host`; this sends every `*.localhost` URL to the in-process platform, with its host. */
+  function hostRoutedFetch(serverUrl: string): typeof fetch {
+    const target = new URL(serverUrl);
+    return (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input instanceof Request ? input.url : input));
+      const headers: Record<string, string> = { host: url.host };
+      new Headers(init?.headers).forEach((value, key) => (headers[key] = value));
+      return new Promise<Response>((resolve, reject) => {
+        const req = httpRequest(
+          { hostname: target.hostname, port: target.port, path: url.pathname + url.search, method: init?.method ?? "GET", headers },
+          (res) => {
+            const chunks: Buffer[] = [];
+            res.on("data", (chunk: Buffer) => chunks.push(chunk));
+            res.on("end", () => {
+              const out = new Headers();
+              for (const [key, value] of Object.entries(res.headers)) if (typeof value === "string") out.set(key, value);
+              resolve(new Response(Buffer.concat(chunks), { status: res.statusCode ?? 0, headers: out }));
+            });
+          },
+        );
+        req.on("error", reject);
+        req.end();
+      });
+    }) as typeof fetch;
+  }
+
+  it("turns a directory entry into a venue, catalogues its store, and pins the 402's payee to the merchant", async () => {
+    const box = createSecretBox(generateMasterKey());
+    const comercios = new MemoryComercioStore();
+    const now = new Date("2026-09-24T12:00:00.000Z");
+    await comercios.create(
+      sealComercio({ slug: "bazar", name: "Bazar", payTo: MERCHANT, signingSecret: Keypair.random().secret(), credentials: { kind: "mock" } }, box, now),
+    );
+    const pool = new StorefrontPool({
+      comercios,
+      box,
+      env: { RECEIPT_REGISTRY_ID: REGISTRY_ID, FX_RATE_CLP_USD: "950" },
+      ordersFor: () => ({ load: async () => [], save: async () => {} }),
+      appDeps: () => {
+        const fake = fakeRegistry();
+        return { facilitator: fakeFacilitator(), anchorer: fake.anchorer, registry: fake.registry };
+      },
+    });
+    const platform = await listen(createPlatformApp({ platformHost: "localhost", pool, comercios, rootComercio: undefined }));
+    try {
+      const fetchImpl = hostRoutedFetch(platform.url);
+      const registry = loadVenueRegistry([
+        { kind: "platform", slug: "vitrinee", host: "localhost", directoryUrl: "http://localhost/api/comercios", assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] },
+      ]);
+      const expanded = await expandPlatformVenues(registry, { fetchImpl });
+      const venueId = makeVenueId("vitrinee-bazar", MERCHANT);
+      expect(expanded.venues.get(venueId)?.baseUrl).toBe("http://bazar.localhost");
+
+      const products = await createX402Catalog({ venueId, registry: expanded, fetchImpl }).listProducts();
+      expect(products.map((p) => p.id)).toContain("stickers-cordillera");
+
+      const route = await getX402ServiceRoute({ venueId, registry: expanded, fetchImpl }, "stickers-cordillera");
+      const url = fillRouteTemplate("http://bazar.localhost", route, { quantity: 1, name: "Test", address: "Calle 1", city: "Santiago", region: "RM" });
+      const challenge = await requestPaymentChallenge(url, fetchImpl);
+      expect(challenge.status).toBe(402);
+      const offered = readChallenge(challenge).accepts[0] as unknown as Parameters<typeof toPaymentTerms>[0];
+      expect(toPaymentTerms(offered, venueId, expanded).payTo).toBe(MERCHANT);
+    } finally {
+      await platform.close();
+    }
   });
 });
 

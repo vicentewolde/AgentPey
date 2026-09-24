@@ -59,7 +59,8 @@ import {
   signInPage,
 } from "./pages.js";
 import { defaultPermissionsFor, translatePermissions, type PilotTargets } from "./permissions.js";
-import { buildCatalog, findCard, QUANTITY_INPUT, type CatalogCard } from "./catalog.js";
+import { buildCatalog, findCard, QUANTITY_INPUT, storeTarget, type CatalogCard, type StoreRows } from "./catalog.js";
+import type { Storefront, StorefrontDirectory } from "./storefronts.js";
 import type { BazaarCatalog, CheckedResource } from "./bazaar-catalog.js";
 
 export const SESSION_COOKIE = "realops_session";
@@ -112,8 +113,12 @@ export interface RealOpsConfig {
    * message, not a crash.
    */
   readonly bazaarCatalog?: BazaarCatalog;
-  /** The Vitrinee store's live catalogue (T100), or `undefined` to run without it. Same posture as the bazaar's. */
-  readonly vitrineeCatalog?: BazaarCatalog;
+  /**
+   * The Vitrinee platform's directory of stores (T104, `C-141`), or
+   * `undefined` to run without it. Same posture as the bazaar's: a directory
+   * that cannot be read is a message on the catalogue, not a broken page.
+   */
+  readonly storefronts?: StorefrontDirectory;
   readonly signalDeskUrl: string;
   /** This service's own origin, for building magic links. */
   readonly baseUrl: string;
@@ -190,8 +195,16 @@ const BAZAAR_UNAVAILABLE = bilingual(
   "Esta instancia no está leyendo el catálogo del bazaar.",
 );
 const VITRINEE_UNAVAILABLE = bilingual(
-  "This instance is not reading the store's catalogue.",
-  "Esta instancia no está leyendo el catálogo de la tienda.",
+  "This instance is not reading the Vitrinee stores.",
+  "Esta instancia no está leyendo las tiendas de Vitrinee.",
+);
+const STORE_UNAVAILABLE = bilingual(
+  "This agent's store cannot be reached right now, so its permission cannot be shown or signed. Try again in a moment.",
+  "No se puede contactar la tienda de este agente en este momento, así que su permiso no se puede mostrar ni firmar. Vuelve a intentarlo en un momento.",
+);
+const HIRE_STORE_FROM_CATALOGUE = bilingual(
+  "A store shopper buys at one store: hire it from a product card of that store in the catalogue.",
+  "Un comprador de tienda compra en una sola tienda: contrátalo desde la tarjeta de un producto de esa tienda en el catálogo.",
 );
 const BAD_QUANTITY = bilingual(
   "The quantity has to be a whole number between 1 and 20. Nothing was bought.",
@@ -367,18 +380,73 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     readonly agents: readonly AgentConfig[];
     readonly bazaarError?: Bilingual;
     readonly vitrineeError?: Bilingual;
+    readonly storeErrors: readonly { readonly slug: string; readonly name: string; readonly error: Bilingual }[];
+    /** Each store's grant target, from the same rows the cards were drawn from. */
+    readonly storeTargets: ReadonlyMap<string, PilotTargets>;
   }> {
-    const [agents, bazaar, vitrinee] = await Promise.all([
+    const [agents, bazaar, stores] = await Promise.all([
       config.store.listAgents(account.id),
       readLive(config.bazaarCatalog, BAZAAR_UNAVAILABLE),
-      readLive(config.vitrineeCatalog, VITRINEE_UNAVAILABLE),
+      readStores(),
     ]);
+    const storeTargets = new Map<string, PilotTargets>();
+    for (const store of stores.read) {
+      if (store.rows !== undefined) storeTargets.set(store.slug, storeTarget(config.targets, store, store.rows.map((row) => row.id)));
+    }
     return {
-      cards: buildCatalog({ targets: config.targets, agents, bazaar: bazaar.rows, vitrinee: vitrinee.rows }),
+      cards: buildCatalog({ targets: config.targets, agents, bazaar: bazaar.rows, stores: stores.read }),
       agents,
       ...(bazaar.error === undefined ? {} : { bazaarError: bazaar.error }),
-      ...(vitrinee.error === undefined ? {} : { vitrineeError: vitrinee.error }),
+      ...(stores.error === undefined ? {} : { vitrineeError: stores.error }),
+      storeErrors: stores.read.flatMap((store) => (store.error === undefined ? [] : [{ slug: store.slug, name: store.name, error: store.error }])),
+      storeTargets,
     };
+  }
+
+  /** Every Vitrinee store and its rows, each read on its own so one slow store does not hide the others (T104). */
+  async function readStores(): Promise<{
+    readonly read: readonly (StoreRows & { readonly payTo: string; readonly error?: Bilingual })[];
+    readonly error?: Bilingual;
+  }> {
+    if (config.storefronts === undefined) return { read: [], error: VITRINEE_UNAVAILABLE };
+    let stores: readonly Storefront[];
+    try {
+      stores = await config.storefronts.list();
+    } catch (error) {
+      return { read: [], error: messageFor(error) };
+    }
+    const read = await Promise.all(
+      stores.map(async (store) => {
+        const live = await readLive(store.catalog, VITRINEE_UNAVAILABLE);
+        return {
+          slug: store.slug,
+          name: store.name,
+          venueId: store.venueId,
+          payTo: store.payTo,
+          rows: live.rows,
+          ...(live.error === undefined ? {} : { error: live.error }),
+        };
+      }),
+    );
+    return { read };
+  }
+
+  /**
+   * The targets an agent's grant is built from. A store shopper's comes from
+   * its own store, read now: the products it lists today, its payout account
+   * (T104). `undefined` when that store cannot be read, which the caller shows
+   * as "try again", never as a grant built from a guess.
+   */
+  async function targetsFor(agent: AgentConfig): Promise<PilotTargets | undefined> {
+    if (agent.kind !== "vitrinee_shopper" || agent.comercio === null) return config.targets;
+    try {
+      const store = await config.storefronts?.get(agent.comercio);
+      if (store === undefined) return undefined;
+      const rows = await store.catalog.list();
+      return storeTarget(config.targets, store, rows.map((row) => row.id));
+    } catch {
+      return undefined;
+    }
   }
 
   /** Opens a session for an account and lands the person on their agents. */
@@ -510,6 +578,11 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
 
+      if (kind.data === "vitrinee_shopper") {
+        sendHtml(response, 400, errorPage(400, HIRE_STORE_FROM_CATALOGUE));
+        return;
+      }
+
       const agent = newAgent(account.id, kind.data, label.data, permissions.data, now());
       await config.store.saveAgent(agent);
       redirect(response, `/agentes/${agent.id}`);
@@ -529,7 +602,12 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         sendHtml(response, 404, errorPage(404, NO_SUCH_AGENT));
         return;
       }
-      const translated = translatePermissions(agent.kind, agent.permissions, config.targets, now());
+      const targets = await targetsFor(agent);
+      if (targets === undefined) {
+        sendHtml(response, 503, errorPage(503, STORE_UNAVAILABLE));
+        return;
+      }
+      const translated = translatePermissions(agent.kind, agent.permissions, targets, now());
       sendHtml(response, 200, reviewPage(agent, translated.grant, translated.controls, config.agentpeyBaseUrl));
       return;
     }
@@ -554,9 +632,15 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
 
+      const targets = await targetsFor(agent);
+      if (targets === undefined) {
+        sendHtml(response, 503, errorPage(503, STORE_UNAVAILABLE));
+        return;
+      }
+
       try {
         const tenant = await config.agentpey.ensureTenant(account.externalRef);
-        const { grant } = translatePermissions(agent.kind, agent.permissions, config.targets, now());
+        const { grant } = translatePermissions(agent.kind, agent.permissions, targets, now());
         const session = await config.agentpey.createConsentSession({
           tenantId: tenant.id,
           grant,
@@ -635,7 +719,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
      * decides at purchase time.
      */
     if (method === "GET" && pathname === "/catalogo") {
-      const { cards, bazaarError, vitrineeError } = await catalogFor(account);
+      const { cards, bazaarError, vitrineeError, storeErrors } = await catalogFor(account);
       // A typed sentence lands here with the product and quantity it named.
       // Only a prefill: an unknown product or an odd number is ignored, never
       // an error, because nothing is bought until the person sends the form.
@@ -656,6 +740,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           cards,
           ...(bazaarError === undefined ? {} : { bazaarError }),
           ...(vitrineeError === undefined ? {} : { vitrineeError }),
+          storeErrors,
           ...(prefill === undefined ? {} : { prefill }),
         }),
       );
@@ -670,13 +755,14 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
      */
     if (method === "GET" && pathname === "/catalogo/permiso") {
       const productId = url.searchParams.get("producto");
-      const { cards } = await catalogFor(account);
+      const { cards, storeTargets } = await catalogFor(account);
       const card = productId === null ? undefined : findCard(cards, productId);
-      if (card === undefined) {
+      const targets = card?.store === undefined ? config.targets : storeTargets.get(card.store.slug);
+      if (card === undefined || targets === undefined) {
         sendHtml(response, 404, errorPage(404, NO_SUCH_PRODUCT));
         return;
       }
-      const translated = translatePermissions(card.kind, defaultPermissionsFor(card.kind), config.targets, now());
+      const translated = translatePermissions(card.kind, defaultPermissionsFor(card.kind), targets, now());
       sendHtml(
         response,
         200,
@@ -714,7 +800,10 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         redirect(response, `/agentes/${card.coverage.agentId}`);
         return;
       }
-      const agent = newAgent(account.id, card.kind, AGENT_KIND_NAMES[card.kind].en, defaultPermissionsFor(card.kind), now());
+      // A store shopper is bound to the store of the card it was hired from
+      // (T104). The store comes from the card RealOps drew, never from the form.
+      const label = card.store === undefined ? AGENT_KIND_NAMES[card.kind].en : `${AGENT_KIND_NAMES[card.kind].en} · ${card.store.name}`;
+      const agent = newAgent(account.id, card.kind, label, defaultPermissionsFor(card.kind), now(), card.store?.slug ?? null);
       await config.store.saveAgent(agent);
       redirect(response, `/agentes/${agent.id}`);
       return;
@@ -762,13 +851,16 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // resolved against the catalogue this account can see — never taken as
       // the name of a product — so a posted id cannot reach a venue or a
       // product no `PilotTarget` already names.
-      const { cards } = await catalogFor(account);
+      const { cards, storeTargets } = await catalogFor(account);
 
       let kind: AgentKind;
       let productId: string;
       let quantity = 1;
       let pair: string | undefined;
       let formParams: Readonly<Record<string, string>> = {};
+      // The Vitrinee store of the card being bought (T104). A store shopper buys
+      // only at the store it was hired for.
+      let storeSlug: string | undefined;
 
       if (posted !== null) {
         const card = findCard(cards, posted);
@@ -787,6 +879,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         }
         kind = card.kind;
         productId = card.productId;
+        storeSlug = card.store?.slug;
         quantity = read.quantity ?? 1;
         formParams = read.params;
         pair = kind === "market_brief" ? SUPPORTED_PAIR : undefined;
@@ -799,6 +892,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           return;
         }
         productId = firstOfKind.productId;
+        storeSlug = firstOfKind.store?.slug;
         pair = kind === "market_brief" ? SUPPORTED_PAIR : undefined;
       } else {
         try {
@@ -833,7 +927,11 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // an `agent_id` from the form is looked up among these and nowhere else.
       const agents = await config.store.listAgents(account.id);
       const candidates = agents.filter(
-        (candidate) => candidate.kind === kind && candidate.mandateId !== null && candidate.tenantId !== null,
+        (candidate) =>
+          candidate.kind === kind &&
+          candidate.mandateId !== null &&
+          candidate.tenantId !== null &&
+          (kind !== "vitrinee_shopper" || candidate.comercio === storeSlug),
       );
       if (candidates.length === 0) {
         sendHtml(
@@ -901,7 +999,10 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           // The venue of the *kind* that is buying, not a global one (T96).
           // AgentPey resolves it against its own `venues.json` regardless, so
           // naming a venue it does not know produces a refusal, never a payment.
-          venue: config.targets[kind].venueId,
+          venue:
+            kind === "vitrinee_shopper" && storeSlug !== undefined
+              ? (storeTargets.get(storeSlug)?.vitrinee_shopper.venueId ?? config.targets[kind].venueId)
+              : config.targets[kind].venueId,
           productId,
           quantity,
           // What RealOps owns first, so a form field can never override it:

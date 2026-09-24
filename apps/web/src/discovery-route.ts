@@ -5,7 +5,8 @@
  * public catalogue is down, and the thing that makes discovery a URL a person
  * can open instead of a hidden call between two services that already know
  * each other. It is read-only, unauthenticated, and answers only about venues
- * that are already in `venues.json`.
+ * that are already in `venues.json`, or merchants a registered platform's
+ * directory names (T104).
  *
  * **One deliberate departure from the plan, with its reason.** § 4.3 proposed
  * serving the bazaar's `ServiceCard` shape, so `createX402Catalog` could read
@@ -30,6 +31,7 @@ import {
   DEFAULT_DISCOVERY_TIMEOUT_MS,
   createAgentPeyDiscovery,
   createX402Catalog,
+  expandPlatformVenues,
   fetchWithTimeout,
   parseQuery,
   DEFAULT_VENUE_REGISTRY,
@@ -127,7 +129,9 @@ export function createPublicDiscovery(options: PublicDiscoveryOptions = {}): Cat
 
   return createAgentPeyDiscovery({
     registry,
-    catalogFor: (venueId) => createX402Catalog({ venueId, registry, fetchImpl: timedFetch }),
+    // Every platform's current merchants, read from its directory (T104).
+    resolveRegistry: (base) => expandPlatformVenues(base, { fetchImpl: timedFetch }),
+    catalogFor: (venueId, resolved) => createX402Catalog({ venueId, registry: resolved, fetchImpl: timedFetch }),
     onVenueError: options.onVenueError,
   });
 }

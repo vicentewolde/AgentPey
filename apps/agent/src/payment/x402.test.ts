@@ -6,6 +6,8 @@ import { findDefaultAsset } from "@x402/stellar";
 import { describe, expect, it, vi } from "vitest";
 
 import { BAZAAR_USDC, BAZAAR_USDC_ISSUER, BAZAAR_VENUE_ID, type BazaarServiceRoute } from "../catalog/bazaar.js";
+import type { VenueId } from "../catalog/ids.js";
+import { loadVenueRegistry } from "../catalog/registry.js";
 import type { PurchaseIntent } from "../intent/intent.js";
 import type { AuthorisationDecision, AuthorisationRequest, PolicyRail } from "../policy/policy-rail.js";
 import {
@@ -131,6 +133,38 @@ function fakeRail(authorise: (request: AuthorisationRequest) => Promise<Authoris
     },
   };
 }
+
+describe("toPaymentTerms for a merchant of a platform (T104)", () => {
+  const payTo = "GDVR2KDK5DSMNYZJKNISUIOBDC6FZK3XZOIQWSS7KL4BRMD5BMW6RMCQ";
+  const platformRegistry = (pinned: string) => {
+    const venueId = `vitrinee-bazar:${pinned}` as VenueId;
+    const base = loadVenueRegistry([]);
+    const venues = new Map(base.venues);
+    venues.set(venueId, {
+      venueId,
+      baseUrl: "https://bazar.vitrinee.example",
+      byCode: new Map([["USDC", BAZAAR_USDC]]),
+      byIssuer: new Map([[REAL_REQUIREMENTS.asset, BAZAAR_USDC]]),
+      payTo: pinned,
+    });
+    return { venueId, registry: { venues } };
+  };
+
+  it("accepts a challenge that pays the merchant's own account", () => {
+    const { venueId, registry } = platformRegistry(payTo);
+    expect(toPaymentTerms(REAL_REQUIREMENTS, venueId, registry).payTo).toBe(payTo);
+  });
+
+  it("refuses, before anything is signed, a challenge that names another payee", () => {
+    const { venueId, registry } = platformRegistry("GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF");
+    try {
+      toPaymentTerms(REAL_REQUIREMENTS, venueId, registry);
+      expect.unreachable("expected a refusal");
+    } catch (error) {
+      expect(hasErrorCode(error, "InvalidProduct")).toBe(true);
+    }
+  });
+});
 
 describe("toPaymentTerms", () => {
   it("maps a real payment challenge to PaymentTerms", () => {

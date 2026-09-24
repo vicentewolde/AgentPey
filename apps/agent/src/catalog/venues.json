@@ -22,9 +22,10 @@
     ]
   },
   {
+    "kind": "platform",
     "slug": "vitrinee",
-    "address": "GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII",
-    "baseUrl": "https://vitrinee.agentpey.com",
+    "host": "vitrinee.agentpey.com",
+    "directoryUrl": "https://vitrinee.agentpey.com/api/comercios",
     "assets": [
       {
         "code": "USDC",

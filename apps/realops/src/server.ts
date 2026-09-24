@@ -15,6 +15,7 @@ import { createMemoryStore, EMAIL_RETENTION_DAYS, type RealOpsStore } from "./ac
 import { createPostgresStore, REALOPS_SCHEMA_SQL, sweepExpired, sweepStaleEmails, type SqlClient } from "./store-postgres.js";
 import type { PilotTargets } from "./permissions.js";
 import { createBazaarCatalog } from "./bazaar-catalog.js";
+import { createStorefrontDirectory } from "./storefronts.js";
 
 const ENV_PATH = fileURLToPath(new URL("../../../.env.local", import.meta.url));
 const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
@@ -109,11 +110,12 @@ const targets: PilotTargets = {
     products: ["swap-risk-quote", "ai-video-scriptwriter"],
   },
   /**
-   * The real store connected through Vitrinee (T100, `C-130`). Its venue id is
-   * the `vitrinee` row of `venues.json`: the store's own payout account, which
-   * is also the only `payTo` its 402 ever names. The product ids are
-   * Jumpseller's, listed one by one like the bazaar's: a product the store adds
-   * tomorrow is not buyable until a new permission names it.
+   * Since T104 a store shopper's target is built from its own store, read from
+   * the Vitrinee directory (`storeTarget`, `C-141`). This static one is left
+   * only for store shoppers hired before T104, whose grant names the old
+   * single-store venue (`vitrinee:GC5ZY…`): their pages still render, and
+   * AgentPey refuses their purchases (`VenueNotRegistered`). Its `assetId` is
+   * the one every store target reuses.
    */
   vitrinee_shopper: {
     venueId: env.get("VITRINEE_VENUE_ID") ?? "vitrinee:GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII",
@@ -197,16 +199,15 @@ const bazaarCatalog = createBazaarCatalog({
 });
 
 /**
- * The Vitrinee store's catalogue, read live through the same feed (T100).
- *
- * Vitrinee publishes its products as the same `ServiceCard` feed the bazaar
- * does (`VT-24`), so the same reader serves. Its base URL has to be the
- * `baseUrl` of the `vitrinee` row in `venues.json`: AgentPey resolves a venue
- * by origin, and a catalogue read from one host for a purchase made at another
- * would show products the Mandate does not cover.
+ * The Vitrinee platform's stores (T104, `C-141`), read from the same public
+ * directory AgentPey reads. Each store's catalogue is its own `ServiceCard`
+ * feed at `https://<slug>.vitrinee.agentpey.com`, read with the bazaar's
+ * reader (`VT-24`), and its venue id is the one AgentPey builds from the same
+ * directory, so a card RealOps draws is a venue AgentPey can resolve.
  */
-const vitrineeCatalog = createBazaarCatalog({
-  baseUrl: env.get("VITRINEE_BASE_URL") ?? "https://vitrinee.agentpey.com",
+const storefronts = createStorefrontDirectory({
+  directoryUrl: env.get("VITRINEE_DIRECTORY_URL") ?? "https://vitrinee.agentpey.com/api/comercios",
+  platformHost: env.get("VITRINEE_PLATFORM_HOST") ?? "vitrinee.agentpey.com",
 });
 
 const server = createRealOpsServer({
@@ -215,7 +216,7 @@ const server = createRealOpsServer({
   agentpeyBaseUrl,
   targets,
   bazaarCatalog,
-  vitrineeCatalog,
+  storefronts,
   signalDeskUrl,
   baseUrl,
   delivery,

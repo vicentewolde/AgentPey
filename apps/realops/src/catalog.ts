@@ -60,8 +60,15 @@ export type Coverage =
   | { readonly state: "unsigned"; readonly agentId: string; readonly agentLabel: string }
   | { readonly state: "outside" };
 
+/** The Vitrinee store a card belongs to (T104). Absent for SignalDesk and the bazaar. */
+export interface CardStore {
+  readonly slug: string;
+  readonly name: string;
+}
+
 export interface CatalogCard {
   readonly venue: CatalogVenue;
+  readonly store?: CardStore;
   /** The merchant's own product id, verbatim. This is what lands in a signed intent. */
   readonly productId: string;
   /** The kind of agent whose grant names this product. */
@@ -178,13 +185,52 @@ export function coverageOf(agents: readonly AgentConfig[], kind: AgentKind): Cov
   return { state: "outside" };
 }
 
+/** One Vitrinee store's live rows (T104), read through the same feed as the bazaar. */
+export interface StoreRows {
+  readonly slug: string;
+  readonly name: string;
+  readonly venueId: string;
+  /** `undefined` when the read failed. Empty is a different fact. */
+  readonly rows: readonly CheckedResource[] | undefined;
+}
+
 export interface BuildCatalogInput {
   readonly targets: PilotTargets;
   readonly agents: readonly AgentConfig[];
   /** The bazaar's live rows, or `undefined` when the read failed. Empty is a different fact. */
   readonly bazaar: readonly CheckedResource[] | undefined;
-  /** The Vitrinee store's live rows (T100), read through the same feed. Same convention. */
-  readonly vitrinee: readonly CheckedResource[] | undefined;
+  /** Every Vitrinee store the directory names, each with its own rows (T104, `C-141`). */
+  readonly stores: readonly StoreRows[];
+}
+
+/**
+ * A store shopper covers the products of the one store it was hired for, so
+ * coverage is counted among that store's shoppers only (T104).
+ */
+function storeCoverage(agents: readonly AgentConfig[], slug: string): Coverage {
+  return coverageOf(
+    agents.filter((agent) => agent.comercio === slug),
+    "vitrinee_shopper",
+  );
+}
+
+/** A Vitrinee store's cards: every product it lists is one its own shopper's grant would name. */
+function storeCards(store: StoreRows, agents: readonly AgentConfig[]): readonly CatalogCard[] {
+  return (store.rows ?? []).map((resource) => ({
+    venue: "vitrinee" as const,
+    store: { slug: store.slug, name: store.name },
+    productId: resource.id,
+    kind: "vitrinee_shopper" as const,
+    venueId: store.venueId,
+    title: bilingual(resource.name, resource.name),
+    description: bilingual(resource.description, resource.description),
+    declaredAmount: resource.declaredAmount,
+    declaredAsset: resource.declaredAsset,
+    inputs: resource.inputs,
+    serverFilled: [],
+    availability: resource.availability,
+    coverage: storeCoverage(agents, store.slug),
+  }));
 }
 
 /**
@@ -248,9 +294,23 @@ export function buildCatalog(input: BuildCatalogInput): readonly CatalogCard[] {
   }));
 
   const bazaar = liveCards("bazaar", input.targets.bazaar_shopper.venueId, input.bazaar, input);
-  const vitrinee = liveCards("vitrinee", input.targets.vitrinee_shopper.venueId, input.vitrinee, input);
+  const fixed = [...signaldesk, ...bazaar];
 
-  return [...signaldesk, ...bazaar, ...vitrinee];
+  // A product id is what a buy form, a typed sentence and a prefill link carry.
+  // Two cards with the same one would make every one of those ambiguous, so a
+  // store's card whose id another card already uses is not drawn at all.
+  const stores = input.stores.flatMap((store) => storeCards(store, input.agents));
+  const count = new Map<string, number>();
+  for (const card of [...fixed, ...stores]) count.set(card.productId, (count.get(card.productId) ?? 0) + 1);
+  return [...fixed, ...stores.filter((card) => count.get(card.productId) === 1)];
+}
+
+/** The grant target a store's shopper signs for: that store, its payout account, and the products it lists now. */
+export function storeTarget(base: PilotTargets, store: { readonly venueId: string; readonly payTo: string }, productIds: readonly string[]): PilotTargets {
+  return {
+    ...base,
+    vitrinee_shopper: { venueId: store.venueId, assetId: base.vitrinee_shopper.assetId, payTo: [store.payTo], products: [...productIds] },
+  };
 }
 
 /** The one card a product id names, among the ones this account can see. */

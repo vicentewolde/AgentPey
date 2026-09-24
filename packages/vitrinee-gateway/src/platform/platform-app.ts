@@ -10,17 +10,23 @@
 import { VitrineeError, isVitrineeError } from "@vitrinee/core";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
+import type { ComercioStore } from "./comercios.js";
 import { routeHost } from "./hosts.js";
 import type { StorefrontPool } from "./storefronts.js";
+
+/** Where the portal publishes its directory of comercios (C-141). AgentPey's `venues.json` names this URL. */
+export const DIRECTORY_PATH = "/api/comercios";
 
 export interface PlatformAppOptions {
   platformHost: string;
   pool: StorefrontPool;
+  /** Read for the public directory. */
+  comercios: ComercioStore;
   rootComercio: string | undefined;
   log?: (message: string, fields?: Record<string, unknown>) => void;
 }
 
-export function createPlatformApp({ platformHost, pool, rootComercio, log = () => {} }: PlatformAppOptions): Express {
+export function createPlatformApp({ platformHost, pool, comercios, rootComercio, log = () => {} }: PlatformAppOptions): Express {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", true);
@@ -39,6 +45,26 @@ export function createPlatformApp({ platformHost, pool, rootComercio, log = () =
       if (route.kind === "store") return await serveStore(route.slug, req, res, next);
       if (route.kind === "unknown") {
         throw new VitrineeError("ComercioNotFound", "this host is not a store of this platform");
+      }
+      if (req.path === DIRECTORY_PATH && req.method === "GET") {
+        // Public by design, and nothing in it is private: the slug, the name,
+        // where the store is, the account it is paid at and the key that signs
+        // its receipts are all in each store's own manifest already. Never a
+        // sealed secret, never a disabled comercio.
+        const scheme = req.protocol;
+        const listed = (await comercios.list()).filter((c) => c.status === "active");
+        res.set("Cache-Control", "public, max-age=30");
+        res.json({
+          platformHost,
+          comercios: listed.map((c) => ({
+            slug: c.slug,
+            name: c.name,
+            url: `${scheme}://${c.slug}.${platformHost}`,
+            payTo: c.payTo,
+            signingDid: `did:stellar:testnet:${c.signingAccount}`,
+          })),
+        });
+        return;
       }
       if (req.path === "/health") {
         res.json({ status: "ok", mode: "platform", platformHost, rootComercio: rootComercio ?? null });

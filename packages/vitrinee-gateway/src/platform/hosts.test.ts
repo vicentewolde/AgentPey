@@ -23,7 +23,7 @@ describe("routeHost (C-142)", () => {
       "-bazar.vitrinee.agentpey.com",
       "bazar--x.vitrinee.agentpey.com",
       "baz_ar.vitrinee.agentpey.com",
-      `${"a".repeat(41)}.vitrinee.agentpey.com`,
+      `${"a".repeat(32)}.vitrinee.agentpey.com`,
       ".vitrinee.agentpey.com",
       "agentpey.com",
       "realops.agentpey.com",

@@ -50,6 +50,7 @@ import { AgentPassError, agentPassCredentialSchema, didToStellarAddress, isAgent
 import {
   DEFAULT_VENUE_REGISTRY,
   baseUrlForVenue,
+  expandPlatformVenues,
   createAgent,
   createLocalPolicyRail,
   createOnChainMandateVerifier,
@@ -561,7 +562,14 @@ async function resolveTenantPurchaseContext(
   deps: TenantPurchaseDeps,
   request: TenantPurchaseRequest,
 ): Promise<PurchaseContext | PurchaseRefused> {
-  const registry = deps.registry ?? DEFAULT_VENUE_REGISTRY;
+  // A merchant of a platform (Vitrinee, `C-141`) is a venue only once that
+  // platform's directory names it. The directory is read only when the venue
+  // could be one of its merchants, so any other unknown venue still costs no
+  // network call; and the call is to the platform, never to the venue.
+  const registry = await expandPlatformVenues(deps.registry ?? DEFAULT_VENUE_REGISTRY, {
+    onlyFor: request.venue,
+    ...(deps.fetchImpl === undefined ? {} : { fetchImpl: deps.fetchImpl }),
+  });
 
   // 1. Is this a venue anyone may be paid at? Before any network call to it:
   //    an unregistered venue never even learns we were asked about it.
@@ -590,7 +598,7 @@ async function resolveTenantPurchaseContext(
       venue: request.venue,
       // Named out loud: a catalogue listing a venue is not the same as this
       // platform being able to pay it, and that is the point (`C-77`).
-      hint: "a public catalogue may list it; only the venue registry authorises paying it",
+      hint: "a public catalogue may list it; only the venue registry, or a registered platform's directory, authorises paying it",
     });
   }
 
@@ -851,7 +859,7 @@ export async function executeTenantPurchase(
         payer,
         ...(deps.fetchImpl === undefined ? {} : { fetchImpl: deps.fetchImpl }),
       },
-      { resourceUrl, intent: verified.intent, scope, mandate: parsedMandate, venueId },
+      { resourceUrl, intent: verified.intent, scope, mandate: parsedMandate, venueId, registry },
     );
   } catch (error) {
     // The only place in this function that has to ask. Everything above is

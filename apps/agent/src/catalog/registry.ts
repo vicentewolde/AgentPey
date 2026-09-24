@@ -58,8 +58,30 @@ export const registryVenueSchema = z.strictObject({
 
 export type RegistryVenueRow = z.infer<typeof registryVenueSchema>;
 
-/** The whole registry file: every venue's row, in no particular order. */
-export const venueRegistrySchema = z.array(registryVenueSchema);
+/**
+ * A platform of many merchants (T104, `C-141`): AgentPey trusts the platform,
+ * not each merchant. The row fixes where the platform lives, where its public
+ * directory of merchants is, and every asset its merchants may quote. The
+ * directory can add merchants; it can never add an asset, move a merchant off
+ * the platform's host, or pay anyone by itself (see `platforms.ts`).
+ */
+export const registryPlatformSchema = z.strictObject({
+  kind: z.literal("platform"),
+  slug: venueSlugSchema,
+  /** `vitrinee.agentpey.com`: each merchant's store is exactly `https://<merchant>.<host>`. */
+  host: z
+    .string()
+    .min(1)
+    .max(253)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/, "a lowercase hostname, no scheme, port or path"),
+  directoryUrl: z.url(),
+  assets: z.array(registryAssetSchema).min(1),
+});
+
+export type RegistryPlatformRow = z.infer<typeof registryPlatformSchema>;
+
+/** The whole registry file: every venue's and platform's row, in no particular order. */
+export const venueRegistrySchema = z.array(z.union([registryVenueSchema, registryPlatformSchema]));
 
 /** One venue, resolved: its `VenueId`, its base URL if it has one, and both ways to look up an asset. */
 export interface ResolvedVenue {
@@ -67,11 +89,33 @@ export interface ResolvedVenue {
   readonly baseUrl: string | undefined;
   readonly byCode: ReadonlyMap<string, AssetId>;
   readonly byIssuer: ReadonlyMap<string, AssetId>;
+  /**
+   * Set only for a merchant of a platform (`platforms.ts`): the one account a
+   * payment to this venue may go to, the one in its venue id. A challenge that
+   * names another payee is refused before anything is signed, whatever the
+   * Mandate says.
+   */
+  readonly payTo?: string;
+}
+
+/** A platform row, resolved: where it lives, where its directory is, and the only assets its merchants may quote. */
+export interface ResolvedPlatform {
+  readonly slug: string;
+  readonly host: string;
+  readonly directoryUrl: string;
+  readonly byCode: ReadonlyMap<string, AssetId>;
+  readonly byIssuer: ReadonlyMap<string, AssetId>;
 }
 
 /** A validated, ready-to-query registry. Build one with {@link loadVenueRegistry}. */
 export interface VenueRegistry {
   readonly venues: ReadonlyMap<VenueId, ResolvedVenue>;
+  /**
+   * Platforms whose merchants become venues only once `platforms.ts` has read
+   * their directory. Absent in a registry built by hand, which is the same as
+   * having none.
+   */
+  readonly platforms?: ReadonlyMap<string, ResolvedPlatform>;
 }
 
 function invalidRegistry(message: string, details?: Record<string, unknown>): AgentPassError {
@@ -97,40 +141,57 @@ export function loadVenueRegistry(raw: unknown): VenueRegistry {
   }
 
   const venues = new Map<VenueId, ResolvedVenue>();
+  const platforms = new Map<string, ResolvedPlatform>();
 
   for (const row of parsed.data) {
+    if ("kind" in row) {
+      if (platforms.has(row.slug)) {
+        throw invalidRegistry(`the registry names platform "${row.slug}" more than once`, { platform: row.slug });
+      }
+      const { byCode, byIssuer } = indexAssets(`platform "${row.slug}"`, row.assets);
+      platforms.set(row.slug, { slug: row.slug, host: row.host, directoryUrl: row.directoryUrl, byCode, byIssuer });
+      continue;
+    }
     const venueId = venueIdSchema.parse(makeVenueId(row.slug, row.address));
     if (venues.has(venueId)) {
       throw invalidRegistry(`the registry names venue "${venueId}" more than once`, { venueId });
     }
 
-    const byCode = new Map<string, AssetId>();
-    const byIssuer = new Map<string, AssetId>();
-
-    for (const asset of row.assets) {
-      const assetId = assetIdSchema.parse(makeAssetId(asset.code, asset.issuer));
-
-      if (byCode.has(asset.code)) {
-        throw invalidRegistry(`venue "${venueId}" names asset code "${asset.code}" more than once`, {
-          venueId,
-          code: asset.code,
-        });
-      }
-      if (byIssuer.has(asset.issuer)) {
-        throw invalidRegistry(`venue "${venueId}" names issuer "${asset.issuer}" more than once`, {
-          venueId,
-          issuer: asset.issuer,
-        });
-      }
-
-      byCode.set(asset.code, assetId);
-      byIssuer.set(asset.issuer, assetId);
-    }
-
+    const { byCode, byIssuer } = indexAssets(`venue "${venueId}"`, row.assets);
     venues.set(venueId, { venueId, baseUrl: row.baseUrl, byCode, byIssuer });
   }
 
-  return { venues: Object.freeze(venues) };
+  // A platform slug is the prefix of every venue it produces (`platforms.ts`),
+  // so a fixed venue under that prefix would be ambiguous: whose is it?
+  for (const venueId of venues.keys()) {
+    for (const slug of platforms.keys()) {
+      if (venueId.startsWith(`${slug}-`) || venueId.startsWith(`${slug}:`)) {
+        throw invalidRegistry(`venue "${venueId}" uses the slug of platform "${slug}"`, { venueId, platform: slug });
+      }
+    }
+  }
+
+  return { venues: Object.freeze(venues), platforms: Object.freeze(platforms) };
+}
+
+function indexAssets(
+  owner: string,
+  assets: readonly { code: string; issuer: string }[],
+): { byCode: Map<string, AssetId>; byIssuer: Map<string, AssetId> } {
+  const byCode = new Map<string, AssetId>();
+  const byIssuer = new Map<string, AssetId>();
+  for (const asset of assets) {
+    const assetId = assetIdSchema.parse(makeAssetId(asset.code, asset.issuer));
+    if (byCode.has(asset.code)) {
+      throw invalidRegistry(`${owner} names asset code "${asset.code}" more than once`, { owner, code: asset.code });
+    }
+    if (byIssuer.has(asset.issuer)) {
+      throw invalidRegistry(`${owner} names issuer "${asset.issuer}" more than once`, { owner, issuer: asset.issuer });
+    }
+    byCode.set(asset.code, assetId);
+    byIssuer.set(asset.issuer, assetId);
+  }
+  return { byCode, byIssuer };
 }
 
 function requireVenue(registry: VenueRegistry, venueId: VenueId): ResolvedVenue {

@@ -100,7 +100,7 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
     ordersFor: (comercio) => new PostgresOrderPersistence(pool, comercio.id),
     log,
   });
-  const app = createPlatformApp({ platformHost: settings.platformHost, pool: storefronts, rootComercio: settings.rootComercio, log });
+  const app = createPlatformApp({ platformHost: settings.platformHost, pool: storefronts, comercios, rootComercio: settings.rootComercio, log });
   const listed = await comercios.list();
   app.listen(settings.port, () => {
     log("vitrinee platform listening", {

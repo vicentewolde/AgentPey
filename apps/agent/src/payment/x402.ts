@@ -37,7 +37,9 @@ import { x402Client, x402HTTPClient, type SpendControls } from "@x402/core/clien
 import type { PaymentRequired, PaymentRequirements, SchemeNetworkClient, SettleResponse } from "@x402/core/types";
 import { ExactStellarScheme, STELLAR_TESTNET_CAIP2, createEd25519Signer } from "@x402/stellar";
 
-import { mapAssetContract, type BazaarServiceRoute } from "../catalog/bazaar.js";
+import type { BazaarServiceRoute } from "../catalog/bazaar.js";
+import { DEFAULT_VENUE_REGISTRY } from "../catalog/default-registry.js";
+import { mapAssetIssuerForVenue, type VenueRegistry } from "../catalog/registry.js";
 import type { VenueId } from "../catalog/ids.js";
 import type { PurchaseIntent } from "../intent/intent.js";
 import { fromScaledAmount } from "../scope/amount.js";
@@ -56,7 +58,11 @@ function networkError(message: string, extra?: Record<string, unknown>, cause?: 
  * @throws AgentPassError `InvalidProduct` for a scheme/network this adapter
  * does not speak, or an asset contract it has no issuer for (`mapAssetContract`).
  */
-export function toPaymentTerms(requirements: PaymentRequirements, venueId: VenueId): PaymentTerms {
+export function toPaymentTerms(
+  requirements: PaymentRequirements,
+  venueId: VenueId,
+  registry: VenueRegistry = DEFAULT_VENUE_REGISTRY,
+): PaymentTerms {
   if (requirements.scheme !== "exact") {
     throw new AgentPassError(
       "InvalidProduct",
@@ -83,9 +89,21 @@ export function toPaymentTerms(requirements: PaymentRequirements, venueId: Venue
     );
   }
 
+  const asset = mapAssetIssuerForVenue(registry, venueId, requirements.asset);
+
+  // A merchant of a platform is paid only at the account its venue id names
+  // (T104, `C-141`). Checked here, before `authorise()` and before anything is
+  // signed, so it holds even for a Mandate that names no payee.
+  const pinned = registry.venues.get(venueId)?.payTo;
+  if (pinned !== undefined && requirements.payTo !== pinned) {
+    throw new AgentPassError("InvalidProduct", "the payment challenge names a payee other than this merchant's own account", {
+      details: { venueId, payTo: requirements.payTo, expected: pinned },
+    });
+  }
+
   return {
     venue: venueId,
-    asset: mapAssetContract(requirements.asset, venueId),
+    asset,
     amount: fromScaledAmount(scaled),
     payTo: requirements.payTo,
   };
@@ -156,6 +174,12 @@ export interface ExecuteBazaarPaymentInput {
   readonly scope: Scope;
   readonly mandate: AgentPayMandate;
   readonly venueId: VenueId;
+  /**
+   * The registry the venue was resolved in. Defaults to `venues.json`; a
+   * merchant of a platform exists only in the registry `platforms.ts`
+   * expanded, so its caller passes that one (T104).
+   */
+  readonly registry?: VenueRegistry;
 }
 
 export interface BazaarPaymentReceipt {
@@ -330,7 +354,7 @@ export async function executeBazaarPayment(
   // Reconcile before signing anything (M-14) — the first real exercise of
   // this path with a challenge nobody controlled ahead of time.
   const requirements = selectRequirements(paymentRequired);
-  const terms = toPaymentTerms(requirements, input.venueId);
+  const terms = toPaymentTerms(requirements, input.venueId, input.registry);
   const decision = await deps.policyRail.authorise({
     intent: input.intent,
     scope: input.scope,

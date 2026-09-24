@@ -19,6 +19,11 @@ export const PILOT_ASSET_ID = "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3
 /** The real store's payout account (T100): the `address` of the `vitrinee` row and its only `payTo`. */
 export const VITRINEE_PAY_TO = "GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII";
 export const VITRINEE_VENUE_ID = `vitrinee:${VITRINEE_PAY_TO}`;
+/** The same store as a merchant of the Vitrinee platform (T104): what AgentPey builds from its directory. */
+export const STORE_VENUE_ID = `vitrinee-bazar-cordillera:${VITRINEE_PAY_TO}`;
+/** A second Vitrinee store, for tests that need two. */
+export const OTHER_STORE_PAY_TO = "GDVR2KDK5DSMNYZJKNISUIOBDC6FZK3XZOIQWSS7KL4BRMD5BMW6RMCQ";
+export const OTHER_STORE_VENUE_ID = `vitrinee-otra-tienda:${OTHER_STORE_PAY_TO}`;
 /** Jumpseller's own product ids for the six products of `vitrinee.jumpseller.com`, read from the live feed on 2026-09-23. */
 export const VITRINEE_PRODUCTS: readonly string[] = ["37282902", "37282997", "37282998", "37282999", "37283000", "37283001"];
 

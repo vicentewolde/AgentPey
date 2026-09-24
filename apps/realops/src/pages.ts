@@ -509,6 +509,9 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[]): st
         <label for="kind">${tr(bilingual("Which agent", "Qué agente"))}</label>
         <select id="kind" name="kind">
           ${Object.entries(AGENT_COPY)
+            // A store shopper is hired from a store's card in the catalogue,
+            // where the store it buys at is known (T104).
+            .filter(([kind]) => kind !== "vitrinee_shopper")
             .map(
               ([kind, copy]) =>
                 `<option value="${escape(kind)}" ${textAttributes(copy.name)}>${escape(copy.name.en)}</option>`,
@@ -1003,10 +1006,10 @@ const VENUE_COPY: Readonly<Record<CatalogVenue, { readonly name: Bilingual; read
     ),
   },
   vitrinee: {
-    name: bilingual("Bazar Cordillera, via Vitrinee", "Bazar Cordillera, vía Vitrinee"),
+    name: bilingual("Stores on Vitrinee", "Tiendas en Vitrinee"),
     note: bilingual(
-      "A real store, read live from its own catalogue. It ships physical products, so each purchase asks for a name and an address; the quantity you enter is the one the agent signs for. Prices are in USDC on Stellar testnet.",
-      "Una tienda real, leída en vivo desde su propio catálogo. Envía productos físicos, así que cada compra pide un nombre y una dirección; la cantidad que escribas es la que el agente firma. Los precios están en USDC de Stellar testnet.",
+      "Real stores that joined AgentPey through Vitrinee, each read live from its own catalogue. They ship physical products, so each purchase asks for a name and an address; the quantity you enter is the one the agent signs for. A store shopper buys at one store only. Prices are in USDC on Stellar testnet.",
+      "Tiendas reales que se sumaron a AgentPey por Vitrinee, cada una leída en vivo desde su propio catálogo. Envían productos físicos, así que cada compra pide un nombre y una dirección; la cantidad que escribas es la que el agente firma. Un comprador de tienda compra en una sola tienda. Los precios están en USDC de Stellar testnet.",
     ),
   },
 };
@@ -1094,8 +1097,10 @@ export interface CatalogInput {
   readonly cards: readonly CatalogCard[];
   /** Why the bazaar section is missing, if it is. A failed read is not an empty shop. */
   readonly bazaarError?: Bilingual;
-  /** Why the Vitrinee store's section is missing, if it is (T100). */
+  /** Why no Vitrinee store is shown at all, if none is: the directory could not be read (T104). */
   readonly vitrineeError?: Bilingual;
+  /** Stores the directory names whose own catalogue could not be read (T104). */
+  readonly storeErrors?: readonly { readonly slug: string; readonly name: string; readonly error: Bilingual }[];
   /** The product and quantity a typed sentence named, to open its card already filled in. */
   readonly prefill?: { readonly productId: string; readonly quantity: number };
 }
@@ -1108,6 +1113,41 @@ export function catalogPage(input: CatalogInput): string {
 
   const readError = (venue: CatalogVenue): Bilingual | undefined =>
     venue === "bazaar" ? input.bazaarError : venue === "vitrinee" ? input.vitrineeError : undefined;
+
+  const grid = (cards: readonly CatalogCard[]): string => `<div class="grid">
+    ${cards
+      .map((card) => catalogCardHtml(card, requestKey, input.prefill?.productId === card.productId ? input.prefill.quantity : 1))
+      .join("\n    ")}
+  </div>`;
+
+  /**
+   * One section per Vitrinee store the directory names (T104, `C-141`): the
+   * stores are the list the person chooses from, and a store shopper is hired
+   * from its own store's cards.
+   */
+  const storeSections = (): string => {
+    const copy = VENUE_COPY.vitrinee;
+    const cards = input.cards.filter((card) => card.venue === "vitrinee");
+    const slugs = [...new Set(cards.map((card) => card.store?.slug).filter((slug): slug is string => slug !== undefined))];
+    const failed = (input.storeErrors ?? []).filter((store) => !slugs.includes(store.slug));
+    const intro = `<h2>${tr(copy.name)}</h2>
+  <p class="lede">${tr(copy.note)}</p>`;
+    if (slugs.length === 0 && failed.length === 0) {
+      const error = input.vitrineeError;
+      return `${intro}
+  <p class="card">${tr(error ?? bilingual("No store on Vitrinee is selling right now.", "Ninguna tienda en Vitrinee está vendiendo ahora mismo."))}</p>`;
+    }
+    const stores = slugs.map((slug) => {
+      const ofStore = cards.filter((card) => card.store?.slug === slug);
+      const name = ofStore[0]?.store?.name ?? slug;
+      return `<h3>${escape(name)}</h3>
+  ${grid(ofStore)}`;
+    });
+    const unreadable = failed.map((store) => `<h3>${escape(store.name)}</h3>
+  <p class="card">${tr(store.error)}</p>`);
+    return `${intro}
+  ${[...stores, ...unreadable].join("\n  ")}`;
+  };
 
   const section = (venue: CatalogVenue): string => {
     const cards = input.cards.filter((card) => card.venue === venue);
@@ -1148,7 +1188,7 @@ export function catalogPage(input: CatalogInput): string {
 
   ${section("signaldesk")}
   ${section("bazaar")}
-  ${section("vitrinee")}
+  ${storeSections()}
 `,
   });
 }

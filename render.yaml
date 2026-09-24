@@ -151,12 +151,14 @@ services:
         value: USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
       - key: PILOT_PAY_TO
         value: GB4D4PLLFEIKZK6MDW42MZRQ5XMPC6QRJN4FFRODO6D3PRB3MDGGYOOF
-      # T100 — the real store connected through Vitrinee. Public values: the
-      # store's payout account (the `address` of the `vitrinee` row in
-      # venues.json, and the only `payTo` its 402 names) and where its
-      # catalogue is read from. The origin must match that row's `baseUrl`.
-      - key: VITRINEE_BASE_URL
-        value: https://vitrinee.agentpey.com
+      # T104 — RealOps reads the Vitrinee platform's stores from the same
+      # public directory AgentPey reads (C-141). `VITRINEE_PLATFORM_HOST` is
+      # set once, in Vitrinee's block below, and read by both.
+      - key: VITRINEE_DIRECTORY_URL
+        value: https://vitrinee.agentpey.com/api/comercios
+      # T100, kept only for store shoppers hired before T104 (their pages still
+      # render; AgentPey refuses their purchases). No longer read for the
+      # catalogue: `VITRINEE_BASE_URL` can be removed from the dashboard.
       - key: VITRINEE_VENUE_ID
         value: vitrinee:GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII
       - key: VITRINEE_PAY_TO
@@ -245,7 +247,6 @@ services:
         sync: false
       - key: VITRINEE_PLATFORM_HOST
         value: vitrinee.agentpey.com
-      # The comercio the portal host still serves as a store, until AgentPey and
-      # RealOps read the directory (T104). Its slug is the seed's default.
-      - key: VITRINEE_ROOT_COMERCIO
-        value: bazar-cordillera
+      # VITRINEE_ROOT_COMERCIO is gone since T104 (VT-30): AgentPey and RealOps
+      # reach every store at its own subdomain, and the root is only the portal
+      # and its directory. Delete it from the dashboard too.
