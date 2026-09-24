@@ -6359,3 +6359,45 @@ Pendiente:
   las acciones del 25 (rol y llave maestra, comodín y CNAME, PR #29 si hace
   falta) y del 26 (tienda de prueba).
 - Siguiente: `/start-ticket` de T103, con OK del usuario.
+
+## 2026-09-24 (2) — cc/t103-vitrinee-multi-comercio (T103 en PR #30)
+
+Agente: Claude Code.
+
+Qué: T103 construido y en PR ([#30](https://github.com/vicentewolde/AgentPey/pull/30)),
+sin mergear: espera el OK del usuario (regla 1). La rama sale de
+`cc/t103-plataforma-comercios`, así que el PR lleva también la planificación.
+- Vitrinee multi-comercio: comercios y pedidos en el esquema `vitrinee`, rol
+  propio, secretos sellados con la llave maestra, una tienda por subdominio,
+  cada una hecha con el `createApp` de siempre. Modo plataforma solo con
+  `DATABASE_URL` y `MASTER_KEY`; sin ellos, igual que antes (`VT-30`).
+- Gateway del servicio: `<slug>.vitrinee.agentpey.com` va a Vitrinee con regla
+  estrecha; `VITRINEE_DATABASE_URL`/`VITRINEE_MASTER_KEY` solo a Vitrinee.
+- `pnpm run vitrinee:platform-setup` (lo corre el usuario; `--check` lo corrí
+  yo, sin secretos, contra la tienda en vivo y Supabase: todo en verde).
+- Corrección de `C-143`: la base del piloto es Supabase, no Render.
+
+Hallazgo: el pedido pendiente de T101 se reconstruye sin el disco (respaldo
+público en la evidencia + `delivery.resource_url` de AgentPey). **PR #29 ya se
+puede mergear sin perderlo**, siempre que el usuario corra el comando de
+preparación con `--import-order` antes de reintentar el pedido.
+
+Verificado: modo plataforma en local contra PGlite y la tienda Jumpseller real
+(evidencia/T103.md § 4); gateway de Vitrinee 65 tests, gateway del servicio 32,
+scripts 73; `pnpm typecheck`, `pnpm test`, `vitrinee:lint` en verde.
+
+Por qué no se delegó a Codex: custodia, llaves, rol de base de datos (`P-10`).
+
+`AGENTS.md`: actualizado en este hito (variables nuevas y quién toca
+`platform/` y `platform-setup.ts`).
+
+Exponential: T103 `READY_TO_PLAN` → `IN_PROGRESS` → `QA` con PR #30. SYNC.md
+al día.
+
+Pendiente:
+- Del usuario: OK de merge de PR #30 (y decidir PR #29); correr
+  `pnpm run vitrinee:platform-setup -- --import-order docs/fase-6-agentguard-comercializacion/evidencia/T103-ord_muektgpgee1ebc73e5.json`;
+  cargar `VITRINEE_DATABASE_URL`, `VITRINEE_MASTER_KEY`,
+  `VITRINEE_PLATFORM_HOST`, `VITRINEE_ROOT_COMERCIO` en Render; dominio
+  comodín y tres CNAME; M7 de T103 (claridad del ticket, 1 a 5).
+- Después: verificación en vivo, `DONE`, y T104.
