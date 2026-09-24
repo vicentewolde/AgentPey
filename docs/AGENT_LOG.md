@@ -6661,3 +6661,30 @@ Exponential: sin cambios.
 
 Pendiente: el usuario corre la rotación desde su carpeta (ya con el arreglo) y
 carga la conexión nueva en Render; OK de merge de este cambio.
+
+## 2026-09-24 (10) — cc/t105-metricas (cierre de sesión)
+
+Agente: Claude Code.
+
+Qué: el usuario corrigió la descripción del Reishi, regeneró el token de
+MycoKit y rotó la contraseña del rol de Vitrinee. Comprobado en vivo sin
+secretos: MycoKit lee su catálogo con el token vigente (la descripción nueva
+aparece), y el directorio y los pedidos responden con la conexión nueva
+(`evidencia/T105.md` § 6.3). M9 de T105 = 4 en COMPARACION.md.
+
+Incidente de esta sesión, ya corregido: un `git add docs` metió en `main` los
+dos archivos de traspaso sin trackear del usuario (`46ff75a` los sacó del
+índice; siguen en disco). Solo instrucciones, sin secretos, pero quedan en el
+historial de `7478e2d`. Lección: nombrar los archivos al hacer `git add`,
+nunca un directorio con archivos ajenos sin trackear.
+
+Exponential: sin cambios de tickets. La entrada de tiempo de M8
+(`cmueyuydu0045jx046ow0jkp8`) sigue `PROPOSED`: el usuario la confirmó en el
+chat, pero `exponential time confirm` es solo humano.
+
+Pendiente:
+- Del usuario: `exponential time confirm --date 2026-09-23`; el `404` de
+  Jumpseller (T101); contratar en RealOps un comprador nuevo para la escena de
+  compra del video del 29.
+- Tarea aparte sugerida: que `isSellable` no publique SKUs repetidos.
+
