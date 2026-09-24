@@ -43,11 +43,12 @@ const TSX_BIN = resolve(REPO_ROOT, "node_modules/.bin/tsx");
 const READY_TIMEOUT_MS = 45_000;
 const PORT = Number(process.env.PORT ?? 8080);
 
+const vitrineeHost = process.env.GATEWAY_VITRINEE_HOST ?? "vitrinee.agentpey.com";
 const hostMap = buildHostMap({
   agentpeyHost: process.env.GATEWAY_AGENTPEY_HOST ?? "agentpey.com",
   realopsHost: process.env.GATEWAY_REALOPS_HOST ?? "realops.agentpey.com",
   signaldeskHost: process.env.GATEWAY_SIGNALDESK_HOST ?? "signaldesk.agentpey.com",
-  vitrineeHost: process.env.GATEWAY_VITRINEE_HOST ?? "vitrinee.agentpey.com",
+  vitrineeHost,
 });
 
 /**
@@ -133,7 +134,7 @@ await Promise.all(
 process.stdout.write(`gateway: up: ${[...running].join(", ")}\n`);
 
 server = createServer((req, res) => {
-  const target = resolveTarget(hostMap, req.headers.host);
+  const target = resolveTarget(hostMap, req.headers.host, vitrineeHost);
   if (target === undefined) {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     res.end(`no app is configured for host "${req.headers.host ?? ""}"\n`);

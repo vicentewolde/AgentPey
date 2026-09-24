@@ -44,6 +44,11 @@ services:
       # T102 — must match the `baseUrl` of the `vitrinee` row in venues.json,
       # for the same reason as SignalDesk's above.
       - vitrinee.agentpey.com
+      # T103 (C-142) — one store per comercio at <slug>.vitrinee.agentpey.com.
+      # Render counts the wildcard as one more domain (0.25 USD a month, fixed,
+      # however many comercios). Needs three CNAMEs in Vercel: `*.vitrinee`,
+      # `_acme-challenge.vitrinee` and `_cf-custom-hostname.vitrinee`.
+      - "*.vitrinee.agentpey.com"
     envVars:
       # pnpm@11.24.0 (pinned via packageManager in package.json) requires
       # Node >=22.13 to run under Corepack — 22.11.0 makes Corepack crash
@@ -226,3 +231,21 @@ services:
         sync: false
       - key: VITRINEE_JUMPSELLER_AUTHTOKEN
         sync: false
+      # ---- Vitrinee as a multi-merchant platform (T103, C-140 to C-143) ------
+      # With both of these set, Vitrinee keeps its comercios and orders in its
+      # own schema and serves one store per subdomain; without them it runs as
+      # the single store above, exactly as before. Both come out of
+      # `pnpm run vitrinee:platform-setup`, which the user runs (P-10).
+      # Vitrinee's own Postgres role, limited to the `vitrinee` schema. Never
+      # AgentPey's DATABASE_URL (C-143).
+      - key: VITRINEE_DATABASE_URL
+        sync: false
+      # Seals every comercio's signing key and store credentials (VT-27).
+      - key: VITRINEE_MASTER_KEY
+        sync: false
+      - key: VITRINEE_PLATFORM_HOST
+        value: vitrinee.agentpey.com
+      # The comercio the portal host still serves as a store, until AgentPey and
+      # RealOps read the directory (T104). Its slug is the seed's default.
+      - key: VITRINEE_ROOT_COMERCIO
+        value: bazar-cordillera

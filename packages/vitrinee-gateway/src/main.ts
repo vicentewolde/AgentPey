@@ -1,11 +1,17 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { JumpsellerStoreAdapter, MockStoreAdapter, type StoreAdapter } from "@vitrinee/adapters";
-import { MANIFEST_PATH, VitrineeError, isVitrineeError } from "@vitrinee/core";
+import { MANIFEST_PATH, isVitrineeError } from "@vitrinee/core";
 
+import { createAdapter } from "./adapters.js";
 import { createApp } from "./app.js";
-import { loadConfig, type GatewayConfig } from "./config.js";
+import { loadConfig } from "./config.js";
+import { seedComercioFromEnv } from "./platform/comercios.js";
+import { loadPlatformSettings, type PlatformSettings } from "./platform/config.js";
+import { createPlatformApp } from "./platform/platform-app.js";
+import { PostgresComercioStore, PostgresOrderPersistence, createVitrineePool, migrate } from "./platform/postgres.js";
+import { createSecretBox } from "./platform/secret-box.js";
+import { StorefrontPool } from "./platform/storefronts.js";
 
 /**
  * The repo root: the nearest ancestor holding pnpm-workspace.yaml. `pnpm
@@ -40,37 +46,26 @@ if (process.env["RECEIPT_REGISTRY_ID"] === undefined || process.env["RECEIPT_REG
     if (id !== undefined) process.env["RECEIPT_REGISTRY_ID"] = id;
   }
 }
-process.env["ORDERS_FILE"] ??= resolve(root, ".vitrinee/orders.json");
-process.env["MOCK_ORDERS_FILE"] ??= resolve(root, ".vitrinee/mock-store.json");
 
-function createAdapter(config: GatewayConfig): StoreAdapter {
-  switch (config.adapter) {
-    case "mock":
-      return new MockStoreAdapter({ ordersFile: config.mockOrdersFile });
-    case "jumpseller": {
-      if (config.jumpseller === undefined) {
-        throw new VitrineeError("ConfigError", "ADAPTER=jumpseller needs JUMPSELLER_LOGIN and JUMPSELLER_AUTHTOKEN");
-      }
-      return new JumpsellerStoreAdapter({
-        credentials: config.jumpseller,
-        currency: config.merchant.currency,
-        onWarning: (message, details) => log(message, details),
-      });
-    }
-  }
+function useLocalFiles(): void {
+  process.env["ORDERS_FILE"] ??= resolve(root, ".vitrinee/orders.json");
+  process.env["MOCK_ORDERS_FILE"] ??= resolve(root, ".vitrinee/mock-store.json");
 }
 
 function log(message: string, fields: Record<string, unknown> = {}): void {
   process.stdout.write(`${JSON.stringify({ at: new Date().toISOString(), message, ...fields })}\n`);
 }
 
-try {
+/** The single-store gateway, exactly as before T103: one merchant, from the environment. */
+function runSingleStore(): void {
+  useLocalFiles();
   const config = loadConfig();
-  const adapter = createAdapter(config);
+  const adapter = createAdapter(config, log);
   const app = createApp({ config, adapter, log });
   const resumed = app.anchors.resume();
   app.listen(config.port, () => {
     log("vitrinee gateway listening", {
+      mode: "single-store",
       port: config.port,
       adapter: adapter.name,
       merchant: config.merchant.stellarAccount,
@@ -82,11 +77,56 @@ try {
       manifest: MANIFEST_PATH,
     });
   });
-} catch (error) {
+}
+
+/**
+ * The multi-merchant platform (T103): comercios and orders in Vitrinee's own
+ * schema (C-143), secrets sealed with the master key (VT-27), one store per
+ * subdomain (C-142). The store the single-store gateway ran is registered as
+ * the first comercio from the same variables, once.
+ */
+async function runPlatform(settings: PlatformSettings): Promise<void> {
+  const pool = createVitrineePool(settings.databaseUrl);
+  await migrate(pool);
+  const comercios = new PostgresComercioStore(pool);
+  const box = createSecretBox(settings.masterKey);
+  const seeded = await seedComercioFromEnv(process.env, comercios, box, new Date());
+  if (seeded !== undefined) log(seeded.created ? "seed comercio registered" : "seed comercio already registered", { slug: seeded.comercio.slug });
+
+  const storefronts = new StorefrontPool({
+    comercios,
+    box,
+    env: process.env,
+    ordersFor: (comercio) => new PostgresOrderPersistence(pool, comercio.id),
+    log,
+  });
+  const app = createPlatformApp({ platformHost: settings.platformHost, pool: storefronts, rootComercio: settings.rootComercio, log });
+  const listed = await comercios.list();
+  app.listen(settings.port, () => {
+    log("vitrinee platform listening", {
+      mode: "platform",
+      port: settings.port,
+      platformHost: settings.platformHost,
+      rootComercio: settings.rootComercio ?? null,
+      comercios: listed.map((c) => c.slug),
+      manifest: MANIFEST_PATH,
+    });
+  });
+}
+
+function fail(error: unknown): never {
   if (isVitrineeError(error)) {
     process.stderr.write(`${error.code}: ${error.message}\n`);
   } else {
     process.stderr.write(`startup failed: ${String(error)}\n`);
   }
   process.exit(1);
+}
+
+try {
+  const settings = loadPlatformSettings(process.env);
+  if (settings === undefined) runSingleStore();
+  else runPlatform(settings).catch(fail);
+} catch (error) {
+  fail(error);
 }

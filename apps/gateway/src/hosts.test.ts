@@ -60,6 +60,35 @@ describe("resolveTarget", () => {
     expect(resolveTarget(hostMap, "realops.agentpey.com.attacker.example")).toBeUndefined();
     expect(resolveTarget(hostMap, "notrealops.agentpey.com")).toBeUndefined();
   });
+
+  describe("a store of the Vitrinee platform (T103, C-142)", () => {
+    const V = "vitrinee.agentpey.com";
+
+    it("sends one slug-shaped label in front of the Vitrinee host to Vitrinee", () => {
+      expect(resolveTarget(hostMap, "bazar-cordillera.vitrinee.agentpey.com", V)).toBe(VITRINEE_TARGET);
+      expect(resolveTarget(hostMap, "Tienda2.Vitrinee.AgentPey.com:443", V)).toBe(VITRINEE_TARGET);
+    });
+
+    it("refuses anything that only looks like a store", () => {
+      for (const host of [
+        "bazar.vitrinee.agentpey.com.attacker.example",
+        "a.b.vitrinee.agentpey.com",
+        "bazarvitrinee.agentpey.com",
+        "-bazar.vitrinee.agentpey.com",
+        "baz_ar.vitrinee.agentpey.com",
+        `${"a".repeat(41)}.vitrinee.agentpey.com`,
+        ".vitrinee.agentpey.com",
+        "x.realops.agentpey.com",
+        "x.agentpey.com",
+      ]) {
+        expect(resolveTarget(hostMap, host, V), host).toBeUndefined();
+      }
+    });
+
+    it("is off unless the caller names the Vitrinee host", () => {
+      expect(resolveTarget(hostMap, "bazar.vitrinee.agentpey.com")).toBeUndefined();
+    });
+  });
 });
 
 describe("buildHostMap", () => {
@@ -97,8 +126,10 @@ describe("which secrets each child actually receives", () => {
     VITRINEE_FACILITATOR_API_KEY: "oz-key",
     VITRINEE_JUMPSELLER_LOGIN: "store-login",
     VITRINEE_JUMPSELLER_AUTHTOKEN: "store-token",
+    VITRINEE_DATABASE_URL: "postgres://vitrinee-role",
+    VITRINEE_MASTER_KEY: "master-key",
   };
-  const VITRINEE_SECRETS = ["S-RECEIPTS", "oz-key", "store-login", "store-token"];
+  const VITRINEE_SECRETS = ["S-RECEIPTS", "oz-key", "store-login", "store-token", "postgres://vitrinee-role", "master-key"];
   const AGENTPEY_SECRETS = ["S-ISSUER", "S-AGENT", "S-ADMIN", "twelve words", "apk-realops", "re-key", "S-SIGNALDESK", "S-SD-FACILITATOR", "postgres://shared"];
 
   const childEnv = (target: typeof WEB_TARGET) => filterEnv(CONTAINER, target.envKeys, { PORT: String(target.port) }, target.envAliases);
@@ -114,6 +145,8 @@ describe("which secrets each child actually receives", () => {
       FACILITATOR_API_KEY: "oz-key",
       JUMPSELLER_LOGIN: "store-login",
       JUMPSELLER_AUTHTOKEN: "store-token",
+      DATABASE_URL: "postgres://vitrinee-role",
+      MASTER_KEY: "master-key",
       PORT: "4104",
     });
     for (const secret of AGENTPEY_SECRETS) expect(Object.values(env)).not.toContain(secret);
@@ -136,10 +169,18 @@ describe("which secrets each child actually receives", () => {
   /** A `VITRINEE_` name in another app's list would be the leak this whole scheme exists to prevent. */
   it("lists no VITRINEE_ secret in any other app's keys", () => {
     const secretNames = Object.values(VITRINEE_TARGET.envAliases ?? {}).filter((name) => /SECRET|KEY|LOGIN|AUTHTOKEN/.test(name));
-    expect(secretNames).toHaveLength(4);
+    expect(secretNames).toHaveLength(5);
     for (const target of APP_TARGETS.filter((candidate) => candidate !== VITRINEE_TARGET)) {
-      for (const name of secretNames) expect(target.envKeys).not.toContain(name);
+      for (const name of [...secretNames, "VITRINEE_DATABASE_URL"]) expect(target.envKeys).not.toContain(name);
     }
+  });
+
+  /** T103, C-143: the container's DATABASE_URL is AgentPey's; Vitrinee only ever gets its own role's. */
+  it("never hands Vitrinee AgentPey's DATABASE_URL, even when its own is not set", () => {
+    const { VITRINEE_DATABASE_URL: _own, ...withoutOwn } = CONTAINER;
+    const env = filterEnv(withoutOwn, VITRINEE_TARGET.envKeys, {}, VITRINEE_TARGET.envAliases);
+    expect(env.DATABASE_URL).toBeUndefined();
+    expect(Object.values(env)).not.toContain("postgres://shared");
   });
 });
 

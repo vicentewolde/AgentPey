@@ -51,7 +51,11 @@ importe del otro lado. Es gestión de claves, dentro de `P-10`. Desde T102
 (`C-136`) Vitrinee es la cuarta app de ese servicio: sus variables llevan
 prefijo `VITRINEE_` y le llegan solo a ella por `envAliases`. Nunca pongas un
 nombre `VITRINEE_` en el `envKeys` de otra app, ni una clave de AgentPey en el
-de Vitrinee.
+de Vitrinee. Desde T103 (`C-143`, `VT-27`) eso incluye `VITRINEE_DATABASE_URL`
+(un rol de Postgres que solo ve el esquema `vitrinee`; Vitrinee nunca recibe el
+`DATABASE_URL` de AgentPey) y `VITRINEE_MASTER_KEY` (sella las llaves de firma
+y credenciales de cada comercio). Nada de `packages/vitrinee-gateway/src/platform/`
+ni de `scripts/vitrinee/platform-setup.ts` se toca sin Claude Code (`P-10`).
 
 **F9 (piloto externo público), desde 2026-09-12:** no inicies código ni
 diseño de F9 por tu cuenta — ni RealOps Agent, ni SignalDesk, ni el catálogo

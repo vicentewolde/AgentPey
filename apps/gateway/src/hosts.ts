@@ -162,6 +162,15 @@ export const VITRINEE_TARGET: AppTarget = {
     FACILITATOR_API_KEY: "VITRINEE_FACILITATOR_API_KEY",
     RECEIPT_REGISTRY_ID: "VITRINEE_RECEIPT_REGISTRY_ID",
     ORDERS_FILE: "VITRINEE_ORDERS_FILE",
+    // T103, the multi-merchant platform. `DATABASE_URL` here is Vitrinee's
+    // own role, limited to its own schema (C-143): the child reads it under
+    // the generic name, and the container's `DATABASE_URL` (AgentPey's) is
+    // never what it receives.
+    DATABASE_URL: "VITRINEE_DATABASE_URL",
+    MASTER_KEY: "VITRINEE_MASTER_KEY",
+    PLATFORM_HOST: "VITRINEE_PLATFORM_HOST",
+    ROOT_COMERCIO: "VITRINEE_ROOT_COMERCIO",
+    SEED_COMERCIO_SLUG: "VITRINEE_SEED_COMERCIO_SLUG",
   },
   // `VITRINEE_ADAPTER` is here although it is not a secret: Vitrinee defaults
   // to its mock store when it is unset, and a production deploy quietly
@@ -228,8 +237,34 @@ export function normaliseHost(hostHeader: string | undefined): string | undefine
   return host === undefined || host === "" ? undefined : host.toLowerCase();
 }
 
-/** `undefined` for a `Host` header this map does not recognise — the caller's job to turn that into a 404, not a guess. */
-export function resolveTarget(hostMap: HostMap, hostHeader: string | undefined): AppTarget | undefined {
+/**
+ * One store of the Vitrinee platform: exactly one label, shaped like a slug,
+ * in front of the Vitrinee host (T103, `C-142`). The same rule Vitrinee
+ * applies on its side (`packages/vitrinee-gateway/src/platform/hosts.ts`),
+ * copied rather than imported: the gateway imports nothing from the apps it
+ * runs.
+ */
+const STORE_LABEL = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const STORE_LABEL_MAX = 40;
+
+export function isStoreSubdomain(host: string, vitrineeHost: string): boolean {
+  const suffix = `.${vitrineeHost.toLowerCase()}`;
+  if (!host.endsWith(suffix)) return false;
+  const label = host.slice(0, host.length - suffix.length);
+  return label.length <= STORE_LABEL_MAX && STORE_LABEL.test(label);
+}
+
+/**
+ * `undefined` for a `Host` header this map does not recognise — the caller's job to turn that into a 404, not a guess.
+ *
+ * @param vitrineeHost When given, `<slug>.<vitrineeHost>` also resolves to
+ * Vitrinee (C-142). The one exception to exact matching, and as narrow as it
+ * can be: one label, whole-suffix comparison, never a prefix.
+ */
+export function resolveTarget(hostMap: HostMap, hostHeader: string | undefined, vitrineeHost?: string): AppTarget | undefined {
   const host = normaliseHost(hostHeader);
-  return host === undefined ? undefined : hostMap.get(host);
+  if (host === undefined) return undefined;
+  const exact = hostMap.get(host);
+  if (exact !== undefined) return exact;
+  return vitrineeHost !== undefined && isStoreSubdomain(host, vitrineeHost) ? VITRINEE_TARGET : undefined;
 }

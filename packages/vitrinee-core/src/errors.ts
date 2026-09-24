@@ -16,6 +16,11 @@ export const ERROR_CODES = [
   "ReceiptInvalid",
   "AnchorError",
   "NetworkError",
+  // Multi-merchant platform (T103, C-140).
+  "ComercioNotFound",
+  "ComercioConflict",
+  "SecretUnreadable",
+  "StorageError",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -33,6 +38,11 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   ReceiptInvalid: 422,
   AnchorError: 502,
   NetworkError: 503,
+  ComercioNotFound: 404,
+  ComercioConflict: 409,
+  // A sealed secret that will not open is our fault, never the caller's.
+  SecretUnreadable: 500,
+  StorageError: 503,
 };
 
 export interface VitrineeErrorOptions {
