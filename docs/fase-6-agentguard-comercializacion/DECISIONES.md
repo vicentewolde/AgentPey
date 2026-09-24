@@ -6211,6 +6211,19 @@ conexión compartida con tablas prefijadas.
 rol con permisos acotados. Es lo primero que se prueba en el ticket; si no se
 puede, se cae a un Postgres aparte, con el precio mostrado al usuario antes.
 
+**Corrección, 2026-09-24 (T103).** El Postgres del piloto **no es de Render:
+es Supabase**, por su session pooler (ya lo decían `C-` anteriores y el
+`AGENT_LOG`; al decidir se escribió "Render" por error). Verificado en solo
+lectura: Postgres 17.6, el usuario `postgres` tiene `rolcreaterole` y puede
+crear esquemas, y ninguna tabla de AgentPey tiene permisos para `PUBLIC` (solo
+dos vistas del esquema `extensions` de Supabase). La decisión no cambia. La
+forma, afinada en T103: el esquema `vitrinee` lo crea el administrador y es
+suyo; el rol recibe solo `USAGE` y `CREATE` sobre él, y las tablas las crea el
+rol, que queda como dueño. El pooler nombra al rol `vitrinee.<ref del
+proyecto>`. `pnpm run vitrinee:platform-setup` comprueba el aislamiento desde
+los dos lados: como administrador (el rol no alcanza ninguna tabla fuera de su
+esquema) y conectado como el rol (las tablas de AgentPey lo rechazan).
+
 **No rescata** el pedido pendiente de T101, que vive en el disco de hoy.
 
 **Alternativa descartada: un Postgres aparte.** Aislamiento completo, pero un

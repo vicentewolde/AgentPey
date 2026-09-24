@@ -833,3 +833,44 @@ de correo no autentica nada.
 
 **Otra alternativa descartada: un enlace secreto mostrado una vez.** Si se
 pierde, el comercio queda afuera; si se filtra, cualquiera entra.
+
+---
+
+### VT-30 · Dos modos, una transición: Vitrinee es plataforma solo con sus dos variables, y la raíz sigue sirviendo a Bazar Cordillera hasta T104 · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** T103 · La forma, de Claude Code, dentro de `C-140` a `C-143`
+
+**Qué se decide.**
+
+1. **Modo plataforma solo con `DATABASE_URL` y `MASTER_KEY`** (en Render,
+   `VITRINEE_DATABASE_URL` y `VITRINEE_MASTER_KEY`). Sin ninguna de las dos,
+   Vitrinee arranca como la tienda única de siempre. Con una sola, no arranca:
+   es un error de configuración, y así se dice.
+2. **El comercio de antes se siembra una vez** desde las mismas variables
+   (`MERCHANT_*`, `JUMPSELLER_*`), con la misma cuenta de cobro y la misma llave
+   de firma: todo recibo ya emitido sigue verificando. El sembrado no pisa un
+   comercio existente.
+3. **Cada comercio es una instancia de la tienda de siempre** (`createApp`),
+   armada con su configuración. No se reescribió el checkout, ni x402, ni el
+   recibo, ni el anclaje: cada tienda sigue con un `payTo` fijo, que es lo que
+   el middleware x402 espera. Las URLs salen del `Host` del pedido.
+4. **La raíz sigue sirviendo a Bazar Cordillera** (`ROOT_COMERCIO`) mientras
+   AgentPey y RealOps apunten a `vitrinee.agentpey.com`. Se quita en T104,
+   cuando lean el directorio (`C-141`).
+5. **El pedido pendiente de T101 se reconstruye**, no se copia de un disco: su
+   vista pública (respaldada en
+   [`evidencia/T103-ord_muektgpgee1ebc73e5.json`](../evidencia/T103-ord_muektgpgee1ebc73e5.json))
+   más la URL de checkout que AgentPey guardó para el mismo pago
+   (`delivery.resource_url`, `VT-25`), que trae los datos de despacho. El recibo
+   y el ancla se copian tal cual (`VT-26`).
+
+**Motivo.** El punto 1 deja mergear T103 antes de que exista el rol: el deploy
+no cambia nada hasta que el usuario carga las dos variables. El punto 3 evita
+reescribir el camino que ya cobró en testnet. El punto 5 destraba PR #29: el
+pedido pendiente ya no depende del disco efímero.
+
+**Alternativa descartada: un checkout con `payTo` dinámico por pedido.** Un
+solo `createApp` para todos, pero obligaba a meterse en cómo el middleware x402
+arma sus requisitos, y cualquier error ahí cobra a la cuenta equivocada.
+
+**Otra alternativa descartada: apagar la raíz ya.** Rompía el catálogo en vivo
+de RealOps y la fila de `venues.json` hasta T104.

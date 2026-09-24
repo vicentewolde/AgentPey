@@ -123,6 +123,22 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
+## Estado al 2026-09-24 (T103 en PR)
+
+- **Multi-comercio (T103, `C-140` a `C-144`, `VT-27` a `VT-30`).** Con
+  `DATABASE_URL` y `MASTER_KEY` (en Render, `VITRINEE_DATABASE_URL` y
+  `VITRINEE_MASTER_KEY`) Vitrinee es una plataforma: comercios y pedidos en el
+  esquema `vitrinee` de la base del piloto (Supabase), con un rol que no ve
+  las tablas de AgentPey; llave de firma y credenciales de cada comercio
+  cifradas con la llave maestra; una tienda por subdominio
+  (`<slug>.vitrinee.agentpey.com`). Sin esas dos variables sigue siendo la
+  tienda única de abajo. Código en `packages/vitrinee-gateway/src/platform/`.
+  **Nunca** apuntes un `DATABASE_URL` local a la base del piloto: el comercio
+  de `.env.vitrinee.local` se siembra en ella. Para probar en local, un
+  Postgres local o PGlite (`evidencia/T103.md` § 4).
+- `pnpm run vitrinee:platform-setup` prepara la base e imprime los dos valores
+  para Render. Lo corre el usuario: imprime secretos. `--check` no cambia nada.
+
 ## Estado al 2026-09-23 (T102 en vivo)
 
 - **Deploy desde AgentPey (T102, `C-134`, `C-136`):** Vitrinee corre como
