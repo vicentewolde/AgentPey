@@ -74,9 +74,9 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 | T100 | ANTERIOR | 0,05 | 2 | | 1.026 líneas / 23 archivos (612 / 16 sin `docs/`) | 0 | 2 | 4 | 60 | pendiente |
 | T101 | ANTERIOR | | | | | | | | | |
 | T102 | ANTERIOR | 0,12 | 2 | | 576 líneas / 15 archivos (332 / 8 sin `docs/`), más 81 / 6 del ajuste | 0 | 3 | pendiente | pendiente | pendiente |
-| T103 | EXPONENTIAL | 0,03 | 2 | | 1.976 líneas / 28 archivos sin `docs/` (2.945 / 40 con la planificación) | 0 | 0 | pendiente | 52 (compartidos por T103 a T105; propuesta, falta confirmación del usuario) | pendiente |
-| T104 | EXPONENTIAL | 0,49 | 2 | | 1.650 líneas / 40 archivos (PR #31, con `docs/`) | 0 | 1 | pendiente | ver T103 | pendiente |
-| T105 | EXPONENTIAL | pendiente (merge) | 1 | | 1.959 líneas / 20 archivos sin `docs/` | pendiente | 0 | pendiente | ver T103 | pendiente |
+| T103 | EXPONENTIAL | 0,03 | 2 | | 1.976 líneas / 28 archivos sin `docs/` (2.945 / 40 con la planificación) | 0 | 0 | 4 | 52 (compartidos por T103 a T105; confirmados por el usuario) | 4 |
+| T104 | EXPONENTIAL | 0,49 | 2 | | 1.650 líneas / 40 archivos (PR #31, con `docs/`) | 0 | 1 | 4 | ver T103 | 4 |
+| T105 | EXPONENTIAL | 0,49 | 1 | | 1.959 líneas / 20 archivos sin `docs/` | 0 | 0 | 4 | ver T103 | pendiente |
 
 Notas por ticket (bloqueos, qué cambió, por qué) van debajo, una entrada por
 hito, al cerrarlo.
@@ -155,4 +155,7 @@ decisión (`P-`) que resulte.
 - M6 = 0 detenciones. Dos errores que no detuvieron el hito, encontrados en la
   vista previa y corregidos antes del PR (el botón que no se ocultaba y el
   chequeo de `Origin` sin el puerto).
-- M7: el usuario no la dio al correr `/start-ticket`; pendiente, igual que M9.
+- M1: 0,49 días (merge `71c4f4c` el 2026-09-24 ~15:15 UTC, unas 11,8 horas desde que se creó el ticket a las 03:21 UTC).
+- M5 = 0: aprobado a la primera.
+- M7 = 4 (dada por el usuario el 2026-09-24, junto con M7 = 4 y M9 = 4 de T103 y T104). M9 de T105, al cerrarlo.
+- M8: el usuario confirmó en el chat los 52 minutos de la planificación; en Exponential la entrada sigue `PROPOSED` hasta que corra `exponential time confirm`, que es solo humano.
