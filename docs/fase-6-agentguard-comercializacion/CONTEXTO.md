@@ -77,3 +77,21 @@ principal, con los límites aplicados por la red (`C-20`). El plano no altera
 nada de lo ya construido: sigue en pie que esta fase es aditiva y que
 `checkMandate`, `scope.limits`/`perDay` y los contratos Soroban no se
 tocan.
+
+**Desde el 2026-09-24, el lado de la oferta tiene plan: Vitrinee como
+plataforma de comercios.** RealOps es la demanda: personas que contratan
+agentes y les firman permisos. Faltaba el espejo para la oferta: un lugar donde
+un comercio se registra, publica su catálogo para agentes y ve lo que le
+compraron, sin escribir código. Es Vitrinee, hecha multi-comercio (`C-140`), y
+SignalDesk sigue siendo un comercio de ejemplo. Las decisiones que la gobiernan
+salieron de un `/grill-with-docs` (`P-13`): llave de firma por comercio,
+cifrada (`VT-27`); alta con credenciales pegadas hasta que exista la app de
+Jumpseller (`VT-28`); AgentPey confía en la plataforma y lee su directorio
+(`C-141`); un subdominio por comercio (`C-142`); datos en Postgres con un rol
+propio (`C-143`); el dueño entra con la wallet de su cuenta de cobro (`VT-29`);
+y qué entra antes del video del 29 (`C-144`). El PRD vive en
+[prd/T103-plataforma-comercios.md](prd/T103-plataforma-comercios.md).
+
+**Lo que un comercio valora de verdad**, y conviene no prometer de más: vender,
+y que el pedido le llegue a su panel de Jumpseller. Vitrinee le suma ventas de
+agentes, la prueba del pago en la red y un recibo verificable.

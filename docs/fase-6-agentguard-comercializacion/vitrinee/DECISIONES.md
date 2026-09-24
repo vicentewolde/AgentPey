@@ -728,3 +728,108 @@ ya estaba pagado. Si algún día acepta parámetros, deja de ser aceptable.
 del disco efímero de Render, así que un script en otra máquina no los ve.
 **Otra: volver a firmar el recibo con el pedido.** Rompe la relación entre el
 hash anclado y lo que se le entregó al comprador.
+
+### VT-27 · Cada comercio tiene su propia llave de firma, que Vitrinee genera y guarda cifrada con una llave maestra · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** planificación de T103 en adelante (`C-140`) · **Decidido por el usuario**; la recomendación, de Claude Code
+
+> Numeración: se tomó el 27 porque `VT-26` vivía en la rama de T101 (PR #29),
+> todavía sin mergear al decidir; se mergeó el 2026-09-24.
+
+**Qué se decide.** Con Vitrinee atendiendo a muchos comercios (`C-140`):
+
+1. **La plata no cambia.** Cada comercio cobra en su propia cuenta Stellar, que
+   crea en su wallet (`VT-4`, `VT-19`). Vitrinee nunca tiene una llave que mueva
+   sus fondos.
+2. **Una llave de firma por comercio**, generada por Vitrinee al darlo de alta.
+   Firma sus recibos y paga el anclaje con su propio XLM, igual que hoy
+   (`VT-8`). Sigue siendo distinta de la cuenta de cobro.
+3. **Las llaves de firma y las credenciales de la tienda se guardan cifradas**
+   con una sola llave maestra que vive en Render con prefijo `VITRINEE_` y que
+   carga el usuario (`P-10`, `C-136`). Ningún secreto de un comercio queda en
+   claro en disco ni en la base.
+4. **Las credenciales de la tienda no se vuelven a mostrar** después de
+   guardarlas. El comercio las revoca desde su plataforma cuando quiera.
+
+**Lo que esto prueba y lo que no, dicho en la documentación.** El recibo se
+certifica solo: la verificación comprueba la firma contra la llave que el mismo
+recibo nombra (`packages/vitrinee-anchor/src/verify.ts`), y lo que ata esa llave
+al comercio es el manifest que sirve Vitrinee. La firma prueba "Vitrinee lo
+emitió en nombre del comercio", no "el comercio lo firmó". La evidencia que no
+depende del operador es la comprobación 3: el USDC llegó en la red a la cuenta
+del comercio. Es el mismo punto que `C-140` dejaba abierto sobre `C-88`, y se
+acepta así para un piloto en testnet.
+
+**Alternativa descartada: una sola llave de Vitrinee para todos.** Un solo
+secreto, como hoy, pero `merchantDid` sería el mismo en todos los recibos:
+obligaba a cambiar la especificación del recibo a `0.2` y la verificación antes
+del 29.
+
+**Otra alternativa descartada: que el comercio pegue su propia llave secreta.**
+Le pide manejar un secreto de Stellar y Vitrinee lo termina guardando igual.
+Queda anotado para después que un comercio pueda traer su propia llave de firma.
+
+---
+
+### VT-28 · El alta de un comercio usa credenciales pegadas hasta el 29; la app de Jumpseller con OAuth viene después · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** planificación de T103 en adelante (`C-140`) · **Decidido por el usuario**; la recomendación, de Claude Code
+
+**Qué se decide.**
+
+1. **Hasta el video del 29, el comercio pega su login y su token de API** de
+   Jumpseller en el formulario de alta. Vitrinee los prueba en el momento
+   leyendo el catálogo; si no leen, el alta se rechaza con un motivo claro. Si
+   leen, se guardan cifrados (`VT-27`).
+2. **El usuario hace el trámite de la app de Jumpseller**: registrarla en el
+   portal de partners, pedir su publicación y aceptar la oferta de soporte de
+   marcar una tienda como "tienda de desarrollo". Es trabajo suyo, no de código.
+3. **Después del 29, el alta pasa a OAuth.** El conector de Jumpseller recibe
+   "las credenciales de la tienda" sin asumir su forma, para que el cambio no
+   toque el resto.
+
+**Motivo.** Según la documentación de Jumpseller
+(`https://jumpseller.com/support/apps/`, leída el 2026-09-23), una app usa
+OAuth2 con permisos por recurso (`read_orders`, `write_orders`,
+`read_products`…), y mientras no está publicada solo se instala en la tienda
+asociada a ella. Instalarla en la tienda de otro dueño exige la revisión de
+Jumpseller, sin plazo conocido. Las credenciales pegadas ya funcionan: así está
+conectada la tienda de hoy.
+
+**Lo que se cede.** El token de API de Jumpseller da acceso amplio a la tienda,
+no solo a pedidos y productos. Una app con permisos acotados es lo correcto a
+largo plazo.
+
+**Hipótesis sin verificar, para soporte.** Si el `404 Account not found` al
+crear pedidos (T101) tiene que ver con usar el token de API en vez de una app
+OAuth, la misma respuesta resolvería T101 y esto.
+
+**Alternativa descartada: esperar a la app para dar de alta la segunda tienda.**
+Deja el video del 29 dependiendo de una revisión que no controlamos.
+
+---
+
+### VT-29 · El dueño de un comercio entra firmando con la wallet de su cuenta de cobro · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** planificación de T103 en adelante (`C-140`) · **Decidido por el usuario**; la recomendación, de Claude Code
+
+**Qué se decide.** En el alta, el dueño conecta Freighter y la cuenta conectada
+pasa a ser la cuenta de cobro del comercio: prueba que es suya y evita un error
+de tipeo que mandaría las ventas a otra cuenta. Para volver a entrar al panel,
+firma un mensaje (SEP-0053, `verifyStellarMessage` de `@agentpass/core`, la
+pieza neutral que `C-88` permite importar). Sin contraseñas ni emails.
+
+1. **Al dar de alta, Vitrinee revisa que la cuenta pueda recibir USDC** de
+   testnet. Si le falta la línea de confianza, el alta se detiene con un
+   mensaje que explica cómo agregarla: sin ella, el primer pago fallaría.
+2. **La sesión vale solo en el portal** (`vitrinee.agentpey.com`, `C-142`),
+   nunca en los subdominios de las tiendas, que son públicos para los agentes.
+
+**Motivo.** El panel guarda las credenciales de la tienda (`VT-27`) y muestra
+sus ventas. RealOps entra por email, pero en el piloto corre en modo "en
+pantalla" por falta de proveedor de correo: escribir un email deja adentro. Y el
+comercio ya tiene una wallet, porque `VT-19` le pide crear su cuenta de cobro
+en Freighter.
+
+**Alternativa descartada: email con enlace mágico, como RealOps.** Sin proveedor
+de correo no autentica nada.
+
+**Otra alternativa descartada: un enlace secreto mostrado una vez.** Si se
+pierde, el comercio queda afuera; si se filtra, cualquiera entra.

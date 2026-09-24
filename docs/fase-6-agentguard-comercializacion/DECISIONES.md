@@ -5657,6 +5657,11 @@ compatibilidad de T99, así que la compra real de T101 no puede hacerse contra
 un ticket aparte, bloqueado por T101. Dónde se despliega y en qué URL quedó
 decidido en `C-134`. El resto del plan no cambia.
 
+**Ajuste, 2026-09-23 (`C-141`).** Con Vitrinee atendiendo a muchos comercios
+(`C-140`), "una fila por tienda en `venues.json`" pasa a ser una fila por
+plataforma más un directorio público de comercios que AgentPey lee. El resto
+del plan no cambia.
+
 **Alternativa descartada: presentar Vitrinee y AgentPey como dos proyectos.** El
 formulario del hackathon pide un solo repo. Además, cada mitad sola cuenta media
 historia: AgentPey sin comercio real compra servicios de prueba, y Vitrinee sin
@@ -6047,3 +6052,212 @@ se reinicia a las 00:00 UTC. Hasta entonces caben 11,33 más.
 **Alternativa descartada: `spendControls: false`.** Arregla el síntoma, pero
 deja al cliente sin tope propio: si algún día eligiera otra oferta del comercio,
 nada en la librería lo frenaría.
+
+---
+
+### C-140 · La plataforma de comercios es Vitrinee, hecha multi-comercio; SignalDesk sigue siendo un comercio de ejemplo · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** planificación de T103 en adelante (`/grill-with-docs`, `P-13`) · **Decidido por el usuario**; la recomendación, de Claude Code
+
+**Qué se decide.** El lado de la oferta de AgentPey, el espejo de RealOps
+(donde un comercio se registra, publica su catálogo para agentes y ve lo que le
+compraron, sin escribir código), es **Vitrinee**, con ese nombre. Hoy Vitrinee
+atiende a un solo comercio, configurado por variables de entorno; el trabajo
+desde T103 es que atienda a muchos. **SignalDesk no cambia**: sigue siendo un
+comercio independiente con sus propias llaves (`C-88`), el ejemplo de la otra
+forma de sumarse, la de un comercio que escribe su propio servidor x402.
+
+**Vocabulario que queda fijado** (glosario en
+[`vitrinee/CONTEXT.md`](vitrinee/CONTEXT.md)): un **comercio** es el negocio que
+se registra en Vitrinee; una **tienda** es su tienda en una plataforma de
+e-commerce (Jumpseller hoy). Por ahora, un comercio tiene exactamente una
+tienda.
+
+**Motivo.** Vitrinee ya es el motor: adaptadores por plataforma, catálogo x402,
+cobro directo al `payTo` del comercio, recibo firmado y anclado, panel de
+pedidos. Lo único que la ata a un comercio es que todo sale del entorno
+(`packages/vitrinee-gateway/src/config.ts`). SignalDesk, en cambio, es un
+comercio: dos productos escritos en su código. Y ya está en
+`vitrinee.agentpey.com` y en la narrativa del hackathon (`P-12`, `C-130`).
+
+**Lo que queda abierto, para la decisión de custodia.** Si AgentPey opera
+Vitrinee y guarda la llave que firma los recibos de cada comercio, el recibo
+del vendedor lo firma una llave que custodia el operador. Es el riesgo de
+circularidad que `C-88` evitó con SignalDesk; se resuelve en la decisión
+siguiente.
+
+**Alternativa descartada: SignalDesk como plataforma**, propuesta por el
+usuario al principio. El comercio de ejemplo pasaría a operar a todos los demás
+comercios, que es justo lo que `C-88` separa, y habría que construirle el motor
+que Vitrinee ya tiene.
+
+**Otra alternativa descartada: un nombre nuevo.** Costaba dominio, documentos y
+paquetes a seis días del video, sin un problema de marca que lo pidiera.
+
+---
+
+### C-141 · AgentPey confía en la plataforma Vitrinee, no en cada comercio: una fila en `venues.json` y un directorio público de comercios · `Vigente`
+**Fecha:** 2026-09-23 · **Hito:** planificación de T103 en adelante (`C-140`) · **Decidido por el usuario** (opción b de tres); la forma, de Claude Code
+
+**El problema.** `venues.json` va compilado dentro de AgentPey, y
+`apps/web/src/tenant-purchase.ts` rechaza pagarle a un comercio que no esté en
+él, aunque un catálogo público lo anuncie. Con muchos comercios en Vitrinee,
+agregar una fila por comercio no es "sin código" para el comercio, y cada alta
+terminaría en un deploy (que además borra los pedidos de Vitrinee mientras
+vivan en disco).
+
+**Qué se decide.** `venues.json` tiene **una fila para la plataforma**
+Vitrinee, que dice en qué dominio vive, qué activo acepta (USDC de testnet) y
+dónde está su **directorio público de comercios**. AgentPey lee ese directorio
+por HTTP, igual que ya lee catálogos. Cada comercio del directorio es, para
+AgentPey, un comercio distinto, con su propio id (`slug:cuenta de cobro`) y su
+propia cuenta. El fallo cerrado se conserva en tres puntos:
+
+1. Un comercio que no esté en el directorio, o cuya URL salga del dominio de la
+   plataforma, no se paga.
+2. Los activos los fija la fila de AgentPey, nunca el directorio: un activo que
+   no sea USDC de testnet se rechaza aunque Vitrinee lo pida.
+3. Estar en el directorio no le paga nada a nadie: hace falta un permiso
+   firmado por una persona que nombre ese comercio, su cuenta y sus productos.
+
+**En RealOps**, el "Comprador de la tienda" (`C-135`) deja de estar atado a una
+tienda: la persona elige un comercio de una lista leída del directorio, y el
+permiso se arma con ese comercio, su cuenta de cobro y sus productos.
+
+**Lo que se cede, dicho en voz alta.** Quien controle Vitrinee puede hacer
+aparecer un comercio nuevo como pagable. Para que reciba plata, igual una
+persona tiene que firmarle un permiso que lo nombre.
+
+**Ajusta `C-130`**, que decía "una fila por tienda en `venues.json`": pasa a ser
+una fila por plataforma. La promesa de `F7` (agregar un comercio no toca ningún
+`.ts`) se mantiene y se amplía: ahora tampoco toca ningún `.json`.
+
+**Alternativa descartada: la lista en Postgres, escrita por Vitrinee al dar de
+alta un comercio.** Automática, pero Vitrinee necesitaría una llave para
+escribir en la autorización de AgentPey: el lado vendedor metiendo mano en el
+lado comprador, que es lo que `C-88` y `C-136` separan.
+
+**Otra alternativa descartada: una fila por comercio, agregada por el equipo.**
+No es "sin código" para el comercio, y cada alta es un deploy.
+
+---
+
+### C-142 · Cada comercio de Vitrinee tiene su subdominio, `<slug>.vitrinee.agentpey.com`; la raíz es el portal · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** planificación de T103 en adelante (`C-140`, `C-141`) · **Decidido por el usuario**, incluido el costo; la forma, de Claude Code
+
+**Qué se decide.**
+
+1. **`vitrinee.agentpey.com` es el portal**: el alta, el panel de cada comercio
+   y el directorio público de `C-141`.
+2. **`<slug>.vitrinee.agentpey.com` es la tienda de cada comercio para los
+   agentes**: su manifest, su catálogo y su checkout. La regla del directorio
+   queda así: la URL de un comercio tiene que ser un subdominio de la
+   plataforma.
+3. **El gateway acepta esos subdominios con una regla estrecha**: una sola
+   etiqueta con forma de slug delante de `.vitrinee.agentpey.com` exacto, y
+   todos van al proceso de Vitrinee. Nunca por prefijo (el error que cerró
+   `C-109`). Amplía `C-114` (ruteo por dominio exacto) solo para ese sufijo.
+4. **Vitrinee resuelve el comercio desde un solo punto del pedido**, así que
+   caer a rutas (`/c/<slug>`) si el comodín falla cambia las URLs del
+   directorio y nada más.
+
+**Motivo.** El manifest (`/.well-known/agent-storefront.json`) es uno por
+dominio por definición: con rutas, todos los comercios compartirían uno o
+habría que cambiar la especificación. AgentPey acepta las dos formas (pega la
+ruta a la URL base, `apps/agent/src/payment/x402.ts`), así que la diferencia
+está del lado de Vitrinee.
+
+**Costo, aprobado por el usuario.** Render cuenta el comodín
+`*.vitrinee.agentpey.com` como **un** dominio más: 0,25 USD al mes, fijo, sin
+importar cuántos comercios haya (documentación de Render, leída el
+2026-09-24). Con `vitrinee.agentpey.com`, los dominios adicionales suman
+0,50 USD al mes. Render emite el certificado; hacen falta tres CNAME en Vercel
+(el comodín, `_acme-challenge` y `_cf-custom-hostname`), que crea el usuario.
+
+**Lo que cuesta a la tienda de hoy.** Bazar Cordillera pasa a su subdominio y
+cambia de id en AgentPey: los permisos ya firmados en RealOps nombran el id
+viejo y dejan de servir. Para el video se contrata un agente nuevo. El pedido
+pendiente de T101 no se toca: su reintento (`VT-26`) sale de su registro, no
+de la URL.
+
+**Alternativa descartada: ruta por comercio.** Sin costo ni DNS, pero rompe el
+manifest por dominio. Queda como salida si el comodín falla.
+
+**Otra alternativa descartada: un comercio con muchas cuentas de cobro.** Ya
+fuera por `C-141`: cada comercio es un comercio distinto para AgentPey.
+
+---
+
+### C-143 · Vitrinee guarda sus datos en el Postgres del piloto, con un rol propio que solo ve su esquema · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** planificación de T103 en adelante (`C-140`) · **Decidido por el usuario** (opción a de tres); la forma, de Claude Code
+
+**El problema.** Con muchos comercios, Vitrinee no guarda solo pedidos: guarda
+el registro de comercios, sus credenciales de tienda cifradas y sus llaves de
+firma (`VT-27`). Hoy todo iría a un archivo en el disco efímero de Render, y un
+deploy borraría los comercios enteros.
+
+**Qué se decide.** Vitrinee usa la misma instancia de Postgres del piloto, con
+**un rol propio que solo puede tocar el esquema `vitrinee`**, entregado como
+`VITRINEE_DATABASE_URL` (prefijo y aislamiento de `C-136`). Vitrinee sigue sin
+recibir `DATABASE_URL` y su rol no puede leer permisos, tenants ni la bitácora
+de AgentPey. El rol lo crea el usuario con un comando que genera la contraseña
+e imprime la conexión para pegarla en Render; Claude Code no la ve (`P-10`).
+
+**Ajusta `C-136`**, que decía que Vitrinee no recibe ni siquiera
+`DATABASE_URL`: sigue sin recibirla, y recibe una conexión distinta, acotada a
+su esquema. Queda más firme que el arreglo de SignalDesk (`C-88`), que usa la
+conexión compartida con tablas prefijadas.
+
+**Sin verificar al decidir.** Que el plan de Postgres de Render permita crear un
+rol con permisos acotados. Es lo primero que se prueba en el ticket; si no se
+puede, se cae a un Postgres aparte, con el precio mostrado al usuario antes.
+
+**No rescata** el pedido pendiente de T101, que vive en el disco de hoy.
+
+**Alternativa descartada: un Postgres aparte.** Aislamiento completo, pero un
+plan pago más, sin un problema que el rol acotado no resuelva.
+
+**Otra alternativa descartada: un disco persistente de Render.** Sigue siendo un
+archivo, sin transacciones, y vive en el mismo contenedor que los otros tres
+procesos.
+
+---
+
+### C-144 · Antes del video del 29 entran tres hitos de la plataforma de comercios; el resto va después · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** planificación de T103 en adelante (`C-140`) · **Decidido por el usuario**; el corte, de Claude Code
+
+**Antes del 29, en este orden**, cada uno demostrable por sí solo:
+
+- **T103 · Vitrinee atiende a varios comercios, con datos en Postgres.** Rol y
+  esquema propios (`C-143`), llaves y credenciales cifradas (`VT-27`), pedidos
+  que sobreviven a un deploy, comodín de subdominios y la regla nueva del
+  gateway (`C-142`). Bazar Cordillera pasa a ser el primer comercio, en su
+  subdominio.
+- **T104 · AgentPey y RealOps leen el directorio** (`C-141`): fila de
+  plataforma en `venues.json`, fallo cerrado, y en RealOps se elige el comercio
+  al contratar un "Comprador de la tienda".
+- **T105 · Un dueño da de alta su tienda sin código**: entra con su wallet
+  (`VT-29`), se revisa su línea de confianza de USDC, pega sus credenciales de
+  Jumpseller que se prueban en el momento (`VT-28`), Vitrinee genera y fondea
+  su llave de firma, y al terminar ve su tienda publicada y un panel mínimo con
+  sus pedidos. Si el tiempo no alcanza, lo primero que se cae es ese panel
+  mínimo; el alta se mantiene, porque es la escena del video.
+
+**Después del 29:** la app de Jumpseller con OAuth (`VT-28`); el panel completo
+(recibos, reintentar un pedido pagado y sin cumplir, desactivar el comercio,
+cambiar credenciales); que un comercio traiga su propia llave de firma
+(`VT-27`).
+
+**La segunda tienda del video** es una cuenta de Jumpseller en prueba gratuita,
+creada por el usuario. En prueba la lectura del catálogo funciona, que es lo
+que usa el alta; crear pedidos daba `403` (`VT-21`). La escena del alta usa la
+tienda nueva; la escena de compra sigue en Bazar Cordillera, con plan pagado.
+
+**Bloqueante sin resolver al decidir.** Cualquier merge a `main` redespliega y
+borra el pedido pendiente de T101 (`ord_muektgpgee1ebc73e5`), que vive en el
+disco efímero. T103 se puede construir entero en su rama, pero su primer merge
+espera a que el usuario decida PR #29: mergearlo y perder ese registro (la
+recomendación de Claude Code: repetir la compra cuando Jumpseller funcione), o
+esperar a Jumpseller.
+
+**Alternativa descartada: un solo hito grande.** Nada demostrable hasta el
+final, y sin un punto natural donde cortar si el tiempo no alcanza.

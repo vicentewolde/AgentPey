@@ -19,7 +19,10 @@ palabra para una de estas cosas, está mal el ticket.
 | **Gateway** | El servidor de Vitrinee. Sirve el manifest, cobra x402, crea el pedido y emite el recibo. No es plugin de la plataforma (VT-1). |
 | **Manifest** | `/.well-known/agent-storefront.json`. Lo que un agente lee para saber que esta tienda es comprable, qué vende y en qué condiciones. |
 | **Adapter** | El traductor a una plataforma de e-commerce concreta (`mock`, `jumpseller`). Es lo único que cambia entre plataformas. |
-| **Merchant** | La tienda. Tiene dos cuentas Stellar distintas: la que **recibe** (`payTo`) y la que **firma** recibos (VT-8). |
+| **Comercio** | El negocio que se registra en Vitrinee: tiene dueño, cuenta de cobro y recibos. Vitrinee atiende a muchos comercios (`C-140`). En el código se llama *merchant*. |
+| **Tienda** | La tienda de un comercio en una plataforma de e-commerce (Jumpseller hoy). Por ahora un comercio tiene exactamente una tienda (`C-140`). |
+| **Directorio de comercios** | La lista pública de comercios de Vitrinee, con la URL y la cuenta de cobro de cada uno. AgentPey la lee para saber a quién puede pagarle; no agrega activos ni autoriza pagos por sí sola (`C-141`). |
+| **Merchant** | El nombre del comercio en el código. Tiene dos cuentas Stellar distintas: la que **recibe** (`payTo`) y la que **firma** recibos (VT-8). |
 | **`payTo`** | La cuenta Stellar del merchant que recibe el USDC. La trae el merchant desde su propia wallet; Vitrinee no la genera ni conoce su llave (VT-19, VT-4). |
 | **Agente** | El comprador. Cualquier cliente x402 estándar, no un SDK de Vitrinee. |
 | **Principal** | El humano o la empresa por cuenta de quien compra el agente. Es quien necesita el recibo verificable. |
