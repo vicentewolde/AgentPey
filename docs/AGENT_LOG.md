@@ -6688,3 +6688,20 @@ Pendiente:
   compra del video del 29.
 - Tarea aparte sugerida: que `isSellable` no publique SKUs repetidos.
 
+## 2026-09-24 (11) — cc/untrack-traspaso
+
+Agente: Claude Code.
+
+Qué, con OK del usuario: `670b723` (el arreglo de `platform-setup` de otra
+sesión, PR #33) entró a `main` sin revisión porque la rama de la entrada (10)
+salió de `cc/fix-platform-setup` y no de `main`. El usuario decidió dejarlo: ya
+lo usó para rotar la contraseña y funciona. El traspaso de T105, que ese commit
+había trackeado, sale del índice otra vez (sigue en disco, sin trackear).
+
+Pendiente de seguridad, anotado por la otra sesión: la llave maestra de
+Vitrinee pasó por el chat. Rotar la contraseña del rol cerró la combinación,
+pero la llave sigue igual y no hay herramienta para cambiarla (habría que volver
+a sellar cada comercio). Deuda para después del 29.
+
+Exponential: sin cambios.
+
