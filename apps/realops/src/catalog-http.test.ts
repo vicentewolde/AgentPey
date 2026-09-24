@@ -592,10 +592,79 @@ describe("buying from the Vitrinee store (T100)", () => {
     expect(review).not.toContain(STORE_VENUE_ID);
   });
 
-  it("refuses to hire a store shopper from the general form, where no store is chosen", async () => {
-    const cookie = await signIn("sin-tienda@ejemplo.cl");
-    const response = await fetch(`${baseUrl}/agentes`, form({ kind: "vitrinee_shopper", label: "X", perTx: "1", perDay: "1", validForDays: "30" }, cookie));
-    expect(response.status).toBe(400);
+  describe("hiring a store shopper from the agents page (C-147)", () => {
+    const hire = (cookie: string, fields: Record<string, string>): Promise<Response> =>
+      fetch(`${baseUrl}/agentes`, form({ kind: "vitrinee_shopper", perTx: "25.00", perDay: "25.00", validForDays: "30", ...fields }, cookie));
+
+    it("offers every store the directory names, with the store limits already filled in", async () => {
+      const cookie = await signIn("contratar-tienda@ejemplo.cl");
+      const html = await (await fetch(`${baseUrl}/agentes`, { headers: { cookie } })).text();
+      expect(html).toContain('<option value="bazar-cordillera">Bazar Cordillera</option>');
+      expect(html).toContain('<option value="otra-tienda">Otra Tienda</option>');
+      expect(html).toContain('id="store-perTx" name="perTx" required value="25.00"');
+      expect(html).toContain('id="store-perDay" name="perDay" required value="25.00"');
+      // The general form keeps offering the other agents with their own defaults.
+      expect(html).toContain('id="perTx" name="perTx" required value="0.30"');
+    });
+
+    it("hires a shopper bound to the chosen store, with the limits it was sent", async () => {
+      const cookie = await signIn("tienda-desde-form@ejemplo.cl");
+      const response = await hire(cookie, { comercio: "otra-tienda", perTx: "5.00", perDay: "8.00" });
+      expect(response.status).toBe(302);
+      const account = await store.findAccountByEmail("tienda-desde-form@ejemplo.cl");
+      const agents = await store.listAgents(account!.id);
+      expect(agents).toHaveLength(1);
+      expect(agents[0]).toMatchObject({ kind: "vitrinee_shopper", comercio: "otra-tienda", permissions: { perTx: "5.00", perDay: "8.00", validForDays: 30 } });
+      expect(agents[0]!.label).toContain("Otra Tienda");
+      expect(response.headers.get("location")).toBe(`/agentes/${agents[0]!.id}`);
+    });
+
+    it("can buy at its store once signed, at the store's own venue", async () => {
+      const cookie = await signIn("compra-desde-form@ejemplo.cl");
+      const created = await hire(cookie, { comercio: "bazar-cordillera" });
+      const agentId = created.headers.get("location")!.slice("/agentes/".length);
+      await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
+      await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+      const before = purchases.length;
+      await fetch(`${baseUrl}/instruccion`, form({ product_id: "37283001", param_quantity: "1", ...SHIPPING }, cookie));
+      expect(purchases).toHaveLength(before + 1);
+      expect(purchases[before]!.venue).toBe(STORE_VENUE_ID);
+    });
+
+    it("refuses a store the directory does not list, and creates nothing", async () => {
+      const cookie = await signIn("tienda-falsa@ejemplo.cl");
+      expect((await hire(cookie, { comercio: "tienda-inventada" })).status).toBe(404);
+      expect((await hire(cookie, {})).status).toBe(404);
+      const account = await store.findAccountByEmail("tienda-falsa@ejemplo.cl");
+      expect(await store.listAgents(account!.id)).toHaveLength(0);
+    });
+
+    it("sends a second request for the same store to the shopper that exists", async () => {
+      const cookie = await signIn("doble-clic@ejemplo.cl");
+      const first = await hire(cookie, { comercio: "bazar-cordillera" });
+      const second = await hire(cookie, { comercio: "bazar-cordillera" });
+      expect(second.headers.get("location")).toBe(first.headers.get("location"));
+      const account = await store.findAccountByEmail("doble-clic@ejemplo.cl");
+      expect(await store.listAgents(account!.id)).toHaveLength(1);
+    });
+
+    it("still lists the other agents, and says the directory is down, when it cannot be read", async () => {
+      const cookie = await signIn("form-sin-directorio@ejemplo.cl");
+      directoryFails = true;
+      try {
+        const html = await (await fetch(`${baseUrl}/agentes`, { headers: { cookie } })).text();
+        expect(html).toContain("The store directory is not answering");
+        expect(html).toContain("Bazaar Shopper");
+        expect(html).not.toContain('<option value="bazar-cordillera">');
+      } finally {
+        directoryFails = false;
+      }
+    });
+
+    it("rejects limits that are not amounts", async () => {
+      const cookie = await signIn("limites-malos@ejemplo.cl");
+      expect((await hire(cookie, { comercio: "bazar-cordillera", perTx: "mucho" })).status).toBe(400);
+    });
   });
 
   it("says so, and keeps the other merchants, when the directory cannot be read", async () => {

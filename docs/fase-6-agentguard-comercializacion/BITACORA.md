@@ -5183,3 +5183,25 @@ compra y T106 se cierra.
 Guion: [`demo-day/GUION.md`](demo-day/GUION.md). Video y demo en vivo:
 [`demo-day/VIDEO-RESPALDO.md`](demo-day/VIDEO-RESPALDO.md). Salidas crudas en
 [`evidencia/T106.md`](evidencia/T106.md).
+
+### T106 · un arreglo hecho de paso: contratar el comprador de tienda desde "Mis agentes" (`C-147`)
+
+**En palabras simples.** Al preparar el ensayo de la demo, el usuario abrió
+"Mis agentes" con un usuario nuevo y solo pudo contratar tres tipos de agente;
+el comprador de la tienda no aparecía, porque solo se contrataba desde la tarjeta
+de un producto en el catálogo y nada lo avisaba. Ahora, más abajo en "Mis
+agentes", hay **Contratar un comprador de tienda**: eliges Bazar Cordillera o
+MycoKit y los límites ya vienen puestos en 25,00 por compra y por día (los del
+comprador de tienda), no en 0,30 y 0,60 como los otros agentes, con los que no
+se puede comprar ni el producto más barato (1,04 USDC). El catálogo sigue
+funcionando igual.
+
+Comprobado en el navegador con las dos tiendas reales del directorio: el
+selector muestra Bazar Cordillera y MycoKit, y contratar uno de MycoKit lleva a
+"Revisar el permiso" con su tienda, sus cuatro productos y 25,00 / 25,00. No se
+firmó nada. Tests: 193 en RealOps (eran 187), `pnpm test` y `pnpm typecheck` en
+verde.
+
+**Sin desplegar.** Vive en la rama `cc/realops-store-hire`; en producción no
+cambia nada hasta mergear. Salidas en [`evidencia/T106.md`](evidencia/T106.md) § 8.
+

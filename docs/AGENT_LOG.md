@@ -6788,3 +6788,28 @@ Pendiente:
 - De Claude Code, con el enlace del recibo del ensayo: verificar pago y recibo,
   `evidencia/T106.md` § 7, cerrar T106. A las 18:00: chequeo de sitios y testnet.
 - OK del usuario para mergear esta rama (solo documentación).
+
+## 2026-09-24 (15) — cc/realops-store-hire (encima de cc/t106-demo-day)
+
+Agente: Claude Code.
+
+Qué: hallazgo del usuario al probar la demo con un usuario nuevo: en "Mis
+agentes" solo se podían contratar tres agentes y el comprador de tienda no
+aparecía (`C-145` punto 6 lo había sacado del formulario; solo se contrataba
+desde el catálogo). Ahora "Mis agentes" tiene la tarjeta "Contratar un comprador
+de tienda", con selector de tienda validado contra el directorio, un comprador por
+tienda y los límites de tienda ya puestos (25,00/25,00, los de `C-137`, sin
+cambiar números). `C-147`, tests nuevos (RealOps 193), vista previa local con
+las tiendas reales. Archivos: `apps/realops/src/app.ts`, `pages.ts`,
+`catalog-http.test.ts` y los docs de T106.
+
+Por qué no se delegó a Codex: RealOps arma el permiso que el usuario firma.
+
+`AGENTS.md`: sin cambios.
+
+Exponential: sin cambios.
+
+Pendiente: OK del usuario para mergear las dos ramas (`cc/t106-demo-day` y esta,
+fast-forward, en ese orden); el merge redespliega Render y RealOps queda con el
+formulario nuevo. Si el usuario prefiere un tope visible más bajo para la demo,
+cambiar `VITRINEE_DEFAULT_PERMISSIONS`.

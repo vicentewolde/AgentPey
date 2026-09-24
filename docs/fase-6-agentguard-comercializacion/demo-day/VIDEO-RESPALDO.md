@@ -16,9 +16,14 @@ Hace falta uno nuevo: los compradores contratados antes de T104 ya no pueden
 comprar (`C-145`, punto 8).
 
 1. Entra a `https://realops.agentpey.com` → **Entrar** (link por email).
-2. **Catálogo** → sección **Tiendas en Vitrinee** → tarjeta del **Pack de
-   stickers Cordillera** (Bazar Cordillera).
-3. **Ver el permiso que esto necesita →** → revisa → **Configurar este agente**.
+2. Hay dos caminos, el resultado es el mismo (`C-147`):
+   - **Mis agentes** → abajo, **Contratar un comprador de tienda** → **En qué
+     tienda**: *Bazar Cordillera* → **Configurar**. Los límites ya vienen en
+     25,00 por compra y por día.
+   - o **Catálogo** → sección **Tiendas en Vitrinee** → tarjeta del **Pack de
+     stickers Cordillera** → **Ver el permiso que esto necesita →** →
+     **Configurar este agente**.
+3. Un comprador por tienda: si ya existe uno para esa tienda, te lleva a ese.
 4. Página **Revisar el permiso**: mira la tabla (tope por compra, tope por
    día, tienda, USDC) → **Firmar en AgentPey**.
 5. En AgentPey (`agentpey.com/consent/…`):

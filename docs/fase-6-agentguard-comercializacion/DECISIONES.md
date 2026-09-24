@@ -6369,3 +6369,44 @@ ventanas de Freighter frente al público.
 referencia.** El enlace que compartieron es el deck de otro proyecto (Bosun), no
 una plantilla en blanco; copiar su estilo basta, y la presentación de Claude se
 descarga igual como PPTX si hace falta subirla a Google Slides.
+
+### C-147 · El comprador de tienda también se contrata desde "Mis agentes", eligiendo la tienda, con los límites de tienda ya puestos · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** T106 · Del usuario el hallazgo y el pedido; de Claude Code la forma · **Modifica** el punto 6 de `C-145` y su alternativa descartada
+
+**Qué pasó.** Un usuario nuevo abría "Mis agentes" para contratar y solo veía
+tres tipos: informes de mercado, créditos de IA y Comprador del Bazaar. El
+comprador de tienda no estaba: `C-145` (punto 6) lo había quitado de ese
+formulario a propósito y solo se contrataba desde la tarjeta de un producto del
+catálogo. Nada en "Mis agentes" avisaba de eso, así que parecía que no existía.
+Además, si se hubiera dejado en el formulario, sus límites por defecto habrían
+sido los de los otros agentes (0,30 por compra y 0,60 por día), con los que no
+se puede comprar nada en la tienda real: el producto más barato cuesta 1,04 USDC.
+
+**Qué se decide.**
+
+1. **"Mis agentes" tiene una segunda tarjeta, "Contratar un comprador de
+   tienda"**, con un selector de tienda leído del directorio de Vitrinee y sus
+   propios límites por defecto, `25.00` por compra y por día y 30 días (los de
+   `C-137`; no se cambió ningún número). Sigue siendo un comprador por tienda: la
+   tienda se elige aquí en vez de venir de una tarjeta.
+2. **La tienda se valida contra el directorio en el servidor**, nunca se confía
+   en el texto del formulario; una tienda que AgentPey no lista da 404 y no crea
+   nada. El nombre del agente sale de la tienda, como en el catálogo.
+3. **Un comprador por tienda por cuenta**, igual que el catálogo: pedir otro para
+   la misma tienda lleva al que ya existe.
+4. **Si el directorio no responde**, la página sigue mostrando los otros
+   agentes y dice que las tiendas no están disponibles, sin esconder nada.
+5. **El camino del catálogo no cambia.**
+
+**Alternativa que `C-145` había descartado y esto retoma:** "que RealOps muestre
+un selector de tienda al contratar". Se descartó por ser "una pantalla más para el
+mismo dato que la tarjeta ya trae". El uso real la desmintió: el usuario no
+encontró el otro camino. No es una pantalla nueva sino una tarjeta en la que ya
+se contrata, y el camino del catálogo se mantiene.
+
+**Los límites no se tocaron.** 25,00/25,00 es lo que la red le deja mover a un
+rail nuevo (`C-137`); el crédito de un usuario nuevo es de 3 USDC
+(`C-131`), que es lo que de verdad puede gastar. Con esos 3 USDC caben dos packs
+de stickers de 1,04 (2,08). Si se prefiere un tope visible más bajo para la
+demo, es cambiar `VITRINEE_DEFAULT_PERMISSIONS` en `apps/realops/src/permissions.ts`.
+

@@ -47,6 +47,7 @@ import { bilingual, type Bilingual } from "./copy.js";
 import { INSTRUCTION_PROBLEMS, SUPPORTED_PAIR, interpretInstruction, type InstructionProblem } from "./instruction.js";
 import {
   agentsPage,
+  type HireableStore,
   catalogPage,
   chooseAgentPage,
   errorPage,
@@ -202,9 +203,9 @@ const STORE_UNAVAILABLE = bilingual(
   "This agent's store cannot be reached right now, so its permission cannot be shown or signed. Try again in a moment.",
   "No se puede contactar la tienda de este agente en este momento, así que su permiso no se puede mostrar ni firmar. Vuelve a intentarlo en un momento.",
 );
-const HIRE_STORE_FROM_CATALOGUE = bilingual(
-  "A store shopper buys at one store: hire it from a product card of that store in the catalogue.",
-  "Un comprador de tienda compra en una sola tienda: contrátalo desde la tarjeta de un producto de esa tienda en el catálogo.",
+const NO_SUCH_STORE = bilingual(
+  "That store is not connected to AgentPey.",
+  "Esa tienda no está conectada a AgentPey.",
 );
 const BAD_QUANTITY = bilingual(
   "The quantity has to be a whole number between 1 and 20. Nothing was bought.",
@@ -550,14 +551,23 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     }
 
     if (method === "GET" && pathname === "/agentes") {
-      sendHtml(response, 200, agentsPage(account, await config.store.listAgents(account.id)));
+      let stores: readonly HireableStore[] | undefined;
+      try {
+        stores = (await config.storefronts?.list())?.map(({ slug, name }) => ({ slug, name }));
+      } catch {
+        stores = undefined;
+      }
+      sendHtml(response, 200, agentsPage(account, await config.store.listAgents(account.id), stores));
       return;
     }
 
     if (method === "POST" && pathname === "/agentes") {
       const form = await readForm(request);
       const kind = agentKindSchema.safeParse(form.get("kind"));
-      const label = aliasSchema.safeParse(form.get("label"));
+      const isStoreShopper = kind.success && kind.data === "vitrinee_shopper";
+      // A store shopper's label comes from its store, as it does from the
+      // catalogue, so the form does not ask for one (`C-147`).
+      const label = aliasSchema.safeParse(isStoreShopper ? "Store Shopper" : form.get("label"));
       const permissions = agentPermissionsSchema.safeParse({
         perTx: form.get("perTx") ?? "",
         perDay: form.get("perDay") ?? "",
@@ -579,7 +589,39 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       }
 
       if (kind.data === "vitrinee_shopper") {
-        sendHtml(response, 400, errorPage(400, HIRE_STORE_FROM_CATALOGUE));
+        // The store is checked against the directory, never trusted from the
+        // form: a posted slug cannot name a store AgentPey does not list.
+        const slug = form.get("comercio");
+        let store: Storefront | undefined;
+        try {
+          store = slug === null ? undefined : await config.storefronts?.get(slug);
+        } catch {
+          sendHtml(response, 503, errorPage(503, STORE_UNAVAILABLE));
+          return;
+        }
+        if (store === undefined) {
+          sendHtml(response, 404, errorPage(404, NO_SUCH_STORE));
+          return;
+        }
+        // One shopper per store, as the catalogue enforces: a second click, or a
+        // second visit, lands on the one that exists instead of minting another.
+        const existing = (await config.store.listAgents(account.id)).find(
+          (candidate) => candidate.kind === "vitrinee_shopper" && candidate.comercio === store.slug,
+        );
+        if (existing !== undefined) {
+          redirect(response, `/agentes/${existing.id}`);
+          return;
+        }
+        const shopper = newAgent(
+          account.id,
+          kind.data,
+          `${AGENT_KIND_NAMES.vitrinee_shopper.en} · ${store.name}`,
+          permissions.data,
+          now(),
+          store.slug,
+        );
+        await config.store.saveAgent(shopper);
+        redirect(response, `/agentes/${shopper.id}`);
         return;
       }
 

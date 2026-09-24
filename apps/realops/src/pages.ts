@@ -27,7 +27,7 @@ import { FALLBACK_CHOICES, type InstructionProblem } from "./instruction.js";
 import { QUANTITY_INPUT, type CatalogCard, type CatalogVenue } from "./catalog.js";
 import type { ResourceAvailability, ResourceInput } from "./bazaar-catalog.js";
 import { explainRefusal } from "./refusals.js";
-import type { ExplainedControl, ProposedGrant } from "./permissions.js";
+import { VITRINEE_DEFAULT_PERMISSIONS, type ExplainedControl, type ProposedGrant } from "./permissions.js";
 
 export { escape } from "./copy.js";
 
@@ -461,7 +461,63 @@ const AGENT_COPY: Readonly<Record<AgentKind, { readonly name: Bilingual; readonl
   },
 };
 
-export function agentsPage(account: Account, agents: readonly AgentConfig[]): string {
+/** A store the person can hire a shopper for: what the hire form needs of it, nothing else. */
+export interface HireableStore {
+  readonly slug: string;
+  readonly name: string;
+}
+
+/**
+ * The card that hires a store shopper from this page (`C-147`).
+ *
+ * A shopper buys at exactly one store, so the store is chosen here, from the
+ * directory, instead of being implied by a catalogue card. Its limits start at
+ * the store defaults (`C-137`), not at the 0.30/0.60 of the other agents: the
+ * cheapest real product costs 1.04 USDC, so a shopper born with 0.30 could not
+ * buy anything.
+ */
+function storeShopperCard(stores: readonly HireableStore[] | undefined): string {
+  if (stores === undefined) {
+    return `<p class="card">${tr(
+      bilingual(
+        "The store directory is not answering right now. Try again in a minute, or hire a store shopper from a product card in the catalogue.",
+        "El directorio de tiendas no responde ahora. Inténtalo en un minuto, o contrata un comprador de tienda desde la tarjeta de un producto del catálogo.",
+      ),
+    )}</p>`;
+  }
+  if (stores.length === 0) {
+    return `<p class="card">${tr(bilingual("No store is connected yet.", "Todavía no hay ninguna tienda conectada."))}</p>`;
+  }
+  const { perTx, perDay, validForDays } = VITRINEE_DEFAULT_PERMISSIONS;
+  return `<form class="card" method="post" action="/agentes">
+    <input type="hidden" name="kind" value="vitrinee_shopper">
+    <div class="fields">
+      <div>
+        <label for="comercio">${tr(bilingual("Which store", "En qué tienda"))}</label>
+        <select id="comercio" name="comercio">
+          ${stores.map((store) => `<option value="${escape(store.slug)}">${escape(store.name)}</option>`).join("\n          ")}
+        </select>
+      </div>
+    </div>
+    <div class="fields">
+      <div>
+        <label for="store-perTx">${tr(bilingual("Max per purchase (USDC)", "Máximo por compra (USDC)"))}</label>
+        <input id="store-perTx" name="perTx" required value="${escape(perTx)}" inputmode="decimal">
+      </div>
+      <div>
+        <label for="store-perDay">${tr(bilingual("Max per day (USDC)", "Máximo por día (USDC)"))}</label>
+        <input id="store-perDay" name="perDay" required value="${escape(perDay)}" inputmode="decimal">
+      </div>
+      <div>
+        <label for="store-validForDays">${tr(bilingual("Validity (days)", "Vigencia (días)"))}</label>
+        <input id="store-validForDays" name="validForDays" required value="${String(validForDays)}" inputmode="numeric">
+      </div>
+    </div>
+    <button type="submit">${tr(bilingual("Set up", "Configurar"))}</button>
+  </form>`;
+}
+
+export function agentsPage(account: Account, agents: readonly AgentConfig[], stores?: readonly HireableStore[]): string {
   const alias = displayName(account.alias);
   const rows =
     agents.length === 0
@@ -509,8 +565,8 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[]): st
         <label for="kind">${tr(bilingual("Which agent", "Qué agente"))}</label>
         <select id="kind" name="kind">
           ${Object.entries(AGENT_COPY)
-            // A store shopper is hired from a store's card in the catalogue,
-            // where the store it buys at is known (T104).
+            // A store shopper needs a store and different limits, so it has its
+            // own card below (`C-147`).
             .filter(([kind]) => kind !== "vitrinee_shopper")
             .map(
               ([kind, copy]) =>
@@ -540,6 +596,10 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[]): st
     </div>
     <button type="submit">${tr(bilingual("Set up", "Configurar"))}</button>
   </form>
+
+  <h2>${tr(bilingual("Hire a store shopper", "Contratar un comprador de tienda"))}</h2>
+  <p class="lede">${tr(AGENT_COPY.vitrinee_shopper.what)}</p>
+  ${storeShopperCard(stores)}
 `,
   });
 }
