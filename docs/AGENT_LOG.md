@@ -6533,3 +6533,47 @@ Pendiente:
   contraseña del rol de Vitrinee (pasó por el chat); segunda tienda Jumpseller en
   prueba (acción del 26); M7 y M9 de T103 y T104, y confirmar el M8.
 - Siguiente: T105 (el alta de un comercio sin código), con OK del usuario.
+
+## 2026-09-24 (7) — cc/t105-alta-comercio (T105 en PR #32)
+
+Agente: Claude Code.
+
+Qué: T105 construido y en PR ([#32](https://github.com/vicentewolde/AgentPey/pull/32)),
+sin mergear: espera el OK del usuario (regla 1).
+- Portal de dueños en `vitrinee.agentpey.com`: entrada con Freighter
+  (SEP-0053, `verifyStellarMessage` de `@agentpass/core`), cookie firmada solo
+  para el portal con una llave derivada de la llave maestra, y chequeo de
+  `Origin` en todo lo que cambia algo.
+- Alta con cuatro pruebas antes de guardar, cada una con su código: slug,
+  línea de confianza de USDC (Horizon), credenciales que leen el catálogo
+  (Jumpseller), llave de firma fondeada (friendbot). Si una falla, no se
+  guarda nada.
+- Panel mínimo: las tiendas de la cuenta con la que se entró y sus pedidos,
+  con enlaces al pago y al recibo.
+- Página en `apps/vitrinee-portal/`, EN por defecto y ES con tú.
+- `VT-31`: una wallet puede tener varias tiendas; sesión sin tabla; orden de
+  las pruebas; slugs reservados.
+
+Verificado: gateway de Vitrinee 111 tests (eran 69); `pnpm typecheck`,
+`pnpm test` y `vitrinee:check` en verde; vista previa local con la página real
+(alta completa, panel, EN/ES, 375 px), que encontró dos errores ya corregidos.
+En vivo: `rootComercio` ya es `null` en Render (el usuario borró
+`VITRINEE_ROOT_COMERCIO`).
+
+Por qué no se delegó a Codex: firma de wallet, llaves, registro de comercios
+(`P-10`).
+
+`AGENTS.md`: actualizado (el portal no se toca sin Claude Code; la llave
+maestra también deriva la de las sesiones).
+
+Exponential: qué cambié. T105 `READY_TO_PLAN` → `IN_PROGRESS` → `QA`, enlazado
+a PR #32. SYNC.md y COMPARACION.md al día (M2, M4, M6 de T105).
+
+Pendiente:
+- Del usuario: OK de merge del PR #32. Después, la tienda Jumpseller de prueba
+  en CLP con un par de productos, y darla de alta en el portal con Freighter
+  (el token lo pega el usuario; Claude Code no lo ve). Con eso, verificación en
+  vivo y `DONE`.
+- Del usuario, de antes: rotar la contraseña del rol de Vitrinee; M7 de T105 y
+  M7/M9 de T103 y T104; confirmar M8; Jumpseller y el `404` de T101.
+
