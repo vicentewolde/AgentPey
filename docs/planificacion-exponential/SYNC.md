@@ -9,7 +9,9 @@
 
 Workspace `personal-cmud6knil0045l704wuoc5b1r` · Producto `agentpey`
 (`cmuebiyap0001l3045w8q3i5x`) · Feature "Hackathon Find Your Way"
-(`cmuebjyws0001l704hg8wwa4f`) · Proyecto `AgentPey` (`cmuebvdko001xl30497cuhc1z`, creado por el usuario en
+(`cmuebjyws0001l704hg8wwa4f`) · Feature "Plataforma de comercios"
+(`cmueyqbph0001jx04mkeobqxa`, PRD en
+[`prd/T103-plataforma-comercios.md`](../fase-6-agentguard-comercializacion/prd/T103-plataforma-comercios.md)) · Proyecto `AgentPey` (`cmuebvdko001xl30497cuhc1z`, creado por el usuario en
 la web el 2026-09-23): contiene las seis acciones y las dos metas.
 
 ## Hitos
@@ -19,6 +21,9 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T100 | `cmuebkyxg0005l704z3bdfdws` | Vitrinee como venue en `venues.json` y `agentKind` en RealOps | ANTERIOR | `DONE` | 2026-09-23 | 2026-09-23 | 2026-09-23 | [C-130](../fase-6-agentguard-comercializacion/DECISIONES.md), [C-134, C-135](../fase-6-agentguard-comercializacion/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/23) |
 | T101 | `cmuebl14w0009l704htgreq46` | Compra real de punta a punta: `POST /v1/purchases` hasta el panel de Jumpseller | ANTERIOR | `IN_PROGRESS` | 2026-09-23 | 2026-09-23 | | [C-130, C-137](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T102 | `cmuebl38n000dl704hy8rw3gc` | Deploy de Vitrinee desde el `render.yaml` de AgentPey, en `vitrinee.agentpey.com` | ANTERIOR | `DONE` | 2026-09-23 | 2026-09-23 | 2026-09-23 | [C-130, C-134, C-136](../fase-6-agentguard-comercializacion/DECISIONES.md), [P-12](../DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/25) |
+| T103 | `cmueyt0dq001hjx04npk5vbh3` | Vitrinee atiende a varios comercios, con datos en Postgres | EXPONENTIAL | `READY_TO_PLAN` | 2026-09-24 | | | [C-140, C-142, C-143, C-144](../fase-6-agentguard-comercializacion/DECISIONES.md), [VT-27](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
+| T104 | `cmueyt2nf001ljx04jir9o7t2` | AgentPey y RealOps leen el directorio de comercios de Vitrinee | EXPONENTIAL | `READY_TO_PLAN` | 2026-09-24 | | | [C-141](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
+| T105 | `cmueyt4lz001pjx04piff4zwy` | Un dueño da de alta su tienda en Vitrinee sin código | EXPONENTIAL | `READY_TO_PLAN` | 2026-09-24 | | | [VT-27, VT-28, VT-29](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
@@ -26,24 +31,40 @@ por T102. Archivar el repo viejo salió de T102 a un ticket propio (abajo),
 bloqueado por T101. Ramas ya seteadas: `cc/t100-vitrinee-venue`,
 `cc/t101-compra-real-jumpseller`, `cc/t102-vitrinee-deploy`.
 
+Plataforma de comercios (Feature `cmueyqbph…`, `C-144`): T104 bloqueado por
+T103; T105 bloqueado por T103 y T104. Ramas: `cc/t103-vitrinee-multi-comercio`,
+`cc/t104-directorio-comercios`, `cc/t105-alta-comercio`. La planificación
+misma vive en `cc/t103-plataforma-comercios` (solo documentación).
+
 ## Deuda anotada (sin número T)
 
 | Ticket (CUID) | Título | Estado | Origen |
 |---|---|---|---|
 | `cmuebl53x000hl704c89ktw57` | Rails de tenant con los límites del Mandato (opción b de `C-133`) | `BACKLOG` | [C-133](../fase-6-agentguard-comercializacion/DECISIONES.md) |
 | `cmuedg4ld000pl004tv0q2n5o` | Archivar el repo viejo `vicentewolde/Vitrinee` (la segunda mitad de lo que era T102; CHORE, bloqueado por T101) | `READY_TO_PLAN` | [C-134](../fase-6-agentguard-comercializacion/DECISIONES.md) |
+| `cmueyt6kt001tjx04ew39o0up` | App de Jumpseller con OAuth para el alta de comercios (después del 29; bloqueado por T105) | `NEEDS_REFINEMENT` | [VT-28](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) |
+| `cmueyt8k8001xjx04s8kkui2b` | Panel completo del comercio en Vitrinee (después del 29; bloqueado por T105) | `BACKLOG` | [C-144](../fase-6-agentguard-comercializacion/DECISIONES.md) |
+| `cmueytafx0021jx045qin5t41` | El comercio trae su propia llave de firma (bloqueado por T105) | `BACKLOG` | [VT-27](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) |
 
 ## Acciones del usuario y fechas de hitos
 
 | Acción (CUID) | Qué | Fecha | Ticket enlazado |
 |---|---|---|---|
-| `cmuebnofp0007ie04sf2sg7a3` | Fondear la reserva `GAK6E5E7…GFP2K` desde el faucet de Circle | 2026-09-25 | |
+| `cmuebnofp0007ie04sf2sg7a3` | Fondear la reserva `GAK6E5E7…GFP2K` desde el faucet de Circle (**completada** 2026-09-23 20:07 UTC) | 2026-09-25 | |
 | `cmuebnn3v0005ie04c2a4skbg` | Emitir la partner key y cargar el secreto en Render (`P-10`) | 2026-09-26 | |
 | `cmuebnzs4000bie04zs6bi6sz` | T100 · fecha objetivo | 2026-09-26 | T100 |
 | `cmuebo32v000fie04kwurqfre` | T102 · fecha objetivo (era 30 sep; movida el 2026-09-23 por el reorden) | 2026-09-27 | T102 |
 | `cmuebo1im000die04z2cpfzdu` | T101 · fecha objetivo (era 27 sep; movida el 2026-09-23 por el reorden) | 2026-09-28 | T101 |
 | `cmuebnpem0009ie04s3zm69vv` | Grabar el video del 29 | 2026-09-29 | |
 | `cmuedg7ot000vl004mbbiwtbk` | Archivar el repo viejo de Vitrinee | 2026-09-30 | `cmuedg4ld…` (chore) |
+| `cmueytyol002hjx04cfdfili5` | Crear el rol de Postgres de Vitrinee; cargar `VITRINEE_DATABASE_URL` y `VITRINEE_MASTER_KEY` en Render | 2026-09-25 | T103 |
+| `cmueyu1ka002njx04fln2263j` | Dominio comodín `*.vitrinee.agentpey.com` en Render y tres CNAME en Vercel | 2026-09-25 | T103 |
+| `cmueyu4ag002tjx04voxe3jom` | Decidir PR #29 si el rescate del pedido de T101 no funciona | 2026-09-25 | T103 |
+| `cmueyu6h3002zjx04gslskp9g` | T103 · fecha objetivo | 2026-09-26 | T103 |
+| `cmueyu8l60035jx041ogelaea` | Crear la segunda tienda Jumpseller en prueba gratuita | 2026-09-26 | T105 |
+| `cmueyub38003bjx04igqgkjgo` | T104 · fecha objetivo | 2026-09-27 | T104 |
+| `cmueyucwc003hjx042fystisz` | T105 · fecha objetivo | 2026-09-28 | T105 |
+| `cmueyueuv003njx04dsnuo7uf` | Trámite de la app de Jumpseller (portal de partners, publicación, tienda de desarrollo) | 2026-09-30 | App OAuth |
 
 ## Metas
 
@@ -73,3 +94,12 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   T101 bloqueado además por T102; fechas de T102 y T101 al 27 y 28; ticket
   nuevo "Archivar el repo viejo" con acción al 30; T100 a `IN_PROGRESS` y
   después a `QA` con el PR. Motivo: `C-134`.
+- **2026-09-24**, Claude Code, sesión de planificación de la plataforma de
+  comercios (primera `EXPONENTIAL`). Ritual de apertura: una diferencia, la
+  acción de fondear la reserva figuraba `COMPLETED` en la web desde el
+  2026-09-23 20:07 UTC y no aquí; reflejada arriba. La meta del video figura
+  `off-track` en la web; no se tocó. Creados desde el CLI: Feature
+  `cmueyqbph…` con el PRD y 24 historias; T103, T104 y T105 con rama y
+  dependencias; tres tickets para después del 29; ocho acciones con fecha;
+  una entrada de tiempo `PROPOSED` de 52 minutos (M8) para que el usuario la
+  confirme.

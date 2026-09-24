@@ -74,6 +74,9 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 | T100 | ANTERIOR | 0,05 | 2 | | 1.026 líneas / 23 archivos (612 / 16 sin `docs/`) | 0 | 2 | 4 | 60 | pendiente |
 | T101 | ANTERIOR | | | | | | | | | |
 | T102 | ANTERIOR | 0,12 | 2 | | 576 líneas / 15 archivos (332 / 8 sin `docs/`), más 81 / 6 del ajuste | 0 | 3 | pendiente | pendiente | pendiente |
+| T103 | EXPONENTIAL | | | | | | | | 52 (compartidos por T103 a T105; propuesta, falta confirmación del usuario) | |
+| T104 | EXPONENTIAL | | | | | | | | ver T103 | |
+| T105 | EXPONENTIAL | | | | | | | | ver T103 | |
 
 Notas por ticket (bloqueos, qué cambió, por qué) van debajo, una entrada por
 hito, al cerrarlo.
@@ -108,3 +111,12 @@ decisión (`P-`) que resulte.
   `render.yaml`; el dominio adicional cuesta 0,25 USD al mes (el ticket decía
   gratis); y Vitrinee no cabe en 512 MB.
 - M7, M8, M9: pendientes del usuario.
+
+**T103 a T105, planificación** (2026-09-24, 02:30 a 03:22 UTC).
+- M8: 52 minutos para las ocho preguntas del grill, el PRD, el Feature con 24
+  historias y los seis tickets. Es una sola planificación para tres hitos:
+  para comparar con un hito `ANTERIOR`, dividir o no es decisión del usuario
+  al cerrar el experimento. Registrada con `exponential time log` como
+  `PROPOSED`; la confirma el usuario (`exponential time confirm`).
+- Sesgo a tener presente: la planificación partió de un traspaso escrito con
+  las siete decisiones ya listadas, que ahorró tiempo de descubrimiento.

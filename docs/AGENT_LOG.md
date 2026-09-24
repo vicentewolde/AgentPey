@@ -6304,3 +6304,58 @@ Exponential: sin cambios en esta entrada. T100 y T102 `DONE`, T101
 
 Pendiente: respuesta de Jumpseller; plataforma de comercios (chat nuevo, desde
 T103); métricas M7 a M9 del usuario.
+
+## 2026-09-24 (1) — cc/t103-plataforma-comercios (planificación, solo documentación)
+
+Agente: Claude Code.
+
+Nota de orden: esta rama salió de `main` antes de que se mergeara PR #29, a
+propósito, para que la planificación no dependiera de Jumpseller. Al rebasarla
+sobre `main` (2026-09-24) las entradas (14) y (15) quedaron arriba de esta.
+
+Qué: primera planificación con el método `EXPONENTIAL` (`P-13`), a partir del
+traspaso `docs/fase-0-fundamentos/traspaso-plataforma-comercios.md`.
+`/grill-with-docs` con ocho preguntas, todas decididas por el usuario:
+- `C-140`: la plataforma de comercios es Vitrinee, multi-comercio; SignalDesk
+  sigue de ejemplo. Glosario: "comercio" y "tienda".
+- `VT-27`: llave de firma por comercio, generada por Vitrinee, cifrada con una
+  llave maestra que carga el usuario.
+- `VT-28`: credenciales de Jumpseller pegadas hasta el 29; app OAuth después
+  (trámite del usuario).
+- `C-141`: AgentPey confía en la plataforma: una fila en `venues.json` y un
+  directorio público que lee. Ajusta `C-130`.
+- `C-142`: subdominio por comercio; raíz como portal; comodín 0,25 USD/mes fijo.
+- `C-143`: Postgres del piloto con un rol propio acotado al esquema `vitrinee`.
+  Ajusta `C-136`.
+- `VT-29`: el dueño entra con la wallet de su cuenta de cobro.
+- `C-144`: T103, T104 y T105 antes del 29; el resto después. Segunda tienda del
+  video: cuenta Jumpseller de prueba.
+PRD en `docs/fase-6-agentguard-comercializacion/prd/T103-plataforma-comercios.md`.
+CONTEXTO de la fase actualizado. Numeración `VT-` desde 27 porque `VT-26` vive
+en la rama de T101.
+
+Hallazgo: el pedido pendiente de T101 se puede rescatar. Su registro público se
+respaldó (fuera del repo) y la dirección de prueba está en el registro de compra
+de AgentPey (`delivery.resource_url`); T103 intenta importarlo a Postgres. Si
+funciona, PR #29 deja de bloquear merges.
+
+Por qué no se delegó nada a Codex: custodia, llaves, registro de comercios y
+grant firmado (`P-10`).
+
+`AGENTS.md`: sin cambios hoy; en T103 se suma la línea de
+`VITRINEE_DATABASE_URL` y `VITRINEE_MASTER_KEY`.
+
+Exponential: qué cambié. Feature `cmueyqbph0001jx04mkeobqxa` con el PRD y 24
+historias; T103 `cmueyt0dq…`, T104 `cmueyt2nf…`, T105 `cmueyt4lz…` en
+`READY_TO_PLAN` con rama y dependencias; app OAuth (`NEEDS_REFINEMENT`), panel
+completo y llave propia (`BACKLOG`); ocho acciones con fecha, cinco del usuario;
+una entrada de tiempo `PROPOSED` de 52 minutos (M8). SYNC.md y COMPARACION.md
+al día con eso.
+
+Pendiente:
+- **Ojo: esta rama tampoco se mergea a `main` todavía.** Es solo documentación,
+  pero cualquier merge redespliega y borra el pedido pendiente de T101.
+- Del usuario: revisar la planificación; confirmar la entrada de tiempo (M8);
+  las acciones del 25 (rol y llave maestra, comodín y CNAME, PR #29 si hace
+  falta) y del 26 (tienda de prueba).
+- Siguiente: `/start-ticket` de T103, con OK del usuario.
