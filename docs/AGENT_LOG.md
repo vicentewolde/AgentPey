@@ -6436,3 +6436,31 @@ Pendiente, del usuario, en este orden:
 3. Dominio comodín `*.vitrinee.agentpey.com` en Render y tres CNAME en Vercel.
 4. M7 de T103.
 Después: verificación en vivo de T103, `DONE`, y T104.
+
+## 2026-09-24 (4) — main (T103 en vivo) y cc/t103-en-vivo
+
+Agente: Claude Code.
+
+Qué: el usuario corrió `pnpm run vitrinee:platform-setup -- --import-order …`
+(todo en verde), cargó `VITRINEE_DATABASE_URL`, `VITRINEE_MASTER_KEY`,
+`VITRINEE_PLATFORM_HOST` y `VITRINEE_ROOT_COMERCIO` en Render, y agregó el
+comodín con sus tres CNAME. **T103 verificado en vivo y `DONE`**: modo
+plataforma en producción; `bazar-cordillera.vitrinee.agentpey.com` con
+manifest, seis productos, 402 a su `payTo`; pedido rescatado con su recibo
+válido; comercio desconocido 404. Evidencia en `evidencia/T103.md` § 7.
+
+Incidente: el comando se corrió desde la sesión de Claude y la conexión con la
+contraseña del rol pasó por el chat (la llave maestra salió enmascarada). Se
+recomendó rotarla corriendo el comando otra vez en una terminal propia, con
+`VITRINEE_MASTER_KEY` en el shell. No se sabe si el usuario la rotó.
+
+Exponential: T103 `DONE`; acciones del rol, el comodín, PR #29 y la fecha de
+T103 `COMPLETED`. COMPARACION.md con M1, M2, M4, M5, M6 de T103.
+
+Pendiente:
+- Verificar que el deploy de este merge no borre comercio ni pedido (segundo
+  deploy, criterio de T103).
+- Del usuario: rotar la contraseña del rol si no lo hizo; M7 y M9 de T103;
+  confirmar la entrada de tiempo de M8; crear la segunda tienda Jumpseller en
+  prueba (para T105, acción del 26).
+- Siguiente: T104, con OK del usuario.

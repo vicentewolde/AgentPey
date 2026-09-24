@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 en PR (2026-09-24):** Vitrinee ya atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); para verlo en vivo falta que el usuario corra `pnpm run vitrinee:platform-setup` y cargue sus dos valores y el dominio comodín. Siguen T104 y T105 · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 cerrado y en vivo (2026-09-24):** Vitrinee atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); Bazar Cordillera vende desde `bazar-cordillera.vitrinee.agentpey.com` y el pedido pendiente de T101 quedó rescatado. Siguen T104 y T105 · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -4877,7 +4877,7 @@ se completa con una llamada.
 
 ---
 
-## T103 · Vitrinee atiende a varios comercios, con datos en Postgres · 2026-09-24, PR abierto
+## T103 · Vitrinee atiende a varios comercios, con datos en Postgres · cerrado 2026-09-24, en vivo
 
 Primer hito planificado con el método `EXPONENTIAL` (`P-13`): grill, PRD
 ([`prd/T103-plataforma-comercios.md`](prd/T103-plataforma-comercios.md)) y
@@ -4955,3 +4955,23 @@ legible por un rol nuevo.
 - Tests: gateway de Vitrinee 65 (eran 49), gateway del servicio 32 (eran 27),
   scripts 73. `pnpm typecheck`, `pnpm test` y `vitrinee:lint` en verde.
 - Salidas crudas en [`evidencia/T103.md`](evidencia/T103.md).
+
+### Después del merge, el mismo día: en vivo
+
+El usuario aprobó el merge de PR #30 y de PR #29, corrió el comando de
+preparación, cargó las variables en Render y agregó el dominio comodín.
+**Vitrinee corre en modo plataforma en producción.** Bazar Cordillera vende
+desde `bazar-cordillera.vitrinee.agentpey.com`: manifest, catálogo con sus seis
+productos, y el cobro a su propia cuenta. El pedido pendiente de T101 se
+recuperó en la base nueva y su recibo sigue pasando las tres comprobaciones.
+Un comercio que no existe responde "no existe", y un dominio de dos niveles ni
+siquiera llega al servicio. La raíz sigue sirviendo a Bazar Cordillera, así
+que RealOps y AgentPey no notaron el cambio.
+
+Un incidente, sin daño conocido: el comando de preparación se corrió desde la
+sesión de Claude, y la conexión con la contraseña del rol pasó por el chat. La
+llave maestra salió enmascarada. Se recomendó rotar la contraseña corriendo el
+comando otra vez en una terminal propia. Queda como regla: todo comando que
+imprime secretos se corre fuera de la sesión de Claude.
+
+Salidas crudas en [`evidencia/T103.md`](evidencia/T103.md) § 7.

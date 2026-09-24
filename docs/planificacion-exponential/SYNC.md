@@ -21,7 +21,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T100 | `cmuebkyxg0005l704z3bdfdws` | Vitrinee como venue en `venues.json` y `agentKind` en RealOps | ANTERIOR | `DONE` | 2026-09-23 | 2026-09-23 | 2026-09-23 | [C-130](../fase-6-agentguard-comercializacion/DECISIONES.md), [C-134, C-135](../fase-6-agentguard-comercializacion/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/23) |
 | T101 | `cmuebl14w0009l704htgreq46` | Compra real de punta a punta: `POST /v1/purchases` hasta el panel de Jumpseller | ANTERIOR | `IN_PROGRESS` | 2026-09-23 | 2026-09-23 | | [C-130, C-137](../fase-6-agentguard-comercializacion/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/29) |
 | T102 | `cmuebl38n000dl704hy8rw3gc` | Deploy de Vitrinee desde el `render.yaml` de AgentPey, en `vitrinee.agentpey.com` | ANTERIOR | `DONE` | 2026-09-23 | 2026-09-23 | 2026-09-23 | [C-130, C-134, C-136](../fase-6-agentguard-comercializacion/DECISIONES.md), [P-12](../DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/25) |
-| T103 | `cmueyt0dq001hjx04npk5vbh3` | Vitrinee atiende a varios comercios, con datos en Postgres | EXPONENTIAL | `QA` | 2026-09-24 | 2026-09-24 | | [C-140, C-142, C-143, C-144](../fase-6-agentguard-comercializacion/DECISIONES.md), [VT-27, VT-30](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/30) |
+| T103 | `cmueyt0dq001hjx04npk5vbh3` | Vitrinee atiende a varios comercios, con datos en Postgres | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [C-140, C-142, C-143, C-144](../fase-6-agentguard-comercializacion/DECISIONES.md), [VT-27, VT-30](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/30) |
 | T104 | `cmueyt2nf001ljx04jir9o7t2` | AgentPey y RealOps leen el directorio de comercios de Vitrinee | EXPONENTIAL | `READY_TO_PLAN` | 2026-09-24 | | | [C-141](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T105 | `cmueyt4lz001pjx04piff4zwy` | Un dueño da de alta su tienda en Vitrinee sin código | EXPONENTIAL | `READY_TO_PLAN` | 2026-09-24 | | | [VT-27, VT-28, VT-29](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 
@@ -110,3 +110,6 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   `main` en fast-forward. T101 sigue `IN_PROGRESS` (enlazado a PR #29, falta
   Jumpseller); T103 sigue `QA` hasta verificarlo en vivo, que espera los pasos
   del usuario. Comentarios en los dos tickets.
+- **2026-09-24**, Claude Code: T103 verificado en vivo y `DONE`. Acciones del
+  usuario completadas: rol y llave maestra, dominio comodín y CNAME, PR #29
+  (se mergeó; el pedido se rescató igual).

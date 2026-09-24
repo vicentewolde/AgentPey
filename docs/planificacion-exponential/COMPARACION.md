@@ -74,7 +74,7 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 | T100 | ANTERIOR | 0,05 | 2 | | 1.026 líneas / 23 archivos (612 / 16 sin `docs/`) | 0 | 2 | 4 | 60 | pendiente |
 | T101 | ANTERIOR | | | | | | | | | |
 | T102 | ANTERIOR | 0,12 | 2 | | 576 líneas / 15 archivos (332 / 8 sin `docs/`), más 81 / 6 del ajuste | 0 | 3 | pendiente | pendiente | pendiente |
-| T103 | EXPONENTIAL | | | | | | | | 52 (compartidos por T103 a T105; propuesta, falta confirmación del usuario) | |
+| T103 | EXPONENTIAL | 0,03 | 2 | | 1.976 líneas / 28 archivos sin `docs/` (2.945 / 40 con la planificación) | 0 | 0 | pendiente | 52 (compartidos por T103 a T105; propuesta, falta confirmación del usuario) | pendiente |
 | T104 | EXPONENTIAL | | | | | | | | ver T103 | |
 | T105 | EXPONENTIAL | | | | | | | | ver T103 | |
 
@@ -120,3 +120,17 @@ decisión (`P-`) que resulte.
   `PROPOSED`; la confirma el usuario (`exponential time confirm`).
 - Sesgo a tener presente: la planificación partió de un traspaso escrito con
   las siete decisiones ya listadas, que ahorró tiempo de descubrimiento.
+
+**T103** (ticket creado 2026-09-24 03:21 UTC, mergeado 04:10 UTC, en vivo ~04:25 UTC).
+- M1: 0,03 días (unas 0,8 horas hasta el merge). Como T100, un hito con las
+  decisiones ya tomadas en el grill; el sesgo anotado arriba aplica.
+- M2 = 2: `VT-30` (dos modos, raíz en transición, rescate del pedido), que
+  precisa el alcance dentro de las decisiones del grill, y la corrección de
+  `C-143` (la base es Supabase, no Render), que no cambia la decisión.
+- M4: 1.976 líneas en 28 archivos sin `docs/`; el PR #30 mide 2.945 en 40
+  porque llevó también los commits de planificación.
+- M5 = 0: el usuario aprobó el merge a la primera.
+- M6 = 0 detenciones. Dos incidentes que no detuvieron el hito: un rebase que
+  dejó marcas de conflicto en un commit (error de Claude Code, rehecho limpio
+  antes de mergear) y la contraseña del rol que pasó por el chat.
+- M7, M9: pendientes del usuario.
