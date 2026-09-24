@@ -6325,3 +6325,47 @@ directorio detrás: justo la ambigüedad que el registro existe para impedir.
 
 **Otra alternativa descartada: que RealOps muestre un selector de tienda al
 contratar.** Una pantalla más para el mismo dato que la tarjeta ya trae.
+
+### C-146 · El Demo Day de Stellarbarrio entra como parte de la entrega del hackathon: demo en vivo de 60 segundos, respaldo grabado y cero código · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** T106 · Del usuario la dirección (presentar, grabar a las 11:00, deck y guion listos hoy); de Claude Code la forma
+
+**Contexto.** Los organizadores de Stellarbarrio citan a un Demo Day presencial el
+viernes 2026-09-25 a las 19:00: 5 minutos por equipo con corte duro, deck de 5 a
+7 slides sobre el deck de referencia de Stellar, y un tramo de 60 segundos para
+el producto. Su checklist pide una demo grabada de respaldo si la demo depende de
+wallet, API, testnet o internet; la nuestra depende de las cuatro. Ninguna
+decisión previa lo cubría. Cabe dentro de la entrega del hackathon (`P-12`,
+`C-130`): es el mismo producto, contado en 5 minutos. No reabre `P-3`, que dejó
+sin prioridad la demo grabable de cierre de la Fase 5.
+
+**Qué se decide.**
+
+1. **En vivo se muestra solo la compra.** Un comprador ya contratado, con su
+   permiso ya firmado, compra un pack de stickers en Bazar Cordillera; se ve el
+   pago en Stellar Expert y la venta con su recibo en el panel del dueño.
+   Contratar y firmar (tres aprobaciones de Freighter) se hace antes.
+2. **Respaldo grabado de la misma compra**, sin audio, grabado por el usuario el
+   25 a las 11:00; si algo falla en vivo, se reproduce y se narra encima. Y una
+   slide final con la compra real del 24 por si fallan los dos.
+3. **La demo termina en el panel de Vitrinee, no en RealOps.** RealOps marca la
+   compra como "entregado" aunque el pedido no llega a Jumpseller (T101), y no
+   muestra el enlace al recibo. El panel dice "Pagado, pedido aún no llega a tu
+   tienda" y enlaza el recibo. El guion no usa la palabra "entregado".
+4. **Cero cambios de código antes del Demo Day.** Arreglar la etiqueta de RealOps
+   significaría un merge y un redeploy la víspera; queda anotado para después.
+5. **El deck se hace como presentación de Claude** (privada, descargable en PPTX
+   y PDF), en español, con el estilo negro y amarillo del deck de referencia y
+   el guion en las notas de cada slide. El guion completo y el paso a paso viven
+   en el repo (`demo-day/`), que manda si difieren.
+6. **Cifras solo verificadas**, con su fuente anotada en `demo-day/GUION.md`. Lo
+   que el usuario no ha definido (la meta de tiendas del próximo hito, su línea
+   de presentación) queda entre corchetes para que lo complete.
+
+**Alternativa descartada: la escena de compra completa en vivo** (contratar,
+firmar, comprar, pago, recibo, panel). No cabe en 60 segundos y suma tres
+ventanas de Freighter frente al público.
+
+**Otra alternativa descartada: un `.pptx` armado a mano sobre el archivo de
+referencia.** El enlace que compartieron es el deck de otro proyecto (Bosun), no
+una plantilla en blanco; copiar su estilo basta, y la presentación de Claude se
+descarga igual como PPTX si hace falta subirla a Google Slides.

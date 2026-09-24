@@ -6748,3 +6748,43 @@ Pendiente:
 - T101: respuesta de soporte de Jumpseller al `404 Account not found`.
 - Después del 29: rotación de la llave maestra de Vitrinee; SKU repetido.
 
+
+## 2026-09-24 (14) — cc/t106-demo-day (T106 en curso)
+
+Agente: Claude Code.
+
+Qué: preparación del Demo Day Stellarbarrio (viernes 25, 19:00, presencial, 5
+minutos). Leídas las instrucciones del Notion de los organizadores (en el
+navegador; el conector de Notion no ve esa página). Listos hoy, a pedido del
+usuario:
+- Guion hablado de 5 minutos con los tiempos del Notion, fuentes de cada cifra,
+  preguntas probables y qué no mostrar: `docs/fase-6-agentguard-comercializacion/demo-day/GUION.md`.
+- Deck de 8 slides (presentación de Claude, privada:
+  https://claude.ai/artifact/McgRzVYPWTysDudyWXHVMV), estilo negro y amarillo del
+  deck de referencia, guion en las notas. Dos huecos para el usuario: la meta de
+  tiendas del próximo hito ("[N]") y su línea de presentación.
+- Paso a paso del video de respaldo (25, 11:00) y de la demo en vivo:
+  `demo-day/VIDEO-RESPALDO.md`.
+- `C-146`, bloque en la bitácora, `evidencia/T106.md`.
+
+Hallazgos, sin cambio de código (`C-146` punto 4, para no redesplegar la víspera):
+RealOps marca "entregado" una compra `paid_unfulfilled` de Vitrinee, y no
+muestra el enlace al recibo (Vitrinee manda `receipt.hash` anidado y RealOps
+busca `receipt_hash`). Arreglar después del Demo Day, antes del video del 29.
+
+Verificado en vivo sin secretos: el recibo de T104 sigue válido (tres
+comprobaciones en verde), el rail que paga tiene 12,49 USDC, los cuatro sitios
+responden 200.
+
+`AGENTS.md`: sin cambios (nada de esto lo toca Codex).
+
+Exponential: qué cambié. Ticket T106 creado `IN_PROGRESS`; seis acciones con
+fecha 2026-09-25 enlazadas a T106; `exp:sync` movió "T106 · fecha objetivo" a
+In Progress. SYNC.md al día (T106, acciones nuevas, la partner key completada).
+
+Pendiente:
+- Del usuario: contratar el comprador nuevo y firmar su permiso (antes de las
+  11:00), grabar el respaldo, ensayar, completar los dos huecos del deck.
+- De Claude Code, con el enlace del recibo del ensayo: verificar pago y recibo,
+  `evidencia/T106.md` § 7, cerrar T106. A las 18:00: chequeo de sitios y testnet.
+- OK del usuario para mergear esta rama (solo documentación).

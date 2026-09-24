@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 cerrado y en vivo (2026-09-24):** Vitrinee atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); Bazar Cordillera vende desde `bazar-cordillera.vitrinee.agentpey.com` y el pedido pendiente de T101 quedó rescatado. · **T104 cerrado y en vivo (2026-09-24):** AgentPey y RealOps encuentran los comercios de Vitrinee en su directorio público, en vez de una fila fija (`C-145`); una compra real de stickers desde un `policy_rail` salió por ese camino, con los tres checks del recibo en verde. · **T105 cerrado y en vivo (2026-09-24):** el dueño de una tienda Jumpseller entra a `vitrinee.agentpey.com` firmando con Freighter, pega sus credenciales y, si pasan las cuatro pruebas, su tienda queda publicada y en el directorio; ve sus pedidos en un panel (`VT-31`). La tienda de prueba MycoKit se dio de alta así, sin deploy, y aparece en AgentPey y en RealOps · **Fase 6: en curso**
+**Fecha:** 2026-09-24 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 cerrado y en vivo (2026-09-24):** Vitrinee atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); Bazar Cordillera vende desde `bazar-cordillera.vitrinee.agentpey.com` y el pedido pendiente de T101 quedó rescatado. · **T104 cerrado y en vivo (2026-09-24):** AgentPey y RealOps encuentran los comercios de Vitrinee en su directorio público, en vez de una fila fija (`C-145`); una compra real de stickers desde un `policy_rail` salió por ese camino, con los tres checks del recibo en verde. · **T105 cerrado y en vivo (2026-09-24):** el dueño de una tienda Jumpseller entra a `vitrinee.agentpey.com` firmando con Freighter, pega sus credenciales y, si pasan las cuatro pruebas, su tienda queda publicada y en el directorio; ve sus pedidos en un panel (`VT-31`). La tienda de prueba MycoKit se dio de alta así, sin deploy, y aparece en AgentPey y en RealOps · **T106 en curso (2026-09-24):** preparación del Demo Day Stellarbarrio del 25: guion, deck y paso a paso del video de respaldo listos; falta la compra del ensayo (`C-146`) · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -229,6 +229,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T103 | Vitrinee atiende a varios comercios: comercios y pedidos en el esquema `vitrinee` de la base del piloto con un rol propio, secretos sellados con la llave maestra, una tienda por subdominio; Bazar Cordillera es el primero y el pedido pendiente de T101 se rescató | ✅ cerrado 2026-09-24 · mergeado (`20754f4`) y en vivo (`C-140` a `C-144`, `VT-27` a `VT-30`) |
 | T104 | AgentPey y RealOps leen el directorio público de Vitrinee: fila de plataforma en `venues.json`, comercios `vitrinee-<slug>:<cuenta>`, cobro fijado a la cuenta del id, un comprador por tienda en RealOps. Compra real por ese camino | ✅ cerrado 2026-09-24 · mergeado (`332a306`) y en vivo (`C-145`) |
 | T105 | El dueño de una tienda Jumpseller se da de alta solo en el portal: entra con su wallet (SEP-0053), cuatro pruebas antes de guardar (slug, línea de confianza de USDC, credenciales que leen el catálogo, llave de firma fondeada), y un panel con sus pedidos | ✅ cerrado 2026-09-24 · mergeado (`71c4f4c`) y en vivo: una segunda tienda Jumpseller (MycoKit) se dio de alta sola por el portal y aparece en el directorio, en AgentPey y en RealOps (`VT-31`) |
+| T106 | Demo Day Stellarbarrio (2026-09-25, presencial, 5 minutos): guion hablado con los tiempos del Notion, deck de 8 slides con el guion en las notas, y paso a paso del video de respaldo y de la demo en vivo. Sin código | 🟡 en curso 2026-09-24 · entregables del día listos; falta la compra del ensayo verificada (`C-146`) |
 
 ---
 
@@ -5146,3 +5147,39 @@ repitiendo la de otro producto. Lo del SKU repetido queda como tarea aparte.
 
 Salidas crudas en [`evidencia/T105.md`](evidencia/T105.md) § 6.
 
+## T106 · Demo Day Stellarbarrio: pitch de 5 minutos, demo en vivo y respaldo grabado · en curso 2026-09-24
+
+**Qué quedó listo, en palabras simples.** Para el Demo Day de mañana (viernes 25,
+19:00, presencial) hay tres cosas preparadas:
+
+1. **El guion hablado**, de 5 minutos justos, con los siete tramos que piden los
+   organizadores: qué es AgentPey, el problema, la demo, por qué Stellar, qué
+   hemos logrado, qué viene y qué pedimos. Cada cifra que se dice tiene su fuente
+   anotada, y hay respuestas cortas para las preguntas probables.
+2. **Las slides**: ocho, en el estilo negro y amarillo del deck de referencia de
+   Stellar, con el guion de cada una en sus notas. La octava es de respaldo: la
+   compra real de ayer, por si fallan la demo y el video.
+3. **El paso a paso del video de respaldo** (se graba mañana a las 11:00) y de la
+   demo en vivo: qué dejar abierto, qué botón apretar en cada segundo y qué no
+   mostrar.
+
+La demo en vivo dura 60 segundos y muestra solo el momento clave: un agente ya
+contratado compra un pack de stickers, el pago aparece en Stellar y el dueño ve
+la venta con su recibo en verde. Contratar el agente y firmar su permiso se hace
+antes, no en el escenario (`C-146`).
+
+**Dos cosas que encontré y que cambian lo que se dice en voz alta.** RealOps marca
+la compra como "entregado" aunque el pedido todavía no llega a Jumpseller (T101
+sigue en `404`), y RealOps no muestra el enlace al recibo: ese enlace solo está
+en el panel del dueño. Por eso la demo termina en el panel de Vitrinee, que dice
+la verdad ("Pagado, pedido aún no llega a tu tienda"), y el guion evita la
+palabra "entregado". No se tocó el código: un cambio hoy redesplegaría Render la
+víspera de la demo.
+
+Falta, del usuario: contratar el comprador nuevo y firmar su permiso, grabar el
+respaldo y ensayar. Después, Claude Code verifica el pago y el recibo de esa
+compra y T106 se cierra.
+
+Guion: [`demo-day/GUION.md`](demo-day/GUION.md). Video y demo en vivo:
+[`demo-day/VIDEO-RESPALDO.md`](demo-day/VIDEO-RESPALDO.md). Salidas crudas en
+[`evidencia/T106.md`](evidencia/T106.md).

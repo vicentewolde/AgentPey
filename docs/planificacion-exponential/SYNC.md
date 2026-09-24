@@ -24,6 +24,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T103 | `cmueyt0dq001hjx04npk5vbh3` | Vitrinee atiende a varios comercios, con datos en Postgres | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [C-140, C-142, C-143, C-144](../fase-6-agentguard-comercializacion/DECISIONES.md), [VT-27, VT-30](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/30) |
 | T104 | `cmueyt2nf001ljx04jir9o7t2` | AgentPey y RealOps leen el directorio de comercios de Vitrinee | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [C-141, C-145](../fase-6-agentguard-comercializacion/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/31) |
 | T105 | `cmueyt4lz001pjx04piff4zwy` | Un dueño da de alta su tienda en Vitrinee sin código | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [VT-27, VT-28, VT-29, VT-31](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/32) |
+| T106 | `cmug33wd50001kz04uvlavu4w` | Demo Day Stellarbarrio: pitch de 5 minutos, demo en vivo y respaldo grabado | EXPONENTIAL | `IN_PROGRESS` | 2026-09-24 | 2026-09-24 | | [C-146](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
@@ -51,7 +52,7 @@ misma vive en `cc/t103-plataforma-comercios` (solo documentación).
 | Acción (CUID) | Qué | Fecha | Ticket enlazado |
 |---|---|---|---|
 | `cmuebnofp0007ie04sf2sg7a3` | Fondear la reserva `GAK6E5E7…GFP2K` desde el faucet de Circle (**completada** 2026-09-23 20:07 UTC) | 2026-09-25 | |
-| `cmuebnn3v0005ie04c2a4skbg` | Emitir la partner key y cargar el secreto en Render (`P-10`) | 2026-09-26 | |
+| `cmuebnn3v0005ie04c2a4skbg` | Emitir la partner key y cargar el secreto en Render (`P-10`) (**completada** 2026-09-24) | 2026-09-26 | |
 | `cmuebnzs4000bie04zs6bi6sz` | T100 · fecha objetivo | 2026-09-26 | T100 |
 | `cmuebo32v000fie04kwurqfre` | T102 · fecha objetivo (era 30 sep; movida el 2026-09-23 por el reorden) | 2026-09-27 | T102 |
 | `cmuebo1im000die04z2cpfzdu` | T101 · fecha objetivo (era 27 sep; movida el 2026-09-23 por el reorden) | 2026-09-28 | T101 |
@@ -65,6 +66,12 @@ misma vive en `cc/t103-plataforma-comercios` (solo documentación).
 | `cmueyub38003bjx04igqgkjgo` | T104 · fecha objetivo | 2026-09-27 | T104 |
 | `cmueyucwc003hjx042fystisz` | T105 · fecha objetivo (**completada** 2026-09-24) | 2026-09-28 | T105 |
 | `cmueyueuv003njx04dsnuo7uf` | Trámite de la app de Jumpseller (portal de partners, publicación, tienda de desarrollo) | 2026-09-30 | App OAuth |
+| `cmug344iu0005kz04c47qyor9` | T106 · fecha objetivo (sigue al ticket con `exp:sync`) | 2026-09-25 | T106 |
+| `cmug3475y000bkz04j6mh98tr` | Contratar en RealOps el comprador nuevo y firmar su permiso con Freighter | 2026-09-25 | T106 |
+| `cmug349ul000hkz04sg32oyyv` | Grabar el video de respaldo de la demo (11:00) | 2026-09-25 | T106 |
+| `cmug34c64000nkz04mak51an0` | Ensayar el pitch con cronómetro (3 veces, corte a los 5:00) | 2026-09-25 | T106 |
+| `cmug34eos000tkz04wi0c15d2` | Revisar Freighter, testnet y pestañas antes de salir (18:00) | 2026-09-25 | T106 |
+| `cmug34gz5000zkz04s5r9bfr6` | Presentar en el Demo Day Stellarbarrio (19:00) | 2026-09-25 | T106 |
 
 ## Metas
 
@@ -120,3 +127,12 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   diferencias (acciones activas y tickets iguales a esta tabla). T105
   `READY_TO_PLAN` → `IN_PROGRESS` (inicio 2026-09-24) → `QA` con el PR #32.
 - **2026-09-24**, Claude Code: PR #32 mergeado; T105 verificado en vivo con una tienda real (MycoKit) y `DONE`.
+- **2026-09-24**, Claude Code, sesión del tablero (`cc/exp-sync-board`): acciones
+  completadas movidas a Done y `pnpm run exp:sync` agregado. Sesión de la partner
+  key: la acción "Emitir la partner key" `COMPLETED` (reflejada arriba).
+- **2026-09-24**, Claude Code, sesión de T106. Ritual de apertura: `exp:sync` sin
+  cambios, tickets iguales a esta tabla; la única diferencia era la acción de la
+  partner key, ya completada en la web y no aquí (corregida). Creados desde el
+  CLI con OK del usuario: ticket T106 (`IN_PROGRESS`, rama `cc/t106-demo-day`,
+  Feature "Hackathon Find Your Way") y seis acciones con fecha 2026-09-25.
+  `exp:sync` movió "T106 · fecha objetivo" a In Progress.
