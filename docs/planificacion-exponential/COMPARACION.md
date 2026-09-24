@@ -157,5 +157,5 @@ decisión (`P-`) que resulte.
   chequeo de `Origin` sin el puerto).
 - M1: 0,49 días (merge `71c4f4c` el 2026-09-24 ~15:15 UTC, unas 11,8 horas desde que se creó el ticket a las 03:21 UTC).
 - M5 = 0: aprobado a la primera.
-- M7 = 4 (dada por el usuario el 2026-09-24, junto con M7 = 4 y M9 = 4 de T103 y T104). M9 de T105, al cerrarlo.
+- M7 = 4 (dada por el usuario el 2026-09-24, junto con M7 = 4 y M9 = 4 de T103 y T104). M9 de T105, pendiente.
 - M8: el usuario confirmó en el chat los 52 minutos de la planificación; en Exponential la entrada sigue `PROPOSED` hasta que corra `exponential time confirm`, que es solo humano.

@@ -6608,3 +6608,29 @@ Pendiente:
   M8 confirmado en el chat; falta `exponential time confirm` (solo humano).
 - Del usuario, de antes: rotar la contraseña del rol de Vitrinee.
 
+## 2026-09-24 (9) — main (T105 en vivo, DONE) y cc/t105-en-vivo
+
+Agente: Claude Code.
+
+Qué: el usuario dio de alta **MycoKit** (`mycokit.jumpseller.com`) por el
+portal, con una wallet distinta a la de Bazar Cordillera. Verificado sin
+secretos: está en el directorio, su tienda responde con su cuenta de cobro y
+precios en CLP, su llave de firma tiene XLM de friendbot, el buscador de
+AgentPey la lista, y el usuario confirmó que RealOps la muestra. **T105
+`DONE`.** Evidencia en `evidencia/T105.md` § 6.2 y § 6.3.
+
+Hallazgos, sin cambio de código: los productos de demostración de Jumpseller
+(SKU repetido) también se publican, el usuario los borró; queda una tarea
+aparte para que `isSellable` no publique SKUs repetidos. Las credenciales de la
+tienda de prueba pasaron por el chat; no se usaron.
+
+Exponential: T105 `DONE`; acción de fecha de T105 `COMPLETED`. SYNC.md y
+COMPARACION.md al día (M7 = 4 de T103 a T105, M9 = 4 de T103 y T104; M9 de T105
+pendiente; M8 confirmado en el chat).
+
+Pendiente:
+- Del usuario: corregir la descripción del Reishi en Jumpseller (repite la del
+  Cola de Pavo); `exponential time confirm --date 2026-09-23` para M8; M9 de T105;
+  rotar la contraseña del rol de Vitrinee; el `404` de Jumpseller (T101).
+- Siguiente: lo que quede antes del video del 29 (T101 sigue abierto).
+

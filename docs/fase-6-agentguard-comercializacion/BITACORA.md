@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 cerrado y en vivo (2026-09-24):** Vitrinee atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); Bazar Cordillera vende desde `bazar-cordillera.vitrinee.agentpey.com` y el pedido pendiente de T101 quedó rescatado. · **T104 cerrado y en vivo (2026-09-24):** AgentPey y RealOps encuentran los comercios de Vitrinee en su directorio público, en vez de una fila fija (`C-145`); una compra real de stickers desde un `policy_rail` salió por ese camino, con los tres checks del recibo en verde. · **T105 en código (2026-09-24), PR abierto:** el dueño de una tienda Jumpseller entra a `vitrinee.agentpey.com` firmando con Freighter, pega sus credenciales y, si pasan las cuatro pruebas, su tienda queda publicada y en el directorio; ve sus pedidos en un panel (`VT-31`). Falta el merge y el alta en vivo con la tienda de prueba del usuario · **Fase 6: en curso**
+**Fecha:** 2026-09-23 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 cerrado y en vivo (2026-09-24):** Vitrinee atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); Bazar Cordillera vende desde `bazar-cordillera.vitrinee.agentpey.com` y el pedido pendiente de T101 quedó rescatado. · **T104 cerrado y en vivo (2026-09-24):** AgentPey y RealOps encuentran los comercios de Vitrinee en su directorio público, en vez de una fila fija (`C-145`); una compra real de stickers desde un `policy_rail` salió por ese camino, con los tres checks del recibo en verde. · **T105 cerrado y en vivo (2026-09-24):** el dueño de una tienda Jumpseller entra a `vitrinee.agentpey.com` firmando con Freighter, pega sus credenciales y, si pasan las cuatro pruebas, su tienda queda publicada y en el directorio; ve sus pedidos en un panel (`VT-31`). La tienda de prueba MycoKit se dio de alta así, sin deploy, y aparece en AgentPey y en RealOps · **Fase 6: en curso**
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -228,7 +228,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T102 | Vitrinee se despliega desde el `render.yaml` de AgentPey: cuarto proceso del gateway en `vitrinee.agentpey.com`, variables con prefijo `VITRINEE_` que solo le llegan a ella, arranque solo con sus secretos, y una caída suya no tumba al piloto | ✅ cerrado 2026-09-23 · mergeado (`c2eaae4`, `8c3d5e3`) y verificado en vivo en `vitrinee.agentpey.com`; el servicio de Render subió a 1 CPU y 2 GB por memoria (`C-136`, `C-138`) |
 | T103 | Vitrinee atiende a varios comercios: comercios y pedidos en el esquema `vitrinee` de la base del piloto con un rol propio, secretos sellados con la llave maestra, una tienda por subdominio; Bazar Cordillera es el primero y el pedido pendiente de T101 se rescató | ✅ cerrado 2026-09-24 · mergeado (`20754f4`) y en vivo (`C-140` a `C-144`, `VT-27` a `VT-30`) |
 | T104 | AgentPey y RealOps leen el directorio público de Vitrinee: fila de plataforma en `venues.json`, comercios `vitrinee-<slug>:<cuenta>`, cobro fijado a la cuenta del id, un comprador por tienda en RealOps. Compra real por ese camino | ✅ cerrado 2026-09-24 · mergeado (`332a306`) y en vivo (`C-145`) |
-| T105 | El dueño de una tienda Jumpseller se da de alta solo en el portal: entra con su wallet (SEP-0053), cuatro pruebas antes de guardar (slug, línea de confianza de USDC, credenciales que leen el catálogo, llave de firma fondeada), y un panel con sus pedidos | 🔄 en código 2026-09-24 · PR abierto, falta el alta en vivo (`VT-31`) |
+| T105 | El dueño de una tienda Jumpseller se da de alta solo en el portal: entra con su wallet (SEP-0053), cuatro pruebas antes de guardar (slug, línea de confianza de USDC, credenciales que leen el catálogo, llave de firma fondeada), y un panel con sus pedidos | ✅ cerrado 2026-09-24 · mergeado (`71c4f4c`) y en vivo: una segunda tienda Jumpseller (MycoKit) se dio de alta sola por el portal y aparece en el directorio, en AgentPey y en RealOps (`VT-31`) |
 
 ---
 
@@ -5062,7 +5062,7 @@ Salidas crudas en [`evidencia/T104.md`](evidencia/T104.md) § 6.
 
 ---
 
-## T105 · Un dueño da de alta su tienda en Vitrinee sin código · en código 2026-09-24, PR abierto
+## T105 · Un dueño da de alta su tienda en Vitrinee sin código · cerrado 2026-09-24, en vivo
 
 **Qué quedó funcionando, en palabras simples.** Hasta hoy, sumar una tienda a
 Vitrinee necesitaba que alguien del equipo corriera un comando. Ahora el dueño
@@ -5129,3 +5129,20 @@ de cerrar. Detalle en la evidencia.
 - `apps/vitrinee-portal/`: la página del portal.
 - `AGENTS.md`: el portal tampoco se toca sin Claude Code.
 - Salidas crudas en [`evidencia/T105.md`](evidencia/T105.md).
+
+### Después del merge, el mismo día: el alta real
+
+Tú diste de alta **MycoKit**, una tienda Jumpseller de prueba con kits de
+cultivo de hongos, desde el portal y con tu wallet de Freighter. Pasó las
+cuatro pruebas, quedó publicada en `mycokit.vitrinee.agentpey.com` y entró al
+directorio. AgentPey la encontró leyendo el directorio (cuatro productos, todos
+registrados) y en RealOps apareció su sección, sin ningún deploy de por medio.
+Es la escena del video, hecha de verdad.
+
+Dos cosas que salieron de ahí y no son del código: los cinco productos de
+demostración que Jumpseller crea en toda tienda nueva también se publicaron
+(compartían un mismo SKU; los borraste), y la descripción del Reishi sigue
+repitiendo la de otro producto. Lo del SKU repetido queda como tarea aparte.
+
+Salidas crudas en [`evidencia/T105.md`](evidencia/T105.md) § 6.
+
