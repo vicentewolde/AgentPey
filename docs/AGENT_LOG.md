@@ -6725,3 +6725,26 @@ También: comentario en T101 con lo del correo a soporte de Jumpseller.
 Exponential: acciones de T100 a T105 y sus tareas del usuario en Done; T101 en
 In Progress; comentario en T101.
 
+## 2026-09-24 (13) — cc/partner-key-hecho
+
+Agente: Claude Code.
+
+Qué: el usuario rotó la clave de `/v1` de RealOps (`C-129`): emitió una nueva
+para el mismo partner con `pnpm run partner:key -- --issue`, la cargó en Render
+como `REALOPS_AGENTPEY_API_KEY`, verificó que sus agentes seguían apareciendo, y
+después revocó la vieja (emitida el 2026-09-13, 9 de 12 permisos). Claude Code no
+vio ningún secreto: los comandos los corrió el usuario en su terminal (`P-10`).
+Con la clave nueva, T93, T94 y T95 (vista previa de compras, webhooks, límite de
+tasa) ya se pueden usar en producción. Verificado desde afuera: AgentPey,
+RealOps, SignalDesk y Vitrinee responden 200.
+
+Exponential: la acción "Emitir la partner key y cargar el secreto en Render"
+`COMPLETED` y en Done (su fecha era el 26).
+
+Pendiente:
+- Escena de compra del video del 29: contratar en RealOps un comprador nuevo
+  desde la tarjeta de Bazar Cordillera o de MycoKit, firmar el permiso y comprar
+  algo barato (el usuario contrata y firma; Claude Code verifica).
+- T101: respuesta de soporte de Jumpseller al `404 Account not found`.
+- Después del 29: rotación de la llave maestra de Vitrinee; SKU repetido.
+
