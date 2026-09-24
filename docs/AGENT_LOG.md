@@ -6577,3 +6577,28 @@ Pendiente:
 - Del usuario, de antes: rotar la contraseña del rol de Vitrinee; M7 de T105 y
   M7/M9 de T103 y T104; confirmar M8; Jumpseller y el `404` de T101.
 
+## 2026-09-24 (8) — main (PR #32 mergeado) y cc/t105-en-vivo
+
+Agente: Claude Code.
+
+Qué, con OK del usuario: PR #32 (T105) mergeado a `main` en fast-forward
+(`71c4f4c`), rama `cc/t105-alta-comercio` borrada, local y remota. Verificado
+en vivo sin secretos: el portal responde en `vitrinee.agentpey.com`, el
+desafío no abre sesión, un `Origin` ajeno se rechaza, `/me` sin cookie da
+`SessionRequired`, el portal no existe en el subdominio de una tienda, y los
+dos pedidos de Bazar Cordillera siguen ahí. Evidencia en `evidencia/T105.md`
+§ 6.1.
+
+Esta rama (`cc/t105-en-vivo`) solo tiene documentación y **no se mergea
+todavía**: cada merge redespliega. Se suma la evidencia del alta real y se
+mergea junto con el cierre de T105.
+
+Exponential: sin cambios; T105 sigue `QA` hasta el alta en vivo.
+
+Pendiente:
+- Del usuario: la tienda Jumpseller de prueba en CLP y darla de alta en el
+  portal con Freighter. Después: verificación en RealOps, `DONE`, SYNC y
+  COMPARACION (M1, M5).
+- Del usuario, de antes: M7 de T103 a T105, M9 de T103 y T104, confirmar M8
+  (se le explicó qué son); rotar la contraseña del rol de Vitrinee.
+
