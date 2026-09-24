@@ -6501,3 +6501,35 @@ Pendiente:
   un comprador desde la tarjeta de Bazar Cordillera, firmarlo y comprar
   stickers para la verificación en vivo. Sigue pendiente la segunda tienda
   Jumpseller en prueba (T105) y las métricas M7/M8/M9.
+
+## 2026-09-24 (6) — main (PR #31 mergeado, T104 en vivo) y cc/t104-en-vivo
+
+Agente: Claude Code.
+
+Qué, con OK del usuario: PR #31 (T104) mergeado a `main` en fast-forward
+(`332a306`), rama borrada. Verificado en vivo: el directorio publica a Bazar
+Cordillera; el buscador público de AgentPey lo lee (6 productos, `registered:
+True`); los cuatro hosts en 200. Después el usuario compró unos stickers desde
+RealOps y **la compra salió por el directorio**: registro de AgentPey `settled`,
+pago 1,0421053 USDC en Stellar (`b2f3c049…`), recibo con las tres comprobaciones
+en verde, pedido `ord_mufn0etw3d8329de61` en la base de Vitrinee. **T104
+`DONE`.**
+
+El pedido no llegó a Jumpseller (`404 Account not found`, T101 sigue abierto).
+Hay dos pedidos pagados esperando, el café y los stickers; se cumplen con
+`POST /orders/:id/fulfil` en el subdominio de la tienda, sin volver a cobrar, y
+como viven en la base de datos un deploy ya no los borra.
+
+Nota: `VITRINEE_BASE_URL` nunca existió en el panel de Render; solo hubo que
+agregar `VITRINEE_DIRECTORY_URL`. Sin confirmar si se borró
+`VITRINEE_ROOT_COMERCIO`: la raíz de Vitrinee seguía sirviendo la tienda a
+primera hora.
+
+Exponential: T104 `DONE`; acción de fecha `COMPLETED`. COMPARACION.md con
+M1, M2, M4, M5, M6 de T104. SYNC.md al día.
+
+Pendiente:
+- Del usuario: borrar `VITRINEE_ROOT_COMERCIO` en Render si no lo hizo; rotar la
+  contraseña del rol de Vitrinee (pasó por el chat); segunda tienda Jumpseller en
+  prueba (acción del 26); M7 y M9 de T103 y T104, y confirmar el M8.
+- Siguiente: T105 (el alta de un comercio sin código), con OK del usuario.

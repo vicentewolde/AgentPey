@@ -75,7 +75,7 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 | T101 | ANTERIOR | | | | | | | | | |
 | T102 | ANTERIOR | 0,12 | 2 | | 576 líneas / 15 archivos (332 / 8 sin `docs/`), más 81 / 6 del ajuste | 0 | 3 | pendiente | pendiente | pendiente |
 | T103 | EXPONENTIAL | 0,03 | 2 | | 1.976 líneas / 28 archivos sin `docs/` (2.945 / 40 con la planificación) | 0 | 0 | pendiente | 52 (compartidos por T103 a T105; propuesta, falta confirmación del usuario) | pendiente |
-| T104 | EXPONENTIAL | | | | | | | | ver T103 | |
+| T104 | EXPONENTIAL | 0,49 | 2 | | 1.650 líneas / 40 archivos (PR #31, con `docs/`) | 0 | 1 | pendiente | ver T103 | pendiente |
 | T105 | EXPONENTIAL | | | | | | | | ver T103 | |
 
 Notas por ticket (bloqueos, qué cambió, por qué) van debajo, una entrada por
@@ -133,4 +133,15 @@ decisión (`P-`) que resulte.
 - M6 = 0 detenciones. Dos incidentes que no detuvieron el hito: un rebase que
   dejó marcas de conflicto en un commit (error de Claude Code, rehecho limpio
   antes de mergear) y la contraseña del rol que pasó por el chat.
+- M7, M9: pendientes del usuario.
+
+**T104** (ticket creado 2026-09-24 03:21 UTC, mergeado 14:20 UTC, en vivo ~14:40 UTC).
+- M1: 0,49 días (unas 11 horas). Incluye la espera de tu revisión entre el PR y
+  el merge; el trabajo en sí fue de unas 4 horas.
+- M2 = 2: `C-145` (el id `vitrinee-<slug>`, el slug máximo 31 y el candado del
+  cobro, que precisan el alcance de `C-141`) y el hallazgo de que
+  `toPaymentTerms` leía el registro fijo, que amplió el cambio a la ruta de pago.
+- M4: 1.495 líneas añadidas y 155 quitadas en 40 archivos, con `docs/`.
+- M5 = 0: aprobado a la primera.
+- M6 = 1, no estaba en el ticket: `toPaymentTerms` con el registro fijo.
 - M7, M9: pendientes del usuario.
