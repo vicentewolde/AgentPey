@@ -6599,6 +6599,12 @@ Pendiente:
 - Del usuario: la tienda Jumpseller de prueba en CLP y darla de alta en el
   portal con Freighter. Después: verificación en RealOps, `DONE`, SYNC y
   COMPARACION (M1, M5).
-- Del usuario, de antes: M7 de T103 a T105, M9 de T103 y T104, confirmar M8
-  (se le explicó qué son); rotar la contraseña del rol de Vitrinee.
+- Del usuario: el login y el token de la API de la tienda de prueba
+  (`mycokit.jumpseller.com`) pasaron por el chat. Claude Code no los usó ni los
+  escribió en ningún archivo; se recomendó regenerar el token antes de pegarlo
+  en el portal. Se le dio la lista de productos para crearlos él (precios bajo
+  2.850 CLP para caber en el límite de 3 USDC por compra, `C-133`).
+- M7 de T103 a T105 = 4 y M9 de T103 y T104 = 4, anotadas en COMPARACION.md.
+  M8 confirmado en el chat; falta `exponential time confirm` (solo humano).
+- Del usuario, de antes: rotar la contraseña del rol de Vitrinee.
 
