@@ -32,7 +32,7 @@ import { fileURLToPath } from "node:url";
 
 import { Keypair } from "@stellar/stellar-sdk";
 
-import { openComercioSecrets, seedComercioFromEnv } from "../../packages/vitrinee-gateway/src/platform/comercios.js";
+import { DEFAULT_SEED_SLUG, openComercioSecrets, seedComercioFromEnv } from "../../packages/vitrinee-gateway/src/platform/comercios.js";
 import { PostgresComercioStore, PostgresOrderPersistence, createVitrineePool, migrate } from "../../packages/vitrinee-gateway/src/platform/postgres.js";
 import { createSecretBox, generateMasterKey } from "../../packages/vitrinee-gateway/src/platform/secret-box.js";
 import { readEnvFile } from "./lib/env-file.js";
@@ -42,7 +42,12 @@ import type { OrderRecord } from "../../packages/vitrinee-gateway/src/orders.js"
 type Pool = ReturnType<typeof createVitrineePool>;
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
-const LIVE_MANIFEST = "https://vitrinee.agentpey.com/.well-known/agent-storefront.json";
+/**
+ * The seed comercio's own store, at its subdomain (C-142). Since T104 the root
+ * host is only the portal and serves no store, so the keys are checked against
+ * the store's own manifest, not the root's.
+ */
+const liveManifestUrl = (slug: string): string => `https://${slug}.vitrinee.agentpey.com/.well-known/agent-storefront.json`;
 
 const out = (line = ""): void => void process.stdout.write(`${line}\n`);
 const die = (message: string): never => {
@@ -121,9 +126,12 @@ async function main(): Promise<void> {
   if (!payTo || !signingSecret) die(".env.vitrinee.local needs MERCHANT_STELLAR_ACCOUNT and MERCHANT_SIGNING_SECRET");
   if (!merchantEnv["JUMPSELLER_LOGIN"] || !merchantEnv["JUMPSELLER_AUTHTOKEN"]) die(".env.vitrinee.local needs JUMPSELLER_LOGIN and JUMPSELLER_AUTHTOKEN");
   const signingAccount = Keypair.fromSecret(signingSecret!).publicKey();
-  const live = (await (await fetch(LIVE_MANIFEST)).json()) as { merchant?: { stellarAccount?: string; did?: string } };
+  const manifestUrl = liveManifestUrl(merchantEnv["SEED_COMERCIO_SLUG"] || DEFAULT_SEED_SLUG);
+  const liveResponse = await fetch(manifestUrl);
+  if (!liveResponse.ok) die(`${manifestUrl} answered ${liveResponse.status}: the store to take over is not live at its subdomain`);
+  const live = (await liveResponse.json()) as { merchant?: { stellarAccount?: string; did?: string } };
   if (live.merchant?.stellarAccount !== payTo || live.merchant?.did !== `did:stellar:testnet:${signingAccount}`) {
-    die(`the payout account or signing key in .env.vitrinee.local is not the one ${LIVE_MANIFEST} publishes`);
+    die(`the payout account or signing key in .env.vitrinee.local is not the one ${manifestUrl} publishes`);
   }
   out(`✓ local store keys match the live store (payTo ${payTo}, signing ${signingAccount})`);
 
@@ -134,6 +142,26 @@ async function main(): Promise<void> {
     const exists = (await admin.query(`select 1 from pg_roles where rolname = $1`, [VITRINEE_ROLE])).rowCount === 1;
     const schema = (await admin.query(`select to_regnamespace('vitrinee') is not null as present`)).rows[0]?.present === true;
     out(`✓ admin can create roles · role ${VITRINEE_ROLE}: ${exists ? "exists" : "to create"} · schema vitrinee: ${schema ? "exists" : "to create"}`);
+
+    // The master key is settled BEFORE the role's password is touched. Rotating
+    // first and failing on the key afterwards changed the password and never
+    // showed the new one, leaving production on the old one until a rerun.
+    const givenKey = process.env["VITRINEE_MASTER_KEY"];
+    if (exists && !givenKey) die("the role and its comercios already exist, so their master key is needed: run again with VITRINEE_MASTER_KEY set in the shell. Nothing was changed.");
+    if (givenKey) createSecretBox(givenKey); // wrong length: stops here, naming the rule and never the value
+    if (exists && givenKey) {
+      let sealed: Awaited<ReturnType<PostgresComercioStore["list"]>> | undefined;
+      try {
+        sealed = await new PostgresComercioStore(admin).list();
+      } catch {
+        sealed = undefined; // the admin may not be allowed to read the role's tables; the check after rotation still runs
+      }
+      if (sealed !== undefined) {
+        const box = createSecretBox(givenKey);
+        for (const c of sealed) openComercioSecrets(c, box);
+        out(`✓ the master key opens the ${sealed.length} registered comercio(s)`);
+      }
+    }
 
     if (check) {
       if (exists) {
@@ -184,7 +212,6 @@ async function main(): Promise<void> {
       // 4. Master key and the first comercio.
       const comercios = new PostgresComercioStore(vitrinee);
       const existing = await comercios.list();
-      const givenKey = process.env["VITRINEE_MASTER_KEY"];
       if (existing.length > 0 && !givenKey) {
         die("comercios already exist, so their master key must be reused: run again with VITRINEE_MASTER_KEY set in the shell");
       }

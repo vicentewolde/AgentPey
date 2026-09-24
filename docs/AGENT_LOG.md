@@ -6634,3 +6634,30 @@ Pendiente:
   rotar la contraseña del rol de Vitrinee; el `404` de Jumpseller (T101).
 - Siguiente: lo que quede antes del video del 29 (T101 sigue abierto).
 
+
+## 2026-09-24 (7) — cc/fix-platform-setup
+
+Agente: Claude Code.
+
+Qué: al rotar la contraseña del rol de Vitrinee, `platform-setup` se detuvo con
+"the payout account or signing key … is not the one … publishes". Causa mía: el
+script comprobaba las llaves contra el manifest de la dirección raíz, y desde T104
+(borrado `VITRINEE_ROOT_COMERCIO`) la raíz responde 404. Corregido: comprueba
+contra `https://<slug>.vitrinee.agentpey.com`. De paso, el otro fallo ya anotado:
+el script cambiaba la contraseña del rol antes de comprobar la llave maestra;
+ahora la exige y la prueba contra los comercios registrados antes de tocar el
+rol. Verificado con `--check`: sin llave se detiene sin cambiar nada; con una
+llave equivocada, también; el chequeo de las llaves pasa.
+
+Incidente: el usuario pegó en el chat su terminal con la llave maestra a la
+vista. La contraseña de la base ya había pasado por el chat. Con las dos
+expuestas, quien las tuviera podría abrir los secretos sellados de los comercios.
+Cerrar la contraseña de la base (la rotación pendiente) neutraliza la
+combinación; la llave maestra no tiene todavía herramienta de rotación (habría
+que volver a sellar cada comercio). Anotado como deuda; el token de Jumpseller
+se puede regenerar desde su panel.
+
+Exponential: sin cambios.
+
+Pendiente: el usuario corre la rotación desde su carpeta (ya con el arreglo) y
+carga la conexión nueva en Render; OK de merge de este cambio.
