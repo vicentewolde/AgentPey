@@ -6284,3 +6284,23 @@ Pendiente:
   reintento borra el registro (el pago y el recibo siguen en la cadena).
 - Del usuario: soporte de Jumpseller / panel de la cuenta; decidir el plan B.
 - T101 abierto. Métricas de T100/T101/T102 pendientes del usuario.
+
+## 2026-09-23 (15) — cc/t101-compra-real-jumpseller (cierre de sesión)
+
+Agente: Claude Code.
+
+Qué, a pedido del usuario:
+- T101 queda en pausa hasta que Jumpseller responda por el `404 Account not
+  found` en `POST /orders.json`. PR #29 sigue sin mergear (un deploy borraría
+  el pedido pendiente `ord_muektgpgee1ebc73e5`).
+- El chat de planificación paralelo nunca llegó a correr: se borraron el
+  worktree `AgentPay-plan` y la rama `cc/plan-exponential-t103` (sin cambios ni
+  commits propios). El chat nuevo de la plataforma de comercios toma T103.
+- Traspaso escrito para ese chat: contexto, estado, las siete decisiones a
+  resolver con `/grill-with-docs` y las reglas.
+
+Exponential: sin cambios en esta entrada. T100 y T102 `DONE`, T101
+`IN_PROGRESS`, KR del video en 2 de 3; igual que SYNC.md de esta rama.
+
+Pendiente: respuesta de Jumpseller; plataforma de comercios (chat nuevo, desde
+T103); métricas M7 a M9 del usuario.
