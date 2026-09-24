@@ -6464,3 +6464,40 @@ Pendiente:
   confirmar la entrada de tiempo de M8; crear la segunda tienda Jumpseller en
   prueba (para T105, acción del 26).
 - Siguiente: T104, con OK del usuario.
+
+## 2026-09-24 (5) — cc/t104-directorio-comercios (T104 en PR #31)
+
+Agente: Claude Code.
+
+Qué: T104 construido y en PR ([#31](https://github.com/vicentewolde/AgentPey/pull/31)),
+sin mergear: espera el OK del usuario (regla 1).
+- Vitrinee publica `GET /api/comercios` en el portal; slug máximo 31.
+- AgentPey: fila `kind: "platform"` en `venues.json` en lugar de la fila fija
+  de Vitrinee; `platforms.ts` expande el directorio en comercios
+  `vitrinee-<slug>:<cuenta>` y falla cerrado; `toPaymentTerms` recibe el
+  registro expandido y fija el cobro a la cuenta del id (`C-145`).
+- Hallazgo: `toPaymentTerms` resolvía el activo contra `venues.json` fijo; toda
+  compra a un comercio de directorio habría fallado al pagar. Corregido.
+- RealOps: una sección por tienda; el comprador de tienda se contrata desde la
+  tarjeta y queda atado a su tienda (columna `comercio`).
+- Verificación de T103 después del deploy de cierre, anotada en
+  `evidencia/T104.md` § 1.
+
+Verificado: test de contrato nuevo con el código real de los dos lados; agent
+550, web 254, RealOps 187, Vitrinee 69, gateway 32, scripts 74; typecheck y
+lint en verde.
+
+Por qué no se delegó a Codex: registro de comercios, grant firmado y punto de
+autorización del pago (`P-10`, `B-25`).
+
+`AGENTS.md`: una línea nueva (fila de plataforma y `platforms.ts` no se tocan
+sin Claude Code).
+
+Exponential: T104 `READY_TO_PLAN` → `IN_PROGRESS` → `QA` con PR #31.
+
+Pendiente:
+- Del usuario: OK de merge; en Render borrar `VITRINEE_ROOT_COMERCIO` y
+  `VITRINEE_BASE_URL` y agregar `VITRINEE_DIRECTORY_URL`; en RealOps contratar
+  un comprador desde la tarjeta de Bazar Cordillera, firmarlo y comprar
+  stickers para la verificación en vivo. Sigue pendiente la segunda tienda
+  Jumpseller en prueba (T105) y las métricas M7/M8/M9.
