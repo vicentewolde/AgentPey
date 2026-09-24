@@ -76,7 +76,7 @@ Los tres primeros tickets `EXPONENTIAL` que se mergeen cierran la otra mitad.
 | T102 | ANTERIOR | 0,12 | 2 | | 576 líneas / 15 archivos (332 / 8 sin `docs/`), más 81 / 6 del ajuste | 0 | 3 | pendiente | pendiente | pendiente |
 | T103 | EXPONENTIAL | 0,03 | 2 | | 1.976 líneas / 28 archivos sin `docs/` (2.945 / 40 con la planificación) | 0 | 0 | pendiente | 52 (compartidos por T103 a T105; propuesta, falta confirmación del usuario) | pendiente |
 | T104 | EXPONENTIAL | 0,49 | 2 | | 1.650 líneas / 40 archivos (PR #31, con `docs/`) | 0 | 1 | pendiente | ver T103 | pendiente |
-| T105 | EXPONENTIAL | | | | | | | | ver T103 | |
+| T105 | EXPONENTIAL | pendiente (merge) | 1 | | 1.959 líneas / 20 archivos sin `docs/` | pendiente | 0 | pendiente | ver T103 | pendiente |
 
 Notas por ticket (bloqueos, qué cambió, por qué) van debajo, una entrada por
 hito, al cerrarlo.
@@ -145,3 +145,14 @@ decisión (`P-`) que resulte.
 - M5 = 0: aprobado a la primera.
 - M6 = 1, no estaba en el ticket: `toPaymentTerms` con el registro fijo.
 - M7, M9: pendientes del usuario.
+
+**T105** (ticket creado 2026-09-24 03:21 UTC, iniciado ~14:50 UTC, PR abierto el mismo día).
+- M1: se completa al mergear.
+- M2 = 1: `VT-31` (una wallet con varias tiendas, sesión firmada con una llave
+  derivada, orden y códigos de las cuatro pruebas, slugs reservados). Precisa
+  la forma dentro de `VT-27` a `VT-29`; no cambia el alcance del ticket.
+- M4: 1.959 líneas añadidas y 11 quitadas en 20 archivos, sin `docs/`.
+- M6 = 0 detenciones. Dos errores que no detuvieron el hito, encontrados en la
+  vista previa y corregidos antes del PR (el botón que no se ocultaba y el
+  chequeo de `Origin` sin el puerto).
+- M7: el usuario no la dio al correr `/start-ticket`; pendiente, igual que M9.

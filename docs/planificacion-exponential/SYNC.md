@@ -23,7 +23,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T102 | `cmuebl38n000dl704hy8rw3gc` | Deploy de Vitrinee desde el `render.yaml` de AgentPey, en `vitrinee.agentpey.com` | ANTERIOR | `DONE` | 2026-09-23 | 2026-09-23 | 2026-09-23 | [C-130, C-134, C-136](../fase-6-agentguard-comercializacion/DECISIONES.md), [P-12](../DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/25) |
 | T103 | `cmueyt0dq001hjx04npk5vbh3` | Vitrinee atiende a varios comercios, con datos en Postgres | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [C-140, C-142, C-143, C-144](../fase-6-agentguard-comercializacion/DECISIONES.md), [VT-27, VT-30](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/30) |
 | T104 | `cmueyt2nf001ljx04jir9o7t2` | AgentPey y RealOps leen el directorio de comercios de Vitrinee | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [C-141, C-145](../fase-6-agentguard-comercializacion/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/31) |
-| T105 | `cmueyt4lz001pjx04piff4zwy` | Un dueño da de alta su tienda en Vitrinee sin código | EXPONENTIAL | `READY_TO_PLAN` | 2026-09-24 | | | [VT-27, VT-28, VT-29](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
+| T105 | `cmueyt4lz001pjx04piff4zwy` | Un dueño da de alta su tienda en Vitrinee sin código | EXPONENTIAL | `IN_PROGRESS` | 2026-09-24 | 2026-09-24 | | [VT-27, VT-28, VT-29, VT-31](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
@@ -116,3 +116,6 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
 - **2026-09-24**, Claude Code, sesión de T104. Ritual sin diferencias. T104
   `READY_TO_PLAN` → `IN_PROGRESS` → `QA` con el PR #31.
 - **2026-09-24**, Claude Code: T104 verificado en vivo con una compra real y `DONE`.
+- **2026-09-24**, Claude Code, sesión de T105. Ritual de apertura sin
+  diferencias (acciones activas y tickets iguales a esta tabla). T105
+  `READY_TO_PLAN` → `IN_PROGRESS` (inicio 2026-09-24).

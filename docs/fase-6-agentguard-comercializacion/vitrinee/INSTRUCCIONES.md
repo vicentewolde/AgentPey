@@ -123,6 +123,15 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
+## Estado al 2026-09-24 (T105 en PR)
+
+- **Portal de dueños (T105, `VT-31`).** `vitrinee.agentpey.com/` es el portal:
+  el dueño entra firmando con Freighter (SEP-0053) y da de alta su tienda
+  Jumpseller, con cuatro pruebas antes de guardar nada, y ve sus pedidos. Rutas
+  en `/api/portal/*` (`packages/vitrinee-gateway/src/platform/portal.ts`),
+  página en `apps/vitrinee-portal/public/`. Solo existe en modo plataforma. La
+  sesión se firma con una llave derivada de `MASTER_KEY`: no hay variable nueva.
+
 ## Estado al 2026-09-24 (T103 en PR)
 
 - **Multi-comercio (T103, `C-140` a `C-144`, `VT-27` a `VT-30`).** Con

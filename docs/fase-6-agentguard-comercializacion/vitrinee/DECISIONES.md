@@ -875,3 +875,61 @@ arma sus requisitos, y cualquier error ahí cobra a la cuenta equivocada.
 
 **Otra alternativa descartada: apagar la raíz ya.** Rompía el catálogo en vivo
 de RealOps y la fila de `venues.json` hasta T104.
+
+---
+
+### VT-31 · Cómo entra el dueño y cómo se da de alta: una wallet puede tener varias tiendas, sesión firmada con una llave derivada, y cuatro pruebas con un rechazo cada una · `Vigente`
+**Fecha:** 2026-09-24 · **Hito:** T105 · La forma, de Claude Code, dentro de `VT-27`, `VT-28`, `VT-29` y `C-142`
+
+**Qué se decide.**
+
+1. **El dueño de un comercio es su cuenta de cobro** (`VT-29`), y una misma
+   wallet puede dar de alta más de una tienda. El panel muestra todas las
+   tiendas que cobran en la cuenta con la que se entró, y ninguna otra. No hay
+   otra tabla de dueños: no hay nada más que revisar ni nada que falsificar.
+   Para el video, la tienda de prueba se puede dar de alta con la misma wallet
+   de Bazar Cordillera, y el panel muestra las dos.
+2. **La sesión es una cookie firmada, sin tabla.** HMAC sobre la cuenta y el
+   vencimiento (12 horas), con una llave derivada de `VITRINEE_MASTER_KEY` con
+   HKDF: el usuario no carga ningún secreto nuevo, y la llave maestra nunca
+   firma otra cosa. Sin atributo `Domain`, `HttpOnly`, `SameSite=Strict`,
+   `Secure` en https: el navegador no la manda a ningún subdominio de tienda.
+   Además, toda llamada que cambia algo se rechaza si su `Origin` no es el del
+   portal, porque un navegador cuenta a un subdominio hermano como el mismo
+   sitio.
+3. **El desafío de la firma vive en memoria** del proceso de Vitrinee, dura
+   5 minutos, nombra la cuenta y el host, y se consume antes de mirar la firma:
+   ni una firma válida ni una inválida lo pueden reusar. Un reinicio solo le
+   cuesta al dueño un segundo clic.
+4. **Las cuatro pruebas corren de la más barata a la más cara**: slug (sin
+   red), cuenta de cobro (Horizon), credenciales (Jumpseller), llave fondeada
+   (friendbot). Cada una rechaza con su propio código (`SlugUnavailable`,
+   `PayoutAccountNotReady`, `StoreCredentialsRejected`, `SigningKeyNotFunded`),
+   y el portal traduce cada código a un mensaje que dice qué arreglar. Se fondea
+   una llave solo si las otras tres pasaron. Un Jumpseller caído no se confunde
+   con credenciales malas: responde `AdapterError` y se puede reintentar.
+5. **Algunos slugs quedan reservados** (`www`, `api`, `portal`, `admin`,
+   `realops`, `agentpey` y otros), porque en `<slug>.vitrinee.agentpey.com`
+   se leerían como parte de la plataforma.
+
+**Lo que no cambia.** Las credenciales llegan como "credenciales de tienda"
+(`storeCredentialsSchema`, con `kind`): la app OAuth de después del 29 es un
+miembro más de esa unión y una rama más en `storeCatalogueReader` (`VT-28`).
+
+**Lo que se cede, dicho en voz alta.** Cualquiera con una wallet con línea de
+confianza de USDC y una tienda Jumpseller que responda puede aparecer en el
+directorio. Para cobrar, igual necesita que una persona le firme un permiso que
+la nombre (`C-141`). No hay límite de tiendas por wallet; si hace falta, se
+agrega después.
+
+**Alternativa descartada: una tienda por wallet.** Obligaba a crear otra cuenta
+en Freighter, con su línea de confianza, solo para la tienda de prueba del
+video, y no protege nada: el dueño es la cuenta de cobro de todos modos.
+
+**Otra alternativa descartada: sesiones en una tabla de Postgres.** Permite
+cerrar una sesión desde el servidor, pero es una tabla y una limpieza más para
+una sesión de 12 horas en un piloto.
+
+**Otra alternativa descartada: un secreto propio para las sesiones**
+(`VITRINEE_SESSION_KEY`). Otro valor que el usuario tendría que generar y cargar
+en Render, sin ventaja sobre derivarlo de la llave maestra.
