@@ -6705,3 +6705,23 @@ a sellar cada comercio). Deuda para después del 29.
 
 Exponential: sin cambios.
 
+## 2026-09-24 (12) — cc/exp-sync-board
+
+Agente: Claude Code.
+
+Qué: el tablero de Exponential mostraba en "To Do" trabajo ya terminado.
+Causa: una Acción tiene `status` y `kanbanStatus` por separado, y yo solo
+cambiaba el primero. Se movieron a mano las 10 acciones completadas a Done y la
+de T101 a In Progress, y se agregó `pnpm run exp:sync`
+(`scripts/exponential/sync-board.ts`), que lo hace solo según el estado de los
+tickets. Probado: detecta un desajuste provocado, lo corrige y una segunda
+corrida no cambia nada. Entra al ritual de cierre de hito en `CLAUDE.md` y en el
+README de planificación. No corre en segundo plano: lo corre la sesión.
+
+También: comentario en T101 con lo del correo a soporte de Jumpseller.
+
+`AGENTS.md`: sin cambios (Codex no toca Exponential).
+
+Exponential: acciones de T100 a T105 y sus tareas del usuario en Done; T101 en
+In Progress; comentario en T101.
+

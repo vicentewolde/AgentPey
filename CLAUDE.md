@@ -138,7 +138,9 @@ dos herramientas pise trabajo de la otra ni pierda contexto:
 3. Agrega toda decisión nueva al `DECISIONES.md` de la fase en curso, con motivo
    y alternativa descartada. Si la decisión afecta a más de una fase o a la
    estructura del proyecto, va a `docs/DECISIONES.md` con prefijo `P-`.
-4. Commit con mensaje que explique el **porqué**, no solo el qué.
+4. `pnpm run exp:sync`: mueve las tarjetas del tablero de Exponential según el
+   estado de los tickets (`docs/planificacion-exponential/README.md`).
+5. Commit con mensaje que explique el **porqué**, no solo el qué.
 
 ## Criterios transversales (no negociables)
 

@@ -60,7 +60,12 @@ exponential tickets list --workspace personal-cmud6knil0045l704wuoc5b1r --produc
 exponential actions list --json
 ```
 
-Comparar contra [SYNC.md](SYNC.md). Lo que cambió en la web (prioridad, fecha,
+```bash
+pnpm run exp:sync
+```
+
+Ese comando alinea el tablero con los tickets (ver "El tablero se mueve solo"
+abajo). Después, comparar contra [SYNC.md](SYNC.md). Lo que cambió en la web (prioridad, fecha,
 estado de una acción, tickets nuevos que el usuario creó) se refleja en SYNC.md
 y se anota en el bloque "Última sincronización". Lo que toca alcance o
 decisiones se muestra al usuario antes de tocar nada.
@@ -69,8 +74,33 @@ decisiones se muestra al usuario antes de tocar nada.
 
 1. Estado del ticket en Exponential (`tickets update --id <cuid> --status …`,
    `--pr <url>` si hay PR).
-2. Misma fila en SYNC.md: estado, fechas, enlaces.
-3. Entrada en `docs/AGENT_LOG.md` con una línea "Exponential: qué cambié".
+2. `pnpm run exp:sync`, para que las tarjetas del tablero sigan al ticket.
+3. Misma fila en SYNC.md: estado, fechas, enlaces.
+4. Entrada en `docs/AGENT_LOG.md` con una línea "Exponential: qué cambié".
+
+## El tablero se mueve solo
+
+Una Acción de Exponential tiene dos campos distintos: su *estado* (`ACTIVE`,
+`COMPLETED`, `CANCELLED`) y su *columna* del tablero (`kanbanStatus`: Backlog,
+To Do, In Progress, In Review, Done). Marcar una acción como completada no mueve
+su tarjeta, y por eso el trabajo terminado seguía viéndose en "To Do".
+
+`pnpm run exp:sync` (`scripts/exponential/sync-board.ts`) cierra esa brecha con
+dos reglas:
+
+1. Una acción completada pasa a la columna Done.
+2. Una acción llamada `T<n> · ...` sigue al ticket `T<n> · ...`: ticket en
+   progreso, columna In Progress; en QA, In Review; en DONE, completada y Done.
+   Cualquier otro estado del ticket la deja quieta.
+
+Solo escribe `status` y `kanbanStatus`, nunca un título, una fecha o una
+descripción, y dice qué cambió. Con `--dry-run` solo lo muestra. Es idempotente:
+correrlo dos veces no cambia nada la segunda. Usa el CLI `exponential` con la
+sesión que ya tienes; no guarda ninguna credencial.
+
+**Lo que no hace:** no corre en segundo plano. Se ejecuta cuando una sesión de
+Claude Code abre o cierra un hito (el ritual de arriba). Las acciones sin número
+T (la partner key, el video) no siguen a ningún ticket: esas las mueves tú.
 
 ## Cómo se usan las skills, adaptadas a `CLAUDE.md`
 
