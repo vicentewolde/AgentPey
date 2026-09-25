@@ -6497,3 +6497,30 @@ USDC (`C-131`) y nadie lo recarga solo. Ahora dice eso, sugiere algo más barato
 pedir más al equipo del piloto, y el aviso de arriba muestra el saldo del contrato
 que paga. Lo encontró el usuario: una cuenta nueva compró stickers (1,04) y quedó
 con 1,96 USDC; la Melena de León cuesta 2,62.
+
+### C-152 · Una herramienta de operador recarga el contrato de pago de una cuenta desde la reserva · `Vigente`
+**Fecha:** 2026-09-25 · **Hito:** T111 · Del usuario el pedido; de Claude Code la forma
+
+**Contexto.** El crédito de prueba de una cuenta es de 3 USDC (`C-131`) y nada lo
+recarga (`tenant-rail.ts`: "how the demo tenant buys a real product: topped up by
+hand"). La cuenta con que se grabó el respaldo quedó con 0,905 USDC, y un kit cuesta
+hasta 2,94: una compra así se rechaza con `RailInsufficientFunds`. La demo no puede
+fallar por eso, y la única forma era un `transfer` a mano con el CLI de Stellar.
+
+**Qué se decide.** `pnpm run rail:topup -- <contrato C…> <monto> [--yes]`, un
+comando de operador (como `create-partner`, no una ruta de la app): mueve USDC de
+testnet desde la reserva (la cuenta de `AGENT_SECRET_KEY`, cuya dirección pública
+es `RESERVE_ADDRESS`) al `policy_rail` indicado. Salvaguardas: sin `--yes` solo
+muestra lo que haría; tope de 20 USDC por comando (`MAX_TOPUP_USDC`); el destino
+debe ser una dirección de contrato; exige que la reserva tenga el monto; si
+`RESERVE_ADDRESS` está definida y no coincide con la llave, se detiene; nunca
+imprime la llave. Solo testnet, con los tokens de prueba del piloto: no toca fondos
+de clientes (la wallet del cliente siempre puede retirar de su rail, `C-61`).
+
+**Es custodia de fondos del piloto**, así que queda en Claude Code (`P-10`) y lo
+corre el usuario en su terminal; Claude Code escribió el comando y nunca vio la
+llave.
+
+**Alternativa descartada: recargar automáticamente al bajar de un umbral.** Es una
+segunda fuente de gasto de la reserva sin una persona mirando, justo lo que `C-80`
+acotó con el tope de 20 rails patrocinados.

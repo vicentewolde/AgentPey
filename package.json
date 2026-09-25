@@ -13,6 +13,7 @@
     "deploy:registry": "tsx --tsconfig tsconfig.scripts.json scripts/deploy-registry.ts",
     "deploy:policy-rail": "tsx --tsconfig tsconfig.scripts.json scripts/deploy-policy-rail.ts",
     "check:rail-balances": "tsx --tsconfig tsconfig.scripts.json scripts/check-rail-balances.ts",
+    "rail:topup": "tsx --tsconfig tsconfig.scripts.json scripts/topup-rail.ts",
     "loadtest:perday": "tsx --tsconfig tsconfig.scripts.json scripts/loadtest-perday.ts",
     "demo": "tsx --tsconfig tsconfig.scripts.json scripts/demo.ts",
     "demo:pay-real": "tsx --tsconfig tsconfig.scripts.json scripts/demo-real-payment.ts",

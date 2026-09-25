@@ -6999,3 +6999,24 @@ Exponential: ticket T110 `cmugzc1cj000njp042cuod04w` creado `IN_PROGRESS`.
 
 Pendiente: un solo OK para mergear `cc/t107-saldo`, `cc/t106-cierre` y esta rama
 (están apiladas; redespliega RealOps y Vitrinee).
+
+## 2026-09-25 (10) — cc/rail-topup (T111)
+
+Agente: Claude Code.
+
+Qué: el usuario preguntó cuánto USDC tiene el contrato de su cuenta de prueba y
+cómo darle más fondos para no fallar en la demo. Saldo 0,905 USDC (datos públicos).
+Se escribió `pnpm run rail:topup` (`C-152`): recarga un `policy_rail` desde la
+reserva, con `--yes` obligatorio para enviar y tope de 20 USDC. Los rechazos se
+probaron; **el envío no**, porque usa `AGENT_SECRET_KEY` (que Claude Code no lee) y
+se debe correr primero sin `--yes`.
+
+Por qué queda en Claude Code: custodia y flujo de fondos (`P-10`).
+
+`AGENTS.md`: sin cambios.
+
+Exponential: ticket T111 `cmuh17lc20001jm04rxvki5s9` creado `IN_PROGRESS`.
+
+Pendiente: OK del usuario para mergear (solo agrega un script, no toca la app); que
+el usuario corra el comando sin `--yes` y después con `--yes`; verificar el saldo
+nuevo en la red.
