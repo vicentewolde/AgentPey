@@ -5,10 +5,17 @@
 > sin audio: si hace falta en el escenario, lo reproduces y narras encima con
 > el guion de la slide 3 ([GUION.md](GUION.md)).
 >
-> Cada compra es real en testnet: unos 1,04 USDC de prueba. Hay dos
-> previstas (video y en vivo). El contrato que paga tenía 12,49 USDC el
-> 2026-09-24, así que alcanza. Si RealOps te crea un cliente nuevo, se le dan 3
-> USDC en su primer pago, que también alcanza para las dos.
+> **La demo compra en MycoKit, no en Bazar Cordillera** (cambiado el
+> 2026-09-25). El panel del dueño solo muestra las tiendas que cobran en la
+> wallet con que entras: MycoKit cobra en la tuya (`GD2M…K5GN`); Bazar
+> Cordillera cobra en una cuenta que creó la plataforma y que no está en tu
+> Freighter.
+>
+> Cada compra es real en testnet: el **Kit de cultivo Cola de Pavo**, el más
+> barato, cuesta **2,09 USDC**. Hay dos previstas (video y en vivo): 4,19 USDC.
+> **Usa tu cuenta de RealOps de antes** (la de los stickers del 24): su contrato
+> de pago tenía 12,49 USDC. Una cuenta nueva recibe solo 3 USDC de crédito y
+> alcanzaría para un kit, no para dos.
 
 ## A. Contratar el comprador nuevo (antes de las 11:00; mejor hoy)
 
@@ -18,10 +25,10 @@ comprar (`C-145`, punto 8).
 1. Entra a `https://realops.agentpey.com` → **Entrar** (link por email).
 2. Hay dos caminos, el resultado es el mismo (`C-147`):
    - **Mis agentes** → abajo, **Contratar un comprador de tienda** → **En qué
-     tienda**: *Bazar Cordillera* → **Configurar**. Los límites ya vienen en
-     25,00 por compra y por día.
-   - o **Catálogo** → sección **Tiendas en Vitrinee** → tarjeta del **Pack de
-     stickers Cordillera** → **Ver el permiso que esto necesita →** →
+     tienda**: *MycoKit* → **Configurar**. Los límites ya vienen en 25,00 por
+     compra y por día.
+   - o **Catálogo** → sección **Tiendas en Vitrinee** → MycoKit → tarjeta del
+     **Kit de cultivo Cola de Pavo** → **Ver el permiso que esto necesita →** →
      **Configurar este agente**.
 3. Un comprador por tienda: si ya existe uno para esa tienda, te lleva a ese.
 4. Página **Revisar el permiso**: mira la tabla (tope por compra, tope por
@@ -40,11 +47,11 @@ comprar (`C-145`, punto 8).
 - Modo "No molestar" activado. Barra de marcadores oculta. Zoom del navegador
   al 125 %.
 - Freighter desbloqueado y en **Testnet**.
-- **Pestaña 1, RealOps:** `Catálogo`, tarjeta del Pack de stickers con
+- **Pestaña 1, RealOps:** `Catálogo`, tarjeta del Kit de cultivo Cola de Pavo con
   "dentro del permiso", **Cantidad 1**, y los campos de envío ya llenos. Usa
   datos de prueba, no tu dirección real: se ven en pantalla.
 - **Pestaña 2, panel de Vitrinee:** `https://vitrinee.agentpey.com` →
-  **Connect Freighter** con la wallet **dueña de Bazar Cordillera**. La sesión
+  **Connect Freighter** con **tu wallet, la dueña de MycoKit** (`GD2M…K5GN`). La sesión
   dura 12 horas: si entras a las 10:45, te dura hasta la demo de la noche.
 - Cierra todo lo demás.
 

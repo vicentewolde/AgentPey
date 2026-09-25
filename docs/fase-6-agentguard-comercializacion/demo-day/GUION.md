@@ -60,13 +60,16 @@ Cambia al navegador (ver [VIDEO-RESPALDO.md](VIDEO-RESPALDO.md) § "Demo en
 vivo"):
 
 - **Pestaña RealOps.** Esto es RealOps, una app de ejemplo. Ya contraté un
-  comprador para la tienda Bazar Cordillera y firmé su permiso con Freighter:
-  máximo por compra, máximo por día, solo esta tienda, solo USDC.
-- **Clic en "Pedirle al agente que lo compre".** Le pido un pack de stickers.
+  comprador para la tienda MycoKit, que vende kits para cultivar hongos, y firmé
+  su permiso con Freighter: máximo por compra, máximo por día, solo esta tienda,
+  solo USDC.
+- **Clic en "Pedirle al agente que lo compre".** Le pido un kit Cola de Pavo.
   AgentPey revisa el pedido contra el permiso firmado y paga desde un contrato
   en Stellar.
-- **Clic en "Ver el pago en Stellar".** Aquí está el pago, en la red, en
-  segundos.
+- **Clic en "Ver el pago en Stellar".** Esta es la transacción en la red:
+  exitosa. Movió 2,09 dólares en USDC desde el contrato que tiene mis reglas
+  directo a la wallet de la tienda, y la comisión fue menos de un centavo.
+  (Qué señalar en la pantalla: § "Qué señalar en Stellar Expert".)
 - **Pestaña del panel de Vitrinee, recargar.** Y este es el panel del dueño de
   la tienda: la venta está ahí, con su recibo. Tres comprobaciones: la firma de
   la tienda, el ancla en Stellar y el pago real. Las tres en verde.
@@ -132,6 +135,20 @@ quiera que sus agentes compren con reglas.
 Lo que viene ahora: el primer partner externo comprando solo.
 
 Gracias.
+
+## Qué señalar en Stellar Expert
+
+Una sola línea de la transacción:
+`G…  invoked contract CBIE…DAMA transfer(C…, GD2M…K5GN, 20947368)`.
+
+| Lo que ves | Qué es |
+|---|---|
+| **Successful** | El pago quedó en la red |
+| `CBIE…DAMA` | El contrato de USDC en Stellar |
+| El primer `C…` del `transfer` | **Quién paga**: el contrato con tus reglas (`policy_rail`), no una wallet del agente |
+| `GD2M…K5GN` | **Quién cobra**: la wallet de MycoKit (la tuya) |
+| `20947368` | 2,09 USDC (USDC usa 7 decimales) |
+| La cuenta que invoca (`G…`) | Quien envía la transacción y paga la comisión, para que el agente no necesite XLM |
 
 ## De dónde sale cada cifra
 
