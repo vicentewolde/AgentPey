@@ -6456,3 +6456,36 @@ hoy tienen decenas de elementos; doblar basta y conserva todo en la página.
 **Alternativa descartada: servir HTML en `/verify` según `Accept`.** Cambiaría lo
 que ve un agente o `curl` que no mande ese encabezado, y ese endpoint está
 publicado en el manifest de cada tienda.
+
+### C-150 · Contratar es una pregunta y un paso: se elige qué hace el agente, y se va directo a firmar · `Vigente`
+**Fecha:** 2026-09-25 · **Hito:** T109 · Del usuario la dirección; de Claude Code la forma · **Modifica** `C-147` (dos formularios) y **amplía** `C-135` (frases escritas)
+
+1. **Un solo formulario en "Mis agentes": "¿Qué quieres que haga?"**. Cada tienda
+   del directorio es una respuesta ("Comprar en MycoKit (tienda)"), junto al
+   Comprador del Bazaar, informes y créditos. Elegir cambia los límites a los de
+   esa respuesta (25,00/25,00 en tiendas, `C-137`; 0,30/0,60 en el resto). El
+   nombre es opcional: vacío, se usa el del tipo o el de la tienda. Reemplaza los
+   dos formularios de `C-147`. El servidor sigue validando la tienda contra el
+   directorio y un comprador por tienda.
+2. **"Contratar y firmar" va directo a la firma en AgentPey**, sin pasar por
+   "Revisar el permiso" de RealOps. Lo mismo desde "Ver el permiso que esto
+   necesita" del catálogo. Si ya hay un agente para esa tienda: sin firmar, se
+   abre su firma; firmado, se va a su catálogo. **Qué se pierde, dicho en voz
+   alta:** en el camino principal ya no se ven las marcas "firmado / on-chain /
+   RealOps" de cada control (`PILOTO-F9.md` § 7.1); AgentPey muestra el permiso
+   completo antes de firmar, pero no esas marcas. La pantalla de revisión sigue
+   existiendo y se abre desde cada agente.
+3. **Catálogo de un agente: `/catalogo?agente=<id>`**, solo con lo que ese agente
+   puede comprar, y si ya puede. Se llega tras firmar (`C-149`) y desde el botón
+   "Ver lo que puede comprar" de su ficha. Un id de otra cuenta muestra el
+   catálogo completo.
+4. **La frase escrita busca en todas las tiendas y el bazar** cuando no nombra un
+   producto conocido (`C-135` sigue para los que sí conoce): lleva a
+   `/catalogo?q=…` con los resultados. Buscar nunca compra; cada resultado conserva
+   su acción, así que uno fuera del permiso lleva primero a firmar. El cuadro para
+   escribir está siempre en Mis servicios, también sin agentes firmados. Palabras
+   de tres letras solo cuentan completas ("kit" sí, "tal" dentro de "total" no).
+
+**Alternativa descartada: mantener "Revisar el permiso" antes de firmar.** Es un
+paso más que el usuario pidió quitar, con el mismo permiso que AgentPey muestra
+después; se conserva como pantalla, no como paso obligatorio.

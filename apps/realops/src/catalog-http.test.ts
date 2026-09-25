@@ -592,19 +592,119 @@ describe("buying from the Vitrinee store (T100)", () => {
     expect(review).not.toContain(STORE_VENUE_ID);
   });
 
+  describe("T109: hire and sign in one step, one agent's catalogue, search", () => {
+    const hireAndSign = (cookie: string, fields: Record<string, string>): Promise<Response> =>
+      fetch(`${baseUrl}/agentes`, form({ perTx: "25.00", perDay: "25.00", validForDays: "30", firmar: "1", ...fields }, cookie));
+
+    it("hires a store shopper from the single question and goes straight to signing on AgentPey", async () => {
+      const cookie = await signIn("uno-solo@ejemplo.cl");
+      const response = await hireAndSign(cookie, { choice: "store:otra-tienda" });
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toMatch(/^https:\/\/agentpey\.example\/consent\/cns_/);
+      const account = await store.findAccountByEmail("uno-solo@ejemplo.cl");
+      const [agent] = await store.listAgents(account!.id);
+      expect(agent).toMatchObject({ kind: "vitrinee_shopper", comercio: "otra-tienda" });
+      expect(agent!.consentSessionId).not.toBeNull();
+    });
+
+    it("names an agent after its kind when the name is left empty", async () => {
+      const cookie = await signIn("sin-nombre@ejemplo.cl");
+      const response = await hireAndSign(cookie, { choice: "bazaar_shopper", label: "", perTx: "0.30", perDay: "0.60" });
+      expect(response.headers.get("location")).toMatch(/\/consent\//);
+      const account = await store.findAccountByEmail("sin-nombre@ejemplo.cl");
+      expect((await store.listAgents(account!.id))[0]!.label).toBe("Bazaar Shopper");
+    });
+
+    it("sends a second hire of a signed store shopper to what it can buy, and hires nothing", async () => {
+      const cookie = await signIn("ya-firmado@ejemplo.cl");
+      const agentId = await signStoreAgent(cookie, "37283001");
+      const again = await hireAndSign(cookie, { choice: "store:bazar-cordillera" });
+      expect(again.headers.get("location")).toBe(`/catalogo?agente=${agentId}`);
+      const account = await store.findAccountByEmail("ya-firmado@ejemplo.cl");
+      expect(await store.listAgents(account!.id)).toHaveLength(1);
+    });
+
+    it("hires and signs from a product outside the grant too", async () => {
+      const cookie = await signIn("desde-tarjeta@ejemplo.cl");
+      const response = await fetch(`${baseUrl}/catalogo/permiso`, form({ product_id: "otra-9001", firmar: "1" }, cookie));
+      expect(response.headers.get("location")).toMatch(/\/consent\/cns_/);
+    });
+
+    it("shows only one agent's products, and says whether it can buy them", async () => {
+      const cookie = await signIn("filtrado@ejemplo.cl");
+      const agentId = await signStoreAgent(cookie, "otra-9001");
+      const html = await (await fetch(`${baseUrl}/catalogo?agente=${agentId}`, { headers: { cookie } })).text();
+      expect(html).toContain("Lo que puede comprar");
+      expect(html).toContain("Tazón de cerámica");
+      expect(html).not.toContain("Pack de stickers Cordillera");
+      expect(html).not.toContain("Swap Risk Quote");
+      expect(html).toContain("Su permiso está firmado");
+      expect(html).toContain('href="/catalogo">');
+    });
+
+    it("an agent of another account shows the whole catalogue, not its products", async () => {
+      const owner = await signIn("dueno-agente@ejemplo.cl");
+      const agentId = await signStoreAgent(owner, "otra-9001");
+      const stranger = await signIn("extrano@ejemplo.cl");
+      const html = await (await fetch(`${baseUrl}/catalogo?agente=${agentId}`, { headers: { cookie: stranger } })).text();
+      expect(html).not.toContain("Lo que puede comprar");
+      expect(html).toContain("Pack de stickers Cordillera");
+    });
+
+    it("links a signed agent's page to its own catalogue", async () => {
+      const cookie = await signIn("boton-catalogo@ejemplo.cl");
+      const agentId = await signStoreAgent(cookie, "37283001");
+      const html = await (await fetch(`${baseUrl}/agentes/${agentId}`, { headers: { cookie } })).text();
+      expect(html).toContain(`href="/catalogo?agente=${agentId}"`);
+      expect(html).toContain("Ver lo que puede comprar");
+    });
+
+    it("a typed sentence naming no known product searches every store, and never buys", async () => {
+      const cookie = await signIn("buscar@ejemplo.cl");
+      await signStoreAgent(cookie, "37283001");
+      const before = purchases.length;
+      const asked = await fetch(`${baseUrl}/instruccion`, form({ instruction: "quiero un tazón" }, cookie));
+      expect(asked.headers.get("location")).toBe(`/catalogo?${new URLSearchParams({ q: "quiero un tazón" }).toString()}`);
+      expect(purchases).toHaveLength(before);
+      const html = await (await fetch(`${baseUrl}${asked.headers.get("location")!}`, { headers: { cookie } })).text();
+      expect(html).toContain("Resultados para");
+      expect(html).toContain("Tazón de cerámica");
+      expect(html).not.toContain("Pack de stickers Cordillera");
+      // Outside the grant, the result offers the permission it needs, not a buy button.
+      expect(html).toContain("/catalogo/permiso?producto=otra-9001");
+    });
+
+    it("searches for a person with no agent at all, straight from My services", async () => {
+      const cookie = await signIn("sin-agentes-busca@ejemplo.cl");
+      // A product it knows by name opens its card (C-135); anything else is searched.
+      const known = await fetch(`${baseUrl}/instruccion`, form({ instruction: "stickers" }, cookie));
+      expect(known.headers.get("location")).toMatch(/^\/catalogo\?producto=37283001&cantidad=1#37283001$/);
+      const searched = await fetch(`${baseUrl}/instruccion`, form({ instruction: "un tazón" }, cookie));
+      expect(searched.headers.get("location")).toBe(`/catalogo?${new URLSearchParams({ q: "un tazón" }).toString()}`);
+    });
+
+    it("escapes the search as typed", async () => {
+      const cookie = await signIn("buscar-xss@ejemplo.cl");
+      const html = await (await fetch(`${baseUrl}/catalogo?q=${encodeURIComponent("<img src=x onerror=alert(1)>")}`, { headers: { cookie } })).text();
+      expect(html).not.toContain("<img src=x");
+      expect(html).toContain("&lt;img src=x");
+    });
+  });
+
   describe("hiring a store shopper from the agents page (C-147)", () => {
     const hire = (cookie: string, fields: Record<string, string>): Promise<Response> =>
       fetch(`${baseUrl}/agentes`, form({ kind: "vitrinee_shopper", perTx: "25.00", perDay: "25.00", validForDays: "30", ...fields }, cookie));
 
-    it("offers every store the directory names, with the store limits already filled in", async () => {
+    it("asks one question, with each store as an answer carrying the store limits (C-150)", async () => {
       const cookie = await signIn("contratar-tienda@ejemplo.cl");
       const html = await (await fetch(`${baseUrl}/agentes`, { headers: { cookie } })).text();
-      expect(html).toContain('<option value="bazar-cordillera">Bazar Cordillera</option>');
-      expect(html).toContain('<option value="otra-tienda">Otra Tienda</option>');
-      expect(html).toContain('id="store-perTx" name="perTx" required value="25.00"');
-      expect(html).toContain('id="store-perDay" name="perDay" required value="25.00"');
-      // The general form keeps offering the other agents with their own defaults.
-      expect(html).toContain('id="perTx" name="perTx" required value="0.30"');
+      expect(html.match(/<select /g)).toHaveLength(1);
+      expect(html).toMatch(/<option value="store:bazar-cordillera" data-per-tx="25.00" data-per-day="25.00" data-days="30"/);
+      expect(html).toMatch(/<option value="store:otra-tienda" data-per-tx="25.00"/);
+      expect(html).toMatch(/<option value="bazaar_shopper" data-per-tx="0.30" data-per-day="0.60"/);
+      // A store is the first answer, so the form opens with its limits.
+      expect(html).toContain('id="perTx" name="perTx" required value="25.00"');
+      expect(html).toContain('name="firmar" value="1"');
     });
 
     it("hires a shopper bound to the chosen store, with the limits it was sent", async () => {
@@ -653,9 +753,9 @@ describe("buying from the Vitrinee store (T100)", () => {
       directoryFails = true;
       try {
         const html = await (await fetch(`${baseUrl}/agentes`, { headers: { cookie } })).text();
-        expect(html).toContain("The store directory is not answering");
+        expect(html).toContain("The store directory is not answering right now, so the stores are missing");
         expect(html).toContain("Bazaar Shopper");
-        expect(html).not.toContain('<option value="bazar-cordillera">');
+        expect(html).not.toContain('value="store:bazar-cordillera"');
       } finally {
         directoryFails = false;
       }

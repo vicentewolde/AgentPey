@@ -27,7 +27,7 @@ import { FALLBACK_CHOICES, type InstructionProblem } from "./instruction.js";
 import { QUANTITY_INPUT, type CatalogCard, type CatalogVenue } from "./catalog.js";
 import type { ResourceAvailability, ResourceInput } from "./bazaar-catalog.js";
 import { explainRefusal } from "./refusals.js";
-import { VITRINEE_DEFAULT_PERMISSIONS, type ExplainedControl, type ProposedGrant } from "./permissions.js";
+import { DEFAULT_PERMISSIONS, VITRINEE_DEFAULT_PERMISSIONS, type ExplainedControl, type ProposedGrant } from "./permissions.js";
 
 export { escape } from "./copy.js";
 
@@ -478,54 +478,86 @@ export interface HireableStore {
   readonly name: string;
 }
 
+/** The limits a new agent of each kind starts with (C-137 for stores, T96 for the rest). */
+const HIRE_DEFAULTS: Readonly<Record<AgentKind, { readonly perTx: string; readonly perDay: string; readonly validForDays: number }>> = {
+  market_brief: DEFAULT_PERMISSIONS,
+  ai_credits: DEFAULT_PERMISSIONS,
+  bazaar_shopper: DEFAULT_PERMISSIONS,
+  vitrinee_shopper: VITRINEE_DEFAULT_PERMISSIONS,
+};
+
 /**
- * The card that hires a store shopper from this page (`C-147`).
+ * One question to hire an agent: what should it do? (T109, `C-150`).
  *
- * A shopper buys at exactly one store, so the store is chosen here, from the
- * directory, instead of being implied by a catalogue card. Its limits start at
- * the store defaults (`C-137`), not at the 0.30/0.60 of the other agents: the
- * cheapest real product costs 1.04 USDC, so a shopper born with 0.30 could not
- * buy anything.
+ * Each store is one answer, next to the other agents, instead of a second form
+ * with a second selector. Choosing fills in that answer's own limits; the
+ * person can still change them. The button hires and goes straight to signing
+ * on AgentPey, where the full permission is shown before the wallet signs.
  */
-function storeShopperCard(stores: readonly HireableStore[] | undefined): string {
-  if (stores === undefined) {
-    return `<p class="card">${tr(
+function hireForm(stores: readonly HireableStore[] | undefined): string {
+  const option = (value: string, name: Bilingual, kind: AgentKind): string => {
+    const limits = HIRE_DEFAULTS[kind];
+    return `<option value="${escape(value)}" data-per-tx="${escape(limits.perTx)}" data-per-day="${escape(limits.perDay)}" data-days="${String(
+      limits.validForDays,
+    )}" ${textAttributes(name)}>${escape(name.en)}</option>`;
+  };
+  const storeOptions = (stores ?? []).map((store) =>
+    option(`store:${store.slug}`, bilingual(`Buy at ${store.name} (store)`, `Comprar en ${store.name} (tienda)`), "vitrinee_shopper"),
+  );
+  const otherOptions = (["bazaar_shopper", "market_brief", "ai_credits"] as const).map((kind) => option(kind, AGENT_COPY[kind].name, kind));
+  const first = storeOptions.length > 0 ? VITRINEE_DEFAULT_PERMISSIONS : DEFAULT_PERMISSIONS;
+  const storesNote =
+    stores === undefined
+      ? `<p class="meta">${tr(
+          bilingual(
+            "The store directory is not answering right now, so the stores are missing from the list. Try again in a minute.",
+            "El directorio de tiendas no responde ahora, así que las tiendas no aparecen en la lista. Inténtalo en un minuto.",
+          ),
+        )}</p>`
+      : "";
+  return `<form class="card" method="post" action="/agentes" id="hire">
+    <input type="hidden" name="firmar" value="1">
+    <label for="choice" style="margin-top:0">${tr(bilingual("What should it do?", "¿Qué quieres que haga?"))}</label>
+    <select id="choice" name="choice">
+      ${[...storeOptions, ...otherOptions].join("\n      ")}
+    </select>
+    ${storesNote}
+    <div class="fields">
+      <div>
+        <label for="perTx">${tr(bilingual("Max per purchase (USDC)", "Máximo por compra (USDC)"))}</label>
+        <input id="perTx" name="perTx" required value="${escape(first.perTx)}" inputmode="decimal">
+      </div>
+      <div>
+        <label for="perDay">${tr(bilingual("Max per day (USDC)", "Máximo por día (USDC)"))}</label>
+        <input id="perDay" name="perDay" required value="${escape(first.perDay)}" inputmode="decimal">
+      </div>
+      <div>
+        <label for="validForDays">${tr(bilingual("Validity (days)", "Vigencia (días)"))}</label>
+        <input id="validForDays" name="validForDays" required value="${String(first.validForDays)}" inputmode="numeric">
+      </div>
+    </div>
+    <label for="label">${tr(bilingual("What to call it (optional)", "Cómo quieres llamarlo (opcional)"))}</label>
+    <input id="label" name="label" maxlength="60" ${placeholder(bilingual("My shopper", "Mi comprador"))}>
+    <button type="submit">${tr(bilingual("Hire and sign →", "Contratar y firmar →"))}</button>
+    <p class="meta">${tr(
       bilingual(
-        "The store directory is not answering right now. Try again in a minute, or hire a store shopper from a product card in the catalogue.",
-        "El directorio de tiendas no responde ahora. Inténtalo en un minuto, o contrata un comprador de tienda desde la tarjeta de un producto del catálogo.",
+        "We take you to AgentPey to sign its permission with your wallet. You see everything it could do before you sign.",
+        "Te llevamos a AgentPey a firmar su permiso con tu wallet. Ves todo lo que podría hacer antes de firmar.",
       ),
-    )}</p>`;
-  }
-  if (stores.length === 0) {
-    return `<p class="card">${tr(bilingual("No store is connected yet.", "Todavía no hay ninguna tienda conectada."))}</p>`;
-  }
-  const { perTx, perDay, validForDays } = VITRINEE_DEFAULT_PERMISSIONS;
-  return `<form class="card" method="post" action="/agentes">
-    <input type="hidden" name="kind" value="vitrinee_shopper">
-    <div class="fields">
-      <div>
-        <label for="comercio">${tr(bilingual("Which store", "En qué tienda"))}</label>
-        <select id="comercio" name="comercio">
-          ${stores.map((store) => `<option value="${escape(store.slug)}">${escape(store.name)}</option>`).join("\n          ")}
-        </select>
-      </div>
-    </div>
-    <div class="fields">
-      <div>
-        <label for="store-perTx">${tr(bilingual("Max per purchase (USDC)", "Máximo por compra (USDC)"))}</label>
-        <input id="store-perTx" name="perTx" required value="${escape(perTx)}" inputmode="decimal">
-      </div>
-      <div>
-        <label for="store-perDay">${tr(bilingual("Max per day (USDC)", "Máximo por día (USDC)"))}</label>
-        <input id="store-perDay" name="perDay" required value="${escape(perDay)}" inputmode="decimal">
-      </div>
-      <div>
-        <label for="store-validForDays">${tr(bilingual("Validity (days)", "Vigencia (días)"))}</label>
-        <input id="store-validForDays" name="validForDays" required value="${String(validForDays)}" inputmode="numeric">
-      </div>
-    </div>
-    <button type="submit">${tr(bilingual("Set up", "Configurar"))}</button>
-  </form>`;
+    )}</p>
+  </form>
+  <script>
+  (function () {
+    var form = document.getElementById("hire");
+    var choice = document.getElementById("choice");
+    choice.addEventListener("change", function () {
+      var picked = choice.options[choice.selectedIndex];
+      form.perTx.value = picked.getAttribute("data-per-tx");
+      form.perDay.value = picked.getAttribute("data-per-day");
+      form.validForDays.value = picked.getAttribute("data-days");
+    });
+  })();
+  </script>`;
 }
 
 export function agentsPage(account: Account, agents: readonly AgentConfig[], stores?: readonly HireableStore[]): string {
@@ -571,48 +603,8 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[], sto
   )}</p>
   ${rows}
 
-  <h2>${tr(bilingual("Hire a new one", "Contratar uno nuevo"))}</h2>
-  <form class="card" method="post" action="/agentes">
-    <div class="fields">
-      <div>
-        <label for="kind">${tr(bilingual("Which agent", "Qué agente"))}</label>
-        <select id="kind" name="kind">
-          ${Object.entries(AGENT_COPY)
-            // A store shopper needs a store and different limits, so it has its
-            // own card below (`C-147`).
-            .filter(([kind]) => kind !== "vitrinee_shopper")
-            .map(
-              ([kind, copy]) =>
-                `<option value="${escape(kind)}" ${textAttributes(copy.name)}>${escape(copy.name.en)}</option>`,
-            )
-            .join("\n          ")}
-        </select>
-      </div>
-      <div>
-        <label for="label">${tr(bilingual("What to call it", "Cómo quieres llamarlo"))}</label>
-        <input id="label" name="label" required maxlength="60" ${placeholder(bilingual("My report agent", "Mi agente de informes"))}>
-      </div>
-    </div>
-    <div class="fields">
-      <div>
-        <label for="perTx">${tr(bilingual("Max per purchase (USDC)", "Máximo por compra (USDC)"))}</label>
-        <input id="perTx" name="perTx" required value="0.30" inputmode="decimal">
-      </div>
-      <div>
-        <label for="perDay">${tr(bilingual("Max per day (USDC)", "Máximo por día (USDC)"))}</label>
-        <input id="perDay" name="perDay" required value="0.60" inputmode="decimal">
-      </div>
-      <div>
-        <label for="validForDays">${tr(bilingual("Validity (days)", "Vigencia (días)"))}</label>
-        <input id="validForDays" name="validForDays" required value="30" inputmode="numeric">
-      </div>
-    </div>
-    <button type="submit">${tr(bilingual("Set up", "Configurar"))}</button>
-  </form>
-
-  <h2>${tr(bilingual("Hire a store shopper", "Contratar un comprador de tienda"))}</h2>
-  <p class="lede">${tr(AGENT_COPY.vitrinee_shopper.what)}</p>
-  ${storeShopperCard(stores)}
+  <h2>${tr(bilingual("Hire an agent", "Contratar un agente"))}</h2>
+  ${hireForm(stores)}
 `,
   });
 }
@@ -688,6 +680,7 @@ export function reviewPage(
 function signState(agent: AgentConfig, revokeBaseUrl: string): string {
   if (agent.mandateId !== null) {
     return `<p class="signed">✓ ${tr(bilingual("Signed.", "Firmado."))} ${tr(bilingual("Mandate", "Mandato"))} <code data-mandate-id>${escape(agent.mandateId)}</code></p>
+    <p><a class="button" href="/catalogo?agente=${escape(agent.id)}">${tr(bilingual("See what it can buy →", "Ver lo que puede comprar →"))}</a></p>
     <p><a href="/servicios">${tr(bilingual("Go to My services →", "Ir a Mis servicios →"))}</a></p>
     <p><a class="button secondary" href="${escape(revokeBaseUrl)}/revocar/${escape(agent.mandateId)}?volver=/agentes/${escape(agent.id)}">${tr(bilingual("Revoke this permission", "Revocar este permiso"))}</a></p>
     <p class="meta">${trHtml(
@@ -925,21 +918,24 @@ export function servicesPage(input: ServicesInput): string {
   const notice = input.justAsked === undefined ? "" : justAskedNotice(input.justAsked, purchases, names);
   const signable = input.agents.filter((agent) => agent.mandateId !== null);
 
-  const ask =
-    signable.length === 0
-      ? `<p class="card">${trHtml(
-          'You do not have any agent with a signed permission yet. <a href="/agentes">Start there</a>.',
-          'Todavía no tienes ningún agente con permiso firmado. <a href="/agentes">Empieza por ahí</a>.',
-        )}</p>`
-      : `<form class="card" method="post" action="/instruccion">
+  // Always offered (T109): with no signed agent yet, a sentence still finds the
+  // product in any store and leads to the permission it needs.
+  const ask = `<form class="card" method="post" action="/instruccion">
     <input type="hidden" name="request_key" value="${randomUUID()}">
     <label for="instruction" style="margin-top:0">${tr(bilingual("Tell it what to buy", "Dile qué comprar"))}</label>
-    <input id="instruction" name="instruction" required maxlength="500" ${placeholder(bilingual("buy the XLM/USDC market report", "compra el informe XLM/USDC"))}>
+    <input id="instruction" name="instruction" required maxlength="500" ${placeholder(bilingual("a mushroom kit, stickers, the XLM/USDC report", "un kit de hongos, stickers, el informe XLM/USDC"))}>
     <button type="submit">${tr(bilingual("Ask for it", "Pedirlo"))}</button>
-    <p class="meta" style="margin:14px 0 0">${trHtml(
-      "RealOps interprets the sentence. Then <strong>AgentPey decides</strong>: it resolves the merchant again, requests the invoice itself, and checks everything against what you signed before paying.",
-      "RealOps interpreta la frase. Después <strong>AgentPey decide</strong>: vuelve a resolver el comercio, pide él mismo la factura y compara todo contra lo que firmaste antes de pagar.",
-    )}</p>
+    <p class="meta" style="margin:14px 0 0">${
+      signable.length === 0
+        ? trHtml(
+            'You have no agent with a signed permission yet: what you type takes you to the product, in any store, and to the permission to sign first. Or <a href="/agentes">hire one</a>.',
+            'Todavía no tienes un agente con permiso firmado: lo que escribas te lleva al producto, en cualquier tienda, y al permiso que hay que firmar primero. O <a href="/agentes">contrata uno</a>.',
+          )
+        : trHtml(
+            "RealOps looks for it in every store. If an agent of yours may buy it, <strong>AgentPey decides</strong>: it resolves the merchant again, requests the invoice itself, and checks everything against what you signed before paying.",
+            "RealOps lo busca en todas las tiendas. Si un agente tuyo puede comprarlo, <strong>AgentPey decide</strong>: vuelve a resolver el comercio, pide él mismo la factura y compara todo contra lo que firmaste antes de pagar.",
+          )
+    }</p>
   </form>`;
 
   const spending = activity === null ? "" : spendingCard(activity);
@@ -1274,6 +1270,11 @@ export interface CatalogInput {
   readonly storeErrors?: readonly { readonly slug: string; readonly name: string; readonly error: Bilingual }[];
   /** The product and quantity a typed sentence named, to open its card already filled in. */
   readonly prefill?: { readonly productId: string; readonly quantity: number };
+  /**
+   * A narrowed view (T109): one agent's products, or what a typed search found.
+   * `cards` is already filtered; this says why, and offers the whole catalogue.
+   */
+  readonly focus?: { readonly title: Bilingual; readonly note: Bilingual };
 }
 
 export function catalogPage(input: CatalogInput): string {
@@ -1340,6 +1341,20 @@ export function catalogPage(input: CatalogInput): string {
   <p class="lede">${tr(copy.note)}</p>
   ${body}`;
   };
+
+  if (input.focus !== undefined) {
+    const focused = input.cards.length === 0 ? "" : grid(input.cards);
+    return layout({
+      title: bilingual("Catalogue", "Catálogo"),
+      signedIn: true,
+      body: `
+  <h1>${tr(input.focus.title)}</h1>
+  <p class="lede">${tr(input.focus.note)}</p>
+  ${focused === "" ? `<p class="card">${tr(bilingual("Nothing here right now.", "No hay nada aquí ahora mismo."))}</p>` : focused}
+  <p><a class="button secondary" href="/catalogo">${tr(bilingual("See the whole catalogue", "Ver todo el catálogo"))}</a></p>
+`,
+    });
+  }
 
   return layout({
     title: bilingual("Catalogue", "Catálogo"),
@@ -1427,12 +1442,13 @@ export function grantDiffPage(input: GrantDiffInput): string {
       )}</p>
       <form method="post" action="/catalogo/permiso">
         <input type="hidden" name="product_id" value="${escape(input.card.productId)}">
-        <button type="submit">${tr(bilingual("Set up this agent", "Configurar este agente"))}</button>
+        <input type="hidden" name="firmar" value="1">
+        <button type="submit">${tr(bilingual("Hire and sign →", "Contratar y firmar →"))}</button>
       </form>
       <p class="meta push">${tr(
         bilingual(
-          "Setting it up does not authorize anything. You review it again and sign it on AgentPey's site with your wallet.",
-          "Configurarlo no autoriza nada. Lo revisas otra vez y lo firmas en el sitio de AgentPey con tu wallet.",
+          "Nothing is authorized until you sign it on AgentPey's site with your wallet, where you see this same permission again.",
+          "Nada queda autorizado hasta que lo firmes en el sitio de AgentPey con tu wallet, donde ves este mismo permiso otra vez.",
         ),
       )}</p>
     </div>

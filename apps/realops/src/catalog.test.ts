@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { newAgent, type AgentConfig } from "./accounts.js";
 import type { CheckedResource } from "./bazaar-catalog.js";
-import { buildCatalog, coverageOf, findCard, kindFor, storeTarget, type StoreRows } from "./catalog.js";
+import { buildCatalog, coverageOf, findCard, kindFor, searchCards, storeTarget, type StoreRows } from "./catalog.js";
 import { BAZAAR_VENUE_ID, OTHER_STORE_PAY_TO, OTHER_STORE_VENUE_ID, SIGNALDESK_VENUE_ID, STORE_VENUE_ID, TEST_TARGETS, VITRINEE_PAY_TO, VITRINEE_VENUE_ID } from "./testing.js";
 
 const NOW = new Date("2026-09-22T12:00:00.000Z");
@@ -314,3 +314,18 @@ describe("buildCatalog", () => {
     expect(withoutStore.filter((card) => card.venue === "bazaar")).toHaveLength(2);
   });
 });
+
+describe("searchCards (T109)", () => {
+  const cards = buildCatalog({ targets: TEST_TARGETS, agents: [], bazaar: undefined, stores: [] });
+
+  it("finds by name, ignoring accents, case and a trailing plural", () => {
+    expect(searchCards(cards, "compra créditos").map((card) => card.kind)).toContain("ai_credits");
+    expect(searchCards(cards, "INFORMES de mercado")[0]?.kind).toBe("market_brief");
+  });
+
+  it("finds nothing in a greeting or in buying words alone", () => {
+    expect(searchCards(cards, "hola que tal")).toEqual([]);
+    expect(searchCards(cards, "compra uno por favor")).toEqual([]);
+  });
+});
+

@@ -60,7 +60,7 @@ import {
   signInPage,
 } from "./pages.js";
 import { defaultPermissionsFor, translatePermissions, type PilotTargets } from "./permissions.js";
-import { buildCatalog, findCard, QUANTITY_INPUT, storeTarget, type CatalogCard, type StoreRows } from "./catalog.js";
+import { buildCatalog, findCard, QUANTITY_INPUT, searchCards, storeTarget, type CatalogCard, type StoreRows } from "./catalog.js";
 import type { Storefront, StorefrontDirectory } from "./storefronts.js";
 import type { BazaarCatalog, CheckedResource } from "./bazaar-catalog.js";
 
@@ -450,6 +450,63 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     }
   }
 
+  /**
+   * Opens this agent's consent session on AgentPey and sends the person there
+   * (T81). Shared by "sign" on the review screen and by hiring, which since
+   * T109 goes straight to signing (`C-150`).
+   */
+  async function startSigning(account: Account, agent: AgentConfig, response: ServerResponse): Promise<void> {
+    if (config.agentpey === undefined) {
+      sendHtml(response, 503, errorPage(503, NOT_CONNECTED));
+      return;
+    }
+    const targets = await targetsFor(agent);
+    if (targets === undefined) {
+      sendHtml(response, 503, errorPage(503, STORE_UNAVAILABLE));
+      return;
+    }
+
+    try {
+      const tenant = await config.agentpey.ensureTenant(account.externalRef);
+      const { grant } = translatePermissions(agent.kind, agent.permissions, targets, now());
+      const session = await config.agentpey.createConsentSession({
+        tenantId: tenant.id,
+        grant,
+        // Where AgentPey sends them back to. It only works because this
+        // origin is registered for this partner — see `return-urls.ts`.
+        returnUrl: `${config.baseUrl.replace(/\/+$/, "")}/agentes/${agent.id}/volver`,
+        // Keyed on the agent, so a double click reuses the invitation
+        // instead of minting a second one for the same permission.
+        idempotencyKey: `consent-${agent.id}`,
+      });
+
+      await config.store.saveAgent({ ...agent, tenantId: tenant.id, consentSessionId: session.id });
+
+      if (session.consent_url === null) {
+        sendHtml(
+          response,
+          409,
+          errorPage(
+            409,
+            bilingual(
+              "That invitation is no longer available. Try again.",
+              "Esa invitación ya no está disponible. Inténtalo de nuevo.",
+            ),
+          ),
+        );
+        return;
+      }
+      redirect(response, session.consent_url);
+    } catch (error) {
+      sendHtml(response, 502, errorPage(502, messageFor(error)));
+    }
+  }
+
+  /** An agent's stored label for a sentence; the HTML escaping happens when the page renders it. */
+  function displayLabel(label: string): string {
+    return label.length > 60 ? `${label.slice(0, 57)}...` : label;
+  }
+
   /** Opens a session for an account and lands the person on their agents. */
   async function startSession(response: ServerResponse, accountId: string): Promise<void> {
     const session = newSession(accountId, now());
@@ -563,11 +620,21 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
 
     if (method === "POST" && pathname === "/agentes") {
       const form = await readForm(request);
-      const kind = agentKindSchema.safeParse(form.get("kind"));
+      // One question since T109 (`C-150`): `choice` is a kind, or
+      // `store:<slug>` for a store shopper. The older `kind` + `comercio`
+      // fields are still read, so a form already open keeps working.
+      const choice = form.get("choice");
+      const storeChoice = choice?.startsWith("store:") === true ? choice.slice("store:".length) : undefined;
+      const kind = agentKindSchema.safeParse(storeChoice !== undefined ? "vitrinee_shopper" : (choice ?? form.get("kind")));
       const isStoreShopper = kind.success && kind.data === "vitrinee_shopper";
+      const signNow = form.get("firmar") === "1";
       // A store shopper's label comes from its store, as it does from the
-      // catalogue, so the form does not ask for one (`C-147`).
-      const label = aliasSchema.safeParse(isStoreShopper ? "Store Shopper" : form.get("label"));
+      // catalogue (`C-147`); any other agent is named after its kind when the
+      // person leaves the name empty (T109).
+      const typed = (form.get("label") ?? "").trim();
+      const label = aliasSchema.safeParse(
+        isStoreShopper ? "Store Shopper" : typed !== "" ? typed : kind.success ? AGENT_KIND_NAMES[kind.data].en : "",
+      );
       const permissions = agentPermissionsSchema.safeParse({
         perTx: form.get("perTx") ?? "",
         perDay: form.get("perDay") ?? "",
@@ -591,7 +658,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       if (kind.data === "vitrinee_shopper") {
         // The store is checked against the directory, never trusted from the
         // form: a posted slug cannot name a store AgentPey does not list.
-        const slug = form.get("comercio");
+        const slug = storeChoice ?? form.get("comercio");
         let store: Storefront | undefined;
         try {
           store = slug === null ? undefined : await config.storefronts?.get(slug);
@@ -609,7 +676,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           (candidate) => candidate.kind === "vitrinee_shopper" && candidate.comercio === store.slug,
         );
         if (existing !== undefined) {
-          redirect(response, `/agentes/${existing.id}`);
+          if (signNow && existing.mandateId === null) await startSigning(account, existing, response);
+          else redirect(response, existing.mandateId !== null && signNow ? `/catalogo?agente=${existing.id}` : `/agentes/${existing.id}`);
           return;
         }
         const shopper = newAgent(
@@ -621,13 +689,15 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           store.slug,
         );
         await config.store.saveAgent(shopper);
-        redirect(response, `/agentes/${shopper.id}`);
+        if (signNow) await startSigning(account, shopper, response);
+        else redirect(response, `/agentes/${shopper.id}`);
         return;
       }
 
       const agent = newAgent(account.id, kind.data, label.data, permissions.data, now());
       await config.store.saveAgent(agent);
-      redirect(response, `/agentes/${agent.id}`);
+      if (signNow) await startSigning(account, agent, response);
+      else redirect(response, `/agentes/${agent.id}`);
       return;
     }
 
@@ -674,46 +744,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
 
-      const targets = await targetsFor(agent);
-      if (targets === undefined) {
-        sendHtml(response, 503, errorPage(503, STORE_UNAVAILABLE));
-        return;
-      }
-
-      try {
-        const tenant = await config.agentpey.ensureTenant(account.externalRef);
-        const { grant } = translatePermissions(agent.kind, agent.permissions, targets, now());
-        const session = await config.agentpey.createConsentSession({
-          tenantId: tenant.id,
-          grant,
-          // Where AgentPey sends them back to. It only works because this
-          // origin is registered for this partner — see `return-urls.ts`.
-          returnUrl: `${config.baseUrl.replace(/\/+$/, "")}/agentes/${agent.id}/volver`,
-          // Keyed on the agent, so a double click reuses the invitation
-          // instead of minting a second one for the same permission.
-          idempotencyKey: `consent-${agent.id}`,
-        });
-
-        await config.store.saveAgent({ ...agent, tenantId: tenant.id, consentSessionId: session.id });
-
-        if (session.consent_url === null) {
-          sendHtml(
-            response,
-            409,
-            errorPage(
-              409,
-              bilingual(
-                "That invitation is no longer available. Try again.",
-                "Esa invitación ya no está disponible. Inténtalo de nuevo.",
-              ),
-            ),
-          );
-          return;
-        }
-        redirect(response, session.consent_url);
-      } catch (error) {
-        sendHtml(response, 502, errorPage(502, messageFor(error)));
-      }
+      await startSigning(account, agent, response);
       return;
     }
 
@@ -779,15 +810,46 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         prefillQuantity <= MAX_FORM_QUANTITY
           ? { productId: prefillProduct, quantity: prefillQuantity }
           : undefined;
+      // Narrowed views (T109): one agent's products, reached after signing
+      // or from its page; or what a typed search found. Filtering only ever
+      // hides cards: each shown card keeps the action it has in the full view.
+      let shown = cards;
+      let focus: { title: Bilingual; note: Bilingual } | undefined;
+      const agentParam = url.searchParams.get("agente");
+      const query = (url.searchParams.get("q") ?? "").trim();
+      if (agentParam !== null) {
+        const agent = await config.store.findAgent(account.id, agentParam);
+        if (agent !== undefined) {
+          shown = cards.filter((card) => card.coverage.state !== "outside" && card.coverage.agentId === agent.id);
+          const name = displayLabel(agent.label);
+          focus = {
+            title: bilingual(`What ${name} can buy`, `Lo que puede comprar ${name}`),
+            note:
+              agent.mandateId === null
+                ? bilingual("Its permission is not signed yet, so it cannot buy any of this.", "Su permiso todavía no está firmado, así que no puede comprar nada de esto.")
+                : bilingual("Its permission is signed. Choose a product and ask it to buy.", "Su permiso está firmado. Elige un producto y pídele que lo compre."),
+          };
+        }
+      } else if (query !== "") {
+        shown = searchCards(cards, query);
+        focus = {
+          title: bilingual(`Results for "${query}"`, `Resultados para "${query}"`),
+          note: bilingual(
+            "In every store and the bazaar. A product outside your permission shows what you would have to sign first.",
+            "En todas las tiendas y el bazar. Un producto fuera de tu permiso muestra lo que tendrías que firmar primero.",
+          ),
+        };
+      }
       sendHtml(
         response,
         200,
         catalogPage({
-          cards,
+          cards: shown,
           ...(bazaarError === undefined ? {} : { bazaarError }),
           ...(vitrineeError === undefined ? {} : { vitrineeError }),
           storeErrors,
           ...(prefill === undefined ? {} : { prefill }),
+          ...(focus === undefined ? {} : { focus }),
         }),
       );
       return;
@@ -840,10 +902,13 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         sendHtml(response, 404, errorPage(404, NO_SUCH_PRODUCT));
         return;
       }
+      const signNow = form.get("firmar") === "1";
       if (card.coverage.state !== "outside") {
         // Already has one. Sending them to it beats minting a second agent
         // with the same power because a form was posted twice.
-        redirect(response, `/agentes/${card.coverage.agentId}`);
+        const existing = card.coverage.state === "unsigned" && signNow ? await config.store.findAgent(account.id, card.coverage.agentId) : undefined;
+        if (existing !== undefined) await startSigning(account, existing, response);
+        else redirect(response, `/agentes/${card.coverage.agentId}`);
         return;
       }
       // A store shopper is bound to the store of the card it was hired from
@@ -851,7 +916,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       const label = card.store === undefined ? AGENT_KIND_NAMES[card.kind].en : `${AGENT_KIND_NAMES[card.kind].en} · ${card.store.name}`;
       const agent = newAgent(account.id, card.kind, label, defaultPermissionsFor(card.kind), now(), card.store?.slug ?? null);
       await config.store.saveAgent(agent);
-      redirect(response, `/agentes/${agent.id}`);
+      if (signNow) await startSigning(account, agent, response);
+      else redirect(response, `/agentes/${agent.id}`);
       return;
     }
 
@@ -974,7 +1040,15 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           }
         } catch (error) {
           if (isAgentPassError(error) && error.code === "InstructionNotUnderstood") {
-            sendHtml(response, 200, notRecognisedPage(problemOf(error.details), String(error.details.instruction ?? "")));
+            // No product it knows by name: look for it among every card of
+            // every store and the bazaar instead (T109). A search opens cards
+            // and never buys; each result keeps its own action.
+            const problem = problemOf(error.details);
+            if (problem === "no_product" && searchCards(cards, instruction).length > 0) {
+              redirect(response, `/catalogo?${new URLSearchParams({ q: instruction.slice(0, 120) }).toString()}`);
+              return;
+            }
+            sendHtml(response, 200, notRecognisedPage(problem, String(error.details.instruction ?? "")));
             return;
           }
           throw error;

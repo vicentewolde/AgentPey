@@ -317,3 +317,57 @@ export function storeTarget(base: PilotTargets, store: { readonly venueId: strin
 export function findCard(cards: readonly CatalogCard[], productId: string): CatalogCard | undefined {
   return cards.find((card) => card.productId === productId);
 }
+
+/**
+ * Words that say "buy" or glue a sentence together, and so match every card.
+ * Kept short on purpose: a word left in only widens the results, it never
+ * buys anything.
+ */
+const SEARCH_STOPWORDS = new Set([
+  "compra", "comprar", "comprame", "comprale", "compre", "quiero", "necesito", "busca", "buscar", "dame", "pide", "pedir",
+  "buy", "get", "want", "need", "find", "order", "please", "por", "favor",
+  "un", "una", "unos", "unas", "el", "la", "los", "las", "de", "del", "al", "en", "para", "con", "y", "o", "mi", "me",
+  "the", "a", "an", "of", "for", "to", "and", "my", "some",
+  "hola", "que", "tal", "como", "algo", "esto", "eso", "this", "that", "what", "hello", "thanks", "gracias",
+]);
+
+function normalise(text: string): string {
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+/**
+ * The cards a typed sentence could mean, best first (T109).
+ *
+ * Reached only when `interpretInstruction` did not recognise a product: it
+ * opens cards and never buys. Every result keeps its own action, so a product
+ * outside the grant still goes through "see the permission this needs" and a
+ * signature before anything can be bought (`C-135` holds: the sentence never
+ * decides the merchant, the price or the payee).
+ */
+export function searchCards(cards: readonly CatalogCard[], text: string): CatalogCard[] {
+  const words = normalise(text)
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 3 && !SEARCH_STOPWORDS.has(word));
+  if (words.length === 0) return [];
+  const scored = cards.map((card) => {
+    const title = normalise(`${card.title.en} ${card.title.es} ${card.store?.name ?? ""}`);
+    const body = normalise(`${card.description.en} ${card.description.es}`);
+    let score = 0;
+    for (const word of words) {
+      // A three-letter word ("kit", "tal") only counts as a whole word: inside
+      // others ("total", "digital") it would match almost anything. A longer
+      // one counts as a stem, so "sticker" finds "stickers".
+      const found =
+        word.length === 3
+          ? (text: string): boolean => new RegExp(`\\b${word}\\b`).test(text)
+          : (text: string): boolean => text.includes(word.length > 5 ? word.slice(0, -1) : word);
+      if (found(title)) score += 3;
+      else if (found(body)) score += 1;
+    }
+    return { card, score };
+  });
+  return scored
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.card);
+}

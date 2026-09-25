@@ -6855,3 +6855,23 @@ Exponential: ticket T108 `cmughle0e000pl6042nj1ies5` creado `IN_PROGRESS`.
 Pendiente: T109 (un selector para contratar, contratar y firmar en un paso,
 catálogo filtrado por agente, búsqueda escrita). OK del usuario para mergear
 T107 y T108 (no antes de las 19:00 salvo que lo pida).
+
+## 2026-09-25 (4) — cc/t109-menos-pasos (T109 construido, sin mergear; encima de T108)
+
+Agente: Claude Code.
+
+Qué: contratar es una sola pregunta con cada tienda como opción y límites que se
+ponen solos; "Contratar y firmar" va directo a AgentPey; catálogo por agente
+(`/catalogo?agente=`) y botón en su ficha; la frase escrita busca en todas las
+tiendas cuando no nombra un producto conocido, y el cuadro está siempre visible.
+`C-150` (modifica `C-147`, amplía `C-135`; deja escrito que el camino principal
+ya no muestra las marcas de `PILOTO-F9.md` § 7.1). RealOps 213 tests.
+
+`AGENTS.md`: sin cambios.
+
+Exponential: ticket T109 `cmughv6vh0011l604343dn9zh` creado `IN_PROGRESS`.
+
+Pendiente: OK del usuario para mergear T107, T108 y T109 (en ese orden, fast
+forward). El paso a paso del video y el guion del hackathon describen el flujo de
+producción de hoy; cuando se mergee T109, "Mis agentes" cambia y hay que
+ajustarlos.

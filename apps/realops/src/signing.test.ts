@@ -201,19 +201,21 @@ describe("coming back from signing", () => {
    * Signing is what unlocks asking for something. Before it, "Mis servicios"
    * says so instead of showing a form that could only fail.
    */
-  it("unlocks the instruction form on Mis servicios once a permission is signed", async () => {
+  it("offers the instruction box before and after signing, saying what it does in each case", async () => {
     const cookie = await signIn("servicios@ejemplo.cl");
     const agentId = await configureAgent(cookie);
 
+    // Before signing the box is there too (T109), and says where it leads.
     const before = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
-    expect(before).toContain("Todavía no tienes ningún agente con permiso firmado");
-    expect(before).not.toContain('name="instruction"');
+    expect(before).toContain("Todavía no tienes un agente con permiso firmado");
+    expect(before).toContain('name="instruction"');
 
     await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
     await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
 
     const after = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
     expect(after).toContain('name="instruction"');
+    expect(after).toContain("RealOps lo busca en todas las tiendas");
   });
 
   /**

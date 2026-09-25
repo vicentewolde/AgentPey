@@ -5246,3 +5246,28 @@ tu wallet, y Bazar Cordillera no cobra en la tuya.
 Decisión: `C-149`. Tests: gateway de Vitrinee 112, web 255, RealOps 201. Sin
 desplegar: rama `cc/t108-firma-recibo`, encima de T107. Salidas en
 [`evidencia/T108.md`](evidencia/T108.md).
+
+## T109 · Contratar en menos pasos · en curso 2026-09-25
+
+**Qué quedó funcionando, en palabras simples.**
+
+1. **Contratar es una sola pregunta**: "¿Qué quieres que haga?", con cada tienda
+   como una opción ("Comprar en MycoKit (tienda)") junto a los otros agentes. Al
+   elegir, los límites se ponen solos: 25,00 en las tiendas, 0,30 y 0,60 en el
+   resto. El nombre es opcional.
+2. **"Contratar y firmar" te lleva directo a AgentPey a firmar** con tu wallet.
+   Al terminar, vuelves al catálogo de ese agente (T108).
+3. **Cada agente tiene su catálogo**: en su ficha, "Ver lo que puede comprar"
+   muestra solo sus productos.
+4. **Escribir lo que quieres sirve de verdad**: "quiero un kit de hongos" muestra
+   los cuatro kits de MycoKit; "un tazón", el de otra tienda. Si no tienes permiso
+   para ese producto, el resultado te lleva a firmarlo primero. El cuadro está
+   siempre en Mis servicios, aunque todavía no tengas agentes.
+
+Lo que se pierde, para que quede escrito: en el camino principal ya no se ven las
+etiquetas de quién hace cumplir cada límite (firmado, on-chain, RealOps); siguen en
+la ficha de cada agente (`C-150`).
+
+Probado en el navegador con las tiendas reales, sin firmar nada. Tests: RealOps
+213 (eran 201). Sin desplegar: rama `cc/t109-menos-pasos`, encima de T108.
+Salidas en [`evidencia/T109.md`](evidencia/T109.md).
