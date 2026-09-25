@@ -6875,7 +6875,6 @@ forward). El paso a paso del video y el guion del hackathon describen el flujo d
 producción de hoy; cuando se mergee T109, "Mis agentes" cambia y hay que
 ajustarlos.
 
-<<<<<<< HEAD
 ## 2026-09-25 (5) — main (T107, T108 y T109 mergeados) y cc/t109-en-vivo
 
 Agente: Claude Code.
