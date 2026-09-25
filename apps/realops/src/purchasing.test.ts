@@ -544,6 +544,95 @@ describe("Mis servicios", () => {
     expect(html).toContain("MandateDailyLimitExceeded");
   });
 
+  describe("T107: what was bought, and what just happened", () => {
+    const refusal = (overrides: Partial<PurchaseResource> = {}): PurchaseResource =>
+      settled({
+        id: "pur_01J7QW8VQEJPAXEPAYREFUSE1",
+        outcome: "refused",
+        code: "MandateAmountExceeded",
+        reason: "amount above perTx",
+        total: null,
+        transaction_hash: null,
+        explorer_url: null,
+        delivery: null,
+        ...overrides,
+      });
+
+    it("names the product on a delivery and on a refusal, with the id underneath", async () => {
+      const cookie = await readyAgent("nombre@ejemplo.cl");
+      agentpey.showActivity({ purchases: [settled(), refusal()] });
+      const html = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
+      expect(html).toContain("Informe de mercado XLM/USDC");
+      expect(html).toContain("<code>signaldesk:market-brief-xlm-usdc</code>");
+    });
+
+    it("keeps showing the id when the catalogue no longer lists the product", async () => {
+      const cookie = await readyAgent("retirado@ejemplo.cl");
+      agentpey.showActivity({ purchases: [settled({ product_id: "producto-retirado" })] });
+      const html = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
+      expect(html).toContain("<h3>producto-retirado</h3>");
+    });
+
+    it("after a refused purchase, lands on a page that says it was refused and why", async () => {
+      const cookie = await readyAgent("aviso-rechazo@ejemplo.cl");
+      agentpey.answerWith(refusal());
+      agentpey.showActivity({ purchases: [refusal()] });
+      const asked = await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
+      expect(asked.headers.get("location")).toBe("/servicios?compra=pur_01J7QW8VQEJPAXEPAYREFUSE1");
+      const html = await (await fetch(`${baseUrl}${asked.headers.get("location")!}`, { headers: { cookie } })).text();
+      expect(html).toContain('role="alert"');
+      expect(html).toContain("Rechazado: Informe de mercado XLM/USDC");
+      expect(html).toContain("supera el máximo por compra que firmaste");
+      expect(html).toContain("No se pagó nada");
+      agentpey.answerWith(settled());
+    });
+
+    it("after a settled purchase, says it was bought, with the payment", async () => {
+      const cookie = await readyAgent("aviso-compra@ejemplo.cl");
+      agentpey.answerWith(settled());
+      agentpey.showActivity({ purchases: [settled()] });
+      const asked = await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
+      const html = await (await fetch(`${baseUrl}${asked.headers.get("location")!}`, { headers: { cookie } })).text();
+      expect(html).toContain('role="status"');
+      expect(html).toContain("Comprado: Informe de mercado XLM/USDC");
+      expect(html).not.toContain('role="alert"');
+    });
+
+    it("says the request was sent when AgentPey does not list the purchase yet", async () => {
+      const cookie = await readyAgent("aun-no@ejemplo.cl");
+      agentpey.showActivity({ purchases: [] });
+      const html = await (await fetch(`${baseUrl}/servicios?compra=pur_NOTYET`, { headers: { cookie } })).text();
+      expect(html).toContain("Tu pedido se envió");
+    });
+
+    it("ignores a notice parameter that is not an id", async () => {
+      const cookie = await readyAgent("parametro@ejemplo.cl");
+      const html = await (await fetch(`${baseUrl}/servicios?compra=%3Cscript%3E`, { headers: { cookie } })).text();
+      expect(html).not.toContain("Tu pedido se envió");
+      expect(html).not.toContain('class="card notice"');
+    });
+
+    it("lists the newest first and folds everything past six", async () => {
+      const cookie = await readyAgent("muchas@ejemplo.cl");
+      const many = Array.from({ length: 8 }, (_, index) =>
+        settled({ id: `pur_MANY${String(index)}`, product_id: `p-${String(index)}`, created_at: `2026-09-2${String(index)}T10:00:00.000Z` }),
+      );
+      agentpey.showActivity({ purchases: many });
+      const html = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
+      expect(html.indexOf("<h3>p-7</h3>")).toBeLessThan(html.indexOf("<h3>p-0</h3>"));
+      expect(html).toContain("Ver 2 más");
+      expect(html.indexOf("Ver 2 más")).toBeLessThan(html.indexOf("<h3>p-1</h3>"));
+    });
+
+    it("shows the account by its email, with the random code only under details", async () => {
+      const cookie = await readyAgent("mi-correo@ejemplo.cl");
+      const html = await (await fetch(`${baseUrl}/servicios`, { headers: { cookie } })).text();
+      expect(html).toContain("Entraste como <strong>mi-correo@ejemplo.cl</strong>");
+      expect(html).not.toContain("te identificamos como");
+      expect(html).toContain("Qué sabe AgentPey de ti");
+    });
+  });
+
   it("shows what is left of today's limit, and warns when it is nearly gone", async () => {
     const cookie = await readyAgent("limite@ejemplo.cl");
     agentpey.showActivity({

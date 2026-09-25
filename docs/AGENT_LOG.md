@@ -6813,3 +6813,25 @@ Pendiente: OK del usuario para mergear las dos ramas (`cc/t106-demo-day` y esta,
 fast-forward, en ese orden); el merge redespliega Render y RealOps queda con el
 formulario nuevo. Si el usuario prefiere un tope visible más bajo para la demo,
 cambiar `VITRINEE_DEFAULT_PERMISSIONS`.
+
+## 2026-09-25 (2) — cc/t107-realops-legible (T107 construido, sin mergear)
+
+Agente: Claude Code.
+
+Qué: el usuario recorrió el flujo y anotó doce puntos; pidió implementarlos en
+hitos, de más a menos importante y rápido. T107 toma cuatro de RealOps: nombre del
+producto en entregas y rechazos; aviso de "Comprado" o "Rechazado" arriba de Mis
+servicios tras pedir; la cuenta por su email; tarjetas ordenadas y dobladas
+pasadas seis. `C-148`. RealOps 201 tests. Archivos: `apps/realops/src/app.ts`,
+`pages.ts`, `purchasing.test.ts` y docs.
+
+No se mergea hoy antes de las 19:00: cada merge redespliega Render el día del Demo
+Day. Siguen, en este orden: T108 (recibo legible en Vitrinee, "Conectar wallet"
+arriba a la derecha en la firma de AgentPey, botón grande al catálogo al terminar
+de firmar) y T109 (un solo selector para contratar, contratar y firmar en un paso,
+catálogo filtrado por agente, búsqueda escrita entre todas las tiendas).
+
+Pendiente de respuesta del usuario: cambiar la demo de hoy a MycoKit (el panel de
+Bazar Cordillera no se abre con su wallet).
+
+`AGENTS.md`: sin cambios. Exponential: ticket T107 `cmugh4ji00005l6049a7lvjl9` creado `IN_PROGRESS`.

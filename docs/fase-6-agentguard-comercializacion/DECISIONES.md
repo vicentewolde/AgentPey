@@ -6410,3 +6410,23 @@ rail nuevo (`C-137`); el crédito de un usuario nuevo es de 3 USDC
 de stickers de 1,04 (2,08). Si se prefiere un tope visible más bajo para la
 demo, es cambiar `VITRINEE_DEFAULT_PERMISSIONS` en `apps/realops/src/permissions.ts`.
 
+### C-148 · Mis servicios dice qué pasó con lo que acabas de pedir, nombra los productos y dobla las listas largas · `Vigente`
+**Fecha:** 2026-09-25 · **Hito:** T107 · Del usuario los hallazgos; de Claude Code la forma
+
+1. **Después de pedir una compra, RealOps redirige a `/servicios?compra=<id>`** y
+   la página abre con un aviso: "Comprado: <producto>" con el enlace al pago, o
+   "Rechazado: <producto>" con el motivo en lenguaje llano y "No se pagó nada".
+   Si AgentPey todavía no lista la compra, dice "Tu pedido se envió". El
+   parámetro solo acepta forma de id; cualquier otra cosa se ignora.
+2. **Entregas y rechazos muestran el nombre del producto**, sacado del mismo
+   catálogo del que se compró; el id sigue debajo, chico, porque es lo que nombran
+   el pago y el recibo. Un producto que ya no está en el catálogo muestra su id.
+3. **Listas ordenadas y dobladas**: las más nuevas primero (los agentes, firmados
+   primero), tres columnas en pantallas anchas, y pasado el sexto elemento el
+   resto queda bajo "Ver N más", en la misma página (sin otra petición).
+4. **"Tu cuenta" muestra el email con que entraste.** El código aleatorio con que
+   AgentPey te conoce pasa a "Qué sabe AgentPey de ti", plegado. El email sigue
+   sin viajar a AgentPey.
+
+**Alternativa descartada: paginar.** Otra petición por página para listas que
+hoy tienen decenas de elementos; doblar basta y conserva todo en la página.

@@ -5205,3 +5205,22 @@ verde.
 **Sin desplegar.** Vive en la rama `cc/realops-store-hire`; en producción no
 cambia nada hasta mergear. Salidas en [`evidencia/T106.md`](evidencia/T106.md) § 8.
 
+## T107 · RealOps se entiende · en curso 2026-09-25
+
+**Qué quedó funcionando, en palabras simples.** Cuatro cosas que anotaste al
+recorrer el flujo:
+
+1. **Las entregas y los rechazos dicen qué compraste**, por ejemplo "Kit de
+   cultivo Cola de Pavo", con el número del producto chico debajo.
+2. **Después de pedir una compra, arriba de todo aparece qué pasó**: "Comprado:
+   …" con el enlace al pago, o, en rojo, "Rechazado: …", el motivo y "No se pagó
+   nada". Antes la página volvía sin decir nada.
+3. **"Tu cuenta" dice "Entraste como tu@correo"**. El código raro sigue existiendo
+   (es lo único que AgentPey sabe de ti), pero plegado bajo "Qué sabe AgentPey de
+   ti".
+4. **Las tarjetas se ordenan**: las más nuevas primero, en tres columnas, y
+   pasadas seis el resto queda bajo "Ver N más". En "Mis agentes", los firmados
+   primero.
+
+Decisión: `C-148`. Tests: RealOps 201 (eran 193). Sin desplegar: rama
+`cc/t107-realops-legible`. Salidas en [`evidencia/T107.md`](evidencia/T107.md).

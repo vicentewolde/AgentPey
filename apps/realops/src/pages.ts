@@ -107,6 +107,17 @@ const STYLE = `
   .card ol { padding-left: 1.2em; }
   .card li + li { margin-top: 6px; }
   .error { border-left: 3px solid var(--danger); }
+  .ok { border-left: 3px solid var(--accent); }
+  /* The answer to the purchase just asked for, above everything else (T107). */
+  .notice { margin: 0 0 24px; }
+  .notice.error { background: var(--danger-wash); }
+  .notice.ok { background: var(--accent-wash); }
+  .notice h3 { font-size: 1.15rem; }
+  /* Past a handful, the rest folds so the page stays a page (T107). */
+  details.more { margin-top: 16px; }
+  details.more > summary { cursor: pointer; color: var(--ink-2); font-size: 14px; font-weight: 500; padding: 6px 0; }
+  details.more > .grid { margin-top: 12px; }
+  @media (min-width: 1100px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 20px; }
 
   label { display: block; margin: 16px 0 6px; color: var(--ink-2); font-size: 14px; font-weight: 500; }
@@ -522,9 +533,12 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[], sto
   const rows =
     agents.length === 0
       ? `<p class="card">${tr(bilingual("You have not hired any agent yet.", "Todavía no has contratado ningún agente."))}</p>`
-      : `<div class="grid">
-    ${agents
-      .map((agent) => {
+      : cardGrid(
+          // Signed first, then newest: the agents that can act are the ones a
+          // person comes here to find (T107).
+          [...agents]
+            .sort((x, y) => Number(y.mandateId !== null) - Number(x.mandateId !== null) || y.createdAt.getTime() - x.createdAt.getTime())
+            .map((agent) => {
         const days = String(agent.permissions.validForDays);
         const perTx = formatAmount(agent.permissions.perTx);
         const perDay = formatAmount(agent.permissions.perDay);
@@ -541,9 +555,8 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[], sto
       )}</p>
       <p class="push"><a href="/agentes/${escape(agent.id)}">${tr(bilingual("View and sign →", "Ver y firmar →"))}</a></p>
     </div>`;
-      })
-      .join("\n    ")}
-  </div>`;
+      }),
+        );
 
   return layout({
     title: bilingual("My agents", "Mis agentes"),
@@ -709,6 +722,55 @@ export interface ServicesInput {
   /** Why the activity is missing, if it is. */
   readonly activityError?: Bilingual;
   readonly agents: readonly AgentConfig[];
+  /** Product id → its name in the catalogue, for the cards (T107). An id missing here shows as the id. */
+  readonly productNames?: ReadonlyMap<string, Bilingual>;
+  /**
+   * The purchase this page was reached from, right after asking for it (T107).
+   * Its outcome is said at the top of the page, so a refusal never looks like
+   * the page simply reloading.
+   */
+  readonly justAsked?: string;
+}
+
+/**
+ * The answer to the purchase just asked for, in one card above everything.
+ *
+ * Before T107 a refusal landed on this same page with nothing to say it had
+ * happened: the person saw the page reload and could not tell whether the
+ * agent had bought, failed or was still working.
+ */
+function justAskedNotice(id: string, purchases: readonly PurchaseResource[], names: ReadonlyMap<string, Bilingual>): string {
+  const purchase = purchases.find((candidate) => candidate.id === id);
+  if (purchase === undefined) {
+    return `<div class="card notice"><h3>${tr(bilingual("Your request was sent", "Tu pedido se envió"))}</h3>
+    <p>${tr(
+      bilingual(
+        "AgentPey has not listed it yet. Reload in a few seconds to see whether it was bought or refused.",
+        "AgentPey todavía no lo lista. Recarga en unos segundos para ver si se compró o se rechazó.",
+      ),
+    )}</p></div>`;
+  }
+  const name = names.get(purchase.product_id) ?? bilingual(purchase.product_id, purchase.product_id);
+  if (purchase.outcome === "refused") {
+    const explained = explainRefusal(purchase.code ?? "unknown", purchase.reason);
+    return `<div class="card error notice" role="alert">
+    <h3>${trHtml(`Refused: ${escape(name.en)}`, `Rechazado: ${escape(name.es)}`)}</h3>
+    <p><strong>${tr(explained.what)}</strong></p>
+    <p>${tr(explained.next)}</p>
+    <p class="meta">${tr(
+      bilingual("Nothing was paid. The refusal is also saved below, under Refusals.", "No se pagó nada. El rechazo también queda guardado abajo, en Rechazos."),
+    )}</p>
+  </div>`;
+  }
+  const payment =
+    purchase.explorer_url === null
+      ? ""
+      : `<p class="push actions"><a href="${escape(purchase.explorer_url)}">${tr(bilingual("See the payment on Stellar ↗", "Ver el pago en Stellar ↗"))}</a></p>`;
+  return `<div class="card ok notice" role="status">
+    <h3>${trHtml(`Bought: ${escape(name.en)}`, `Comprado: ${escape(name.es)}`)}</h3>
+    <p>${formatAmount(purchase.total)} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${localTime(purchase.created_at)}</p>
+    ${payment}
+  </div>`;
 }
 
 /**
@@ -734,6 +796,42 @@ export function localTime(iso: string): string {
   return `<time datetime="${escape(iso)}" data-local>${escape(fallback)}</time>`;
 }
 
+/** How many cards a list shows before folding the rest (T107). */
+const SHOWN_BEFORE_FOLD = 6;
+
+/**
+ * A row of cards, newest first, with everything past the first few folded
+ * under "see N more" (T107). Folded, not paginated: nothing needs another
+ * request, and the page still holds every card for search and for printing.
+ */
+function cardGrid(cards: readonly string[]): string {
+  const shown = cards.slice(0, SHOWN_BEFORE_FOLD);
+  const rest = cards.slice(SHOWN_BEFORE_FOLD);
+  const more =
+    rest.length === 0
+      ? ""
+      : `<details class="more"><summary>${trHtml(`See ${String(rest.length)} more`, `Ver ${String(rest.length)} más`)}</summary>
+  <div class="grid">${rest.join("\n  ")}</div></details>`;
+  return `<div class="grid">${shown.join("\n  ")}</div>${more}`;
+}
+
+/** Newest first. ISO timestamps sort as strings. */
+function newestFirst(purchases: readonly PurchaseResource[]): PurchaseResource[] {
+  return [...purchases].sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+/**
+ * What a person bought, by name (T107). The merchant's id stays visible
+ * underneath, small, because it is what the payment and the receipt name; the
+ * name alone would not let anyone match them.
+ */
+function productHeading(purchase: PurchaseResource, names: ReadonlyMap<string, Bilingual>): string {
+  const name = names.get(purchase.product_id);
+  if (name === undefined) return `<h3>${escape(purchase.product_id)}</h3>`;
+  return `<h3>${tr(name)}</h3>
+    <p class="meta">${tr(bilingual("Product", "Producto"))} <code>${escape(purchase.product_id)}</code></p>`;
+}
+
 /**
  * Which of this account's agents a purchase went through, read from the Mandate
  * AgentPey says it used (T90). Empty when it cannot tell, for instance for a
@@ -747,7 +845,7 @@ function agentLine(purchase: PurchaseResource, agents: readonly AgentConfig[]): 
 }
 
 /** One purchase, settled — what the person actually got. */
-function deliveryCard(purchase: PurchaseResource, agents: readonly AgentConfig[]): string {
+function deliveryCard(purchase: PurchaseResource, agents: readonly AgentConfig[], names: ReadonlyMap<string, Bilingual>): string {
   const links: string[] = [];
   if (purchase.delivery?.artifact_url != null) {
     links.push(`<a class="button" href="${escape(purchase.delivery.artifact_url)}">${tr(bilingual("See what you bought", "Ver lo que compraste"))}</a>`);
@@ -758,7 +856,7 @@ function deliveryCard(purchase: PurchaseResource, agents: readonly AgentConfig[]
 
   return `<div class="card stack">
     <div><span class="tag tag-signed">${tr(bilingual("delivered", "entregado"))}</span></div>
-    <h3>${escape(purchase.product_id)}</h3>
+    ${productHeading(purchase, names)}
     ${agentLine(purchase, agents)}
     <p>${formatAmount(purchase.total)} ${escape((purchase.asset ?? "").split(":")[0] ?? "")} · ${localTime(purchase.created_at)}</p>
     <p class="meta">
@@ -770,11 +868,11 @@ function deliveryCard(purchase: PurchaseResource, agents: readonly AgentConfig[]
 }
 
 /** One purchase, refused — said in words the person can act on. */
-function refusalCard(purchase: PurchaseResource, agents: readonly AgentConfig[]): string {
+function refusalCard(purchase: PurchaseResource, agents: readonly AgentConfig[], names: ReadonlyMap<string, Bilingual>): string {
   const explained = explainRefusal(purchase.code ?? "unknown", purchase.reason);
   return `<div class="card error stack">
     <div><span class="tag tag-refused">${tr(bilingual("refused", "rechazado"))}</span></div>
-    <h3>${escape(purchase.product_id)}</h3>
+    ${productHeading(purchase, names)}
     ${agentLine(purchase, agents)}
     <p><strong>${tr(explained.what)}</strong></p>
     <p>${tr(explained.next)}</p>
@@ -820,8 +918,11 @@ function spendingCard(activity: TenantActivity): string {
 
 export function servicesPage(input: ServicesInput): string {
   const { account, activity } = input;
-  const settled = (activity?.purchases ?? []).filter((purchase) => purchase.outcome === "settled");
-  const refused = (activity?.purchases ?? []).filter((purchase) => purchase.outcome === "refused");
+  const names = input.productNames ?? new Map<string, Bilingual>();
+  const purchases = newestFirst(activity?.purchases ?? []);
+  const settled = purchases.filter((purchase) => purchase.outcome === "settled");
+  const refused = purchases.filter((purchase) => purchase.outcome === "refused");
+  const notice = input.justAsked === undefined ? "" : justAskedNotice(input.justAsked, purchases, names);
   const signable = input.agents.filter((agent) => agent.mandateId !== null);
 
   const ask =
@@ -855,6 +956,7 @@ export function servicesPage(input: ServicesInput): string {
     ),
   )}</p>
 
+  ${notice}
   ${input.activityError === undefined ? "" : `<p class="card error">${tr(input.activityError)}</p>`}
   ${spending === "" ? ask : `<div class="split">${ask}${spending}</div>`}
 
@@ -862,7 +964,7 @@ export function servicesPage(input: ServicesInput): string {
   ${
     settled.length === 0
       ? `<p class="card">${tr(bilingual("You have not bought anything yet.", "Todavía no has comprado nada."))}</p>`
-      : `<div class="grid">${settled.map((purchase) => deliveryCard(purchase, input.agents)).join("\n  ")}</div>`
+      : cardGrid(settled.map((purchase) => deliveryCard(purchase, input.agents, names)))
   }
 
   <h2>${tr(bilingual("Refusals", "Rechazos"))}</h2>
@@ -875,15 +977,24 @@ export function servicesPage(input: ServicesInput): string {
             'Un rechazo no es una ausencia: queda guardado igual que una compra, para que "¿por qué mi agente no compró esto?" tenga respuesta.',
           ),
         )}</p>
-  <div class="grid">${refused.map((purchase) => refusalCard(purchase, input.agents)).join("\n  ")}</div>`
+  ${cardGrid(refused.map((purchase) => refusalCard(purchase, input.agents, names)))}`
   }
 
   <h2>${tr(bilingual("Your account", "Tu cuenta"))}</h2>
   <div class="card">
-    <p>${trHtml(
-      `AgentPey knows you as <code>${escape(account.externalRef)}</code>. That code is random: it is not derived from your email, so it cannot be reversed.`,
-      `Ante AgentPey te identificamos como <code>${escape(account.externalRef)}</code>. Ese código es aleatorio: no se calcula a partir de tu correo, así que no se puede revertir.`,
-    )}</p>
+    <p>${
+      account.email === null
+        ? trHtml(`Signed in as <strong>${displayName(account.alias)}</strong>.`, `Entraste como <strong>${displayName(account.alias)}</strong>.`)
+        : trHtml(
+            `Signed in as <strong>${escape(account.email)}</strong> (${displayName(account.alias)}).`,
+            `Entraste como <strong>${escape(account.email)}</strong> (${displayName(account.alias)}).`,
+          )
+    }</p>
+    <details class="more"><summary>${tr(bilingual("What AgentPey knows about you", "Qué sabe AgentPey de ti"))}</summary>
+    <p class="meta">${trHtml(
+      `Not your email. AgentPey knows you only by a random code, <code>${escape(account.externalRef)}</code>, that is not derived from your email and cannot be reversed.`,
+      `No tu correo. AgentPey te conoce solo por un código aleatorio, <code>${escape(account.externalRef)}</code>, que no se calcula a partir de tu correo y no se puede revertir.`,
+    )}</p></details>
     <form method="post" action="/cuenta/borrar" onsubmit="return confirm(document.documentElement.lang === 'es' ? '¿Borrar tu correo y cerrar todas tus sesiones?' : 'Delete your email and close all your sessions?')">
       <button class="secondary" type="submit">${tr(bilingual("Delete my account", "Borrar mi cuenta"))}</button>
     </form>

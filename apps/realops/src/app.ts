@@ -42,7 +42,7 @@ import {
   type Account,
   type RealOpsStore,
 } from "./accounts.js";
-import type { AgentPeyClient } from "./agentpey.js";
+import type { AgentPeyClient, PurchaseResource } from "./agentpey.js";
 import { bilingual, type Bilingual } from "./copy.js";
 import { INSTRUCTION_PROBLEMS, SUPPORTED_PAIR, interpretInstruction, type InstructionProblem } from "./instruction.js";
 import {
@@ -868,7 +868,20 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         }
       }
 
-      sendHtml(response, 200, servicesPage({ account, activity, activityError, agents }));
+      // Names for the cards, from the same catalogue the person bought from
+      // (T107). A product no longer listed keeps showing its id.
+      const productNames = new Map<string, Bilingual>();
+      if (activity !== null && activity.purchases.length > 0) {
+        for (const card of (await catalogFor(account)).cards) productNames.set(card.productId, card.title);
+      }
+      const asked = url.searchParams.get("compra");
+      const justAsked = asked !== null && /^[A-Za-z0-9_-]{1,80}$/.test(asked) ? asked : undefined;
+
+      sendHtml(
+        response,
+        200,
+        servicesPage({ account, activity, activityError, agents, productNames, ...(justAsked === undefined ? {} : { justAsked }) }),
+      );
       return;
     }
 
@@ -1035,8 +1048,9 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
 
+      let bought: PurchaseResource;
       try {
-        await config.agentpey.purchase({
+        bought = await config.agentpey.purchase({
           tenantId: agent.tenantId!,
           // The venue of the *kind* that is buying, not a global one (T96).
           // AgentPey resolves it against its own `venues.json` regardless, so
@@ -1106,7 +1120,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
 
-      redirect(response, "/servicios");
+      // Bought or refused, the page says which at the top (T107).
+      redirect(response, `/servicios?compra=${encodeURIComponent(bought.id)}`);
       return;
     }
 
