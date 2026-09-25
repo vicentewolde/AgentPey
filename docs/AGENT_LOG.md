@@ -7010,7 +7010,9 @@ Se escribió `pnpm run rail:topup` (`C-152`): recarga un `policy_rail` desde la
 reserva, con `--yes` obligatorio para enviar y tope de 20 USDC. Los rechazos se
 probaron sin llave. **El envío lo corrió el usuario** (10 USDC al rail
 `CCNA6ACL…AKC45L`, tx `d3de74ef…342de`) y Claude Code lo verificó en la red: rail
-0,905 → 10,905 USDC, reserva 158,48 → 148,48.
+0,905 → 10,905 USDC, reserva 158,48 → 148,48. El usuario corrió el comando una segunda vez (tx `5c4dcdd1…cc47`): rail
+20,905 USDC (consulta directa al contrato), reserva 138,48. stellar.expert tardó en
+reflejarlo.
 
 Por qué queda en Claude Code: custodia y flujo de fondos (`P-10`).
 
