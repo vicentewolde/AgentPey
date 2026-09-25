@@ -6963,3 +6963,21 @@ Pendiente:
   (`evidencia/T106.md` § 7) y cerrar T106; a las 18:00, chequeo de sitios y testnet.
 - Deuda anotada: RealOps marca "entregado" una compra `paid_unfulfilled` de
   Vitrinee y no muestra el enlace al recibo; arreglar antes del video del 29.
+
+## 2026-09-25 (7) — cc/t106-cierre (encima de cc/t107-saldo)
+
+Agente: Claude Code.
+
+Qué: T106 cerrado. La compra de la grabación del usuario (Kit Cola de Pavo,
+2,0947368 USDC, tx `a74a9108…0695f`, pedido `ord_mugy1s74fad4c1bd0a`) verificada con
+datos públicos: recibo válido con las tres comprobaciones, página del recibo en
+vivo. Se trae de la rama vieja `cc/t106-en-vivo` la nota de verificación del
+formulario de C-147. T101: respuesta de soporte de Jumpseller registrada (crear
+pedidos es del plan PRO; MycoKit en prueba tampoco puede); decisión de pagar o no
+queda del usuario.
+
+Exponential: T106 `DONE`; acciones "Contratar el comprador nuevo" y "Grabar el
+video de respaldo" `COMPLETED`. Comentario en T101 con la respuesta de Jumpseller.
+
+Pendiente: OK para mergear `cc/t107-saldo` y esta rama (una sola vez, redespliega
+RealOps). Decisión de T101 (plan PRO o versión B del guion).
