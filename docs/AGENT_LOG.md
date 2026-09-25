@@ -6943,3 +6943,23 @@ Exponential: T107, T108 y T109 `QA` → `DONE`.
 Pendiente: OK para mergear esta rama (redespliega RealOps). Para la grabación:
 usar la cuenta anterior (12,49 USDC) o una cuenta nueva sin compras previas (3
 USDC alcanzan para un kit, no para dos).
+
+## 2026-09-24 (16) — main (cc/t106-demo-day y cc/realops-store-hire mergeadas) y cc/t106-en-vivo
+
+Agente: Claude Code.
+
+Qué, con OK del usuario: las dos ramas mergeadas a `main` en fast-forward
+(`c343b62`) y borradas, local y remota. El usuario verificó en vivo que
+`realops.agentpey.com/agentes` muestra "Contratar un comprador de tienda".
+Esta rama solo suma esa línea a `evidencia/T106.md` y **no se mergea todavía**:
+cada merge redespliega Render; va junto con el cierre de T106.
+
+`AGENTS.md`: sin cambios. Exponential: sin cambios (T106 sigue `IN_PROGRESS`).
+
+Pendiente:
+- Del usuario (25): contratar el comprador nuevo y firmar su permiso, grabar el
+  respaldo a las 11:00, ensayar, presentar a las 19:00.
+- De Claude Code: con el enlace del recibo del ensayo, verificar pago y recibo
+  (`evidencia/T106.md` § 7) y cerrar T106; a las 18:00, chequeo de sitios y testnet.
+- Deuda anotada: RealOps marca "entregado" una compra `paid_unfulfilled` de
+  Vitrinee y no muestra el enlace al recibo; arreglar antes del video del 29.
