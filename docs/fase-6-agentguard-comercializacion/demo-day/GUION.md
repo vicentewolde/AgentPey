@@ -70,9 +70,10 @@ vivo"):
   exitosa. Movió 2,09 dólares en USDC desde el contrato que tiene mis reglas
   directo a la wallet de la tienda, y la comisión fue menos de un centavo.
   (Qué señalar en la pantalla: § "Qué señalar en Stellar Expert".)
-- **Pestaña del panel de Vitrinee, recargar.** Y este es el panel del dueño de
-  la tienda: la venta está ahí, con su recibo. Tres comprobaciones: la firma de
-  la tienda, el ancla en Stellar y el pago real. Las tres en verde.
+- **Pestaña del panel de Vitrinee, recargar, clic en "Recibo".** Y este es el
+  panel del dueño de la tienda: la venta está ahí, con su recibo. Recibo
+  válido: la firma de la tienda, el ancla en Stellar y el pago real. Las tres en
+  verde.
 
 Si algo falla: no expliques, abre el video de respaldo y narra encima con este
 mismo texto.

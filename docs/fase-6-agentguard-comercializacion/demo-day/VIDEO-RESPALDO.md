@@ -23,31 +23,29 @@ Hace falta uno nuevo: los compradores contratados antes de T104 ya no pueden
 comprar (`C-145`, punto 8).
 
 1. Entra a `https://realops.agentpey.com` → **Entrar** (link por email).
-2. Hay dos caminos, el resultado es el mismo (`C-147`):
-   - **Mis agentes** → abajo, **Contratar un comprador de tienda** → **En qué
-     tienda**: *MycoKit* → **Configurar**. Los límites ya vienen en 25,00 por
-     compra y por día.
-   - o **Catálogo** → sección **Tiendas en Vitrinee** → MycoKit → tarjeta del
-     **Kit de cultivo Cola de Pavo** → **Ver el permiso que esto necesita →** →
-     **Configurar este agente**.
-3. Un comprador por tienda: si ya existe uno para esa tienda, te lleva a ese.
-4. Página **Revisar el permiso**: mira la tabla (tope por compra, tope por
-   día, tienda, USDC) → **Firmar en AgentPey**.
-5. En AgentPey (`agentpey.com/consent/…`):
-   - **Conectar wallet**: Freighter pide una firma de verificación. No mueve
-     dinero.
-   - **Firmar Mandato**: Freighter pide **dos** aprobaciones: firmar el
+2. **Mis agentes** → **Contratar un agente** → **¿Qué quieres que haga?**:
+   *Comprar en MycoKit (tienda)*. Los límites se ponen solos en 25,00 por compra
+   y por día. El nombre es opcional. → **Contratar y firmar →** (`C-150`).
+   (También sirve desde el **Catálogo**: tarjeta del Kit Cola de Pavo → **Ver el
+   permiso que esto necesita →** → **Contratar y firmar →**.)
+3. Te lleva directo a AgentPey (`agentpey.com/consent/…`):
+   - Arriba a la derecha, **Conectar wallet**: Freighter pide una firma de
+     verificación, que no mueve dinero. El botón pasa a mostrar tu cuenta.
+   - Abajo, **Firmar Mandato**: Freighter pide **dos** aprobaciones, firmar el
      Mandato y anclarlo en testnet.
-   - Aparece **Mandato anclado** → **Volver**.
-6. De vuelta en RealOps: "✓ Firmado. Mandato …". Listo. Avísame y verifico el
-   Mandato.
+   - Aparece **Mandato anclado** y un botón grande **Seguir en
+     realops.agentpey.com →**.
+4. Vuelves a RealOps directo a **Lo que puede comprar** tu comprador: los
+   cuatro kits, "dentro del permiso". Listo. Avísame y verifico el Mandato.
+5. Un comprador por tienda: si ya tenías uno para MycoKit, "Contratar y
+   firmar" abre su firma o, si ya estaba firmado, su catálogo.
 
 ## B. Preparar la pantalla (10:45)
 
 - Modo "No molestar" activado. Barra de marcadores oculta. Zoom del navegador
   al 125 %.
 - Freighter desbloqueado y en **Testnet**.
-- **Pestaña 1, RealOps:** `Catálogo`, tarjeta del Kit de cultivo Cola de Pavo con
+- **Pestaña 1, RealOps:** **Lo que puede comprar** tu comprador (desde su ficha, **Ver lo que puede comprar →**), tarjeta del Kit de cultivo Cola de Pavo con
   "dentro del permiso", **Cantidad 1**, y los campos de envío ya llenos. Usa
   datos de prueba, no tu dirección real: se ven en pantalla.
 - **Pestaña 2, panel de Vitrinee:** `https://vitrinee.agentpey.com` →
@@ -63,15 +61,16 @@ arriba.
 
 | Segundo | Qué haces | Qué se ve |
 |---|---|---|
-| 0 a 8 | Pestaña 1. Sube un poco para que se vea que el comprador tiene su permiso firmado | La tarjeta "dentro del permiso" |
-| 8 a 12 | Clic en **Pedirle al agente que lo compre** | RealOps pasa a **Mis servicios** |
-| 12 a 25 | Espera la tarjeta en **Entregas** y haz clic en **Ver el pago en Stellar ↗** | Stellar Expert: **Successful**, una transferencia de USDC. Quédate 5 segundos |
+| 0 a 8 | Pestaña 1, **Lo que puede comprar** tu comprador (`/catalogo?agente=…`), con la tarjeta del Kit Cola de Pavo lista | La tarjeta "dentro del permiso" |
+| 8 a 12 | Clic en **Pedirle al agente que lo compre** | RealOps pasa a **Mis servicios** con un aviso verde arriba: **Comprado: Kit de cultivo Cola de Pavo** |
+| 12 a 25 | En ese aviso, clic en **Ver el pago en Stellar ↗** | Stellar Expert: **Successful**, una transferencia de USDC. Quédate 5 segundos |
 | 25 a 40 | Pestaña 2, **recarga** el panel | El pedido nuevo arriba, con la etiqueta "Pagado, pedido aún no llega a tu tienda" y los links Pago y Recibo |
-| 40 a 55 | Clic en **Recibo**. Si Chrome ofrece "Dar formato", márcalo | `"valid": true` y las tres comprobaciones con `"ok": true` |
+| 40 a 55 | Clic en **Recibo** | La página **Recibo de venta**: "Recibo válido: pasan las tres comprobaciones", las tres en verde, el kit y el total |
 | 55 a 60 | Para la grabación | |
 
-No te detengas en la etiqueta "entregado" de RealOps: el pedido todavía no
-llega a Jumpseller (T101).
+No te detengas en la etiqueta "entregado" de la tarjeta de Entregas: el pedido
+todavía no llega a Jumpseller (T101). El aviso verde de arriba dice "Comprado",
+que sí es cierto.
 
 ## D. Después de grabar
 
