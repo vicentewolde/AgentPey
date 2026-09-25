@@ -25,6 +25,9 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T104 | `cmueyt2nf001ljx04jir9o7t2` | AgentPey y RealOps leen el directorio de comercios de Vitrinee | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [C-141, C-145](../fase-6-agentguard-comercializacion/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/31) |
 | T105 | `cmueyt4lz001pjx04piff4zwy` | Un dueño da de alta su tienda en Vitrinee sin código | EXPONENTIAL | `DONE` | 2026-09-24 | 2026-09-24 | 2026-09-24 | [VT-27, VT-28, VT-29, VT-31](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | [PR](https://github.com/vicentewolde/AgentPey/pull/32) |
 | T106 | `cmug33wd50001kz04uvlavu4w` | Demo Day Stellarbarrio: pitch de 5 minutos, demo en vivo y respaldo grabado | EXPONENTIAL | `IN_PROGRESS` | 2026-09-24 | 2026-09-24 | | [C-146](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
+| T107 | `cmugh4ji00005l6049a7lvjl9` | RealOps se entiende: nombres, aviso de rechazo, email y grillas ordenadas | EXPONENTIAL | `IN_PROGRESS` | 2026-09-25 | 2026-09-25 | | [C-148](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
+| T108 | `cmughle0e000pl6042nj1ies5` | Firma y recibo claros: wallet arriba, vuelta al catálogo, recibo legible | EXPONENTIAL | `IN_PROGRESS` | 2026-09-25 | 2026-09-25 | | [C-149](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
+| T109 | `cmughv6vh0011l604343dn9zh` | Contratar en menos pasos: una pregunta, contratar y firmar, catálogo por agente, búsqueda | EXPONENTIAL | `IN_PROGRESS` | 2026-09-25 | 2026-09-25 | | [C-150](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
@@ -136,3 +139,7 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   CLI con OK del usuario: ticket T106 (`IN_PROGRESS`, rama `cc/t106-demo-day`,
   Feature "Hackathon Find Your Way") y seis acciones con fecha 2026-09-25.
   `exp:sync` movió "T106 · fecha objetivo" a In Progress.
+- **2026-09-25**, Claude Code: hallazgos del usuario al recorrer el flujo,
+  convertidos en T107, T108 y T109 (creados `IN_PROGRESS`, rama por hito, sin
+  acción con fecha). Mergeados a `main` con OK del usuario (`d496ba9`).
+
