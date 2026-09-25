@@ -44,7 +44,7 @@ function stubFetch(routes: Record<string, { status?: number; body: unknown }>) {
   return { impl: impl as unknown as typeof globalThis.fetch, calls };
 }
 
-const adapterWith = (routes: Parameters<typeof stubFetch>[0], onWarning?: () => void) => {
+const adapterWith = (routes: Parameters<typeof stubFetch>[0], onWarning?: (message: string, details: Record<string, unknown>) => void) => {
   const { impl, calls } = stubFetch(routes);
   const adapter = new JumpsellerStoreAdapter({
     credentials: CREDENTIALS,
@@ -122,6 +122,28 @@ describe("listProducts", () => {
     const products = await adapter.listProducts();
     expect(products.map((p) => p.sku)).toEqual(["HOOD-CORD-M"]);
     expect(products[0]).toMatchObject({ id: "37282902", priceLocal: "34990", currency: "CLP", stock: 12 });
+  });
+
+  it("leaves out every product whose SKU another product shares, and says so (T110)", async () => {
+    const warnings: Array<Record<string, unknown>> = [];
+    const { adapter } = adapterWith(
+      {
+        "GET /products.json": {
+          body: [
+            { product: hoodie },
+            { product: { ...hoodie, id: 11, sku: "demo-product" } },
+            { product: { ...hoodie, id: 12, sku: "demo-product" } },
+            { product: { ...hoodie, id: 13, sku: " demo-product " } },
+            // A duplicate of a product that is not on sale does not count.
+            { product: { ...hoodie, id: 14, sku: "HOOD-CORD-M", status: "disabled" } },
+          ],
+        },
+      },
+      (_message, details) => void warnings.push(details),
+    );
+    const products = await adapter.listProducts();
+    expect(products.map((p) => p.sku)).toEqual(["HOOD-CORD-M"]);
+    expect(warnings).toEqual([{ skus: ["demo-product"] }]);
   });
 
   it("stops at the first short page instead of paging forever", async () => {

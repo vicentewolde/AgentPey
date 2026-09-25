@@ -28,6 +28,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T107 | `cmugh4ji00005l6049a7lvjl9` | RealOps se entiende: nombres, aviso de rechazo, email y grillas ordenadas | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-148](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T108 | `cmughle0e000pl6042nj1ies5` | Firma y recibo claros: wallet arriba, vuelta al catálogo, recibo legible | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-149](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T109 | `cmughv6vh0011l604343dn9zh` | Contratar en menos pasos: una pregunta, contratar y firmar, catálogo por agente, búsqueda | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-150](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
+| T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `IN_PROGRESS` | 2026-09-25 | 2026-09-25 | | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y

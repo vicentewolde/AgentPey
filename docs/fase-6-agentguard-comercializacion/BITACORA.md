@@ -5294,3 +5294,16 @@ Cordillera al plan PRO y reintentar los pedidos pagados sin volver a cobrar
 (`POST /orders/<id>/fulfil`, `VT-26`), o (b) dejar T101 así para el hackathon, con
 la versión B del guion del video ("el pedido aún no llega al administrador de la
 tienda"). Claude Code no conoce el precio del plan PRO; hay que verlo en Jumpseller.
+
+## T110 · Vitrinee no publica productos con SKU repetido · en curso 2026-09-25
+
+**En palabras simples.** Cuando alguien abre una tienda nueva en Jumpseller,
+Jumpseller le pone cinco productos de ejemplo que comparten el mismo código
+(`demo-product`). Vitrinee los publicaba igual, y un agente no puede saber cuál de
+los cinco es cuál. Ahora Vitrinee deja fuera cualquier producto cuyo código se
+repita, sin que el dueño tenga que borrarlos. Sirve para la tienda nueva de la
+escena 1 del video. Decisión `VT-32`. Tests: adaptadores 24 (eran 23),
+`vitrinee:check` y `pnpm test` en verde. Salidas en [`evidencia/T110.md`](evidencia/T110.md).
+
+De paso: la tabla de códigos de rechazo (`CODIGOS-DE-RECHAZO.md`) se regeneró con
+el texto corregido del rechazo por saldo; un test la exige igual a RealOps.

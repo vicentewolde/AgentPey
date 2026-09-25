@@ -6981,3 +6981,21 @@ video de respaldo" `COMPLETED`. Comentario en T101 con la respuesta de Jumpselle
 
 Pendiente: OK para mergear `cc/t107-saldo` y esta rama (una sola vez, redespliega
 RealOps). Decisión de T101 (plan PRO o versión B del guion).
+
+## 2026-09-25 (8) — cc/t110-sku-repetido (encima de cc/t106-cierre)
+
+Agente: Claude Code.
+
+Qué: T110, Vitrinee deja fuera los productos a la venta cuyo SKU se repite
+(`VT-32`), la deuda de T105. Además se regeneró `CODIGOS-DE-RECHAZO.md`, que
+`cc/t107-saldo` había dejado desalineado (lo detectó `pnpm test`; en esa rama se
+había corrido solo la suite de RealOps).
+
+Por qué no se delegó a Codex: registro de comercios (`P-10`).
+
+`AGENTS.md`: sin cambios.
+
+Exponential: ticket T110 `cmugzc1cj000njp042cuod04w` creado `IN_PROGRESS`.
+
+Pendiente: un solo OK para mergear `cc/t107-saldo`, `cc/t106-cierre` y esta rama
+(están apiladas; redespliega RealOps y Vitrinee).

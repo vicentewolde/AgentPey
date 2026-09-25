@@ -933,3 +933,21 @@ una sesión de 12 horas en un piloto.
 **Otra alternativa descartada: un secreto propio para las sesiones**
 (`VITRINEE_SESSION_KEY`). Otro valor que el usuario tendría que generar y cargar
 en Render, sin ventaja sobre derivarlo de la llave maestra.
+
+### VT-32 · Un SKU repetido no se publica: ninguno de los productos que lo comparten · `Vigente`
+**Fecha:** 2026-09-25 · **Hito:** T110 · Deuda anotada en T105
+
+`isSellable` pedía que un producto estuviera a la venta y tuviera SKU, pero no que
+el SKU fuera suyo. Los cinco productos de demostración que Jumpseller crea en una
+tienda nueva están a la venta y comparten `demo-product`, y así llegaron al
+directorio en T105 (el usuario los borró a mano). Ahora `listProducts` deja fuera
+**todos** los productos a la venta cuyo SKU se repite (entre los que están a la
+venta), y avisa por `onWarning` con los SKU. Un duplicado deshabilitado no cuenta.
+
+**Alternativa descartada: publicar el primero de cada SKU.** Cuál es "el primero"
+depende del orden de la API, y un agente no tendría cómo saber a cuál se refiere
+el SKU. **Otra descartada: filtrar solo `demo-product`.** Resuelve el caso de hoy y
+no el siguiente.
+
+Alcance: el listado, que es lo que se publica. `getProduct` de un producto
+individual no se cambió; sin estar en el listado, ningún permiso lo nombra.

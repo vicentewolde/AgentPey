@@ -67,7 +67,17 @@ export class JumpsellerStoreAdapter implements StoreAdapter {
       }
       if (envelopes.length < PAGE_SIZE) break;
     }
-    return products;
+    // A SKU shared by several products does not say which one an agent means,
+    // so none of them is published (T110). The five demo products Jumpseller
+    // puts in a new store are available and all share "demo-product", which is
+    // how they reached the directory in T105.
+    const count = new Map<string, number>();
+    for (const product of products) count.set(product.sku, (count.get(product.sku) ?? 0) + 1);
+    const repeated = [...count].filter(([, n]) => n > 1).map(([sku]) => sku);
+    if (repeated.length > 0) {
+      this.onWarning("products sharing a SKU were left out of the catalogue", { skus: repeated });
+    }
+    return products.filter((product) => count.get(product.sku) === 1);
   }
 
   async getProduct(id: string): Promise<Product | null> {
