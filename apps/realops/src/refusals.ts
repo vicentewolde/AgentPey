@@ -407,8 +407,8 @@ export const REFUSAL_GROUPS: readonly RefusalGroup[] = [
           "La cuenta de pago de tu agente no tiene suficiente USDC de testnet, así que no se pagó nada.",
         ),
         bilingual(
-          "Nothing was spent, and this purchase does not count against your daily limit. The pilot tops these accounts up; try again in a little while.",
-          "No se gastó nada, y esta compra no cuenta contra tu límite diario. El piloto recarga esas cuentas; inténtalo de nuevo en un momento.",
+          "Nothing was spent, and this purchase does not count against your daily limit. Your account's test credit is 3 USDC and nobody tops it up by itself: choose something cheaper, or ask the pilot team to add more.",
+          "No se gastó nada, y esta compra no cuenta contra tu límite diario. El crédito de prueba de tu cuenta es de 3 USDC y nadie lo recarga solo: elige algo más barato, o pide al equipo del piloto que agregue más.",
         ),
       ),
       NetworkError: explained(

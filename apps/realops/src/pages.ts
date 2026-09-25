@@ -732,7 +732,12 @@ export interface ServicesInput {
  * happened: the person saw the page reload and could not tell whether the
  * agent had bought, failed or was still working.
  */
-function justAskedNotice(id: string, purchases: readonly PurchaseResource[], names: ReadonlyMap<string, Bilingual>): string {
+function justAskedNotice(
+  id: string,
+  purchases: readonly PurchaseResource[],
+  names: ReadonlyMap<string, Bilingual>,
+  rail: TenantActivity["rail"] | undefined,
+): string {
   const purchase = purchases.find((candidate) => candidate.id === id);
   if (purchase === undefined) {
     return `<div class="card notice"><h3>${tr(bilingual("Your request was sent", "Tu pedido se envió"))}</h3>
@@ -750,6 +755,16 @@ function justAskedNotice(id: string, purchases: readonly PurchaseResource[], nam
     <h3>${trHtml(`Refused: ${escape(name.en)}`, `Rechazado: ${escape(name.es)}`)}</h3>
     <p><strong>${tr(explained.what)}</strong></p>
     <p>${tr(explained.next)}</p>
+    ${
+      // The number that explains a refusal for lack of funds (T107): without
+      // it, "not enough USDC" leaves the person guessing how much is missing.
+      purchase.code === "RailInsufficientFunds" && rail != null
+        ? `<p>${trHtml(
+            `Balance of the contract that pays: <strong>${formatAmount(rail.balance)} ${escape(rail.asset)}</strong>.`,
+            `Saldo del contrato que paga: <strong>${formatAmount(rail.balance)} ${escape(rail.asset)}</strong>.`,
+          )}</p>`
+        : ""
+    }
     <p class="meta">${tr(
       bilingual("Nothing was paid. The refusal is also saved below, under Refusals.", "No se pagó nada. El rechazo también queda guardado abajo, en Rechazos."),
     )}</p>
@@ -915,7 +930,7 @@ export function servicesPage(input: ServicesInput): string {
   const purchases = newestFirst(activity?.purchases ?? []);
   const settled = purchases.filter((purchase) => purchase.outcome === "settled");
   const refused = purchases.filter((purchase) => purchase.outcome === "refused");
-  const notice = input.justAsked === undefined ? "" : justAskedNotice(input.justAsked, purchases, names);
+  const notice = input.justAsked === undefined ? "" : justAskedNotice(input.justAsked, purchases, names, activity?.rail);
   const signable = input.agents.filter((agent) => agent.mandateId !== null);
 
   // Always offered (T109): with no signed agent yet, a sentence still finds the

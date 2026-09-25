@@ -587,6 +587,20 @@ describe("Mis servicios", () => {
       agentpey.answerWith(settled());
     });
 
+    it("a refusal for lack of funds shows the balance and does not promise a top-up", async () => {
+      const cookie = await readyAgent("sin-saldo@ejemplo.cl");
+      const broke = refusal({ id: "pur_NOFUNDS", code: "RailInsufficientFunds", reason: "rail balance below the total" });
+      agentpey.answerWith(broke);
+      agentpey.showActivity({ purchases: [broke], rail: { contract_id: "CARSN", balance: "1.9578947", asset: "USDC", sponsored: true } });
+      const asked = await fetch(`${baseUrl}/instruccion`, form({ instruction: "compra el informe XLM/USDC" }, cookie));
+      const html = await (await fetch(`${baseUrl}${asked.headers.get("location")!}`, { headers: { cookie } })).text();
+      expect(html).toContain("Saldo del contrato que paga: <strong>1.958 USDC</strong>");
+      expect(html).toContain("nadie lo recarga solo");
+      expect(html).not.toContain("El piloto recarga esas cuentas");
+      agentpey.answerWith(settled());
+      agentpey.showActivity({ rail: null });
+    });
+
     it("after a settled purchase, says it was bought, with the payment", async () => {
       const cookie = await readyAgent("aviso-compra@ejemplo.cl");
       agentpey.answerWith(settled());

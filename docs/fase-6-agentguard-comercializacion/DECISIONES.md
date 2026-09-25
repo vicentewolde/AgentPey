@@ -6489,3 +6489,11 @@ publicado en el manifest de cada tienda.
 **Alternativa descartada: mantener "Revisar el permiso" antes de firmar.** Es un
 paso más que el usuario pidió quitar, con el mismo permiso que AgentPey muestra
 después; se conserva como pantalla, no como paso obligatorio.
+
+**Adenda a `C-148` (2026-09-25).** El rechazo por falta de saldo
+(`RailInsufficientFunds`) decía "El piloto recarga esas cuentas; inténtalo de
+nuevo en un momento", y no es cierto: el crédito de prueba de una cuenta es de 3
+USDC (`C-131`) y nadie lo recarga solo. Ahora dice eso, sugiere algo más barato o
+pedir más al equipo del piloto, y el aviso de arriba muestra el saldo del contrato
+que paga. Lo encontró el usuario: una cuenta nueva compró stickers (1,04) y quedó
+con 1,96 USDC; la Melena de León cuesta 2,62.

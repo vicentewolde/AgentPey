@@ -6927,3 +6927,19 @@ Pendiente:
 - Del usuario: confirmar el idioma de la voz; crear la tienda Jumpseller nueva;
   hacer el recorrido de prueba y llenar el § 7; decidir los puntos 1 a 3 del § 6.
 - Rama sin mergear: cada merge redespliega Render.
+
+## 2026-09-25 (6) — cc/t107-saldo
+
+Agente: Claude Code.
+
+Qué: el usuario confirmó en vivo contratar un comprador de MycoKit y la búsqueda
+("botella", "kit de hongos"): T107, T108 y T109 pasan a `DONE`. Su compra de la
+Melena de León se rechazó: la cuenta nueva que usó ya había comprado stickers y a
+su contrato le quedaban 1,96 USDC (la Melena cuesta 2,62). El mensaje prometía una
+recarga que no existe; corregido y con el saldo a la vista (adenda a `C-148`).
+
+Exponential: T107, T108 y T109 `QA` → `DONE`.
+
+Pendiente: OK para mergear esta rama (redespliega RealOps). Para la grabación:
+usar la cuenta anterior (12,49 USDC) o una cuenta nueva sin compras previas (3
+USDC alcanzan para un kit, no para dos).
