@@ -99,6 +99,6 @@ como detalle técnico.
 | `SponsoredCreditExhausted` | Se agotó el crédito de prueba que reparte el piloto. | No es un problema tuyo: el piloto tiene un tope de cuentas y de fondos de testnet. |
 | `PurchaseCeilingExceeded` | El precio superó el tope que esta plataforma puso para esta compra. | Ese tope es de RealOps, no de tu permiso. Inténtalo de nuevo. |
 | `PaymentNotCreated` | No se pudo preparar el pago, así que no se envió nada y no se pagó nada. | No cuenta contra tu límite diario. Inténtalo de nuevo; si se repite, lo tiene que revisar el equipo del piloto. |
-| `RailInsufficientFunds` | La cuenta de pago de tu agente no tiene suficiente USDC de testnet, así que no se pagó nada. | No se gastó nada, y esta compra no cuenta contra tu límite diario. El piloto recarga esas cuentas; inténtalo de nuevo en un momento. |
+| `RailInsufficientFunds` | La cuenta de pago de tu agente no tiene suficiente USDC de testnet, así que no se pagó nada. | No se gastó nada, y esta compra no cuenta contra tu límite diario. El crédito de prueba de tu cuenta es de 3 USDC y nadie lo recarga solo: elige algo más barato, o pide al equipo del piloto que agregue más. |
 | `NetworkError` | El pago no se pudo completar, así que no se pagó nada. | El comercio, la red de Stellar o el contrato que paga pueden no estar disponibles o sin saldo. Inténtalo de nuevo en un momento. |
 | `ConfigError` | AgentPey está mal configurado y no pudo procesar la compra. No se pagó nada. | Es un problema nuestro, no tuyo. Ya quedó registrado. |
