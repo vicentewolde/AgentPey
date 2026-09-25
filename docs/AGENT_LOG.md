@@ -2826,8 +2826,7 @@ apareció un conflicto real en `docs/AGENT_LOG.md` (ambas ramas
 agregaban al final del archivo) — se resolvió a mano conservando las dos
 entradas en orden. De paso se encontró y corrigió un bug de documentación
 preexistente en `main`: un marcador de conflicto sin resolver
-(`<<<<<<< HEAD` suelto, sin su par) que había quedado del merge de T48
-(`5496d4e`, 2026-09-10) — no afectaba código, solo la legibilidad del
+(`(`5496d4e`, 2026-09-10) — no afectaba código, solo la legibilidad del
 log, pero se limpió en el mismo commit.
 
 Se cerraron sin mergear los tres kits de nombres descartados —VynGent
@@ -6876,6 +6875,7 @@ forward). El paso a paso del video y el guion del hackathon describen el flujo d
 producción de hoy; cuando se mergee T109, "Mis agentes" cambia y hay que
 ajustarlos.
 
+<<<<<<< HEAD
 ## 2026-09-25 (5) — main (T107, T108 y T109 mergeados) y cc/t109-en-vivo
 
 Agente: Claude Code.
@@ -6893,3 +6893,34 @@ vea las pantallas de RealOps en vivo (piden sesión).
 
 Pendiente: que el usuario confirme RealOps en vivo; mergear esta rama y la del
 guion del video cuando no moleste un redeploy (solo documentación).
+
+## 2026-09-25 (1) — cc/guion-video-hackathon
+
+Agente: Claude Code.
+
+Qué: guion del recorrido completo para el video del hackathon (se graba el 29,
+máximo 5 minutos, voz y subtítulos en inglés), a pedido del usuario para
+recorrer todo el producto y detectar fallas y mejoras antes de grabar:
+`docs/fase-6-agentguard-comercializacion/demo-hackathon/GUION-VIDEO.md`. Siete
+escenas con tiempos, texto en inglés, qué mirar en cada una, plan B, tabla de
+fallas conocidas y de hallazgos, y checklist del día. Solo documentación.
+
+Supuesto por confirmar: la voz es en inglés (el mismo texto sirve de subtítulos).
+
+Hallazgos que salieron de escribirlo (sin cambio de código):
+- La portada de Vitrinee dice "the order reaches your store", falso mientras
+  Jumpseller responda 404. Cambiar la frase antes de grabar.
+- El recibo es JSON crudo; una página legible sería lo más valioso para el video.
+- La alta de la escena 1 necesita una tienda Jumpseller nueva: no hay forma de
+  dar de baja MycoKit ni Bazar Cordillera, y registrar una tienda dos veces
+  duplicaría productos (`C-145` punto 7).
+- La escena del rechazo (pedir de más y ver el rechazo antes de que se mueva
+  plata) solo está probada en tests, no en vivo.
+
+`AGENTS.md`: sin cambios. Exponential: sin cambios (la acción "Grabar el video
+del 29" sigue igual).
+
+Pendiente:
+- Del usuario: confirmar el idioma de la voz; crear la tienda Jumpseller nueva;
+  hacer el recorrido de prueba y llenar el § 7; decidir los puntos 1 a 3 del § 6.
+- Rama sin mergear: cada merge redespliega Render.
