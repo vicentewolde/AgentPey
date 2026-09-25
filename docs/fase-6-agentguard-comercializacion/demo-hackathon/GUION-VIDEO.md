@@ -13,7 +13,7 @@
 
 ## 1. Cómo usarlo
 
-1. **Recorrido de prueba, sin grabar (hoy o mañana).** Sigue las seis escenas en
+1. **Recorrido de prueba, sin grabar (hoy o mañana).** Sigue las escenas 0 a 7 en
    orden. En cada una, el cuadro **Qué mirar** dice qué puede fallar. Anota lo
    que encuentres en la tabla del § 7.
 2. **Arregla lo que valga la pena** (§ 6 dice qué conviene y qué no).
@@ -121,7 +121,7 @@ el montaje. Que las tarjetas no salgan duplicadas ni con SKU repetido.
 ### 3 · Contratar y firmar (1:35 a 2:25)
 
 **Pantalla:**
-1. RealOps con la **cuenta nueva** → **Mis agentes** → abajo, **Hire a store
+1. RealOps con la **cuenta nueva** → **My agents** → abajo, **Hire a store
    shopper** → elegir la tienda → **Set up**. Los límites ya vienen en 25.00 por
    compra y por día (`C-147`).
 2. **Review the permission**: se ve la tabla y el objeto literal → **Sign on
