@@ -146,43 +146,47 @@ el montaje. Que las tarjetas no salgan duplicadas ni con SKU repetido.
 ### 3 · Contratar y firmar (1:35 a 2:25)
 
 **Pantalla:**
-1. RealOps con la **cuenta nueva** → **My agents** → abajo, **Hire a store
-   shopper** → elegir la tienda → **Set up**. Los límites ya vienen en 25.00 por
-   compra y por día (`C-147`).
-2. **Review the permission**: se ve la tabla y el objeto literal → **Sign on
-   AgentPey**.
-3. En AgentPey: **Connect wallet** (firma de verificación) → **Sign Mandate** →
-   las dos aprobaciones de Freighter → **Mandate anchored** → **Back**.
+1. RealOps con la **cuenta nueva** → **My agents** → **Hire an agent** → **What
+   should it do?**: *Buy at <tienda> (store)*. Los límites se ponen solos en
+   25.00 por compra y por día → **Hire and sign →** (`C-150`).
+2. En AgentPey: arriba a la derecha **Connect wallet** (firma de verificación)
+   → abajo se lee lo que autorizas → **Sign Mandate** → las dos aprobaciones de
+   Freighter → **Mandate anchored** → **Continue on realops.agentpey.com →**.
+3. Vuelves a RealOps en **What <agente> can buy**, con los productos de la
+   tienda "in the grant" (`C-149`).
 
 **Voz (español, la que dices):**
 
-> Ahora, el comprador. En RealOps contrato un comprador para esta tienda. Antes
-> de que pueda hacer algo, firmo su permiso con mi wallet, y RealOps me muestra
-> exactamente qué firmo: solo esta tienda, solo estos productos, solo USDC, un
-> máximo por compra y por día, y una fecha de vencimiento. Freighter me pide
-> firmar y luego anclarlo en Stellar. Las reglas ya viven fuera del agente.
+> Ahora, el comprador. En RealOps contrato un comprador para esta tienda y voy
+> directo a firmar su permiso con mi wallet. AgentPey me muestra exactamente qué
+> firmo: solo esta tienda, solo estos productos, solo USDC, un máximo por compra
+> y por día, y una fecha de vencimiento. Freighter me pide firmar y luego
+> anclarlo en Stellar. Las reglas ya viven fuera del agente, y vuelvo a lo que
+> este agente puede comprar.
 
 **Subtítulos (inglés):**
 
-> Now the buyer. In RealOps I hire a shopper for this store. Before it can do
-> anything, I sign its permission with my wallet, and RealOps shows exactly what
-> I'm signing: this store only, these products only, USDC only, a maximum per
+> Now the buyer. In RealOps I hire a shopper for this store and go straight to
+> signing its permission with my wallet. AgentPey shows exactly what I'm
+> signing: this store only, these products only, USDC only, a maximum per
 > purchase and per day, and an expiry. Freighter asks me to sign, then to anchor
-> it on Stellar. The rules now live outside the agent.
+> it on Stellar. The rules now live outside the agent, and I'm back at what this
+> agent can buy.
 
 **Qué mirar:**
 - Son **tres** ventanas de Freighter seguidas (verificar, firmar, anclar). Frente
   a cámara se siente largo; decide si se acorta al montar.
-- Que la tabla del permiso se lea al zoom 125 % sin cortarse.
+- Que "Lo que autorizas" en AgentPey se lea al zoom 125 % sin cortarse.
 - El aviso de "Mandate anchored" con su hash. Anota cuánto tarda el anclaje.
-- Al volver a RealOps: "Signed. Mandate …".
+- Que el botón grande lleve de verdad a **What <agente> can buy**.
 
 ### 4 · La compra (2:25 a 3:10)
 
-**Pantalla:** **Catalogue** → tarjeta de un producto de la tienda nueva (que diga
+**Pantalla:** en **What <agente> can buy**, tarjeta de un producto (que diga
 **in the grant**) → **Quantity 1** + datos de envío → **Ask the agent to buy it**
-→ **My services** → tarjeta en **Deliveries** → **See the payment on Stellar** →
-Stellar Expert: **Successful**, transferencia de USDC.
+→ **My services** abre con el aviso verde **Bought: <producto>** (`C-148`) → en
+el aviso, **See the payment on Stellar ↗** → Stellar Expert: **Successful**,
+transferencia de USDC.
 
 **Voz (español, la que dices):**
 
@@ -209,8 +213,9 @@ Subtítulo:
 **Qué mirar:**
 - **Cuánto tarda de verdad**, del clic al pago. Si pasa de ~20 s, o se corta al
   montar o se hace una compra previa fuera de cámara.
-- **RealOps dice "delivered" aunque el pedido no llegó a Jumpseller** (T101). Es
-  la falla más visible de esta escena (§ 6). No leas "delivered" en voz alta.
+- La tarjeta de **Deliveries** sigue diciendo "delivered" aunque el pedido no
+  llegó a Jumpseller (T101). El aviso verde dice "Bought", que sí es cierto:
+  muestra el aviso, no la tarjeta.
 - Que el enlace a Stellar Expert abra la transacción correcta y que el monto sea
   el del producto.
 
@@ -218,9 +223,9 @@ Subtítulo:
 
 **Pantalla:** portal de Vitrinee (`https://vitrinee.agentpey.com`, entra con la
 wallet dueña) → **What agents bought from you** → el pedido nuevo → enlace
-**Receipt** → el JSON con `"valid": true` y las tres comprobaciones
-(`signature`, `anchored`, `settlement`) en `ok: true`. Enlace **Payment** de
-paso.
+**Receipt** → la página **Sale receipt**: "Valid receipt: all three checks
+pass", las tres comprobaciones en verde, el producto y el total (`C-149`).
+Enlace **Payment** de paso.
 
 **Voz (español, la que dices), versión B, mientras Jumpseller siga en 404:**
 
@@ -249,8 +254,8 @@ frases por esta, y muestra el panel de Jumpseller (sin credenciales a la vista):
 > Subtítulo: And here is the same order in the store's own Jumpseller admin.
 
 **Qué mirar:**
-- El recibo hoy es **JSON crudo**, no una página. Para un espectador no técnico
-  es la escena más floja (§ 6, punto 2).
+- Que la página del recibo salga en inglés (lo decide el navegador; si sale en
+  español, agrega `?lang=en` a la dirección).
 - Que el pedido nuevo salga arriba y con el estado correcto: **"Paid, order not
   yet in your store"** si sigue el 404, **"Paid, order in your store"** si no.
 - Que la sesión del portal siga abierta (dura 12 horas).
@@ -258,8 +263,9 @@ frases por esta, y muestra el panel de Jumpseller (sin credenciales a la vista):
 ### 6 · El límite (3:45 a 4:20)
 
 **Pantalla:** en RealOps, la misma tarjeta, **Quantity 20** (o el tope que
-quede sobre lo firmado) → **Ask the agent to buy it** → la explicación del
-rechazo en **My services**, con el motivo en lenguaje llano.
+quede sobre lo firmado) → **Ask the agent to buy it** → **My services** abre con el aviso
+rojo **Refused: <producto>**, el motivo en lenguaje llano y "Nothing was paid"
+(`C-148`).
 
 **Voz (español, la que dices):**
 
@@ -326,8 +332,8 @@ están por decisión del usuario; el 2 sigue abierto.
 | # | Qué | Dónde se ve | Costo | Recomendación |
 |---|---|---|---|---|
 | 1 | **El portal dice "the order reaches your store"** en su portada, y hoy no es cierto mientras Jumpseller responda 404 | Portada de `vitrinee.agentpey.com`, escena 1 | Cambiar una frase | **Decidido 2026-09-25: no se corrige** (el usuario considera que nadie lo va a preguntar). La voz de la escena 5 sí dice la verdad |
-| 2 | **El recibo es JSON crudo**, no una página legible | Escena 5 | Una página nueva de Vitrinee | Lo más valioso para el espectador. Si no alcanza, Chrome con "Dar formato" lo hace pasable |
-| 3 | **RealOps dice "delivered"** en una compra que no llegó a Jumpseller, y no muestra el enlace al recibo (Vitrinee lo manda anidado y RealOps busca otro campo) | Escena 4 | Cambio pequeño en RealOps | **Decidido 2026-09-25: no se corrige.** No leas "entregado" en voz alta; queda anotado como deuda |
+| 2 | ~~El recibo es JSON crudo~~ **Resuelto en T108** (`C-149`): página legible | Escena 5 | Una página nueva de Vitrinee | Lo más valioso para el espectador. Si no alcanza, Chrome con "Dar formato" lo hace pasable |
+| 3 | **En parte resuelto en T107/T108**: el aviso dice "Bought" y el recibo tiene página; la tarjeta todavía dice **"delivered"** en una compra que no llegó a Jumpseller, y no muestra el enlace al recibo (Vitrinee lo manda anidado y RealOps busca otro campo) | Escena 4 | Cambio pequeño en RealOps | **Decidido 2026-09-25: no se corrige.** No leas "entregado" en voz alta; queda anotado como deuda |
 | 4 | **Tres ventanas de Freighter seguidas** | Escena 3 | Montaje | Acortar al montar; no tocar el flujo |
 | 5 | **La primera compra de una cuenta nueva** despliega su contrato y puede tardar | Escena 4 | Ensayo previo | Cortar al montar o hacer una compra previa fuera de cámara |
 | 6 | **La tienda de la escena 1 no se puede repetir** con ninguna ya registrada; no hay forma de darla de baja | Escena 1 | Crear una tienda Jumpseller nueva | Necesaria; ver § 3 |
