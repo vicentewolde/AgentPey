@@ -7008,8 +7008,9 @@ Qué: el usuario preguntó cuánto USDC tiene el contrato de su cuenta de prueba
 cómo darle más fondos para no fallar en la demo. Saldo 0,905 USDC (datos públicos).
 Se escribió `pnpm run rail:topup` (`C-152`): recarga un `policy_rail` desde la
 reserva, con `--yes` obligatorio para enviar y tope de 20 USDC. Los rechazos se
-probaron; **el envío no**, porque usa `AGENT_SECRET_KEY` (que Claude Code no lee) y
-se debe correr primero sin `--yes`.
+probaron sin llave. **El envío lo corrió el usuario** (10 USDC al rail
+`CCNA6ACL…AKC45L`, tx `d3de74ef…342de`) y Claude Code lo verificó en la red: rail
+0,905 → 10,905 USDC, reserva 158,48 → 148,48.
 
 Por qué queda en Claude Code: custodia y flujo de fondos (`P-10`).
 
@@ -7017,6 +7018,4 @@ Por qué queda en Claude Code: custodia y flujo de fondos (`P-10`).
 
 Exponential: ticket T111 `cmuh17lc20001jm04rxvki5s9` creado `IN_PROGRESS`.
 
-Pendiente: OK del usuario para mergear (solo agrega un script, no toca la app); que
-el usuario corra el comando sin `--yes` y después con `--yes`; verificar el saldo
-nuevo en la red.
+Pendiente: OK del usuario para mergear (solo agrega un script, no toca la app).
