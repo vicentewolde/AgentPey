@@ -6875,3 +6875,21 @@ Pendiente: OK del usuario para mergear T107, T108 y T109 (en ese orden, fast
 forward). El paso a paso del video y el guion del hackathon describen el flujo de
 producción de hoy; cuando se mergee T109, "Mis agentes" cambia y hay que
 ajustarlos.
+
+## 2026-09-25 (5) — main (T107, T108 y T109 mergeados) y cc/t109-en-vivo
+
+Agente: Claude Code.
+
+Qué, con OK del usuario: T107, T108 y T109 a `main` en fast-forward
+(`d496ba9`); Render desplegado. Verificado en vivo sin sesión: el recibo de T104
+se abre como página (EN y ES) con las tres comprobaciones en verde; el JSON de
+`/verify` sigue igual; la página de firma tiene la wallet arriba y el botón
+grande; los sitios responden. Paso a paso del Demo Day al flujo nuevo (en esta
+rama). Guion del video del hackathon rebasado sobre `main` y al día con T107 a
+T109 (rama `cc/guion-video-hackathon`, sin mergear).
+
+Exponential: T107, T108 y T109 `IN_PROGRESS` → `QA`. `DONE` cuando el usuario
+vea las pantallas de RealOps en vivo (piden sesión).
+
+Pendiente: que el usuario confirme RealOps en vivo; mergear esta rama y la del
+guion del video cuando no moleste un redeploy (solo documentación).
