@@ -6905,7 +6905,11 @@ recorrer todo el producto y detectar fallas y mejoras antes de grabar:
 escenas con tiempos, texto en inglés, qué mirar en cada una, plan B, tabla de
 fallas conocidas y de hallazgos, y checklist del día. Solo documentación.
 
-Supuesto por confirmar: la voz es en inglés (el mismo texto sirve de subtítulos).
+Decidido con el usuario (2026-09-25): la voz es en español y los subtítulos en
+inglés; cada escena trae los dos textos frase por frase. Los puntos 1 y 3 de
+fallas conocidas (frase de la portada de Vitrinee, "delivered" en RealOps) se
+dejan sin corregir a decisión del usuario; el recibo legible sigue abierto. Va a
+crear él la tienda Jumpseller nueva de la escena 1.
 
 Hallazgos que salieron de escribirlo (sin cambio de código):
 - La portada de Vitrinee dice "the order reaches your store", falso mientras

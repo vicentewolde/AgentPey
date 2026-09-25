@@ -7,9 +7,11 @@
 > No es el pitch del Demo Day del 25 ([demo-day/GUION.md](../demo-day/GUION.md)),
 > que muestra solo la compra en 60 segundos.
 >
-> **Supuesto que hice:** la voz es en inglés, así que el mismo texto sirve de voz
-> y de subtítulos. Si la voz va en español con subtítulos en inglés, avísame y
-> agrego el texto en español.
+> **Decidido con el usuario (2026-09-25):** la voz es en **español** y los
+> subtítulos en **inglés**, para que lo entienda más gente. Cada escena tiene
+> los dos textos, uno frente al otro: el español es lo que dices, el inglés es lo
+> que se subtitula. Van frase por frase en el mismo orden, para que los
+> subtítulos se sincronicen con la voz.
 
 ## 1. Cómo usarlo
 
@@ -33,8 +35,9 @@
 | 6 | El límite | El agente pide algo fuera de su permiso y se rechaza | 3:45 a 4:20 |
 | 7 | Cierre | Una frase y la portada | 4:20 a 4:50 |
 
-Quedan 10 segundos de margen. A unos 2,5 palabras por segundo, la voz total es de
-unas 500 palabras: no cabe más texto sin cortar pantalla.
+Quedan 10 segundos de margen. En español la voz total es de unas 560 palabras (a unas 2,8 por segundo son
+unos 3:20 de habla repartidos en 4:50): no cabe más texto sin cortar pantalla. Los
+subtítulos en inglés, de dos líneas como máximo por pantalla.
 
 ## 3. Lo que hace falta antes de empezar
 
@@ -59,14 +62,21 @@ unas 500 palabras: no cabe más texto sin cortar pantalla.
 
 ## 4. Escena por escena
 
-Formato: **Pantalla** es lo que haces; **Voz y subtítulos** es el texto en inglés,
-tal cual; **Qué mirar** es lo que quiero que revises en el recorrido de prueba.
+Formato: **Pantalla** es lo que haces; **Voz** es el texto en español que
+dices y **Subtítulos** el mismo texto en inglés, tal cual; **Qué mirar** es lo que quiero que revises en el recorrido de prueba.
 
 ### 0 · Gancho (0:00 a 0:20)
 
 **Pantalla:** portada de `agentpey.com` (o un título simple). Sin movimiento.
 
-**Voz y subtítulos:**
+**Voz (español, la que dices):**
+
+> Los agentes de IA ya pueden comprar en internet. El problema es la confianza.
+> Si le das tu tarjeta, puede gastar lo que quiera, y las reglas escritas en su
+> prompt las puede reescribir una sola línea inyectada. AgentPey pone las reglas
+> en Stellar, donde el agente no puede tocarlas. Les muestro el ciclo completo.
+
+**Subtítulos (inglés):**
 
 > AI agents can already shop online. The problem is trust. Give one your card and
 > it can spend anything, and rules written in its prompt can be rewritten by a
@@ -86,7 +96,17 @@ tal cual; **Qué mirar** es lo que quiero que revises en el recorrido de prueba.
 3. **Check and publish my store** → las cuatro pruebas se ponen en verde →
    mensaje **Your store is live for agents at …**.
 
-**Voz y subtítulos:**
+**Voz (español, la que dices):**
+
+> Primero, el vendedor. El dueño de una tienda entra con la wallet donde recibe
+> sus pagos. Sin contraseña ni correo: una firma en Freighter. Pega las
+> credenciales de la API de su tienda Jumpseller y publica. Antes de guardar
+> nada, Vitrinee revisa cuatro cosas: que la dirección esté libre, que la wallet
+> pueda recibir USDC, que las credenciales lean el catálogo y que la llave de
+> firma de la tienda tenga fondos. Las cuatro pasan. Sin código y sin deploy. La
+> tienda ya está publicada para agentes.
+
+**Subtítulos (inglés):**
 
 > First, the seller. A store owner signs in with the wallet they get paid in. No
 > password, no email: one signature in Freighter. They paste the API credentials
@@ -109,7 +129,12 @@ tal cual; **Qué mirar** es lo que quiero que revises en el recorrido de prueba.
 tienda nueva en la lista) → `https://realops.agentpey.com/catalogo` → sección
 **Stores on Vitrinee** con la tienda nueva y sus productos.
 
-**Voz y subtítulos:**
+**Voz (español, la que dices):**
+
+> En menos de un minuto aparece en el directorio y en RealOps, nuestra app de
+> ejemplo para contratar agentes que compran. Nadie hizo un deploy.
+
+**Subtítulos (inglés):**
 
 > Within a minute it shows up in the directory, and in RealOps, our example app
 > for hiring buying agents. Nobody deployed anything.
@@ -129,7 +154,15 @@ el montaje. Que las tarjetas no salgan duplicadas ni con SKU repetido.
 3. En AgentPey: **Connect wallet** (firma de verificación) → **Sign Mandate** →
    las dos aprobaciones de Freighter → **Mandate anchored** → **Back**.
 
-**Voz y subtítulos:**
+**Voz (español, la que dices):**
+
+> Ahora, el comprador. En RealOps contrato un comprador para esta tienda. Antes
+> de que pueda hacer algo, firmo su permiso con mi wallet, y RealOps me muestra
+> exactamente qué firmo: solo esta tienda, solo estos productos, solo USDC, un
+> máximo por compra y por día, y una fecha de vencimiento. Freighter me pide
+> firmar y luego anclarlo en Stellar. Las reglas ya viven fuera del agente.
+
+**Subtítulos (inglés):**
 
 > Now the buyer. In RealOps I hire a shopper for this store. Before it can do
 > anything, I sign its permission with my wallet, and RealOps shows exactly what
@@ -151,7 +184,14 @@ el montaje. Que las tarjetas no salgan duplicadas ni con SKU repetido.
 → **My services** → tarjeta en **Deliveries** → **See the payment on Stellar** →
 Stellar Expert: **Successful**, transferencia de USDC.
 
-**Voz y subtítulos:**
+**Voz (español, la que dices):**
+
+> Ahora le pido que compre un producto. RealOps no decide nada: le pregunta a
+> AgentPey, que revisa el pedido contra el permiso que firmé y paga desde un
+> contrato Soroban en Stellar. Ahí está: cerca de un dólar en USDC, liquidado en
+> la red en segundos.
+
+**Subtítulos (inglés):**
 
 > Now I ask it to buy a product. RealOps decides nothing: it asks AgentPey, which
 > checks the request against the permission I signed and pays from a Soroban
@@ -159,6 +199,10 @@ Stellar Expert: **Successful**, transferencia de USDC.
 > network in seconds.
 
 Si la primera compra de la cuenta despliega su contrato (tarda), agrega:
+
+> La primera compra también despliega el contrato de pago de esta cuenta.
+
+Subtítulo:
 
 > The first purchase also deploys this account's own payment contract.
 
@@ -178,7 +222,17 @@ wallet dueña) → **What agents bought from you** → el pedido nuevo → enlac
 (`signature`, `anchored`, `settlement`) en `ok: true`. Enlace **Payment** de
 paso.
 
-**Voz y subtítulos (versión B, mientras Jumpseller siga en 404):**
+**Voz (español, la que dices), versión B, mientras Jumpseller siga en 404:**
+
+> Volvamos al lado del vendedor. El panel del dueño muestra la venta, con
+> enlaces al pago y al recibo. El recibo está firmado por la tienda, anclado en
+> un contrato de Stellar y coincide con el pago en el ledger: tres
+> comprobaciones independientes, todas en verde. El panel dice que el pedido aún
+> no llega al administrador de la tienda, porque Jumpseller todavía no habilita
+> la creación de pedidos en nuestra cuenta. El pago y la prueba son reales, y el
+> pedido se crea sin volver a cobrar apenas lo habiliten.
+
+**Subtítulos (inglés), versión B:**
 
 > Back on the seller's side. The owner's panel shows the sale, with links to the
 > payment and the receipt. The receipt is signed by the store, anchored in a
@@ -188,12 +242,11 @@ paso.
 > payment and the proof are real, and the order is created without charging
 > again as soon as it does.
 
-**Voz y subtítulos (versión A, si Jumpseller ya lo habilitó):** igual, pero
-cambia las dos últimas frases por:
+**Versión A, si Jumpseller ya lo habilitó:** igual, pero cambia las dos últimas
+frases por esta, y muestra el panel de Jumpseller (sin credenciales a la vista):
 
-> And here is the same order in the store's own Jumpseller admin.
-
-Y muestra el panel de Jumpseller (sin credenciales a la vista).
+> Voz: Y aquí está el mismo pedido en el administrador de Jumpseller de la tienda.
+> Subtítulo: And here is the same order in the store's own Jumpseller admin.
 
 **Qué mirar:**
 - El recibo hoy es **JSON crudo**, no una página. Para un espectador no técnico
@@ -208,7 +261,14 @@ Y muestra el panel de Jumpseller (sin credenciales a la vista).
 quede sobre lo firmado) → **Ask the agent to buy it** → la explicación del
 rechazo en **My services**, con el motivo en lenguaje llano.
 
-**Voz y subtítulos:**
+**Voz (español, la que dices):**
+
+> Ahora, lo importante. Le pido al mismo agente mucho más de lo que permití.
+> Superaría el máximo que firmé, así que AgentPey lo rechaza antes de que se
+> mueva un solo centavo, y explica por qué. Ese límite no está en el prompt del
+> agente, así que no hay nada que inyectar.
+
+**Subtítulos (inglés):**
 
 > Now the part that matters. I ask the same agent for far more than I allowed. It
 > would go over the maximum I signed, so AgentPey refuses before any money moves,
@@ -229,7 +289,15 @@ rechazo en **My services**, con el motivo en lenguaje llano.
 
 **Pantalla:** portada de `agentpey.com` o un cuadro con las tres direcciones.
 
-**Voz y subtítulos:**
+**Voz (español, la que dices):**
+
+> Ese es el ciclo. Una tienda se suma sin código. Una persona firma exactamente
+> lo que un agente puede gastar. El agente compra, y los dos lados guardan
+> prueba en Stellar. Hoy funciona en Stellar testnet, con tiendas Jumpseller
+> reales. Lo que sigue: el primer partner externo comprando solo, y auditorías
+> antes de tocar mainnet. AgentPey: agentes con una wallet que tiene reglas.
+
+**Subtítulos (inglés):**
 
 > That's the loop. A store joins without code. A person signs exactly what an
 > agent may spend. The agent buys, and both sides keep proof on Stellar. It runs
@@ -252,13 +320,14 @@ de grabar (hoy son dos y una tercera para el video).
 
 ## 6. Fallas ya conocidas y mejoras candidatas
 
-Ordenadas por lo mucho que se notan en el video.
+Ordenadas por lo mucho que se notan en el video. Los puntos 1 y 3 se dejan como
+están por decisión del usuario; el 2 sigue abierto.
 
 | # | Qué | Dónde se ve | Costo | Recomendación |
 |---|---|---|---|---|
-| 1 | **El portal dice "the order reaches your store"** en su portada, y hoy no es cierto mientras Jumpseller responda 404 | Portada de `vitrinee.agentpey.com`, escena 1 | Cambiar una frase | **Hacerlo antes de grabar.** Es una promesa falsa en el primer plano del video |
+| 1 | **El portal dice "the order reaches your store"** en su portada, y hoy no es cierto mientras Jumpseller responda 404 | Portada de `vitrinee.agentpey.com`, escena 1 | Cambiar una frase | **Decidido 2026-09-25: no se corrige** (el usuario considera que nadie lo va a preguntar). La voz de la escena 5 sí dice la verdad |
 | 2 | **El recibo es JSON crudo**, no una página legible | Escena 5 | Una página nueva de Vitrinee | Lo más valioso para el espectador. Si no alcanza, Chrome con "Dar formato" lo hace pasable |
-| 3 | **RealOps dice "delivered"** en una compra que no llegó a Jumpseller, y no muestra el enlace al recibo (Vitrinee lo manda anidado y RealOps busca otro campo) | Escena 4 | Cambio pequeño en RealOps | Corregir, y de paso el enlace al recibo aparecería donde el espectador ya está mirando |
+| 3 | **RealOps dice "delivered"** en una compra que no llegó a Jumpseller, y no muestra el enlace al recibo (Vitrinee lo manda anidado y RealOps busca otro campo) | Escena 4 | Cambio pequeño en RealOps | **Decidido 2026-09-25: no se corrige.** No leas "entregado" en voz alta; queda anotado como deuda |
 | 4 | **Tres ventanas de Freighter seguidas** | Escena 3 | Montaje | Acortar al montar; no tocar el flujo |
 | 5 | **La primera compra de una cuenta nueva** despliega su contrato y puede tardar | Escena 4 | Ensayo previo | Cortar al montar o hacer una compra previa fuera de cámara |
 | 6 | **La tienda de la escena 1 no se puede repetir** con ninguna ya registrada; no hay forma de darla de baja | Escena 1 | Crear una tienda Jumpseller nueva | Necesaria; ver § 3 |
@@ -291,6 +360,7 @@ Llénalo tú (o me pasas lo que viste y lo lleno yo).
       hecha.
 - [ ] Freighter en Testnet, "No molestar", zoom 125 %, pestañas cerradas.
 - [ ] Cada escena grabada por separado; voz grabada aparte para sincronizar mejor.
-- [ ] Subtítulos generados del texto de este documento (mismo texto que la voz),
-      revisados uno por uno; nada de tokens ni claves en pantalla.
+- [ ] Subtítulos en inglés tomados del texto de cada escena, sincronizados frase
+      por frase con la voz en español y revisados uno por uno; nada de tokens ni
+      claves en pantalla.
 - [ ] Duración final **bajo 5:00**.
