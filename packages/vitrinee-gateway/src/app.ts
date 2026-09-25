@@ -14,6 +14,7 @@ import type { GatewayConfig } from "./config.js";
 import { SERVICE_CARD_PATH, listResources, listServiceCards, paginationFrom } from "./discovery.js";
 import { buildManifest, createCatalogCache, toManifestProduct } from "./manifest.js";
 import { OrderStore } from "./orders.js";
+import { receiptPage } from "./receipt-page.js";
 import { Reservations } from "./reservations.js";
 import { SettlementLedger } from "./settlements.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
@@ -188,6 +189,29 @@ export function createApp({
   // sent to the platform is what the order record already holds.
   app.post("/orders/:orderId/fulfil", async (req, res) => {
     res.json(orderResponse(await fulfilOrder(deps, String(req.params.orderId))));
+  });
+
+  // The same verification as a page, for the owner who clicks "Receipt" in
+  // the portal (T108). The JSON below stays the source; this only renders it.
+  app.get("/receipts/:hash", async (req, res) => {
+    const hash = String(req.params.hash).toLowerCase();
+    const record = orders.findByReceiptHash(hash);
+    if (record?.receipt == null) {
+      throw new VitrineeError("ReceiptNotFound", "this gateway issued no receipt with that hash", { details: { hash } });
+    }
+    const asked = typeof req.query["lang"] === "string" ? req.query["lang"] : undefined;
+    const lang = asked === "es" || asked === "en" ? asked : /^es\b/i.test(req.get("accept-language") ?? "") ? "es" : "en";
+    const anchorTxHash = record.anchor?.txHash;
+    res
+      .type("html")
+      .send(
+        receiptPage({
+          orderId: record.orderId,
+          verification: await verify(record.receipt.jws),
+          lang,
+          ...(anchorTxHash === undefined ? {} : { anchorTxHash }),
+        }),
+      );
   });
 
   // A receipt this gateway issued, looked up by the hash that is anchored.

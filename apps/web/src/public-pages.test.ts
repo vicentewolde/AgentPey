@@ -23,6 +23,15 @@ describe("the static pages", () => {
     });
   }
 
+  it("consent.html puts Connect wallet in the top bar, before the consent itself (T108)", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "consent.html"), "utf8");
+    const button = html.indexOf('id="wallet-btn"');
+    expect(button).toBeGreaterThan(html.indexOf('class="utils"'));
+    expect(button).toBeLessThan(html.indexOf('<header class="hero">'));
+    expect(html).not.toContain('id="wallet-panel"');
+    expect(html).toContain('<a id="return-link" class="btn big">');
+  });
+
   it("the landing's live buttons go to RealOps, not to the removed demo", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "landing.html"), "utf8");
 

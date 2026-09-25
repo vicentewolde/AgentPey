@@ -5224,3 +5224,25 @@ recorrer el flujo:
 
 Decisión: `C-148`. Tests: RealOps 201 (eran 193). Sin desplegar: rama
 `cc/t107-realops-legible`. Salidas en [`evidencia/T107.md`](evidencia/T107.md).
+
+## T108 · Firma y recibo claros · en curso 2026-09-25
+
+**Qué quedó funcionando, en palabras simples.**
+
+1. **En la página de firma de AgentPey, "Conectar wallet" está arriba a la
+   derecha**, como en cualquier sitio web3. Al conectar, el botón muestra tu
+   cuenta abreviada. Abajo queda solo lo que autorizas y el botón de firmar.
+2. **Al terminar de firmar**, un botón grande "Seguir en realops.agentpey.com →"
+   te lleva **directo al catálogo**, que es para lo que contrataste al agente.
+3. **El recibo ya no es una pantalla negra con código.** Desde el panel del
+   dueño, "Recibo" abre una página: "Recibo válido: pasan las tres
+   comprobaciones", cada comprobación explicada en una línea, el producto, el
+   total y los enlaces al pago en Stellar y al JSON para quien quiera revisarlo.
+
+Además, **la demo del Demo Day pasa a MycoKit** (guion, paso a paso del video y
+notas de la slide 3): el panel del dueño solo muestra las tiendas que cobran en
+tu wallet, y Bazar Cordillera no cobra en la tuya.
+
+Decisión: `C-149`. Tests: gateway de Vitrinee 112, web 255, RealOps 201. Sin
+desplegar: rama `cc/t108-firma-recibo`, encima de T107. Salidas en
+[`evidencia/T108.md`](evidencia/T108.md).

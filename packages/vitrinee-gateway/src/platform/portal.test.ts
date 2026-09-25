@@ -305,7 +305,7 @@ describe("the owners' portal: sign in with the wallet, register a store, see its
     const orders = body.comercios.flatMap((c) => c.orders);
     expect(orders.map((o) => o.orderId)).toEqual([mine]);
     expect(orders[0]).toMatchObject({ status: "paid" });
-    expect(orders[0]?.receiptUrl).toMatch(/^http:\/\/tienda-mock\.vitrinee\.test\/receipts\/[0-9a-f]{64}\/verify$/);
+    expect(orders[0]?.receiptUrl).toMatch(/^http:\/\/tienda-mock\.vitrinee\.test\/receipts\/[0-9a-f]{64}$/);
     expect(me.text).not.toContain(theirs);
     expect(me.text).not.toContain("ajena");
   });

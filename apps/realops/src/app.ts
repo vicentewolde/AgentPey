@@ -736,18 +736,22 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         );
         return;
       }
+      let signed = agent.mandateId !== null;
       if (config.agentpey !== undefined) {
         try {
           const session = await config.agentpey.readConsentSession(agent.consentSessionId);
           if (session.status === "completed" && session.mandate_id !== null) {
             await config.store.saveAgent({ ...agent, mandateId: session.mandate_id });
+            signed = true;
           }
         } catch {
           // A read that failed is not a reason to lose the page: the review
           // screen below shows whatever state is actually stored.
         }
       }
-      redirect(response, `/agentes/${agent.id}`);
+      // Signed: straight to what the agent was hired for, its own catalogue
+      // (T108). Not signed yet: back to the review screen, which says why.
+      redirect(response, signed ? `/catalogo?agente=${encodeURIComponent(agent.id)}` : `/agentes/${agent.id}`);
       return;
     }
 

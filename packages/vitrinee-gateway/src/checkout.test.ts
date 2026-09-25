@@ -161,6 +161,31 @@ describe("POST /checkout/:productId — payment and order", () => {
     expect(unknown.status).toBe(404);
     expect(await unknown.json()).toMatchObject({ error: "ReceiptNotFound" });
   });
+
+  it("renders the same verification as a page a person can read (T108)", async () => {
+    const [order] = ((await (await fetch(`${env.url}/orders`)).json()) as { orders: Array<Record<string, any>> }).orders;
+    const { hash } = order!["receipt"] as { hash: string };
+    env.horizon.allow("36.8315789");
+
+    const page = await fetch(`${env.url}/receipts/${hash}`);
+    expect(page.headers.get("content-type")).toMatch(/^text\/html/);
+    const html = await page.text();
+    expect(html).toContain("Valid receipt: all three checks pass");
+    expect(html.match(/class="check ok"/g)).toHaveLength(3);
+    expect(html).toContain("36.8315789 USDC");
+    expect(html).toContain(`/receipts/${hash}/verify`);
+    expect(html).toContain(`stellar.expert/explorer/testnet/tx/${FAKE_TX_HASH}`);
+    expect(html).not.toContain("—");
+
+    const es = await (await fetch(`${env.url}/receipts/${hash}?lang=es`)).text();
+    expect(es).toContain('<html lang="es">');
+    expect(es).toContain("Recibo válido: pasan las tres comprobaciones");
+    const byHeader = await (await fetch(`${env.url}/receipts/${hash}`, { headers: { "accept-language": "es-CL,es;q=0.9" } })).text();
+    expect(byHeader).toContain("Recibo de venta");
+
+    const unknown = await fetch(`${env.url}/receipts/${"0".repeat(64)}`);
+    expect(unknown.status).toBe(404);
+  });
 });
 
 describe("POST /checkout/:productId — idempotency, duplicates, stock", () => {

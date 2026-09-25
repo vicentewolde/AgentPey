@@ -6430,3 +6430,29 @@ demo, es cambiar `VITRINEE_DEFAULT_PERMISSIONS` en `apps/realops/src/permissions
 
 **Alternativa descartada: paginar.** Otra petición por página para listas que
 hoy tienen decenas de elementos; doblar basta y conserva todo en la página.
+
+### C-149 · La wallet se conecta arriba a la derecha, firmar lleva al catálogo, y el recibo tiene página · `Vigente`
+**Fecha:** 2026-09-25 · **Hito:** T108 · Del usuario los hallazgos; de Claude Code la forma
+
+1. **Página de firma de AgentPey (`consent.html`)**: el botón "Conectar wallet"
+   pasa a la barra de arriba, a la derecha, como en los sitios web3; conectada,
+   muestra la cuenta abreviada. La sección "02 · Verifica tu wallet" desaparece y
+   el paso de firma (ahora "02") explica que primero se conecta arriba. El flujo
+   de firma no cambia: misma verificación SEP-0053, mismas dos aprobaciones.
+2. **Al terminar**, el botón de vuelta es grande y principal ("Seguir en
+   realops.agentpey.com →"), y la página se desplaza hasta él.
+3. **RealOps, al volver con el Mandato firmado, lleva a `/catalogo?agente=<id>`**,
+   que es para lo que se contrató el agente. Si la firma no terminó, sigue
+   llevando a la ficha del agente, que dice por qué. La URL de vuelta sigue
+   siendo la de la sesión de consentimiento, validada contra los orígenes del
+   partner (T81): no hay redirección abierta nueva.
+4. **Vitrinee: `GET /receipts/{hash}` es una página** con el veredicto, las tres
+   comprobaciones en palabras, los productos, el total y los enlaces al pago, al
+   ancla y al JSON. No calcula nada propio: renderiza la misma verificación que
+   `/receipts/{hash}/verify`, que sigue igual para agentes. El enlace "Recibo" del
+   panel del dueño apunta a la página. Inglés por defecto, español con `?lang=es`
+   o por `Accept-Language`, sin script.
+
+**Alternativa descartada: servir HTML en `/verify` según `Accept`.** Cambiaría lo
+que ve un agente o `curl` que no mande ese encabezado, y ese endpoint está
+publicado en el manifest de cada tienda.

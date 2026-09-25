@@ -78,7 +78,8 @@ function panelOrder(base: string, o: OrderRecord) {
     quantity: o.quantity,
     amountUSDC: o.amountUSDC,
     paymentUrl: o.settlement.explorerUrl,
-    receiptUrl: o.receipt === null ? null : `${base}/receipts/${o.receipt.hash}/verify`,
+    // The readable page, not the JSON (T108); the page links to the JSON.
+    receiptUrl: o.receipt === null ? null : `${base}/receipts/${o.receipt.hash}`,
     platformOrderId: o.platformOrderId,
   };
 }

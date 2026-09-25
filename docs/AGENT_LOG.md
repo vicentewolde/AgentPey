@@ -6835,3 +6835,23 @@ Pendiente de respuesta del usuario: cambiar la demo de hoy a MycoKit (el panel d
 Bazar Cordillera no se abre con su wallet).
 
 `AGENTS.md`: sin cambios. Exponential: ticket T107 `cmugh4ji00005l6049a7lvjl9` creado `IN_PROGRESS`.
+
+## 2026-09-25 (3) — cc/t108-firma-recibo (T108 construido, sin mergear; encima de T107)
+
+Agente: Claude Code.
+
+Qué: la demo del Demo Day pasa a MycoKit (guion, paso a paso, notas de la slide 3
+del deck), porque el panel del dueño de Bazar Cordillera no se abre con la wallet
+del usuario. T108: "Conectar wallet" arriba a la derecha en `consent.html`, botón
+grande de vuelta, RealOps vuelve al catálogo tras firmar, y `GET /receipts/{hash}`
+en Vitrinee es una página legible (el panel enlaza ahí). `C-149`.
+
+Por qué no se delegó a Codex: firma de wallet (`P-10`).
+
+`AGENTS.md`: sin cambios.
+
+Exponential: ticket T108 `cmughle0e000pl6042nj1ies5` creado `IN_PROGRESS`.
+
+Pendiente: T109 (un selector para contratar, contratar y firmar en un paso,
+catálogo filtrado por agente, búsqueda escrita). OK del usuario para mergear
+T107 y T108 (no antes de las 19:00 salvo que lo pida).

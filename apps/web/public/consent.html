@@ -121,6 +121,14 @@
   .status.err { color: var(--danger); }
   .notice { border-left: 3px solid var(--accent); background: var(--accent-wash); color: var(--ink-2); margin: 0; padding: 13px 15px; font-size: 14px; }
   .notice.err { border-color: var(--danger); background: var(--danger-wash); color: var(--danger); }
+  /* The wallet lives in the top bar, where every web3 site puts it (T108). */
+  .wallet-top { appearance: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--accent); border-radius: 999px;
+          background: var(--paper); color: var(--accent); cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 7px 14px; }
+  .wallet-top:hover:not(:disabled) { background: var(--accent-wash); }
+  .wallet-top:disabled { opacity: .6; cursor: wait; }
+  .wallet-top.connected { border-color: var(--rule); color: var(--ink); font-family: var(--mono); font-weight: 500; }
+  .wallet-top.connected::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .btn.big { font-size: 16px; padding: 15px 26px; }
   .wallet-address { margin: 14px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
   .result { margin: 14px 0 0; }
   .result-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
@@ -144,6 +152,7 @@
       <span class="tagline"><span data-tr="en">Payment infrastructure for agents</span><span data-tr="es">Infraestructura de pagos para agentes</span></span>
     </a>
     <div class="utils">
+      <button id="wallet-btn" class="wallet-top" type="button" hidden><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button>
       <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
       <div class="lang">
         <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
@@ -190,25 +199,15 @@
     </p>
   </section>
 
-  <section id="wallet-panel" class="panel" hidden>
-    <p class="panel-kicker"><span data-tr="en">02 · Verify your wallet</span><span data-tr="es">02 · Verifica tu wallet</span></p>
-    <h2><span data-tr="en">Connect the principal wallet</span><span data-tr="es">Conecta la wallet principal</span></h2>
-    <p class="lead">
-      <span data-tr="en">Freighter will ask you for a verification signature. This signature does not run a transaction and does not grant the Mandate yet.</span>
-      <span data-tr="es">Freighter te pedirá una firma de verificación. Esta firma no ejecuta una transacción ni otorga todavía el Mandato.</span>
-    </p>
-    <div class="actions"><button id="wallet-btn" class="btn secondary" type="button"><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button></div>
-    <p id="wallet-status" class="status" role="status"></p>
-    <p id="wallet-address" class="wallet-address" hidden></p>
-  </section>
-
   <section id="sign-panel" class="panel" hidden>
-    <p class="panel-kicker"><span data-tr="en">03 · Sign the Mandate</span><span data-tr="es">03 · Firma el Mandato</span></p>
+    <p class="panel-kicker"><span data-tr="en">02 · Sign the Mandate</span><span data-tr="es">02 · Firma el Mandato</span></p>
     <h2><span data-tr="en">Confirm your consent</span><span data-tr="es">Confirma el consentimiento</span></h2>
     <p class="lead">
-      <span data-tr="en">Freighter will ask for two approvals: one to sign the Mandate and one to anchor it on Stellar Testnet.</span>
-      <span data-tr="es">Freighter te pedirá dos aprobaciones: una para firmar el Mandato y otra para anclarlo en Stellar Testnet.</span>
+      <span data-tr="en">First connect your wallet with the button at the top right: Freighter asks for a verification signature, which moves no money. Then sign here: Freighter asks for two approvals, one to sign the Mandate and one to anchor it on Stellar Testnet.</span>
+      <span data-tr="es">Primero conecta tu wallet con el botón de arriba a la derecha: Freighter te pide una firma de verificación, que no mueve dinero. Después firma aquí: Freighter te pide dos aprobaciones, una para firmar el Mandato y otra para anclarlo en Stellar Testnet.</span>
     </p>
+    <p id="wallet-status" class="status" role="status"></p>
+    <p id="wallet-address" class="wallet-address" hidden></p>
     <div class="actions"><button id="sign-btn" class="btn" type="button" disabled><span data-tr="en">Sign Mandate</span><span data-tr="es">Firmar Mandato</span></button></div>
     <p id="sign-status" class="status" role="status"></p>
   </section>
@@ -221,7 +220,7 @@
       <span data-tr="es">Tu consentimiento se firmó y ancló correctamente en Stellar Testnet.</span>
     </p>
     <dl id="success-facts" class="result"></dl>
-    <p id="return-row" hidden><a id="return-link" class="btn secondary"><span data-tr="en">Back</span><span data-tr="es">Volver</span></a></p>
+    <p id="return-row" class="actions" hidden><a id="return-link" class="btn big"><span data-tr="en">Continue</span><span data-tr="es">Continuar</span></a></p>
   </section>
 </main>
 
@@ -274,7 +273,7 @@ var T = {
   mandateId: { en: "Mandate ID", es: "ID del Mandato" },
   mandateHash: { en: "Mandate hash", es: "Hash del Mandato" },
   transactionHash: { en: "Transaction hash", es: "Hash de la transacción" },
-  backTo: { en: "Back to ", es: "Volver a " },
+  backTo: { en: "Continue on ", es: "Seguir en " },
 };
 
 function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
@@ -403,6 +402,10 @@ function showTerminalStatus(status) {
 
 function paintWalletAddress() {
   document.getElementById("wallet-address").textContent = t("walletConnectedLabel") + walletAddress;
+  var top = document.getElementById("wallet-btn");
+  top.textContent = walletAddress.slice(0, 4) + "…" + walletAddress.slice(-4);
+  top.classList.add("connected");
+  top.title = walletAddress;
 }
 
 function renderSuccessDetails(anchored) {
@@ -424,16 +427,16 @@ function renderSuccessDetails(anchored) {
     el.append(row);
   }
   if (returnUrl) {
-    document.getElementById("return-link").textContent = t("backTo") + new URL(returnUrl).host;
+    document.getElementById("return-link").textContent = t("backTo") + new URL(returnUrl).host + " →";
   }
 }
 
 function renderSuccess(anchored) {
   lastAnchored = anchored;
   renderSuccessDetails(anchored);
-  document.getElementById("wallet-panel").hidden = true;
   document.getElementById("sign-panel").hidden = true;
   document.getElementById("success-panel").hidden = false;
+  document.getElementById("success-panel").scrollIntoView({ behavior: "smooth", block: "start" });
 
   if (returnUrl) {
     var link = document.getElementById("return-link");
@@ -571,7 +574,7 @@ async function loadConsentSession() {
       return;
     }
     setPageNotice("success", { key: "reviewAll" });
-    document.getElementById("wallet-panel").hidden = false;
+    document.getElementById("wallet-btn").hidden = false;
     document.getElementById("sign-panel").hidden = false;
   } catch (error) {
     setPageNotice("error", messageFor(error, "loadFailed"));

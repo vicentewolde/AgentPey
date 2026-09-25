@@ -179,8 +179,10 @@ describe("coming back from signing", () => {
     const agentId = await configureAgent(cookie);
     await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
 
-    // Coming back while the session is still pending records nothing.
-    await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+    // Coming back while the session is still pending records nothing, and
+    // lands on the review screen rather than the catalogue.
+    const pending = await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+    expect(pending.headers.get("location")).toBe(`/agentes/${agentId}`);
     expect((await store.findAgent(await accountIdFor(cookie, agentId), agentId))?.mandateId).toBeNull();
 
     // Once AgentPey says it completed, and only then, the mandate is recorded.
@@ -188,6 +190,8 @@ describe("coming back from signing", () => {
     const back = await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
 
     expect(back.status).toBe(302);
+    // Signed, it goes straight to what the agent was hired for (T108).
+    expect(back.headers.get("location")).toBe(`/catalogo?agente=${agentId}`);
     const review = await (await fetch(`${baseUrl}/agentes/${agentId}`, { headers: { cookie } })).text();
     expect(review).toContain("mnd_01J7QW8VQEJPAXEPAYREALOPS09");
     expect(review).toContain("Firmado");
