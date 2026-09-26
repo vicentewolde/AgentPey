@@ -30,6 +30,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T109 | `cmughv6vh0011l604343dn9zh` | Contratar en menos pasos: una pregunta, contratar y firmar, catálogo por agente, búsqueda | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-150](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `IN_PROGRESS` | 2026-09-25 | 2026-09-25 | | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 | T111 | `cmuh17lc20001jm04rxvki5s9` | `pnpm run rail:topup`: recargar el contrato de pago de una cuenta desde la reserva | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-152](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
+| T112 | `cmuii56q80001jm049l9gp09a` | Una tienda Shopify gratuita se suma a Vitrinee: conector, alta y pedido real | EXPONENTIAL | `IN_PROGRESS` | 2026-09-26 | | | [VT-33 a VT-35](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | rama `cc/t112-shopify`, sin mergear |
 
 | T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 
@@ -163,3 +164,6 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   a `DONE` y su acción `COMPLETED`. Acción "Trámite de la app de Jumpseller" `CANCELLED`
   y ticket "App de Jumpseller con OAuth" `ARCHIVED`: sin plan PRO no hay nada que
   tramitar (`C-151`).
+- **2026-09-26**, Claude Code: T112 creado (`IN_PROGRESS`, rama `cc/t112-shopify`, Feature
+  "Hackathon Find Your Way"). Código y tests listos; falta el sondeo contra una tienda
+  real, el merge y la verificación en vivo.

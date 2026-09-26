@@ -7141,3 +7141,18 @@ ver la respuesta de la sesión. No se construyó ningún adaptador nuevo: falta 
 usuario.
 
 Pendiente: mergear la rama con OK del usuario; decidir si se hace un adaptador Shopify.
+
+## 2026-09-26 (4) — cc/t112-shopify
+
+Agente: Claude Code.
+
+Qué: `cc/exp-sync-completed` mergeada a `main` con OK del usuario (redespliega Render).
+Nueva rama `cc/t112-shopify` (ticket T112 en Exponential, `IN_PROGRESS`): adaptador
+Shopify en `packages/vitrinee-adapters/src/shopify/`, credencial `shopify-app`, alta y
+portal con selector de plataforma, `pnpm run vitrinee:shopify:probe`, `VT-33` a `VT-35`.
+Guion de prueba completo: `demo-hackathon/GUION-PRUEBA-COMPLETA.md`. Repo viejo de
+Vitrinee archivado a pedido del usuario.
+
+Pendiente: el usuario crea la tienda de desarrollo (Dev Dashboard) y corre el sondeo;
+si pasa, mergear (con OK) y desplegar; después el recorrido del guion. `AGENTS.md`: sin
+cambios. Nada de esto toca `checkMandate` ni el enforcement.

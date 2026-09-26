@@ -5317,3 +5317,30 @@ versión B de la escena 5.
 
 Además, el deck y el guion del Demo Day quedaron completos: "ingeniero y profesor
 de blockchain" y una meta de 3 tiendas Jumpseller para el próximo hito.
+
+## T112 · Una tienda Shopify gratuita se suma a Vitrinee (2026-09-26, en curso)
+
+**En lenguaje llano.** Jumpseller solo crea pedidos con su plan de pago (`C-151`).
+Shopify lo permite en una tienda de desarrollo, que es gratis. Vitrinee ahora sabe
+hablar con Shopify: lee su catálogo, y cuando un agente paga, crea el pedido ya
+pagado en la tienda, con el hash del pago de Stellar dentro. El dueño la da de alta
+en el mismo portal, eligiendo "Shopify". Está probado con tests; **falta probarlo
+contra una tienda real** (lo primero que debe correr el usuario es
+`pnpm run vitrinee:shopify:probe`) y desplegarlo.
+
+**Qué hay.** `packages/vitrinee-adapters/src/shopify/` (cliente con token de 24 h,
+mapeo, adaptador), credencial `shopify-app` en el gateway, alta y formulario del
+portal con selector de plataforma, script de sondeo y decisiones `VT-33` a `VT-35`
+(`vitrinee/DECISIONES.md`). El guion para probar todo el producto de punta a punta
+está en `demo-hackathon/GUION-PRUEBA-COMPLETA.md`.
+
+**Evidencia.** `pnpm run vitrinee:typecheck` y `vitrinee:lint` sin errores;
+`vitrinee:test`: adaptadores 45 (21 nuevos), gateway 122 (12 nuevos); `pnpm test`
+en verde. Un test encontró un fallo real (el host se validaba antes de recortar
+espacios) y quedó arreglado.
+
+**Sin verificar contra Shopify real:** la versión de API `2026-07`, los campos de las
+consultas (`inventoryQuantity`, `media`), la forma exacta de `orderCreate`
+(`customer`/`shippingAddress`), y la vista del portal. Cada uno se comprueba en el
+paso A2 del guion. **Regla de Shopify:** la tienda debe crearse desde el Dev
+Dashboard y estar en la misma organización que la app.
