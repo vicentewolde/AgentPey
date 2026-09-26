@@ -7128,3 +7128,16 @@ apertura de tickets y acciones revisado: sin más diferencias.
 
 Pendiente: mergear a `main` con OK del usuario. La acción "T101 · Compra real…" sigue
 `IN_PROGRESS` con T101 `BLOCKED`. `AGENTS.md`: sin cambios.
+
+## 2026-09-26 (3) — cc/exp-sync-completed
+
+Agente: Claude Code.
+
+Qué: por pedido del usuario se archivó `vicentewolde/Vitrinee` en GitHub (reversible desde
+Settings) y se cerraron en Exponential "Archivar el repo viejo" (DONE) y "App de Jumpseller
+con OAuth" (ticket ARCHIVED, acción CANCELLED). Se investigó una alternativa gratuita a
+Jumpseller: Shopify (tienda de desarrollo del Partner Program), WooCommerce y Tiendanube;
+ver la respuesta de la sesión. No se construyó ningún adaptador nuevo: falta decisión del
+usuario.
+
+Pendiente: mergear la rama con OK del usuario; decidir si se hace un adaptador Shopify.

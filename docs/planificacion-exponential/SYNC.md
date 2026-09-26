@@ -158,3 +158,8 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   "completada → Done" no corría. `sync-board.ts` ahora lee las cinco columnas con
   `--status` y las junta. Aplicado: las cinco pasaron a Done. La acción de T101 sigue
   `IN_PROGRESS` con el ticket `BLOCKED` (decisión del usuario pendiente).
+- **2026-09-26**, Claude Code, a pedido del usuario: repo viejo `vicentewolde/Vitrinee`
+  archivado en GitHub (T102 ya estaba cerrado, condición de `C-130`); ticket "Archivar…"
+  a `DONE` y su acción `COMPLETED`. Acción "Trámite de la app de Jumpseller" `CANCELLED`
+  y ticket "App de Jumpseller con OAuth" `ARCHIVED`: sin plan PRO no hay nada que
+  tramitar (`C-151`).
