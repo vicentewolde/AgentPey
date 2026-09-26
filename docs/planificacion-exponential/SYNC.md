@@ -76,9 +76,9 @@ misma vive en `cc/t103-plataforma-comercios` (solo documentación).
 | `cmug344iu0005kz04c47qyor9` | T106 · fecha objetivo (sigue al ticket con `exp:sync`) | 2026-09-25 | T106 |
 | `cmug3475y000bkz04j6mh98tr` | Contratar en RealOps el comprador nuevo y firmar su permiso con Freighter (**completada** 2026-09-25) | 2026-09-25 | T106 |
 | `cmug349ul000hkz04sg32oyyv` | Grabar el video de respaldo de la demo (11:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
-| `cmug34c64000nkz04mak51an0` | Ensayar el pitch con cronómetro (3 veces, corte a los 5:00) | 2026-09-25 | T106 |
-| `cmug34eos000tkz04wi0c15d2` | Revisar Freighter, testnet y pestañas antes de salir (18:00) | 2026-09-25 | T106 |
-| `cmug34gz5000zkz04s5r9bfr6` | Presentar en el Demo Day Stellarbarrio (19:00) | 2026-09-25 | T106 |
+| `cmug34c64000nkz04mak51an0` | Ensayar el pitch con cronómetro (3 veces, corte a los 5:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
+| `cmug34eos000tkz04wi0c15d2` | Revisar Freighter, testnet y pestañas antes de salir (18:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
+| `cmug34gz5000zkz04s5r9bfr6` | Presentar en el Demo Day Stellarbarrio (19:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
 
 ## Metas
 
@@ -147,4 +147,8 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   convertidos en T107, T108 y T109 (creados `IN_PROGRESS`, rama por hito, sin
   acción con fecha). Mergeados a `main` con OK del usuario (`d496ba9`) y en
   `QA` hasta que el usuario vea en vivo las pantallas de RealOps, que piden sesión.
+- **2026-09-26**, Claude Code, cierre del Demo Day: el usuario presentó el 2026-09-25.
+  Acciones "Ensayar", "Revisar la wallet y la testnet" y "Presentar" `COMPLETED`; T106 a
+  T111 `DONE`; T101 `BLOCKED` (`C-151`). Siguen activas: grabar el video del 29, archivar
+  el repo viejo de Vitrinee y el trámite de la app de Jumpseller.
 

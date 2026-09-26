@@ -7087,3 +7087,32 @@ El deck está compartido como "cualquiera con el enlace" (lo decidió el usuario
 notas del orador, con el guion, son visibles para quien lo abra.
 
 `AGENTS.md`: sin cambios. Exponential: sin cambios.
+
+## 2026-09-26 (1) — main (Demo Day presentado) y cc/cierre-demo-day
+
+Agente: Claude Code.
+
+Qué: el usuario **presentó el Demo Day el 2026-09-25 y salió bien**. Con su OK se
+mergearon las dos ramas que quedaban (`cc/rail-topup` y `cc/t101-sin-pro`, esta última
+aplastada en un commit) a `main` (`5768364`), y se borraron. Acciones de T106 en
+Exponential completadas.
+
+Incidente propio, corregido: al resolver un conflicto de rebase usé `git add -A docs/` y
+el commit incluyó los dos archivos de traspaso sin trackear del usuario
+(`docs/fase-0-fundamentos/traspaso-*.md`), el mismo error que ya había pasado. Se detectó
+antes de mergear; se respaldaron, se sacaron con `git reset --soft` y siguen sin trackear
+en su lugar. Lección: en un conflicto, `git add <archivo resuelto>` por nombre, nunca un
+directorio.
+
+Estado para el próximo chat:
+- T100 a T111 en `DONE`, salvo T101 `BLOCKED` por el plan de Jumpseller (`C-151`).
+- Video del hackathon: se graba el **martes 29**; guion en
+  `docs/fase-6-agentguard-comercializacion/demo-hackathon/GUION-VIDEO.md`. Faltan la
+  tienda Jumpseller nueva para la escena 1 (la crea el usuario), el recorrido de prueba y
+  la escena 6 (el rechazo), que solo está probada en tests.
+- Deuda: la etiqueta "entregado" de RealOps en un pedido `paid_unfulfilled`; rotar la
+  llave maestra de Vitrinee (sin herramienta); archivar el repo viejo de Vitrinee; app
+  OAuth de Jumpseller; M7 y M9 de COMPARACION.md son del usuario; `exponential time
+  confirm --date 2026-09-23` (M8) es solo humano.
+
+`AGENTS.md`: sin cambios. Exponential: sin cambios de tickets.
