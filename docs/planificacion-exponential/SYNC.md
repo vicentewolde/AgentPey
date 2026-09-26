@@ -152,3 +152,9 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   T111 `DONE`; T101 `BLOCKED` (`C-151`). Siguen activas: grabar el video del 29, archivar
   el repo viejo de Vitrinee y el trámite de la app de Jumpseller.
 
+- **2026-09-26**, Claude Code (`cc/exp-sync-completed`): cinco acciones ya completadas
+  seguían en la columna To Do. Causa: `exponential actions list --project` solo devuelve
+  las acciones activas, así que `exp:sync` nunca veía las completadas y su regla
+  "completada → Done" no corría. `sync-board.ts` ahora lee las cinco columnas con
+  `--status` y las junta. Aplicado: las cinco pasaron a Done. La acción de T101 sigue
+  `IN_PROGRESS` con el ticket `BLOCKED` (decisión del usuario pendiente).

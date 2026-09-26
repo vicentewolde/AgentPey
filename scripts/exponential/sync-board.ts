@@ -95,7 +95,18 @@ function plan(actions: Action[], ticketStatusByMilestone: Map<string, string>): 
 }
 
 const tickets = readJson(ticketSchema, "tickets", ["tickets", "list", "--workspace", WORKSPACE, "--product", PRODUCT]);
-const actions = readJson(actionSchema, "actions", ["actions", "list", "--project", PROJECT]);
+
+// `actions list` hides COMPLETED actions unless a column is asked for, so read
+// every column and de-duplicate. Without this the "completed -> DONE" rule
+// never sees the actions it exists for.
+const COLUMNS = ["BACKLOG", "TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"];
+const actionsById = new Map<string, Action>();
+for (const column of COLUMNS) {
+  for (const action of readJson(actionSchema, "actions", ["actions", "list", "--project", PROJECT, "--status", column])) {
+    actionsById.set(action.id, action);
+  }
+}
+const actions = [...actionsById.values()];
 
 const ticketStatusByMilestone = new Map<string, string>();
 for (const ticket of tickets) {

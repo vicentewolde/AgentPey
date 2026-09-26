@@ -7116,3 +7116,15 @@ Estado para el próximo chat:
   confirm --date 2026-09-23` (M8) es solo humano.
 
 `AGENTS.md`: sin cambios. Exponential: sin cambios de tickets.
+
+## 2026-09-26 (2) — cc/exp-sync-completed
+
+Agente: Claude Code.
+
+Qué: el usuario vio en exponential.im acciones ya hechas en To Do. `exp:sync` no las
+detectaba porque `actions list --project` oculta las completadas; ahora recorre las cinco
+columnas (`scripts/exponential/sync-board.ts`). Cinco acciones movidas a Done. Ritual de
+apertura de tickets y acciones revisado: sin más diferencias.
+
+Pendiente: mergear a `main` con OK del usuario. La acción "T101 · Compra real…" sigue
+`IN_PROGRESS` con T101 `BLOCKED`. `AGENTS.md`: sin cambios.
