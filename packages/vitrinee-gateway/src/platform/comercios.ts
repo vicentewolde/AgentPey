@@ -12,6 +12,7 @@
 import { randomBytes } from "node:crypto";
 
 import { Keypair } from "@stellar/stellar-sdk";
+import { isShopifyShopHost } from "@vitrinee/adapters";
 import { VitrineeError, countryCodeSchema, currencyCodeSchema, stellarAccountSchema } from "@vitrinee/core";
 import { z } from "zod";
 
@@ -25,6 +26,14 @@ import type { SecretBox } from "./secret-box.js";
  */
 export const storeCredentialsSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("jumpseller-api"), login: z.string().min(1), authtoken: z.string().min(1) }),
+  // The Dev Dashboard app's client credentials, exchanged for a 24-hour token (VT-33). The host must be
+  // *.myshopify.com because the secret is sent to it.
+  z.strictObject({
+    kind: z.literal("shopify-app"),
+    shop: z.string().refine(isShopifyShopHost, "the store's <name>.myshopify.com address"),
+    clientId: z.string().min(1),
+    clientSecret: z.string().min(1),
+  }),
   z.strictObject({ kind: z.literal("mock") }),
 ]);
 export type StoreCredentials = z.infer<typeof storeCredentialsSchema>;
@@ -37,7 +46,7 @@ export const comercioSchema = z.strictObject({
   payTo: stellarAccountSchema,
   /** The public half of the key Vitrinee holds for them (VT-8, VT-27). */
   signingAccount: stellarAccountSchema,
-  platform: z.enum(["jumpseller", "mock"]),
+  platform: z.enum(["jumpseller", "shopify", "mock"]),
   status: z.enum(["active", "disabled"]),
   country: countryCodeSchema,
   currency: currencyCodeSchema,
@@ -101,7 +110,7 @@ export function sealComercio(input: NewComercio, box: SecretBox, now: Date, id =
     name: input.name,
     payTo: input.payTo,
     signingAccount,
-    platform: credentials.kind === "mock" ? "mock" : "jumpseller",
+    platform: credentials.kind === "mock" ? "mock" : credentials.kind === "shopify-app" ? "shopify" : "jumpseller",
     status: "active",
     country: input.country ?? "CL",
     currency: input.currency ?? "CLP",

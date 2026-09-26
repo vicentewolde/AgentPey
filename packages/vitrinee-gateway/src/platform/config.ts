@@ -49,6 +49,9 @@ const MERCHANT_KEYS = [
   "ADAPTER",
   "JUMPSELLER_LOGIN",
   "JUMPSELLER_AUTHTOKEN",
+  "SHOPIFY_SHOP",
+  "SHOPIFY_CLIENT_ID",
+  "SHOPIFY_CLIENT_SECRET",
   "PUBLIC_BASE_URL",
   "MERCHANT_NAME",
   "MERCHANT_STELLAR_ACCOUNT",
@@ -109,6 +112,11 @@ export function comercioConfig(env: NodeJS.ProcessEnv, comercio: Comercio, secre
   if (secrets.credentials.kind === "jumpseller-api") {
     merchant["JUMPSELLER_LOGIN"] = secrets.credentials.login;
     merchant["JUMPSELLER_AUTHTOKEN"] = secrets.credentials.authtoken;
+  }
+  if (secrets.credentials.kind === "shopify-app") {
+    merchant["SHOPIFY_SHOP"] = secrets.credentials.shop;
+    merchant["SHOPIFY_CLIENT_ID"] = secrets.credentials.clientId;
+    merchant["SHOPIFY_CLIENT_SECRET"] = secrets.credentials.clientSecret;
   }
   return loadConfig({ ...base, ...merchant });
 }

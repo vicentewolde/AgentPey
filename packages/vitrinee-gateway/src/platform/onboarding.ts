@@ -19,7 +19,7 @@
  * shape (VT-28): the OAuth app after the 29th is one more member of
  * {@link StoreCredentials} and one more branch in {@link storeCatalogueReader}.
  */
-import { JumpsellerStoreAdapter } from "@vitrinee/adapters";
+import { JumpsellerStoreAdapter, ShopifyStoreAdapter } from "@vitrinee/adapters";
 import { Keypair } from "@stellar/stellar-sdk";
 import { VitrineeError, isVitrineeError } from "@vitrinee/core";
 import { z } from "zod";
@@ -79,6 +79,33 @@ export interface OnboardingResult {
   products: number;
 }
 
+/** Pasted from a web page: stray spaces are the likeliest typo, and the Shopify host is case-insensitive. */
+function trimmed(credentials: StoreCredentials): StoreCredentials {
+  switch (credentials.kind) {
+    case "jumpseller-api":
+      return { ...credentials, login: credentials.login.trim(), authtoken: credentials.authtoken.trim() };
+    case "shopify-app":
+      return {
+        ...credentials,
+        shop: credentials.shop.trim().toLowerCase(),
+        clientId: credentials.clientId.trim(),
+        clientSecret: credentials.clientSecret.trim(),
+      };
+    case "mock":
+      return credentials;
+  }
+}
+
+/** The Shopify host is checked by the schema, so its stray spaces and capitals have to go before that check. */
+function normaliseShop(input: unknown): unknown {
+  if (input === null || typeof input !== "object") return input;
+  const credentials = (input as { credentials?: unknown }).credentials;
+  if (credentials === null || typeof credentials !== "object") return input;
+  const shop = (credentials as { kind?: unknown; shop?: unknown }).shop;
+  if ((credentials as { kind?: unknown }).kind !== "shopify-app" || typeof shop !== "string") return input;
+  return { ...input, credentials: { ...credentials, shop: shop.trim().toLowerCase() } };
+}
+
 export function slugProblem(slug: string): "invalid" | "reserved" | undefined {
   if (!isComercioSlug(slug)) return "invalid";
   if (RESERVED_SLUGS.has(slug)) return "reserved";
@@ -87,22 +114,22 @@ export function slugProblem(slug: string): "invalid" | "reserved" | undefined {
 
 /** @throws VitrineeError with the code of the first check that fails; nothing is written in that case. */
 export async function onboardComercio(payTo: string, input: unknown, deps: OnboardingDeps): Promise<OnboardingResult> {
-  const parsed = onboardingRequestSchema.safeParse(input);
+  const parsed = onboardingRequestSchema.safeParse(normaliseShop(input));
   if (!parsed.success) {
     const problems = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`);
     throw new VitrineeError("ValidationError", `invalid registration: ${problems.join("; ")}`, { details: { problems } });
   }
   const request = parsed.data;
   // Pasted from a web page: stray spaces are the likeliest typo. What is tested is what is saved.
-  const credentials: StoreCredentials =
-    request.credentials.kind === "jumpseller-api"
-      ? { ...request.credentials, login: request.credentials.login.trim(), authtoken: request.credentials.authtoken.trim() }
-      : request.credentials;
+  const credentials: StoreCredentials = trimmed(request.credentials);
   if (credentials.kind === "jumpseller-api" && (credentials.login === "" || credentials.authtoken === "")) {
     throw new VitrineeError("ValidationError", "the Jumpseller login and API token are both required");
   }
+  if (credentials.kind === "shopify-app" && (credentials.shop === "" || credentials.clientId === "" || credentials.clientSecret === "")) {
+    throw new VitrineeError("ValidationError", "the Shopify store address, client id and client secret are all required");
+  }
   if (credentials.kind === "mock" && deps.allowMockStores !== true) {
-    throw new VitrineeError("ValidationError", "this platform only registers Jumpseller stores");
+    throw new VitrineeError("ValidationError", "this platform only registers Jumpseller and Shopify stores");
   }
 
   // 1. The slug.
@@ -165,6 +192,24 @@ export function storeCatalogueReader(options: { fetch?: typeof globalThis.fetch 
     switch (credentials.kind) {
       case "mock":
         return 0;
+      case "shopify-app": {
+        const adapter = new ShopifyStoreAdapter({
+          credentials: { shop: credentials.shop, clientId: credentials.clientId, clientSecret: credentials.clientSecret },
+          currency: "CLP",
+          timeoutMs: 15_000,
+          ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+        });
+        try {
+          return (await adapter.listProducts()).length;
+        } catch (error) {
+          // The adapter says whether Shopify refused the app (wrong id or secret, app and store in
+          // different organizations, a missing permission); a currency mismatch or an outage is not that.
+          if (isVitrineeError(error) && error.details["credentialsRejected"] === true) {
+            throw new VitrineeError("StoreCredentialsRejected", error.message, { details: { status: error.details["status"] ?? 403 } });
+          }
+          throw error;
+        }
+      }
       case "jumpseller-api": {
         const adapter = new JumpsellerStoreAdapter({
           credentials: { login: credentials.login, authtoken: credentials.authtoken },

@@ -233,3 +233,77 @@ describe("Stellar testnet checks against Horizon and friendbot (fake fetch)", ()
     await expect(ghost.fund(account)).rejects.toMatchObject({ code: "SigningKeyNotFunded" });
   });
 });
+
+describe("a Shopify store registers the same way (T112, VT-33)", () => {
+  const box = createSecretBox(generateMasterKey());
+  const owner = Keypair.random().publicKey();
+  const SHOPIFY = { kind: "shopify-app", shop: "mi-tienda.myshopify.com", clientId: "cid-123", clientSecret: "shpss_secret-456" } as const;
+
+  const shopifyFetch = (tokenStatus: number, nodes: unknown[] = [], currency = "CLP"): typeof fetch =>
+    (async (input: string | URL | Request) => {
+      if (String(input).endsWith("/admin/oauth/access_token")) {
+        return new Response(JSON.stringify(tokenStatus === 200 ? { access_token: "tok", expires_in: 86399 } : { error: "invalid_client" }), { status: tokenStatus });
+      }
+      return new Response(
+        JSON.stringify({ data: { shop: { currencyCode: currency }, products: { pageInfo: { hasNextPage: false, endCursor: null }, nodes } } }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+  const sticker = {
+    id: "gid://shopify/Product/1",
+    title: "Stickers",
+    status: "ACTIVE",
+    variants: { nodes: [{ id: "gid://shopify/ProductVariant/11", title: "Default Title", sku: "STK", price: "2850.00", inventoryQuantity: 5, inventoryItem: { tracked: true } }] },
+  };
+
+  const deps = (fetch: typeof globalThis.fetch): { d: OnboardingDeps; comercios: MemoryComercioStore } => {
+    const comercios = new MemoryComercioStore();
+    const stellar = new FakeStellar();
+    return { comercios, d: { comercios, box, stellar, readCatalogue: storeCatalogueReader({ fetch }), now: () => new Date("2026-09-27T10:00:00Z") } };
+  };
+  const register = (d: OnboardingDeps, credentials: Record<string, unknown> = SHOPIFY) =>
+    onboardComercio(owner, { name: "Tienda Shopify", slug: "tienda-shopify", credentials }, d);
+
+  it("registers it, counts its products and seals the client secret", async () => {
+    const { d, comercios } = deps(shopifyFetch(200, [sticker]));
+    const { comercio, products } = await register(d);
+    expect(products).toBe(1);
+    expect(comercio.platform).toBe("shopify");
+    const stored = (await comercios.getBySlug("tienda-shopify"))!;
+    expect(JSON.stringify(stored)).not.toContain(SHOPIFY.clientSecret);
+    expect(openComercioSecrets(stored, box).credentials).toEqual(SHOPIFY);
+  });
+
+  it("normalises the pasted values", async () => {
+    const { d, comercios } = deps(shopifyFetch(200, [sticker]));
+    await register(d, { ...SHOPIFY, shop: "  Mi-Tienda.myshopify.com ", clientId: " cid-123 " });
+    const stored = (await comercios.getBySlug("tienda-shopify"))!;
+    expect(openComercioSecrets(stored, box).credentials).toEqual(SHOPIFY);
+  });
+
+  it("refuses a host that is not *.myshopify.com, and never contacts it", async () => {
+    let contacted = false;
+    const { d, comercios } = deps((async () => { contacted = true; return new Response("{}"); }) as typeof fetch);
+    await expect(register(d, { ...SHOPIFY, shop: "evil.example.com" })).rejects.toMatchObject({ code: "ValidationError" });
+    expect(contacted).toBe(false);
+    expect(await comercios.list()).toEqual([]);
+  });
+
+  it.each([400, 401, 403])("turns a %s on the token exchange into StoreCredentialsRejected and saves nothing", async (status) => {
+    const { d, comercios } = deps(shopifyFetch(status));
+    await expect(register(d)).rejects.toMatchObject({ code: "StoreCredentialsRejected" });
+    expect(await comercios.list()).toEqual([]);
+  });
+
+  it("does not blame the owner for a store that sells in another currency", async () => {
+    const { d } = deps(shopifyFetch(200, [sticker], "USD"));
+    await expect(register(d)).rejects.toMatchObject({ code: "AdapterError" });
+  });
+
+  it("never puts the secret in what it throws", async () => {
+    const { d } = deps(shopifyFetch(400));
+    const error = await register(d).catch((e: unknown) => e);
+    expect(JSON.stringify((error as VitrineeError).toJSON())).not.toContain(SHOPIFY.clientSecret);
+  });
+});

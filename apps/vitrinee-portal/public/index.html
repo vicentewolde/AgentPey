@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vitrinee · Sell to AI agents</title>
-<meta name="description" content="Connect your Jumpseller store to AI agents that pay in USDC on Stellar testnet. No code.">
+<meta name="description" content="Connect your Jumpseller or Shopify store to AI agents that pay in USDC on Stellar testnet. No code.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -152,7 +152,7 @@
 
   <header class="hero">
     <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · for merchants</span><span data-tr="es">Stellar Testnet · para comercios</span></p>
-    <h1><span data-tr="en">Sell to AI agents from your Jumpseller store</span><span data-tr="es">Vende a agentes de IA desde tu tienda Jumpseller</span></h1>
+    <h1><span data-tr="en">Sell to AI agents from your online store</span><span data-tr="es">Vende a agentes de IA desde tu tienda online</span></h1>
     <p class="intro">
       <span data-tr="en">Connect your store in a couple of minutes, without writing code. Agents pay in USDC straight to your wallet, the order reaches your store, and every sale comes with a signed receipt anchored on Stellar.</span>
       <span data-tr="es">Conecta tu tienda en un par de minutos, sin escribir código. Los agentes pagan en USDC directo a tu wallet, el pedido llega a tu tienda y cada venta trae un recibo firmado y anclado en Stellar.</span>
@@ -188,10 +188,14 @@
 
   <section class="panel" id="add-panel" hidden>
     <p class="panel-kicker"><span data-tr="en">03 · Add a store</span><span data-tr="es">03 · Agrega una tienda</span></p>
-    <h2><span data-tr="en">Connect your Jumpseller store</span><span data-tr="es">Conecta tu tienda Jumpseller</span></h2>
-    <p class="lead">
+    <h2><span data-tr="en">Connect your store</span><span data-tr="es">Conecta tu tienda</span></h2>
+    <p class="lead" data-only="jumpseller">
       <span data-tr="en">You find your API login and token in your Jumpseller admin panel, in the API section. We test them right away and store them encrypted; they are never shown again.</span>
       <span data-tr="es">Tu login y tu token de API están en el panel de administración de Jumpseller, en la sección API. Los probamos en el momento y los guardamos cifrados; nunca se vuelven a mostrar.</span>
+    </p>
+    <p class="lead" data-only="shopify" hidden>
+      <span data-tr="en">Create an app in the Shopify Dev Dashboard, give it read_products and write_orders, install it on your store and copy its client id and secret. We test them right away and store them encrypted; they are never shown again.</span>
+      <span data-tr="es">Crea una app en el Dev Dashboard de Shopify, dale read_products y write_orders, instálala en tu tienda y copia su client id y su secret. Los probamos en el momento y los guardamos cifrados; nunca se vuelven a mostrar.</span>
     </p>
     <form id="add-form" novalidate>
       <label>
@@ -204,19 +208,42 @@
         <span id="slug-state" class="slug-state" aria-live="polite"></span>
       </label>
       <label>
-        <span><span data-tr="en">Jumpseller API login</span><span data-tr="es">Login de la API de Jumpseller</span></span>
-        <input id="f-login" name="login" class="mono" autocomplete="off" spellcheck="false" required>
+        <span><span data-tr="en">Where is your store?</span><span data-tr="es">¿Dónde está tu tienda?</span></span>
+        <select id="f-platform" name="platform">
+          <option value="jumpseller">Jumpseller</option>
+          <option value="shopify">Shopify</option>
+        </select>
       </label>
-      <label>
-        <span><span data-tr="en">Jumpseller API token</span><span data-tr="es">Token de la API de Jumpseller</span></span>
-        <input id="f-token" name="authtoken" class="mono" type="password" autocomplete="off" spellcheck="false" required>
-      </label>
+      <div data-only="jumpseller">
+        <label>
+          <span><span data-tr="en">Jumpseller API login</span><span data-tr="es">Login de la API de Jumpseller</span></span>
+          <input id="f-login" name="login" class="mono" autocomplete="off" spellcheck="false">
+        </label>
+        <label>
+          <span><span data-tr="en">Jumpseller API token</span><span data-tr="es">Token de la API de Jumpseller</span></span>
+          <input id="f-token" name="authtoken" class="mono" type="password" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+      <div data-only="shopify" hidden>
+        <label>
+          <span><span data-tr="en">Store address</span><span data-tr="es">Dirección de la tienda</span></span>
+          <input id="f-shop" name="shop" class="mono" autocomplete="off" spellcheck="false" data-placeholder-en="my-store.myshopify.com" data-placeholder-es="mi-tienda.myshopify.com">
+        </label>
+        <label>
+          <span><span data-tr="en">Client id</span><span data-tr="es">Client id</span></span>
+          <input id="f-client-id" name="clientId" class="mono" autocomplete="off" spellcheck="false">
+        </label>
+        <label>
+          <span><span data-tr="en">Client secret</span><span data-tr="es">Client secret</span></span>
+          <input id="f-client-secret" name="clientSecret" class="mono" type="password" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
       <div class="actions"><button id="add-btn" class="btn" type="submit"><span data-tr="en">Check and publish my store</span><span data-tr="es">Revisar y publicar mi tienda</span></button></div>
     </form>
     <ol class="checks" id="checks" hidden>
       <li data-check="slug"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">The address is valid and free</span><span data-tr="es">La dirección es válida y está libre</span></span></li>
       <li data-check="payout"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">Your wallet can receive USDC on Stellar testnet</span><span data-tr="es">Tu wallet puede recibir USDC en Stellar testnet</span></span></li>
-      <li data-check="store"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">Your Jumpseller credentials read the catalogue</span><span data-tr="es">Tus credenciales de Jumpseller leen el catálogo</span></span></li>
+      <li data-check="store"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">Your store credentials read the catalogue</span><span data-tr="es">Las credenciales de tu tienda leen el catálogo</span></span></li>
       <li data-check="signing"><span class="icon" aria-hidden="true"></span><span><span data-tr="en">Your receipt-signing key is created and funded</span><span data-tr="es">Tu llave para firmar recibos queda creada y fondeada</span></span></li>
     </ol>
     <p id="add-result" class="notice" role="status" hidden></p>

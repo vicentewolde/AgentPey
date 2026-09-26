@@ -30,8 +30,9 @@ var T = {
     es: "Tu wallet todavía no puede recibir USDC. En Freighter, agrega el activo USDC (emisor GBBD47…LFLA5) en testnet y vuelve a intentarlo.",
   },
   storeRejected: { en: "Jumpseller did not accept that login and token. Copy them again from the API section of your Jumpseller admin.", es: "Jumpseller no aceptó ese login y token. Cópialos de nuevo desde la sección API de tu panel de Jumpseller." },
+  storeRejectedShopify: { en: "Shopify did not accept that client id and secret. Check them, that the app is installed on this store, and that the app and the store are in the same organization.", es: "Shopify no aceptó ese client id y secret. Revísalos, que la app esté instalada en esta tienda y que la app y la tienda estén en la misma organización." },
   signingFailed: { en: "The testnet faucet did not fund your signing key. Nothing was saved; try again in a minute.", es: "El faucet de testnet no fondeó tu llave de firma. No se guardó nada; vuelve a intentarlo en un minuto." },
-  upstreamDown: { en: "Jumpseller or Stellar did not answer. Nothing was saved; try again in a minute.", es: "Jumpseller o Stellar no respondieron. No se guardó nada; vuelve a intentarlo en un minuto." },
+  upstreamDown: { en: "Your store platform or Stellar did not answer. Nothing was saved; try again in a minute.", es: "La plataforma de tu tienda o Stellar no respondieron. No se guardó nada; vuelve a intentarlo en un minuto." },
   sessionExpired: { en: "Your session ended. Sign in again.", es: "Tu sesión terminó. Vuelve a entrar." },
   invalidForm: { en: "Fill in every field.", es: "Completa todos los campos." },
   addFailed: { en: "Could not add the store. Nothing was saved.", es: "No se pudo agregar la tienda. No se guardó nada." },
@@ -235,7 +236,7 @@ function refusalMessage(body) {
   var details = (body && body.details) || {};
   if (code === "SlugUnavailable") return t("slug_" + (details.reason || "invalid"));
   if (code === "PayoutAccountNotReady") return t("payout_" + (details.reason || "account_missing"));
-  if (code === "StoreCredentialsRejected") return t("storeRejected");
+  if (code === "StoreCredentialsRejected") return t(currentPlatform() === "shopify" ? "storeRejectedShopify" : "storeRejected");
   if (code === "SigningKeyNotFunded") return t("signingFailed");
   if (code === "AdapterError" || code === "NetworkError") return t("upstreamDown");
   if (code === "SessionRequired") return t("sessionExpired");
@@ -260,15 +261,37 @@ function paintResult() {
   }
 }
 
+function currentPlatform() {
+  var select = document.getElementById("f-platform");
+  return select && select.value === "shopify" ? "shopify" : "jumpseller";
+}
+
+/* Only the fields of the chosen platform are shown. */
+function paintPlatform() {
+  var platform = currentPlatform();
+  var nodes = document.querySelectorAll("#add-panel [data-only]");
+  for (var i = 0; i < nodes.length; i++) nodes[i].hidden = nodes[i].getAttribute("data-only") !== platform;
+}
+
 async function addStore(event) {
   event.preventDefault();
   var name = document.getElementById("f-name").value.trim();
   var slug = document.getElementById("f-slug").value.trim();
-  var login = document.getElementById("f-login").value.trim();
-  var token = document.getElementById("f-token").value.trim();
+  var platform = currentPlatform();
+  var credentials;
+  if (platform === "shopify") {
+    var shop = document.getElementById("f-shop").value.trim();
+    var clientId = document.getElementById("f-client-id").value.trim();
+    var clientSecret = document.getElementById("f-client-secret").value.trim();
+    credentials = shop && clientId && clientSecret ? { kind: "shopify-app", shop: shop, clientId: clientId, clientSecret: clientSecret } : null;
+  } else {
+    var login = document.getElementById("f-login").value.trim();
+    var token = document.getElementById("f-token").value.trim();
+    credentials = login && token ? { kind: "jumpseller-api", login: login, authtoken: token } : null;
+  }
   state.result = null;
   paintResult();
-  if (!name || !slug || !login || !token) { state.result = { ok: false, body: { error: "ValidationError" } }; paintResult(); return; }
+  if (!name || !slug || !credentials) { state.result = { ok: false, body: { error: "ValidationError" } }; paintResult(); return; }
 
   var button = document.getElementById("add-btn");
   button.disabled = true;
@@ -276,12 +299,13 @@ async function addStore(event) {
   try {
     var r = await api("/api/portal/comercios", {
       method: "POST",
-      body: JSON.stringify({ name: name, slug: slug, credentials: { kind: "jumpseller-api", login: login, authtoken: token } }),
+      body: JSON.stringify({ name: name, slug: slug, credentials: credentials }),
     });
     if (r.status === 201) {
       paintChecks(null, false);
       state.result = { ok: true, body: r.body };
       document.getElementById("add-form").reset();
+      paintPlatform();
       slugTouched = false;
       slugResult = null;
       paintSlugState();
@@ -299,6 +323,7 @@ async function addStore(event) {
   } finally {
     // The token is never kept on the page once it was sent.
     document.getElementById("f-token").value = "";
+    document.getElementById("f-client-secret").value = "";
     button.disabled = false;
     paintResult();
   }
@@ -324,6 +349,8 @@ document.getElementById("slug-suffix").textContent = "." + PLATFORM_HOST;
 document.getElementById("signin-btn").addEventListener("click", signIn);
 document.getElementById("signout-btn").addEventListener("click", signOut);
 document.getElementById("add-form").addEventListener("submit", addStore);
+document.getElementById("f-platform").addEventListener("change", paintPlatform);
+paintPlatform();
 document.getElementById("f-name").addEventListener("input", function () {
   if (slugTouched) return;
   document.getElementById("f-slug").value = slugify(this.value);

@@ -123,6 +123,24 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
+## Shopify (T112)
+
+Un comercio Shopify se da de alta igual que uno Jumpseller (portal, cuatro
+pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
+
+1. Cuenta gratuita en el **Shopify Partner Program** y, desde el **Dev
+   Dashboard**, una **tienda de desarrollo**. Tiene que crearse ahí, no desde el
+   admin de Shopify, para que quede en la misma organización que la app.
+2. En el mismo Dev Dashboard, una **app** con los permisos `read_products` y
+   `write_orders`, instalada en esa tienda.
+3. La moneda de la tienda en **CLP** (Settings → Store details) y cada producto
+   **Active**, con **SKU propio** y precio en pesos enteros.
+4. El `client id`, el `client secret` y la dirección `<nombre>.myshopify.com` van
+   al portal (elige "Shopify"). Para probar sin registrar: agregarlos a
+   `.env.vitrinee.local` como `SHOPIFY_SHOP`, `SHOPIFY_CLIENT_ID` y
+   `SHOPIFY_CLIENT_SECRET` y correr `pnpm run vitrinee:shopify:probe` (con
+   `-- --order` crea además un pedido de prueba, que hay que cancelar en Shopify).
+
 ## Estado al 2026-09-24 (T105 en PR)
 
 - **Portal de dueños (T105, `VT-31`).** `vitrinee.agentpey.com/` es el portal:

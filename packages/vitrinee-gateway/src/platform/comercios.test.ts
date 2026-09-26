@@ -105,3 +105,19 @@ describe("platform settings", () => {
     expect(config.publicBaseUrl).toBeUndefined();
   });
 });
+
+describe("a Shopify comercio (T112)", () => {
+  const shopify = { kind: "shopify-app", shop: "s.myshopify.com", clientId: "c", clientSecret: "x" } as const;
+
+  it("reaches the gateway's config with its own variables", () => {
+    const comercio = sealComercio({ slug: "shop", name: "Shop", payTo: Keypair.random().publicKey(), signingSecret: Keypair.random().secret(), credentials: shopify }, box, now);
+    expect(comercio.platform).toBe("shopify");
+    const config = comercioConfig({ RECEIPT_REGISTRY_ID: REGISTRY_ID }, comercio, openComercioSecrets(comercio, box));
+    expect(config.adapter).toBe("shopify");
+    expect(config.shopify).toEqual({ shop: "s.myshopify.com", clientId: "c", clientSecret: "x" });
+  });
+
+  it("does not accept a shop host outside myshopify.com", async () => {
+    expect(await code(() => sealComercio({ slug: "shop", name: "Shop", payTo: Keypair.random().publicKey(), signingSecret: Keypair.random().secret(), credentials: { ...shopify, shop: "evil.example.com" } }, box, now))).toBeDefined();
+  });
+});

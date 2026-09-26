@@ -951,3 +951,63 @@ no el siguiente.
 
 Alcance: el listado, que es lo que se publica. `getProduct` de un producto
 individual no se cambió; sin estar en el listado, ningún permiso lo nombra.
+
+### VT-33 · Shopify entra con las credenciales de cliente de una app del Dev Dashboard, no con un token pegado · `Vigente`
+**Fecha:** 2026-09-26 · **Hito:** T112 · Del usuario, la decisión de buscar una plataforma gratuita (`C-151`)
+
+Sin el plan PRO de Jumpseller no hay pedido en la tienda (`C-151`). Shopify deja
+crear pedidos por API en una **tienda de desarrollo, que es gratuita** y no
+caduca. Desde el 2026-01-01 Shopify ya no deja crear "custom apps" con un token
+fijo: la vía nueva es una app del **Dev Dashboard**, cuyo `client_id` y
+`client_secret` se cambian por un token de acceso de **24 horas**
+(`grant_type=client_credentials`, verificado contra la documentación de
+Shopify el 2026-09-26). Por eso la credencial de un comercio Shopify es
+`{ kind: "shopify-app", shop, clientId, clientSecret }`, sellada como las demás
+(`VT-27`), y el cliente renueva el token solo: lo guarda en memoria, lo cambia un
+minuto antes de que venza y una vez si la API contesta 401.
+
+Dos consecuencias que hay que decir en voz alta. **(1)** El intercambio solo
+funciona si la app y la tienda son de la **misma organización**, y la tienda
+tiene que haberse creado desde el Dev Dashboard, no desde el admin de Shopify.
+**(2)** El `client_secret` viaja al host `shop`, así que el esquema **solo acepta
+`<nombre>.myshopify.com`** (rechaza cualquier otro host antes de enviar nada);
+sin eso, un dueño malicioso o un error de tecleo mandaría el secreto a un tercero.
+
+**Alternativa descartada: token de "custom app" clásica.** Ya no se pueden crear
+desde 2026-01-01. **Otra descartada: OAuth completo de app pública.** Exige
+publicar la app y es el mismo trámite que se canceló con Jumpseller; las
+credenciales de cliente cubren la tienda propia del dueño sin publicar nada.
+
+### VT-34 · Cada variante de Shopify con SKU es un producto de Vitrinee · `Vigente`
+**Fecha:** 2026-09-26 · **Hito:** T112
+
+Un producto de Shopify puede tener varias variantes, cada una con su SKU, precio
+y stock. Vitrinee vende cosas con SKU (`VT-32`), así que **cada variante con SKU
+es un producto**: su `id` es el de la variante, su nombre es el del producto (más
+` · <variante>` si la variante tiene título propio) y su stock es el de la
+variante, o "sin control" si no lleva inventario. Solo se publican los productos
+`ACTIVE`. Un SKU repetido deja fuera a todos los que lo comparten, igual que en
+Jumpseller. El precio llega como decimal exacto (`"2850.00"`) y se rechaza en voz
+alta cualquier fracción que la moneda no tenga (nunca se redondea).
+
+**Alternativa descartada: un producto por producto de Shopify.** Un comprador no
+podría distinguir la talla M de la L, y el pedido necesita saber qué variante
+descuenta stock.
+
+### VT-35 · El pedido de Shopify se crea en una sola llamada, ya pagado, y la moneda de la tienda se comprueba · `Vigente`
+**Fecha:** 2026-09-26 · **Hito:** T112
+
+`orderCreate` crea el pedido con `financialStatus: PAID`, una transacción `SALE`
+exitosa por el total, la línea de envío propia de Vitrinee (como `VT-16`) y el
+descuento de inventario (`DECREMENT_IGNORING_POLICY`, sin correo al comprador). El
+pago de Stellar queda en `customAttributes` (referencia, red, hash, activo, monto,
+pagador) y `getOrder` lo reconstruye de ahí, sin tener que interpretar una nota.
+A diferencia de Jumpseller no hay un segundo paso de anotación que pueda fallar
+después de cobrar. Antes de vender, el adaptador pregunta la moneda de la tienda y
+**se niega si no es la del comercio** (CLP): una tienda en USD vendería al precio
+equivocado. Shopify limita las tiendas de desarrollo a 5 pedidos por minuto.
+
+**Alternativa descartada: crear un borrador y completarlo.** Son dos llamadas, y
+la segunda puede fallar con el cliente ya cobrado. **Sin resolver:** `orderCreate`
+no tiene clave de idempotencia; igual que en Jumpseller, evitar el pedido doble
+es responsabilidad de Vitrinee (su registro de la orden), no de la plataforma.

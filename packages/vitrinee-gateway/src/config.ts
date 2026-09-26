@@ -17,9 +17,12 @@ const optionalString = z
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4021),
-  ADAPTER: z.enum(["mock", "jumpseller"]).default("mock"),
+  ADAPTER: z.enum(["mock", "jumpseller", "shopify"]).default("mock"),
   JUMPSELLER_LOGIN: optionalString,
   JUMPSELLER_AUTHTOKEN: optionalString,
+  SHOPIFY_SHOP: optionalString,
+  SHOPIFY_CLIENT_ID: optionalString,
+  SHOPIFY_CLIENT_SECRET: optionalString,
   PUBLIC_BASE_URL: optionalString.pipe(z.url().optional()),
   MERCHANT_NAME: z.string().min(1).default("Bazar Cordillera"),
   MERCHANT_STELLAR_ACCOUNT: stellarAccountSchema,
@@ -48,7 +51,7 @@ const envSchema = z.object({
 
 export interface GatewayConfig {
   port: number;
-  adapter: "mock" | "jumpseller";
+  adapter: "mock" | "jumpseller" | "shopify";
   publicBaseUrl: string | undefined;
   merchant: { name: string; stellarAccount: string; country: string; currency: string };
   /** The receipt-signing key. Holds XLM for anchor fees, never USDC (VT-8). */
@@ -63,6 +66,8 @@ export interface GatewayConfig {
   mockOrdersFile: string | undefined;
   /** Present only when ADAPTER=jumpseller; loadConfig refuses that adapter without it. */
   jumpseller: { login: string; authtoken: string } | undefined;
+  /** Present only when ADAPTER=shopify (VT-33); loadConfig refuses that adapter without it. */
+  shopify: { shop: string; clientId: string; clientSecret: string } | undefined;
   /** Where the gateway's own order records live. `undefined` keeps them in memory only. */
   ordersFile: string | undefined;
 }
@@ -97,6 +102,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
       "ADAPTER=jumpseller needs JUMPSELLER_LOGIN and JUMPSELLER_AUTHTOKEN (both in .env.vitrinee.local)",
     );
   }
+  if (e.ADAPTER === "shopify" && (e.SHOPIFY_SHOP === undefined || e.SHOPIFY_CLIENT_ID === undefined || e.SHOPIFY_CLIENT_SECRET === undefined)) {
+    throw new VitrineeError(
+      "ConfigError",
+      "ADAPTER=shopify needs SHOPIFY_SHOP, SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET (all in .env.vitrinee.local)",
+    );
+  }
   if (signingAccount === e.MERCHANT_STELLAR_ACCOUNT) {
     throw new VitrineeError("ConfigError", "MERCHANT_SIGNING_SECRET must not be the payTo account's key (VT-8)");
   }
@@ -123,6 +134,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
       e.JUMPSELLER_LOGIN === undefined || e.JUMPSELLER_AUTHTOKEN === undefined
         ? undefined
         : { login: e.JUMPSELLER_LOGIN, authtoken: e.JUMPSELLER_AUTHTOKEN },
+    shopify:
+      e.SHOPIFY_SHOP === undefined || e.SHOPIFY_CLIENT_ID === undefined || e.SHOPIFY_CLIENT_SECRET === undefined
+        ? undefined
+        : { shop: e.SHOPIFY_SHOP, clientId: e.SHOPIFY_CLIENT_ID, clientSecret: e.SHOPIFY_CLIENT_SECRET },
     ordersFile: e.ORDERS_FILE,
   };
 }
