@@ -3,7 +3,7 @@ import { USDC_TESTNET, VitrineeError } from "@vitrinee/core";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { MemoryComercioStore, openComercioSecrets, sealComercio } from "./comercios.js";
-import { onboardComercio, storeCatalogueReader, type OnboardingDeps } from "./onboarding.js";
+import { onboardComercio, shopHostFrom, storeCatalogueReader, type OnboardingDeps } from "./onboarding.js";
 import { createSecretBox, generateMasterKey } from "./secret-box.js";
 import { testnet, type PayoutReadiness, type StellarNetwork } from "./stellar-network.js";
 
@@ -281,6 +281,23 @@ describe("a Shopify store registers the same way (T112, VT-33)", () => {
     const stored = (await comercios.getBySlug("tienda-shopify"))!;
     expect(openComercioSecrets(stored, box).credentials).toEqual(SHOPIFY);
   });
+
+  it.each([
+    ["agenticom", "agenticom.myshopify.com"],
+    ["  Agenticom.MyShopify.com ", "agenticom.myshopify.com"],
+    ["https://agenticom.myshopify.com/", "agenticom.myshopify.com"],
+    ["https://agenticom.myshopify.com/admin/products?x=1", "agenticom.myshopify.com"],
+    ["https://admin.shopify.com/store/agenticom/orders/123", "agenticom.myshopify.com"],
+  ])("reads the store address %j as %s", (typed, host) => {
+    expect(shopHostFrom(typed)).toBe(host);
+  });
+
+  it.each(["evil.example.com", "agenticom.myshopify.com.evil.com", "https://evil.example.com/store/agenticom", ""])(
+    "does not turn %j into a Shopify host",
+    (typed) => {
+      expect(shopHostFrom(typed)).not.toMatch(/^[a-z0-9-]+\.myshopify\.com$/);
+    },
+  );
 
   it("refuses a host that is not *.myshopify.com, and never contacts it", async () => {
     let contacted = false;

@@ -34,6 +34,7 @@ var T = {
   signingFailed: { en: "The testnet faucet did not fund your signing key. Nothing was saved; try again in a minute.", es: "El faucet de testnet no fondeó tu llave de firma. No se guardó nada; vuelve a intentarlo en un minuto." },
   upstreamDown: { en: "Your store platform or Stellar did not answer. Nothing was saved; try again in a minute.", es: "La plataforma de tu tienda o Stellar no respondieron. No se guardó nada; vuelve a intentarlo en un minuto." },
   sessionExpired: { en: "Your session ended. Sign in again.", es: "Tu sesión terminó. Vuelve a entrar." },
+  invalidShopify: { en: "Check the store address: it looks like my-store.myshopify.com. The client id and secret must also be filled in.", es: "Revisa la dirección de la tienda: es del tipo mi-tienda.myshopify.com. El client id y el secret también deben estar completos." },
   invalidForm: { en: "Fill in every field.", es: "Completa todos los campos." },
   addFailed: { en: "Could not add the store. Nothing was saved.", es: "No se pudo agregar la tienda. No se guardó nada." },
   published: { en: "Your store is live for agents at", es: "Tu tienda ya está publicada para agentes en" },
@@ -240,7 +241,7 @@ function refusalMessage(body) {
   if (code === "SigningKeyNotFunded") return t("signingFailed");
   if (code === "AdapterError" || code === "NetworkError") return t("upstreamDown");
   if (code === "SessionRequired") return t("sessionExpired");
-  if (code === "ValidationError") return t("invalidForm");
+  if (code === "ValidationError") return t(currentPlatform() === "shopify" ? "invalidShopify" : "invalidForm");
   return t("addFailed");
 }
 

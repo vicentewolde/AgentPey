@@ -1011,3 +1011,10 @@ equivocado. Shopify limita las tiendas de desarrollo a 5 pedidos por minuto.
 la segunda puede fallar con el cliente ya cobrado. **Sin resolver:** `orderCreate`
 no tiene clave de idempotencia; igual que en Jumpseller, evitar el pedido doble
 es responsabilidad de Vitrinee (su registro de la orden), no de la plataforma.
+
+**Nota a VT-33 (2026-09-26, hallada en la primera alta real):** el portal rechazaba la
+dirección de la tienda salvo que fuera exactamente `<nombre>.myshopify.com`, y lo
+mostraba como "Completa todos los campos". Ahora `shopHostFrom` acepta lo que un dueño
+pega de verdad (`agenticom`, con `https://`, o la URL del admin de Shopify) y lo reduce a
+ese host; lo que no se reduce a un handle sigue rechazado, así el secret nunca viaja a un
+host ajeno. El portal, además, dice cuál campo revisar.

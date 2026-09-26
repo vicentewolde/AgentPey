@@ -96,14 +96,29 @@ function trimmed(credentials: StoreCredentials): StoreCredentials {
   }
 }
 
-/** The Shopify host is checked by the schema, so its stray spaces and capitals have to go before that check. */
+/**
+ * What an owner pastes as the store address: `agenticom`, `agenticom.myshopify.com`, the
+ * admin's `https://admin.shopify.com/store/agenticom/orders`, or the storefront URL. All
+ * mean the same store; the result is the one host the schema accepts. Anything that does
+ * not reduce to a handle is left as typed, so the schema still refuses it.
+ */
+export function shopHostFrom(raw: string): string {
+  const value = raw.trim().toLowerCase().replace(/^https?:\/\//, "");
+  const admin = /^admin\.shopify\.com\/store\/([a-z0-9][a-z0-9-]*)(?:[/?#].*)?$/.exec(value);
+  if (admin?.[1] !== undefined) return `${admin[1]}.myshopify.com`;
+  const host = value.split(/[/?#]/)[0] ?? "";
+  if (/^[a-z0-9][a-z0-9-]*$/.test(host)) return `${host}.myshopify.com`;
+  return host;
+}
+
+/** The Shopify host is checked by the schema, so it is put in its one accepted form before that check. */
 function normaliseShop(input: unknown): unknown {
   if (input === null || typeof input !== "object") return input;
   const credentials = (input as { credentials?: unknown }).credentials;
   if (credentials === null || typeof credentials !== "object") return input;
   const shop = (credentials as { kind?: unknown; shop?: unknown }).shop;
   if ((credentials as { kind?: unknown }).kind !== "shopify-app" || typeof shop !== "string") return input;
-  return { ...input, credentials: { ...credentials, shop: shop.trim().toLowerCase() } };
+  return { ...input, credentials: { ...credentials, shop: shopHostFrom(shop) } };
 }
 
 export function slugProblem(slug: string): "invalid" | "reserved" | undefined {
