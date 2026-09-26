@@ -21,6 +21,13 @@
 | 4:15 a 5:00 | 7 | Equipo, ask y cierre | 80 |
 | (solo si todo falla) | 8 | Respaldo: la compra real del 24 | |
 
+**Hay dos decks.** El original ("AgentPey Demo Day", con más texto) y uno simple
+(["AgentPey Demo Day simple"](GUION-SIMPLE.md), 7 slides, una idea por slide). Este
+guion sirve para los dos; el del deck simple está en [GUION-SIMPLE.md](GUION-SIMPLE.md).
+Cambios pedidos por el usuario el 2026-09-25: no decir Freighter (decir wallet), no
+decir "tienda Jumpseller" (decir tienda), no nombrar las apps (decir lo que
+hacen) y pedir cosas de Stellar (comercios en Stellar, proyectos x402).
+
 Ritmo de referencia: unas 2,5 palabras por segundo. Si al ensayar pasas de
 5:00, recorta primero en la slide 4 (Por qué Stellar), nunca en la demo.
 
@@ -59,10 +66,10 @@ la tienda recibe un recibo. Les muestro.
 Cambia al navegador (ver [VIDEO-RESPALDO.md](VIDEO-RESPALDO.md) § "Demo en
 vivo"):
 
-- **Pestaña RealOps.** Esto es RealOps, una app de ejemplo. Ya contraté un
-  comprador para la tienda MycoKit, que vende kits para cultivar hongos, y firmé
-  su permiso con Freighter: máximo por compra, máximo por día, solo esta tienda,
-  solo USDC.
+- **Pestaña de la app de compras.** Esta es una app de ejemplo para contratar
+  agentes que compran. Ya contraté un comprador para la tienda MycoKit, que vende
+  kits para cultivar hongos, y firmé su permiso con mi wallet: máximo por compra,
+  máximo por día, solo esta tienda, solo USDC.
 - **Clic en "Pedirle al agente que lo compre".** Le pido un kit Cola de Pavo.
   AgentPey revisa el pedido contra el permiso firmado y paga desde un contrato
   en Stellar.
@@ -70,7 +77,7 @@ vivo"):
   exitosa. Movió 2,09 dólares en USDC desde el contrato que tiene mis reglas
   directo a la wallet de la tienda, y la comisión fue menos de un centavo.
   (Qué señalar en la pantalla: § "Qué señalar en Stellar Expert".)
-- **Pestaña del panel de Vitrinee, recargar, clic en "Recibo".** Y este es el
+- **Pestaña del panel de la tienda, recargar, clic en "Recibo".** Y este es el
   panel del dueño de la tienda: la venta está ahí, con su recibo. Recibo
   válido: la firma de la tienda, el ancla en Stellar y el pago real. Las tres en
   verde.
@@ -89,7 +96,7 @@ la misma transacción que mueve el dinero. Si el agente intenta pasarse, la red
 rechaza el pago. No nuestro software: la red.
 
 Además: USDC y pagos x402 que se liquidan en segundos por una fracción de
-centavo. Freighter, para firmar el permiso sin contraseñas. Y un registro en
+centavo. Tu wallet, para firmar el permiso sin contraseñas. Y un registro en
 Stellar donde cada recibo queda anclado, para que cualquiera lo verifique.
 
 Sin Stellar, esto sería una promesa. Con Stellar, es una regla.
@@ -98,11 +105,11 @@ Sin Stellar, esto sería una promesa. Con Stellar, es una regla.
 
 ¿Dónde estamos? Todo esto corre hoy en Stellar testnet, en vivo.
 
-Dos tiendas Jumpseller reales venden a agentes: Bazar Cordillera, y MycoKit,
-que se dio de alta sola desde el portal, sin una línea de código y sin deploy.
+Dos tiendas reales venden a agentes: Bazar Cordillera y MycoKit, que se dio de
+alta sola desde un portal, sin una línea de código y sin deploy.
 
-Un agente ya hizo dos compras reales en esas tiendas, pagadas en USDC y con
-recibo verificado. Hay tres contratos Soroban desplegados.
+Los agentes ya hicieron seis compras reales en esas tiendas, pagadas en USDC y
+con recibo verificado. Hay tres contratos Soroban desplegados.
 
 Y detrás: 105 hitos entregados, casi mil quinientos tests automáticos y más de
 300 decisiones documentadas.
@@ -116,8 +123,8 @@ Hoy: el lado del comprador y el lado del vendedor funcionan en testnet, con
 tiendas reales.
 
 Próximo hito, este trimestre: el primer partner externo que compra solo, sin
-que nadie de nosotros toque una terminal. Y **[N]** tiendas Jumpseller
-vendiendo a agentes, con una app de Jumpseller para darse de alta en un clic.
+que nadie de nosotros toque una terminal. Y **3** tiendas vendiendo a
+agentes, con alta en un clic.
 
 Después: mainnet. Pero solo con los contratos auditados por un tercero y con el
 encaje regulatorio claro en Chile, bajo la Ley Fintech. Preferimos llegar tarde
@@ -125,12 +132,12 @@ a mainnet que llegar con plata real sobre contratos sin auditar.
 
 ### 7 · Equipo, ask y cierre (4:15 a 5:00)
 
-Soy Vicente, **[tu rol y experiencia en una línea]**. Construí AgentPey con
+Soy Vicente, **ingeniero y profesor de blockchain**. Construí AgentPey con
 agentes de código, bajo un protocolo estricto: cada cambio se revisa antes de
 entrar y cada decisión queda escrita.
 
-Lo que pedimos: tiendas Jumpseller que quieran vender a agentes, gratis en
-testnet. Una introducción al equipo de Jumpseller. Y un primer partner que
+Lo que pedimos: comercios en Stellar que quieran vender a agentes con x402, en
+un piloto gratis en testnet. Introducciones a proyectos x402 del ecosistema. Y un primer partner que
 quiera que sus agentes compren con reglas.
 
 Lo que viene ahora: el primer partner externo comprando solo.
@@ -158,7 +165,7 @@ Nada de esto es estimado; si una cifra cambia, se cambia aquí y en la slide 5.
 | Cifra | Fuente |
 |---|---|
 | 2 tiendas reales (Bazar Cordillera 6 productos, MycoKit 4) | `evidencia/T105.md` § 6.3 |
-| 2 compras reales de un agente, con recibo verificado | `evidencia/T101.md` (café, 9,46 USDC) y `evidencia/T104.md` § 6 (stickers, 1,04 USDC). El recibo de T104 se volvió a verificar en vivo el 2026-09-24 (`evidencia/T106.md`) |
+| 6 compras reales de agentes, con recibo verificado | Los pedidos de las dos tiendas (`GET /orders`) y sus recibos (`/receipts/<hash>/verify`), verificados en vivo el 2026-09-25: 6 de 6 con firma, ancla y pago en verde (café 9,46; tres packs de stickers 1,04; kits Melena de León 2,62 y Cola de Pavo 2,09 USDC) |
 | 0 líneas de código para sumar una tienda | T105: MycoKit se dio de alta por el portal, sin deploy |
 | 3 contratos Soroban en testnet | `agent_registry` y `policy_rail` (`deployments/testnet.json`), `receipt-registry` (`deployments/vitrinee-testnet.json`) |
 | 105 hitos | T1 a T105, `ROADMAP.md` y las `BITACORA.md` de cada fase |
@@ -177,9 +184,9 @@ Nada de esto es estimado; si una cifra cambia, se cambia aquí y en la slide 5.
 - **¿Quién guarda la plata?** Un contrato en Stellar, no AgentPey. La wallet
   del cliente puede sacarla cuando quiera. Hoy todo es testnet.
 - **¿Por qué el panel dice "Pagado, pedido aún no llega a tu tienda"?**
-  Jumpseller todavía no nos habilita crear pedidos por su API; ya escribimos a
-  soporte. El pago y el recibo son reales, y cuando lo habiliten el pedido
-  entra sin volver a cobrar.
+  Crear pedidos por API es una función del plan de pago de la plataforma de la
+  tienda, y las nuestras están en plan de prueba. El pago y el recibo son reales;
+  con ese plan el pedido entra sin volver a cobrar (`C-151`).
 - **¿Cuál es el modelo de negocio?** Hoy es gratis en testnet; lo vamos a
   definir con los primeros partners. (No prometas precios ni comisiones.)
 - **¿Qué es x402?** Un estándar para pagar por HTTP: la tienda responde "pago

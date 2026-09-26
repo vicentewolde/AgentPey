@@ -6524,3 +6524,37 @@ llave.
 **Alternativa descartada: recargar automáticamente al bajar de un umbral.** Es una
 segunda fuente de gasto de la reserva sin una persona mirando, justo lo que `C-80`
 acotó con el tope de 20 rails patrocinados.
+
+### C-151 · T101 no se completa pagando Jumpseller PRO: el hackathon muestra el pedido pagado que no llega a la tienda · `Vigente`
+**Fecha:** 2026-09-25 · **Hito:** T101 · Del usuario la decisión
+
+Soporte de Jumpseller confirmó que crear pedidos por la API es una función del
+plan PRO, que el plan de Bazar Cordillera no incluye, y que una tienda en prueba
+(MycoKit) tampoco puede crear pedidos. Eso explica el `404 Account not found` de
+T101 (`C-139`, `VT-26`).
+
+**Decisión del usuario: no se paga el plan PRO.** Para el hackathon, el video usa
+la versión B de la escena 5 (`demo-hackathon/GUION-VIDEO.md`): el pago y el recibo
+son reales y el panel del dueño dice "Pagado, pedido aún no llega a tu tienda".
+T101 queda **bloqueado** por esa razón externa, no cerrado: los pedidos pagados
+siguen guardados y se entregan sin volver a cobrar (`POST /orders/<id>/fulfil`)
+si algún día la tienda tiene un plan que lo permita.
+
+**Alternativa descartada: subir a PRO antes del 29.** Es gastar plata para una
+escena que la versión B ya cuenta con honestidad; se puede retomar después.
+
+Consecuencia: el ticket "Archivar el repo viejo" seguía bloqueado por T101; se
+revisa después del 29 (`C-130` pedía no archivarlo hasta T102, ya cumplido).
+
+**Adenda a `C-146` (2026-09-25): dos decks y reglas de palabras.** El usuario
+encontró que el deck del Demo Day tenía demasiado texto frente a lo que piden los
+organizadores ("extremadamente simple, una idea por slide, poco texto, muestren el
+producto, usen números; el deck acompaña al founder, no compite con él"). Se hizo
+**un deck nuevo y simple** (7 slides, 9 a 19 palabras cada una) y se **conservó el
+original**. En los dos: se dice "wallet" (no el nombre de la extensión), "tienda" (no
+el nombre de la plataforma), no se nombran las apps sino lo que hacen, y lo que se
+pide mira a Stellar: comercios en Stellar y proyectos x402. En el original, las dos
+capturas de la slide 3 (que mostraban el nombre de las apps y de la extensión en su
+texto) pasaron a ser el recibo real y su transacción en Stellar Expert. La cifra de
+compras reales pasó de 2 a **6**, verificada contra los pedidos de las dos tiendas.
+Guion: `demo-day/GUION-SIMPLE.md`.

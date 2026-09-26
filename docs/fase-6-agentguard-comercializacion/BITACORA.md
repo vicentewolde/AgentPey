@@ -5295,7 +5295,7 @@ Cordillera al plan PRO y reintentar los pedidos pagados sin volver a cobrar
 la versión B del guion del video ("el pedido aún no llega al administrador de la
 tienda"). Claude Code no conoce el precio del plan PRO; hay que verlo en Jumpseller.
 
-## T110 · Vitrinee no publica productos con SKU repetido · en curso 2026-09-25
+## T110 · Vitrinee no publica productos con SKU repetido · cerrado 2026-09-25, en vivo
 
 **En palabras simples.** Cuando alguien abre una tienda nueva en Jumpseller,
 Jumpseller le pone cinco productos de ejemplo que comparten el mismo código
@@ -5307,3 +5307,13 @@ escena 1 del video. Decisión `VT-32`. Tests: adaptadores 24 (eran 23),
 
 De paso: la tabla de códigos de rechazo (`CODIGOS-DE-RECHAZO.md`) se regeneró con
 el texto corregido del rechazo por saldo; un test la exige igual a RealOps.
+
+### T101 · decisión (2026-09-25)
+
+El usuario eligió no pagar Jumpseller PRO (`C-151`). T101 queda **bloqueado** por
+el plan de la tienda, no por el código: todo lo que depende de AgentPey y Vitrinee
+(pago, recibo, ancla, panel) funciona y está verificado. El video del 29 usa la
+versión B de la escena 5.
+
+Además, el deck y el guion del Demo Day quedaron completos: "ingeniero y profesor
+de blockchain" y una meta de 3 tiendas Jumpseller para el próximo hito.

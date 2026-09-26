@@ -7021,3 +7021,69 @@ Por qué queda en Claude Code: custodia y flujo de fondos (`P-10`).
 Exponential: ticket T111 `cmuh17lc20001jm04rxvki5s9` creado `IN_PROGRESS`.
 
 Pendiente: OK del usuario para mergear (solo agrega un script, no toca la app).
+
+## 2026-09-25 (9) — main (T107-saldo, T106 cierre y T110 mergeados) y cc/t101-sin-pro
+
+Agente: Claude Code.
+
+Qué, con OK del usuario: `cc/t107-saldo`, `cc/t106-cierre` y `cc/t110-sku-repetido`
+a `main` en fast-forward (`86d6604`); ramas borradas, también la vieja
+`cc/t106-en-vivo` (su commit ya estaba en `cc/t106-cierre`). T101: el usuario
+eligió no pagar Jumpseller PRO (`C-151`), T101 pasa a `BLOCKED`. Deck y guion del
+Demo Day completos (rol y meta de 3 tiendas).
+
+`AGENTS.md`: sin cambios.
+
+Exponential: T101 `IN_PROGRESS` → `BLOCKED` con comentario; T110 `DONE` al
+verificarse en vivo.
+
+## 2026-09-25 (11) — cc/t101-sin-pro
+
+Agente: Claude Code.
+
+Qué: el usuario pidió, antes de mergear, un deck del Demo Day mucho más simple (los
+criterios de los organizadores: una idea por slide, tipografía grande, poco texto,
+producto a la vista, números) y cambios de palabras en los dos: wallet en vez de la
+extensión, tienda en vez de la plataforma, sin nombrar las apps, y un ask más Stellar.
+- Deck nuevo: "AgentPey Demo Day simple" (7 slides), https://claude.ai/artifact/TW7uj8qi56RXAU3t9df6F9.
+  Usa la captura real del recibo de la grabación, sin nombre de app.
+- Deck original conservado (misma estructura) con las palabras cambiadas y las dos
+  capturas de la slide 3 reemplazadas por el recibo y la transacción reales.
+- Cifra corregida: **6** compras reales (antes 2), los 6 recibos verificados en vivo.
+- `GUION.md` al día y `GUION-SIMPLE.md` nuevo; adenda a `C-146`.
+
+**No se miró ningún deck en pantalla**: el tipo de presentación pide no verificar sin
+que el usuario lo pida. El diseño del deck simple usa tamaños de 150 a 300 px estimados
+a ojo; si algo se corta, hay que ajustarlo.
+
+`AGENTS.md`: sin cambios. Exponential: sin cambios.
+
+Pendiente: que el usuario mire el deck simple y diga qué ajustar; un solo OK para
+mergear `cc/rail-topup` y `cc/t101-sin-pro`.
+
+## 2026-09-25 (12) — cc/t101-sin-pro
+
+Agente: Claude Code.
+
+Qué: a pedido del usuario, el deck original del Demo Day ("AgentPey Demo Day",
+https://claude.ai/artifact/McgRzVYPWTysDudyWXHVMV) lleva abajo en todas las láminas el logo de
+Stellar a la izquierda y el de AgentPey a la derecha (versión clara sobre fondo
+oscuro, versión oscura sobre fondo crema o amarillo). El texto del pie pasó al
+centro, más corto. El deck simple no lleva logos (no se pidió).
+- Logo de AgentPey: el oficial de `logo agentpey/`, con su transparencia; la versión
+  para fondo oscuro se derivó recoloreando la tinta del mismo PNG (la azul se conserva).
+- Logo de Stellar: el pack oficial de Stellar (stellar.org/brand-resources, "Logo Press
+  Kit 2026", versiones negra y blanca RGB), descargado con OK del usuario. Solo esos dos
+  PNG, reducidos a 1000 px, viven en el deck; **no se guardaron en el repo** (marca de
+  terceros) y el resto de lo descargado se borró.
+
+Nota de plataforma: el deck cambió de versión del tipo de presentación (guardada desde la
+página) y el servidor rechazó varias publicaciones seguidas, incluso con la lectura al
+día; lo que lo destrabó fue **listar los archivos del deck** (`list` con `scope: "files"`)
+antes de publicar, como pedía la lectura de la página. `force` no se usó: el servidor lo
+rechaza sobre versiones guardadas desde la página.
+
+El deck está compartido como "cualquiera con el enlace" (lo decidió el usuario); sus
+notas del orador, con el guion, son visibles para quien lo abra.
+
+`AGENTS.md`: sin cambios. Exponential: sin cambios.
