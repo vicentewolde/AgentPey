@@ -5318,7 +5318,7 @@ versión B de la escena 5.
 Además, el deck y el guion del Demo Day quedaron completos: "ingeniero y profesor
 de blockchain" y una meta de 3 tiendas Jumpseller para el próximo hito.
 
-## T112 · Una tienda Shopify gratuita se suma a Vitrinee (2026-09-26, en curso)
+## T112 · Una tienda Shopify gratuita se suma a Vitrinee (2026-09-26, cerrado)
 
 **En lenguaje llano.** Jumpseller solo crea pedidos con su plan de pago (`C-151`).
 Shopify lo permite en una tienda de desarrollo, que es gratis. Vitrinee ahora sabe
@@ -5327,6 +5327,12 @@ pagado en la tienda, con el hash del pago de Stellar dentro. El dueño la da de 
 en el mismo portal, eligiendo "Shopify". Está probado con tests; **falta probarlo
 contra una tienda real** (lo primero que debe correr el usuario es
 `pnpm run vitrinee:shopify:probe`) y desplegarlo.
+
+**Cierre (2026-09-26).** Probado en vivo por el usuario con la tienda de desarrollo `agenticom`:
+el sondeo lee los 4 productos y crea un pedido pagado; el alta desde el portal, la compra de un
+agente y el recibo funcionaron; el pedido **llegó a Shopify como Paid y descontó el stock**, y el
+portal de Vitrinee lo muestra como pagado. El alta encontró un fallo (la dirección de la tienda
+debía escribirse exacta) y se arregló. Evidencia: `evidencia/T112.md`.
 
 **Qué hay.** `packages/vitrinee-adapters/src/shopify/` (cliente con token de 24 h,
 mapeo, adaptador), credencial `shopify-app` en el gateway, alta y formulario del
@@ -5345,7 +5351,7 @@ consultas (`inventoryQuantity`, `media`), la forma exacta de `orderCreate`
 paso A2 del guion. **Regla de Shopify:** la tienda debe crearse desde el Dev
 Dashboard y estar en la misma organización que la app.
 
-## T113 · RealOps: saldos visibles, rechazo por stock claro y compradores por tienda explicados (2026-09-26, en curso)
+## T113 · RealOps: saldos visibles, rechazo por stock claro y compradores por tienda explicados (2026-09-26, cerrado)
 
 **En lenguaje llano.** Al recorrer los rechazos del guion de prueba, el usuario notó tres
 cosas. El saldo del contrato de pago solo se veía en "Mis servicios", así que compraba a
@@ -5360,7 +5366,11 @@ formulario lo dice. Decisión `C-153`.
 (el HTML se probó por tests y por render estático, no en pantalla); se ve en el primer
 despliegue.
 
-## T114 · Wallet arriba al revocar y permisos revocados a la vista (2026-09-26, en curso)
+**Cierre (2026-09-26).** Vista en vivo por el usuario: la franja de saldos, el rechazo por tope
+diario y por permiso revocado, el rechazo por stock, y la etiqueta de la tarjeta revocada. Sin
+permiso activo la franja mostraba solo el saldo: mejorada en T114. Evidencia: `evidencia/T113.md`.
+
+## T114 · Wallet arriba al revocar, permisos revocados a la vista y "Volver" que funciona (2026-09-26, en QA)
 
 **En lenguaje llano.** Al probar el rechazo por permiso revocado: la página de AgentPey para
 revocar no tenía el botón de conectar wallet arriba a la derecha (ahora sí, como la de firmar), y
