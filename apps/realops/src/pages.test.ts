@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { bilingual } from "./copy.js";
-import { errorPage, formatAmount, localTime } from "./pages.js";
+import { balanceStrip, errorPage, formatAmount, localTime } from "./pages.js";
 
 describe("the page script", () => {
   /** `toLocaleString` throws on this combination, and the times would silently stay in UTC. */
@@ -40,5 +40,35 @@ describe("localTime", () => {
 
   it("escapes what it is given", () => {
     expect(localTime('"><script>')).not.toContain("<script>");
+  });
+});
+
+describe("balanceStrip (T113)", () => {
+  const activity = {
+    tenant_id: "ptn_x:t",
+    mandate: null,
+    per_day: { limit: "25.00", spent_today: "1.568", remaining: "23.432", currency: "USDC", near_limit: false },
+    rail: { contract_id: "CABC", balance: "7.4315789", asset: "USDC", sponsored: true },
+    purchases: [],
+    refusals: [],
+  } as const;
+
+  it("shows the contract balance, today's spending, what is left and the signed maximum", () => {
+    const html = balanceStrip(activity, "25.00");
+    expect(html).toContain("7.432 USDC");
+    expect(html).toContain("1.568 / 25.00 USDC");
+    expect(html).toContain("23.432 USDC");
+    expect(html).toContain("25.00 USDC");
+    expect(html).toContain("test credit");
+  });
+
+  it("marks a nearly empty contract as low", () => {
+    expect(balanceStrip({ ...activity, rail: { ...activity.rail, balance: "0.4" } })).toContain("fig low");
+    expect(balanceStrip(activity)).not.toContain("fig low");
+  });
+
+  it("is left out, without failing the page, when AgentPey reported nothing", () => {
+    expect(balanceStrip(undefined)).toBe("");
+    expect(balanceStrip({ ...activity, rail: null, per_day: null })).toBe("");
   });
 });

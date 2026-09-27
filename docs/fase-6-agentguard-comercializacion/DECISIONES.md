@@ -6558,3 +6558,14 @@ capturas de la slide 3 (que mostraban el nombre de las apps y de la extensión e
 texto) pasaron a ser el recibo real y su transacción en Stellar Expert. La cifra de
 compras reales pasó de 2 a **6**, verificada contra los pedidos de las dos tiendas.
 Guion: `demo-day/GUION-SIMPLE.md`.
+
+### C-153 · RealOps muestra los saldos donde se compra, y el rechazo del comercio ya no culpa a la plataforma · `Vigente`
+**Fecha:** 2026-09-26 · **Hito:** T113 · Del usuario, al recorrer los rechazos del guion de prueba; de Claude Code la forma
+
+Tres hallazgos del recorrido G, y lo que cambia por cada uno:
+
+1. **Los saldos solo se veían en "Mis servicios", y el usuario compra desde el catálogo.** Una franja arriba del catálogo y de "Mis agentes" muestra lo que el contrato de pago tiene, lo gastado hoy contra el límite diario, lo que queda hoy y, en el catálogo de un agente, su máximo por compra firmado. Sale de `readActivity`, las mismas cifras contra las que AgentPey autoriza (`C-81`); no hay una segunda fuente. **Es una comodidad, no una dependencia:** espera 4 s como máximo y, si AgentPey tarda o cae, la página se muestra sin la franja. El saldo se pinta en rojo bajo 1 USDC.
+2. **Un rechazo por falta de stock decía "es un problema entre esta plataforma y el comercio, no tuyo".** Falso para el caso más común. La tienda contesta 409 y AgentPey lo clasifica como `MerchantRejectedRequest` (cualquier 4xx distinto de 402, `apps/agent/src/payment/x402.ts`), sin conservar la causa. El texto ahora nombra el stock como razón habitual y solo culpa a la plataforma si el problema persiste con una cantidad que la tienda tiene.
+3. **Contratar otro comprador de una tienda ya contratada devolvía al existente sin avisar.** Es lo decidido en `C-147` (un comprador por tienda), pero se leía como un fallo: los límites nuevos que se escribían se ignoraban. El formulario ahora marca las tiendas ya contratadas ("ya contratado, lo abre") y explica que, para cambiar límites, hay que revocar y firmar de nuevo.
+
+**Alternativa descartada para (2): un código propio `MerchantOutOfStock`.** Diría exactamente lo que pasó, pero obliga a leer el cuerpo de la respuesta del comercio en `requestPaymentChallenge`, agregar el código a `core`, a la tabla de rechazos y a la ruta de pago. Es tocar el camino del pago por un texto: se deja anotado como mejora, no se hace sin decisión del usuario. **Otra descartada para (3): permitir varios compradores por tienda.** Cambia `C-147` y la regla de que el catálogo mapea cada producto a un solo agente.

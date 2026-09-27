@@ -104,12 +104,12 @@ export const REFUSAL_GROUPS: readonly RefusalGroup[] = [
       ),
       MerchantRejectedRequest: explained(
         bilingual(
-          "The merchant rejected the request before quoting it, so nothing was paid.",
+          "The merchant declined the order before quoting it, so nothing was paid.",
           "El comercio rechazó el pedido antes de cotizarlo, así que no se pagó nada.",
         ),
         bilingual(
-          "The problem is between this platform and the merchant, not yours. It has been logged.",
-          "Es un problema entre esta plataforma y el comercio, no tuyo. Ya quedó registrado.",
+          "The usual reason is stock: the store may have fewer units than you asked for. Try a smaller quantity or another product. If it keeps happening with a quantity the store has, the problem is between this platform and the merchant, and it has been logged.",
+          "La razón más común es el stock: puede que la tienda tenga menos unidades de las que pediste. Prueba con una cantidad menor u otro producto. Si sigue pasando con una cantidad que la tienda sí tiene, el problema es entre esta plataforma y el comercio, y ya quedó registrado.",
         ),
       ),
       RouteParamMissing: explained(

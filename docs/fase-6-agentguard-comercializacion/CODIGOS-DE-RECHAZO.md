@@ -22,7 +22,7 @@ como detalle técnico.
 | `ProductNotFound` | El comercio no ofrece ese producto. | Puede que lo haya dado de baja. Prueba con el otro producto del catálogo. |
 | `CatalogUnavailable` | Ningún catálogo respondió, así que no se intentó ninguna compra. | Inténtalo de nuevo en un momento. |
 | `InvalidProduct` | El comercio respondió algo que AgentPey no pudo leer, así que no le pagó. | Inténtalo de nuevo en un momento. |
-| `MerchantRejectedRequest` | El comercio rechazó el pedido antes de cotizarlo, así que no se pagó nada. | Es un problema entre esta plataforma y el comercio, no tuyo. Ya quedó registrado. |
+| `MerchantRejectedRequest` | El comercio rechazó el pedido antes de cotizarlo, así que no se pagó nada. | La razón más común es el stock: puede que la tienda tenga menos unidades de las que pediste. Prueba con una cantidad menor u otro producto. Si sigue pasando con una cantidad que la tienda sí tiene, el problema es entre esta plataforma y el comercio, y ya quedó registrado. |
 | `RouteParamMissing` | El comercio pide un dato que esta plataforma no le envió. | Es un problema nuestro, no tuyo. Ya quedó registrado. |
 | `RouteParamConflict` | La cantidad que se le iba a mandar al comercio no coincidía con la de la compra, así que no se pagó nada. | Es un problema nuestro, no tuyo. Ya quedó registrado. |
 | `InvalidVenueId` | El comercio está mal configurado en AgentPey, así que no se pagó nada. | Es un problema nuestro, no tuyo. Ya quedó registrado. |

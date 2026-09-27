@@ -110,6 +110,12 @@ const STYLE = `
   .ok { border-left: 3px solid var(--accent); }
   /* The answer to the purchase just asked for, above everything else (T107). */
   .notice { margin: 0 0 24px; }
+  /* What an agent can still spend, on the pages where it is asked to spend (T113). */
+  .balances { display: flex; flex-wrap: wrap; gap: 10px 32px; align-items: flex-start; margin: 0 0 24px; padding: 16px 22px; }
+  .balances .fig { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .balances .fig strong { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.01em; }
+  .balances .fig span { color: var(--ink-3); font-size: 13px; }
+  .balances .fig.low strong { color: var(--danger); }
   .notice.error { background: var(--danger-wash); }
   .notice.ok { background: var(--accent-wash); }
   .notice h3 { font-size: 1.15rem; }
@@ -494,7 +500,7 @@ const HIRE_DEFAULTS: Readonly<Record<AgentKind, { readonly perTx: string; readon
  * person can still change them. The button hires and goes straight to signing
  * on AgentPey, where the full permission is shown before the wallet signs.
  */
-function hireForm(stores: readonly HireableStore[] | undefined): string {
+function hireForm(stores: readonly HireableStore[] | undefined, hiredStores: ReadonlySet<string> = new Set()): string {
   const option = (value: string, name: Bilingual, kind: AgentKind): string => {
     const limits = HIRE_DEFAULTS[kind];
     return `<option value="${escape(value)}" data-per-tx="${escape(limits.perTx)}" data-per-day="${escape(limits.perDay)}" data-days="${String(
@@ -502,8 +508,23 @@ function hireForm(stores: readonly HireableStore[] | undefined): string {
     )}" ${textAttributes(name)}>${escape(name.en)}</option>`;
   };
   const storeOptions = (stores ?? []).map((store) =>
-    option(`store:${store.slug}`, bilingual(`Buy at ${store.name} (store)`, `Comprar en ${store.name} (tienda)`), "vitrinee_shopper"),
+    hiredStores.has(store.slug)
+      ? option(
+          `store:${store.slug}`,
+          bilingual(`Buy at ${store.name} (store) · already hired, opens it`, `Comprar en ${store.name} (tienda) · ya contratado, lo abre`),
+          "vitrinee_shopper",
+        )
+      : option(`store:${store.slug}`, bilingual(`Buy at ${store.name} (store)`, `Comprar en ${store.name} (tienda)`), "vitrinee_shopper"),
   );
+  const oneShopperNote =
+    storeOptions.length === 0
+      ? ""
+      : `<p class="meta">${tr(
+          bilingual(
+            "There is one shopper per store. Choosing a store you already hired opens that shopper with the limits it was signed with; to change them, revoke its permission and sign a new one.",
+            "Hay un comprador por tienda. Si eliges una tienda que ya contrataste, se abre ese comprador con los límites con los que se firmó; para cambiarlos, revoca su permiso y firma uno nuevo.",
+          ),
+        )}</p>`;
   const otherOptions = (["bazaar_shopper", "market_brief", "ai_credits"] as const).map((kind) => option(kind, AGENT_COPY[kind].name, kind));
   const first = storeOptions.length > 0 ? VITRINEE_DEFAULT_PERMISSIONS : DEFAULT_PERMISSIONS;
   const storesNote =
@@ -522,6 +543,7 @@ function hireForm(stores: readonly HireableStore[] | undefined): string {
       ${[...storeOptions, ...otherOptions].join("\n      ")}
     </select>
     ${storesNote}
+    ${oneShopperNote}
     <div class="fields">
       <div>
         <label for="perTx">${tr(bilingual("Max per purchase (USDC)", "Máximo por compra (USDC)"))}</label>
@@ -560,7 +582,7 @@ function hireForm(stores: readonly HireableStore[] | undefined): string {
   </script>`;
 }
 
-export function agentsPage(account: Account, agents: readonly AgentConfig[], stores?: readonly HireableStore[]): string {
+export function agentsPage(account: Account, agents: readonly AgentConfig[], stores?: readonly HireableStore[], balances?: TenantActivity): string {
   const alias = displayName(account.alias);
   const rows =
     agents.length === 0
@@ -601,10 +623,11 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[], sto
       "Un agente no puede hacer nada hasta que firmes su permiso con tu wallet.",
     ),
   )}</p>
+  ${balanceStrip(balances)}
   ${rows}
 
   <h2>${tr(bilingual("Hire an agent", "Contratar un agente"))}</h2>
-  ${hireForm(stores)}
+  ${hireForm(stores, new Set(agents.flatMap((agent) => (agent.kind === "vitrinee_shopper" && agent.comercio != null ? [agent.comercio] : []))))}
 `,
   });
 }
@@ -1275,7 +1298,49 @@ function catalogCardHtml(card: CatalogCard, requestKey: string, quantity = 1): s
     </div>`;
 }
 
+/**
+ * The three numbers a person needs before asking an agent to buy, so nobody has to
+ * leave the page or open a terminal to know why a purchase was refused: what the
+ * paying contract holds, what today's limit has left, and the most one purchase may
+ * cost. Reads only what AgentPey already reports (`readActivity`); when that is not
+ * available the strip is left out, it never blocks the page.
+ */
+export function balanceStrip(activity: TenantActivity | undefined, maxPerPurchase?: string): string {
+  if (activity === undefined) return "";
+  const figures: string[] = [];
+  const rail = activity.rail;
+  if (rail !== null) {
+    const low = Number(rail.balance) < 1;
+    figures.push(`<div class="fig${low ? " low" : ""}"><strong>${formatAmount(rail.balance)} ${escape(rail.asset)}</strong><span>${tr(
+      bilingual(
+        rail.sponsored ? "In the paying contract (test credit)" : "In the paying contract",
+        rail.sponsored ? "En el contrato que paga (crédito de prueba)" : "En el contrato que paga",
+      ),
+    )}</span></div>`);
+  }
+  const day = activity.per_day;
+  if (day !== null) {
+    const currency = escape(day.currency);
+    figures.push(`<div class="fig"><strong>${formatAmount(day.spent_today)} / ${formatAmount(day.limit)} ${currency}</strong><span>${tr(
+      bilingual("Spent today / daily limit", "Gastado hoy / límite diario"),
+    )}</span></div>`);
+    figures.push(`<div class="fig${day.near_limit ? " low" : ""}"><strong>${formatAmount(day.remaining)} ${currency}</strong><span>${tr(
+      bilingual("Left today", "Te quedan hoy"),
+    )}</span></div>`);
+  }
+  if (maxPerPurchase !== undefined) {
+    figures.push(`<div class="fig"><strong>${formatAmount(maxPerPurchase)} USDC</strong><span>${tr(
+      bilingual("Max per purchase (signed)", "Máximo por compra (firmado)"),
+    )}</span></div>`);
+  }
+  return figures.length === 0 ? "" : `<div class="card balances" aria-label="${escape("Balances")}">${figures.join("")}</div>`;
+}
+
 export interface CatalogInput {
+  /** What the paying contract holds and today's limit, shown above the products (T113). */
+  readonly balances?: TenantActivity;
+  /** The signed per-purchase maximum of the agent whose products are shown, when one is. */
+  readonly maxPerPurchase?: string;
   readonly cards: readonly CatalogCard[];
   /** Why the bazaar section is missing, if it is. A failed read is not an empty shop. */
   readonly bazaarError?: Bilingual;
@@ -1365,6 +1430,7 @@ export function catalogPage(input: CatalogInput): string {
       body: `
   <h1>${tr(input.focus.title)}</h1>
   <p class="lede">${tr(input.focus.note)}</p>
+  ${balanceStrip(input.balances, input.maxPerPurchase)}
   ${focused === "" ? `<p class="card">${tr(bilingual("Nothing here right now.", "No hay nada aquí ahora mismo."))}</p>` : focused}
   <p><a class="button secondary" href="/catalogo">${tr(bilingual("See the whole catalogue", "Ver todo el catálogo"))}</a></p>
 `,
@@ -1376,6 +1442,7 @@ export function catalogPage(input: CatalogInput): string {
     signedIn: true,
     body: `
   <h1>${tr(bilingual("Catalogue", "Catálogo"))}</h1>
+  ${balanceStrip(input.balances, input.maxPerPurchase)}
   <p class="lede">${trHtml(
     "Everything on sale, and what your agents may actually buy. An item marked <strong>outside the grant</strong> is not broken: no permission you signed covers it, so AgentPey would refuse it. Open it to see exactly how much more power you would be granting.",
     "Todo lo que está a la venta, y lo que tus agentes realmente pueden comprar. Un ítem marcado <strong>fuera del permiso</strong> no está roto: ningún permiso que firmaste lo cubre, así que AgentPey lo rechazaría. Ábrelo para ver exactamente cuánto poder nuevo le estarías dando.",

@@ -42,7 +42,7 @@ import {
   type Account,
   type RealOpsStore,
 } from "./accounts.js";
-import type { AgentPeyClient, PurchaseResource } from "./agentpey.js";
+import type { AgentPeyClient, PurchaseResource, TenantActivity } from "./agentpey.js";
 import { bilingual, type Bilingual } from "./copy.js";
 import { INSTRUCTION_PROBLEMS, SUPPORTED_PAIR, interpretInstruction, type InstructionProblem } from "./instruction.js";
 import {
@@ -72,6 +72,9 @@ export const SESSION_COOKIE = "realops_session";
  * form that lacks one (a page cached from before T84) falls back to a fresh
  * key, which is the old behaviour rather than a refusal.
  */
+/** How long a page waits for the balances strip before rendering without it (T113). */
+const BALANCES_TIMEOUT_MS = 4_000;
+
 const requestKeySchema = z.uuid();
 
 /** How the magic link reaches the person. */
@@ -376,6 +379,29 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
    * wait to the other's. The agents are read from this account's own rows and
    * never from input.
    */
+  /**
+   * The paying contract's balance and today's limit, for the strip above the
+   * products (T113). A convenience, never a dependency: if AgentPey is slow or
+   * down the page renders without it rather than waiting or failing.
+   */
+  async function balancesFor(agents: readonly AgentConfig[]): Promise<TenantActivity | undefined> {
+    const tenantId = agents.find((agent) => agent.tenantId !== null)?.tenantId ?? null;
+    if (config.agentpey === undefined || tenantId === null) return undefined;
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        config.agentpey.readActivity(tenantId),
+        new Promise<undefined>((resolve) => {
+          timer = setTimeout(() => resolve(undefined), BALANCES_TIMEOUT_MS);
+        }),
+      ]);
+    } catch {
+      return undefined;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
+
   async function catalogFor(account: Account): Promise<{
     readonly cards: readonly CatalogCard[];
     readonly agents: readonly AgentConfig[];
@@ -614,7 +640,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       } catch {
         stores = undefined;
       }
-      sendHtml(response, 200, agentsPage(account, await config.store.listAgents(account.id), stores));
+      const owned = await config.store.listAgents(account.id);
+      sendHtml(response, 200, agentsPage(account, owned, stores, await balancesFor(owned)));
       return;
     }
 
@@ -815,6 +842,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       // hides cards: each shown card keeps the action it has in the full view.
       let shown = cards;
       let focus: { title: Bilingual; note: Bilingual } | undefined;
+      let maxPerPurchase: string | undefined;
       const agentParam = url.searchParams.get("agente");
       const query = (url.searchParams.get("q") ?? "").trim();
       if (agentParam !== null) {
@@ -822,6 +850,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         if (agent !== undefined) {
           shown = cards.filter((card) => card.coverage.state !== "outside" && card.coverage.agentId === agent.id);
           const name = displayLabel(agent.label);
+          maxPerPurchase = agent.permissions.perTx;
           focus = {
             title: bilingual(`What ${name} can buy`, `Lo que puede comprar ${name}`),
             note:
@@ -840,6 +869,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           ),
         };
       }
+      const balances = await balancesFor(await config.store.listAgents(account.id));
       sendHtml(
         response,
         200,
@@ -848,6 +878,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           ...(bazaarError === undefined ? {} : { bazaarError }),
           ...(vitrineeError === undefined ? {} : { vitrineeError }),
           storeErrors,
+          ...(balances === undefined ? {} : { balances }),
+          ...(maxPerPurchase === undefined ? {} : { maxPerPurchase }),
           ...(prefill === undefined ? {} : { prefill }),
           ...(focus === undefined ? {} : { focus }),
         }),

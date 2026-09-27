@@ -5344,3 +5344,18 @@ consultas (`inventoryQuantity`, `media`), la forma exacta de `orderCreate`
 (`customer`/`shippingAddress`), y la vista del portal. Cada uno se comprueba en el
 paso A2 del guion. **Regla de Shopify:** la tienda debe crearse desde el Dev
 Dashboard y estar en la misma organización que la app.
+
+## T113 · RealOps: saldos visibles, rechazo por stock claro y compradores por tienda explicados (2026-09-26, en curso)
+
+**En lenguaje llano.** Al recorrer los rechazos del guion de prueba, el usuario notó tres
+cosas. El saldo del contrato de pago solo se veía en "Mis servicios", así que compraba a
+ciegas desde el catálogo: ahora hay una franja con el saldo, lo gastado hoy, lo que queda y
+el máximo por compra, arriba del catálogo y de "Mis agentes". Un rechazo por falta de stock
+decía que el problema era de la plataforma: ahora dice que lo habitual es el stock. Y crear un
+segundo comprador para la misma tienda lo llevaba al existente sin explicar: ahora el
+formulario lo dice. Decisión `C-153`.
+
+**Evidencia.** `apps/realops`: 217 tests en verde (3 nuevos de la franja), typecheck limpio,
+`CODIGOS-DE-RECHAZO.md` regenerado. **Sin verificar en navegador:** el aspecto de la franja
+(el HTML se probó por tests y por render estático, no en pantalla); se ve en el primer
+despliegue.
