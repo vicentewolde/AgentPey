@@ -5397,3 +5397,16 @@ Decisión `C-155`.
 contratar de nuevo un comprador revocado lleva a firmar, no al catálogo, y el agente sigue siendo
 el mismo). `pnpm test` del repo entero en verde. **Sin verificar en vivo**: falta que el usuario
 revoque y vuelva a firmar en `agentpey.com`/`realops.agentpey.com`.
+
+## T116 · Diagnóstico de "no está firmado" tras completar Freighter (2026-09-27, en curso)
+
+**En lenguaje llano.** El usuario terminó de firmar en AgentPey y, al volver, RealOps le dijo que
+no estaba firmado. No se pudo reproducir ni encontrar la causa con certeza revisando el código. Se
+agregó un reintento (por si fue una lectura que falló una sola vez) y, sobre todo, un registro en
+los logs de Render que antes no existía: la próxima vez que pase, va a quedar la razón exacta
+escrita, en vez de nada. Decisión `C-156`, abierta.
+
+**Evidencia.** `apps/realops`: 224 tests en verde (1 nuevo, que simula una lectura fallida y
+comprueba que el reintento la recupera). `pnpm test` del repo entero en verde. **Sin confirmar en
+vivo**: falta que el usuario reintente y, si vuelve a fallar, comparta los logs de Render de ese
+momento.

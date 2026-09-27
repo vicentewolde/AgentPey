@@ -6595,3 +6595,12 @@ Dos fallos de la misma pieza, ambos en el mismo agente contratado (el "comprador
 **Alternativa descartada: un agente nuevo por cada revocación.** Rompe `C-147` y confunde el historial de compras, que queda repartido entre varios agentes de la misma tienda.
 
 **Sin verificar:** el `alter table` de `store-postgres.ts` no tiene test unitario propio (ningún archivo de esta carpeta lo tiene); sigue el mismo patrón que la columna `comercio` de T104, ya en producción.
+
+### C-156 · Un "no está firmado" tras completar Freighter: reintento y registro en `/volver`, sin causa confirmada · `Investigación en curso`
+**Fecha:** 2026-09-27 · **Hito:** T116 · Reportado por el usuario
+
+Tras T115, el usuario completó las dos aprobaciones de Freighter en AgentPey y, al volver a RealOps, la página del agente decía "no está firmado". No se pudo reproducir: los 224 tests de `apps/realops` pasan, incluido uno de punta a punta que revoca y vuelve a firmar contra un servidor real. La revisión del código descarta dos sospechas concretas — la clave de idempotencia nueva de T115 no afecta la lectura de la sesión (`GET /v1/consent_sessions/{id}` no pasa por esa caché), y el registro del Mandato ocurre en el mismo pedido que ancla la firma, antes de que AgentPey muestre "Mandate anchored".
+
+**Lo que se hizo mientras tanto, sin esperar el diagnóstico:** `/agentes/:id/volver` reintenta la lectura de la sesión una vez más (con una pausa de 0,8 s) antes de darse por vencido, y ahora **registra en los logs de Render** por qué falló —el estado que AgentPey devolvió, o el error— cosa que antes se descartaba en silencio y hacía imposible saber qué pasó de verdad. Si la causa era una lectura intermitente (una conexión fría, una demora de testnet), esto la cubre sola. Si no, el próximo intento deja un rastro real en los logs en vez de nada.
+
+**Sigue sin confirmar.** El usuario debe volver a intentarlo; si falla de nuevo, los logs de Render del proceso de RealOps, en el momento del intento, dicen la causa exacta.

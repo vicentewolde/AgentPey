@@ -26,6 +26,7 @@ function fakeAgentPey() {
     expires_at: "2026-09-13T00:00:00.000Z",
   };
 
+  let readFailuresLeft = 0;
   const client: AgentPeyClient = {
     async ensureTenant(externalRef) {
       calls.tenants.push(externalRef);
@@ -38,6 +39,10 @@ function fakeAgentPey() {
       return session;
     },
     async readConsentSession() {
+      if (readFailuresLeft > 0) {
+        readFailuresLeft -= 1;
+        throw new Error("testnet is slow to answer right now");
+      }
       return session;
     },
     async listMandates() {
@@ -56,6 +61,10 @@ function fakeAgentPey() {
     calls,
     complete(mandateId: string) {
       session = { ...session, status: "completed", consent_url: null, mandate_id: mandateId };
+    },
+    /** The next N reads of the consent session throw, as a flaky network read would (T116). */
+    failReadsOnce(times = 1) {
+      readFailuresLeft = times;
     },
   };
 }
@@ -211,6 +220,7 @@ describe("coming back from signing", () => {
     expect(review).toContain("Firmado");
   });
 
+
   /**
    * Signing is what unlocks asking for something. Before it, "Mis servicios"
    * says so instead of showing a form that could only fail.
@@ -257,6 +267,21 @@ describe("coming back from signing", () => {
     const response = await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
 
     expect(response.status).toBe(404);
+  });
+
+  it("recovers from one flaky read of the consent session instead of reporting not signed (T116)", async () => {
+    const cookie = await signIn("intermitente@ejemplo.cl");
+    const agentId = await configureAgent(cookie);
+    await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
+
+    agentpey.complete("mnd_01J7QW8VQEJPAXEPAYREALOPS10");
+    agentpey.failReadsOnce(1);
+    const back = await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+
+    expect(back.headers.get("location")).toBe(`/catalogo?agente=${agentId}`);
+    expect((await store.findAgent(await accountIdFor(cookie, agentId), agentId))?.mandateId).toBe(
+      "mnd_01J7QW8VQEJPAXEPAYREALOPS10",
+    );
   });
 });
 

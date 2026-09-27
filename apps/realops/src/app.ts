@@ -843,15 +843,34 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       }
       let signed = agent.mandateId !== null;
       if (config.agentpey !== undefined) {
-        try {
-          const session = await config.agentpey.readConsentSession(agent.consentSessionId);
-          if (session.status === "completed" && session.mandate_id !== null) {
-            await config.store.saveAgent({ ...agent, mandateId: session.mandate_id });
-            signed = true;
+        // One retry, after a short pause (T116): a person who just finished
+        // two Freighter approvals lands here within a second or two of
+        // AgentPey anchoring the Mandate, and a single transient read (a cold
+        // connection, a slow moment on testnet) used to read as "not signed"
+        // with no trace of why. Logged either way, because this exact
+        // silence — nothing in Render's own log to look at — is what made a
+        // real report impossible to chase down the first time.
+        for (const attempt of [1, 2]) {
+          try {
+            const session = await config.agentpey.readConsentSession(agent.consentSessionId);
+            if (session.status === "completed" && session.mandate_id !== null) {
+              await config.store.saveAgent({ ...agent, mandateId: session.mandate_id });
+              signed = true;
+            } else {
+              process.stderr.write(
+                `RealOps: /volver for agent ${agent.id} read consent session ${agent.consentSessionId} as "${session.status}", not completed (attempt ${attempt})\n`,
+              );
+            }
+            break;
+          } catch (error) {
+            process.stderr.write(
+              `RealOps: /volver for agent ${agent.id} failed to read consent session ${agent.consentSessionId} (attempt ${attempt}): ${
+                error instanceof Error ? error.message : String(error)
+              }\n`,
+            );
+            if (attempt === 2) break;
+            await new Promise((resolve) => setTimeout(resolve, 800));
           }
-        } catch {
-          // A read that failed is not a reason to lose the page: the review
-          // screen below shows whatever state is actually stored.
         }
       }
       // Signed: straight to what the agent was hired for, its own catalogue
