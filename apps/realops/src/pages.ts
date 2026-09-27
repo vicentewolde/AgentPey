@@ -582,7 +582,28 @@ function hireForm(stores: readonly HireableStore[] | undefined, hiredStores: Rea
   </script>`;
 }
 
-export function agentsPage(account: Account, agents: readonly AgentConfig[], stores?: readonly HireableStore[], balances?: TenantActivity): string {
+/**
+ * What AgentPey says about each signed permission, by mandate id (T114). RealOps keeps only
+ * that a permission was signed; whether it was later revoked or has expired lives in AgentPey,
+ * so without this a revoked agent kept its green "signed" tag.
+ */
+export type MandateStatuses = ReadonlyMap<string, string>;
+
+function permissionTag(agent: AgentConfig, statuses: MandateStatuses | undefined): string {
+  if (agent.mandateId === null) return `<span class="tag tag-realops">${tr(bilingual("not signed", "sin firmar"))}</span>`;
+  const status = statuses?.get(agent.mandateId);
+  if (status === "revoked") return `<span class="tag tag-refused">${tr(bilingual("revoked", "revocado"))}</span>`;
+  if (status === "expired") return `<span class="tag tag-refused">${tr(bilingual("expired", "vencido"))}</span>`;
+  return `<span class="tag tag-signed">${tr(bilingual("signed", "firmado"))}</span>`;
+}
+
+export function agentsPage(
+  account: Account,
+  agents: readonly AgentConfig[],
+  stores?: readonly HireableStore[],
+  balances?: TenantActivity,
+  statuses?: MandateStatuses,
+): string {
   const alias = displayName(account.alias);
   const rows =
     agents.length === 0
@@ -596,10 +617,7 @@ export function agentsPage(account: Account, agents: readonly AgentConfig[], sto
         const days = String(agent.permissions.validForDays);
         const perTx = formatAmount(agent.permissions.perTx);
         const perDay = formatAmount(agent.permissions.perDay);
-        const status =
-          agent.mandateId === null
-            ? `<span class="tag tag-realops">${tr(bilingual("not signed", "sin firmar"))}</span>`
-            : `<span class="tag tag-signed">${tr(bilingual("signed", "firmado"))}</span>`;
+        const status = permissionTag(agent, statuses);
         return `<div class="card stack">
       <div class="head-row"><h3>${displayName(agent.label)}</h3>${status}</div>
       <p class="meta">${tr(AGENT_COPY[agent.kind].name)}</p>

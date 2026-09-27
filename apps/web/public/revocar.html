@@ -115,6 +115,13 @@
   .status.err { color: var(--danger); }
   .notice { border-left: 3px solid var(--accent); background: var(--accent-wash); color: var(--ink-2); margin: 0; padding: 13px 15px; font-size: 14px; }
   .notice.err { border-color: var(--danger); background: var(--danger-wash); color: var(--danger); }
+  /* The wallet lives in the top bar, where every web3 site puts it (T114, as on the signing page). */
+  .wallet-top { appearance: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--accent); border-radius: 999px;
+          background: var(--paper); color: var(--accent); cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 7px 14px; }
+  .wallet-top:hover:not(:disabled) { background: var(--accent-wash); }
+  .wallet-top:disabled { opacity: .6; cursor: wait; }
+  .wallet-top.connected { border-color: var(--rule); color: var(--ink); font-family: var(--mono); font-weight: 500; }
+  .wallet-top.connected::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
   .wallet-address { margin: 14px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
   .result { margin: 14px 0 0; }
   .result-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
@@ -139,6 +146,7 @@
       <span class="tagline"><span data-tr="en">Payment infrastructure for agents</span><span data-tr="es">Infraestructura de pagos para agentes</span></span>
     </a>
     <div class="utils">
+      <button id="wallet-btn" class="wallet-top" type="button" hidden><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button>
       <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
       <div class="lang">
         <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
@@ -179,7 +187,10 @@
       <span data-tr="en">Only that wallet can revoke it. This is not a rule of this page: the contract on Stellar rejects any revocation that wallet did not sign.</span>
       <span data-tr="es">Solo esa wallet puede revocarlo. No es una regla de esta página: el contrato en Stellar rechaza una revocación que no venga firmada por ella.</span>
     </p>
-    <div class="actions"><button id="wallet-btn" class="btn secondary" type="button"><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button></div>
+    <p class="lead">
+      <span data-tr="en">Use the Connect wallet button at the top right: Freighter asks for a verification signature, which moves no money.</span>
+      <span data-tr="es">Usa el botón Conectar wallet de arriba a la derecha: Freighter te pide una firma de verificación, que no mueve dinero.</span>
+    </p>
     <p id="wallet-status" class="status" role="status"></p>
     <p id="wallet-address" class="wallet-address" hidden></p>
   </section>
@@ -402,6 +413,10 @@ async function connectWallet() {
     if (!result.body.ok) throw { body: result.body };
 
     walletAddress = address;
+    var top = document.getElementById("wallet-btn");
+    top.textContent = address.slice(0, 4) + "…" + address.slice(-4);
+    top.classList.add("connected");
+    top.title = address;
     prepared = result.body;
     var addressEl = document.getElementById("wallet-address");
     addressEl.textContent = address;
@@ -488,6 +503,7 @@ async function revoke() {
     stateLeadKey = "leadActive";
     renderState();
     document.getElementById("wallet-panel").hidden = false;
+    document.getElementById("wallet-btn").hidden = false;
   } catch (error) {
     setPageNotice("error", errorMessage(error, "loadFailed"));
   }

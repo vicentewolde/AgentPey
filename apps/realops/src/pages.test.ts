@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { bilingual } from "./copy.js";
-import { balanceStrip, errorPage, formatAmount, localTime } from "./pages.js";
+import { agentsPage, balanceStrip, errorPage, formatAmount, localTime } from "./pages.js";
 
 describe("the page script", () => {
   /** `toLocaleString` throws on this combination, and the times would silently stay in UTC. */
@@ -70,5 +70,35 @@ describe("balanceStrip (T113)", () => {
   it("is left out, without failing the page, when AgentPey reported nothing", () => {
     expect(balanceStrip(undefined)).toBe("");
     expect(balanceStrip({ ...activity, rail: null, per_day: null })).toBe("");
+  });
+});
+
+describe("a revoked or expired permission is not shown as signed (T114)", () => {
+  const account = { id: "acc_1", alias: "Vinny", externalRef: "x" } as never;
+  const agent = (id: string, mandateId: string | null) =>
+    ({
+      id,
+      label: "Store Shopper",
+      kind: "market_brief",
+      mandateId,
+      tenantId: "ptn_x:t",
+      comercio: null,
+      createdAt: new Date("2026-09-26T10:00:00Z"),
+      permissions: { perTx: "0.30", perDay: "0.60", validForDays: 30 },
+    }) as never;
+
+  it("tags a revoked permission as revoked, an expired one as expired, and an active one as signed", () => {
+    const statuses = new Map([["m_revoked", "revoked"], ["m_expired", "expired"], ["m_active", "active"]]);
+    const html = agentsPage(account, [agent("a1", "m_revoked"), agent("a2", "m_expired"), agent("a3", "m_active")], undefined, undefined, statuses);
+    expect(html.match(/class="tag tag-refused"/g)?.length).toBe(2);
+    expect(html).toContain("revoked");
+    expect(html).toContain("expired");
+    expect(html).toContain("tag-signed");
+  });
+
+  it("keeps the signed tag when AgentPey could not say (the page never depends on it)", () => {
+    const html = agentsPage(account, [agent("a1", "m_x")], undefined, undefined, new Map());
+    expect(html).toContain("tag-signed");
+    expect(html).not.toContain('class="tag tag-refused"');
   });
 });

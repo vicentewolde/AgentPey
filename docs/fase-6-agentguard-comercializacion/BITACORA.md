@@ -5359,3 +5359,16 @@ formulario lo dice. Decisión `C-153`.
 `CODIGOS-DE-RECHAZO.md` regenerado. **Sin verificar en navegador:** el aspecto de la franja
 (el HTML se probó por tests y por render estático, no en pantalla); se ve en el primer
 despliegue.
+
+## T114 · Wallet arriba al revocar y permisos revocados a la vista (2026-09-26, en curso)
+
+**En lenguaje llano.** Al probar el rechazo por permiso revocado: la página de AgentPey para
+revocar no tenía el botón de conectar wallet arriba a la derecha (ahora sí, como la de firmar), y
+después de revocar, la tarjeta del agente seguía verde diciendo "firmado" (ahora dice "revocado" o
+"vencido"). Además apareció un fallo real y **sin arreglar**: firmar un comprador de una segunda
+tienda le quita a la primera la capacidad de comprar (`ScopeVenueNotAllowed`). Propuesta y
+opciones en `C-154`; espera decisión del usuario porque toca la autorización.
+
+**Evidencia.** `apps/realops` 219 tests en verde (2 nuevos), typecheck limpio; scripts de
+`revocar.html` sin errores de sintaxis, `public-pages.test.ts` 5/5. **Sin verificar en pantalla:** el
+aspecto del botón en la barra de la página de revocar.

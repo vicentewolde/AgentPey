@@ -47,6 +47,7 @@ import { bilingual, type Bilingual } from "./copy.js";
 import { INSTRUCTION_PROBLEMS, SUPPORTED_PAIR, interpretInstruction, type InstructionProblem } from "./instruction.js";
 import {
   agentsPage,
+  type MandateStatuses,
   type HireableStore,
   catalogPage,
   chooseAgentPage,
@@ -402,6 +403,26 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     }
   }
 
+  /** The status AgentPey reports for each signed permission (T114); empty when it cannot say, never a failure. */
+  async function statusesFor(agents: readonly AgentConfig[]): Promise<MandateStatuses> {
+    const tenantId = agents.find((agent) => agent.tenantId !== null)?.tenantId ?? null;
+    if (config.agentpey === undefined || tenantId === null) return new Map();
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      const listed = await Promise.race([
+        config.agentpey.listMandates(tenantId),
+        new Promise<undefined>((resolve) => {
+          timer = setTimeout(() => resolve(undefined), BALANCES_TIMEOUT_MS);
+        }),
+      ]);
+      return new Map((listed ?? []).map((mandate) => [mandate.id, mandate.status]));
+    } catch {
+      return new Map();
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  }
+
   async function catalogFor(account: Account): Promise<{
     readonly cards: readonly CatalogCard[];
     readonly agents: readonly AgentConfig[];
@@ -641,7 +662,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         stores = undefined;
       }
       const owned = await config.store.listAgents(account.id);
-      sendHtml(response, 200, agentsPage(account, owned, stores, await balancesFor(owned)));
+      const [balances, statuses] = await Promise.all([balancesFor(owned), statusesFor(owned)]);
+      sendHtml(response, 200, agentsPage(account, owned, stores, balances, statuses));
       return;
     }
 
@@ -850,13 +872,21 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         if (agent !== undefined) {
           shown = cards.filter((card) => card.coverage.state !== "outside" && card.coverage.agentId === agent.id);
           const name = displayLabel(agent.label);
+          const permissionStatus = agent.mandateId === null ? undefined : (await statusesFor([agent])).get(agent.mandateId);
           maxPerPurchase = agent.permissions.perTx;
           focus = {
             title: bilingual(`What ${name} can buy`, `Lo que puede comprar ${name}`),
             note:
               agent.mandateId === null
                 ? bilingual("Its permission is not signed yet, so it cannot buy any of this.", "Su permiso todavía no está firmado, así que no puede comprar nada de esto.")
-                : bilingual("Its permission is signed. Choose a product and ask it to buy.", "Su permiso está firmado. Elige un producto y pídele que lo compre."),
+                : permissionStatus === "revoked"
+                  ? bilingual(
+                      "Its permission was revoked, so it cannot buy any of this. Sign a new one to buy again.",
+                      "Su permiso fue revocado, así que no puede comprar nada de esto. Firma uno nuevo para volver a comprar.",
+                    )
+                  : permissionStatus === "expired"
+                    ? bilingual("Its permission expired. Sign a new one to buy again.", "Su permiso venció. Firma uno nuevo para volver a comprar.")
+                    : bilingual("Its permission is signed. Choose a product and ask it to buy.", "Su permiso está firmado. Elige un producto y pídele que lo compre."),
           };
         }
       } else if (query !== "") {
