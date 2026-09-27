@@ -769,7 +769,7 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
       const translated = translatePermissions(agent.kind, agent.permissions, targets, now());
-      sendHtml(response, 200, reviewPage(agent, translated.grant, translated.controls, config.agentpeyBaseUrl));
+      sendHtml(response, 200, reviewPage(agent, translated.grant, translated.controls, config.agentpeyBaseUrl, config.baseUrl));
       return;
     }
 

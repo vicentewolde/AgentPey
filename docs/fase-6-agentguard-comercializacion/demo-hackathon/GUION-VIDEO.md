@@ -41,13 +41,19 @@ subtítulos en inglés, de dos líneas como máximo por pantalla.
 
 ## 3. Lo que hace falta antes de empezar
 
-- [ ] **Una tienda Jumpseller nueva, sin registrar en Vitrinee**, con 3 o 4
-      productos con precio bajo 2.850 CLP (`C-133`) y **sin los productos de
-      demostración** de Jumpseller (`SKU` repetido, T105). Es la escena 1: MycoKit
-      y Bazar Cordillera ya están dadas de alta y no hay forma de deshacerlo, así
-      que su dirección aparece como "ya está en uso". Registrar la misma tienda
-      dos veces con otra dirección duplicaría sus productos, y RealOps esconde
-      esos productos (`C-145`, punto 7).
+- [ ] **Una tienda Shopify de desarrollo nueva, sin registrar en Vitrinee**
+      (decidido 2026-09-26, `VT-33`; gratis, y el pedido sí llega a la tienda).
+      Creada desde el Dev Dashboard, con su app (`read_products` y
+      `write_orders`) instalada, moneda CLP y 3 o 4 productos con SKU propio y
+      precio bajo 2.850 CLP (`C-133`); sirve `demo-hackathon/shopify-productos.csv`
+      con otros SKU. **`agenticom` ya está dada de alta durante las pruebas y no
+      hay forma de deshacerlo**, igual que MycoKit y Bazar Cordillera: hace falta
+      una tienda **distinta** para la escena 1. Registrar la misma tienda dos
+      veces con otra dirección duplicaría sus productos, y RealOps esconde esos
+      productos (`C-145`, punto 7).
+- [ ] **Un solo comprador de tienda en la cuenta de grabar.** Con dos tiendas en
+      una cuenta, el primer comprador pierde su permiso de comprar (`C-154`, aún
+      sin arreglar).
 - [ ] **Una wallet dueña con Freighter en testnet**, con XLM y con la línea de
       confianza de USDC (emisor `GBBD47…LFLA5`); si no, el alta se detiene en la
       segunda prueba. Puede ser la misma de otra tienda (`VT-31`).
@@ -89,9 +95,10 @@ dices y **Subtítulos** el mismo texto en inglés, tal cual; **Qué mirar** es l
 
 **Pantalla:**
 1. `https://vitrinee.agentpey.com` → **Connect Freighter** → firmar el mensaje.
-2. Formulario **Connect your Jumpseller store**: nombre, dirección
+2. Formulario **Connect your store**: nombre, dirección
    (`<tienda>.vitrinee.agentpey.com`, se propone sola y dice **Available**),
-   login y token de la API de Jumpseller. **Pega el token fuera de cámara** (o
+   **Shopify** en "¿Dónde está tu tienda?", y la dirección `.myshopify.com`, el
+   client id y el client secret de la app. **Pega el token fuera de cámara** (o
    pausa la grabación): no puede verse.
 3. **Check and publish my store** → las cuatro pruebas se ponen en verde →
    mensaje **Your store is live for agents at …**.
@@ -100,7 +107,7 @@ dices y **Subtítulos** el mismo texto en inglés, tal cual; **Qué mirar** es l
 
 > Primero, el vendedor. El dueño de una tienda entra con la wallet donde recibe
 > sus pagos. Sin contraseña ni correo: una firma en Freighter. Pega las
-> credenciales de la API de su tienda Jumpseller y publica. Antes de guardar
+> credenciales de su tienda y publica. Antes de guardar
 > nada, Vitrinee revisa cuatro cosas: que la dirección esté libre, que la wallet
 > pueda recibir USDC, que las credenciales lean el catálogo y que la llave de
 > firma de la tienda tenga fondos. Las cuatro pasan. Sin código y sin deploy. La
@@ -109,8 +116,8 @@ dices y **Subtítulos** el mismo texto en inglés, tal cual; **Qué mirar** es l
 **Subtítulos (inglés):**
 
 > First, the seller. A store owner signs in with the wallet they get paid in. No
-> password, no email: one signature in Freighter. They paste the API credentials
-> of their Jumpseller store and press publish. Before saving anything, Vitrinee
+> password, no email: one signature in Freighter. They paste the credentials of
+> their store and press publish. Before saving anything, Vitrinee
 > checks four things: the address is free, the wallet can receive USDC, the
 > credentials can read the catalogue, and the store's signing key is funded. All
 > four pass. No code, no deploy. The store is live for agents.
@@ -119,7 +126,7 @@ dices y **Subtítulos** el mismo texto en inglés, tal cual; **Qué mirar** es l
 - Que las cuatro pruebas se vean claramente una por una. El servidor las corre
   en una sola llamada y, mientras trabaja, las cuatro salen "pendientes": si
   tarda más de ~15 s, la escena se siente rota. Cronométralo.
-- Que el token no quede a la vista en ningún momento (campo, historial del
+- Que el client secret no quede a la vista en ningún momento (campo, historial del
   navegador, captura del portapapeles).
 - Que el mensaje de éxito muestre la dirección completa, legible.
 
@@ -227,31 +234,28 @@ wallet dueña) → **What agents bought from you** → el pedido nuevo → enlac
 pass", las tres comprobaciones en verde, el producto y el total (`C-149`).
 Enlace **Payment** de paso.
 
-**Voz (español, la que dices), versión B, mientras Jumpseller siga en 404:**
+**Voz (español, la que dices).** Con la tienda Shopify el pedido sí llega a la
+tienda (`VT-33`), así que esta es la versión buena; la que decía "el pedido aún no
+llega" (Jumpseller en 404, `C-151`) solo sirve si la escena 1 se graba con una
+tienda Jumpseller:
 
 > Volvamos al lado del vendedor. El panel del dueño muestra la venta, con
 > enlaces al pago y al recibo. El recibo está firmado por la tienda, anclado en
 > un contrato de Stellar y coincide con el pago en el ledger: tres
-> comprobaciones independientes, todas en verde. El panel dice que el pedido aún
-> no llega al administrador de la tienda, porque Jumpseller todavía no habilita
-> la creación de pedidos en nuestra cuenta. El pago y la prueba son reales, y el
-> pedido se crea sin volver a cobrar apenas lo habiliten.
+> comprobaciones independientes, todas en verde. Y aquí está el mismo pedido,
+> ya pagado y con el stock descontado, en el administrador de la tienda.
 
-**Subtítulos (inglés), versión B:**
+**Subtítulos (inglés):**
 
 > Back on the seller's side. The owner's panel shows the sale, with links to the
 > payment and the receipt. The receipt is signed by the store, anchored in a
 > Stellar contract, and matches the payment on the ledger: three independent
-> checks, all green. The panel says the order hasn't reached the store's admin
-> yet, because Jumpseller hasn't enabled order creation on our account. The
-> payment and the proof are real, and the order is created without charging
-> again as soon as it does.
+> checks, all green. And here is the same order, already paid and with the stock
+> taken off, in the store's own admin.
 
-**Versión A, si Jumpseller ya lo habilitó:** igual, pero cambia las dos últimas
-frases por esta, y muestra el panel de Jumpseller (sin credenciales a la vista):
-
-> Voz: Y aquí está el mismo pedido en el administrador de Jumpseller de la tienda.
-> Subtítulo: And here is the same order in the store's own Jumpseller admin.
+**Pantalla del final:** el administrador de la tienda (Shopify, `Orders`), sin
+credenciales a la vista: el pedido **Paid**, el producto, el total en CLP y el
+hash del pago en los atributos.
 
 **Qué mirar:**
 - Que la página del recibo salga en inglés (lo decide el navegador; si sale en
@@ -299,7 +303,7 @@ rojo **Refused: <producto>**, el motivo en lenguaje llano y "Nothing was paid"
 
 > Ese es el ciclo. Una tienda se suma sin código. Una persona firma exactamente
 > lo que un agente puede gastar. El agente compra, y los dos lados guardan
-> prueba en Stellar. Hoy funciona en Stellar testnet, con tiendas Jumpseller
+> prueba en Stellar. Hoy funciona en Stellar testnet, con tiendas en línea
 > reales. Lo que sigue: el primer partner externo comprando solo, y auditorías
 > antes de tocar mainnet. AgentPey: agentes con una wallet que tiene reglas.
 
@@ -307,11 +311,11 @@ rojo **Refused: <producto>**, el motivo en lenguaje llano y "Nothing was paid"
 
 > That's the loop. A store joins without code. A person signs exactly what an
 > agent may spend. The agent buys, and both sides keep proof on Stellar. It runs
-> today on Stellar testnet, with real Jumpseller stores. Next: the first outside
+> today on Stellar testnet, with real online stores. Next: the first outside
 > partner buying on its own, and audits before anything touches mainnet. AgentPey:
 > agents with a wallet that has rules.
 
-**Qué mirar:** que la frase "real Jumpseller stores" siga siendo cierta el día
+**Qué mirar:** que la frase "real online stores" siga siendo cierta el día
 de grabar (hoy son dos y una tercera para el video).
 
 ## 5. Plan B por escena
@@ -322,7 +326,7 @@ de grabar (hoy son dos y una tercera para el video).
 | El alta falla en una prueba | El mensaje dice cuál. La 2ª es la línea de USDC de la wallet; la 4ª es el faucet de testnet (`friendbot`), reintenta en un minuto |
 | La compra tarda o da error | Repite la escena; si el contrato de la cuenta está sin saldo, avísame y lo reviso antes de grabar de nuevo |
 | El rechazo no aparece | No lo inventes: revisa el § 6 y avísame; sin esa escena el video dura 4:15 |
-| Jumpseller sigue en 404 | Usa la versión B de la escena 5. No muestres el admin de Jumpseller |
+| El pedido no aparece en Shopify | Repite la compra; si el saldo del contrato es bajo, `rail:topup`. Si sigue sin aparecer, pega el mensaje y lo reviso antes de grabar |
 
 ## 6. Fallas ya conocidas y mejoras candidatas
 
@@ -338,7 +342,7 @@ están por decisión del usuario; el 2 sigue abierto.
 | 5 | **La primera compra de una cuenta nueva** despliega su contrato y puede tardar | Escena 4 | Ensayo previo | Cortar al montar o hacer una compra previa fuera de cámara |
 | 6 | **La tienda de la escena 1 no se puede repetir** con ninguna ya registrada; no hay forma de darla de baja | Escena 1 | Crear una tienda Jumpseller nueva | Necesaria; ver § 3 |
 | 7 | **SKU repetido**: los productos de demostración de Jumpseller también se publican | Escena 2 | Filtro en `isSellable`, ya hay tarea sugerida | Alcanza con borrarlos a mano de la tienda nueva |
-| 8 | **Jumpseller 404** al crear pedidos (T101) | Escena 5 | Depende de su soporte | Versión B del guion. Preguntar a soporte hoy |
+| 8 | ~~Jumpseller 404 al crear pedidos (T101)~~ **Resuelto con Shopify** (T112): el pedido llega a la tienda | Escena 5 | — | Cerrado; T101 sigue bloqueado para Jumpseller (`C-151`) |
 
 ## 7. Hallazgos del recorrido de prueba
 
@@ -350,8 +354,9 @@ Llénalo tú (o me pasas lo que viste y lo lleno yo).
 
 ## 8. Lo que se puede decir con cifras verificadas
 
-- Dos tiendas Jumpseller reales ya venden a agentes (Bazar Cordillera, 6
-  productos; MycoKit, 4), más la del video.
+- Tres tiendas reales ya venden a agentes: Bazar Cordillera (6 productos) y
+  MycoKit (4) en Jumpseller, y una tienda de desarrollo en Shopify (4 productos,
+  con el pedido real en su administrador), más la del video.
 - Dos compras reales de un agente en esas tiendas, con recibo verificado (T101 y
   T104, `evidencia/`).
 - Tres contratos Soroban en testnet: `agent_registry`, `policy_rail`,
@@ -361,7 +366,7 @@ Llénalo tú (o me pasas lo que viste y lo lleno yo).
 ## 9. Día de grabar (29)
 
 - [ ] Recorrido de prueba hecho y § 7 llenado; § 6 puntos 1 y 3 decididos.
-- [ ] Tienda Jumpseller nueva lista y **sin dar de alta** (§ 3).
+- [ ] Tienda Shopify nueva lista y **sin dar de alta** (§ 3).
 - [ ] Cuenta nueva de RealOps con el correo de grabar; primera compra de ensayo
       hecha.
 - [ ] Freighter en Testnet, "No molestar", zoom 125 %, pestañas cerradas.

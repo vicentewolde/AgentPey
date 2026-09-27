@@ -458,14 +458,26 @@ async function revoke() {
     document.getElementById("done-panel").hidden = false;
 
     var back = new URLSearchParams(location.search).get("volver");
-    // Only a same-origin-relative path is honoured. An absolute URL from the
-    // query string is exactly the open redirect the return allowlist exists to
-    // prevent (T81), and this page will not reintroduce it through a back link.
+    var link = document.getElementById("return-link");
+    // Two shapes are honoured, and nothing else. A same-origin-relative path, and
+    // an absolute https URL whose origin is one of the pilot's own apps, named
+    // here in a closed list (T114): RealOps sent an absolute address and "Back"
+    // led to a page that does not exist on agentpey.com. Any other absolute URL
+    // from the query string is exactly the open redirect the return allowlist
+    // exists to prevent (T81), and this page will not reintroduce it.
+    var PILOT_ORIGINS = ["https://realops.agentpey.com", "https://signaldesk.agentpey.com"];
+    var target = "";
     if (back && back.charAt(0) === "/" && back.charAt(1) !== "/") {
-      var link = document.getElementById("return-link");
-      link.href = back;
-      document.getElementById("return-row").hidden = false;
+      target = back;
+    } else if (back) {
+      try {
+        var parsed = new URL(back);
+        if (PILOT_ORIGINS.indexOf(parsed.origin) !== -1 && parsed.protocol === "https:") target = parsed.href;
+      } catch (e) { /* not a URL: ignored */ }
     }
+    // Without a valid return address there is still a way home: the pilot's app.
+    link.href = target || "https://realops.agentpey.com/agentes";
+    document.getElementById("return-row").hidden = false;
   } catch (error) {
     setStatus("revoke-status", "error", errorMessage(error, "revokeFailed"));
     button.disabled = false;

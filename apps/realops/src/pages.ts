@@ -666,6 +666,8 @@ export function reviewPage(
   grant: ProposedGrant,
   controls: readonly ExplainedControl[],
   revokeBaseUrl: string,
+  /** RealOps' own public address: where AgentPey's revoke page sends the person back to (T114). */
+  selfUrl?: string,
 ): string {
   return layout({
     title: bilingual("Review the permission", "Revisar el permiso"),
@@ -710,7 +712,7 @@ export function reviewPage(
         "<strong>Signing happens on AgentPey's site, not here.</strong> If you ever see a screen asking you to sign a Mandate on RealOps' domain, it is not ours.",
         "<strong>La firma ocurre en el sitio de AgentPey, no aquí.</strong> Si alguna vez ves una pantalla que te pide firmar un Mandato en el dominio de RealOps, no es nuestra.",
       )}</p>
-      ${signState(agent, revokeBaseUrl)}
+      ${signState(agent, revokeBaseUrl, selfUrl)}
     </div>
   </div>
 `,
@@ -718,12 +720,12 @@ export function reviewPage(
 }
 
 /** What the review card offers, given how far this agent has got. */
-function signState(agent: AgentConfig, revokeBaseUrl: string): string {
+function signState(agent: AgentConfig, revokeBaseUrl: string, selfUrl?: string): string {
   if (agent.mandateId !== null) {
     return `<p class="signed">✓ ${tr(bilingual("Signed.", "Firmado."))} ${tr(bilingual("Mandate", "Mandato"))} <code data-mandate-id>${escape(agent.mandateId)}</code></p>
     <p><a class="button" href="/catalogo?agente=${escape(agent.id)}">${tr(bilingual("See what it can buy →", "Ver lo que puede comprar →"))}</a></p>
     <p><a href="/servicios">${tr(bilingual("Go to My services →", "Ir a Mis servicios →"))}</a></p>
-    <p><a class="button secondary" href="${escape(revokeBaseUrl)}/revocar/${escape(agent.mandateId)}?volver=/agentes/${escape(agent.id)}">${tr(bilingual("Revoke this permission", "Revocar este permiso"))}</a></p>
+    <p><a class="button secondary" href="${escape(revokeBaseUrl)}/revocar/${escape(agent.mandateId)}?volver=${encodeURIComponent(`${(selfUrl ?? "").replace(/\/+$/, "")}/agentes/${agent.id}`)}">${tr(bilingual("Revoke this permission", "Revocar este permiso"))}</a></p>
     <p class="meta">${trHtml(
       "Revoking cuts the authorization <strong>from outside the agent</strong>: whatever it is told afterwards, without a valid Mandate it cannot pay for anything. It happens on AgentPey's site and you sign it with your wallet. RealOps cannot revoke for you, even if it wanted to.",
       "Revocar corta la autorización <strong>desde fuera del agente</strong>: no importa qué le digan después, sin un Mandato válido no puede pagar nada. Se hace en el sitio de AgentPey y lo firmas con tu wallet. RealOps no puede revocar por ti, aunque quisiera.",
@@ -1344,6 +1346,12 @@ export function balanceStrip(activity: TenantActivity | undefined, maxPerPurchas
     )}</span></div>`);
     figures.push(`<div class="fig${day.near_limit ? " low" : ""}"><strong>${formatAmount(day.remaining)} ${currency}</strong><span>${tr(
       bilingual("Left today", "Te quedan hoy"),
+    )}</span></div>`);
+  }
+  if (day === null && rail !== null) {
+    // Without an active permission AgentPey has no daily limit to report; say so instead of leaving a lone balance.
+    figures.push(`<div class="fig"><strong>—</strong><span>${tr(
+      bilingual("No active permission: sign one to buy", "Sin permiso activo: firma uno para comprar"),
     )}</span></div>`);
   }
   if (maxPerPurchase !== undefined) {

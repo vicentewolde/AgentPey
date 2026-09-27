@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { bilingual } from "./copy.js";
-import { agentsPage, balanceStrip, errorPage, formatAmount, localTime } from "./pages.js";
+import { agentsPage, balanceStrip, errorPage, formatAmount, localTime, reviewPage } from "./pages.js";
 
 describe("the page script", () => {
   /** `toLocaleString` throws on this combination, and the times would silently stay in UTC. */
@@ -67,6 +67,12 @@ describe("balanceStrip (T113)", () => {
     expect(balanceStrip(activity)).not.toContain("fig low");
   });
 
+  it("says there is no active permission instead of leaving a lone balance", () => {
+    const html = balanceStrip({ ...activity, per_day: null });
+    expect(html).toContain("7.432 USDC");
+    expect(html).toContain("No active permission");
+  });
+
   it("is left out, without failing the page, when AgentPey reported nothing", () => {
     expect(balanceStrip(undefined)).toBe("");
     expect(balanceStrip({ ...activity, rail: null, per_day: null })).toBe("");
@@ -100,5 +106,22 @@ describe("a revoked or expired permission is not shown as signed (T114)", () => 
     const html = agentsPage(account, [agent("a1", "m_x")], undefined, undefined, new Map());
     expect(html).toContain("tag-signed");
     expect(html).not.toContain('class="tag tag-refused"');
+  });
+});
+
+describe("the review page's revoke link carries an absolute way back (T114)", () => {
+  it("sends AgentPey RealOps' own address, encoded, so Back does not land on agentpey.com", () => {
+    const agent = {
+      id: "agt_1",
+      label: "Store Shopper",
+      kind: "market_brief",
+      mandateId: "mnd_1",
+      tenantId: "ptn_x:t",
+      comercio: null,
+      createdAt: new Date("2026-09-26T10:00:00Z"),
+      permissions: { perTx: "0.30", perDay: "0.60", validForDays: 30 },
+    } as never;
+    const html = reviewPage(agent, {} as never, [], "https://agentpey.com", "https://realops.agentpey.com/");
+    expect(html).toContain("https://agentpey.com/revocar/mnd_1?volver=https%3A%2F%2Frealops.agentpey.com%2Fagentes%2Fagt_1");
   });
 });
