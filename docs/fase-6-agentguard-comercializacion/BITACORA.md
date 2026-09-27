@@ -5411,7 +5411,7 @@ comprueba que el reintento la recupera). `pnpm test` del repo entero en verde. *
 vivo**: falta que el usuario reintente y, si vuelve a fallar, comparta los logs de Render de ese
 momento.
 
-## T117 · La causa real de un anclaje rechazado ya queda en los logs (2026-09-27, en curso)
+## T117 · La causa real de un anclaje rechazado ya queda en los logs (2026-09-27, cerrado)
 
 **En lenguaje llano.** Los tres reportes de hoy eran el mismo hecho: la firma de Freighter nunca se
 terminaba de anclar en Stellar, así que RealOps decía la verdad al mostrar "no está firmado". El
@@ -5421,5 +5421,7 @@ nunca se escribía en los logs. Ahora sí. No se cambió nada del comportamiento
 hizo visible lo que ya estaba pasando. Decisión `C-157`, abierta hasta ver el motivo real.
 
 **Evidencia.** `apps/web`: 255 tests en verde, sin cambios de comportamiento. `pnpm test` del repo
-entero en verde. **Sin confirmar**: la causa real. Falta que el usuario reintente y comparta los
-logs de Render (buscar `cause` en las líneas de `consent wallet anchor failed`).
+entero en verde. **Cierre (2026-09-27).** El registro nuevo funcionó al primer intento real: el log mostró
+`tx_insufficient_balance`. La wallet conectada paga el fee de anclaje (≈0,184 XLM de Soroban), y no
+tenía saldo. Se resuelve fondeando la wallet con Friendbot, sin cambiar código. Detalle en `C-157`.
+Queda anotada, sin hacer, una mejora: revisar el saldo de XLM antes de pedir la firma.

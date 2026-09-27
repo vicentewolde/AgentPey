@@ -6605,7 +6605,7 @@ Tras T115, el usuario completó las dos aprobaciones de Freighter en AgentPey y,
 
 **Sigue sin confirmar.** El usuario debe volver a intentarlo; si falla de nuevo, los logs de Render del proceso de RealOps, en el momento del intento, dicen la causa exacta.
 
-### C-157 · "El anclaje fue rechazado por la red": el motivo real ya se registra, sigue sin confirmarse cuál es · `Investigación en curso`
+### C-157 · "El anclaje fue rechazado por la red": era la wallet sin XLM de testnet para pagar el anclaje · `Resuelta`
 **Fecha:** 2026-09-27 · **Hito:** T117 · Reportado por el usuario
 
 Encontrada la causa raíz de los tres reportes de esta sesión ("no me deja aprobar el permiso",
@@ -6635,5 +6635,20 @@ podría expirar antes de enviarse (`tx_too_late`). También pudo ser una cuenta 
 número de secuencia atrasado, u otra razón de la red — **no se cambia nada del código de firma
 hasta ver el mensaje real, por tratarse de custodia y firma de wallet** (`CLAUDE.md`).
 
-**Siguiente paso:** el usuario reintenta; si vuelve a fallar, los logs de Render dicen ahora la
-causa exacta (`cause`), y de ahí sale el arreglo de verdad.
+**Causa real, confirmada en el primer log capturado (2026-09-27):** `tx_insufficient_balance`.
+`simulateAnchor`/`simulateRevoke` (`packages/sdk/src/registry.ts`) arman la transacción con
+`{ publicKey: issuerAddress }` — la wallet conectada es la **cuenta de origen** de la transacción
+de anclaje, así que es **la wallet, no AgentPey, quien paga el fee**. El de este intento fue
+1.843.730 stroops (≈0,184 XLM): el fee de recursos de Soroban para invocar un contrato, bastante
+más caro que un pago simple. La wallet del usuario existía en la red (si no existiera, el error
+habría sido otro, `tx_bad_seq`) pero no tenía esos ≈0,184 XLM disponibles.
+
+**Arreglo para el usuario, sin cambiar código:** fondear la wallet conectada con XLM de testnet
+(Freighter trae un botón "Fund with Friendbot" en testnet, o
+`https://friendbot.stellar.org?addr=<clave pública>`) y reintentar. Con eso alcanza.
+
+**Mejora pendiente, sin decidir:** AgentPey podría revisar el saldo de XLM de la wallet *antes* de
+pedir la firma, como ya hace Vitrinee con `payoutReadiness` para USDC (T105). Evitaría que alguien
+complete dos aprobaciones de Freighter para enterarse recién al final de que le faltaba fondear.
+Anotado, no implementado: no es un bloqueante — fondear la wallet resuelve el caso de hoy — y toca
+la pantalla de firma, que es parte sensible (custodia y firma de wallet).
