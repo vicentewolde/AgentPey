@@ -7156,3 +7156,18 @@ Vitrinee archivado a pedido del usuario.
 Pendiente: el usuario crea la tienda de desarrollo (Dev Dashboard) y corre el sondeo;
 si pasa, mergear (con OK) y desplegar; después el recorrido del guion. `AGENTS.md`: sin
 cambios. Nada de esto toca `checkMandate` ni el enforcement.
+
+## 2026-09-26 (5) — cc/t114-volver → main
+
+Agente: Claude Code.
+
+Qué: T112 (conector Shopify, `VT-33` a `VT-35`) y T113 (saldos visibles, `C-153`) verificados en vivo
+por el usuario y cerrados, con `evidencia/T112.md` y `T113.md`. T114 en `QA`: botón de wallet arriba
+en la página de revocar, tarjetas "revocado"/"vencido" y "Volver" que funciona (`C-154`). El video usa
+la tienda Shopify (`GUION-VIDEO.md` actualizado). Repo viejo de Vitrinee archivado.
+
+Pendiente: (1) **fallo abierto `C-154`**: con dos tiendas en una cuenta el primer comprador pierde su
+scope; opción (a) aprobada, hacerla **después del 29** (toca `tenant-purchase.ts`, el camino de
+autorización). (2) El usuario recorre H a L del guion de prueba y G6 con el texto nuevo. (3) Tienda
+Shopify **distinta** sin registrar para la escena 1 (`agenticom` ya está dada de alta). `AGENTS.md`:
+sin cambios.

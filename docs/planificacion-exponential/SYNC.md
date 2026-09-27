@@ -31,6 +31,8 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `IN_PROGRESS` | 2026-09-25 | 2026-09-25 | | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 | T111 | `cmuh17lc20001jm04rxvki5s9` | `pnpm run rail:topup`: recargar el contrato de pago de una cuenta desde la reserva | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-152](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T112 | `cmuii56q80001jm049l9gp09a` | Una tienda Shopify gratuita se suma a Vitrinee: conector, alta y pedido real | EXPONENTIAL | `DONE` | 2026-09-26 | 2026-09-26 | 2026-09-26 | [VT-33 a VT-35](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | mergeado (`f192c42`), verificado en vivo con una tienda Shopify real |
+| T113 | `cmuj43ha40007l3047thc1y5v` | RealOps: saldos visibles donde se compra, rechazo por stock claro y compradores por tienda explicados | EXPONENTIAL | `DONE` | 2026-09-26 | 2026-09-26 | 2026-09-26 | [C-153](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`fc707a0`) |
+| T114 | `cmuj5iw05000jl304lf5j93m7` | Wallet arriba al revocar, permisos revocados a la vista y "Volver" que funciona | EXPONENTIAL | `QA` | 2026-09-26 | | | [C-154](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado; falta ver "Volver" en vivo |
 
 | T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 
