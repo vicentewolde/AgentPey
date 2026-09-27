@@ -100,6 +100,8 @@ const storefronts: StorefrontDirectory = {
 const purchases: PurchaseCall[] = [];
 let consentSeq = 0;
 let bazaarFails = false;
+/** Mandate ids a test marked revoked, read back by the fake `listMandates` below (T115). */
+const revokedMandates = new Set<string>();
 
 const bazaarCatalog: BazaarCatalog = {
   async list() {
@@ -151,7 +153,7 @@ const agentpey: AgentPeyClient = {
     };
   },
   async listMandates() {
-    return [];
+    return [...revokedMandates].map((id) => ({ id, status: "revoked", valid_until: "2026-09-23T00:00:00.000Z" }));
   },
   async purchase(input) {
     purchases.push(input);
@@ -622,6 +624,35 @@ describe("buying from the Vitrinee store (T100)", () => {
       expect(again.headers.get("location")).toBe(`/catalogo?agente=${agentId}`);
       const account = await store.findAccountByEmail("ya-firmado@ejemplo.cl");
       expect(await store.listAgents(account!.id)).toHaveLength(1);
+    });
+
+    it("sends a revoked store shopper to sign again, not to a catalogue it cannot use, and keeps it as the same one agent (T115)", async () => {
+      const cookie = await signIn("revocado@ejemplo.cl");
+      const account = (await store.findAccountByEmail("revocado@ejemplo.cl"))!;
+      const agentId = await signStoreAgent(cookie, "37283001");
+      const firstMandateId = (await store.findAgent(account.id, agentId))!.mandateId!;
+
+      const beforeReview = await (await fetch(`${baseUrl}/agentes/${agentId}`, { headers: { cookie } })).text();
+      expect(beforeReview).toContain("Signed.");
+
+      revokedMandates.add(firstMandateId);
+      const revokedReview = await (await fetch(`${baseUrl}/agentes/${agentId}`, { headers: { cookie } })).text();
+      expect(revokedReview).toContain("Revoked.");
+      expect(revokedReview).not.toContain("Signed.");
+
+      const again = await hireAndSign(cookie, { choice: "store:bazar-cordillera" });
+      expect(again.status).toBe(302);
+      expect(again.headers.get("location")).toMatch(/^https:\/\/agentpey\.example\/consent\/cns_/);
+      expect(await store.listAgents(account.id)).toHaveLength(1);
+
+      const mid = (await store.findAgent(account.id, agentId))!;
+      expect(mid.mandateId).toBeNull();
+      expect(mid.consentSessionId).not.toBeNull();
+
+      await fetch(`${baseUrl}/agentes/${agentId}/volver`, { headers: { cookie }, redirect: "manual" });
+      const after = (await store.findAgent(account.id, agentId))!;
+      expect(after.mandateId).not.toBeNull();
+      expect(after.mandateId).not.toBe(firstMandateId);
     });
 
     it("hires and signs from a product outside the grant too", async () => {

@@ -6580,3 +6580,18 @@ Tres hallazgos del recorrido G, y lo que cambia por cada uno:
 **Decidido por el usuario (2026-09-26): opción (a).** Se hace en una rama aparte, con tests, y **después del video del 29** para no tocar el camino de autorización antes de grabar. Hasta entonces, un solo comprador de tienda por cuenta en cualquier prueba o grabación. Para probar dos tiendas: dos cuentas de RealOps.
 
 **Nota a C-154 (2026-09-26, hallada al revocar):** el botón "Volver" de la página de revocar no servía. RealOps mandaba `volver=/agentes/<id>` (relativo) y la página lo resolvía en `agentpey.com`, donde esa ruta no existe. Ahora RealOps manda su dirección absoluta y la página acepta, además de rutas relativas, `https://realops.agentpey.com` y `https://signaldesk.agentpey.com` (lista cerrada; cualquier otro origen se ignora, como manda `T81`), y sin dirección válida ofrece igual un enlace a RealOps. La franja de saldos, sin permiso activo, dice "Sin permiso activo: firma uno para comprar" en vez de quedarse solo con el saldo.
+
+### C-155 · Firmar de nuevo tras revocar: "Ver y firmar" deja de decir "firmado" y una clave de intento hace que el nuevo permiso sea real · `Vigente`
+**Fecha:** 2026-09-27 · **Hito:** T115 · Del usuario, al recorrer G5
+
+Dos fallos de la misma pieza, ambos en el mismo agente contratado (el "comprador de tienda", `vitrinee_shopper`, uno por tienda, `C-147`).
+
+**1. "Ver y firmar" mentía tras una revocación.** RealOps solo guarda que se firmó una vez (`mandateId` no nulo); el estado real vive en AgentPey. La franja de "Mis agentes" y el catálogo ya lo preguntaban (T114); esta página, la que el propio texto de revocar señala como el sitio para "firmar uno nuevo", no. Ahora pide el mismo estado y, si es `revoked` o `expired`, dice "Revocado."/"Vencido." en vez de "✓ Firmado.".
+
+**2. No había manera real de volver a firmar.** La clave de idempotencia que RealOps mandaba a `POST /v1/consent_sessions` era `consent-<id del agente>`, fija para siempre. `respondOrCache` (`apps/web/src/partner-routes.ts`) guarda la respuesta de una clave **sin vencimiento**: pedir "firmar de nuevo" con la misma clave le devolvía a AgentPey la sesión original — ya revocada — en vez de crear una nueva. El botón "Firmar un permiso nuevo" habría estado ahí sin hacer nada. Se agregó `AgentConfig.signAttempt` (columna nueva, `alter table … add column if not exists`, como `comercio` en T104): la clave pasa a `consent-<id>-<intento>`, y cada intento de firma deja `mandateId` en `null` desde el momento en que empieza, no solo si termina — así "Ver y firmar" nunca vuelve a mostrar un Mandato viejo como vigente mientras uno nuevo está en camino.
+
+**Sigue siendo el mismo agente, no uno nuevo.** Contratar de nuevo la misma tienda con un permiso revocado o vencido ahora lleva a firmar, en vez de al catálogo que no puede usar (`C-147` no cambia: sigue habiendo un comprador por tienda).
+
+**Alternativa descartada: un agente nuevo por cada revocación.** Rompe `C-147` y confunde el historial de compras, que queda repartido entre varios agentes de la misma tienda.
+
+**Sin verificar:** el `alter table` de `store-postgres.ts` no tiene test unitario propio (ningún archivo de esta carpeta lo tiene); sigue el mismo patrón que la columna `comercio` de T104, ya en producción.

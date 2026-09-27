@@ -105,6 +105,14 @@ export interface AgentConfig {
    * names the old single-store venue that AgentPey no longer pays.
    */
   readonly comercio: string | null;
+  /**
+   * How many times signing was started for this agent record (T115). Not shown
+   * to a person; it exists so a re-sign after a revocation or expiry gets a
+   * consent session AgentPey has never cached a response for — `consent-${id}`
+   * alone would replay the same (now revoked) session forever, because a
+   * partner idempotency key's response is kept without an expiry.
+   */
+  readonly signAttempt: number;
   readonly createdAt: Date;
 }
 
@@ -255,6 +263,7 @@ export function newAgent(
     consentSessionId: null,
     mandateId: null,
     comercio,
+    signAttempt: 0,
     createdAt: now,
   };
 }

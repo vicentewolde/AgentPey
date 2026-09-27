@@ -5382,3 +5382,18 @@ opciones en `C-154`; espera decisión del usuario porque toca la autorización.
 **Evidencia.** `apps/realops` 219 tests en verde (2 nuevos), typecheck limpio; scripts de
 `revocar.html` sin errores de sintaxis, `public-pages.test.ts` 5/5. **Sin verificar en pantalla:** el
 aspecto del botón en la barra de la página de revocar.
+
+## T115 · Revocar y volver a firmar (2026-09-27, en curso)
+
+**En lenguaje llano.** Dos preguntas del usuario al revocar un comprador durante la prueba: "¿por
+qué la página de firmar sigue diciendo que está firmado?" y "¿puedo reactivarlo o tengo que
+contratar otro?". Las dos venían del mismo hueco: RealOps nunca podía pedirle a AgentPey una firma
+nueva de verdad para un agente ya usado, porque la marca que evita firmar dos veces por accidente
+(la "clave de idempotencia") era la misma para siempre. Ahora cada intento de firma tiene la suya, y
+la página de "Ver y firmar" dice "Revocado" o "Vencido" en vez de "Firmado" cuando corresponde.
+Decisión `C-155`.
+
+**Evidencia.** `apps/realops`: 223 tests en verde (3 nuevos, incluido uno de punta a punta:
+contratar de nuevo un comprador revocado lleva a firmar, no al catálogo, y el agente sigue siendo
+el mismo). `pnpm test` del repo entero en verde. **Sin verificar en vivo**: falta que el usuario
+revoque y vuelva a firmar en `agentpey.com`/`realops.agentpey.com`.

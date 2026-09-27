@@ -157,9 +157,23 @@ describe("starting a signature", () => {
     await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
 
     expect(agentpey.calls.returnUrls[before]).toBe(`http://127.0.0.1/agentes/${agentId}/volver`);
-    // Same key for the same agent: a double click reuses the invitation
-    // instead of minting a second one for the same permission.
-    expect(agentpey.calls.idempotencyKeys[before]).toBe(`consent-${agentId}`);
+    // Keyed on the agent *and* the attempt number (T115): a double click still
+    // reuses the same invitation, because the attempt only advances once a
+    // session is actually saved — but a later, genuine re-sign (after a
+    // revocation or expiry) must not replay this same cached response forever.
+    expect(agentpey.calls.idempotencyKeys[before]).toBe(`consent-${agentId}-1`);
+  });
+
+  it("keys a later re-sign to a new attempt, not the first one's cached response", async () => {
+    const cookie = await signIn("reintentar@ejemplo.cl");
+    const agentId = await configureAgent(cookie);
+
+    await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
+    const before = agentpey.calls.idempotencyKeys.length;
+    await fetch(`${baseUrl}/agentes/${agentId}/firmar`, form({}, cookie));
+
+    expect(agentpey.calls.idempotencyKeys[before]).toBe(`consent-${agentId}-2`);
+    expect(agentpey.calls.idempotencyKeys[before]).not.toBe(agentpey.calls.idempotencyKeys[before - 1]);
   });
 
   it("refuses to start a signature for someone else's agent", async () => {

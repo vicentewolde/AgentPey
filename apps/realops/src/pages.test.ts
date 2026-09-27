@@ -116,6 +116,7 @@ describe("the review page's revoke link carries an absolute way back (T114)", ()
       label: "Store Shopper",
       kind: "market_brief",
       mandateId: "mnd_1",
+      signAttempt: 0,
       tenantId: "ptn_x:t",
       comercio: null,
       createdAt: new Date("2026-09-26T10:00:00Z"),

@@ -516,18 +516,34 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
     try {
       const tenant = await config.agentpey.ensureTenant(account.externalRef);
       const { grant } = translatePermissions(agent.kind, agent.permissions, targets, now());
+      // T115: the attempt number, not the agent's bare id, so a genuine re-sign
+      // (after a revocation or an expiry) gets a request AgentPey has never
+      // cached a response for. `respondOrCache` (`partner-routes.ts`) keeps a
+      // key's response forever with no expiry, so `consent-${agent.id}` alone
+      // would replay the first — by now revoked — session on every later
+      // attempt. A double click within *this* attempt still reuses the same
+      // key, because `attempt` does not change until a session is saved below.
+      const attempt = agent.signAttempt + 1;
       const session = await config.agentpey.createConsentSession({
         tenantId: tenant.id,
         grant,
         // Where AgentPey sends them back to. It only works because this
         // origin is registered for this partner — see `return-urls.ts`.
         returnUrl: `${config.baseUrl.replace(/\/+$/, "")}/agentes/${agent.id}/volver`,
-        // Keyed on the agent, so a double click reuses the invitation
-        // instead of minting a second one for the same permission.
-        idempotencyKey: `consent-${agent.id}`,
+        idempotencyKey: `consent-${agent.id}-${attempt}`,
       });
 
-      await config.store.saveAgent({ ...agent, tenantId: tenant.id, consentSessionId: session.id });
+      // `mandateId` goes back to `null` the moment a new attempt starts, not
+      // only once it succeeds: a stale, already-revoked id must not make the
+      // review screen or a purchase candidate look signed while a fresh
+      // permission is only pending (T115).
+      await config.store.saveAgent({
+        ...agent,
+        tenantId: tenant.id,
+        consentSessionId: session.id,
+        mandateId: null,
+        signAttempt: attempt,
+      });
 
       if (session.consent_url === null) {
         sendHtml(
@@ -725,7 +741,15 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
           (candidate) => candidate.kind === "vitrinee_shopper" && candidate.comercio === store.slug,
         );
         if (existing !== undefined) {
-          if (signNow && existing.mandateId === null) await startSigning(account, existing, response);
+          // One shopper per store still holds (`C-147`): hiring the same
+          // store again never creates a second agent. But a revoked or
+          // expired permission cannot buy anything, so it is treated the same
+          // as never signed — sent to sign a fresh one, not to a catalogue it
+          // cannot use (T115).
+          const existingStatus =
+            existing.mandateId === null ? undefined : (await statusesFor([existing])).get(existing.mandateId);
+          const needsSigning = existing.mandateId === null || existingStatus === "revoked" || existingStatus === "expired";
+          if (signNow && needsSigning) await startSigning(account, existing, response);
           else redirect(response, existing.mandateId !== null && signNow ? `/catalogo?agente=${existing.id}` : `/agentes/${existing.id}`);
           return;
         }
@@ -769,7 +793,8 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
         return;
       }
       const translated = translatePermissions(agent.kind, agent.permissions, targets, now());
-      sendHtml(response, 200, reviewPage(agent, translated.grant, translated.controls, config.agentpeyBaseUrl, config.baseUrl));
+      const reviewStatus = agent.mandateId === null ? undefined : (await statusesFor([agent])).get(agent.mandateId);
+      sendHtml(response, 200, reviewPage(agent, translated.grant, translated.controls, config.agentpeyBaseUrl, config.baseUrl, reviewStatus));
       return;
     }
 

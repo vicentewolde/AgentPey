@@ -163,6 +163,7 @@ const STYLE = `
   .tag-realops { background: var(--paper-2); color: var(--ink-2); }
   .tag-refused { background: var(--danger-wash); color: var(--danger); }
   .signed { color: var(--accent); font-weight: 500; }
+  .refused { color: var(--danger); font-weight: 500; }
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
   .actions .button { margin-top: 0; }
   .head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -668,6 +669,8 @@ export function reviewPage(
   revokeBaseUrl: string,
   /** RealOps' own public address: where AgentPey's revoke page sends the person back to (T114). */
   selfUrl?: string,
+  /** What AgentPey currently says about this agent's mandate — "signed" lies otherwise once it is revoked or expired (T115). */
+  status?: string,
 ): string {
   return layout({
     title: bilingual("Review the permission", "Revisar el permiso"),
@@ -712,7 +715,7 @@ export function reviewPage(
         "<strong>Signing happens on AgentPey's site, not here.</strong> If you ever see a screen asking you to sign a Mandate on RealOps' domain, it is not ours.",
         "<strong>La firma ocurre en el sitio de AgentPey, no aquí.</strong> Si alguna vez ves una pantalla que te pide firmar un Mandato en el dominio de RealOps, no es nuestra.",
       )}</p>
-      ${signState(agent, revokeBaseUrl, selfUrl)}
+      ${signState(agent, revokeBaseUrl, selfUrl, status)}
     </div>
   </div>
 `,
@@ -720,7 +723,32 @@ export function reviewPage(
 }
 
 /** What the review card offers, given how far this agent has got. */
-function signState(agent: AgentConfig, revokeBaseUrl: string, selfUrl?: string): string {
+function signState(agent: AgentConfig, revokeBaseUrl: string, selfUrl?: string, status?: string): string {
+  // A mandate id RealOps stored does not mean the permission still stands — only AgentPey knows
+  // that. Before T115 this branch read "✓ Signed" forever, even after the person revoked it on
+  // AgentPey's own site: the one place meant to say so was the one place that kept lying.
+  if (agent.mandateId !== null && (status === "revoked" || status === "expired")) {
+    const label = status === "revoked" ? bilingual("Revoked.", "Revocado.") : bilingual("Expired.", "Vencido.");
+    return `<p class="refused">✕ ${tr(label)} ${tr(bilingual("Mandate", "Mandato"))} <code data-mandate-id>${escape(agent.mandateId)}</code></p>
+    <p>${tr(
+      status === "revoked"
+        ? bilingual(
+            "It cannot buy anything with this permission. To buy again, sign a new one below.",
+            "No puede comprar nada con este permiso. Para volver a comprar, firma uno nuevo abajo.",
+          )
+        : bilingual(
+            "Its validity window ended. To buy again, sign a new one below.",
+            "Su vigencia terminó. Para volver a comprar, firma uno nuevo abajo.",
+          ),
+    )}</p>
+    <form method="post" action="/agentes/${escape(agent.id)}/firmar"><button type="submit">${tr(bilingual("Sign a new permission →", "Firmar un permiso nuevo →"))}</button></form>
+    <p class="meta">${tr(
+      bilingual(
+        "This is the same agent, at the same store or of the same kind — not a new one. AgentPey checks a purchase against your most recent signed permission for it.",
+        "Es el mismo agente, para la misma tienda o del mismo tipo — no uno nuevo. AgentPey revisa una compra contra tu permiso firmado más reciente para él.",
+      ),
+    )}</p>`;
+  }
   if (agent.mandateId !== null) {
     return `<p class="signed">✓ ${tr(bilingual("Signed.", "Firmado."))} ${tr(bilingual("Mandate", "Mandato"))} <code data-mandate-id>${escape(agent.mandateId)}</code></p>
     <p><a class="button" href="/catalogo?agente=${escape(agent.id)}">${tr(bilingual("See what it can buy →", "Ver lo que puede comprar →"))}</a></p>
