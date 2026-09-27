@@ -5410,3 +5410,16 @@ escrita, en vez de nada. Decisión `C-156`, abierta.
 comprueba que el reintento la recupera). `pnpm test` del repo entero en verde. **Sin confirmar en
 vivo**: falta que el usuario reintente y, si vuelve a fallar, comparta los logs de Render de ese
 momento.
+
+## T117 · La causa real de un anclaje rechazado ya queda en los logs (2026-09-27, en curso)
+
+**En lenguaje llano.** Los tres reportes de hoy eran el mismo hecho: la firma de Freighter nunca se
+terminaba de anclar en Stellar, así que RealOps decía la verdad al mostrar "no está firmado". El
+mensaje que ve quien firma es a propósito genérico ("the wallet-signed transaction was rejected by
+the network"), para no mostrarle detalles técnicos de Stellar; el motivo real quedaba guardado pero
+nunca se escribía en los logs. Ahora sí. No se cambió nada del comportamiento del anclaje: solo se
+hizo visible lo que ya estaba pasando. Decisión `C-157`, abierta hasta ver el motivo real.
+
+**Evidencia.** `apps/web`: 255 tests en verde, sin cambios de comportamiento. `pnpm test` del repo
+entero en verde. **Sin confirmar**: la causa real. Falta que el usuario reintente y comparta los
+logs de Render (buscar `cause` en las líneas de `consent wallet anchor failed`).

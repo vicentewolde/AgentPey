@@ -84,6 +84,19 @@ import { readEnv as readEnvFrom, requireEnv, requireSecretKey } from "./env.js";
 import { createPublicDiscovery, handleDiscoverySearch } from "./discovery-route.js";
 import { createIssuerRegistrationLimiter } from "./issuer-registration-limit.js";
 import { log, logError } from "./logging.js";
+
+/**
+ * The Stellar/Soroban rejection behind a `submitSigned` failure, when there is
+ * one to show (T117). `registry.ts` wraps every network rejection in one
+ * generic `AgentPassError` message and keeps the real reason only as `cause`
+ * — safe to log here (a testnet transaction result, never a credential), but
+ * until now nothing read it, so a report like "the wallet-signed transaction
+ * was rejected" had no way to say whether that meant a stale sequence number,
+ * an expired time bound, or something else.
+ */
+function submitCause(error: unknown): string | undefined {
+  return error instanceof Error && error.cause instanceof Error ? error.cause.message : undefined;
+}
 import { routePartnerRequest } from "./partner-routes.js";
 import { createPostgresPendingWriteStore, type PostgresPendingWriteStore } from "./pending-write-store.js";
 import {
@@ -1490,7 +1503,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         walletAddress: session.walletAddress ?? null,
       });
     } catch (error) {
-      logError("wallet session anchor failed", error, { method: req.method ?? "unknown", path: pathname, status: 400 });
+      logError("wallet session anchor failed", error, { method: req.method ?? "unknown", path: pathname, status: 400, ...(submitCause(error) === undefined ? {} : { cause: submitCause(error) }) });
       sendJson(res, 400, { ok: false, ...errorBody(error) });
     }
     return;
@@ -1701,7 +1714,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         transactionHash,
       });
     } catch (error) {
-      logError("consent wallet anchor failed", error, { method: req.method ?? "unknown", path: pathname, status: 400 });
+      logError("consent wallet anchor failed", error, { method: req.method ?? "unknown", path: pathname, status: 400, ...(submitCause(error) === undefined ? {} : { cause: submitCause(error) }) });
       sendJson(res, 400, { ok: false, ...errorBody(error) });
     }
     return;
@@ -1893,7 +1906,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
       await directory.revokeMandate(mandate.mandateHash, revokeTx);
       sendJson(res, 200, { ok: true, mandateId: mandate.id, mandateHash: mandate.mandateHash, revokeTx });
     } catch (error) {
-      logError("revocation submit failed", error, { method: req.method ?? "unknown", path: pathname, status: 400 });
+      logError("revocation submit failed", error, { method: req.method ?? "unknown", path: pathname, status: 400, ...(submitCause(error) === undefined ? {} : { cause: submitCause(error) }) });
       sendJson(res, 400, { ok: false, ...errorBody(error) });
     }
     return;

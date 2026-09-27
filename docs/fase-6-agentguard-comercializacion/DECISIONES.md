@@ -6604,3 +6604,36 @@ Tras T115, el usuario completó las dos aprobaciones de Freighter en AgentPey y,
 **Lo que se hizo mientras tanto, sin esperar el diagnóstico:** `/agentes/:id/volver` reintenta la lectura de la sesión una vez más (con una pausa de 0,8 s) antes de darse por vencido, y ahora **registra en los logs de Render** por qué falló —el estado que AgentPey devolvió, o el error— cosa que antes se descartaba en silencio y hacía imposible saber qué pasó de verdad. Si la causa era una lectura intermitente (una conexión fría, una demora de testnet), esto la cubre sola. Si no, el próximo intento deja un rastro real en los logs en vez de nada.
 
 **Sigue sin confirmar.** El usuario debe volver a intentarlo; si falla de nuevo, los logs de Render del proceso de RealOps, en el momento del intento, dicen la causa exacta.
+
+### C-157 · "El anclaje fue rechazado por la red": el motivo real ya se registra, sigue sin confirmarse cuál es · `Investigación en curso`
+**Fecha:** 2026-09-27 · **Hito:** T117 · Reportado por el usuario
+
+Encontrada la causa raíz de los tres reportes de esta sesión ("no me deja aprobar el permiso",
+"al volver dice no está firmado", y este: "the wallet-signed transaction was rejected by the
+network"). Los tres son el mismo hecho visto desde ángulos distintos: la transacción firmada por
+Freighter no la acepta la red de Stellar al enviarla. Si nunca se ancla, el Mandato nunca se
+registra, y todo lo demás (T115, T116) estaba respondiendo correctamente a algo que de verdad
+nunca se firmó — no eran el problema.
+
+`packages/sdk/src/registry.ts`, `submitSigned()`: si `signAndSend` falla, envuelve el error de
+Stellar en un `AgentPassError("NetworkError", "the wallet-signed transaction was rejected by the
+network")` **a propósito** genérico (no expone detalles de Stellar a quien firma), y guarda el
+error real en `cause`. `apps/web/src/server.ts` ya registraba estos fallos (`logError`), pero
+`logError` solo imprime `error.message` — el mensaje genérico, nunca `cause`. La razón real nunca
+llegó a los logs de Render, en ninguno de los tres caminos que usan `submitSigned` (anclar una
+sesión clásica, anclar desde una invitación de consentimiento, revocar).
+
+**Arreglo, solo de diagnóstico, sin tocar ningún comportamiento ni respuesta:** los tres puntos
+ahora agregan `cause` (el mensaje del error de Stellar) al log, cuando lo hay. No se tocó
+`logError` en sí — a propósito, porque su comentario advierte que un error de `pg` puede llevar
+credenciales de conexión, y otros llamadores dependen de que solo se imprima `.message`.
+
+**Sospecha, sin confirmar:** `Client.from` no fija `timeoutInSeconds`, así que usa el valor por
+defecto de `@stellar/stellar-sdk/contract` para la transacción de anclaje, preparada *antes* de que
+la persona vea la pantalla de Freighter. Si tarda en firmar las dos aprobaciones, la transacción
+podría expirar antes de enviarse (`tx_too_late`). También pudo ser una cuenta sin fondos, un
+número de secuencia atrasado, u otra razón de la red — **no se cambia nada del código de firma
+hasta ver el mensaje real, por tratarse de custodia y firma de wallet** (`CLAUDE.md`).
+
+**Siguiente paso:** el usuario reintenta; si vuelve a fallar, los logs de Render dicen ahora la
+causa exacta (`cause`), y de ahí sale el arreglo de verdad.
