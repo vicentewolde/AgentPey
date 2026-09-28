@@ -6697,3 +6697,19 @@ los tests que asumían el 20 como límite exacto
 **Alternativa descartada: quitar el tope.** `C-80` ya lo decidió así a propósito
 ("un faucet sin tope es despertarse con la reserva vacía"); subirlo es ajustar el
 número, no la decisión.
+
+### C-160 · Conectar más wallets, no solo Freighter: aprobado, después del video · `Aprobada, pendiente de hacer`
+**Fecha:** 2026-09-28 · **Hito:** — · Del usuario, tras el Demo Day
+
+Un invitado del Demo Day probó RealOps con Lobstr y no pudo conectar: firmar el
+Mandato (`apps/web/public/consent.html`), revocarlo (`revocar.html`) y el alta
+del portal de Vitrinee (`apps/vitrinee-portal/public/app.js`) llaman directo a
+la API propia de Freighter, cargada desde un CDN — 13 llamadas en total, y
+ninguna otra wallet le contesta.
+
+**Decidido: se arregla con Stellar Wallets Kit** (Freighter, Lobstr, xBull,
+Albedo, Hana detrás de una interfaz común y un selector en pantalla), **después
+del video del 29**. Toca las tres pantallas de firma/conexión — la parte más
+sensible del proyecto — y necesita tiempo para probarlo con al menos dos
+wallets antes de confiar en que funciona; no es algo para tocar la noche
+anterior a grabar. Ticket en Exponential, sin número T todavía.
