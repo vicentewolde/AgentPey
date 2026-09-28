@@ -279,6 +279,20 @@ describe("the catalogue screen", () => {
       bazaarFails = false;
     }
   });
+
+  it("shows a second agent of the same kind its own products, not an empty page (T118)", async () => {
+    const cookie = await signIn("segundo-del-mismo-tipo@ejemplo.cl");
+    // The first market_brief agent is the one `coverageOf` (catalog.ts) treats as
+    // "the" representative of that kind — its `agentId` is what every SignalDesk
+    // card's `coverage` names, regardless of which agent's own page is asked for.
+    await signAgent(cookie, "market_brief");
+    const secondAgentId = await signAgent(cookie, "market_brief");
+
+    const html = await (await fetch(`${baseUrl}/catalogo?agente=${secondAgentId}`, { headers: { cookie } })).text();
+
+    expect(html).toContain("signaldesk:market-brief-xlm-usdc");
+    expect(html).not.toContain("Nothing here right now.");
+  });
 });
 
 describe("the permission an out-of-grant item needs", () => {

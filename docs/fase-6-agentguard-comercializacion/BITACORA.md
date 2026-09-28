@@ -5425,3 +5425,18 @@ entero en verde. **Cierre (2026-09-27).** El registro nuevo funcionó al primer 
 `tx_insufficient_balance`. La wallet conectada paga el fee de anclaje (≈0,184 XLM de Soroban), y no
 tenía saldo. Se resuelve fondeando la wallet con Friendbot, sin cambiar código. Detalle en `C-157`.
 Queda anotada, sin hacer, una mejora: revisar el saldo de XLM antes de pedir la firma.
+
+## T118 · Un segundo agente del mismo tipo ve su propio catálogo (2026-09-27, en curso)
+
+**En lenguaje llano.** Al probar H4 con dos agentes de informes de mercado —uno con
+el tope chico por defecto y otro con 5 USDC—, "lo que puede comprar" del segundo
+salía vacío aunque su permiso estaba firmado y funcionando. La causa: el catálogo
+marcaba cada producto con un solo agente "dueño" de ese tipo, el primero que se
+había firmado, y comparaba por ese agente exacto en vez de por el tipo. Ahora
+compara por tipo (y por tienda, si aplica), así que cualquier agente del tipo
+correcto ve sus productos. No toca quién puede comprar de verdad, solo qué se
+muestra. `C-158`.
+
+**Evidencia.** `apps/realops`: 225 tests en verde (1 nuevo, que firma dos agentes
+del mismo tipo y comprueba que el segundo ve el catálogo). `pnpm test` del repo
+entero en verde. **Sin verificar en vivo**: falta que el usuario lo confirme.

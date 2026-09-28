@@ -6652,3 +6652,27 @@ pedir la firma, como ya hace Vitrinee con `payoutReadiness` para USDC (T105). Ev
 complete dos aprobaciones de Freighter para enterarse recién al final de que le faltaba fondear.
 Anotado, no implementado: no es un bloqueante — fondear la wallet resuelve el caso de hoy — y toca
 la pantalla de firma, que es parte sensible (custodia y firma de wallet).
+
+### C-158 · El catálogo enfocado de un agente se filtra por su tipo (y su tienda), no por cuál agente "cubre" cada tarjeta · `Vigente`
+**Fecha:** 2026-09-27 · **Hito:** T118 · Al recorrer H4 con dos agentes del mismo tipo
+
+`coverageOf` (`catalog.ts`) marca cada tarjeta del catálogo con **un solo agente
+representante** por tipo — el primero que encuentra firmado — asumiendo que todos
+los agentes de un mismo tipo firman el mismo permiso (su comentario lo dice: "they
+hold the same grant"). Esa suposición se rompe en cuanto alguien contrata **dos**
+agentes del mismo tipo con límites distintos, algo que el propio formulario permite
+desde siempre. `GET /catalogo?agente=<id>` filtraba comparando
+`card.coverage.agentId === agent.id`: para el segundo agente de un tipo, esa
+comparación nunca daba igual, y "lo que puede comprar" salía vacío aunque el
+permiso estuviera firmado y vigente.
+
+Arreglo: el catálogo enfocado ahora filtra por **el tipo del agente** (y, si es
+comprador de tienda, por su propia tienda), datos que cada tarjeta ya trae, en vez
+de por la identidad que `coverageOf` eligió como representante. Cuál agente
+compra de verdad ya se decide aparte, al pedir la compra (`POST /instruccion`),
+contra las filas de la cuenta — este filtro solo decidía qué mostrar.
+
+**Alcance de lo que no cambia.** `coverageOf` sigue eligiendo un solo agente
+"representante" para la etiqueta de cada tarjeta (in the grant / outside),
+que puede seguir sin ser el agente exacto que la persona tenía en mente; eso es
+cosmético, no una autorización. Nada de esto toca `checkMandate` ni el enforcement.

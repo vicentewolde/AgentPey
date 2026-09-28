@@ -914,7 +914,21 @@ export function createRealOpsServer(config: RealOpsConfig): Server {
       if (agentParam !== null) {
         const agent = await config.store.findAgent(account.id, agentParam);
         if (agent !== undefined) {
-          shown = cards.filter((card) => card.coverage.state !== "outside" && card.coverage.agentId === agent.id);
+          // Not `card.coverage.agentId === agent.id`: `coverageOf` (`catalog.ts`)
+          // names only ONE representative agent per kind (the first signed one
+          // it finds), on the assumption that every agent of a kind holds the
+          // same grant. That breaks the moment an account hires a second agent
+          // of the same kind with its own limits (T118) — its own page linked
+          // here with its own id, and the strict-identity filter matched
+          // nothing. Every card of this agent's kind (and, for a store
+          // shopper, of its own store) is what its grant would actually name,
+          // regardless of which sibling `coverageOf` happened to point at.
+          shown = cards.filter(
+            (card) =>
+              card.coverage.state !== "outside" &&
+              card.kind === agent.kind &&
+              (agent.kind !== "vitrinee_shopper" || card.store?.slug === agent.comercio),
+          );
           const name = displayLabel(agent.label);
           const permissionStatus = agent.mandateId === null ? undefined : (await statusesFor([agent])).get(agent.mandateId);
           maxPerPurchase = agent.permissions.perTx;
