@@ -28,13 +28,16 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T107 | `cmugh4ji00005l6049a7lvjl9` | RealOps se entiende: nombres, aviso de rechazo, email y grillas ordenadas | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-148](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T108 | `cmughle0e000pl6042nj1ies5` | Firma y recibo claros: wallet arriba, vuelta al catálogo, recibo legible | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-149](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T109 | `cmughv6vh0011l604343dn9zh` | Contratar en menos pasos: una pregunta, contratar y firmar, catálogo por agente, búsqueda | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-150](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
-| T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `IN_PROGRESS` | 2026-09-25 | 2026-09-25 | | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
+| T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
 | T111 | `cmuh17lc20001jm04rxvki5s9` | `pnpm run rail:topup`: recargar el contrato de pago de una cuenta desde la reserva | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [C-152](../fase-6-agentguard-comercializacion/DECISIONES.md) | |
 | T112 | `cmuii56q80001jm049l9gp09a` | Una tienda Shopify gratuita se suma a Vitrinee: conector, alta y pedido real | EXPONENTIAL | `DONE` | 2026-09-26 | 2026-09-26 | 2026-09-26 | [VT-33 a VT-35](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | mergeado (`f192c42`), verificado en vivo con una tienda Shopify real |
 | T113 | `cmuj43ha40007l3047thc1y5v` | RealOps: saldos visibles donde se compra, rechazo por stock claro y compradores por tienda explicados | EXPONENTIAL | `DONE` | 2026-09-26 | 2026-09-26 | 2026-09-26 | [C-153](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`fc707a0`) |
-| T114 | `cmuj5iw05000jl304lf5j93m7` | Wallet arriba al revocar, permisos revocados a la vista y "Volver" que funciona | EXPONENTIAL | `QA` | 2026-09-26 | | | [C-154](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado; falta ver "Volver" en vivo |
-
-| T110 | `cmugzc1cj000njp042cuod04w` | Vitrinee no publica productos con SKU repetido | EXPONENTIAL | `DONE` | 2026-09-25 | 2026-09-25 | 2026-09-25 | [VT-32](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | |
+| T114 | `cmuj5iw05000jl304lf5j93m7` | Wallet arriba al revocar, permisos revocados a la vista y "Volver" que funciona | EXPONENTIAL | `DONE` | 2026-09-26 | 2026-09-26 | 2026-09-27 | [C-154](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`e7671a5`, `b2760a5`); "Volver" confirmado en vivo |
+| T115 | `cmuk047gd0001id04g3eritec` | Revocar y volver a firmar: el permiso revocado se ve como tal y ya se puede firmar de nuevo | EXPONENTIAL | `DONE` | 2026-09-27 | 2026-09-27 | 2026-09-27 | [C-155](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`3f9acae`) |
+| T116 | `cmuk65kix0001l7041zhihsnv` | `/volver` con reintento y registro: diagnosticar "no está firmado" tras completar Freighter | EXPONENTIAL | `DONE` | 2026-09-27 | 2026-09-27 | 2026-09-27 | [C-156](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`66f6f47`) |
+| T117 | `cmukfdast0001ig043zdtr47g` | La razón real de un anclaje rechazado por la red queda en los logs | EXPONENTIAL | `DONE` | 2026-09-27 | 2026-09-27 | 2026-09-28 | [C-157](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`3119956`); causa real confirmada (`tx_insufficient_balance`, wallet sin XLM) |
+| T118 | `cmukhf4ty0009ig04m2uhklw5` | Un segundo agente del mismo tipo ve su propio catálogo, no uno vacío | EXPONENTIAL | `DONE` | 2026-09-27 | 2026-09-27 | 2026-09-27 | [C-158](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`b05779c`) |
+| T119 | — (chore, sin ticket Exponential propio) | Tope de cuentas patrocinadas: 20 a 40, reserva recargada | EXPONENTIAL | `DONE` | 2026-09-28 | 2026-09-28 | 2026-09-28 | [C-159](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`071d079`) |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
@@ -52,10 +55,12 @@ misma vive en `cc/t103-plataforma-comercios` (solo documentación).
 | Ticket (CUID) | Título | Estado | Origen |
 |---|---|---|---|
 | `cmuebl53x000hl704c89ktw57` | Rails de tenant con los límites del Mandato (opción b de `C-133`) | `BACKLOG` | [C-133](../fase-6-agentguard-comercializacion/DECISIONES.md) |
-| `cmuedg4ld000pl004tv0q2n5o` | Archivar el repo viejo `vicentewolde/Vitrinee` (la segunda mitad de lo que era T102; CHORE, bloqueado por T101) | `READY_TO_PLAN` | [C-134](../fase-6-agentguard-comercializacion/DECISIONES.md) |
-| `cmueyt6kt001tjx04ew39o0up` | App de Jumpseller con OAuth para el alta de comercios (después del 29; bloqueado por T105) | `NEEDS_REFINEMENT` | [VT-28](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) |
+| `cmuedg4ld000pl004tv0q2n5o` | Archivar el repo viejo `vicentewolde/Vitrinee` (la segunda mitad de lo que era T102; CHORE, bloqueado por T101) | `DONE` (2026-09-26, en GitHub) | [C-134](../fase-6-agentguard-comercializacion/DECISIONES.md) |
+| `cmueyt6kt001tjx04ew39o0up` | App de Jumpseller con OAuth para el alta de comercios | `ARCHIVED` (2026-09-26: sin plan PRO no hay nada que tramitar) | [C-151](../fase-6-agentguard-comercializacion/DECISIONES.md) |
 | `cmueyt8k8001xjx04s8kkui2b` | Panel completo del comercio en Vitrinee (después del 29; bloqueado por T105) | `BACKLOG` | [C-144](../fase-6-agentguard-comercializacion/DECISIONES.md) |
 | `cmueytafx0021jx045qin5t41` | El comercio trae su propia llave de firma (bloqueado por T105) | `BACKLOG` | [VT-27](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) |
+| `cmuj5iydw000nl304v9ksmf4w` | Dos comercios en una cuenta: la credencial más reciente manda y el agente anterior deja de poder comprar | `READY_TO_PLAN` (opción (a) aprobada, después del video) | [C-154](../fase-6-agentguard-comercializacion/DECISIONES.md) |
+| `cmulesr5g0001k104kmk1wcpo` | Conectar más wallets, no solo Freighter (Stellar Wallets Kit) | `READY_TO_PLAN` (aprobado, después del video) | [C-160](../fase-6-agentguard-comercializacion/DECISIONES.md) |
 
 ## Acciones del usuario y fechas de hitos
 
@@ -172,3 +177,17 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
 - **2026-09-26**, Claude Code, con el visto bueno del usuario: T112 y T113 verificados en vivo
   y `DONE`. T114 creado (`QA`, "Volver" al revocar y permisos revocados a la vista). Deuda nueva
   `READY_TO_PLAN`: "Dos comercios en una cuenta" (`C-154`, opción (a), después del video).
+- **2026-09-27 a 2026-09-28**, Claude Code: recorrido de prueba completo (guiones A a L). T114
+  verificado en vivo y `DONE`. T115 a T118 encontrados y arreglados en el camino (`C-155` a
+  `C-158`): re-firmar tras revocar, diagnóstico del anclaje rechazado por red (causa real:
+  `tx_insufficient_balance`, la wallet sin XLM — no un bug), y el catálogo de un segundo agente
+  del mismo tipo. T119: tope de cuentas patrocinadas de 20 a 40, reserva recargada (`C-159`).
+  Deuda nueva `READY_TO_PLAN`: "Conectar más wallets, no solo Freighter" (`C-160`, tras un invitado
+  del Demo Day sin poder usar Lobstr), después del video.
+- **2026-09-28**, Claude Code, auditoría del tablero a pedido del usuario ("sigo viendo tareas por
+  hacer que ya fueron hechas"). Encontrado y corregido: la acción "T101 · fecha objetivo" seguía
+  `IN_PROGRESS` con el ticket `BLOCKED` desde el 26 sin decisión — pasó a `CANCELLED` (Shopify ya
+  resuelve lo que T101 buscaba para el video; Jumpseller sigue bloqueado aparte). En esta tabla:
+  una fila duplicada de T110 (una decía `IN_PROGRESS`, la otra `DONE`) se corrigió a una sola;
+  T114 se actualizó a `DONE`; "Archivar el repo viejo" y la app de Jumpseller tenían el estado
+  viejo (`READY_TO_PLAN`/`NEEDS_REFINEMENT`) en vez del real (`DONE`/`ARCHIVED`).
