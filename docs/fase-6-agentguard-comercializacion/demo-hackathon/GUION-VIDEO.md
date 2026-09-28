@@ -12,13 +12,19 @@
 > los dos textos, uno frente al otro: el español es lo que dices, el inglés es lo
 > que se subtitula. Van frase por frase en el mismo orden, para que los
 > subtítulos se sincronicen con la voz.
+>
+> **Actualizado 2026-09-28.** El recorrido de prueba de § 7 ya se hizo — dos
+> sesiones completas, mucho más a fondo de lo que pide este guion (llegó hasta
+> la API de partners y el panel de estado). Los hallazgos que importan para
+> filmar están en § 7; lo que se arregló en el camino, en § 6. La escena 6
+> (el rechazo) ya está **verificada en vivo**, no solo en tests.
 
 ## 1. Cómo usarlo
 
-1. **Recorrido de prueba, sin grabar (hoy o mañana).** Sigue las escenas 0 a 7 en
-   orden. En cada una, el cuadro **Qué mirar** dice qué puede fallar. Anota lo
-   que encuentres en la tabla del § 7.
-2. **Arregla lo que valga la pena** (§ 6 dice qué conviene y qué no).
+1. **El recorrido de prueba ya está hecho** (§ 7). Lo que falta antes de grabar
+   es § 3: la tienda nueva y la cuenta de grabar.
+2. **Arregla lo que valga la pena** (§ 6 dice qué conviene y qué no — ya está
+   decidido).
 3. **Grabación (29).** Escena por escena, no de corrido: cada una se puede
    repetir y se corta al montar. Los tiempos de abajo son el objetivo final.
 
@@ -42,24 +48,41 @@ subtítulos en inglés, de dos líneas como máximo por pantalla.
 ## 3. Lo que hace falta antes de empezar
 
 - [ ] **Una tienda Shopify de desarrollo nueva, sin registrar en Vitrinee**
-      (decidido 2026-09-26, `VT-33`; gratis, y el pedido sí llega a la tienda).
-      Creada desde el Dev Dashboard, con su app (`read_products` y
-      `write_orders`) instalada, moneda CLP y 3 o 4 productos con SKU propio y
-      precio bajo 2.850 CLP (`C-133`); sirve `demo-hackathon/shopify-productos.csv`
-      con otros SKU. **`agenticom` ya está dada de alta durante las pruebas y no
-      hay forma de deshacerlo**, igual que MycoKit y Bazar Cordillera: hace falta
-      una tienda **distinta** para la escena 1. Registrar la misma tienda dos
-      veces con otra dirección duplicaría sus productos, y RealOps esconde esos
-      productos (`C-145`, punto 7).
+      (decidido 2026-09-26, `VT-33`; gratis, y el pedido sí llega a la tienda,
+      confirmado en vivo el 27 — ver § 7). Creada desde el Dev Dashboard, con
+      su app (`read_products` y `write_orders`) instalada, moneda CLP y 3 o 4
+      productos con SKU propio y precio bajo 2.850 CLP (`C-133`); sirve
+      `demo-hackathon/shopify-productos.csv` con otros SKU. **La tienda de
+      prueba (`agentcommerce`, `agenticom.myshopify.com`) ya está dada de alta
+      y no hay forma de deshacerlo**, igual que MycoKit y Bazar Cordillera:
+      hace falta una tienda **distinta** para la escena 1. Registrar la misma
+      tienda dos veces con otra dirección duplicaría sus productos, y RealOps
+      esconde esos productos (`C-145`, punto 7).
+- [ ] **La dirección de la tienda en el formulario del portal se escribe
+      completa**, `<nombre>.myshopify.com` (el portal ya acepta variantes —
+      solo el nombre, con `https://`, la URL del admin — desde el 27,
+      `C-154`/nota; si pega algo raro y sale "Completa todos los campos",
+      revisa que sea una de esas formas).
 - [ ] **Un solo comprador de tienda en la cuenta de grabar.** Con dos tiendas en
       una cuenta, el primer comprador pierde su permiso de comprar (`C-154`, aún
-      sin arreglar).
+      sin arreglar — la opción elegida se hace después del video).
 - [ ] **Una wallet dueña con Freighter en testnet**, con XLM y con la línea de
       confianza de USDC (emisor `GBBD47…LFLA5`); si no, el alta se detiene en la
       segunda prueba. Puede ser la misma de otra tienda (`VT-31`).
-- [ ] **Una cuenta nueva de RealOps para grabar**, con otro correo. Cada cuenta
-      recibe **3 USDC de crédito** en su primera compra (`C-131`); con 1,04 por
-      compra alcanzan dos.
+- [ ] **La wallet que va a firmar el Mandato también necesita XLM de testnet**,
+      aparte de la del punto anterior si es otra: anclar el Mandato es una
+      transacción de Soroban (~0,18 XLM de fee) que paga la wallet conectada,
+      no AgentPey. Sin XLM, Freighter deja firmar las dos aprobaciones pero el
+      anclaje falla al final con "the wallet-signed transaction was rejected
+      by the network" (hallado y confirmado el 27, `C-157`). Fondéala antes con
+      el botón "Fund with Friendbot" de Freighter, o
+      `https://friendbot.stellar.org?addr=<clave pública>`.
+- [ ] **Una cuenta de RealOps para grabar, con saldo ya cargado — no una
+      recién creada justo antes.** El cupo de cuentas nuevas con crédito
+      automático se agotó durante las pruebas (20 de 20) y se subió a 40 el
+      28 (`C-159`), así que una cuenta nueva sí recibe sus 3 USDC de crédito;
+      aun así, usar una que ya compró antes evita el primer-compra-despliega-
+      el-contrato de más abajo.
 - [ ] Freighter desbloqueado y en **Testnet**, datos de envío de prueba (se ven
       en pantalla), zoom del navegador en 125 %, "No molestar" activado.
 - [ ] Un ensayo completo de la escena 4 con la cuenta de grabar, **antes** de
@@ -129,6 +152,9 @@ dices y **Subtítulos** el mismo texto en inglés, tal cual; **Qué mirar** es l
 - Que el client secret no quede a la vista en ningún momento (campo, historial del
   navegador, captura del portapapeles).
 - Que el mensaje de éxito muestre la dirección completa, legible.
+- Escribe la dirección de la tienda **completa** (`<nombre>.myshopify.com`):
+  el 26 fallaba con solo el nombre; ya está arreglado, pero no lo pruebes por
+  primera vez en cámara.
 
 ### 2 · Aparece sin deploy (1:20 a 1:35)
 
@@ -186,6 +212,8 @@ el montaje. Que las tarjetas no salgan duplicadas ni con SKU repetido.
 - Que "Lo que autorizas" en AgentPey se lea al zoom 125 % sin cortarse.
 - El aviso de "Mandate anchored" con su hash. Anota cuánto tarda el anclaje.
 - Que el botón grande lleve de verdad a **What <agente> can buy**.
+- **La wallet que firma necesita XLM** (ver § 3): sin fondos, el anclaje falla
+  después de las dos aprobaciones, no antes. Ensáyalo con la cuenta de grabar.
 
 ### 4 · La compra (2:25 a 3:10)
 
@@ -220,11 +248,11 @@ Subtítulo:
 **Qué mirar:**
 - **Cuánto tarda de verdad**, del clic al pago. Si pasa de ~20 s, o se corta al
   montar o se hace una compra previa fuera de cámara.
-- La tarjeta de **Deliveries** sigue diciendo "delivered" aunque el pedido no
-  llegó a Jumpseller (T101). El aviso verde dice "Bought", que sí es cierto:
-  muestra el aviso, no la tarjeta.
 - Que el enlace a Stellar Expert abra la transacción correcta y que el monto sea
   el del producto.
+- Con la tienda Shopify de esta escena, el pedido llega de verdad a la tienda
+  (confirmado en vivo el 27) — la duda de la tarjeta "delivered" que tenía
+  Jumpseller ya no aplica a lo que se filma; no hace falta mencionarla.
 
 ### 5 · La prueba (3:10 a 3:45)
 
@@ -234,10 +262,7 @@ wallet dueña) → **What agents bought from you** → el pedido nuevo → enlac
 pass", las tres comprobaciones en verde, el producto y el total (`C-149`).
 Enlace **Payment** de paso.
 
-**Voz (español, la que dices).** Con la tienda Shopify el pedido sí llega a la
-tienda (`VT-33`), así que esta es la versión buena; la que decía "el pedido aún no
-llega" (Jumpseller en 404, `C-151`) solo sirve si la escena 1 se graba con una
-tienda Jumpseller:
+**Voz (español, la que dices):**
 
 > Volvamos al lado del vendedor. El panel del dueño muestra la venta, con
 > enlaces al pago y al recibo. El recibo está firmado por la tienda, anclado en
@@ -260,8 +285,9 @@ hash del pago en los atributos.
 **Qué mirar:**
 - Que la página del recibo salga en inglés (lo decide el navegador; si sale en
   español, agrega `?lang=en` a la dirección).
-- Que el pedido nuevo salga arriba y con el estado correcto: **"Paid, order not
-  yet in your store"** si sigue el 404, **"Paid, order in your store"** si no.
+- Que el pedido nuevo salga arriba y diga **"Paid, order in your store"**
+  (confirmado en vivo el 27: el pedido llegó a Shopify como Paid y el stock
+  bajó).
 - Que la sesión del portal siga abierta (dura 12 horas).
 
 ### 6 · El límite (3:45 a 4:20)
@@ -285,12 +311,12 @@ rojo **Refused: <producto>**, el motivo en lenguaje llano y "Nothing was paid"
 > and says why. That limit isn't in the agent's prompt, so there is nothing to
 > inject.
 
-**Qué mirar (esta escena no está verificada en vivo, solo en tests):**
-- Que el rechazo aparezca de verdad con un texto claro (el esperado es "The price
-  is above the maximum per purchase you signed", o el del tope diario). 20 unidades de un producto de ~3 USDC son
-  60 USDC, sobre los 25,00 por compra. Si los productos son tan baratos que
-  20 no alcanzan, contrata con un tope más bajo (el formulario nuevo deja
-  editarlo, por ejemplo 3,00) y pide 5.
+**Qué mirar — verificada en vivo el 27, dos veces (una por tope de compra, una
+por tope diario); en las dos el rechazo salió, no se cobró nada y el límite del
+día no se movió:**
+- Que el rechazo aparezca con un texto claro. 20 unidades de un producto de ~1,5
+  USDC pasan el tope de 25,00 por compra fácilmente; si tu tope es más bajo,
+  ajusta la cantidad para pasarlo.
 - Que el rechazo **no cuente contra el límite del día**. Mira **Daily limit**
   en **My services** antes y después del intento; debe quedar igual.
 - Que ningún dinero se mueva (el saldo del contrato no cambia).
@@ -316,7 +342,7 @@ rojo **Refused: <producto>**, el motivo en lenguaje llano y "Nothing was paid"
 > agents with a wallet that has rules.
 
 **Qué mirar:** que la frase "real online stores" siga siendo cierta el día
-de grabar (hoy son dos y una tercera para el video).
+de grabar (hoy son tres, más una cuarta para el video).
 
 ## 5. Plan B por escena
 
@@ -324,6 +350,7 @@ de grabar (hoy son dos y una tercera para el video).
 |---|---|
 | Freighter no abre o se desconecta | Recarga la página, desbloquea Freighter, repite solo esa escena |
 | El alta falla en una prueba | El mensaje dice cuál. La 2ª es la línea de USDC de la wallet; la 4ª es el faucet de testnet (`friendbot`), reintenta en un minuto |
+| El anclaje falla tras las dos firmas, "rejected by the network" | La wallet que firma no tiene XLM de testnet (`C-157`). Fondéala con Friendbot y repite solo esa parte de la escena 3 |
 | La compra tarda o da error | Repite la escena; si el contrato de la cuenta está sin saldo, avísame y lo reviso antes de grabar de nuevo |
 | El rechazo no aparece | No lo inventes: revisa el § 6 y avísame; sin esa escena el video dura 4:15 |
 | El pedido no aparece en Shopify | Repite la compra; si el saldo del contrato es bajo, `rail:topup`. Si sigue sin aparecer, pega el mensaje y lo reviso antes de grabar |
@@ -331,44 +358,62 @@ de grabar (hoy son dos y una tercera para el video).
 ## 6. Fallas ya conocidas y mejoras candidatas
 
 Ordenadas por lo mucho que se notan en el video. Los puntos 1 y 3 se dejan como
-están por decisión del usuario; el 2 sigue abierto.
+están por decisión del usuario; el resto ya está cerrado o resuelto.
 
 | # | Qué | Dónde se ve | Costo | Recomendación |
 |---|---|---|---|---|
-| 1 | **El portal dice "the order reaches your store"** en su portada, y hoy no es cierto mientras Jumpseller responda 404 | Portada de `vitrinee.agentpey.com`, escena 1 | Cambiar una frase | **Decidido 2026-09-25: no se corrige** (el usuario considera que nadie lo va a preguntar). La voz de la escena 5 sí dice la verdad |
-| 2 | ~~El recibo es JSON crudo~~ **Resuelto en T108** (`C-149`): página legible | Escena 5 | Una página nueva de Vitrinee | Lo más valioso para el espectador. Si no alcanza, Chrome con "Dar formato" lo hace pasable |
-| 3 | **En parte resuelto en T107/T108**: el aviso dice "Bought" y el recibo tiene página; la tarjeta todavía dice **"delivered"** en una compra que no llegó a Jumpseller, y no muestra el enlace al recibo (Vitrinee lo manda anidado y RealOps busca otro campo) | Escena 4 | Cambio pequeño en RealOps | **Decidido 2026-09-25: no se corrige.** No leas "entregado" en voz alta; queda anotado como deuda |
+| 1 | **El portal dice "the order reaches your store"** en su portada — ya es cierto con la tienda Shopify, así que esto dejó de ser un problema para el video, aunque la frase sigue sin corregirse en general | Portada de `vitrinee.agentpey.com`, escena 1 | — | **Decidido 2026-09-25: no se corrige.** Sin urgencia: ya no afecta lo que se filma |
+| 2 | ~~El recibo es JSON crudo~~ **Resuelto en T108** (`C-149`): página legible | Escena 5 | — | Cerrado |
+| 3 | **En parte resuelto en T107/T108**: el aviso dice "Bought" y el recibo tiene página. La tarjeta de "delivered" en RealOps sigue sin verificar para el caso general (Vitrinee lo manda anidado y RealOps busca otro campo), pero con Shopify el pedido sí llega, así que no es algo que se note al grabar | Escena 4 | Cambio pequeño en RealOps | **Decidido 2026-09-25: no se corrige.** Ya no hace falta ni mencionarlo en el guion — ver escena 4 |
 | 4 | **Tres ventanas de Freighter seguidas** | Escena 3 | Montaje | Acortar al montar; no tocar el flujo |
 | 5 | **La primera compra de una cuenta nueva** despliega su contrato y puede tardar | Escena 4 | Ensayo previo | Cortar al montar o hacer una compra previa fuera de cámara |
-| 6 | **La tienda de la escena 1 no se puede repetir** con ninguna ya registrada; no hay forma de darla de baja | Escena 1 | Crear una tienda Jumpseller nueva | Necesaria; ver § 3 |
-| 7 | **SKU repetido**: los productos de demostración de Jumpseller también se publican | Escena 2 | Filtro en `isSellable`, ya hay tarea sugerida | Alcanza con borrarlos a mano de la tienda nueva |
-| 8 | ~~Jumpseller 404 al crear pedidos (T101)~~ **Resuelto con Shopify** (T112): el pedido llega a la tienda | Escena 5 | — | Cerrado; T101 sigue bloqueado para Jumpseller (`C-151`) |
+| 6 | **La tienda de la escena 1 no se puede repetir** con ninguna ya registrada; no hay forma de darla de baja | Escena 1 | Crear una tienda Shopify nueva | Necesaria; ver § 3 |
+| 7 | **SKU repetido**: los productos de demostración de una plataforma también se publican | Escena 2 | Filtro ya existe (`VT-32`) | Cerrado desde T110; solo evitar SKU repetidos en la tienda nueva |
+| 8 | ~~Jumpseller 404 al crear pedidos (T101)~~ **Resuelto con Shopify** (T112): el pedido llega a la tienda | Escena 5 | — | Cerrado; T101 sigue bloqueado solo para Jumpseller (`C-151`) |
+| 9 | **La dirección de la tienda en el alta del portal** solo aceptaba `<nombre>.myshopify.com` exacto | Escena 1 | — | **Resuelto el 26** (`shopHostFrom`): acepta el nombre solo, con `https://`, o la URL del admin |
+| 10 | **El anclaje del Mandato falla con "rejected by the network"** si la wallet no tiene XLM de testnet | Escena 3 | — | **No es un fallo del producto**: es un requisito (fondear la wallet). Anotado en § 3 y en el plan B |
+| 11 | **Revocar un permiso y volver a firmarlo no funcionaba de verdad** (la clave que evita duplicados nunca cambiaba); tampoco el botón "Volver" al revocar | No es una escena del video | — | **Resuelto el 27** (`C-155`, `C-154` nota). No afecta la grabación, solo se prueba fuera de cámara si se quiere mostrar revocación |
 
 ## 7. Hallazgos del recorrido de prueba
 
-Llénalo tú (o me pasas lo que viste y lo lleno yo).
+Hecho en dos sesiones (26 y 27 de septiembre), mucho más a fondo de lo que pide
+este guion — llegó hasta la API de partners y el panel de estado interno, que no
+se filman. Lo que sigue es lo relevante para las escenas 0 a 7; el detalle
+completo de cada hallazgo está en `docs/fase-6-agentguard-comercializacion/DECISIONES.md`
+(`C-151` a `C-159`) y `BITACORA.md` (T112 a T119).
 
 | Escena | Qué pasó | Segundos | ¿Falla o mejora? | Qué hago |
 |---|---|---|---|---|
-| | | | | |
+| 1 | Alta con "Shopify" y una dirección sin `.myshopify.com` (solo el nombre) daba "Completa todos los campos" y borraba el secret | — | Falla | **Arreglado** (`shopHostFrom`, 26/09). Escribe la dirección completa la primera vez igual, por las dudas |
+| 1 | Las cuatro pruebas del alta, con la dirección correcta | ~15 s | Como se esperaba | Nada |
+| 3 | Firmar el Mandato con una wallet sin XLM: las dos aprobaciones de Freighter se completan, y el anclaje falla al final con "the wallet-signed transaction was rejected by the network" | — | No es una falla del producto — es un requisito no documentado antes de hoy | Fondear la wallet con Friendbot antes de grabar (ya en § 3) |
+| 4 | Compra real de un agente contra la tienda Shopify | — | Como se esperaba | Nada |
+| 4/5 | El pedido llega a la tienda Shopify como **Paid**, con el stock descontado y el hash del pago en los atributos | — | Como se esperaba (esto es lo nuevo de T112, antes bloqueado por Jumpseller) | Nada |
+| 6 | Pedir más del tope por compra: rechazo correcto, nada cobrado, límite del día sin cambios | — | Como se esperaba | Nada — **verificada en vivo, ya no solo en tests** |
+| 6 | Pedir lo suficiente para pasar el tope diario (sumado a lo ya gastado ese día en la cuenta): rechazo correcto con "supera tu tope de gasto del día" | — | Como se esperaba. El tope diario se cuenta **por toda la cuenta**, no por cada agente por separado — tenerlo presente al ensayar con una cuenta que ya compró algo ese día | Nada |
+| — | Pedir más del stock de un producto: rechazo del comercio, nada cobrado | — | El texto decía "problema entre esta plataforma y el comercio, no tuyo", que sonaba a que la plataforma tenía la culpa | **Arreglado** (27/09): ahora nombra el stock como razón habitual |
+| — | Revocar un permiso y volver a firmarlo | — | No dejaba — la clave que evita duplicados nunca cambiaba, y "Ver y firmar" seguía diciendo "Firmado" tras revocar | **Arreglado** (27/09, `C-155`) |
+| — | El botón "Volver" al revocar, en la página de AgentPey | — | No llevaba a ningún lado (RealOps mandaba una ruta relativa que no existe en `agentpey.com`) | **Arreglado y confirmado en vivo** (27/09) |
 
 ## 8. Lo que se puede decir con cifras verificadas
 
 - Tres tiendas reales ya venden a agentes: Bazar Cordillera (6 productos) y
   MycoKit (4) en Jumpseller, y una tienda de desarrollo en Shopify (4 productos,
-  con el pedido real en su administrador), más la del video.
+  con el pedido real en su administrador, confirmado en vivo el 27), más la del
+  video.
 - Dos compras reales de un agente en esas tiendas, con recibo verificado (T101 y
-  T104, `evidencia/`).
+  T104, `evidencia/`), más varias compras reales más en la tienda Shopify
+  durante las pruebas del 26 y 27.
 - Tres contratos Soroban en testnet: `agent_registry`, `policy_rail`,
   `receipt-registry`.
 - Todo en **testnet**. No digas mainnet, dinero real, usuarios ni ingresos.
 
 ## 9. Día de grabar (29)
 
-- [ ] Recorrido de prueba hecho y § 7 llenado; § 6 puntos 1 y 3 decididos.
+- [x] Recorrido de prueba hecho (§ 7); § 6 decidido.
 - [ ] Tienda Shopify nueva lista y **sin dar de alta** (§ 3).
-- [ ] Cuenta nueva de RealOps con el correo de grabar; primera compra de ensayo
-      hecha.
+- [ ] Cuenta de RealOps con saldo para grabar; la wallet que firma, fondeada
+      con XLM de testnet; primera compra de ensayo hecha.
 - [ ] Freighter en Testnet, "No molestar", zoom 125 %, pestañas cerradas.
 - [ ] Cada escena grabada por separado; voz grabada aparte para sincronizar mejor.
 - [ ] Subtítulos en inglés tomados del texto de cada escena, sincronizados frase
