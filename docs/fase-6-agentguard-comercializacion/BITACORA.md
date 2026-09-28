@@ -5440,3 +5440,11 @@ muestra. `C-158`.
 **Evidencia.** `apps/realops`: 225 tests en verde (1 nuevo, que firma dos agentes
 del mismo tipo y comprueba que el segundo ve el catálogo). `pnpm test` del repo
 entero en verde. **Sin verificar en vivo**: falta que el usuario lo confirme.
+
+## Cierre del recorrido G y H (2026-09-27)
+
+Confirmado en vivo por el usuario: G1 a G6 (rechazos), H1 a H6, la firma y el anclaje ya
+funcionando con la wallet fondeada, y T118 ("Ver lo que puede comprar" de un segundo agente
+del mismo tipo). T116 y T118 pasan a `DONE`. T114 queda en `QA`: el botón de wallet arriba en
+revocar y las tarjetas "revocado"/"vencido" se vieron correctamente, falta un caso puntual del
+enlace "Volver" para cerrarlo del todo. Siguen: I (AgentPass) y J (PolicyRail) del guion.
