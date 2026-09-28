@@ -7171,3 +7171,32 @@ scope; opción (a) aprobada, hacerla **después del 29** (toca `tenant-purchase.
 autorización). (2) El usuario recorre H a L del guion de prueba y G6 con el texto nuevo. (3) Tienda
 Shopify **distinta** sin registrar para la escena 1 (`agenticom` ya está dada de alta). `AGENTS.md`:
 sin cambios.
+
+## 2026-09-27 a 2026-09-28 — varias ramas → main
+
+Agente: Claude Code.
+
+Qué: recorrido de prueba completo del producto (guion A a L,
+`GUION-PRUEBA-COMPLETA.md`), guiado paso a paso con el usuario en el navegador y la
+terminal. Encontrados y arreglados en vivo: T114 confirmado (wallet arriba al revocar,
+tarjetas "revocado"/"vencido"); T115 revocar y volver a firmar de verdad (`C-155`, la
+clave que evita duplicados nunca cambiaba); T116 reintento y registro en `/volver`
+(`C-156`); T117 la causa real de "the wallet-signed transaction was rejected by the
+network" quedó en los logs, y resultó ser `tx_insufficient_balance`: la wallet que firma
+el Mandato paga el fee de anclaje (~0,184 XLM) y no tenía XLM — no un bug, un requisito
+no documentado antes; T118 el catálogo de un segundo agente del mismo tipo salía vacío
+(`C-158`); T119 el tope de cuentas patrocinadas subió de 20 a 40 tras agotarse, con la
+reserva recargada por el usuario a 223 USDC (`C-159`). `GUION-VIDEO.md` quedó actualizado
+con todos los hallazgos que importan para grabar. Se auditó `SYNC.md` contra el estado
+real de Exponential y se corrigieron seis filas desactualizadas.
+
+Nueva a pedido del usuario, tras el Demo Day: `C-160`, conectar más wallets además de
+Freighter (un invitado no pudo usar Lobstr). Aprobado, agendado **después del video**
+porque toca las tres pantallas de firma/conexión.
+
+Pendiente para la próxima sesión: (1) **grabar el video del 29** — checklist en
+`GUION-VIDEO.md` § 3 y § 9, con la tienda Shopify nueva todavía sin crear; (2) después del
+video: `C-154` (dos comercios en una cuenta, opción (a) ya aprobada) y `C-160`
+(Stellar Wallets Kit) — las dos tocan autorización o firma, no delegar a Codex sin
+visto bueno explícito. `AGENTS.md`: sin cambios. Nada de esto toca `checkMandate` ni el
+enforcement salvo lo ya decidido y aprobado para `C-154`.
