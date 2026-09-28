@@ -5448,3 +5448,14 @@ funcionando con la wallet fondeada, y T118 ("Ver lo que puede comprar" de un seg
 del mismo tipo). T116 y T118 pasan a `DONE`. T114 queda en `QA`: el botón de wallet arriba en
 revocar y las tarjetas "revocado"/"vencido" se vieron correctamente, falta un caso puntual del
 enlace "Volver" para cerrarlo del todo. Siguen: I (AgentPass) y J (PolicyRail) del guion.
+
+
+## T119 · Tope de cuentas patrocinadas: 20 a 40, reserva recargada (2026-09-28)
+
+**En lenguaje llano.** Tantas pruebas de hoy y de días anteriores agotaron el
+cupo de cuentas nuevas que reciben crédito automático: 20 de 20 usadas. El
+usuario recargó la reserva (ahora 223 USDC) y pidió 20 cupos más. `C-159`.
+
+**Evidencia.** `pnpm build` + `pnpm test` del repo entero en verde (1069 tests).
+Confirmado sin gastar nada: `pnpm run rail:topup` sin `--yes` muestra el saldo
+real de la reserva antes y después.

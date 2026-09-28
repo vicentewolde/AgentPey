@@ -134,7 +134,7 @@ describe("the sponsored-credit pre-flight, before anything is deployed", () => {
   const freshAgent = () => agentFor(fakeAgent({ policyRailContractId: null }));
 
   it("refuses once the pilot has sponsored as many tenants as it allows", async () => {
-    const { directory, calls } = fakeDirectory({ funded: 20 });
+    const { directory, calls } = fakeDirectory({ funded: 40 });
     await expect(
       ensureTenantPolicyRail(directory, freshAgent(), Keypair.random().publicKey(), Keypair.random(), "0".repeat(64), async () => "100.0000000"),
     ).rejects.toMatchObject({ code: "SponsoredCreditExhausted", details: { remedy: "raise the cap" } });
@@ -151,7 +151,7 @@ describe("the sponsored-credit pre-flight, before anything is deployed", () => {
   });
 
   it("separates the two refusals on purpose — the remedies are opposite", async () => {
-    const capped = fakeDirectory({ funded: 20 });
+    const capped = fakeDirectory({ funded: 40 });
     const broke = fakeDirectory({ funded: 0 });
     const cappedError = await ensureTenantPolicyRail(capped.directory, freshAgent(), Keypair.random().publicKey(), Keypair.random(), "0".repeat(64), async () => "100").catch((e: unknown) => e);
     const brokeError = await ensureTenantPolicyRail(broke.directory, freshAgent(), Keypair.random().publicKey(), Keypair.random(), "0".repeat(64), async () => "0").catch((e: unknown) => e);

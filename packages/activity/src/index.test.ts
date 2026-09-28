@@ -188,9 +188,9 @@ describe("readRailBalances", () => {
 describe("readSponsoredCreditStatus", () => {
   it("reports what is left against both the cap and the balance, whichever binds first", async () => {
     const directory = { countFundedRails: async () => 4 };
-    const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => "100.0000000");
-    // The cap binds: 16 tenants left of 20, even though the balance affords 100.
-    expect(status).toMatchObject({ funded: 4, cap: 20, remaining: 16, nearExhaustion: false });
+    const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => "1000.0000000");
+    // The cap binds: 36 tenants left of 40, even though the balance affords 333.
+    expect(status).toMatchObject({ funded: 4, cap: 40, remaining: 36, nearExhaustion: false });
   });
 
   it("reports the balance as the binding constraint when it is the smaller one", async () => {
@@ -203,14 +203,14 @@ describe("readSponsoredCreditStatus", () => {
   });
 
   it("warns with headroom left, not at exhaustion", async () => {
-    const directory = { countFundedRails: async () => 15 };
+    const directory = { countFundedRails: async () => 35 };
     const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => "100.0000000");
     expect(status.remaining).toBe(SPONSORED_RAILS_WARNING_HEADROOM);
     expect(status.nearExhaustion).toBe(true);
   });
 
   it("never reports a negative remainder", async () => {
-    const directory = { countFundedRails: async () => 25 };
+    const directory = { countFundedRails: async () => 45 };
     const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => "100.0000000");
     expect(status.remaining).toBe(0);
   });

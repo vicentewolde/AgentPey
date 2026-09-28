@@ -194,7 +194,7 @@ describe("status dashboard HTTP server", () => {
       // T77: the pilot's own reserve, not this tenant's. Three rails already
       // sponsored, and the fake reserve holds one tenant's funding — enough
       // for exactly one more tenant, so the cap is not what binds here.
-      sponsoredCredit: { funded: 3, cap: 20, remaining: 1, reserveUsdc: SPONSORED_FUNDING_PER_TENANT, nearExhaustion: true },
+      sponsoredCredit: { funded: 3, cap: 40, remaining: 1, reserveUsdc: SPONSORED_FUNDING_PER_TENANT, nearExhaustion: true },
     });
 
     const page = await fetch(`${baseUrl}/?tenantId=${tenant.id}`);

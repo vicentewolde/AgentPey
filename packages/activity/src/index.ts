@@ -146,7 +146,14 @@ export function recentRefusals(records: readonly VaultRecord[], limit = 20): rea
  * keeps what it got; only rails deployed from now on start with this.
  */
 export const SPONSORED_FUNDING_PER_TENANT = "3.0000000";
-export const MAX_SPONSORED_RAILS = 20;
+/**
+ * 20 at launch (`C-80`: "twenty testers is a pilot, an uncapped faucet is a
+ * way to wake up with an empty reserve"). Raised to 40 on 2026-09-28, at the
+ * user's request, after a day of end-to-end testing alone used up all 20 —
+ * see `C-159`. A rail already funded is unaffected either way; the reserve
+ * itself was topped up separately, by the user, outside this change.
+ */
+export const MAX_SPONSORED_RAILS = 40;
 /** Warn while there is still credit for this many more tenants, not at exhaustion. */
 export const SPONSORED_RAILS_WARNING_HEADROOM = 5;
 

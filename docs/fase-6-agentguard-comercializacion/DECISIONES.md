@@ -6676,3 +6676,24 @@ contra las filas de la cuenta — este filtro solo decidía qué mostrar.
 "representante" para la etiqueta de cada tarjeta (in the grant / outside),
 que puede seguir sin ser el agente exacto que la persona tenía en mente; eso es
 cosmético, no una autorización. Nada de esto toca `checkMandate` ni el enforcement.
+
+### C-159 · El tope de cuentas patrocinadas sube de 20 a 40, y la reserva se recargó · `Vigente`
+**Fecha:** 2026-09-28 · **Hito:** T119 · Del usuario, la decisión y la recarga
+
+Entre las pruebas de esta sesión y las anteriores, las 20 cuentas de RealOps que
+reciben automáticamente 3 USDC de crédito al primer pago (`C-80`, `MAX_SPONSORED_RAILS`)
+se agotaron: el panel de estado mostraba "0 more tenant(s) can be sponsored". El
+usuario recargó la reserva (ahora 223,434 USDC, confirmado con
+`pnpm run rail:topup` sin `--yes`) y pidió subir el tope en 20 más.
+
+`MAX_SPONSORED_RAILS` pasa de `20` a `40` en `packages/activity/src/index.ts`,
+la única definición que usan tanto el rechazo (`apps/web/src/tenant-rail.ts`,
+`requireSponsoredCredit`) como el panel de estado — la misma razón por la que
+vive en un solo lugar desde `C-80`. Ningún rail ya fondeado cambia. Corregidos
+los tests que asumían el 20 como límite exacto
+(`packages/activity/src/index.test.ts`, `apps/web/src/tenant-rail.test.ts`,
+`apps/status-dashboard/src/server.test.ts`).
+
+**Alternativa descartada: quitar el tope.** `C-80` ya lo decidió así a propósito
+("un faucet sin tope es despertarse con la reserva vacía"); subirlo es ajustar el
+número, no la decisión.
