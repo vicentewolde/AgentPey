@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentpey.com/ucp/handlers/stellar-x402/schema.json",
+  "title": "Stellar x402 Payment Handler",
+  "description": "Schemas of the com.agentpey.stellar_x402 payment handler for the Universal Commerce Protocol: an x402 'exact' payment on Stellar, carried as the payment credential of Complete Checkout.",
+  "name": "com.agentpey.stellar_x402",
+  "version": "2026-09-30",
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "description": "The asset a payment settles in.",
+      "required": ["code", "contract", "decimals"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "description": "Asset code, e.g. 'USDC'." },
+        "contract": { "type": "string", "pattern": "^C[A-Z2-7]{55}$", "description": "SEP-41 token contract of the asset." },
+        "decimals": { "type": "integer", "minimum": 0, "maximum": 18, "description": "Decimals of the asset's atomic unit (7 for Stellar assets)." }
+      }
+    },
+    "business_config": {
+      "type": "object",
+      "description": "Handler config a business declares in its profile (/.well-known/ucp).",
+      "required": ["x402_version", "scheme", "network", "asset", "pay_to", "facilitator"],
+      "additionalProperties": false,
+      "properties": {
+        "x402_version": { "const": 2 },
+        "scheme": { "const": "exact" },
+        "network": { "type": "string", "enum": ["stellar:testnet", "stellar:pubnet"], "description": "CAIP-2 network id." },
+        "asset": { "$ref": "#/$defs/asset" },
+        "pay_to": { "type": "string", "pattern": "^G[A-Z2-7]{55}$", "description": "Account the payment is transferred to." },
+        "facilitator": { "type": "string", "format": "uri", "description": "x402 facilitator the business settles through." }
+      }
+    },
+    "platform_config": {
+      "type": "object",
+      "description": "Handler config a platform declares in its profile.",
+      "required": ["x402_version", "networks"],
+      "additionalProperties": false,
+      "properties": {
+        "x402_version": { "const": 2 },
+        "networks": { "type": "array", "minItems": 1, "items": { "type": "string", "enum": ["stellar:testnet", "stellar:pubnet"] } }
+      }
+    },
+    "payment_requirements": {
+      "type": "object",
+      "description": "The x402 PaymentRequirements of one checkout: exactly what the platform must authorize.",
+      "required": ["scheme", "network", "asset", "amount", "payTo", "maxTimeoutSeconds"],
+      "properties": {
+        "scheme": { "const": "exact" },
+        "network": { "type": "string" },
+        "asset": { "type": "string", "pattern": "^C[A-Z2-7]{55}$" },
+        "amount": { "type": "string", "pattern": "^[0-9]+$", "description": "Amount in the asset's atomic units." },
+        "payTo": { "type": "string", "pattern": "^G[A-Z2-7]{55}$" },
+        "maxTimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "extra": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "response_config": {
+      "type": "object",
+      "description": "Handler config a business returns in a checkout response: the business config resolved for this checkout.",
+      "required": ["x402_version", "scheme", "network", "asset", "pay_to", "facilitator", "payment_requirements", "binding"],
+      "properties": {
+        "x402_version": { "const": 2 },
+        "scheme": { "const": "exact" },
+        "network": { "type": "string" },
+        "asset": { "$ref": "#/$defs/asset" },
+        "pay_to": { "type": "string", "pattern": "^G[A-Z2-7]{55}$" },
+        "facilitator": { "type": "string", "format": "uri" },
+        "payment_requirements": { "$ref": "#/$defs/payment_requirements" },
+        "fx": {
+          "type": "object",
+          "description": "The rate that turned the checkout total, in the business's currency, into the settlement amount.",
+          "required": ["base", "quote", "rate"],
+          "properties": {
+            "base": { "type": "string" },
+            "quote": { "type": "string" },
+            "rate": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$" },
+            "as_of": { "type": "string", "format": "date-time" }
+          }
+        },
+        "binding": {
+          "type": "object",
+          "description": "What the credential is bound to.",
+          "required": ["checkout_id"],
+          "properties": { "checkout_id": { "type": "string" } }
+        }
+      }
+    },
+    "credential": {
+      "type": "object",
+      "description": "The x402 PaymentPayload for the checkout's payment requirements.",
+      "required": ["type", "x402_version", "accepted", "payload"],
+      "properties": {
+        "type": { "const": "x402_payment_payload" },
+        "x402_version": { "const": 2 },
+        "accepted": { "$ref": "#/$defs/payment_requirements" },
+        "payload": {
+          "type": "object",
+          "required": ["transaction"],
+          "properties": {
+            "transaction": { "type": "string", "description": "Base64 XDR of the Stellar transaction carrying the signed Soroban authorization entry for the SEP-41 transfer." }
+          }
+        }
+      }
+    },
+    "instrument": {
+      "type": "object",
+      "description": "The payment instrument a platform submits on Complete Checkout.",
+      "required": ["id", "handler_id", "type", "credential"],
+      "properties": {
+        "id": { "type": "string" },
+        "handler_id": { "type": "string" },
+        "type": { "const": "stellar_x402" },
+        "credential": { "$ref": "#/$defs/credential" },
+        "display": {
+          "type": "object",
+          "properties": { "payer": { "type": "string", "description": "The paying account or contract (G... or C...)." } }
+        }
+      }
+    }
+  }
+}

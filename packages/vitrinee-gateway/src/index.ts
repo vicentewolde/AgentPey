@@ -5,6 +5,8 @@ export { FileOrderPersistence, OrderStore, orderRecordSchema, type OrderPersiste
 export { buildManifest, toManifestProduct } from "./manifest.js";
 export { checkoutBodySchema, orderResponse, type CheckoutBody } from "./checkout.js";
 export { createAdapter } from "./adapters.js";
+export { buildUcpProfile, stellarX402Config } from "./ucp/profile.js";
+export { getCatalogProduct, lookupCatalog, searchCatalog, toUcpProduct } from "./ucp/catalog.js";
 export {
   DEFAULT_SEED_SLUG,
   MemoryComercioStore,

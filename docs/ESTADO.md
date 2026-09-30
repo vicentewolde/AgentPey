@@ -8,14 +8,14 @@
 **Actualizado:** 2026-09-30
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T120 · UCP admite un payment handler x402 de Stellar; opción A elegida
-**Siguiente paso:** `/tarea T121`
+**Siguiente paso:** el usuario decide `VT-36`; después `/revisar` de T121, merge y `/tarea T122`
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
 | T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
-| T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ⏳ pendiente | |
+| T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | 👀 en revisión | `cc/t121-vitrinee-perfil-ucp` |
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ⏳ pendiente | |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |
@@ -25,6 +25,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
+- [ ] `VT-36`: montos de UCP como enteros JSON en la frontera (implementado así; la alternativa es `JSON.rawJSON`)
+- [ ] Deploy de Vitrinee con T121 y publicar los archivos del handler en `agentpey.com`, para correr `vitrinee:ucp:list` contra una tienda real
 - [ ] `deployments/testnet.json` tiene un cambio sin commitear desde el 28-sep (otro `policyRail`): decidir si se commitea o se descarta
 - [ ] Antes de T124: qué hace el veredicto con la plata (a, b o c) y el nombre de las disputas
 
@@ -40,3 +42,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-09-30: `P-14` (reposicionamiento: UCP, AP2 y x402 sobre Stellar) y `P-15` (método fase → spec → tareas, con `/estado`, `/tarea` y `/revisar`). Spec de la Fase 7 **aprobado** por el usuario, que también confirmó la extensión de Find Your Way. Exponential se mantiene como espejo.
 - 2026-09-30: el usuario eligió opción A, UCP `2026-04-08`, sesión en moneda de la tienda y fulfillment mínimo (`E-1` a `E-4`). Sección 4 del spec completa.
 - 2026-09-30: `/revisar` de T120 sin bloqueantes. Corregido: rutas UCP bajo `/ucp/v1`, evidencia de `per_tx` con script aparte, y las dos páginas de la spec que solo se habían leído vía resumen se releyeron del fuente (confirmadas).
+- 2026-09-30, T121: perfil `/.well-known/ucp` y catálogo UCP (`/ucp/v1/catalog/search`, `lookup`, `product`) en cada tienda; spec y esquemas del handler y de la extensión de recibo; cliente `pnpm run vitrinee:ucp:list`. Validado contra los esquemas oficiales sin red. Encontrado un `$ref` roto en el esquema oficial del perfil.

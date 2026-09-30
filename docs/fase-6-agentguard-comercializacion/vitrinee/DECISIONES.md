@@ -1018,3 +1018,29 @@ mostraba como "Completa todos los campos". Ahora `shopHostFrom` acepta lo que un
 pega de verdad (`agenticom`, con `https://`, o la URL del admin de Shopify) y lo reduce a
 ese host; lo que no se reduce a un handle sigue rechazado, así el secret nunca viaja a un
 host ajeno. El portal, además, dice cuál campo revisar.
+
+### VT-36 · Los montos de UCP salen como enteros JSON en la frontera, no como `bigint` · `Pendiente`
+**Fecha:** 2026-09-30 · **Hito:** T121 (Fase 7) · Propuesta de Claude Code, **espera al usuario**
+
+UCP define todo monto como un entero JSON en la unidad menor de la moneda
+(`amount.json`: `"type": "integer"`). Los precios del catálogo UCP en CLP se
+calculan como hasta ahora, con `bigint` (`parseDecimal`), y **solo al escribir
+la respuesta** se pasan a `number`, en una única función
+(`toMinorUnits`, `packages/vitrinee-core/src/ucp.ts`) que se niega si el monto
+no cabe exacto en un número JSON (más de 2^53 − 1). El monto que de verdad se
+liquida, en USDC, sigue viajando como string de unidades atómicas.
+
+**Por qué es una decisión y no un detalle.** `VT-7` dice "Ningún `number`
+representa dinero". Esto no cambia el cálculo, pero sí pone un `number` en el
+borde. Se propone como aclaración de `VT-7`, no como reemplazo: la aritmética
+sigue en enteros de punta a punta; el `number` solo existe en el JSON de salida,
+porque el estándar lo exige.
+
+**Alternativa: `JSON.rawJSON`.** Escribir el `bigint` directo en el JSON, sin
+pasar por `number`. Cumple `VT-7` al pie de la letra, pero depende de una API de
+Node reciente y de reemplazar el `res.json` de Express en esas rutas; y todo
+cliente que lea la respuesta con `JSON.parse` lo vuelve `number` igual. No
+cambia nada para montos en CLP, que están lejos del límite.
+
+Implementado así en T121, en la rama `cc/t121-vitrinee-perfil-ucp`. Si el
+usuario prefiere la alternativa, se cambia antes del merge.

@@ -1,7 +1,7 @@
 import { request as httpRequest } from "node:http";
 
 import { Keypair } from "@stellar/stellar-sdk";
-import { MANIFEST_PATH } from "@vitrinee/core";
+import { MANIFEST_PATH, UCP_PROFILE_PATH } from "@vitrinee/core";
 import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@x402/core/http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -117,6 +117,20 @@ describe("the multi-merchant platform (T103, C-142)", () => {
     expect(rb.status).toBe(200);
     expect(ra.body).toMatchObject({ merchant: { name: "Tienda A", stellarAccount: a.payTo, did: `did:stellar:testnet:${a.signer.publicKey()}` } });
     expect(rb.body).toMatchObject({ merchant: { name: "Tienda B", stellarAccount: b.payTo, did: `did:stellar:testnet:${b.signer.publicKey()}` } });
+  });
+
+  it("serves each comercio's own UCP profile at its own subdomain, paying to its own account (T121)", async () => {
+    const ra = await call(base, "tienda-a.vitrinee.test", UCP_PROFILE_PATH);
+    const rb = await call(base, "tienda-b.vitrinee.test", UCP_PROFILE_PATH);
+    expect(ra.status).toBe(200);
+    expect(rb.status).toBe(200);
+    const handlerOf = (body: unknown) => (body as { ucp: { payment_handlers: Record<string, Array<{ config: { pay_to: string } }>> } }).ucp.payment_handlers["com.agentpey.stellar_x402"]?.[0]?.config.pay_to;
+    expect(handlerOf(ra.body)).toBe(a.payTo);
+    expect(handlerOf(rb.body)).toBe(b.payTo);
+    expect(JSON.stringify(rb.body)).toContain("http://tienda-b.vitrinee.test/ucp/v1");
+    expect(JSON.stringify(rb.body)).not.toContain("tienda-a");
+    // Like the manifest, the portal host answers as the transitional root comercio (tienda-a here).
+    expect(handlerOf((await call(base, PLATFORM, UCP_PROFILE_PATH)).body)).toBe(a.payTo);
   });
 
   it("builds URLs from the host the request came to", async () => {

@@ -12,13 +12,15 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-30 · Spec aprobado. **T120 cerrada**: el usuario eligió la
-opción A (`E-1` a `E-4`). Nada de código todavía. **Sigue:** T121.
+**Fecha:** 2026-09-30 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
+`E-4`). **T121 en revisión**: cada tienda publica su perfil y su catálogo UCP.
+**Sigue:** la decisión `VT-36`, el deploy y T122.
 
 | Tarea | Estado |
 |---|---|
 | T120 Prueba técnica | cerrada |
-| T121 a T125 | pendientes |
+| T121 Perfil y catálogo UCP | en revisión |
+| T122 a T125 | pendientes |
 
 ## Apertura de la fase (2026-09-30)
 
@@ -63,3 +65,25 @@ de diseño que quedaron escritas en el spec: las rutas UCP van bajo `/ucp/v1`
 para no chocar con las actuales, y la prueba de que el contrato rechaza un
 pago excedido se hace con un script aparte, sin agregarle ningún atajo al
 agente.
+
+## T121 · Cada tienda de Vitrinee habla UCP para mostrar lo que vende (2026-09-30, en revisión)
+
+**En lenguaje llano.** Cada tienda de Vitrinee tiene ahora una "ficha" en el
+formato que definieron Google, Shopify y compañía (`/.well-known/ucp`). La
+ficha dice qué sabe hacer la tienda y cómo se le paga: con USDC en Stellar,
+usando el medio de pago de AgentPey. Un agente que hable UCP puede leer esa
+ficha y buscar productos en el catálogo, con precios en pesos chilenos y, al
+lado, cuánto costaría en USDC. Todavía no puede comprar: eso es T122. Lo que
+ya existía (la ficha propia de Vitrinee y el checkout de hoy) sigue igual.
+
+También quedaron escritas las reglas públicas del medio de pago y del recibo
+verificable, en inglés, listas para publicar en `agentpey.com`. Y un pequeño
+programa de prueba que lee una tienda como lo haría un agente UCP, y que se
+niega a usar una ficha que diga pagar con AgentPey pero apunte a otro dominio.
+
+**Hallazgo.** Uno de los esquemas oficiales de UCP tiene una referencia rota;
+se corrigió solo para los tests y quedó anotado para reportarlo.
+
+**Pendiente.** Una decisión del usuario sobre cómo se escriben los montos en
+la respuesta (`VT-36`), y el deploy, para probar el programa contra una
+tienda real. Evidencia: [evidencia/T121.md](evidencia/T121.md).

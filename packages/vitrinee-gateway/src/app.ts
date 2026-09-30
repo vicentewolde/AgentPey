@@ -1,6 +1,6 @@
 import type { StoreAdapter } from "@vitrinee/adapters";
 import { ReceiptRegistryClient, verifyReceipt, type RegistryReader } from "@vitrinee/anchor";
-import { MANIFEST_PATH, VitrineeError, isVitrineeError } from "@vitrinee/core";
+import { MANIFEST_PATH, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddlewareFromHTTPServer } from "@x402/express";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
@@ -17,6 +17,15 @@ import { OrderStore } from "./orders.js";
 import { receiptPage } from "./receipt-page.js";
 import { Reservations } from "./reservations.js";
 import { SettlementLedger } from "./settlements.js";
+import {
+  getCatalogProduct,
+  getProductRequestSchema,
+  lookupCatalog,
+  lookupRequestSchema,
+  searchCatalog,
+  searchRequestSchema,
+} from "./ucp/catalog.js";
+import { buildUcpProfile } from "./ucp/profile.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
 
 export interface AppDeps {
@@ -142,6 +151,29 @@ export function createApp({
     const products = await catalog.get();
     res.set("Cache-Control", cacheHeader);
     res.json({ products: products.map((p) => toManifestProduct(p, config)) });
+  });
+
+  // UCP (docs/fase-7-estandar-comercio-agentico/SPEC.md §4): the business
+  // profile at the well-known path, and the catalog under its own prefix so
+  // nothing here shadows the routes above.
+  app.get(UCP_PROFILE_PATH, (req, res) => {
+    res.set("Cache-Control", cacheHeader);
+    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req) }));
+  });
+
+  app.post(`${UCP_REST_PREFIX}/catalog/search`, async (req, res) => {
+    const request = searchRequestSchema.parse(req.body ?? {});
+    res.json(searchCatalog({ config, products: await catalog.get(), request }));
+  });
+
+  app.post(`${UCP_REST_PREFIX}/catalog/lookup`, async (req, res) => {
+    const { ids } = lookupRequestSchema.parse(req.body ?? {});
+    res.json(lookupCatalog({ config, products: await catalog.get(), ids }));
+  });
+
+  app.post(`${UCP_REST_PREFIX}/catalog/product`, async (req, res) => {
+    const { id } = getProductRequestSchema.parse(req.body ?? {});
+    res.json(getCatalogProduct({ config, products: await catalog.get(), id }));
   });
 
   app.get("/products/:id", async (req, res) => {

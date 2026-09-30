@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentpey.com/ucp/extensions/receipt/schema.json",
+  "title": "Anchored Receipt Extension",
+  "description": "Extends UCP checkout and order with a merchant-signed receipt whose hash is anchored on Stellar.",
+  "name": "com.agentpey.shopping.receipt",
+  "version": "2026-09-30",
+  "$defs": {
+    "receipt": {
+      "type": "object",
+      "required": ["format", "jws", "hash", "network", "settlement_tx_hash", "anchor", "verify_url"],
+      "properties": {
+        "format": { "const": "jws" },
+        "jws": { "type": "string", "description": "Compact JWS (EdDSA) of the receipt claims, signed by the business's signing key." },
+        "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 of the compact JWS: the value anchored on-chain." },
+        "network": { "type": "string", "description": "CAIP-2 network id of the settlement and the anchor." },
+        "settlement_tx_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "anchor": {
+          "type": "object",
+          "required": ["status", "registry"],
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "anchored", "failed"] },
+            "registry": { "type": "string", "pattern": "^C[A-Z2-7]{55}$", "description": "Receipt registry contract." },
+            "tx_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "ledger": { "type": "integer", "minimum": 1 },
+            "anchored_at": { "type": "string", "format": "date-time" }
+          }
+        },
+        "verify_url": { "type": "string", "format": "uri" }
+      }
+    },
+    "dev.ucp.shopping.checkout": {
+      "title": "Checkout with Anchored Receipt",
+      "type": "object",
+      "properties": { "receipt": { "$ref": "#/$defs/receipt" } }
+    },
+    "dev.ucp.shopping.order": {
+      "title": "Order with Anchored Receipt",
+      "type": "object",
+      "properties": { "receipt": { "$ref": "#/$defs/receipt" } }
+    }
+  }
+}
