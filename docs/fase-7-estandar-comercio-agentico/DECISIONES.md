@@ -45,8 +45,9 @@ los clientes de hoy.
 ### E-2 · Se implementa UCP `2026-04-08` · `Vigente`
 **Fecha:** 2026-09-30 · **Tarea:** T120 · Decidido por el usuario
 
-**Motivo.** Es la versión que fija el traspaso y la que se leyó completa del
-repositorio oficial. Su modelo de despacho es más simple.
+**Motivo.** Es la versión que fija el traspaso y la que se leyó del
+repositorio oficial para T120 (las partes de pagos, checkout, orden, catálogo
+y AP2; no la spec entera). Su modelo de despacho es más simple.
 
 **Alternativa descartada: `2026-08-25`**, publicada el 25 de agosto. Trae
 cambios incompatibles en despacho y consentimiento y agrega acciones de pago

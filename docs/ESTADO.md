@@ -7,14 +7,14 @@
 
 **Actualizado:** 2026-09-30
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T119 (Fase 6) · tope de cuentas patrocinadas de 20 a 40
+**Última tarea terminada:** T120 · UCP admite un payment handler x402 de Stellar; opción A elegida
 **Siguiente paso:** `/tarea T121`
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | 👀 en revisión | `cc/t120-handler-stellar-ucp` |
+| T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ⏳ pendiente | |
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ⏳ pendiente | |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
@@ -39,3 +39,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-09-30, T120: UCP **sí** admite un handler x402 de Stellar (`com.agentpey.stellar_x402`), con el pago dentro de `complete` y sin HTTP 402. El perfil no lleva productos: T121 es perfil más catálogo. Estimación: T121 16 h, T122 29 h (opción A). Hallazgo para T123: AP2 en UCP exige ECDSA y SD-JWT; el Mandato usa Ed25519.
 - 2026-09-30: `P-14` (reposicionamiento: UCP, AP2 y x402 sobre Stellar) y `P-15` (método fase → spec → tareas, con `/estado`, `/tarea` y `/revisar`). Spec de la Fase 7 **aprobado** por el usuario, que también confirmó la extensión de Find Your Way. Exponential se mantiene como espejo.
 - 2026-09-30: el usuario eligió opción A, UCP `2026-04-08`, sesión en moneda de la tienda y fulfillment mínimo (`E-1` a `E-4`). Sección 4 del spec completa.
+- 2026-09-30: `/revisar` de T120 sin bloqueantes. Corregido: rutas UCP bajo `/ucp/v1`, evidencia de `per_tx` con script aparte, y las dos páginas de la spec que solo se habían leído vía resumen se releyeron del fuente (confirmadas).

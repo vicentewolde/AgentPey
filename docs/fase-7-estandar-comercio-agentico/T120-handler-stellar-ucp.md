@@ -18,7 +18,7 @@ credencial de pago. No hace falta el plan B.
 Tres cosas que el traspaso no anticipaba:
 
 1. **x402 entra en UCP como formato, no como protocolo HTTP.** UCP no usa el
-   código 402: el pago viaja en el cuerpo de `POST /checkout-sessions/{id}/complete`.
+   código 402 (no está en la tabla de estados de `checkout-rest.md`): el pago viaja en el cuerpo de `POST /checkout-sessions/{id}/complete`.
    Lo que se reutiliza de x402 es el esquema `exact` de Stellar (la
    autorización Soroban firmada) y el facilitator. El ida y vuelta
    "402 → reintento con header" desaparece dentro de UCP.
@@ -35,11 +35,11 @@ Sí. Lo que dice la spec, y cómo calza:
 
 | Lo que exige UCP | Cómo se cumple |
 |---|---|
-| El nombre del handler es un dominio invertido, y el origen de sus URLs `spec` y `schema` **debe** coincidir con ese dominio. La plataforma debe validarlo (overview, "Spec URL Binding") | Handler `com.agentpey.stellar_x402`, con la spec y el esquema alojados en `https://agentpey.com/ucp/handlers/stellar-x402/…`. Son dos archivos estáticos en la web que ya servimos |
+| El nombre del handler es un dominio invertido, y el origen de sus URLs `spec` y `schema` **debe** coincidir con ese dominio. La plataforma debe validarlo (overview, "Spec URL Binding") | Handler `com.agentpey.stellar_x402`, con la spec y el esquema alojados en `https://agentpey.com/ucp/handlers/stellar-x402/…`. Son dos archivos estáticos; falta confirmar que la web de `agentpey.com` los pueda servir en esa ruta sin cambios de infraestructura |
 | Los handlers los escriben "típicamente" los proveedores de credenciales de pago o el órgano de gobierno de UCP (overview, "Payment Handlers") | "Típicamente", no "solamente". Un tercero puede publicar uno. AgentPey ocupa el lugar del proveedor que define el handler |
 | El comercio declara el handler en su perfil, con su `config` | `config` del comercio: red (`stellar:testnet`), contrato del activo (USDC), cuenta `payTo`, esquema `exact`, URL del facilitator. Todo eso ya está en `agent-storefront.json` (`merchant`, `settlement`) |
 | En la respuesta del checkout, el handler trae la configuración resuelta **para esa compra**, y la plataforma debe tratarla como autoritativa (guía de handlers, "response_schema") | Ahí viaja lo que hoy viaja en el header `PAYMENT-REQUIRED` del 402: monto exacto en unidades atómicas, `payTo`, activo, plazo y si el facilitator patrocina el fee. Es el mismo objeto `accepts[0]` de x402 |
-| El instrumento de pago tiene `id`, `handler_id`, `type` y una `credential` con `type`; los dos esquemas admiten campos adicionales (`additionalProperties: true`) | Instrumento `type: "stellar_x402"`. Credencial `type: "x402_payment_payload"` con el mismo contenido que hoy va en el header `PAYMENT-SIGNATURE`: `{x402Version, accepted, payload: {transaction: <XDR base64>}}` |
+| El instrumento de pago tiene `id`, `handler_id`, `type` y una `credential` con `type`; los dos esquemas admiten campos adicionales (`additionalProperties: true`) | Instrumento `type: "stellar_x402"`. Credencial `type: "x402_payment_payload"` con el contenido que hoy va en el header `PAYMENT-SIGNATURE`: `{x402Version, accepted, payload: {transaction: <XDR base64>}}`. El campo `resource` de x402 se omite a propósito: en UCP no hay URL de recurso. En T122 hay que revisar que el registro de liquidaciones no dependa de él |
 | La credencial debe quedar atada a un checkout y a un comercio concretos ("binding"), para que no se pueda reusar en otro lado | La autorización Soroban ya firma el destinatario (`payTo`), el activo y el monto, lleva un nonce y vence en un ledger. No sirve para otro comercio ni dos veces. Ver la brecha 8.3 |
 | La spec del handler debe mapear sus fallos a errores estándar de UCP | Rechazo del facilitator o de la red → `payment_failed`. Sin stock → `out_of_stock` (el chequeo ya existe antes de cobrar) |
 
@@ -90,6 +90,13 @@ explorador. La evidencia de T122 será ese error de simulación. Si se quiere
 además una transacción rechazada visible, hay que forzar el envío sin
 simular, y eso es trabajo aparte.
 
+**Cómo se llega a ese rechazo sin abrir un atajo.** En el camino de
+producción, `policyRail.authorise` corta primero
+(`apps/agent/src/payment/x402.ts:358-364`): un pago excedido nunca llega a
+firmarse. La evidencia sale de un script de prueba aparte, fuera del agente,
+que firma directo contra el contrato. El camino de producción no gana ningún
+modo que se salte el chequeo local.
+
 ## 3. ¿Cómo viaja el recibo anclado dentro de la orden?
 
 La orden de UCP no trae un campo para recibos ni pruebas de pago. Tiene tres
@@ -132,6 +139,7 @@ nadie.
 |---|---|---|
 | `agent-storefront.json` | Se mantiene, sin cambios | Sus datos de comercio y liquidación alimentan el `config` del handler en el perfil UCP. Sus productos no van al perfil |
 | `GET /api/discovery/search` | Se mantiene, sin cambios | El catálogo UCP son rutas nuevas (`POST /catalog/search`, `/catalog/lookup`) sobre la misma caché de catálogo y el mismo `toManifestProduct` |
+| `GET /orders`, `GET /orders/:orderId`, `POST /orders/:orderId/fulfil`, `GET /catalog` | Se mantienen, sin cambios | Las rutas UCP viven bajo el prefijo `/ucp/v1` (el `endpoint` del servicio en el perfil), así `GET /ucp/v1/orders/{id}` no choca con el `GET /orders/:orderId` de hoy |
 | Checkout por `GET`/`POST /checkout/:productId` | Se mantiene para los clientes actuales; **no es la puerta UCP** | UCP pide sesiones. Por dentro se reutilizan `quoteCheckout`, las reservas de stock, la idempotencia, `completeCheckout` (pedido en la tienda, recibo, anclaje) y el registro de liquidaciones |
 | `policy_rail` como pagador | Tal cual | Misma firma, mismo contrato, mismos límites. Cambia de dónde saca los requisitos |
 | Chequeo del Mandato antes de firmar | Tal cual, **no se toca** | `policyRail.authorise` recibe los mismos términos |
@@ -211,6 +219,10 @@ El total de T121 + T122 sube de 40 a 45 horas. Para las fechas del spec
 como ya estaba decidido.
 
 ## 7. Decisiones que necesito del usuario
+
+> **Resuelto el 2026-09-30:** opción A, UCP `2026-04-08`, sesión en la moneda
+> de la tienda y fulfillment mínimo. Ver `E-1` a `E-4` en
+> [DECISIONES.md](DECISIONES.md).
 
 1. **Opción:** A (recomendada), B o C.
 2. **Versión de UCP.** El traspaso fija `2026-04-08`, pero el 2026-08-25 salió

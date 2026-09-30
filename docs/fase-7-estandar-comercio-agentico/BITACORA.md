@@ -12,13 +12,12 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-30 · Spec aprobado. **T120 investigada**, esperando cuatro
-decisiones del usuario. Nada de código todavía. **Sigue:** T121, una vez elegida
-la opción.
+**Fecha:** 2026-09-30 · Spec aprobado. **T120 cerrada**: el usuario eligió la
+opción A (`E-1` a `E-4`). Nada de código todavía. **Sigue:** T121.
 
 | Tarea | Estado |
 |---|---|
-| T120 Prueba técnica | en revisión |
+| T120 Prueba técnica | cerrada |
 | T121 a T125 | pendientes |
 
 ## Apertura de la fase (2026-09-30)
@@ -34,7 +33,7 @@ El mismo día cambió la forma de trabajar (`P-15`): cada fase tiene un spec que
 el usuario aprueba antes de que se escriba código, y cada sesión sigue el
 ciclo `/estado`, `/tarea`, `/revisar` y merge.
 
-## T120 · ¿Cabe un pago de Stellar dentro de UCP? (2026-09-30, en revisión)
+## T120 · ¿Cabe un pago de Stellar dentro de UCP? (2026-09-30, cerrada)
 
 **En lenguaje llano.** UCP es el idioma común que Google, Shopify y otros
 definieron para que un agente compre en una tienda. La pregunta era si ese
@@ -55,5 +54,12 @@ pide, usan un tipo de firma distinto al de Stellar. T123 es más que "exportar".
 
 Documento completo, con opciones y horas:
 [T120-handler-stellar-ucp.md](T120-handler-stellar-ucp.md). Citas:
-[evidencia/T120.md](evidencia/T120.md). No hay decisiones `E-` todavía: salen
-de lo que elija el usuario.
+[evidencia/T120.md](evidencia/T120.md).
+
+**Lo que decidió el usuario** (`E-1` a `E-4`): construir la versión nativa de
+UCP, sobre la versión `2026-04-08`, con la compra expresada en la moneda de
+la tienda y con despacho mínimo. La revisión (`/revisar`) encontró dos cosas
+de diseño que quedaron escritas en el spec: las rutas UCP van bajo `/ucp/v1`
+para no chocar con las actuales, y la prueba de que el contrato rechaza un
+pago excedido se hace con un script aparte, sin agregarle ningún atajo al
+agente.

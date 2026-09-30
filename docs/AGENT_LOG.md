@@ -7243,3 +7243,20 @@ Exponential: ticket T120 a `IN_PROGRESS`.
 Pendiente: el usuario decide opción (A recomendada), versión de UCP, moneda de la sesión y
 despacho (T120 § 7). Después: completar la sección 4 del spec, `E-1`, `/revisar`, merge y T121.
 `AGENTS.md`: sin cambios. Ningún código de producto tocado; nada cerca de `checkMandate`.
+
+## 2026-09-30 (3) — cc/t120-handler-stellar-ucp → main
+
+Agente: Claude Code.
+
+Qué: el usuario eligió en T120 la opción A, UCP `2026-04-08`, sesión en la moneda de la tienda y
+fulfillment mínimo: `E-1` a `E-4` en `docs/fase-7-estandar-comercio-agentico/DECISIONES.md`, y la
+sección 4 del spec completa. `/revisar` con el subagente `revisor`: sin bloqueantes, `pnpm check`
+en verde; corregido lo que encontró (rutas UCP bajo `/ucp/v1` para no chocar con
+`GET /orders/:orderId`; la evidencia de `per_tx` de T122 sale de un script aparte y el camino de
+producción no gana ningún bypass de `policyRail.authorise`; `checkout-rest.md` y
+`ap2-mandates.md` releídos del fuente). Mergeado a `main` con el "sigue" del usuario.
+
+Exponential: T120 a `DONE`, `exp:sync`.
+
+Pendiente: T121 (perfil UCP y catálogo por comercio, 16 h). `AGENTS.md`: sin cambios; cuando se
+delegue a Codex el mapeo de campos de T121 se le pasa el diseño escrito. Nada toca `checkMandate`.

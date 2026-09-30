@@ -55,15 +55,18 @@ Sale de T120 ([documento](T120-handler-stellar-ucp.md)) y de las decisiones
 | Handler `com.agentpey.stellar_x402` | El medio de pago. Spec y esquema alojados en `https://agentpey.com/ucp/handlers/stellar-x402/`, porque UCP exige que el origen coincida con el namespace |
 | Extensión `com.agentpey.shopping.receipt` | Extiende `dev.ucp.shopping.checkout` y `dev.ucp.shopping.order` con el recibo firmado y su anclaje. Alojada en `agentpey.com` |
 | Perfil del comercio | `GET /.well-known/ucp` en cada subdominio: servicio REST, capacidades (checkout, order, catalog search y lookup, fulfillment, la extensión de recibo) y el handler con su `config` |
-| Catálogo | `POST /catalog/search` y `POST /catalog/lookup`, sobre la misma caché que `agent-storefront.json`. Un producto de Vitrinee es un producto UCP con una variante |
-| Sesiones de checkout | `POST /checkout-sessions`, `GET` y `PUT /checkout-sessions/{id}`, `POST …/complete`, `POST …/cancel` |
-| Orden | `GET /orders/{id}` en forma UCP, con la extensión de recibo |
+| Catálogo | `POST /ucp/v1/catalog/search` y `POST /ucp/v1/catalog/lookup`, sobre la misma caché que `agent-storefront.json`. Un producto de Vitrinee es un producto UCP con una variante |
+| Sesiones de checkout | Bajo `/ucp/v1`: `POST /checkout-sessions`, `GET` y `PUT /checkout-sessions/{id}`, `POST …/complete`, `POST …/cancel` |
+| Orden | `GET /ucp/v1/orders/{id}` en forma UCP, con la extensión de recibo |
+| Prefijo | Todas las rutas UCP de REST viven bajo `/ucp/v1`, que es el `endpoint` del servicio declarado en el perfil. Solo `/.well-known/ucp` está en la raíz |
 | Perfil de la plataforma | Un JSON estático del agente de AgentPey, enviado en el header `UCP-Agent` |
 
 Todo lo de Vitrinee se agrega en `createApp()`
 (`packages/vitrinee-gateway/src/app.ts`), al lado del manifiesto. Las rutas
 actuales (`agent-storefront.json`, `/api/discovery/search`,
-`/checkout/:productId`) no cambian.
+`/checkout/:productId`, `/catalog`, `/orders`, `/orders/:orderId`,
+`/orders/:orderId/fulfil`) no cambian: el prefijo evita el choque con
+`GET /orders/:orderId`.
 
 ### 4.2 Contratos
 
@@ -74,7 +77,8 @@ actuales (`agent-storefront.json`, `/api/discovery/search`,
   `payTo`, activo, plazo, `areFeesSponsored`, más el tipo de cambio usado.
 - **Instrumento:** `type: "stellar_x402"`. **Credencial:**
   `type: "x402_payment_payload"` con `{x402Version, accepted, payload: {transaction}}`,
-  lo mismo que hoy viaja en el header `PAYMENT-SIGNATURE`.
+  lo que hoy viaja en el header `PAYMENT-SIGNATURE` menos `resource`, que en
+  UCP no existe.
 - **Liquidación:** en `complete`, del lado del comercio, contra el
   facilitator. Después se crea el pedido, se firma el recibo y se encola el
   anclaje, con el código que ya existe.
@@ -155,8 +159,8 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   - [ ] hash de la transacción de pago en testnet
   - [ ] pedido visible en el panel de la tienda
   - [ ] recibo con los tres checks en verde (`pnpm run vitrinee:verify`)
-  - [ ] un intento que excede `per_tx` es rechazado por el contrato `policy_rail` (`PerTxExceeded` en la simulación), no por el agente
-  - [ ] las rutas x402 actuales siguen respondiendo igual (tests existentes en verde)
+  - [ ] un intento que excede `per_tx` es rechazado por el contrato `policy_rail` (`PerTxExceeded` en la simulación). La evidencia sale de un script de prueba aparte que firma directo contra el contrato; el camino de producción sigue cortando antes en `policyRail.authorise` y **no gana ningún modo que lo salte**
+  - [ ] las rutas actuales, incluida `GET /orders/:orderId`, siguen respondiendo igual (tests existentes en verde)
   - [ ] si liquidar fuera del middleware no sale al segundo día: parar, mostrar y caer a la opción C (`E-1`)
   - [ ] todo en `evidencia/T122.md`
 
@@ -233,4 +237,5 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 |---|---|
 | 2026-09-30 | Borrador, a partir del traspaso del chat de estrategia del 29-sep |
 | 2026-09-30 | **Aprobado** por el usuario, sin cambios en las tareas. Extensión de Find Your Way confirmada por el usuario |
-| 2026-09-30 | T120 cerrada: sección 4 completa, opción A (`E-1` a `E-4`), T121 a 16 h y T122 a 29 h, aviso sobre AP2 en T123 |
+| 2026-09-30 | T120 (cerrada al mergear): sección 4 completa, opción A (`E-1` a `E-4`), T121 a 16 h y T122 a 29 h, aviso sobre AP2 en T123 |
+| 2026-09-30 | Correcciones de `/revisar` sobre T120: prefijo `/ucp/v1` para no chocar con `GET /orders/:orderId`, y cómo se obtiene la evidencia de `per_tx` sin atajos en producción |
