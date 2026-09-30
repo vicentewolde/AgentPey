@@ -210,6 +210,8 @@ pnpm vitrinee:test:contracts             # cargo test en contracts/
 | `GET /receipts/:hash/verify` | Tres checks sobre un recibo emitido por esta tienda |
 | `POST /receipts/verify` | Tres checks sobre cualquier recibo (`{ "receiptJws": "..." }`) |
 | `GET /dashboard/` | Panel de pedidos y verificación |
+| `GET /.well-known/ucp` | Perfil UCP `2026-04-08` de la tienda: servicio REST, capacidades de catálogo y el handler `com.agentpey.stellar_x402` con su `payTo` (Fase 7, T121) |
+| `POST /ucp/v1/catalog/search`, `/lookup`, `/product` | Catálogo en formato UCP: precios en la moneda de la tienda, monto USDC en la metadata de la variante ([VT-36](DECISIONES.md)) |
 
 Variables de entorno: [.env.vitrinee.example](../../../.env.vitrinee.example).
 

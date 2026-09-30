@@ -7278,3 +7278,22 @@ Exponential: T121 a `IN_PROGRESS`.
 `VT-36` aprobada por el usuario. El usuario pidió desplegar ya: el merge publica todo.
 Pendiente: `/revisar`, merge con su OK, y correr el cliente contra una tienda real tras el deploy. `AGENTS.md`: sin cambios. Nada toca `checkMandate`,
 firma, claves, `hosts.ts` ni `render.yaml`; el perfil solo publica datos que el manifiesto ya publicaba.
+
+## 2026-09-30 (5) — cc/t121-vitrinee-perfil-ucp → main (despliega)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T121 con el subagente `revisor`: sin bloqueantes, perímetro intacto. Corregido
+todo lo importante: el cliente de prueba exige `spec` y `schema` (se podía saltar el chequeo de
+namespace omitiéndolos); la spec pública del handler decía que un comercio no podía desviar el
+pago, y era falso, ahora exige comparar `payTo`, activo y red con el perfil antes de firmar;
+`x402_version` unificado; esquema publicado solo testnet; cuerpo no-JSON → 400 en el gateway;
+comando documentado en `INSTRUCCIONES.md` y rutas en el README de Vitrinee. `VT-36` aprobada.
+Mergeado a `main` con la autorización del usuario ("si está bien autorizo merge", y "hazlo ahora"
+para el deploy): Render redespliega Vitrinee y la web.
+
+Exponential: T121 a `DONE`, `exp:sync`.
+
+Pendiente: confirmar en vivo `pnpm run vitrinee:ucp:list -- https://bazar-cordillera.vitrinee.agentpey.com`
+y `https://agentpey.com/ucp/handlers/stellar-x402/spec`; después T122. `deployments/testnet.json`
+sigue modificado sin commitear (no es de esta rama). `AGENTS.md`: sin cambios.

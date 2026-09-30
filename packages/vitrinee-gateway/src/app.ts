@@ -279,6 +279,11 @@ export function createApp({
       res.status(400).json({ error: "ValidationError", message: "invalid request", details: { issues: error.issues } });
       return;
     }
+    // express.json() rejects a body that is not JSON, or too large, with its own 4xx.
+    if (error instanceof Error && "type" in error && (error.type === "entity.parse.failed" || error.type === "entity.too.large")) {
+      res.status(error.type === "entity.too.large" ? 413 : 400).json({ error: "ValidationError", message: "the request body is not valid JSON or is too large" });
+      return;
+    }
     log("unhandled error", { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ error: "InternalError", message: "unexpected failure" });
   });

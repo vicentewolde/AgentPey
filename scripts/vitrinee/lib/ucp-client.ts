@@ -38,27 +38,39 @@ async function getJson(fetchImpl: typeof fetch, url: string, init?: RequestInit)
     throw new VitrineeError("NetworkError", `could not reach ${url}`, { details: { url }, cause: error });
   }
   if (!res.ok) throw new VitrineeError("NetworkError", `${url} answered ${res.status}`, { details: { url, status: res.status } });
-  return res.json();
+  try {
+    return await res.json();
+  } catch (error) {
+    throw new VitrineeError("ValidationError", `${url} did not answer JSON`, { details: { url }, cause: error });
+  }
 }
 
 /**
- * Every `spec` and `schema` URL must live on its name's own domain. A profile
- * that breaks this could be advertising a handler under somebody else's name,
- * so nothing from it is used.
+ * Every capability and payment handler must name its `spec` and `schema`, and
+ * both must live on the name's own domain. A profile that omits them, or
+ * points them elsewhere, could be advertising a handler under somebody else's
+ * name, so nothing from it is used. Services need only a matching `spec` when
+ * they give one.
  */
 export function assertNamespaceBinding(profile: UcpBusinessProfile): void {
-  const registries = [profile.ucp.services, profile.ucp.capabilities ?? {}, profile.ucp.payment_handlers];
-  for (const registry of registries) {
+  const check = (registry: Record<string, ReadonlyArray<{ spec?: string | undefined; schema?: string | undefined }>>, required: boolean) => {
     for (const [name, declarations] of Object.entries(registry)) {
       for (const declaration of declarations) {
-        for (const link of [declaration.spec, declaration.schema]) {
-          if (link !== undefined && !originMatchesNamespace(name, link)) {
+        for (const [field, link] of [["spec", declaration.spec], ["schema", declaration.schema]] as const) {
+          if (link === undefined) {
+            if (required) throw new VitrineeError("ValidationError", `${name} declares no ${field} URL`, { details: { name, field } });
+            continue;
+          }
+          if (!originMatchesNamespace(name, link)) {
             throw new VitrineeError("ValidationError", `${name} points at ${link}, outside its namespace`, { details: { name, link } });
           }
         }
       }
     }
-  }
+  };
+  check(profile.ucp.services, false);
+  check(profile.ucp.capabilities ?? {}, true);
+  check(profile.ucp.payment_handlers, true);
 }
 
 export async function readUcpStorefront(baseUrl: string, fetchImpl: typeof fetch = fetch): Promise<UcpStorefront> {
@@ -95,8 +107,14 @@ export async function readUcpStorefront(baseUrl: string, fetchImpl: typeof fetch
       throw new VitrineeError("ValidationError", "catalog/search did not return a UCP search response", { details: { issues: result.error.issues } });
     }
     products.push(...result.data.products);
-    if (result.data.pagination?.has_next_page !== true) break;
-    cursor = result.data.pagination.cursor;
+    if (result.data.pagination?.has_next_page !== true) return { profile, endpoint, handler: handlerConfig.data, products };
+    const next = result.data.pagination.cursor;
+    if (next === undefined || next === cursor) {
+      throw new VitrineeError("ValidationError", "catalog/search announced a next page without a new cursor", { details: { cursor } });
+    }
+    cursor = next;
   }
-  return { profile, endpoint, handler: handlerConfig.data, products };
+  throw new VitrineeError("ValidationError", `catalog/search has more than ${MAX_PAGES} pages; refusing to list a partial catalog`, {
+    details: { pages: MAX_PAGES },
+  });
 }

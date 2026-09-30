@@ -137,10 +137,13 @@ export interface SearchCatalogInput {
  */
 export function searchCatalog({ config, products, request }: SearchCatalogInput) {
   const needle = request.query === undefined || request.query.trim() === "*" ? "" : request.query.trim().toLowerCase();
+  // Vitrinee products carry no categories, so a category filter matches none of them (UCP: OR over listed categories).
+  const byCategory = (request.filters?.categories ?? []).length > 0;
   const min = request.filters?.price?.min;
   const max = request.filters?.price?.max;
 
   const matched = products
+    .filter(() => !byCategory)
     .filter((product) => needle === "" || `${product.name} ${product.description}`.toLowerCase().includes(needle))
     .map((product) => toUcpProduct(product, config))
     .filter((product) => {

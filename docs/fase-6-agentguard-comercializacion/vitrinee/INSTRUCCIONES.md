@@ -106,6 +106,12 @@ pnpm run vitrinee:buy -- "compra un pack de stickers"
 pnpm run vitrinee:verify
 ```
 
+Leer una tienda como un agente UCP (perfil, chequeo de namespace, catálogo; Fase 7, T121):
+
+```bash
+pnpm run vitrinee:ucp:list -- https://bazar-cordillera.vitrinee.agentpey.com
+```
+
 ```bash
 pnpm run vitrinee:console
 ```

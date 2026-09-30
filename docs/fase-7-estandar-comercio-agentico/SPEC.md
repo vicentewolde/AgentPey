@@ -54,8 +54,8 @@ Sale de T120 ([documento](T120-handler-stellar-ucp.md)) y de las decisiones
 |---|---|
 | Handler `com.agentpey.stellar_x402` | El medio de pago. Spec y esquema alojados en `https://agentpey.com/ucp/handlers/stellar-x402/`, porque UCP exige que el origen coincida con el namespace |
 | Extensión `com.agentpey.shopping.receipt` | Extiende `dev.ucp.shopping.checkout` y `dev.ucp.shopping.order` con el recibo firmado y su anclaje. Alojada en `agentpey.com` |
-| Perfil del comercio | `GET /.well-known/ucp` en cada subdominio: servicio REST, capacidades (checkout, order, catalog search y lookup, fulfillment, la extensión de recibo) y el handler con su `config` |
-| Catálogo | `POST /ucp/v1/catalog/search` y `POST /ucp/v1/catalog/lookup`, sobre la misma caché que `agent-storefront.json`. Un producto de Vitrinee es un producto UCP con una variante |
+| Perfil del comercio | `GET /.well-known/ucp` en cada subdominio: servicio REST, capacidades y el handler con su `config`. Declara solo lo que ya responde: T121 publica catalog search y lookup; T122 agrega checkout, order, fulfillment y la extensión de recibo cuando existan sus rutas |
+| Catálogo | `POST /ucp/v1/catalog/search`, `POST /ucp/v1/catalog/lookup` y `POST /ucp/v1/catalog/product` (el detalle de un producto, parte de la capacidad lookup), sobre la misma caché que `agent-storefront.json`. Un producto de Vitrinee es un producto UCP con una variante |
 | Sesiones de checkout | Bajo `/ucp/v1`: `POST /checkout-sessions`, `GET` y `PUT /checkout-sessions/{id}`, `POST …/complete`, `POST …/cancel` |
 | Orden | `GET /ucp/v1/orders/{id}` en forma UCP, con la extensión de recibo |
 | Prefijo | Todas las rutas UCP de REST viven bajo `/ucp/v1`, que es el `endpoint` del servicio declarado en el perfil. Solo `/.well-known/ucp` está en la raíz |
@@ -76,9 +76,13 @@ actuales (`agent-storefront.json`, `/api/discovery/search`,
   esa compra (el `accepts[0]` de hoy): monto en unidades atómicas de USDC,
   `payTo`, activo, plazo, `areFeesSponsored`, más el tipo de cambio usado.
 - **Instrumento:** `type: "stellar_x402"`. **Credencial:**
-  `type: "x402_payment_payload"` con `{x402Version, accepted, payload: {transaction}}`,
-  lo que hoy viaja en el header `PAYMENT-SIGNATURE` menos `resource`, que en
-  UCP no existe.
+  `type: "x402_payment_payload"` con `{x402_version, accepted, payload: {transaction}}`:
+  lo que hoy viaja en el header `PAYMENT-SIGNATURE`, con la versión escrita al
+  estilo UCP y sin `resource`, que en UCP no existe.
+- **Chequeo de la plataforma:** antes de firmar, `payTo`, `asset` y `network`
+  de los requisitos de la compra tienen que coincidir con el `config` del
+  handler en el perfil (`/.well-known/ucp`), no solo con la respuesta del
+  checkout, que la escribe el comercio. Lo implementa el cliente de T122.
 - **Liquidación:** en `complete`, del lado del comercio, contra el
   facilitator. Después se crea el pedido, se firma el recibo y se encola el
   anclaje, con el código que ya existe.

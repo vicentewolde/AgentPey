@@ -21,11 +21,13 @@ describe("namespaceAuthority", () => {
 
   it("rejects a name with no domain", () => {
     expect(() => namespaceAuthority("checkout")).toThrowError(/reverse-domain/);
+    let thrown: unknown;
     try {
       namespaceAuthority("");
     } catch (error) {
-      expect(isVitrineeError(error) && error.code).toBe("ValidationError");
+      thrown = error;
     }
+    expect(isVitrineeError(thrown) && thrown.code).toBe("ValidationError");
   });
 });
 

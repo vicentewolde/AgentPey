@@ -7,15 +7,15 @@
 
 **Actualizado:** 2026-09-30
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T120 · UCP admite un payment handler x402 de Stellar; opción A elegida
-**Siguiente paso:** `/revisar` de T121; con el OK del usuario, merge (despliega) y `vitrinee:ucp:list` contra una tienda real; después `/tarea T122`
+**Última tarea terminada:** T121 · perfil y catálogo UCP por tienda; reglas del handler en `agentpey.com`
+**Siguiente paso:** confirmar el deploy con `vitrinee:ucp:list` contra una tienda real; después `/tarea T122`
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
 | T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
-| T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | 👀 en revisión | `cc/t121-vitrinee-perfil-ucp` |
+| T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ⏳ pendiente | |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |

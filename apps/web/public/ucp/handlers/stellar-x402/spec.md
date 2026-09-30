@@ -22,7 +22,7 @@ use HTTP 402: the payload travels in the body of Complete Checkout.
 
 ### Scope
 
-* Networks: `stellar:testnet`. `stellar:pubnet` is reserved.
+* Networks: `stellar:testnet` only in this version.
 * Scheme: `exact`, one transfer per checkout.
 * Payer: any Stellar account (`G...`) or contract account (`C...`) that can
   authorize a SEP-41 `transfer`, including smart accounts that enforce their
@@ -103,14 +103,21 @@ The platform **MUST** treat `payment_requirements` as authoritative and
 ## Instrument Acquisition
 
 1. Read `payment_requirements` from the checkout response.
-2. Check them against the buyer's limits. A platform acting under a mandate
+2. Check them against the business profile: `payTo`, `asset` and `network`
+   **MUST** equal `config.pay_to`, `config.asset.contract` and
+   `config.network` of the handler declared at the business's
+   `/.well-known/ucp`. The checkout response alone is not enough, since the
+   business writes it.
+3. Check them against the buyer's limits. A platform acting under a mandate
    **MUST** refuse before signing if they fall outside it.
-3. Build a transaction that invokes `transfer(from = payer, to = payTo,
+4. Build a transaction that invokes `transfer(from = payer, to = payTo,
    amount)` on the asset contract, and sign the Soroban authorization entry
    for `from` (address credentials). The source account may be left for the
    facilitator to set.
-4. Wrap it as an x402 `PaymentPayload`: `{x402Version: 2, accepted:
-   <payment_requirements>, payload: {transaction: <base64 XDR>}}`.
+5. Wrap it as the credential: the fields of an x402 `PaymentPayload`, with
+   the version spelled the UCP way: `{type: "x402_payment_payload",
+   x402_version: 2, accepted: <payment_requirements>, payload: {transaction:
+   <base64 XDR>}}`. x402's `resource` is omitted: UCP has no resource URL.
 
 The instrument submitted on Complete Checkout follows `#/$defs/instrument`:
 
@@ -165,11 +172,14 @@ platform to pay again.
 
 ## Security Considerations
 
-* The platform signs only a transfer of the exact requirements; a compromised
-  business cannot redirect or inflate it.
+* The business writes `payment_requirements`, so the credential protects the
+  payer only as far as the platform checks them: against the profile's
+  `pay_to`, asset and network (step 2 of acquisition) and against the buyer's
+  limits (step 3). Once signed, the credential cannot be redirected to another
+  recipient, raised, or settled twice.
 * A payer with on-chain limits (for example a smart account enforcing a
   per-transaction and per-day cap in `__check_auth`) is protected even from a
-  platform that ignores step 2 of acquisition.
+  platform that ignores step 3 of acquisition.
 * The facilitator sees the payload, not the buyer's personal data. Businesses
   **SHOULD NOT** send shipping or contact data to it.
 

@@ -56,6 +56,14 @@ describe("UCP surface of a storefront", () => {
       expect(ucpBusinessProfileSchema.safeParse(profile).success).toBe(true);
     });
 
+    it("is checked for real: the same validator rejects a broken profile (negative control)", async () => {
+      const profile = (await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json()) as { ucp: Record<string, unknown> };
+      const noVersion: Record<string, unknown> = { ...profile.ucp };
+      delete noVersion["version"];
+      expect(ucpErrors(UCP_SCHEMA.businessProfile, { ...profile, ucp: noVersion })).not.toEqual([]);
+      expect(ucpErrors(UCP_SCHEMA.businessProfile, { ...profile, ucp: { ...profile.ucp, services: { "dev.ucp.shopping": [{ version: "2026-04-08", transport: "carrier-pigeon" }] } } })).not.toEqual([]);
+    });
+
     it("points the REST service at the /ucp/v1 prefix of this host", async () => {
       const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
       expect(profile.ucp.version).toBe("2026-04-08");
@@ -146,6 +154,27 @@ describe("UCP surface of a storefront", () => {
       expect(none.pagination).toEqual({ has_next_page: false, total_count: 0 });
     });
 
+    it("rejects a price that is not an integer, per the official schema (negative control)", async () => {
+      const body = (await (await post("/catalog/search", { query: "hoodie" })).json()) as { products: Array<{ variants: Array<{ price: { amount: unknown } }> }> };
+      const variant = body.products[0]?.variants[0];
+      if (variant === undefined) throw new TypeError("no variant");
+      variant.price.amount = 349.9;
+      expect(ucpErrors(UCP_SCHEMA.searchResponse, body)).not.toEqual([]);
+      variant.price.amount = "34990";
+      expect(ucpErrors(UCP_SCHEMA.searchResponse, body)).not.toEqual([]);
+    });
+
+    it("matches no product for a category filter, since Vitrinee products carry no categories", async () => {
+      const body = ucpSearchResponseSchema.parse(await (await post("/catalog/search", { filters: { categories: ["ropa"] } })).json());
+      expect(body.products).toEqual([]);
+    });
+
+    it("answers a body that is not JSON with a typed 400, not a 500", async () => {
+      const res = await fetch(`${url}${UCP_REST_PREFIX}/catalog/search`, { method: "POST", headers: { "content-type": "application/json" }, body: "{not json" });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: "ValidationError" });
+    });
+
     it("filters by price in minor units of the store's currency", async () => {
       const body = ucpSearchResponseSchema.parse(await (await post("/catalog/search", { filters: { price: { max: 9000 } } })).json());
       expect(body.products.map((p) => p.id).sort()).toEqual(["cafe-nunoa-250", "stickers-cordillera"]);
@@ -209,7 +238,9 @@ describe("UCP surface of a storefront", () => {
     it("reports a missing product as a UCP application error, not a transport error", async () => {
       const res = await post("/catalog/product", { id: "nope" });
       expect(res.status).toBe(200);
-      expect(await res.json()).toMatchObject({
+      const body = await res.json();
+      expect(ucpErrors(UCP_SCHEMA.errorResponse, body)).toEqual([]);
+      expect(body).toMatchObject({
         ucp: { status: "error" },
         messages: [{ type: "error", code: "not_found", severity: "unrecoverable" }],
       });

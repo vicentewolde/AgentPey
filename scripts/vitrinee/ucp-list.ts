@@ -26,7 +26,7 @@ try {
   out(`\n${store.products.length} product(s):`);
   for (const product of store.products) {
     const [variant] = product.variants;
-    const available = variant?.availability?.available === false ? " (sin stock)" : "";
+    const available = variant?.availability?.available === false ? " (out of stock)" : "";
     out(`  ${product.id.padEnd(28)} ${String(variant?.price.amount).padStart(9)} ${variant?.price.currency}  ${product.title}${available}`);
   }
 } catch (error) {

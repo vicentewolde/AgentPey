@@ -49,6 +49,7 @@ export const UCP_SCHEMA = {
   lookupResponse: "https://ucp.dev/schemas/shopping/catalog_lookup.json#/$defs/lookup_response",
   getProductResponse: "https://ucp.dev/schemas/shopping/catalog_lookup.json#/$defs/get_product_response",
   searchRequest: "https://ucp.dev/schemas/shopping/catalog_search.json#/$defs/search_request",
+  errorResponse: "https://ucp.dev/schemas/shopping/types/error_response.json",
 } as const;
 
 /** The validation errors of `value` against a UCP schema, as readable lines; empty when it is valid. */

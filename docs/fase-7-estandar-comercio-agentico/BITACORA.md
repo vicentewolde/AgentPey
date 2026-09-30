@@ -13,13 +13,14 @@
 ## Estado actual
 
 **Fecha:** 2026-09-30 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
-`E-4`). **T121 en revisión**: cada tienda publica su perfil y su catálogo UCP.
-**Sigue:** la decisión `VT-36`, el deploy y T122.
+`E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP, y
+`agentpey.com` publica las reglas del medio de pago. **Sigue:** la prueba contra
+una tienda real tras el deploy, y T122.
 
 | Tarea | Estado |
 |---|---|
 | T120 Prueba técnica | cerrada |
-| T121 Perfil y catálogo UCP | en revisión |
+| T121 Perfil y catálogo UCP | cerrada |
 | T122 a T125 | pendientes |
 
 ## Apertura de la fase (2026-09-30)
@@ -66,7 +67,7 @@ para no chocar con las actuales, y la prueba de que el contrato rechaza un
 pago excedido se hace con un script aparte, sin agregarle ningún atajo al
 agente.
 
-## T121 · Cada tienda de Vitrinee habla UCP para mostrar lo que vende (2026-09-30, en revisión)
+## T121 · Cada tienda de Vitrinee habla UCP para mostrar lo que vende (2026-09-30, cerrada)
 
 **En lenguaje llano.** Cada tienda de Vitrinee tiene ahora una "ficha" en el
 formato que definieron Google, Shopify y compañía (`/.well-known/ucp`). La
@@ -88,3 +89,13 @@ se corrigió solo para los tests y quedó anotado para reportarlo.
 sin decimales de por medio (`VT-36`). Las reglas del medio de pago se publican
 en `agentpey.com` junto con este cambio. **Pendiente:** probar el programa
 contra una tienda real, apenas esté desplegado. Evidencia: [evidencia/T121.md](evidencia/T121.md).
+
+**Lo que encontró la revisión** (`/revisar`, sin bloqueantes), ya corregido:
+la spec pública decía que un comercio comprometido no podía desviar el pago,
+y era falso, porque el comercio escribe los requisitos; ahora exige que la
+plataforma los compare con el perfil antes de firmar. El cliente de prueba
+aceptaba un perfil que simplemente omitía la dirección de las reglas del
+medio de pago; ahora lo rechaza. Además: el nombre del campo de versión quedó
+unificado, el esquema publicado solo admite testnet, un cuerpo que no es JSON
+responde 400 en vez de 500, y los tests prueban que el validador de verdad
+rechaza respuestas rotas.

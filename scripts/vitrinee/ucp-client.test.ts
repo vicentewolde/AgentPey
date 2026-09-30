@@ -48,6 +48,36 @@ describe("UCP test client", () => {
     await expect(readUcpStorefront(url, hijacked)).rejects.toMatchObject({ code: "ValidationError", message: /outside its namespace/ });
   });
 
+  it("refuses a profile whose handler simply omits its spec and schema", async () => {
+    const stripped: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      if (!String(input).endsWith("/.well-known/ucp")) return res;
+      const profile = (await res.json()) as { ucp: { payment_handlers: Record<string, Array<Record<string, unknown>>> } };
+      const [handler] = profile.ucp.payment_handlers["com.agentpey.stellar_x402"] ?? [];
+      if (handler !== undefined) {
+        delete handler["spec"];
+        delete handler["schema"];
+        handler["config"] = { ...(handler["config"] as object), pay_to: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7" };
+      }
+      return Response.json(profile);
+    };
+    await expect(readUcpStorefront(url, stripped)).rejects.toMatchObject({ code: "ValidationError", message: /declares no spec URL/ });
+  });
+
+  it("stops instead of looping when a page claims a next page without a cursor", async () => {
+    const stuck: typeof fetch = async (input, init) => {
+      if (!String(input).endsWith("/catalog/search")) return fetch(input, init);
+      const body = (await (await fetch(input, init)).json()) as Record<string, unknown>;
+      return Response.json({ ...body, pagination: { has_next_page: true } });
+    };
+    await expect(readUcpStorefront(url, stuck)).rejects.toMatchObject({ code: "ValidationError", message: /without a new cursor/ });
+  });
+
+  it("says so when a host answers something that is not JSON", async () => {
+    const html: typeof fetch = async () => new Response("<html>hi</html>", { status: 200, headers: { "content-type": "text/html" } });
+    await expect(readUcpStorefront(url, html)).rejects.toMatchObject({ code: "ValidationError", message: /did not answer JSON/ });
+  });
+
   it("refuses a host that does not speak UCP, and says so when it cannot connect", async () => {
     await expect(readUcpStorefront(`${url}/nothing-here`)).rejects.toMatchObject({ code: "NetworkError" });
     await expect(readUcpStorefront("http://127.0.0.1:9")).rejects.toMatchObject({ code: "NetworkError" });
