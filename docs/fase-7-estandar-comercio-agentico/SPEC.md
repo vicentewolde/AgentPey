@@ -45,25 +45,59 @@ AgentPey pasa a ser la implementación de referencia de un futuro SEP
 
 ## 4. Diseño
 
-El diseño de T121 y T122 **sale de T120**. Esta sección se completa cuando
-T120 cierre y el usuario elija una opción; hasta entonces T121 a T124 no se
-empiezan.
+Sale de T120 ([documento](T120-handler-stellar-ucp.md)) y de las decisiones
+`E-1` a `E-4` del usuario (2026-09-30). Versión de UCP: **`2026-04-08`**.
 
-### 4.1 Componentes que se espera tocar
+### 4.1 Piezas
 
-- `packages/vitrinee-core/src/manifest.ts` y
-  `packages/vitrinee-gateway/src/discovery.ts`: de donde sale hoy
-  `agent-storefront.json`, y de donde saldría el perfil UCP.
-- `packages/vitrinee-gateway`: checkout y orden.
-- `packages/vitrinee-anchor`: el recibo anclado, sin cambios de contrato.
-- `apps/agent` y `packages/mandate`: el lado comprador y el `policy_rail`.
+| Pieza | Qué es |
+|---|---|
+| Handler `com.agentpey.stellar_x402` | El medio de pago. Spec y esquema alojados en `https://agentpey.com/ucp/handlers/stellar-x402/`, porque UCP exige que el origen coincida con el namespace |
+| Extensión `com.agentpey.shopping.receipt` | Extiende `dev.ucp.shopping.checkout` y `dev.ucp.shopping.order` con el recibo firmado y su anclaje. Alojada en `agentpey.com` |
+| Perfil del comercio | `GET /.well-known/ucp` en cada subdominio: servicio REST, capacidades (checkout, order, catalog search y lookup, fulfillment, la extensión de recibo) y el handler con su `config` |
+| Catálogo | `POST /catalog/search` y `POST /catalog/lookup`, sobre la misma caché que `agent-storefront.json`. Un producto de Vitrinee es un producto UCP con una variante |
+| Sesiones de checkout | `POST /checkout-sessions`, `GET` y `PUT /checkout-sessions/{id}`, `POST …/complete`, `POST …/cancel` |
+| Orden | `GET /orders/{id}` en forma UCP, con la extensión de recibo |
+| Perfil de la plataforma | Un JSON estático del agente de AgentPey, enviado en el header `UCP-Agent` |
+
+Todo lo de Vitrinee se agrega en `createApp()`
+(`packages/vitrinee-gateway/src/app.ts`), al lado del manifiesto. Las rutas
+actuales (`agent-storefront.json`, `/api/discovery/search`,
+`/checkout/:productId`) no cambian.
 
 ### 4.2 Contratos
 
-Por definir en T120: forma del perfil UCP, configuración del handler,
-dónde viaja la autorización x402 y dónde viaja el recibo en la orden.
+- **`config` del handler en el perfil:** red (`stellar:testnet`), esquema
+  `exact`, contrato del activo, decimales, `payTo` y URL del facilitator.
+- **`config` del handler en la respuesta del checkout:** el requisito x402 de
+  esa compra (el `accepts[0]` de hoy): monto en unidades atómicas de USDC,
+  `payTo`, activo, plazo, `areFeesSponsored`, más el tipo de cambio usado.
+- **Instrumento:** `type: "stellar_x402"`. **Credencial:**
+  `type: "x402_payment_payload"` con `{x402Version, accepted, payload: {transaction}}`,
+  lo mismo que hoy viaja en el header `PAYMENT-SIGNATURE`.
+- **Liquidación:** en `complete`, del lado del comercio, contra el
+  facilitator. Después se crea el pedido, se firma el recibo y se encola el
+  anclaje, con el código que ya existe.
+- **Moneda (`E-3`):** la sesión va en la moneda de la tienda (ISO 4217, por
+  ejemplo CLP) con montos en su unidad menor. El monto en USDC solo aparece
+  en el handler y en el recibo.
+- **Despacho (`E-4`):** extensión `dev.ucp.shopping.fulfillment` en su forma
+  mínima: un método de envío y un destino.
+- **Recibo:** objeto `receipt` con `format`, `jws`, `hash`, `network`,
+  `settlement_tx_hash`, `anchor` y `verify_url`. `order.permalink_url` apunta
+  a `/receipts/<hash>`.
+- **Errores:** rechazo del facilitator o de la red → `payment_failed`; sin
+  stock → `out_of_stock`; más de una línea → error `recoverable`.
 
-### 4.3 Decisiones
+### 4.3 Límites de v0
+
+- Un producto por compra (con cantidad). No hay carrito.
+- Sin webhooks de orden: el cliente lee la orden para ver el anclaje.
+- El binding de la credencial al checkout es lógico (destinatario, activo y
+  monto firmados, nonce y vencimiento), no incluye el `id` de la sesión.
+  Queda como brecha para el SEP.
+
+### 4.4 Decisiones
 
 Las de esta fase van a [`DECISIONES.md`](DECISIONES.md) con prefijo `E-`.
 Las que tocan Vitrinee por dentro siguen con `VT-`.
@@ -91,24 +125,28 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
      `GET /api/discovery/search`, el checkout por `GET`, `policy_rail` como pagador.
 - **Archivos principales:** `docs/fase-7-estandar-comercio-agentico/T120-handler-stellar-ucp.md`
 - **Hecho cuando:**
-  - [ ] las cuatro preguntas están respondidas, cada una con la cita de la spec (URL y sección)
-  - [ ] hay opciones con una recomendación, y el plan B evaluado (catálogo en UCP, checkout x402 aparte, brecha documentada para el SEP)
-  - [ ] T121 y T122 tienen horas estimadas y la sección 4 de este spec queda completa
-  - [ ] el usuario eligió una opción (**parar y mostrar antes de construir**)
+  - [x] las cuatro preguntas están respondidas, cada una con la cita de la spec (URL y sección)
+  - [x] hay opciones con una recomendación, y el plan B evaluado (catálogo en UCP, checkout x402 aparte, brecha documentada para el SEP)
+  - [x] T121 y T122 tienen horas estimadas y la sección 4 de este spec queda completa
+  - [x] el usuario eligió una opción: A (`E-1`)
 
 ### T121 · Vitrinee publica `/.well-known/ucp` por comercio
-- **Prioridad:** imprescindible · **Estimación:** 15 h (se ajusta en T120) · **Delegable a Codex:** solo el mapeo mecánico de campos; diseño y revisión no
+- **Prioridad:** imprescindible · **Estimación:** 16 h (T120) · **Delegable a Codex:** solo el mapeo mecánico de campos y los tests de validación; diseño y revisión no
 - **Depende de:** T120
 - **Descripción:** cada subdominio de comercio (`*.vitrinee.agentpey.com`)
-  publica su perfil UCP, generado desde lo que ya sirve
-  `agent-storefront.json`, que se mantiene.
+  publica su perfil UCP y sirve su catálogo por `POST /catalog/search` y
+  `POST /catalog/lookup`, desde los mismos datos que `agent-storefront.json`,
+  que se mantiene. Incluye la spec y el esquema del handler y de la extensión
+  de recibo como archivos listos para `agentpey.com` (publicarlos es un
+  deploy y necesita permiso del usuario).
 - **Hecho cuando:**
-  - [ ] el perfil valida contra los esquemas de UCP (test sin red, con los esquemas versionados en el repo)
-  - [ ] un cliente de prueba lee el perfil y lista los productos de una tienda real
+  - [ ] el perfil y las respuestas del catálogo validan contra los esquemas de UCP `2026-04-08` (test sin red, con los esquemas versionados en el repo)
+  - [ ] un cliente de prueba lee el perfil, valida que el origen del handler coincide con su namespace y lista los productos de una tienda real
+  - [ ] la spec y el esquema del handler y de la extensión de recibo existen en el repo
   - [ ] `agent-storefront.json` responde igual que antes (test de no regresión)
 
 ### T122 · Compra UCP pagada sobre Stellar, de punta a punta
-- **Prioridad:** imprescindible · **Estimación:** 25 h (se ajusta en T120) · **Delegable a Codex:** no (`P-10`)
+- **Prioridad:** imprescindible · **Estimación:** 29 h (T120, opción A) · **Delegable a Codex:** no (`P-10`)
 - **Depende de:** T121
 - **Descripción:** una sesión de checkout UCP termina pagando por x402 en
   USDC testnet desde un `policy_rail`. Se crea el pedido real en la plataforma
@@ -117,12 +155,17 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   - [ ] hash de la transacción de pago en testnet
   - [ ] pedido visible en el panel de la tienda
   - [ ] recibo con los tres checks en verde (`pnpm run vitrinee:verify`)
-  - [ ] un intento que excede `per_tx` es rechazado por la red, no por el agente
+  - [ ] un intento que excede `per_tx` es rechazado por el contrato `policy_rail` (`PerTxExceeded` en la simulación), no por el agente
+  - [ ] las rutas x402 actuales siguen respondiendo igual (tests existentes en verde)
+  - [ ] si liquidar fuera del middleware no sale al segundo día: parar, mostrar y caer a la opción C (`E-1`)
   - [ ] todo en `evidencia/T122.md`
 
 ### T123 · Mandato exportable como mandatos AP2
 - **Prioridad:** si alcanza (se corta segundo) · **Estimación:** 15 h · **Delegable a Codex:** no
 - **Depende de:** T122
+- **Aviso de T120:** AP2 en UCP exige firmas ECDSA (ES256/384/512) y mandatos
+  SD-JWT; el Mandato usa Ed25519. Hay que releer la extensión del texto
+  fuente y replanificar esta tarea antes de empezarla; 15 h puede quedar corto.
 - **Descripción:** mapear el Mandato firmado a los mandatos AP2 (Intent, Cart
   y Payment) como Verifiable Credentials, y verificarlos.
 - **Hecho cuando:**
@@ -190,3 +233,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 |---|---|
 | 2026-09-30 | Borrador, a partir del traspaso del chat de estrategia del 29-sep |
 | 2026-09-30 | **Aprobado** por el usuario, sin cambios en las tareas. Extensión de Find Your Way confirmada por el usuario |
+| 2026-09-30 | T120 cerrada: sección 4 completa, opción A (`E-1` a `E-4`), T121 a 16 h y T122 a 29 h, aviso sobre AP2 en T123 |
