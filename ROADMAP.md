@@ -108,10 +108,14 @@ las decisiones estratégicas que llevaron al código, y para SCF eso es evidenci
 | 4 | **MandateGate** | La cadena completa —identidad, política, mandato— funciona dentro del checkout **real** de un comercio on-chain existente | ✅ Completa (T24–T26) | — |
 | 5 | **MandateVault + cierre de piloto** | Cada decisión del sistema queda como evidencia verificable; el MVP y la landing funcionan bien de cara al mensaje a Tellus, que gestiona la Instaward | ✅ Completa (T27–T31) — mensaje a Tellus enviado 2026-09-08 | — |
 | 6 | **Después: AgentGuard + comercialización** | Convertir el piloto en un producto real con partners en testnet, mientras se espera la resolución de SCF | 🔄 En curso, iniciada 2026-09-09 (`P-6`) | Ninguno técnico — depende de decisiones de negocio y del propio ritmo del founder |
+| 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | 🔄 Abierta 2026-09-30 (`P-14`), spec en borrador, T120–T125 | La spec de UCP tiene que admitir un handler x402 (se resuelve en T120) |
 
 Las Fases 0 a 5 están cerradas — el piloto técnico completo.
 La Fase 6 arrancó el 2026-09-09 por la mitad de "comercialización"; la mitad
 de AgentGuard sigue deliberadamente sin alcance — ver §4.6.
+La Fase 7 se abrió el 2026-09-30, con la Fase 6 todavía abierta: es un
+reposicionamiento (`P-14`), no la continuación de la lista original de siete
+fases (0 a 6) — ver §4.7.
 
 ---
 
@@ -603,6 +607,24 @@ identificables desde ahora aunque las respuestas no:**
 No hay tareas, ni siquiera un desglose aproximado, porque cualquier desglose
 escrito hoy sería una suposición disfrazada de plan. Esta fase se diseña
 después de que las Fases 2–5 den evidencia real sobre la que apoyarse.
+
+### 4.7 · Fase 7 — Estándar de comercio agéntico sobre Stellar 🔄 abierta 2026-09-30
+
+No estaba en el diseño original. La abre `P-14`
+([docs/DECISIONES.md](docs/DECISIONES.md)): la capa de identidad y permisos
+para agentes ya está saturada en Stellar, así que AgentPey deja de
+presentarse como esa capa y pasa a ser la implementación de referencia de
+cómo funcionan sobre Stellar los estándares de comercio agéntico que ya
+ganaron (UCP, AP2, x402), más lo que les falta: un payment handler de
+Stellar, recibos firmados y anclados, comercios LATAM fuera de Shopify y
+disputas en la red. Objetivo inmediato: la hackathon Find Your Way y después
+HackMeridian (25 y 26 de octubre).
+
+Es la primera fase que se trabaja con el método de `P-15`: un spec aprobado
+antes de escribir código, y tareas con su rama, su commit y su revisión.
+Alcance, tareas (T120 a T125), orden y cortes viven en
+[docs/fase-7-estandar-comercio-agentico/SPEC.md](docs/fase-7-estandar-comercio-agentico/SPEC.md);
+el avance, en [docs/ESTADO.md](docs/ESTADO.md).
 
 ---
 

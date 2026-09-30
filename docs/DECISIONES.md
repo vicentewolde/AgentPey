@@ -657,3 +657,132 @@ tablero no reemplaza un documento con motivos y alternativas.
 día.** Se pospone hasta ver qué se desincroniza de verdad en tres o cuatro
 sesiones; escribirlo ahora sería diseñar contra un problema que todavía no se
 vio.
+
+---
+
+### P-14 · AgentPey se reposiciona como implementación de referencia del comercio agéntico sobre Stellar: UCP, AP2 y x402 en vez de un protocolo propio · `Vigente`
+**Fecha:** 2026-09-30 · **Hito:** abre la Fase 7 (T120 a T125) · Decidido por el usuario en el chat de estrategia del 2026-09-29; traspaso en `docs/traspaso-estandar-comercio-agentico.md` (archivo local del usuario, sin versionar)
+
+**Qué cambia.** AgentPey deja de presentarse como "la capa de identidad y
+permisos para agentes" y pasa a presentarse como la forma en que los
+estándares que ya están ganando funcionan sobre Stellar, más lo que a esos
+estándares les falta. No inventa un protocolo. Entra en alcance, a pedido
+explícito del usuario:
+
+1. Vitrinee publica su catálogo en formato **UCP** (Universal Commerce
+   Protocol, spec `2026-04-08`), en `/.well-known/ucp` por comercio.
+2. Un **payment handler de Stellar para UCP**: x402, USDC en testnet, pagado
+   desde un `policy_rail`.
+3. Exportar el Mandato como **mandatos AP2** (Verifiable Credentials). Si
+   alcanza el tiempo.
+4. **Disputas v0**, reviviendo Fallo (`~/fallo`) con otro nombre. Si alcanza
+   el tiempo.
+
+Lo que AgentPey aporta encima de los estándares: el handler de Stellar, los
+recibos firmados y anclados (ya existen en Vitrinee), los comercios LATAM
+fuera de Shopify (Vitrinee) y las disputas en la red. En paralelo, fuera de
+este repo, se escribe un borrador de SEP ("Agentic Commerce on Stellar") del
+que AgentPey es la implementación de referencia; el repo le entrega un anexo
+técnico (T125).
+
+**Motivo.** La capa de identidad y permisos para agentes ya está saturada en
+Stellar: REAPP tiene SCF #43 con x402, políticas en Soroban y mandatos AP2;
+CredioLabs y Policywright recibieron SCF #44 con constructores de políticas
+para smart accounts; Stellar 8004 ofrece identidad de agentes en mainnet.
+Mostrar AgentPass, PolicyRail y MandateVault como producto principal no
+diferencia. El objetivo inmediato es la hackathon Find Your Way y después
+HackMeridian (Lisboa, 25 y 26 de octubre, track Scale).
+
+**Lo que no cambia.** Solo testnet. El perímetro de `P-10` sigue intacto:
+nada de pagos, firma, fondos, autorización, contratos ni `checkMandate` se
+delega a Codex. El enforcement de `scope.limits` y `perDay` no se toca: los
+mandatos AP2 son una representación adicional del Mandato, no un reemplazo.
+`receipt-registry` no se redespliega sin permiso del usuario, y cualquier
+contrato nuevo (las disputas podrían pedir uno) necesita su decisión antes.
+`agent-storefront.json` se mantiene para no romper a los clientes actuales.
+
+**Alternativa descartada: un protocolo propio que cubra todo el flujo**
+(descubrimiento, carrito, checkout, mandato, pago y recibo). Descartada
+porque UCP, AP2 y x402 ya ganaron la adopción, y porque la demanda de
+checkout dentro del agente todavía no despega: OpenAI cerró Instant Checkout
+en marzo de 2026. Un protocolo más, de un equipo de una persona, no lo
+adoptaría nadie; un handler que hace funcionar el estándar de otros sobre
+Stellar sí tiene a quién servirle.
+
+**Pendientes que quedan después de esto:** `C-154` (dos comercios por cuenta)
+y `C-160` (más wallets que Freighter).
+
+---
+
+### P-15 · El trabajo se organiza como fase → spec → tareas → rama, commit y revisión, con `/estado`, `/tarea` y `/revisar` · `Vigente`
+**Fecha:** 2026-09-30 · **Hito:** ninguno; rige desde T120 · Decidido por el usuario; la adaptación, de Claude Code
+
+**Qué cambia.** El usuario adopta para AgentPey el método que usa en su
+proyecto AgentSales. Cada fase tiene un **spec** (`SPEC.md` en la carpeta de
+la fase) con objetivo, alcance, fuera de alcance, diseño y una lista de
+tareas pequeñas con dependencias y criterios "Hecho cuando". No se implementa
+nada que no esté en un spec **Aprobado** por el usuario. Cada tarea va en su
+rama, con sus commits y una revisión antes de entrar a `main`. Cada sesión
+sigue el mismo ciclo:
+
+1. `/estado`: dónde estamos y cuál es el siguiente paso.
+2. `/tarea T<n>`: rama, plan, implementación con tests, verificación,
+   documentación y commit. Para y muestra el resultado.
+3. `/revisar`: revisión del diff de la rama contra el spec, los criterios
+   transversales y el perímetro de autorización, con el subagente `revisor`.
+4. Merge a `main`, solo con el OK del usuario.
+
+Además: `/fase-plan <n>` redacta o revisa el spec de una fase hasta dejarlo
+aprobado, y `/fase-cerrar <n>` verifica los criterios de aceptación y cierra
+la fase. Las skills viven en `.claude/skills/` y el revisor en
+`.claude/agents/revisor.md`.
+
+**Cómo se adaptó a lo que AgentPey ya tenía.** El método se monta sobre las
+reglas existentes, no las reemplaza:
+
+| En AgentSales | En AgentPey |
+|---|---|
+| `docs/ESTADO.md` | [`docs/ESTADO.md`](ESTADO.md), nuevo: fase, tabla de tareas, siguiente paso, pendientes del usuario. Corto. `BITACORA.md` de la fase sigue siendo la narrativa en lenguaje llano y `AGENT_LOG.md` sigue siendo la coordinación con Codex |
+| `docs/specs/fase-N-*.md` | `docs/fase-<n>-…/SPEC.md`, en la carpeta de la fase, como el resto de sus documentos |
+| IDs `F1-T01` | La numeración continua del proyecto: `T120`, `T121`… (elegido por el usuario) |
+| Rama `<tipo>/<id>-<resumen>` | `cc/t<n>-<slug>`. El prefijo `cc/` es el que distingue a Claude Code de Codex (`P-5`) |
+| ADR (`/adr`) | `DECISIONES.md` de la fase o `docs/DECISIONES.md` con prefijo `P-`. No se crea un segundo registro de decisiones |
+| Commits en español | Commits en inglés que explican el porqué (regla 4 de `CLAUDE.md`) |
+| PR con squash merge y CI obligatoria | PR y merge fast-forward manual después del OK del usuario, como hasta hoy (elegido por el usuario). Se conservan los commits intermedios |
+| `pnpm check` | `pnpm check`, más `pnpm run vitrinee:check` si la tarea toca Vitrinee y `cargo test` si toca contratos. `test:integration` solo con permiso |
+
+**Exponential se mantiene como espejo** (elegido por el usuario): `P-13`
+sigue vigente en lo que dice del tablero. Cada tarea del spec tiene su ticket
+`T<n> · …`, `/tarea` lo pasa a `IN_PROGRESS`, el cierre lo deja en `QA` y el
+merge en `DONE`, con `pnpm run exp:sync` y la fila de `SYNC.md`. Lo que este
+método reemplaza de `P-13` es **cómo se planifica**: el spec de la fase toma
+el lugar del recorrido `/grill-with-docs` → `/to-prd` → `/to-expo`, y
+`/tarea` y `/revisar` toman el lugar de `/start-ticket` y `/ship-ticket`. En
+`SYNC.md` las tareas nuevas llevan el método `SPEC`.
+
+**Lo que no cambia.** Las reglas de `CLAUDE.md`: parar al cerrar cada tarea,
+no cambiar decisiones sin proponer y esperar, resumir en lenguaje llano,
+idioma, y no construir fuera de alcance. El protocolo con Codex (`P-4`,
+`P-5`, `P-10`). La evidencia cruda en `evidencia/T<n>.md`.
+
+**Ojo con un nombre.** "F7" ya significa otra cosa en
+`PLATAFORMA-PARTNERS.md` (la séptima de las diez fases del plano de
+partners). La fase nueva se escribe siempre **Fase 7**, completa.
+
+**Motivo.** Al usuario le funcionó en AgentSales: el spec aprobado evita
+construir de más, la tarea pequeña con "Hecho cuando" deja claro cuándo
+parar, y la revisión separada encuentra lo que quien escribió el código no
+ve. En AgentPey el hito T ya existía, pero se definía sobre la marcha en la
+bitácora; con el plazo de la hackathon, un spec corto con el orden y los
+cortes ya decididos ("si falta tiempo, se corta T124 y después T123") vale
+más que un hito bien narrado después.
+
+**Alternativa descartada: copiar el método de AgentSales tal cual** (IDs
+`F7-T01`, ramas `feat/…`, ADRs numerados, squash merge). Descartada porque
+rompe la numeración T que usan el traspaso, el chat de estrategia y la
+evidencia para SCF, borra el prefijo que separa a Claude Code de Codex, y
+abriría un segundo registro de decisiones al lado de 160 entradas `C-`.
+
+**Otra alternativa descartada: dejar Exponential en pausa** mientras dure la
+hackathon. La recomendó Claude Code para evitar doble contabilidad; el
+usuario prefirió mantener el tablero.

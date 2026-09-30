@@ -7200,3 +7200,27 @@ video: `C-154` (dos comercios en una cuenta, opción (a) ya aprobada) y `C-160`
 (Stellar Wallets Kit) — las dos tocan autorización o firma, no delegar a Codex sin
 visto bueno explícito. `AGENTS.md`: sin cambios. Nada de esto toca `checkMandate` ni el
 enforcement salvo lo ya decidido y aprobado para `C-154`.
+
+## 2026-09-30 — cc/fase7-metodologia (sin mergear, espera al usuario)
+
+Agente: Claude Code.
+
+Qué: ejecutado el traspaso del chat de estrategia del 29-sep. `P-14`: AgentPey se reposiciona
+como implementación de referencia del comercio agéntico sobre Stellar (UCP, AP2, x402), y eso
+abre la **Fase 7** (T120 a T125). `P-15`: a pedido del usuario, el trabajo pasa al método de su
+proyecto AgentSales, fase → spec → tareas → rama, commit y revisión, con las skills `/estado`,
+`/tarea`, `/revisar`, `/fase-plan` y `/fase-cerrar` (`.claude/skills/`) y el subagente `revisor`
+(`.claude/agents/`). Nuevos: `docs/ESTADO.md` (tablero del día a día) y
+`docs/fase-7-estandar-comercio-agentico/` con `SPEC.md` (**borrador**), `BITACORA.md` y
+`DECISIONES.md` (prefijo `E-`). `CLAUDE.md`, `ROADMAP.md` y `AGENTS.md` actualizados. Ningún
+código de producto tocado.
+
+Exponential: Feature de la Fase 7, tickets T120 a T125 con rama y dependencias, y seis acciones
+con fecha objetivo. Filas en `SYNC.md` con método `SPEC`.
+
+Pendiente: (1) el usuario revisa la rama y aprueba (o corrige) el spec de la Fase 7; (2) merge a
+`main` con su OK; (3) después, `/tarea T120`, que es investigación y termina en "parar y
+mostrar". `AGENTS.md`: **sí cambió**, Codex queda avisado de que de la Fase 7 solo le puede
+llegar el mapeo mecánico de T121. `deployments/testnet.json` sigue modificado sin commitear
+desde el 28-sep: no es de esta rama y no se tocó. `C-154` y `C-160` quedan para después de la
+Fase 7.

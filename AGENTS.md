@@ -74,6 +74,16 @@ contrato de ejecución esté congelado y mergeado (T73) se te delegarán piezas
 acotadas: la UI de RealOps, el comercio SignalDesk, fixtures y tests. Hasta
 entonces, si una tarea parece de F9, preguntá antes de escribir nada.
 
+**Fase 7 y método de trabajo, desde 2026-09-30 (`P-14`, `P-15`):** el trabajo
+se organiza ahora como fase → spec → tareas. El spec de la fase en curso es
+[`docs/fase-7-estandar-comercio-agentico/SPEC.md`](docs/fase-7-estandar-comercio-agentico/SPEC.md)
+y cada tarea dice ahí si es delegable. De la Fase 7 solo te puede llegar el
+mapeo mecánico de campos de T121 (catálogo de Vitrinee a perfil UCP), con el
+diseño ya decidido por Claude Code. T122 (el pago), T123 (mandatos AP2) y
+T124 (disputas) están dentro del perímetro de "nunca tuyo". No edites
+`docs/ESTADO.md` ni los `SPEC.md`: los mantiene Claude Code. Tu registro
+sigue siendo `docs/AGENT_LOG.md` y tu rama `codex/<task>`.
+
 **Vitrinee, desde 2026-09-23 (T98):** Vitrinee se fusionó en este repo
 (`docs/DECISIONES.md § P-12`) y es la puerta del vendedor para comercios reales.
 Antes de tocar cualquier ruta con `vitrinee` en el nombre, leé

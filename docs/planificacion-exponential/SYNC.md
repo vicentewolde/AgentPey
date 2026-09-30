@@ -3,7 +3,8 @@
 > Una fila por hito. Las fechas son las de Exponential (`createdAt`,
 > `completedAt`) salvo la de inicio, que Exponential no guarda y se anota aquí
 > al correr `/start-ticket`. Método: `ANTERIOR` (definido en BITACORA/DECISIONES
-> antes de adoptar Exponential) o `EXPONENTIAL` (grill → PRD → to-expo).
+> antes de adoptar Exponential), `EXPONENTIAL` (grill → PRD → to-expo) o `SPEC`
+> (desde T120: tarea del `SPEC.md` de la fase, `P-15`).
 > Cómo se mantiene: [README.md](README.md). Enlace a un ticket:
 > `https://www.exponential.im/tickets/<cuid>`.
 
@@ -38,6 +39,12 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T117 | `cmukfdast0001ig043zdtr47g` | La razón real de un anclaje rechazado por la red queda en los logs | EXPONENTIAL | `DONE` | 2026-09-27 | 2026-09-27 | 2026-09-28 | [C-157](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`3119956`); causa real confirmada (`tx_insufficient_balance`, wallet sin XLM) |
 | T118 | `cmukhf4ty0009ig04m2uhklw5` | Un segundo agente del mismo tipo ve su propio catálogo, no uno vacío | EXPONENTIAL | `DONE` | 2026-09-27 | 2026-09-27 | 2026-09-27 | [C-158](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`b05779c`) |
 | T119 | — (chore, sin ticket Exponential propio) | Tope de cuentas patrocinadas: 20 a 40, reserva recargada | EXPONENTIAL | `DONE` | 2026-09-28 | 2026-09-28 | 2026-09-28 | [C-159](../fase-6-agentguard-comercializacion/DECISIONES.md) | mergeado (`071d079`) |
+| T120 | `cmuo4xzea0005lg04mi4monf1` | Prueba técnica: payment handler de Stellar en UCP | SPEC | `READY_TO_PLAN` | 2026-09-30 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T121 | `cmuo4y1iv0009lg04th8bckfc` | Vitrinee publica `/.well-known/ucp` por comercio | SPEC | `BACKLOG` | 2026-09-30 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T122 | `cmuo4y3gv000dlg0410k5yyoz` | Compra UCP pagada sobre Stellar, de punta a punta | SPEC | `BACKLOG` | 2026-09-30 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T123 | `cmuo4y5ej000hlg048z72tc58` | Mandato exportable como mandatos AP2 (si alcanza) | SPEC | `BACKLOG` | 2026-09-30 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T124 | `cmuo4y7c7000llg042dzcvuby` | Disputas v0 (si alcanza; espera dos decisiones del usuario) | SPEC | `NEEDS_REFINEMENT` | 2026-09-30 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T125 | `cmuo4y9b5000plg04nr6y0ywc` | Anexo técnico para el SEP | SPEC | `BACKLOG` | 2026-09-30 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
@@ -191,3 +198,10 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   una fila duplicada de T110 (una decía `IN_PROGRESS`, la otra `DONE`) se corrigió a una sola;
   T114 se actualizó a `DONE`; "Archivar el repo viejo" y la app de Jumpseller tenían el estado
   viejo (`READY_TO_PLAN`/`NEEDS_REFINEMENT`) en vez del real (`DONE`/`ARCHIVED`).
+- **2026-09-30**, Claude Code (`cc/fase7-metodologia`): Fase 7 abierta (`P-14`) con el método de
+  spec y tareas (`P-15`); Exponential sigue como espejo. Creados: Feature "Estándar de comercio
+  agéntico sobre Stellar (Fase 7)" (`cmuo4xn4f0001lg04415zvng9`), tickets T120 a T125 con rama y
+  dependencias (T121 bloqueado por T120; T122 por T121; T123, T124 y T125 por T122) y seis acciones
+  "T<n> · fecha objetivo" (3, 7, 7, 10, 10 y 11 de octubre). El spec está en borrador: si el usuario
+  cambia tareas al aprobarlo, los tickets se ajustan. Encontrado y **no tocado**: el ticket T114
+  sigue en `QA` en Exponential, y esta tabla dice `DONE`.

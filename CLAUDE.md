@@ -1,6 +1,6 @@
 # AgentPey — instrucciones de trabajo
 
-Pila de pagos agénticos sobre **Stellar testnet**, en siete fases. La Fase 1
+Pila de pagos agénticos sobre **Stellar testnet**, por fases (0 a 7). La Fase 1
 (**AgentPass**) está cerrada: un agente prueba criptográficamente quién lo opera
 y qué puede hacer, y esa autorización se puede cortar desde fuera del agente —
 imposible de saltar por prompt injection.
@@ -9,7 +9,7 @@ imposible de saltar por prompt injection.
 
 | | |
 |---|---|
-| [ROADMAP.md](ROADMAP.md) | **Empieza aquí.** Las siete fases, en cuál estamos, qué sigue |
+| [ROADMAP.md](ROADMAP.md) | **Empieza aquí.** Las fases, en cuál estamos, qué sigue |
 | [docs/DECISIONES.md](docs/DECISIONES.md) | Decisiones que cruzan fases o afectan la estructura del proyecto (prefijo `P-`) |
 | [docs/fase-1-agentpass/CONTEXTO.md](docs/fase-1-agentpass/CONTEXTO.md) | Qué es el proyecto, la tesis, qué **no** es, fuera de alcance |
 | [docs/fase-1-agentpass/ARQUITECTURA.md](docs/fase-1-agentpass/ARQUITECTURA.md) | Mapa técnico denso y autocontenido — para dar contexto a un chat nuevo sin que lea el código |
@@ -36,13 +36,38 @@ imposible de saltar por prompt injection.
 | [docs/fase-6-agentguard-comercializacion/PILOTO-F9.md](docs/fase-6-agentguard-comercializacion/PILOTO-F9.md) | **Propuesta de F9, el piloto externo público** (T72): arquitectura de RealOps/SignalDesk/AgentPey, la regla "RealOps pide, AgentPey decide", los hitos T73–T83 y las nueve decisiones que esperan al usuario |
 | [docs/fase-6-agentguard-comercializacion/DECISIONES.md](docs/fase-6-agentguard-comercializacion/DECISIONES.md) | Decisiones de la Fase 6 (prefijo `C-`) |
 | [docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md](docs/fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md) | **Vitrinee**, fusionada en T98 (`P-12`): cómo un comercio real se suma a AgentPey sin escribir código. **Léelo antes de tocar cualquier `*vitrinee*`** — tiene reglas propias (secretos, prefijo `VT-`, contrato aparte) |
-| [docs/planificacion-exponential/README.md](docs/planificacion-exponential/README.md) | **Cómo se planifica desde el 2026-09-23 (`P-13`):** Exponential como tablero, el repo como registro, el ritual de sincronización y cómo se adaptan las skills `/start-ticket`, `/ship-ticket`, `/to-prd` y `/to-expo`. `SYNC.md` es la tabla hito ↔ ticket |
+| [docs/ESTADO.md](docs/ESTADO.md) | **El tablero del día a día desde el 2026-09-30 (`P-15`):** fase actual, tabla de tareas, siguiente paso y pendientes del usuario. Lo lee `/estado` y lo actualiza `/tarea` |
+| [docs/fase-7-estandar-comercio-agentico/SPEC.md](docs/fase-7-estandar-comercio-agentico/SPEC.md) | **Fase en curso, abierta 2026-09-30 (`P-14`).** El spec de la Fase 7: UCP, payment handler de Stellar, mandatos AP2, disputas. Tareas T120–T125. No se implementa nada que no esté aquí, aprobado |
+| [docs/fase-7-estandar-comercio-agentico/BITACORA.md](docs/fase-7-estandar-comercio-agentico/BITACORA.md) | Bitácora tarea a tarea de la Fase 7, empieza en T120 |
+| [docs/fase-7-estandar-comercio-agentico/DECISIONES.md](docs/fase-7-estandar-comercio-agentico/DECISIONES.md) | Decisiones de la Fase 7 (prefijo `E-`) |
+| [docs/planificacion-exponential/README.md](docs/planificacion-exponential/README.md) | **El tablero espejo (`P-13`, ajustado por `P-15`):** Exponential como tablero, el repo como registro, el ritual de sincronización y cómo se adaptan las skills `/start-ticket`, `/ship-ticket`, `/to-prd` y `/to-expo`. `SYNC.md` es la tabla hito ↔ ticket |
 | [docs/AGENT_LOG.md](docs/AGENT_LOG.md) | **Leer siempre, antes de tocar nada.** Bitácora corta compartida entre Claude Code y Codex: qué se hizo, en qué branch, qué queda pendiente |
 | [docs/fase-0-fundamentos/metodologia-claude-codex.html](docs/fase-0-fundamentos/metodologia-claude-codex.html) | Resumen visual del protocolo de coordinación Claude Code ↔ Codex — roles, el ciclo vía git, qué hace el usuario en cada punto. Abrir en el navegador |
 | [README.md](README.md) | Cómo correr el proyecto |
 
 `ROADMAP.md` dice en qué fase estamos; dentro de una fase cerrada, su
 `BITACORA.md` dice qué se hizo hito a hito.
+
+## Método de trabajo: fase → spec → tareas → rama, commit y revisión
+
+Desde el 2026-09-30 (`docs/DECISIONES.md` → `P-15`). Cada fase tiene un
+`SPEC.md` con sus tareas; **no se implementa nada que no esté en un spec
+aprobado por el usuario**. Si falta algo, se propone y se actualiza el spec
+antes. Cada sesión sigue el mismo ciclo, con las skills de `.claude/skills/`:
+
+1. `/estado` — dónde estamos y cuál es el siguiente paso. No modifica nada.
+2. `/tarea T<n>` — una tarea del spec de punta a punta: rama `cc/t<n>-<slug>`
+   desde `origin/main`, plan (espera el OK), implementación con tests,
+   `pnpm check`, documentación y commit. Para y muestra el resultado.
+3. `/revisar` — el subagente `revisor` revisa el diff contra el spec, los
+   criterios transversales y el perímetro de autorización.
+4. Merge — push, PR y fast-forward a `main`, **solo con el OK explícito del
+   usuario para esa rama**.
+
+`/fase-plan <n>` deja aprobado el spec de una fase y `/fase-cerrar <n>` la
+cierra. Una "tarea" del spec es lo que este archivo llama "hito": las reglas
+de abajo aplican igual. Las decisiones siguen en los `DECISIONES.md`; no hay
+ADRs aparte.
 
 ## Reglas de trabajo
 
@@ -69,7 +94,7 @@ imposible de saltar por prompt injection.
    integrable por terceros (multi-tenancy, superficie de API, publicación de
    paquetes) entró en alcance el 2026-09-09, a pedido explícito del
    usuario** — Fase 6, ver `docs/DECISIONES.md` → `P-6` y
-   `docs/fase-6-agentguard-comercializacion/`. **Vitrinee —la puerta del vendedor para comercios reales— y la entrega de AgentPey al hackathon "Find Your Way" entraron en alcance el 2026-09-23, a pedido explícito del usuario** — ver `docs/DECISIONES.md` → `P-12` y `docs/fase-6-agentguard-comercializacion/DECISIONES.md` → `C-130`. Sigue fuera: AgentGuard
+   `docs/fase-6-agentguard-comercializacion/`. **Vitrinee —la puerta del vendedor para comercios reales— y la entrega de AgentPey al hackathon "Find Your Way" entraron en alcance el 2026-09-23, a pedido explícito del usuario** — ver `docs/DECISIONES.md` → `P-12` y `docs/fase-6-agentguard-comercializacion/DECISIONES.md` → `C-130`. **El catálogo de Vitrinee en formato UCP, un payment handler de Stellar para UCP, el Mandato exportado como mandatos AP2 y las disputas v0 entraron en alcance el 2026-09-30, a pedido explícito del usuario** — Fase 7, ver `docs/DECISIONES.md` → `P-14` y `docs/fase-7-estandar-comercio-agentico/SPEC.md`. Sigue fuera: AgentGuard
    (monitoreo/kill-switch en tiempo de ejecución) sin alcance definido; la
    cohorte de alumnos, comunidad aliada, demo grabable y formulario de Build
    Award, sin prioridad desde `P-3`; cualquier cosa en mainnet o con rieles
@@ -138,9 +163,11 @@ dos herramientas pise trabajo de la otra ni pierda contexto:
 3. Agrega toda decisión nueva al `DECISIONES.md` de la fase en curso, con motivo
    y alternativa descartada. Si la decisión afecta a más de una fase o a la
    estructura del proyecto, va a `docs/DECISIONES.md` con prefijo `P-`.
-4. `pnpm run exp:sync`: mueve las tarjetas del tablero de Exponential según el
+4. Actualiza `docs/ESTADO.md`: estado de la tarea, siguiente paso y notas
+   breves (`P-15`).
+5. `pnpm run exp:sync`: mueve las tarjetas del tablero de Exponential según el
    estado de los tickets (`docs/planificacion-exponential/README.md`).
-5. Commit con mensaje que explique el **porqué**, no solo el qué.
+6. Commit con mensaje que explique el **porqué**, no solo el qué.
 
 ## Criterios transversales (no negociables)
 

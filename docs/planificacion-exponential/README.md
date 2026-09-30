@@ -6,6 +6,14 @@
 > Decisión de fondo: [`docs/DECISIONES.md` § P-13](../DECISIONES.md).
 > Manda [`CLAUDE.md`](../../CLAUDE.md) sobre cualquier skill de Exponential.
 
+> **Desde el 2026-09-30 (`P-15`)** el tablero es un espejo: la planificación
+> sale del `SPEC.md` de la fase y el día a día de
+> [`docs/ESTADO.md`](../ESTADO.md). `/tarea` y `/revisar` reemplazan a
+> `/start-ticket` y `/ship-ticket`, y el spec reemplaza al recorrido
+> `/grill-with-docs` → `/to-prd` → `/to-expo`. Lo que sigue igual: un ticket
+> `T<n> · …` por tarea, sus estados, `pnpm run exp:sync` y `SYNC.md`. Las
+> tareas nuevas llevan el método `SPEC`.
+
 | | |
 |---|---|
 | [SYNC.md](SYNC.md) | La tabla de correspondencia: número T, ticket en Exponential, método, estado, fechas, enlaces |
