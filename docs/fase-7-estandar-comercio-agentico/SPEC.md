@@ -146,7 +146,7 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
 - **Hecho cuando:**
   - [ ] el perfil y las respuestas del catálogo validan contra los esquemas de UCP `2026-04-08` (test sin red, con los esquemas versionados en el repo)
   - [ ] un cliente de prueba lee el perfil, valida que el origen del handler coincide con su namespace y lista los productos de una tienda real
-  - [ ] la spec y el esquema del handler y de la extensión de recibo existen en el repo
+  - [ ] la spec y el esquema del handler y de la extensión de recibo existen en el repo y se sirven en `agentpey.com/ucp/…` (`apps/web/public/ucp/`)
   - [ ] `agent-storefront.json` responde igual que antes (test de no regresión)
 
 ### T122 · Compra UCP pagada sobre Stellar, de punta a punta

@@ -3,14 +3,12 @@
 * **Handler name:** `com.agentpey.stellar_x402`
 * **Version:** `2026-09-30`
 * **UCP version:** `2026-04-08`
-* **Schema:** `https://agentpey.com/ucp/handlers/stellar-x402/schema.json`
-  ([source](stellar-x402.schema.json))
+* **Schema:** [`https://agentpey.com/ucp/handlers/stellar-x402/schema.json`](schema.json)
 * **Status:** draft, Stellar testnet only
 
-> This file is written in English on purpose: it is the public specification
-> that will be served at `https://agentpey.com/ucp/handlers/stellar-x402/spec`.
-> Project decisions about it live in Spanish in [`../DECISIONES.md`](../DECISIONES.md)
-> (`E-1` to `E-4`).
+> Served at `https://agentpey.com/ucp/handlers/stellar-x402/spec`. Reference
+> implementation: [AgentPey](https://agentpey.com), whose Vitrinee storefronts
+> accept this handler.
 
 ## Introduction
 

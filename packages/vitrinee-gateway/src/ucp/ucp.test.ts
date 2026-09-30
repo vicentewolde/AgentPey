@@ -21,10 +21,10 @@ import { listen } from "../test/listen.js";
 import { UCP_SCHEMA, addSchema, ucpErrors } from "../test/ucp-schemas.js";
 
 const HANDLER_SCHEMA = JSON.parse(
-  readFileSync(new URL("../../../../docs/fase-7-estandar-comercio-agentico/handler/stellar-x402.schema.json", import.meta.url), "utf8"),
+  readFileSync(new URL("../../../../apps/web/public/ucp/handlers/stellar-x402/schema.json", import.meta.url), "utf8"),
 ) as { $id: string };
 const RECEIPT_SCHEMA = JSON.parse(
-  readFileSync(new URL("../../../../docs/fase-7-estandar-comercio-agentico/handler/receipt.schema.json", import.meta.url), "utf8"),
+  readFileSync(new URL("../../../../apps/web/public/ucp/extensions/receipt/schema.json", import.meta.url), "utf8"),
 ) as { $id: string };
 addSchema(HANDLER_SCHEMA);
 addSchema(RECEIPT_SCHEMA);

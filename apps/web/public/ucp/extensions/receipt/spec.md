@@ -3,12 +3,10 @@
 * **Extension name:** `com.agentpey.shopping.receipt`
 * **Version:** `2026-09-30`
 * **Extends:** `dev.ucp.shopping.checkout`, `dev.ucp.shopping.order`
-* **Schema:** `https://agentpey.com/ucp/extensions/receipt/schema.json`
-  ([source](receipt.schema.json))
+* **Schema:** [`https://agentpey.com/ucp/extensions/receipt/schema.json`](schema.json)
 * **Status:** draft, Stellar testnet only
 
-> Written in English on purpose: it is the public specification that will be
-> served at `https://agentpey.com/ucp/extensions/receipt/spec`.
+> Served at `https://agentpey.com/ucp/extensions/receipt/spec`.
 
 ## Purpose
 

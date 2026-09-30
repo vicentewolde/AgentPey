@@ -1019,8 +1019,8 @@ pega de verdad (`agenticom`, con `https://`, o la URL del admin de Shopify) y lo
 ese host; lo que no se reduce a un handle sigue rechazado, así el secret nunca viaja a un
 host ajeno. El portal, además, dice cuál campo revisar.
 
-### VT-36 · Los montos de UCP salen como enteros JSON en la frontera, no como `bigint` · `Pendiente`
-**Fecha:** 2026-09-30 · **Hito:** T121 (Fase 7) · Propuesta de Claude Code, **espera al usuario**
+### VT-36 · Los montos de UCP salen como enteros JSON en la frontera, no como `bigint` · `Vigente`
+**Fecha:** 2026-09-30 · **Hito:** T121 (Fase 7) · Propuesta de Claude Code, **aprobada por el usuario** el mismo día
 
 UCP define todo monto como un entero JSON en la unidad menor de la moneda
 (`amount.json`: `"type": "integer"`). Los precios del catálogo UCP en CLP se
@@ -1042,5 +1042,4 @@ Node reciente y de reemplazar el `res.json` de Express en esas rutas; y todo
 cliente que lea la respuesta con `JSON.parse` lo vuelve `number` igual. No
 cambia nada para montos en CLP, que están lejos del límite.
 
-Implementado así en T121, en la rama `cc/t121-vitrinee-perfil-ucp`. Si el
-usuario prefiere la alternativa, se cambia antes del merge.
+Implementado así en T121. El usuario eligió esta opción frente a la alternativa.

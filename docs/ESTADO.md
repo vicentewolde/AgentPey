@@ -8,7 +8,7 @@
 **Actualizado:** 2026-09-30
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T120 · UCP admite un payment handler x402 de Stellar; opción A elegida
-**Siguiente paso:** el usuario decide `VT-36`; después `/revisar` de T121, merge y `/tarea T122`
+**Siguiente paso:** `/revisar` de T121; con el OK del usuario, merge (despliega) y `vitrinee:ucp:list` contra una tienda real; después `/tarea T122`
 
 ## Progreso de la fase
 
@@ -25,8 +25,6 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] `VT-36`: montos de UCP como enteros JSON en la frontera (implementado así; la alternativa es `JSON.rawJSON`)
-- [ ] Deploy de Vitrinee con T121 y publicar los archivos del handler en `agentpey.com`, para correr `vitrinee:ucp:list` contra una tienda real
 - [ ] `deployments/testnet.json` tiene un cambio sin commitear desde el 28-sep (otro `policyRail`): decidir si se commitea o se descarta
 - [ ] Antes de T124: qué hace el veredicto con la plata (a, b o c) y el nombre de las disputas
 

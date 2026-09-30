@@ -113,6 +113,7 @@ import { ensureTenantPolicyRail } from "./tenant-rail.js";
 import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.js";
 import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
+import { ucpPublicPath } from "./ucp-public.js";
 import {
   createPostgresWalletSessionStore,
   type PendingConsentSessionPayload,
@@ -1117,6 +1118,8 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".md": "text/markdown; charset=utf-8",
 };
 
 async function serveStatic(pathname: string, res: ServerResponse): Promise<void> {
@@ -1136,7 +1139,7 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
           // mandate id is read client-side from the path.
           pathname.startsWith("/revocar/")
           ? "/revocar.html"
-          : pathname;
+          : (ucpPublicPath(pathname) ?? pathname);
   const filePath = join(PUBLIC_DIR, relative);
   // No user input reaches this join beyond the URL pathname of a same-origin
   // GET, and every route below is fixed — but refuse a path that escapes
@@ -1151,7 +1154,11 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
     sendJson(res, 404, { code: "NotFound", message: `no route for ${pathname}` });
     return;
   }
-  res.writeHead(200, { "content-type": MIME_TYPES[extname(filePath)] ?? "application/octet-stream" });
+  res.writeHead(200, {
+    "content-type": MIME_TYPES[extname(filePath)] ?? "application/octet-stream",
+    // Platforms fetch the UCP schemas to validate a profile, possibly from a browser.
+    ...(relative.startsWith("/ucp/") ? { "access-control-allow-origin": "*", "cache-control": "public, max-age=300" } : {}),
+  });
   createReadStream(filePath).pipe(res);
 }
 

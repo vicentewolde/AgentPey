@@ -84,6 +84,7 @@ niega a usar una ficha que diga pagar con AgentPey pero apunte a otro dominio.
 **Hallazgo.** Uno de los esquemas oficiales de UCP tiene una referencia rota;
 se corrigió solo para los tests y quedó anotado para reportarlo.
 
-**Pendiente.** Una decisión del usuario sobre cómo se escriben los montos en
-la respuesta (`VT-36`), y el deploy, para probar el programa contra una
-tienda real. Evidencia: [evidencia/T121.md](evidencia/T121.md).
+**Decidido.** Los montos salen como números enteros en la respuesta, calculados
+sin decimales de por medio (`VT-36`). Las reglas del medio de pago se publican
+en `agentpey.com` junto con este cambio. **Pendiente:** probar el programa
+contra una tienda real, apenas esté desplegado. Evidencia: [evidencia/T121.md](evidencia/T121.md).

@@ -7268,14 +7268,13 @@ Agente: Claude Code.
 Qué: T121. Cada tienda de Vitrinee publica `GET /.well-known/ucp` y responde
 `POST /ucp/v1/catalog/search`, `/lookup` y `/product` (`packages/vitrinee-core/src/ucp.ts`,
 `packages/vitrinee-gateway/src/ucp/`). Spec y esquemas del handler `com.agentpey.stellar_x402` y de
-la extensión `com.agentpey.shopping.receipt` en `docs/fase-7-estandar-comercio-agentico/handler/`.
+la extensión `com.agentpey.shopping.receipt` en `apps/web/public/ucp/`, servidos en `agentpey.com/ucp/…`.
 Cliente de prueba `pnpm run vitrinee:ucp:list -- <URL>`. Esquemas oficiales de UCP copiados como
 fixtures de test y `ajv` como dependencia de desarrollo, las dos cosas aprobadas por el usuario.
 `pnpm check` y `vitrinee:check` en verde.
 
 Exponential: T121 a `IN_PROGRESS`.
 
-Pendiente: (1) el usuario decide `VT-36` (montos UCP como `number` en la frontera);
-(2) `/revisar`, merge; (3) deploy y publicar los archivos del handler en `agentpey.com`, con permiso,
-para correr el cliente contra una tienda real. `AGENTS.md`: sin cambios. Nada toca `checkMandate`,
+`VT-36` aprobada por el usuario. El usuario pidió desplegar ya: el merge publica todo.
+Pendiente: `/revisar`, merge con su OK, y correr el cliente contra una tienda real tras el deploy. `AGENTS.md`: sin cambios. Nada toca `checkMandate`,
 firma, claves, `hosts.ts` ni `render.yaml`; el perfil solo publica datos que el manifiesto ya publicaba.
