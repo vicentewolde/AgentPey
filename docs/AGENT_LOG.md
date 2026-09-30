@@ -7224,3 +7224,22 @@ mostrar". `AGENTS.md`: **sí cambió**, Codex queda avisado de que de la Fase 7 
 llegar el mapeo mecánico de T121. `deployments/testnet.json` sigue modificado sin commitear
 desde el 28-sep: no es de esta rama y no se tocó. `C-154` y `C-160` quedan para después de la
 Fase 7.
+
+## 2026-09-30 (2) — cc/t120-handler-stellar-ucp (sin mergear, espera al usuario)
+
+Agente: Claude Code.
+
+Qué: spec de la Fase 7 aprobado por el usuario y `cc/fase7-metodologia` mergeada a `main`
+(`c670a6e`, pusheado). T120 hecha: investigación sin código sobre la spec de UCP
+(`v2026-04-08`, leída del repo oficial). Resultado: UCP admite un payment handler propio
+(`com.agentpey.stellar_x402`) que lleva la autorización x402 de Stellar como credencial en
+`complete`; el recibo viaja en una extensión propia de la orden. Documento con tres opciones y
+estimaciones en `docs/fase-7-estandar-comercio-agentico/T120-handler-stellar-ucp.md`, citas en
+`evidencia/T120.md`. También se corrigió el comando de Exponential en la skill `/tarea`
+(`tickets update` no acepta `--workspace`).
+
+Exponential: ticket T120 a `IN_PROGRESS`.
+
+Pendiente: el usuario decide opción (A recomendada), versión de UCP, moneda de la sesión y
+despacho (T120 § 7). Después: completar la sección 4 del spec, `E-1`, `/revisar`, merge y T121.
+`AGENTS.md`: sin cambios. Ningún código de producto tocado; nada cerca de `checkMandate`.

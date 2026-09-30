@@ -27,7 +27,7 @@ Estado del repositorio:
 - Marca la tarea 🔨 en `docs/ESTADO.md`.
 - Espejo (`P-13`): pasa el ticket `$ARGUMENTS · …` a `IN_PROGRESS` y anota la fecha de inicio en `docs/planificacion-exponential/SYNC.md`:
   ```bash
-  exponential tickets update --id <cuid> --status IN_PROGRESS --workspace personal-cmud6knil0045l704wuoc5b1r
+  exponential tickets update --id <cuid> --status IN_PROGRESS
   ```
 
 ## 2. Planificar
