@@ -6,9 +6,9 @@
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
 **Actualizado:** 2026-09-30
-**Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **borrador**)
+**Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T119 (Fase 6) · tope de cuentas patrocinadas de 20 a 40
-**Siguiente paso:** el usuario aprueba el spec de la Fase 7; después `/tarea T120`
+**Siguiente paso:** `/tarea T120`
 
 ## Progreso de la fase
 
@@ -25,8 +25,6 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Aprobar el spec de la Fase 7 (bloquea T120)
-- [ ] Confirmar si Find Your Way se extendió más allá del 30-sep
 - [ ] `deployments/testnet.json` tiene un cambio sin commitear desde el 28-sep (otro `policyRail`): decidir si se commitea o se descarta
 - [ ] Antes de T124: qué hace el veredicto con la plata (a, b o c) y el nombre de las disputas
 
@@ -38,4 +36,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Notas de la última sesión
 
-- 2026-09-30: `P-14` (reposicionamiento: UCP, AP2 y x402 sobre Stellar) y `P-15` (método fase → spec → tareas, con `/estado`, `/tarea` y `/revisar`). Spec de la Fase 7 en borrador. Exponential se mantiene como espejo.
+- 2026-09-30: `P-14` (reposicionamiento: UCP, AP2 y x402 sobre Stellar) y `P-15` (método fase → spec → tareas, con `/estado`, `/tarea` y `/revisar`). Spec de la Fase 7 **aprobado** por el usuario, que también confirmó la extensión de Find Your Way. Exponential se mantiene como espejo.

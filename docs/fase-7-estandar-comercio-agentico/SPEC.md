@@ -1,6 +1,6 @@
 # Spec Fase 7 · Estándar de comercio agéntico sobre Stellar
 
-- **Estado:** Borrador (2026-09-30). Falta la aprobación del usuario
+- **Estado:** Aprobado (2026-09-30)
 - **Rama base:** `main`
 - **Tareas:** T120 a T125
 - **Referencias:** [`P-14`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método),
@@ -175,13 +175,12 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | Riesgo | Mitigación |
 |---|---|
 | UCP no admite bien x402 | Plan B de T120: catálogo en UCP, checkout x402 aparte, la brecha documentada para el SEP |
-| La entrega de Find Your Way es el 30-sep según la página oficial; la extensión a ~12-oct no está confirmada | El usuario confirma la fecha; si no hay extensión, el calendario de arriba no sirve para esa hackathon y el objetivo pasa a ser HackMeridian |
 | El namespace `com.agentpey.*` exige alojar la spec del handler en `agentpey.com` | Se resuelve en T120; alojar un archivo estático en el dominio es un deploy, con permiso del usuario |
 | 35 h de disputas en tres días | T124 es la primera que se corta |
 
 ## 9. Preguntas abiertas
 
-- [ ] ¿Está confirmada la extensión de Find Your Way más allá del 30-sep?
+- [x] ¿Está confirmada la extensión de Find Your Way más allá del 30-sep? **Sí**, confirmado por el usuario el 2026-09-30: el calendario de la sección 8 vale
 - [ ] T124, qué hace el veredicto con la plata: (a) garantía del comercio en un contrato, de donde salen los reembolsos (recomendada para v0: no toca el flujo de pago existente); (b) retención del pago antes de liberarlo al comercio (cambia el `payTo` de x402 y el recibo); (c) solo veredicto público, sin mover fondos. Se decide antes de T124, no ahora
 - [ ] T124, el nombre: Veredicto, Dictamen o AgentPey Resolve. Se decide antes de T124
 
@@ -190,3 +189,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | Fecha | Cambio |
 |---|---|
 | 2026-09-30 | Borrador, a partir del traspaso del chat de estrategia del 29-sep |
+| 2026-09-30 | **Aprobado** por el usuario, sin cambios en las tareas. Extensión de Find Your Way confirmada por el usuario |

@@ -12,8 +12,8 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-30 · **Fase abierta**, con el spec en borrador. Nada
-construido todavía. **Sigue:** que el usuario apruebe el spec, y después T120.
+**Fecha:** 2026-09-30 · **Fase abierta**, con el spec aprobado por el usuario.
+Nada construido todavía. **Sigue:** T120.
 
 ## Apertura de la fase (2026-09-30)
 
