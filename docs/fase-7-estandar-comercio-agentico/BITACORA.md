@@ -14,8 +14,8 @@
 
 **Fecha:** 2026-09-30 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
 `E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP, y
-`agentpey.com` publica las reglas del medio de pago. **Sigue:** la prueba contra
-una tienda real tras el deploy, y T122.
+`agentpey.com` publica las reglas del medio de pago; verificado en vivo con una
+tienda real. **Sigue:** T122.
 
 | Tarea | Estado |
 |---|---|
@@ -99,3 +99,7 @@ medio de pago; ahora lo rechaza. Además: el nombre del campo de versión quedó
 unificado, el esquema publicado solo admite testnet, un cuerpo que no es JSON
 responde 400 en vez de 500, y los tests prueban que el validador de verdad
 rechaza respuestas rotas.
+
+**En vivo.** Después del deploy, el programa de prueba leyó la ficha UCP de
+una tienda real de Jumpseller (`bazar-cordillera`) y listó sus seis productos,
+y las reglas del medio de pago responden en `agentpey.com`.

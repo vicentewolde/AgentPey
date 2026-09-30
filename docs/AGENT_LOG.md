@@ -7297,3 +7297,13 @@ Exponential: T121 a `DONE`, `exp:sync`.
 Pendiente: confirmar en vivo `pnpm run vitrinee:ucp:list -- https://bazar-cordillera.vitrinee.agentpey.com`
 y `https://agentpey.com/ucp/handlers/stellar-x402/spec`; después T122. `deployments/testnet.json`
 sigue modificado sin commitear (no es de esta rama). `AGENTS.md`: sin cambios.
+
+## 2026-09-30 (6) — cc/t121-evidencia-vivo → main
+
+Agente: Claude Code.
+
+Qué: deploy de T121 verificado en vivo. `pnpm run vitrinee:ucp:list -- https://bazar-cordillera.vitrinee.agentpey.com`
+lista los 6 productos reales de la tienda Jumpseller; los cuatro documentos del handler responden 200
+en `agentpey.com/ucp/…`. Criterios de T121 marcados en el spec. Solo documentación.
+
+Pendiente: T122 (compra UCP pagada sobre Stellar), no delegable. `AGENTS.md`: sin cambios.
