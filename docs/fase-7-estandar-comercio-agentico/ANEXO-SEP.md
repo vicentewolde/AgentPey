@@ -515,9 +515,10 @@ cambia.
    y calcula `verdict_hash` = `sha256` del JSON canónico del veredicto. Cada
    veredicto queda archivado; solo el último se puede ejecutar.
 4. **Confirmación y pago.** Una persona confirma pasando ese hash exacto
-   (`E-18`); recién entonces el árbitro llama `resolve`, que guarda el hash del
-   veredicto junto al recibo y paga el reembolso desde la garantía al pagador.
-   El veredicto es final: un recibo admite una sola disputa.
+   (`E-18`); recién entonces el script del árbitro llama `resolve`, que guarda
+   el hash del veredicto junto al recibo y paga el reembolso desde la garantía
+   al pagador. La confirmación es un paso del procedimiento, no una regla de la
+   red (brecha 18). El veredicto es final: un recibo admite una sola disputa.
 
 **Lo que la red garantiza**, decida lo que decida el árbitro o su modelo
 (`contracts/agent-resolve/src/lib.rs`):
@@ -565,7 +566,7 @@ Fuente de los ids: `deployments/testnet.json` y
 
 Las seis de T120 (sección 8 de
 [T120-handler-stellar-ucp.md](T120-handler-stellar-ucp.md)), confirmadas al
-construir, más once que aparecieron después:
+construir, más trece que aparecieron después:
 
 1. **No hay handlers de stablecoins ni de pagos en cadena** en UCP. Este es de
    los primeros.
@@ -640,6 +641,17 @@ construir, más once que aparecieron después:
     otro resultado. AgentResolve archiva cada veredicto y solo ejecuta el último
     confirmado por una persona; un SEP debería fijar cuántos intentos valen y
     cómo se publican.
+18. **El árbitro es el único punto de confianza.** El contrato no puede saber
+    quién pagó (`receipt-registry` no guarda el pagador), así que el destinatario
+    del reembolso lo pone el árbitro en `open`; la confirmación humana (`E-18`)
+    vive en su script, y la red no la exige; y una disputa abierta no vence: si
+    el árbitro desaparece, el monto queda bloqueado. Con la llave del árbitro
+    filtrada se podrían vaciar las garantías, recibo por recibo, dentro de la
+    ventana. Un SEP debería anclar el pagador junto al recibo, exigir en la red
+    una segunda firma para `resolve` y dar a las disputas un vencimiento.
+19. **Sin anclaje no hay disputa.** Un comercio que no ancla un recibo, o lo
+    ancla con otro monto (y `verifyReceipt` lo invalida), queda fuera de
+    AgentResolve.
 
 ## 7. Reproducir
 

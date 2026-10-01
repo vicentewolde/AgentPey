@@ -342,6 +342,13 @@ confiables: el monto que propone el modelo se recorta en el código al monto en
 disputa, y el contrato lo vuelve a recortar al monto del recibo anclado.
 `ANTHROPIC_API_KEY` la agrega el usuario a `.env.local`.
 
+**Sin fallback a otro modelo** (2026-10-01, tras `/revisar`, decidido por el
+usuario). La primera versión usaba el fallback de la API (`fallbacks:
+"default"`), que ante una negativa de Opus deja decidir a otro modelo: eso
+contradecía esta misma decisión. Ahora, si Opus se niega, no hay veredicto
+(`ResolveVerdictInvalid`) y la disputa la resuelve una persona; un veredicto
+que no venga de `claude-opus-5-5` se rechaza.
+
 ---
 
 ### E-18 · En v0 una persona confirma el veredicto antes de mover fondos · `Vigente`

@@ -244,13 +244,17 @@ si sigue sin despacho.
 
 **Evidencia técnica.**
 
-- Contrato `agent-resolve` en testnet (`CCYMGX56…`), 14 tests de Rust; lee el
-  `receipt-registry` real.
+- Contrato `agent-resolve` en testnet (`CCYMGX56…`), 16 tests de Rust; lee el
+  `receipt-registry` real (simulado contra testnet, y un test fija su interfaz).
 - Paquete `@agentpey/resolve`: reclamo firmado, chequeos, árbitro Claude Opus
-  5.5 con salida estructurada y fallback, veredicto acotado y con hash; 26 tests,
-  incluida una inyección de prompt acotada al monto del recibo.
+  5.5 con salida estructurada y sin fallback a otro modelo, veredicto acotado y
+  con hash; 28 tests, incluida una inyección de prompt acotada al monto del
+  recibo y un reclamo que intenta cerrar su propio delimitador.
 - `pnpm run resolve:*`: garantía de 3 USDC, disputa abierta, veredicto,
   confirmación por hash, verificación en la red.
-- Anexo para el SEP: sección 4.6, fila del contrato y brechas 15 a 17.
+- `/revisar`: sin bloqueantes; cuatro importantes (disputas que podían quedar
+  trabadas, el fallback de modelos, la confianza en el árbitro sin escribir) y
+  ocho sugerencias, todo corregido a pedido del usuario.
+- Anexo para el SEP: sección 4.6, fila del contrato y brechas 15 a 19.
   [evidencia/T124.md](evidencia/T124.md).
 

@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-01
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T123 · el Mandato exportado como mandatos AP2 v0.2, verificado por la librería oficial de AP2
-**Siguiente paso:** `/revisar` de T124 ahora; el 8 o 9 de octubre, el reclamo sobre la compra `0922707…` (pedido Shopify `18952373174578`) para el reembolso real, con confirmación del usuario
+**Siguiente paso:** el 8 o 9 de octubre, el reclamo sobre la compra `0922707…` (pedido Shopify `18952373174578`) para el reembolso real, con confirmación del usuario; después push, PR y merge de T124
 
 ## Progreso de la fase
 
@@ -49,3 +49,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-01, T123: replanteo leído del fuente (AP2 `v0.2`, UCP `2026-04-08` y `2026-08-25`). El usuario eligió exportar y verificar fuera de línea, llaves Ed25519 existentes con chequeo P-256 de un uso, sin `perDay` ni revocación (`E-8` a `E-11`). Paquete `@agentpey/ap2`, `exportMandateAsAp2` en el agente, `pnpm run ap2:export`. Mandato real `874339dd…` exportado y verificado; la librería oficial de AP2 verifica el par en Ed25519 y en P-256. Corregido `E-9`: la librería solo exige P-256 al cerrar el mandato.
 - 2026-10-01, T123 `/revisar`: un bloqueante (el tope iba en unidades de Stellar y AP2 lo lee en centavos) y cinco importantes, todos corregidos a pedido del usuario (`E-12`, `E-13`): tope en centavos y el menor de los cuatro límites, listas de AP2 no vacías, credencial verificada con `checkScope`, `cnf` fijo en la exportación real, `exp` ≤ intención. Exportación real repetida en testnet: Mandato `e5eae6ce…`, tope `300`, la librería oficial de AP2 verifica los dos pares.
 - 2026-10-01, T124: AgentResolve (`E-14` a `E-19`). Contrato `agent-resolve` desplegado (`CCYMGX56…`), árbitro `GAEB2EG3…`, garantía de `agentcommerce` con 3 USDC. Reclamo real sobre el recibo de T122: Claude lo rechazó por prematuro, el usuario confirmó y quedó resuelto en la red sin pago. Corregido: veredicto final en el prompt e historial de veredictos. Compra nueva (`0922707…`) para el reembolso real el 8–9 oct.
+- 2026-10-01, T124 `/revisar`: sin bloqueantes; corregidos los cuatro importantes y las ocho sugerencias a pedido del usuario. Sin fallback a otro modelo (`E-17`), brechas 18 y 19 en el anexo.

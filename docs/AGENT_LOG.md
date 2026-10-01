@@ -7412,3 +7412,19 @@ Pendiente: `/revisar`; el 8–9 oct, reclamo sobre `0922707…` para el reembols
 la disputa oye a una sola parte, el comercio puede vaciar la garantía antes del reclamo (`E-19`), y el
 veredicto de un modelo no es determinista (brechas 15–17 del anexo). No se tocó el flujo de pago,
 `checkMandate` ni `receipt-registry`. `AGENTS.md`: sin cambios (no delegable). Exponential: T124 a `IN_PROGRESS`.
+
+## 2026-10-01 (7) — cc/t124-agentresolve, correcciones de /revisar (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T124 (subagente `revisor` más revisión propia del contrato y del pago). Sin bloqueantes.
+Corregido a pedido del usuario: `decide` re-chequea el reclamo a la hora de apertura (una disputa abierta
+cerca del cierre ya no queda trabada), el reclamo se guarda antes de enviar `open`, **sin fallback a otro
+modelo** (`E-17` actualizada; un veredicto de otro modelo se rechaza), brechas 18 (el árbitro es el único
+punto de confianza, la confirmación no vive en la red, las disputas no vencen) y 19 en el anexo, tests de
+`resolve` sin árbitro y de dos comercios, test que fija la interfaz de `receipt-registry` (el host de sdk 27
+no ejecuta su wasm de protocolo 28), `verify` estricto, `owner()` con zod, `<` escapado en los datos del
+caso, `execute` compara el recibo.
+
+Pendiente: el reembolso real el 8–9 oct (pedido Shopify `18952373174578`), después push, PR y merge con OK
+del usuario. `AGENTS.md`: sin cambios.
