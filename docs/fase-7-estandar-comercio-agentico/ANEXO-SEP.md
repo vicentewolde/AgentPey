@@ -8,8 +8,9 @@
 >
 > Fecha: 2026-10-01 · Red: Stellar testnet · UCP `2026-04-08` (`E-2`) ·
 > x402 versión 2 · Tarea T125. Un test (`scripts/fase7-anexo.test.ts`) falla si
-> un id, un nombre o un código de este archivo deja de coincidir con el código o
-> con `deployments/`.
+> deja de coincidir con el código o con `deployments/`: los ejemplos JSON de 2.1
+> y 2.3 contra sus esquemas, los campos del recibo, cada función y archivo
+> citados, los códigos de rechazo y de error, y cada contrato en su fila.
 >
 > Los nombres de campos, los JSON y los mensajes van tal cual están en el
 > código, en inglés; la prosa, en español (regla 4 de `CLAUDE.md`). La spec
@@ -23,7 +24,7 @@ Tres documentos firmados y tres contratos, en este orden:
 | # | Paso | Quién | Dónde queda la prueba |
 |---|---|---|---|
 | 1 | El principal (dueño de la plata) firma un **Mandato**: qué agente, en qué comercios, qué activos, cuánto por compra y por día, hasta cuándo | Wallet del principal | Hash anclado en `agent-registry` |
-| 2 | El principal fondea un **`policy_rail`**: una cuenta-contrato con los mismos límites, de la que solo él puede retirar | Principal | Saldo y límites en el contrato |
+| 2 | El principal fondea un **`policy_rail`**: una cuenta-contrato con límites por compra y por día, de la que solo él puede retirar. Que esos límites coincidan con los del Mandato es una convención de despliegue (`E-5`): nada en la red los ata | Principal | Saldo y límites en el contrato |
 | 3 | El agente descubre la tienda: `GET /.well-known/ucp` y `POST /ucp/v1/catalog/search` | Agente | — |
 | 4 | El agente firma una **intención de compra** para un producto y una cantidad | Agente | JWS de la intención |
 | 5 | El agente abre la sesión: `POST /ucp/v1/checkout-sessions`. La tienda responde los **requisitos de pago x402** dentro de la configuración del handler | Tienda | Sesión en la base de la tienda |
@@ -44,6 +45,7 @@ Caso real del 2026-10-01 (T122, [evidencia](evidencia/T122.md)): un imán de
 | Recibo (hash anclado) | `fe3c5730884a59a72760217ae192757b7bb376bb1467f1e2d2ea7a6047c0f076` |
 | Anclaje | `60a26da5a9ad5e2fd80e8853804f0b6df8211f7085f078344343961f610a3f9a`, ledger 4967422 |
 | Pagador | `policy_rail` UCP `CA6P4KKV77Q5J4AH6L4V7S42QNF6DLKUAM4SCOQO4GMLB7V7STC5VIYP` |
+| Nota | `agentcommerce` es una tienda de prueba propia: el `principal` del rail y la cuenta que cobra son la misma wallet, así que la plata vuelve a su dueño |
 
 ## 2. El payment handler `com.agentpey.stellar_x402`
 
@@ -145,22 +147,29 @@ Esquema: `#/$defs/instrument` y `#/$defs/credential`.
 
 `payload.transaction` es la transacción que contiene la entrada de
 autorización Soroban firmada para `transfer(from = pagador, to = payTo, amount)`
-sobre el contrato del activo, con credenciales de dirección v1 (el facilitator
-no lee v2). Es lo mismo que en x402 viaja en el header `PAYMENT-SIGNATURE`,
+sobre el contrato del activo. Hoy van con credenciales de dirección v1 porque
+la versión actual del facilitator no lee v2 (`policy-rail-payer.ts`): es una
+limitación de esa versión, no parte del formato. Es lo mismo que en x402 viaja en el header `PAYMENT-SIGNATURE`,
 con la versión escrita al estilo UCP y sin `resource`, que en UCP no existe.
 
 ### 2.4 Lo que comprueba el comprador antes de firmar
 
 En este orden (`executeUcpPayment`, `apps/agent/src/payment/ucp.ts`):
 
-1. El perfil declara el handler con `spec` y `schema` en `agentpey.com`.
-2. `binding.checkout_id` es la sesión que abrió.
+1. El perfil declara el handler con `spec` y `schema` en `agentpey.com`, y el
+   `endpoint` REST del servicio está en el mismo origen que la tienda.
+2. La sesión está `ready_for_complete` y `binding.checkout_id` es la sesión que abrió.
 3. `payTo`, `asset` y `network` de los requisitos son iguales a `pay_to`,
    `asset.contract` y `network` del perfil. La respuesta del checkout la
    escribe el comercio; el perfil es lo que publicó.
-4. `toPaymentTerms`: la cuenta fijada del comercio en el directorio de la
-   plataforma (`C-141`) y el activo del registro de comercios.
-5. `policyRail.authorise`: el Mandato y la intención (sección 4).
+4. `toPaymentTerms` (`apps/agent/src/payment/x402.ts`): `scheme` `exact` y red
+   `stellar:testnet`, el activo según el registro de comercios, y la cuenta
+   fijada del comercio **cuando el directorio fija una** (los comercios de
+   Vitrinee la tienen, `C-141`).
+5. `policyRail.authorise` contra la intención, el alcance de la credencial y
+   el Mandato (sección 4.3, paso 3). Recibe un Mandato **ya verificado**: su
+   firma y su estado en el registro se comprueban antes, al arrancar el agente
+   y al crear la intención, no justo antes de pagar.
 
 Solo entonces firma, con un tope de gasto igual al monto autorizado (`C-139`).
 
@@ -179,8 +188,8 @@ Solo entonces firma, con un tope de gasto igual al monto autorizado (`C-139`).
 | Resultado del facilitator | Qué pasa con la sesión |
 |---|---|
 | `success: true` | Liquidación guardada; pedido; `completed` |
-| `success: false` sin transacción emitida | Vuelve a `ready_for_complete`; error `payment_failed` |
-| Excepción, timeout, o `success: false` con transacción emitida | Queda `complete_in_progress`, mensaje `payment_pending`; **nunca se vuelve a liquidar** |
+| `success: false` sin transacción emitida, en la respuesta o en una excepción que la trae | Vuelve a `ready_for_complete`; error `payment_failed` |
+| Excepción sin respuesta legible, timeout, o `success: false` con transacción emitida | Queda `complete_in_progress`, mensaje `payment_pending`; **nunca se vuelve a liquidar** |
 
 ## 3. El recibo firmado y anclado
 
@@ -202,9 +211,9 @@ Cuerpo (`typ` fijo `vitrinee-receipt/0.1`, objeto estricto):
 | Campo | Tipo |
 |---|---|
 | `typ` | `"vitrinee-receipt/0.1"` |
-| `orderId` | id del pedido en la tienda |
+| `orderId` | id del pedido de Vitrinee (`ord_…`), no el de la plataforma |
 | `platformOrderId` | id en la plataforma, o `null` si la plataforma rechazó el pedido después del pago (`VT-10`) |
-| `platform` | `shopify`, `jumpseller`, `mock` |
+| `platform` | texto libre; hoy `shopify`, `jumpseller` o `mock` |
 | `merchantDid` | `did:stellar:testnet:G…` de la llave de firma |
 | `merchantAccount` | `G…`, la cuenta que cobra |
 | `payerAccount` | `G…` o `C…` (un `policy_rail` paga como contrato) |
@@ -235,8 +244,13 @@ más de 64 bytes, y no acepta anclar dos veces el mismo hash
 2. **Anclaje:** `get(sha256(jws))` existe en `receipt-registry`, con
    `merchant` igual a la cuenta del DID, `amount` igual a `amountUSDCAtomic` y
    `order_ref` igual a `orderId`.
-3. **Pago:** en Horizon, `settlementTxHash` existe, fue exitosa, y movió
-   exactamente `amountUSDC` del pagador a `merchantAccount`.
+3. **Pago:** en Horizon (`packages/vitrinee-anchor/src/settlement.ts`),
+   `settlementTxHash` existe, fue exitosa, y movió exactamente
+   `amountUSDCAtomic` del pagador a `merchantAccount`, en el USDC que el
+   verificador tiene fijo (no en el `asset` que dice el recibo).
+
+Lo que estos checks no miran: que `amountUSDC` y `amountUSDCAtomic` sean el
+mismo monto, y que una misma transacción respalde un solo recibo (brecha 10).
 
 ### 3.4 En UCP: la extensión `com.agentpey.shopping.receipt`
 
@@ -257,8 +271,8 @@ Extiende `dev.ucp.shopping.checkout` y `dev.ucp.shopping.order`. Esquema:
 ```
 
 `order.permalink_url` apunta a la página pública del recibo. El anclaje es
-asíncrono: `anchor.status` pasa de `pending` a `anchored`, y se ve leyendo la
-orden (`GET /ucp/v1/orders/{id}`).
+asíncrono: `anchor.status` pasa de `pending` a `anchored` (o a `failed` si se
+agotan los reintentos), y se ve leyendo la orden (`GET /ucp/v1/orders/{id}`).
 
 ## 4. Cómo se verifica un Mandato
 
@@ -287,9 +301,13 @@ Un Verifiable Credential 2.0 firmado como JWS. Esquema:
       "products": ["…"]
     }
   },
-  "credentialStatus": { "type": "…", "registry": "<agent-registry>" }
+  "credentialStatus": { "type": "AgentPassRegistry2026", "registry": "<agent-registry>" }
 }
 ```
+
+Un Mandato también puede llegar firmado por la wallet del principal con
+SEP-53 en vez de como JWS (`verifyWalletSignedMandateOnChain`,
+`packages/mandate/src/anchor.ts`). El estado en la red se comprueba igual.
 
 `payTo` y `products` son opcionales: si faltan, no se comprueban (y la
 respuesta lo dice); si están, un arreglo vacío no permite nada.
@@ -299,7 +317,8 @@ respuesta lo dice); si están, un arreglo vacío no permite nada.
 `agent-registry.anchor(issuer, cred_hash, subject, expires_at)`, con
 `cred_hash = sha256(jws)`, `subject` el agente y `expires_at` el `validUntil`.
 El principal revoca con `revoke(issuer, cred_hash)`, desde fuera del agente:
-ningún prompt lo deshace.
+ningún prompt lo deshace. Lo que la revocación detiene es la verificación del
+Mandato en el agente; no detiene por sí sola al `policy_rail` (sección 4.4).
 
 ### 4.3 Verificación, en orden
 
@@ -309,24 +328,52 @@ ningún prompt lo deshace.
    registro nombrado sea el que el verificador confía (`RegistryMismatch`), que
    el hash esté `Active` (`MandateRevoked`, `MandateUnknown`, `MandateExpired`),
    y que el principal siga registrado y activo.
-3. **Contra la compra** (`checkMandate`, `apps/agent/src/mandate/check-mandate.ts`,
-   pura): agente, principal, acción, comercio, producto, activo, moneda,
-   ventana y monto por compra. Rechazos: `MandateAgentMismatch`,
-   `MandatePrincipalMismatch`, `MandateVenueNotAllowed`,
-   `MandateProductNotAllowed`, `MandateAssetNotAllowed`,
-   `MandateWindowMismatch`, `MandateAmountExceeded`.
-4. **Contra lo que pide el comercio** (`reconcileTerms`,
-   `apps/agent/src/policy/terms.ts`): mismo comercio, mismo activo, monto
-   exacto y destinatario permitido. Rechazos: `TermsVenueMismatch`,
-   `TermsAssetMismatch`, `TermsAmountMismatch`, `TermsPayeeNotAllowed`. El
-   total del día lo lleva el registro de gasto del rail local.
-5. **En la red, otra vez** (`__check_auth` del `policy_rail`): la firma del
-   `owner`, la vigencia del rail, una sola invocación `transfer` del activo
-   desde el propio rail, `per_tx` y `per_day`. Si algo falla, la simulación
-   falla y no se envía nada.
+3. **Antes de pagar** (`authorise`, `apps/agent/src/policy/policy-rail.ts`), en este orden:
+   1. `reconcileTerms` (`apps/agent/src/policy/terms.ts`): lo que pide el
+      comercio contra la intención. Mismo comercio, mismo activo, monto exacto
+      y destinatario permitido por el Mandato. Rechazos: `TermsVenueMismatch`,
+      `TermsAssetMismatch`, `TermsAmountMismatch`, `TermsPayeeNotAllowed`.
+   2. `checkScope` (`apps/agent/src/scope/scope.ts`): la intención contra el
+      alcance de la credencial. Rechazos: `ScopeActionNotAllowed`,
+      `ScopeVenueNotAllowed`, `ScopeAssetNotAllowed`, `ScopeCurrencyMismatch`,
+      `ScopeAmountExceeded`.
+   3. `checkMandate` (`apps/agent/src/mandate/check-mandate.ts`, pura): la
+      intención contra el Mandato. Agente, principal, acción, comercio,
+      producto, activo, moneda, ventana y monto por compra. Rechazos:
+      `MandateAgentMismatch`, `MandatePrincipalMismatch`,
+      `MandateActionNotAllowed`, `MandateVenueNotAllowed`,
+      `MandateProductNotAllowed`, `MandateAssetNotAllowed`,
+      `MandateCurrencyMismatch`, `MandateWindowMismatch`,
+      `MandateAmountExceeded`.
+   4. El total del día, con el registro de gasto, contra los dos límites
+      diarios: `ScopeDailyLimitExceeded`, `MandateDailyLimitExceeded`.
+4. **En la red** (`__check_auth` del `policy_rail`,
+   `contracts/policy-rail/src/lib.rs`): la firma del `owner`, la vigencia del
+   rail (`valid_until`), una sola invocación `transfer` del activo del rail
+   **desde** el propio rail, monto positivo, `per_tx` y `per_day`. Si algo
+   falla, la simulación falla y no se envía nada.
 
-Los pasos 1 a 4 corren en el agente; el 5, en la red, y no depende de que el
-agente sea honesto (evidencia en T122: `Error(Contract, #7)`).
+Los pasos 1 a 3 corren en el agente. El 4 corre en la red y no depende de que
+el agente sea honesto, **pero solo para lo que comprueba** (sección 4.4).
+Evidencia en T122: `Error(Contract, #7)`.
+
+### 4.4 Lo que la red no comprueba
+
+`__check_auth` no consulta `agent-registry` y no restringe a quién va el
+`transfer`. En consecuencia:
+
+- **Revocar el Mandato no corta el rail.** Un agente honesto deja de pagar
+  porque su verificación lo rechaza; pero quien tenga la llave `owner` puede
+  seguir firmando transferencias hasta `per_tx` y `per_day`, hasta que el rail
+  venza (`valid_until`).
+- **El destinatario no está fijado en la red.** Con la llave `owner` se puede
+  pagar a cualquier cuenta, dentro de los mismos límites. El destinatario lo
+  comprueban el agente (chequeos 3 y 4 de la sección 2.4, y `TermsPayeeNotAllowed`) y el
+  comercio, no el contrato.
+- **Cómo se corta del todo:** el `principal` llama `set_owner` (cambia la llave
+  que puede gastar) o `withdraw` (saca los fondos). Las dos exigen su firma.
+
+Es la brecha 11 para el SEP.
 
 ## 5. Contratos desplegados (testnet)
 
@@ -354,7 +401,7 @@ Fuente de los ids: `deployments/testnet.json` y
 
 Las seis de T120 (sección 8 de
 [T120-handler-stellar-ucp.md](T120-handler-stellar-ucp.md)), confirmadas al
-construir, más tres que aparecieron después:
+construir, más cinco que aparecieron después:
 
 1. **No hay handlers de stablecoins ni de pagos en cadena** en UCP. Este es de
    los primeros.
@@ -362,8 +409,12 @@ construir, más tres que aparecieron después:
    moneda ISO 4217; aquí la tasa viaja en el `config` del handler (`E-3`).
 3. **El binding es lógico, no criptográfico.** La autorización Soroban firma
    destinatario, activo, monto, nonce y vencimiento, pero no el id de la
-   sesión. El comercio compensa exigiendo requisitos idénticos a los de la
-   sesión (`E-7`). Un SEP podría fijar cómo atarlo.
+   sesión: dos sesiones del mismo comercio por el mismo monto son
+   intercambiables, aunque cada credencial se liquida una sola vez. Lo que
+   protege es que el comercio liquida los requisitos **guardados** de la
+   sesión y el facilitator verifica la transacción contra ellos; el `accepted`
+   de la credencial es solo lo que la plataforma declara (`E-7`). Un SEP podría
+   fijar cómo atar la firma a la sesión.
 4. **No hay lugar para recibos verificables en la orden.** De ahí la extensión
    `com.agentpey.shopping.receipt`.
 5. **AP2 en UCP exige ECDSA** (ES256/384/512) y mandatos SD-JWT; el Mandato y
@@ -381,6 +432,13 @@ construir, más tres que aparecieron después:
    perfil referencia `../schemas/ucp.json` desde
    `https://ucp.dev/schemas/discovery/profile.json`, que no resuelve
    ([evidencia de T121](evidencia/T121.md)).
+10. **Coherencia del recibo.** La verificación compara el monto atómico y usa
+    un USDC fijo; no comprueba que `amountUSDC` y `amountUSDCAtomic` digan lo
+    mismo, que `asset` sea ese USDC, ni que una transacción respalde un solo
+    recibo. Un SEP debería fijar qué campo manda y la unicidad.
+11. **La revocación no llega a la cuenta pagadora** (sección 4.4). Un SEP
+    podría pedir que la cuenta pagadora consulte el estado del Mandato, o que
+    fije el destinatario, a costa de una lectura más por pago.
 
 ## 7. Reproducir
 

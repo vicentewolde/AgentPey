@@ -145,3 +145,10 @@ resuelve y la propuesta debería resolver. Un test avisa si algún dato del
 anexo deja de coincidir con lo que está desplegado.
 
 Documento: [ANEXO-SEP.md](ANEXO-SEP.md). Evidencia: [evidencia/T125.md](evidencia/T125.md).
+
+**Lo que encontró la revisión.** El anexo daba a entender que revocar el
+permiso detiene la cuenta pagadora en la red, y no es así: la red aplica los
+límites, pero no consulta si el permiso fue revocado ni a quién va el pago. Lo
+que corta la cuenta del todo es que su dueño cambie la llave o retire la plata.
+Ahora el anexo lo dice con todas las letras, y es una de las brechas que el
+estándar debería resolver.
