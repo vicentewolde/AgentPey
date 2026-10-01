@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-01
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T125 · anexo técnico para el SEP. T123 implementada, espera `/revisar`
-**Siguiente paso:** `/revisar` de T123; después, T124 si alcanza (dos decisiones del usuario pendientes)
+**Última tarea terminada:** T123 · el Mandato exportado como mandatos AP2 v0.2, verificado por la librería oficial de AP2
+**Siguiente paso:** T124 (disputas v0), si alcanza antes del 11-oct: primero las dos decisiones del usuario (qué hace el veredicto con la plata y el nombre)
 
 ## Progreso de la fase
 
@@ -17,7 +17,7 @@
 | T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ✅ terminada | `cc/t122-compra-ucp-stellar`, `cc/t122-evidencia`, mergeadas |
-| T123 Mandato exportable como mandatos AP2 | si alcanza | 👀 en revisión | `cc/t123-mandatos-ap2`, sin push |
+| T123 Mandato exportable como mandatos AP2 | si alcanza | ✅ terminada | `cc/t123-mandatos-ap2`, mergeada ([PR #34](https://github.com/vicentewolde/AgentPey/pull/34)) |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 

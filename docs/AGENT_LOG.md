@@ -7382,3 +7382,14 @@ comisión), la librería oficial de AP2 verifica los dos pares. Anexo, evidencia
 
 Pendiente: push, PR y merge con OK del usuario. Deuda anotada en ESTADO: un par por intención no se hace
 cumplir (brecha 14). Perímetro intacto. `AGENTS.md`: sin cambios.
+
+## 2026-10-01 (5) — cc/t123-mandatos-ap2 → main
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, PR [#34](https://github.com/vicentewolde/AgentPey/pull/34) (CI 2/2 en verde) mergeado
+por fast-forward a `main` (`a5b3b8b`); rama borrada local y remota. T123 cerrada en ESTADO, bitácora, spec y
+SYNC. Exponential: T123 a `DONE`.
+
+Pendiente: T124 (disputas v0), si alcanza: antes, dos decisiones del usuario (sección 9 del spec).
+Deuda de T123 en ESTADO: un par AP2 por intención no se hace cumplir. `AGENTS.md`: sin cambios.

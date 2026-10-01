@@ -251,3 +251,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-01 | T125 cerrada: `ANEXO-SEP.md`, con `scripts/fase7-anexo.test.ts` |
 | 2026-10-01 | T122 cerrada: compra UCP real pagada en Stellar, pedido en Shopify, recibo válido, `per_tx` rechazado por el contrato (`E-5` a `E-7`) |
 | 2026-10-01 | T123 replanificada tras leer AP2 `v0.2` y UCP `2026-08-25` del fuente: mandatos abiertos de checkout y de pago, exportación fuera de línea con chequeo cruzado, 16 h (`E-8` a `E-11`) |
+| 2026-10-01 | T123 cerrada: Mandato real exportado y verificado, la librería oficial de AP2 acepta el par en Ed25519 y en P-256; tras `/revisar`, tope en centavos y credencial verificada (`E-12`, `E-13`). [PR #34](https://github.com/vicentewolde/AgentPey/pull/34) |

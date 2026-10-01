@@ -17,15 +17,15 @@
 cerrada**: un agente compró por UCP en una tienda Shopify real, pagando en
 Stellar desde un `policy_rail`, con pedido en Shopify (visto por el usuario) y
 recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y revisado.
-**T123 en revisión**: el Mandato se exporta como mandatos AP2 v0.2 y la librería
-oficial de AP2 los verifica (`E-8` a `E-11`). **Sigue:** `/revisar` de T123; T124, si alcanza.
+**T123 cerrada**: el Mandato se exporta como mandatos AP2 v0.2 y la librería
+oficial de AP2 los verifica (`E-8` a `E-13`). **Sigue:** T124, si alcanza.
 
 | Tarea | Estado |
 |---|---|
 | T120 Prueba técnica | cerrada |
 | T121 Perfil y catálogo UCP | cerrada |
 | T122 Compra UCP de punta a punta | cerrada |
-| T123 Mandato como mandatos AP2 | en revisión |
+| T123 Mandato como mandatos AP2 | cerrada |
 | T124 Disputas | pendiente |
 | T125 Anexo para el SEP | cerrada |
 
@@ -155,7 +155,7 @@ que corta la cuenta del todo es que su dueño cambie la llave o retire la plata.
 Ahora el anexo lo dice con todas las letras, y es una de las brechas que el
 estándar debería resolver.
 
-## T123 · El permiso del usuario, en el idioma de AP2 (2026-10-01, en revisión)
+## T123 · El permiso del usuario, en el idioma de AP2 (2026-10-01, cerrada)
 
 **En lenguaje llano.** AP2 es el formato que Google propone para que un agente
 demuestre que el usuario lo autorizó a pagar. El Mandato de AgentPey ya dice
