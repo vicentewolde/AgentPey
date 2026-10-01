@@ -36,7 +36,11 @@ export interface OpenMandateTask {
   readonly merchant: Ap2Merchant;
   readonly item: Ap2Item;
   readonly quantity: number;
-  /** `payment.amount_range.max`, in the asset's smallest unit. */
+  /**
+   * `payment.amount_range.max`, in AP2's minor unit: cents (`E-12`). AP2 reads
+   * it as "minor (cents) unit of currency", so a Stellar amount (7 decimals)
+   * must be converted, rounding down, before it gets here.
+   */
   readonly maxAmount: bigint;
   /** `payment.amount_range.currency`. AP2 asks for ISO 4217; a Stellar asset has none (gap for the SEP). */
   readonly currency: string;

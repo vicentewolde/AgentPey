@@ -251,7 +251,9 @@ function resolveDisclosures(claims: Record<string, unknown>, disclosures: readon
       return out;
     }
     if (isRecord(value)) {
-      const out: Record<string, unknown> = {};
+      // No prototype: a claim named `__proto__` or `constructor` is just a
+      // claim, never an inherited member that `in` would mistake for one.
+      const out: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
       for (const [name, member] of Object.entries(value)) {
         if (name !== "_sd") out[name] = resolve(member);
       }
@@ -262,7 +264,7 @@ function resolveDisclosures(claims: Record<string, unknown>, disclosures: readon
           const disclosed = take(digest);
           if (disclosed === undefined) continue;
           if (disclosed.kind !== "property") throw mismatch("an _sd digest points at an array element disclosure");
-          if (disclosed.name in out) throw mismatch("a disclosure would overwrite a signed claim", { claim: disclosed.name });
+          if (Object.hasOwn(out, disclosed.name)) throw mismatch("a disclosure would overwrite a signed claim", { claim: disclosed.name });
           out[disclosed.name] = resolve(disclosed.value);
         }
       }

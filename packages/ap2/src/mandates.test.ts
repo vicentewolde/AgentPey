@@ -57,7 +57,7 @@ describe("issueOpenMandatePair → verifyOpenMandatePair", () => {
       vct: OPEN_PAYMENT_MANDATE_VCT,
       constraints: [
         { type: "payment.reference", conditional_transaction_id: sdHash(pair.checkout) },
-        { type: "payment.amount_range", currency: "USDC", max: 30_000_000 },
+        { type: "payment.amount_range", currency: "USDC", max: 300 },
         { type: "payment.allowed_payees", allowed: [task.merchant] },
         { type: "payment.allowed_payment_instruments", allowed: [task.paymentInstrument] },
         { type: "payment.execution_date", not_after: EXPIRES_AT.toISOString() },
@@ -87,7 +87,7 @@ describe("issueOpenMandatePair → verifyOpenMandatePair", () => {
   it("refuses to issue a mandate that would already be expired, or an unrepresentable amount", async () => {
     const agent = ed25519TestKey();
     const issuer = ed25519TestKey();
-    for (const overrides of [{ expiresAt: ISSUED_AT }, { maxAmount: 0n }, { maxAmount: 2n ** 60n }, { quantity: 0 }]) {
+    for (const overrides of [{ expiresAt: ISSUED_AT }, { maxAmount: 0n }, { maxAmount: 2n ** 60n }, { quantity: 0 }, { item: { id: "p", title: "" } }]) {
       const error = await rejection(issueOpenMandatePair(testTask(agent.publicJwk, overrides), issuer.signer));
       expect(hasErrorCode(error, "Ap2MandateInvalid")).toBe(true);
     }
@@ -181,9 +181,27 @@ describe("verifyOpenMandatePair rejects an altered pair, with a typed error", ()
     expect(hasErrorCode(noReference, "Ap2MandateInvalid")).toBe(true);
   });
 
-  it("the checkout and payment tokens swapped", async () => {
+  it("the checkout and payment tokens swapped — reported as the wrong mandate type", async () => {
     const { issuer, pair } = await exportPair();
     const error = await rejection(verifyOpenMandatePair({ checkout: pair.payment, payment: pair.checkout }, { issuerKey: issuer.publicJwk, now: DURING }));
-    expect(hasErrorCode(error, "Ap2ConstraintUnsupported")).toBe(true);
+    expect(hasErrorCode(error, "Ap2MandateInvalid")).toBe(true);
+    expect((error as { details: { vct?: unknown } }).details.vct).toBe(OPEN_PAYMENT_MANDATE_VCT);
+  });
+
+  it("a payment mandate whose payee and instrument disclosures were withheld, leaving empty allowlists", async () => {
+    const { issuer, pair } = await exportPair();
+    // [jwt, payee, instrument, mandate, ""]: drop the two inner disclosures, keep the signature intact.
+    const [jwt, , , mandate] = pair.payment.split("~");
+    const stripped = `${jwt}~${mandate}~`;
+    const error = await rejection(verifyOpenMandatePair({ checkout: pair.checkout, payment: stripped }, { issuerKey: issuer.publicJwk, now: DURING }));
+    expect(hasErrorCode(error, "Ap2MandateInvalid")).toBe(true);
+  });
+
+  it("a payment mandate re-signed with a later exp than its checkout mandate", async () => {
+    const { issuer, task, pair } = await exportPair();
+    const mandate = (await mandateOf(pair.payment, issuer)) as { exp: number };
+    const payment = await signRawMandate({ ...mandate, exp: mandate.exp + 3600 }, issuer.signer, task);
+    const error = await rejection(verifyOpenMandatePair({ checkout: pair.checkout, payment }, { issuerKey: issuer.publicJwk, now: DURING }));
+    expect(hasErrorCode(error, "Ap2ReferenceMismatch")).toBe(true);
   });
 });

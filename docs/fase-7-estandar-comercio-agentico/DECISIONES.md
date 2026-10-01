@@ -257,3 +257,45 @@ principal consintió.
 
 **Alternativa descartada: un par permanente con solo `checkout.allowed_merchants`.**
 La librería oficial lo acepta, pero no cumple el esquema JSON de AP2.
+
+---
+
+### E-12 · El tope del mandato AP2 va en centavos, redondeado hacia abajo, y es el menor de los cuatro límites · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T123 · Decidido por el usuario, tras `/revisar`
+
+AP2 lee `payment.amount_range.max` en "minor (cents) unit of currency"
+(`open_payment_mandate.json`). La primera versión escribía unidades de Stellar
+(7 decimales): 3,00 USDC salía como `30000000`, que un lector de AP2 entiende
+como 300.000. Ahora el tope va en centavos, redondeado hacia abajo
+(3,00 → `300`; 0,0199999 → `1`), y es el menor entre `perTx` y `perDay` de la
+credencial y del Mandato: con `perDay` en 0 (la pausa del gasto) no se exporta
+nada (`Ap2MandateInvalid`).
+
+**Motivo.** Un mandato exportado nunca puede permitir más de lo que AgentPey
+mismo permitiría. Redondear hacia abajo pierde precisión bajo el centavo y
+nunca amplía el permiso.
+
+**Alternativa descartada: dejar las unidades de Stellar y avisarlo en el
+anexo.** Cualquier verificador de AP2 que siga el esquema leería un tope
+100.000 veces mayor.
+
+---
+
+### E-13 · La exportación AP2 también verifica la credencial y corre `checkScope` · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T123 · Decidido por el usuario, tras `/revisar`
+
+`exportMandateAsAp2` verifica en la red la credencial AgentPass del agente,
+exige que la intención nombre esa credencial, ese agente y ese principal, y
+corre `checkScope` (sin cambios) antes de `checkMandate`. Así se cumple `M-4`
+(las dos autoridades tienen que permitir) y revocar la credencial, el corte
+desde fuera del agente, también detiene la exportación.
+
+**Alternativa descartada: solo el Mandato, como pedía el spec.** Con la
+credencial revocada el exportador seguía firmando, y con una credencial más
+estrecha que el Mandato el tope exportado era el del Mandato.
+
+**También tras `/revisar`:** la llave del agente en `cnf` ya no se puede elegir
+en la exportación real; la variante con llave P-256 vive aparte
+(`apps/agent/src/ap2/cross-check.ts`), fuera del índice del paquete, y su `iss`
+es `urn:agentpey:ap2-cross-check:…`, nunca el `did:stellar` del emisor. El par
+vence a más tardar con la intención.

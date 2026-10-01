@@ -8,6 +8,12 @@
  * report less than the issuer signed. Constraint **types** are the exception:
  * an unknown one fails evaluation (AP2 `agent_authorization.md`), which
  * `knownConstraintTypes` lets the verifier report on its own code.
+ *
+ * Every allowlist needs at least one revealed element. AP2: "If they are not
+ * present, or if the `allowed` contains no revealed elements, the constraint
+ * is invalid." A holder can withhold a disclosure without breaking the
+ * signature, so an empty list here means someone stripped it, and is rejected
+ * rather than read as "no restriction".
  */
 import { stellarContractIdSchema } from "@agentpass/core";
 import { z } from "zod";
@@ -36,10 +42,10 @@ const ap2PispSchema = z.looseObject({ legal_name: z.string(), brand_name: z.stri
 const lineItemsConstraint = z.looseObject({
   type: z.literal("checkout.line_items"),
   items: z
-    .array(z.looseObject({ id: z.string().min(1), acceptable_items: z.array(ap2ItemSchema), quantity: z.int().positive() }))
+    .array(z.looseObject({ id: z.string().min(1), acceptable_items: z.array(ap2ItemSchema).min(1), quantity: z.int().positive() }))
     .min(1),
 });
-const allowedMerchantsConstraint = z.looseObject({ type: z.literal("checkout.allowed_merchants"), allowed: z.array(ap2MerchantSchema) });
+const allowedMerchantsConstraint = z.looseObject({ type: z.literal("checkout.allowed_merchants"), allowed: z.array(ap2MerchantSchema).min(1) });
 
 export const checkoutConstraintSchema = z.discriminatedUnion("type", [lineItemsConstraint, allowedMerchantsConstraint]);
 
@@ -50,9 +56,9 @@ export const paymentConstraintSchema = z.discriminatedUnion("type", [
     frequency: z.enum(["ON_DEMAND", "DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "ANNUALLY"]),
     max_occurrences: z.int().optional(),
   }),
-  z.looseObject({ type: z.literal("payment.allowed_payees"), allowed: z.array(ap2MerchantSchema) }),
-  z.looseObject({ type: z.literal("payment.allowed_payment_instruments"), allowed: z.array(ap2PaymentInstrumentSchema) }),
-  z.looseObject({ type: z.literal("payment.allowed_pisps"), allowed: z.array(ap2PispSchema) }),
+  z.looseObject({ type: z.literal("payment.allowed_payees"), allowed: z.array(ap2MerchantSchema).min(1) }),
+  z.looseObject({ type: z.literal("payment.allowed_payment_instruments"), allowed: z.array(ap2PaymentInstrumentSchema).min(1) }),
+  z.looseObject({ type: z.literal("payment.allowed_pisps"), allowed: z.array(ap2PispSchema).min(1) }),
   z.looseObject({ type: z.literal("payment.amount_range"), currency: z.string().min(1), max: z.int(), min: z.int().optional() }),
   z.looseObject({ type: z.literal("payment.budget"), max: z.number(), currency: z.string().min(1) }),
   z.looseObject({ type: z.literal("payment.execution_date"), not_before: z.string().optional(), not_after: z.string().optional() }),

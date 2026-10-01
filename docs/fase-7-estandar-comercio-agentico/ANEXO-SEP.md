@@ -388,9 +388,11 @@ producir un JWS (`E-8`). Se emite un par por compra (`E-11`): AP2 exige que el
 mandato abierto de checkout nombre los productos y que el de pago apunte a él.
 
 `exportMandateAsAp2` (`apps/agent/src/ap2/export.ts`) emite el par solo después
-de tres pasos: el Mandato se verifica en la red (firma, ventana, anclado y no
-revocado), la intención de compra se verifica contra la llave del agente, y
-`checkMandate` (sin cambios) la permite. La firma y el formato están en
+de cuatro pasos (`E-13`): la credencial del agente y el Mandato se verifican en
+la red (firma, ventana, anclados y no revocados); la intención de compra se
+verifica contra la llave del agente y tiene que nombrar esa credencial, ese
+agente y ese principal; y `checkScope` y `checkMandate`, sin cambios, tienen que
+permitirla. Revocar la credencial corta también la exportación. La firma y el formato están en
 `issueOpenMandatePair` (`packages/ap2/src/issue.ts`); la verificación, en
 `verifyOpenMandatePair` (`packages/ap2/src/verify.ts`), con los esquemas
 `openCheckoutMandateSchema` y `openPaymentMandateSchema`
@@ -407,13 +409,13 @@ beneficiario y el instrumento también son divulgables.
 | Mandato de AgentPey | Mandato AP2 abierto |
 |---|---|
 | `credentialSubject.id` (el agente) | `cnf.jwk`, la llave Ed25519 de su `did:stellar` |
-| `grant.limits.perTx` | `payment.amount_range.max`, en unidades atómicas (7 decimales) |
+| `perTx` y `perDay` de la credencial y del Mandato | `payment.amount_range.max`: el menor de los cuatro, en centavos, redondeado hacia abajo (`E-12`) |
 | `grant.limits.currency` | `payment.amount_range.currency` (`"USDC"`: no es ISO 4217, brecha 13) |
-| `grant.limits.perDay` | no se exporta: lo aplica el `policy_rail` (`E-10`, brecha 12) |
+| el acumulado de `perDay` | no se exporta como restricción: lo aplica el `policy_rail` (`E-10`, brecha 12) |
 | la venue de la intención | `checkout.allowed_merchants` y `payment.allowed_payees` |
 | el activo de la intención | `payment.allowed_payment_instruments`, `type: "stellar_x402"` |
 | producto y cantidad de la intención | `checkout.line_items` |
-| `validUntil` | `exp`, como máximo una hora después de emitir (`E-10`) |
+| `validUntil` y el vencimiento de la intención | `exp`: el primero entre la intención, la credencial, el Mandato y una hora (`E-10`) |
 | `credentialStatus` y el hash del Mandato | `com.agentpey.mandate`: `mandate_id`, `hash`, `registry` |
 
 #### Mandato abierto de checkout (el elemento de `delegate_payload`)
@@ -432,8 +434,8 @@ beneficiario y el instrumento también son divulgables.
     }
   ],
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "FeJ0n1-3nBc5yW454qbzKgUhcjo6VEzH7TjogETMOGI" } },
-  "iat": 1790882834,
-  "exp": 1790886434
+  "iat": 1790884672,
+  "exp": 1790885571
 }
 ```
 
@@ -443,8 +445,8 @@ beneficiario y el instrumento también son divulgables.
 {
   "vct": "mandate.payment.open.1",
   "constraints": [
-    { "type": "payment.reference", "conditional_transaction_id": "FKuXCH_2AfdYx1F64a3Uky2Rrk5ODywsNOjgM1thZ98" },
-    { "type": "payment.amount_range", "currency": "USDC", "max": 30000000 },
+    { "type": "payment.reference", "conditional_transaction_id": "NUCG8d_BCMni-Lw8nsNh4mI5iHcRcQX95UnNQHkGz14" },
+    { "type": "payment.amount_range", "currency": "USDC", "max": 300 },
     {
       "type": "payment.allowed_payees",
       "allowed": [{ "id": "vitrinee-agentcommerce:GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN", "name": "agentcommerce.vitrinee.agentpey.com", "website": "https://agentcommerce.vitrinee.agentpey.com" }]
@@ -453,25 +455,28 @@ beneficiario y el instrumento también son divulgables.
       "type": "payment.allowed_payment_instruments",
       "allowed": [{ "id": "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "type": "stellar_x402", "description": "USDC on Stellar, paid with x402 (exact)" }]
     },
-    { "type": "payment.execution_date", "not_after": "2026-10-01T20:27:14.817Z" }
+    { "type": "payment.execution_date", "not_after": "2026-10-01T20:12:51.392Z" }
   ],
   "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "FeJ0n1-3nBc5yW454qbzKgUhcjo6VEzH7TjogETMOGI" } },
-  "iat": 1790882834,
-  "exp": 1790886434
+  "iat": 1790884672,
+  "exp": 1790885571
 }
 ```
 
 Son los del export real de T123 ([evidencia](evidencia/T123.md)), sobre el
-Mandato `874339dd…` anclado en `agent-registry`. `conditional_transaction_id`
+Mandato `e5eae6ce…` anclado en `agent-registry`: 3,00 USDC por compra son
+`300` centavos, y el par vence con la intención (15 minutos). `conditional_transaction_id`
 es el `sd_hash` del token de checkout: `base64url(sha256(token))`, con los
 disclosures incluidos, igual que lo calcula la librería oficial de AP2.
 
 **Verificación, en orden.** Firma con la llave del emisor que elige quien
 verifica (el `alg` tiene que ser el de esa llave) → disclosures (uno que no
 corresponda a ningún digest firmado rechaza el token) → raíz → un solo mandato
-→ tipos de restricción → esquema → ventana (`iat`, `exp`, bordes inclusivos).
-Para el par, además, `payment.reference` tiene que ser el `sd_hash` del de
-checkout, y los dos tienen que coincidir en emisor, `cnf` y Mandato de origen.
+→ su `vct` → tipos de restricción → esquema (cada lista de permitidos con al
+menos un elemento revelado, como pide AP2) → ventana (`iat`, `exp`, bordes
+inclusivos). Para el par, además, `payment.reference` tiene que ser el
+`sd_hash` del de checkout, y los dos tienen que coincidir en emisor, `cnf`,
+ventana y Mandato de origen.
 Códigos: `Ap2MandateInvalid`, `Ap2SignatureInvalid`, `Ap2DisclosureMismatch`,
 `Ap2MandateExpired`, `Ap2MandateNotYetValid`, `Ap2ReferenceMismatch`,
 `Ap2ConstraintUnsupported`.
@@ -555,14 +560,20 @@ construir, más ocho que aparecieron después:
     restricción propia haría fallar a cualquier verificador AP2. `perDay` no se
     exporta (sección 4.5, `E-10`).
 13. **Montos en un activo sin código ISO 4217.** `payment.amount_range` pide
-    ISO 4217 y unidades menores; USDC en Stellar tiene 7 decimales y ningún
-    código. El export usa `"USDC"` y unidades atómicas. Un SEP debería fijarlo.
+    ISO 4217 y "minor (cents) unit"; USDC en Stellar tiene 7 decimales y
+    ningún código. El riesgo es concreto: escrito en unidades de Stellar, 3,00
+    USDC (`30000000`) se lee como 300.000 en centavos. El export usa `"USDC"` y
+    centavos redondeados hacia abajo (`E-12`), así que nunca permite más de lo
+    autorizado, a costa de perder precisión bajo el centavo. Un SEP debería
+    fijar la unidad de los activos de Stellar.
 14. **AP2 en el checkout UCP, y mandatos cerrados.** Negociar la extensión deja
     la sesión "security locked" y exige la firma del comercio en cada
     respuesta; en UCP `2026-08-25` la extensión se renombró
     (`dev.ucp.common.payment.ap2_mandate`). Tampoco hay revocación en AP2: un
-    mandato abierto vale hasta su `exp`. T123 exporta y verifica fuera de línea
-    (`E-8`).
+    mandato abierto vale hasta su `exp`. Y "un par por compra" (`E-11`) no se
+    hace cumplir: la misma intención se puede exportar otra vez hasta que vence,
+    cada par con el mismo tope y la misma ventana. T123 exporta y verifica
+    fuera de línea (`E-8`).
 
 ## 7. Reproducir
 

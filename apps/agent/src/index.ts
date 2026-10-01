@@ -314,6 +314,7 @@ export {
   AP2_STELLAR_X402_INSTRUMENT,
   exportMandateAsAp2,
   stellarAp2Issuer,
+  type Ap2ExportVerifiers,
   type Ap2Issuer,
   type ExportMandateAsAp2Input,
   type ExportedAp2Mandates,

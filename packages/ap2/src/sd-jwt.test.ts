@@ -4,7 +4,7 @@ import { hasErrorCode } from "@agentpass/core";
 import { CompactSign, importJWK } from "jose";
 import { describe, expect, it } from "vitest";
 
-import { AP2_SD_JWT_TYP, disclosableArray, issueSdJwt, sdHash, verifySdJwt } from "./sd-jwt.js";
+import { AP2_SD_JWT_TYP, disclosableArray, issueSdJwt, sdHash, sha256Base64Url, verifySdJwt } from "./sd-jwt.js";
 import { p256TestKey, ed25519TestKey } from "./test/fixtures.js";
 
 async function issueList(values: readonly unknown[], key = ed25519TestKey()): Promise<string> {
@@ -51,6 +51,16 @@ describe("issueSdJwt / verifySdJwt", () => {
     const [jwt, kept] = token.split("~");
     const { payload } = await verifySdJwt(`${jwt}~${kept}~`, key.publicJwk);
     expect(payload).toEqual({ iss: "issuer", list: ["kept"] });
+  });
+
+  it("treats a disclosed claim named __proto__ or constructor as a plain claim", async () => {
+    const key = ed25519TestKey();
+    const disclosures = ["__proto__", "constructor"].map((name) => Buffer.from(JSON.stringify(["salt-" + name, name, { polluted: true }])).toString("base64url"));
+    const token = await issueSdJwt({ iss: "issuer", _sd: disclosures.map(sha256Base64Url) }, disclosures, key.signer);
+    const { payload } = await verifySdJwt(token, key.publicJwk);
+    expect(Object.getPrototypeOf(payload)).toBeNull();
+    expect(Object.hasOwn(payload, "__proto__") && Object.hasOwn(payload, "constructor")).toBe(true);
+    expect(({} as { polluted?: unknown }).polluted).toBeUndefined();
   });
 
   it("rejects a token signed by any key other than the trusted one", async () => {

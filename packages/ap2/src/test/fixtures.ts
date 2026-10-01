@@ -48,7 +48,7 @@ export function testTask(agentKey: Ap2PublicJwk, overrides: Partial<OpenMandateT
     merchant: { id: "vitrinee-agentcommerce:GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN", name: "agentcommerce", website: "https://agentcommerce.vitrinee.agentpey.com" },
     item: { id: "67624104591666", title: "Sticker pack" },
     quantity: 1,
-    maxAmount: 30_000_000n,
+    maxAmount: 300n, // 3.00 USDC in cents (E-12)
     currency: "USDC",
     paymentInstrument: { id: "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", type: "stellar_x402", description: "USDC on Stellar testnet, x402 exact" },
     issuedAt: ISSUED_AT,
