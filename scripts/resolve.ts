@@ -23,7 +23,7 @@
  *
  * Files under `.vitrinee/agentresolve/<receipt hash>/` (gitignored).
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -241,9 +241,18 @@ async function decide(): Promise<void> {
   }
 
   const { verdict, hash } = await decideDispute({ checked, receiptHash: verified.hash, claimHash: claimHash(claimJws), arbiter: createClaudeArbiterWithKey(apiKey) });
-  await writeFile(resolve(dir, "verdict.json"), `${JSON.stringify(verdict, null, 2)}\n`);
+  // Every verdict is kept, in order: asking again until one comes out
+  // convenient must leave a trail. `verdict.json` is the latest, the only one
+  // `execute` will pay.
+  const history = resolve(dir, "verdicts");
+  await mkdir(history, { recursive: true });
+  const earlier = (await readdir(history)).filter((name) => name.endsWith(".json")).length;
+  const json = `${JSON.stringify(verdict, null, 2)}\n`;
+  await writeFile(resolve(history, `${String(earlier + 1).padStart(3, "0")}-${hash}.json`), json);
+  await writeFile(resolve(dir, "verdict.json"), json);
 
   line("árbitro", `${verdict.arbiter.model} (esfuerzo ${verdict.arbiter.effort})`);
+  line("veredicto n.º", earlier === 0 ? "1" : `${earlier + 1} (hay ${earlier} anterior${earlier === 1 ? "" : "es"} archivado${earlier === 1 ? "" : "s"} en verdicts/; solo este se puede ejecutar)`);
   line("resultado", verdict.outcome);
   line("reembolso", `${usdc(BigInt(verdict.refundAtomic))} de ${usdc(BigInt(verdict.disputedAtomic))} en disputa`);
   if (verdict.adjusted) line("ajustado", `el modelo propuso ${usdc(BigInt(verdict.proposedRefundAtomic))}; el código lo acotó`);
@@ -265,6 +274,10 @@ async function execute(): Promise<void> {
   const hash = verdictHash(verdict);
   if (values.confirm !== hash) {
     throw new AgentPassError("ResolveConfirmationMismatch", "the confirmed hash is not the verdict on file; nothing was paid", { details: { confirmed: values.confirm, onFile: hash } });
+  }
+  const latest = (await readdir(resolve(dir, "verdicts")).catch(() => [] as string[])).filter((name) => name.endsWith(".json")).sort().at(-1);
+  if (latest !== undefined && !latest.endsWith(`-${hash}.json`)) {
+    throw new AgentPassError("ResolveConfirmationMismatch", "the verdict on file is not the latest one the arbiter produced; nothing was paid", { details: { latest, onFile: hash } });
   }
   const dispute = await readDispute(contractId, values.receipt, arbiter.secret());
   if (dispute === null || dispute.status !== "Open" || dispute.claim_hash !== verdict.claimHash) {
@@ -314,6 +327,8 @@ async function verify(): Promise<void> {
   } catch {
     line("veredicto", dispute.verdict_hash ?? "sin veredicto todavía (y sin archivo local para comparar)");
   }
+  const produced = (await readdir(resolve(stateDir(values.receipt), "verdicts")).catch(() => [] as string[])).filter((name) => name.endsWith(".json")).length;
+  if (produced > 0) line("historial", `${produced} veredicto${produced === 1 ? "" : "s"} producido${produced === 1 ? "" : "s"} para este reclamo (verdicts/)`);
   const guarantee = await readGuarantee(contractId, dispute.merchant, reader.secret());
   line("garantía", `${usdc(guarantee.balance)} (bloqueado ${usdc(guarantee.locked)})`);
   process.exitCode = ok ? 0 : 1;

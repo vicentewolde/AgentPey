@@ -53,6 +53,14 @@ async function rejection(promise: Promise<unknown>): Promise<unknown> {
   );
 }
 
+describe("ARBITER_SYSTEM_PROMPT", () => {
+  it("tells the arbiter its verdict is final, as the contract makes it: one dispute per receipt", () => {
+    expect(ARBITER_SYSTEM_PROMPT).toContain("Your verdict is final");
+    expect(ARBITER_SYSTEM_PROMPT).toContain("can never be disputed again");
+    expect(ARBITER_SYSTEM_PROMPT).toContain("never tell a party they can file another claim");
+  });
+});
+
 describe("createClaudeArbiter — what is sent to Claude", () => {
   it("sends Opus 5.5 at high effort, the fixed system prompt, a structured format, and the claim only as quoted data", async () => {
     const captured: Captured[] = [];
