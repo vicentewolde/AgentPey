@@ -169,17 +169,22 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   - [x] todo en `evidencia/T122.md`
 
 ### T123 · Mandato exportable como mandatos AP2
-- **Prioridad:** si alcanza (se corta segundo) · **Estimación:** 15 h · **Delegable a Codex:** no
+- **Prioridad:** si alcanza (se corta segundo) · **Estimación:** 16 h (replanificada, `E-8`) · **Delegable a Codex:** no
 - **Depende de:** T122
-- **Aviso de T120:** AP2 en UCP exige firmas ECDSA (ES256/384/512) y mandatos
-  SD-JWT; el Mandato usa Ed25519. Hay que releer la extensión del texto
-  fuente y replanificar esta tarea antes de empezarla; 15 h puede quedar corto.
-- **Descripción:** mapear el Mandato firmado a los mandatos AP2 (Intent, Cart
-  y Payment) como Verifiable Credentials, y verificarlos.
+- **Replanteo (2026-10-01, `E-8` a `E-11`):** AP2 `v0.2` reemplazó Intent, Cart
+  y Payment por mandatos de checkout y de pago, abiertos o cerrados. El Mandato
+  corresponde a los dos abiertos. No se negocia AP2 en el checkout UCP.
+- **Descripción:** exportar el Mandato verificado, junto con una intención de
+  compra que `checkMandate` permite, a un mandato abierto de checkout
+  (`mandate.checkout.open.1`) y uno de pago (`mandate.payment.open.1`) como
+  SD-JWT, firmados por AgentPey como Trusted Agent Provider; y verificarlos.
+  Llaves según `E-9`; `perDay` y revocación según `E-10`.
 - **Hecho cuando:**
-  - [ ] un Mandato real se exporta a los tres mandatos AP2 y un verificador los acepta
-  - [ ] un mandato AP2 alterado es rechazado, con un error tipado
-  - [ ] el diff no toca `checkMandate` ni el enforcement de `scope.limits` o `perDay`
+  - [x] un Mandato real (firmado y anclado en testnet) se exporta a los dos mandatos abiertos de AP2, firmados con Ed25519, y el verificador de AgentPey los acepta ([evidencia](evidencia/T123.md))
+  - [x] la librería oficial de AP2 (Python, commit `e1ea56d`) acepta el mismo par exportado con llaves P-256 de un solo uso (y también el par Ed25519)
+  - [x] un mandato AP2 alterado (firma, disclosure, `payment.reference`, vencimiento o restricción desconocida) es rechazado, con un error tipado
+  - [x] una intención que el Mandato no permite no produce ningún mandato AP2
+  - [x] el diff no toca `checkMandate` ni el enforcement de `scope.limits` o `perDay`
 
 ### T124 · Disputas v0
 - **Prioridad:** si alcanza (se corta primero) · **Estimación:** 35 h · **Delegable a Codex:** no
@@ -245,3 +250,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-09-30 | Correcciones de `/revisar` sobre T120: prefijo `/ucp/v1` para no chocar con `GET /orders/:orderId`, y cómo se obtiene la evidencia de `per_tx` sin atajos en producción |
 | 2026-10-01 | T125 cerrada: `ANEXO-SEP.md`, con `scripts/fase7-anexo.test.ts` |
 | 2026-10-01 | T122 cerrada: compra UCP real pagada en Stellar, pedido en Shopify, recibo válido, `per_tx` rechazado por el contrato (`E-5` a `E-7`) |
+| 2026-10-01 | T123 replanificada tras leer AP2 `v0.2` y UCP `2026-08-25` del fuente: mandatos abiertos de checkout y de pago, exportación fuera de línea con chequeo cruzado, 16 h (`E-8` a `E-11`) |

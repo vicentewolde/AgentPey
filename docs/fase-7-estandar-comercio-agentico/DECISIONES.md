@@ -162,3 +162,98 @@ La configuración del handler en la respuesta del checkout lleva
 sesión que abrió. La firma de Soroban no incluye el id de la sesión (brecha 3
 de T120, para el SEP): el comercio rechaza una credencial cuyos requisitos no
 son exactamente los de esa sesión.
+
+---
+
+### E-8 · T123 exporta el Mandato a mandatos abiertos de AP2 v0.2 y los verifica fuera de línea; no se negocia AP2 en el checkout UCP · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T123 · Decidido por el usuario
+
+**Qué se leyó, del fuente.** La spec de AP2 `v0.2` (repo
+`google-agentic-commerce/AP2`, publicada el 2026-04-28, commit `e1ea56d`) y la
+extensión de AP2 en UCP, en `v2026-04-08` y en `v2026-08-25`. AP2 `v0.2` ya no
+tiene mandatos Intent, Cart y Payment: tiene un mandato de checkout y uno de
+pago, cada uno abierto (firmado por el usuario o por quien opera al agente, con
+límites y la llave del agente en `cnf`) o cerrado (firmado por el agente al
+comprar). El Mandato de AgentPey corresponde a los dos **abiertos**, en el modo
+"sin humano presente" de AP2.
+
+**Qué se hace.** El Mandato verificado se exporta a un mandato abierto de
+checkout (`mandate.checkout.open.1`) y uno de pago (`mandate.payment.open.1`),
+como SD-JWT. AgentPey firma como "Trusted Agent Provider" de AP2, porque la
+wallet del principal firma SEP-53 y no puede producir un JWS
+(`packages/mandate/src/wallet-sign.ts`). Un verificador propio los acepta o los
+rechaza con un error tipado, y la librería oficial de AP2 en Python los
+verifica como chequeo cruzado. 16 h.
+
+**Alternativa descartada: negociar `dev.ucp.shopping.ap2_mandate` en el
+checkout UCP de Vitrinee** (unas 50 h). Toca `complete`, que es el camino de la
+grabación del 11 de octubre, exige deploy y deja la sesión "security locked".
+Además, en UCP `2026-08-25` la extensión se renombró
+(`dev.ucp.common.payment.ap2_mandate`, `signing_keys` → `keys`), y `E-2` fija
+`2026-04-08`: se construiría sobre un nombre ya obsoleto. Queda como brecha
+para el SEP. **También descartado: reconstruir mandatos cerrados para la compra
+de T122**: serían firmas puestas después de la compra, no evidencia de ella.
+
+---
+
+### E-9 · Llaves de AP2: Ed25519 existentes en la exportación real; P-256 solo de un uso, en el chequeo cruzado · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T123 · Decidido por el usuario (`P-10`)
+
+El código acepta `EdDSA` y `ES256`. La exportación real firma con
+`ISSUER_SECRET_KEY` y pone la llave Stellar del agente en `cnf`: no se agrega
+ninguna llave persistente. El chequeo cruzado genera llaves P-256 dentro del
+script, las usa una vez y las descarta.
+
+**Motivo.** AP2 `v0.2` exige ECDSA solo para el checkout que firma el comercio
+(`specification.md`, líneas 155–157), y su propia sección de seguridad lo
+contradice (permite Ed25519 si el checkout trae entropía). El issue AP2 #268,
+abierto, propone quedarse con la regla de entropía y quien mantiene AP2 está de
+acuerdo; UCP `2026-08-25` cita ese issue. La librería oficial de AP2 verifica
+los mandatos abiertos firmados con Ed25519 y con `cnf` Ed25519 (comprobado al
+implementar, ver la evidencia de T123); donde exige P-256 es un paso después,
+al seguir el `cnf` para verificar el cierre del agente
+(`ap2/sdk/sdjwt/kb_sd_jwt.py`, modelo `JsonWebKey`). El chequeo cruzado corre
+sobre los dos: el export real en Ed25519 y el mismo export en P-256.
+
+**Corrección (2026-10-01, al implementar).** El replanteo decía que la librería
+oficial "solo acepta P-256". Era impreciso: la restricción aplica al `cnf` del
+cierre, no a la firma de los mandatos abiertos. La decisión no cambia; queda
+más respaldada.
+
+**Alternativa descartada: un par P-256 persistente para la plataforma y otro
+por agente.** Interoperable hoy, pero es custodia nueva (secreto en
+`.env.local` y Render, publicación de la llave, rotación) para un formato que
+nadie consume todavía. Si un socio lo pide, se decide entonces.
+
+---
+
+### E-10 · `perDay` y la revocación no se exportan a AP2: el mandato abierto vence pronto · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T123 · Decidido por el usuario
+
+AP2 no tiene un tope diario (`payment.budget` es un total) ni revocación, y un
+verificador AP2 tiene que rechazar cualquier restricción que no conozca. Por
+eso `perDay` no se exporta: lo sigue aplicando el `policy_rail` en la red. El
+mandato abierto vence a la hora o en el `validUntil` del Mandato, lo que llegue
+primero, como recomienda AP2, y lleva el hash del Mandato y su registro para
+quien quiera consultarlo en línea.
+
+**Alternativa descartada: una restricción propia (`com.agentpey.per_day`).**
+Cualquier verificador AP2 que no la conozca rechazaría el mandato entero.
+
+---
+
+### E-11 · La exportación es por compra: Mandato más una tarea (tienda, producto, cantidad) · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T123 · De Claude Code
+
+El esquema del mandato abierto de checkout exige una restricción
+`checkout.line_items` (`open_checkout_mandate.json`, `contains`), y el de pago
+exige `payment.reference` al de checkout. AP2 pide además que un mandato abierto
+no se presente otra vez sin un rechazo previo. Un mandato abierto de AP2 es una
+tarea, no un permiso permanente. Por eso se exporta un par por compra, a partir
+del Mandato y de la intención de compra firmada por el agente. Antes de firmar,
+el exportador corre `checkMandate` (sin cambios) sobre esa intención y no emite
+nada si el Mandato no la permite: la plataforma no firma más de lo que el
+principal consintió.
+
+**Alternativa descartada: un par permanente con solo `checkout.allowed_merchants`.**
+La librería oficial lo acepta, pero no cumple el esquema JSON de AP2.
