@@ -160,13 +160,13 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   USDC testnet desde un `policy_rail`. Se crea el pedido real en la plataforma
   de la tienda, y el recibo se ancla y queda enlazado en la orden UCP.
 - **Hecho cuando:**
-  - [ ] hash de la transacción de pago en testnet
-  - [ ] pedido visible en el panel de la tienda
-  - [ ] recibo con los tres checks en verde (`pnpm run vitrinee:verify`)
-  - [ ] un intento que excede `per_tx` es rechazado por el contrato `policy_rail` (`PerTxExceeded` en la simulación). La evidencia sale de un script de prueba aparte que firma directo contra el contrato; el camino de producción sigue cortando antes en `policyRail.authorise` y **no gana ningún modo que lo salte**
-  - [ ] las rutas actuales, incluida `GET /orders/:orderId`, siguen respondiendo igual (tests existentes en verde)
-  - [ ] si liquidar fuera del middleware no sale al segundo día: parar, mostrar y caer a la opción C (`E-1`)
-  - [ ] todo en `evidencia/T122.md`
+  - [x] hash de la transacción de pago en testnet
+  - [ ] pedido visible en el panel de la tienda (Shopify `18946533884210`; falta la confirmación del usuario)
+  - [x] recibo con los tres checks en verde (`pnpm run vitrinee:verify`)
+  - [x] un intento que excede `per_tx` es rechazado por el contrato `policy_rail` (`PerTxExceeded` en la simulación). La evidencia sale de un script de prueba aparte que firma directo contra el contrato; el camino de producción sigue cortando antes en `policyRail.authorise` y **no gana ningún modo que lo salte**
+  - [x] las rutas actuales, incluida `GET /orders/:orderId`, siguen respondiendo igual (tests existentes en verde)
+  - [x] si liquidar fuera del middleware no sale al segundo día: parar, mostrar y caer a la opción C (`E-1`). Salió
+  - [x] todo en `evidencia/T122.md`
 
 ### T123 · Mandato exportable como mandatos AP2
 - **Prioridad:** si alcanza (se corta segundo) · **Estimación:** 15 h · **Delegable a Codex:** no

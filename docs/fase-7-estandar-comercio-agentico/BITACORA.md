@@ -13,15 +13,17 @@
 ## Estado actual
 
 **Fecha:** 2026-09-30 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
-`E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP, y
-`agentpey.com` publica las reglas del medio de pago; verificado en vivo con una
-tienda real. **Sigue:** T122.
+`E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP. **T122 en
+revisión**: un agente compró por UCP en una tienda Shopify real, pagando en
+Stellar desde un `policy_rail`, con pedido en Shopify y recibo válido. Falta
+que el usuario vea el pedido en su panel. **Sigue:** T123 o T125.
 
 | Tarea | Estado |
 |---|---|
 | T120 Prueba técnica | cerrada |
 | T121 Perfil y catálogo UCP | cerrada |
-| T122 a T125 | pendientes |
+| T122 Compra UCP de punta a punta | en revisión |
+| T123 a T125 | pendientes |
 
 ## Apertura de la fase (2026-09-30)
 
@@ -103,3 +105,29 @@ rechaza respuestas rotas.
 **En vivo.** Después del deploy, el programa de prueba leyó la ficha UCP de
 una tienda real de Jumpseller (`bazar-cordillera`) y listó sus seis productos,
 y las reglas del medio de pago responden en `agentpey.com`.
+
+## T122 · Un agente compra por UCP y paga en Stellar (2026-10-01, en revisión)
+
+**En lenguaje llano.** Por primera vez un agente compró en una tienda real
+hablando solo el idioma estándar del comercio (UCP). Abrió la compra de un
+imán de cobre en una tienda Shopify, recibió el precio (1.490 pesos, o 1,57
+USDC), revisó que la plata fuera a la cuenta que la tienda publica y que la
+compra cupiera en su permiso firmado, y pagó desde su cuenta con límites en
+Stellar. La tienda cobró, creó el pedido en Shopify y entregó un recibo que
+cualquiera puede verificar: firma de la tienda, huella anclada en la red y
+pago confirmado, los tres en verde.
+
+También quedó probado que el límite no depende del agente. Una compra de dos
+imanes (3,14 USDC) supera los 3,00 por compra del permiso: el agente la
+rechaza solo, y si se le pide firmarla de todas formas, la rechaza el propio
+contrato en la red.
+
+**Lo que encontró la revisión.** Tres formas en que, si algo fallaba justo
+después de cobrar, la tienda podía cobrar dos veces o perder el rastro de un
+pago. Ahora el cobro queda guardado en la compra apenas se confirma, una
+compra con un pago dudoso queda retenida en vez de volver a cobrarse, y el
+pedido se arma con los datos de cuando se pagó (`E-6`).
+
+**Decisiones:** `E-5` (el rail UCP, 3,00 y 5,00), `E-6` (el cobro nunca se
+repite; conciliación manual de compras retenidas), `E-7` (la orden no muestra
+la dirección del comprador). Evidencia: [evidencia/T122.md](evidencia/T122.md).

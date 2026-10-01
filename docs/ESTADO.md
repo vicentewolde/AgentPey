@@ -8,7 +8,7 @@
 **Actualizado:** 2026-09-30
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T121 · perfil y catálogo UCP por tienda; reglas del handler en `agentpey.com`
-**Siguiente paso:** `/tarea T122`
+**Siguiente paso:** el usuario confirma el pedido Shopify `18946533884210`; después cerrar T122 y elegir entre `/tarea T123` y `/tarea T125`
 
 ## Progreso de la fase
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
-| T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | 🔨 en curso (plan presentado, espera OK) | `cc/t122-compra-ucp-stellar` |
+| T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | 👀 en revisión (código mergeado y desplegado; falta ver el pedido en Shopify) | `cc/t122-evidencia` |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |
 | T125 Anexo técnico para el SEP | al final | ⏳ pendiente | |
@@ -42,3 +42,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-09-30: `/revisar` de T120 sin bloqueantes. Corregido: rutas UCP bajo `/ucp/v1`, evidencia de `per_tx` con script aparte, y las dos páginas de la spec que solo se habían leído vía resumen se releyeron del fuente (confirmadas).
 - 2026-09-30, T121: perfil `/.well-known/ucp` y catálogo UCP (`/ucp/v1/catalog/search`, `lookup`, `product`) en cada tienda; spec y esquemas del handler y de la extensión de recibo; cliente `pnpm run vitrinee:ucp:list`. Validado contra los esquemas oficiales sin red. Encontrado un `$ref` roto en el esquema oficial del perfil.
 - 2026-09-30: T121 desplegada y verificada en vivo: `vitrinee:ucp:list` lee el perfil UCP de `bazar-cordillera` y lista sus 6 productos; los documentos del handler se sirven en `agentpey.com/ucp/…`.
+- 2026-10-01, T122: compra UCP real en `agentcommerce` (Shopify) pagada desde el rail UCP `CA6P4KKV…` (`E-5`): tx `06ff47cf…`, pedido Shopify `18946533884210`, recibo con los tres checks en verde. `per_tx` rechazado por el contrato (`#7`). `/revisar` encontró tres bloqueantes en el cobro, corregidos (`E-6`).

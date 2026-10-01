@@ -7307,3 +7307,23 @@ lista los 6 productos reales de la tienda Jumpseller; los cuatro documentos del 
 en `agentpey.com/ucp/…`. Criterios de T121 marcados en el spec. Solo documentación.
 
 Pendiente: T122 (compra UCP pagada sobre Stellar), no delegable. `AGENTS.md`: sin cambios.
+
+## 2026-10-01 — cc/t122-compra-ucp-stellar → main (desplegado); cc/t122-evidencia (sin mergear)
+
+Agente: Claude Code.
+
+Qué: T122. Checkout UCP en cada tienda de Vitrinee (sesiones en Postgres, `vitrinee.checkout_sessions`),
+cobrado con el handler `com.agentpey.stellar_x402` fuera del middleware x402; `fulfilPaidPurchase`
+compartido por las dos puertas. Comprador `executeUcpPayment` (apps/agent): perfil → `toPaymentTerms` →
+`policyRail.authorise` (sin cambios) antes de firmar. `/revisar`: tres bloqueantes en el cobro (doble
+cobro o rastro perdido tras fallar después de liquidar), corregidos y re-revisados (`E-6`). Con
+autorización del usuario: merge y deploy, rail UCP desplegado y fondeado (`CA6P4KKV…`, 3,00/5,00,
+5 USDC desde la cuenta del agente, `E-5`), compra real en `agentcommerce` (tx `06ff47cf…`, pedido Shopify
+`18946533884210`, recibo válido) y prueba de `per_tx` (`#7` en simulación, nada enviado).
+
+Exponential: T122 a `QA`.
+
+Pendiente: el usuario confirma el pedido en Shopify; merge de `cc/t122-evidencia` (documentación y
+`deployments/testnet.json` con `policyRailUcp`); T122 a `DONE`. Reserva de cuentas patrocinadas: 223,43 →
+218,43 USDC. Compras retenidas por pago dudoso: conciliación manual (`E-6`). `AGENTS.md`: sin cambios
+(T122 no es delegable). No se tocó `checkMandate`, `policyRail.authorise` ni ningún contrato.

@@ -295,6 +295,28 @@ deployed, the same purchase can be paid by the contract instead, with its
 pnpm run demo:pay-real -- --payer=policy-rail
 ```
 
+Phase 7 makes the same purchase through the
+[Universal Commerce Protocol](https://ucp.dev): every Vitrinee store publishes
+`/.well-known/ucp`, and AgentPey pays its UCP checkout with the
+[`com.agentpey.stellar_x402`](https://agentpey.com/ucp/handlers/stellar-x402/spec)
+payment handler, from a `policy_rail` of its own (3.00 USDC per purchase, 5.00
+per day). Deploy that rail once, then buy:
+
+```bash
+pnpm run deploy:policy-rail -- --profile ucp --principal G...
+```
+
+```bash
+pnpm run ucp:buy -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666
+```
+
+To see the network refuse a purchase above the rail's per-transaction limit
+(nothing is sent; the checkout is canceled):
+
+```bash
+pnpm run ucp:probe-per-tx -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --quantity 2
+```
+
 `pnpm run web` puts both behind buttons, alongside the MandateVault log that
 records every decision and anchors each payment on chain. It is deployed live
 at [agentpey.com](https://agentpey.com), alongside the F9 pilot's
