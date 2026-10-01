@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-01
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T125 · anexo técnico para el SEP (`ANEXO-SEP.md`), alineado con el código por test
-**Siguiente paso:** decidir si T123 (replantear: AP2 en UCP exige ECDSA) o T124 (dos decisiones del usuario pendientes) entran antes del congelamiento del 11 de octubre
+**Última tarea terminada:** T125 · anexo técnico para el SEP. T123 implementada, espera `/revisar`
+**Siguiente paso:** `/revisar` de T123; después, T124 si alcanza (dos decisiones del usuario pendientes)
 
 ## Progreso de la fase
 
@@ -17,7 +17,7 @@
 | T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ✅ terminada | `cc/t122-compra-ucp-stellar`, `cc/t122-evidencia`, mergeadas |
-| T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
+| T123 Mandato exportable como mandatos AP2 | si alcanza | 👀 en revisión | `cc/t123-mandatos-ap2`, sin push |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 
@@ -25,7 +25,6 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] `deployments/testnet.json` tiene un cambio sin commitear desde el 28-sep (otro `policyRail`): decidir si se commitea o se descarta
 - [ ] Antes de T124: qué hace el veredicto con la plata (a, b o c) y el nombre de las disputas
 
 ## Deuda y pendientes fuera de la fase
@@ -44,3 +43,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-09-30: T121 desplegada y verificada en vivo: `vitrinee:ucp:list` lee el perfil UCP de `bazar-cordillera` y lista sus 6 productos; los documentos del handler se sirven en `agentpey.com/ucp/…`.
 - 2026-10-01, T122: compra UCP real en `agentcommerce` (Shopify) pagada desde el rail UCP `CA6P4KKV…` (`E-5`): tx `06ff47cf…`, pedido Shopify `18946533884210`, recibo con los tres checks en verde. `per_tx` rechazado por el contrato (`#7`). `/revisar` encontró tres bloqueantes en el cobro, corregidos (`E-6`).
 - 2026-10-01, T125: `ANEXO-SEP.md` con formatos, verificación del Mandato, contratos y nueve brechas para el SEP; `scripts/fase7-anexo.test.ts` lo mantiene alineado con el código y `deployments/`.
+- 2026-10-01, T123: replanteo leído del fuente (AP2 `v0.2`, UCP `2026-04-08` y `2026-08-25`). El usuario eligió exportar y verificar fuera de línea, llaves Ed25519 existentes con chequeo P-256 de un uso, sin `perDay` ni revocación (`E-8` a `E-11`). Paquete `@agentpey/ap2`, `exportMandateAsAp2` en el agente, `pnpm run ap2:export`. Mandato real `874339dd…` exportado y verificado; la librería oficial de AP2 verifica el par en Ed25519 y en P-256. Corregido `E-9`: la librería solo exige P-256 al cerrar el mandato.

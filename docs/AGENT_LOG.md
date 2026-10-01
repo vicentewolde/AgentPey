@@ -7343,3 +7343,26 @@ Exponential: T125 a `IN_PROGRESS`.
 corta el `policy_rail`), corregido con la sección 4.4 y la brecha 11; test reforzado. Mergeado con el OK
 del usuario. Pendiente: T123 (replantear, AP2 exige ECDSA) o T124.
 `AGENTS.md`: sin cambios.
+
+## 2026-10-01 (3) — cc/t123-mandatos-ap2 (sin push, espera /revisar)
+
+Agente: Claude Code.
+
+Qué: T123. Replanteo leído del fuente: AP2 `v0.2` (commit `e1ea56d`) ya no tiene Intent/Cart/Payment
+sino mandatos de checkout y de pago, abiertos o cerrados; UCP `2026-08-25` renombró la extensión AP2.
+Decisiones del usuario `E-8` (exportar y verificar fuera de línea, sin negociar AP2 en el checkout),
+`E-9` (llaves Ed25519 existentes; P-256 solo de un uso en el chequeo cruzado; `P-10`), `E-10` (sin
+`perDay` ni revocación, `exp` ≤ 1 h) y `E-11` (un par por compra). Paquete nuevo `@agentpey/ap2`
+(SD-JWT sobre `jose`, esquemas AP2 v0.2, emisión y verificación), siete códigos `Ap2*` en
+`AgentPassError`, `exportMandateAsAp2` en `apps/agent/src/ap2/` (Mandato verificado en la red,
+intención verificada, `checkMandate` sin cambios, recién ahí firma con `ISSUER_SECRET_KEY`),
+`pnpm run ap2:export` y `scripts/ap2-crosscheck/verify.py`. Con OK del usuario: credencial y Mandato
+anclados en testnet (solo comisión), Mandato `874339dd…` exportado; la librería oficial de AP2 verifica
+el par en Ed25519 y en P-256. Sección 4.5 y brechas 5, 12–14 del anexo, atadas por test.
+
+Por qué: `P-14`, AP2 es una de las tres piezas del estándar. Corrección en el camino: la librería de
+AP2 solo exige P-256 al cerrar el mandato, no en los abiertos (`E-9` corregida).
+
+Pendiente: `/revisar`, push, PR y merge con OK del usuario. No se tocó `checkMandate`, `scope.limits`,
+`perDay`, `policyRail.authorise`, Vitrinee ni contratos. `AGENTS.md`: sin cambios (T123 no es delegable).
+Exponential: T123 a `IN_PROGRESS` (pasa a `QA` con el PR).

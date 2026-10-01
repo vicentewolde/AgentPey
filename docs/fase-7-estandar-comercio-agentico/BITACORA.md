@@ -12,19 +12,21 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-30 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
+**Fecha:** 2026-10-01 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
 `E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP. **T122
 cerrada**: un agente compró por UCP en una tienda Shopify real, pagando en
 Stellar desde un `policy_rail`, con pedido en Shopify (visto por el usuario) y
-recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y revisado. **Sigue:**
-T123 o T124, si alcanzan.
+recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y revisado.
+**T123 en revisión**: el Mandato se exporta como mandatos AP2 v0.2 y la librería
+oficial de AP2 los verifica (`E-8` a `E-11`). **Sigue:** `/revisar` de T123; T124, si alcanza.
 
 | Tarea | Estado |
 |---|---|
 | T120 Prueba técnica | cerrada |
 | T121 Perfil y catálogo UCP | cerrada |
 | T122 Compra UCP de punta a punta | cerrada |
-| T123, T124 | pendientes |
+| T123 Mandato como mandatos AP2 | en revisión |
+| T124 Disputas | pendiente |
 | T125 Anexo para el SEP | cerrada |
 
 ## Apertura de la fase (2026-09-30)
@@ -152,3 +154,55 @@ límites, pero no consulta si el permiso fue revocado ni a quién va el pago. Lo
 que corta la cuenta del todo es que su dueño cambie la llave o retire la plata.
 Ahora el anexo lo dice con todas las letras, y es una de las brechas que el
 estándar debería resolver.
+
+## T123 · El permiso del usuario, en el idioma de AP2 (2026-10-01, en revisión)
+
+**En lenguaje llano.** AP2 es el formato que Google propone para que un agente
+demuestre que el usuario lo autorizó a pagar. El Mandato de AgentPey ya dice
+eso ("este agente puede gastar hasta tanto, en estas tiendas, hasta tal
+fecha"), pero en su propio formato. Ahora AgentPey puede traducirlo: para una
+compra concreta produce los dos documentos que AP2 entiende, "este agente puede
+comprar este producto en esta tienda" y "puede pagar hasta este monto, a esta
+tienda, con USDC en Stellar". Cualquiera que tenga la llave pública de AgentPey
+los puede verificar sin preguntarle nada a nadie. La librería oficial de AP2,
+escrita por otros, los acepta.
+
+AgentPey solo los firma si el Mandato está vigente y no revocado en la red, y si
+la compra cabe dentro de lo que el usuario autorizó. Si alguien sube el monto en
+una copia, la verificación lo rechaza y dice por qué.
+
+**Lo que cambió al leer las fuentes.** AP2 sacó su versión 0.2 en abril y ya no
+tiene los tres mandatos que nombraba el spec (Intent, Cart, Payment): tiene uno
+de checkout y uno de pago, "abiertos" (con límites, firmados en nombre del
+usuario) o "cerrados" (firmados por el agente al comprar). El Mandato
+corresponde a los abiertos. El usuario eligió exportar y verificar fuera de
+línea, sin tocar el checkout de las tiendas (`E-8`), con las llaves Stellar que
+ya existen (`E-9`), y dejar fuera del export el tope diario y la revocación,
+que AP2 no tiene: los mandatos AP2 vencen en una hora (`E-10`). Un mandato
+abierto de AP2 es una compra, no un permiso permanente; por eso se exporta uno
+por compra (`E-11`).
+
+**Una corrección en el camino.** El replanteo decía que la librería oficial de
+AP2 solo acepta llaves P-256. Al probarla, verificó también los mandatos en
+Ed25519, la curva de Stellar. Donde sí pide P-256 es un paso después, cuando el
+agente "cierra" el mandato, que T123 no hace. `E-9` quedó corregida.
+
+**Qué no se hizo.** Negociar AP2 dentro del checkout UCP de Vitrinee, y los
+mandatos cerrados: es el camino de la grabación del 11 de octubre y la
+extensión cambió de nombre en UCP `2026-08-25`. Queda como brecha 14 del anexo.
+
+**Evidencia técnica.**
+
+- Paquete nuevo `@agentpey/ap2`: SD-JWT sobre `jose`, esquemas zod de AP2 v0.2,
+  emisión y verificación del par, siete códigos `Ap2*` nuevos en `AgentPassError`.
+- `exportMandateAsAp2` en el agente: Mandato verificado en la red, intención
+  verificada, `checkMandate` sin cambios; solo entonces firma.
+- `pnpm run ap2:export`: Mandato real `874339dd…` anclado en testnet, par
+  exportado en Ed25519 y verificado; una copia alterada es rechazada con
+  `Ap2DisclosureMismatch`.
+- `scripts/ap2-crosscheck/verify.py`: la librería oficial de AP2 (commit
+  `e1ea56d`) verifica el par real en Ed25519 y el mismo par en P-256.
+- Sección 4.5 y brechas 5, 12, 13 y 14 del anexo para el SEP, atadas al código
+  por `scripts/fase7-anexo.test.ts`. Salidas crudas en
+  [evidencia/T123.md](evidencia/T123.md).
+
