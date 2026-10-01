@@ -23,6 +23,12 @@
  *
  * Secrets reach the Stellar CLI through the environment, never argv, so they
  * cannot be read out of the process list.
+ *
+ * `--profile ucp` (T122) deploys a second instance of the same contract for
+ * UCP purchases at real stores, with limits a real product fits in: 3.00 USDC
+ * per purchase and 5.00 per day, the same as a tenant's rail (C-133). It is
+ * recorded apart (`policyRailUcp`, `UCP_POLICY_RAIL_CONTRACT_ID`), so the
+ * shared rail and everything that pays from it are untouched.
  */
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -51,6 +57,55 @@ const WASM_PATH = resolve(CONTRACTS_DIR, "target/wasm32v1-none/release/policy_ra
 const ARGV = process.argv.slice(2);
 const REDEPLOY = ARGV.includes("--redeploy");
 
+interface RailProfile {
+  readonly name: "shared" | "ucp";
+  readonly perTx: string;
+  readonly perDay: string;
+  readonly fundThreshold: string;
+  readonly fundTarget: string;
+  readonly recordKey: "policyRail" | "policyRailUcp";
+  readonly envKey: string;
+}
+
+/**
+ * `swap-risk-quote`, the one product with a real payment path, costs
+ * 0.0010000 USDC. `perTx` at twice that leaves a purchase comfortably inside
+ * the limit while still refusing a challenge that asked for meaningfully more
+ * than what the catalogue quoted; `perDay` allows ten of them, enough for a
+ * demo session and still a number the contract can be seen enforcing.
+ */
+const SHARED: RailProfile = {
+  name: "shared",
+  perTx: "0.0020000",
+  perDay: "0.0100000",
+  fundThreshold: "0.0050000",
+  fundTarget: "0.0500000",
+  recordKey: "policyRail",
+  envKey: "POLICY_RAIL_CONTRACT_ID",
+};
+
+/** Real store products cost 1.5 to 3 USDC: one fits, three of them in a day, and a 3.01 purchase is refused on chain. */
+const UCP: RailProfile = {
+  name: "ucp",
+  perTx: "3.0000000",
+  perDay: "5.0000000",
+  fundThreshold: "1.0000000",
+  fundTarget: "5.0000000",
+  recordKey: "policyRailUcp",
+  envKey: "UCP_POLICY_RAIL_CONTRACT_ID",
+};
+
+function readProfile(): RailProfile {
+  const at = ARGV.indexOf("--profile");
+  if (at === -1) return SHARED;
+  const value = (ARGV[at + 1] ?? "").trim();
+  if (value === "shared") return SHARED;
+  if (value === "ucp") return UCP;
+  throw new AgentPassError("ConfigError", "--profile takes shared or ucp", { details: { profile: value } });
+}
+
+const PROFILE = readProfile();
+
 /**
  * Reads `--principal <G...>`. Validated here rather than left to the CLI:
  * a malformed address only surfaces as a Soroban type error deep inside
@@ -75,20 +130,13 @@ function readPrincipal(): string {
   return value;
 }
 
-/**
- * `swap-risk-quote`, the one product with a real payment path, costs
- * 0.0010000 USDC. `perTx` at twice that leaves a purchase comfortably inside
- * the limit while still refusing a challenge that asked for meaningfully more
- * than what the catalogue quoted; `perDay` allows ten of them, enough for a
- * demo session and still a number the contract can be seen enforcing.
- */
-const PER_TX = "0.0020000";
-const PER_DAY = "0.0100000";
+const PER_TX = PROFILE.perTx;
+const PER_DAY = PROFILE.perDay;
 const VALID_DAYS = 365;
 
 /** Top up to {@link FUND_TARGET} whenever the rail holds less than this. */
-const FUND_THRESHOLD = "0.0050000";
-const FUND_TARGET = "0.0500000";
+const FUND_THRESHOLD = PROFILE.fundThreshold;
+const FUND_TARGET = PROFILE.fundTarget;
 
 function cliEnv(secret: string): NodeJS.ProcessEnv {
   return {
@@ -235,7 +283,7 @@ async function main(): Promise<void> {
     readDeployment(DEPLOYMENT_PATH),
   ]);
 
-  process.stdout.write("\nAgentPey deploy:policy-rail · Stellar testnet\n\n");
+  process.stdout.write(`\nAgentPey deploy:policy-rail · ${PROFILE.name} rail · Stellar testnet\n\n`);
   process.stdout.write(`  protocol     ${version.protocolVersion}\n`);
   process.stdout.write(`  deployer     ${admin.publicKey()}\n`);
   process.stdout.write(`  owner        ${agent.publicKey()} (the agent — spends)\n`);
@@ -248,7 +296,7 @@ async function main(): Promise<void> {
   const wasmHash = createHash("sha256").update(wasm).digest("hex");
   process.stdout.write(`  wasm         ${wasm.byteLength} bytes · ${wasmHash.slice(0, 16)}…\n\n`);
 
-  const previous = recorded.policyRail;
+  const previous = recorded[PROFILE.recordKey];
   if (previous !== null && !REDEPLOY) {
     // The wasm comparison comes before the probe, not after: a rail deployed
     // from older source may not even have the methods `probe` reads (T57 added
@@ -307,7 +355,7 @@ async function main(): Promise<void> {
 
     await writeEnvFile(
       ENV_PATH,
-      upsertEnvValue(await readFile(ENV_PATH, "utf8"), "POLICY_RAIL_CONTRACT_ID", previous.contractId),
+      upsertEnvValue(await readFile(ENV_PATH, "utf8"), PROFILE.envKey, previous.contractId),
     );
     await writeDeployment(DEPLOYMENT_PATH, { ...recorded, protocolVersion: version.protocolVersion });
     await ensureFunded(previous.contractId, agent);
@@ -383,11 +431,11 @@ async function main(): Promise<void> {
   await writeDeployment(DEPLOYMENT_PATH, {
     ...recorded,
     protocolVersion: version.protocolVersion,
-    policyRail: record,
+    [PROFILE.recordKey]: record,
   });
   await writeEnvFile(
     ENV_PATH,
-    upsertEnvValue(await readFile(ENV_PATH, "utf8"), "POLICY_RAIL_CONTRACT_ID", contractId),
+    upsertEnvValue(await readFile(ENV_PATH, "utf8"), PROFILE.envKey, contractId),
   );
 
   process.stdout.write(`\n  contract     ${contractId}\n`);

@@ -5,6 +5,8 @@
  * the Markdown next to its schema.
  */
 export function ucpPublicPath(pathname: string): string | undefined {
+  // AgentPey's own platform profile, sent in the UCP-Agent header of every request it makes (T122).
+  if (pathname === "/ucp/platform/agentpey.json") return pathname;
   const match = /^\/ucp\/(handlers\/stellar-x402|extensions\/receipt)\/(spec|schema\.json)$/.exec(pathname);
   if (match === null) return undefined;
   return match[2] === "spec" ? `/ucp/${match[1]}/spec.md` : pathname;

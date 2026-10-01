@@ -22,7 +22,20 @@ export const UCP_SPEC_URLS = {
   service: { spec: `${UCP_DOCS}/specification/overview`, schema: `${UCP_DOCS}/services/shopping/rest.openapi.json` },
   catalogSearch: { spec: `${UCP_DOCS}/specification/catalog/search`, schema: `${UCP_DOCS}/schemas/shopping/catalog_search.json` },
   catalogLookup: { spec: `${UCP_DOCS}/specification/catalog/lookup`, schema: `${UCP_DOCS}/schemas/shopping/catalog_lookup.json` },
+  checkout: { spec: `${UCP_DOCS}/specification/checkout`, schema: `${UCP_DOCS}/schemas/shopping/checkout.json` },
+  fulfillment: { spec: `${UCP_DOCS}/specification/fulfillment`, schema: `${UCP_DOCS}/schemas/shopping/fulfillment.json` },
+  order: { spec: `${UCP_DOCS}/specification/order`, schema: `${UCP_DOCS}/schemas/shopping/order.json` },
 } as const;
+
+export const UCP_CHECKOUT = "dev.ucp.shopping.checkout";
+export const UCP_FULFILLMENT = "dev.ucp.shopping.fulfillment";
+export const UCP_ORDER = "dev.ucp.shopping.order";
+
+/** AgentPey's extension: a signed receipt, anchored on Stellar, on the checkout and the order. */
+export const RECEIPT_EXTENSION = "com.agentpey.shopping.receipt";
+export const RECEIPT_EXTENSION_VERSION = "2026-09-30";
+export const RECEIPT_EXTENSION_SPEC_URL = "https://agentpey.com/ucp/extensions/receipt/spec";
+export const RECEIPT_EXTENSION_SCHEMA_URL = "https://agentpey.com/ucp/extensions/receipt/schema.json";
 
 /**
  * AgentPey's payment handler for UCP: an x402 "exact" payment on Stellar,

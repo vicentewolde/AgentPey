@@ -28,7 +28,7 @@ import type { GatewayConfig } from "./config.js";
 import type { OrderRecord, OrderStore } from "./orders.js";
 import { payerFromTransactionXdr } from "./payer.js";
 import type { Reservations } from "./reservations.js";
-import { paymentKeyFromHeader, type SettlementLedger } from "./settlements.js";
+import { paymentKeyFromHeader, type SettlementLedger, type SettlementRecord } from "./settlements.js";
 
 export const CHECKOUT_ROUTE = "POST /checkout/:productId";
 /**
@@ -349,6 +349,112 @@ export function buildReceiptClaims(record: OrderRecord, config: GatewayConfig, i
   };
 }
 
+/** A purchase whose money already moved: what either checkout door hands over to become an order. */
+export interface PaidPurchase {
+  quote: CheckoutQuote;
+  body: CheckoutBody;
+  idempotencyKey: string | null;
+  settlement: SettlementRecord;
+  /** The account or contract that paid, as the settlement or the signed transaction says. */
+  payer: string;
+  /** Set by the UCP checkout: the session the order belongs to. */
+  ucpCheckoutId?: string;
+}
+
+/**
+ * Turns a settled payment into an order: creates the platform order, signs
+ * the receipt, persists the record and queues its anchor. Shared by the x402
+ * checkout and the UCP checkout (T122), so both doors produce the same order
+ * and the same receipt from the same code.
+ *
+ * One settlement is one order: a settlement that already produced an order
+ * returns that order, flagged `replayed`. Never throws for a platform failure
+ * once money moved: the order is recorded as `paid_unfulfilled` (VT-10).
+ */
+export async function fulfilPaidPurchase(deps: CheckoutDeps, purchase: PaidPurchase): Promise<{ record: OrderRecord; replayed: boolean }> {
+  const { quote, body, idempotencyKey, settlement, payer } = purchase;
+  const duplicate = deps.orders.findBySettlementTx(settlement.txHash);
+  if (duplicate !== undefined) {
+    deps.log("settlement already fulfilled, returning existing order", { orderId: duplicate.orderId, txHash: settlement.txHash });
+    return { record: duplicate, replayed: true };
+  }
+
+  const now = deps.now();
+  const orderId = newOrderId(now);
+  const buyer: Buyer = {
+    stellarAccount: payer,
+    ...(body.buyer.email === undefined ? {} : { email: body.buyer.email }),
+    ...(body.buyer.shipping === undefined ? {} : { shipping: body.buyer.shipping }),
+  };
+
+  const record: OrderRecord = {
+    orderId,
+    status: "paid",
+    createdAt: now.toISOString(),
+    idempotencyKey,
+    product: { id: quote.product.id, sku: quote.product.sku, name: quote.product.name },
+    quantity: quote.quantity,
+    unitPriceUSDCAtomic: quote.unitAtomic.toString(),
+    amountUSDCAtomic: settlement.amountAtomic,
+    amountUSDC: usdcAtomicToDecimal(BigInt(settlement.amountAtomic)),
+    totalLocal: quote.totalLocal,
+    currency: quote.product.currency,
+    buyer,
+    settlement: {
+      txHash: settlement.txHash,
+      network: settlement.network,
+      payer,
+      payTo: settlement.payTo,
+      asset: settlement.asset,
+      amountAtomic: settlement.amountAtomic,
+      explorerUrl: stellarExpertTxUrl(settlement.txHash),
+      settledAt: settlement.settledAt,
+    },
+    platform: deps.adapter.name,
+    platformOrderId: null,
+    platformError: null,
+    receipt: null,
+    anchor: null,
+    ...(purchase.ucpCheckoutId === undefined ? {} : { ucpCheckoutId: purchase.ucpCheckoutId }),
+  };
+
+  try {
+    const platformOrder = await deps.adapter.createOrder({
+      productId: quote.product.id,
+      quantity: quote.quantity,
+      buyer,
+      reference: orderId,
+      paymentRef: {
+        txHash: settlement.txHash,
+        network: settlement.network,
+        asset: settlement.asset,
+        amountUSDCAtomic: settlement.amountAtomic,
+        payerAccount: payer,
+      },
+    });
+    record.platformOrderId = platformOrder.platformOrderId;
+  } catch (error) {
+    record.status = "paid_unfulfilled";
+    record.platformError = error instanceof Error ? error.message : String(error);
+    deps.log("platform order failed after settlement", { orderId, txHash: settlement.txHash, error: record.platformError });
+  }
+
+  record.receipt = signReceipt(buildReceiptClaims(record, deps.config, deps.now()), deps.config.signing.secret);
+  record.anchor = { status: "pending", attempts: 0, registry: deps.config.receiptRegistryId };
+
+  await deps.orders.put(record);
+  deps.anchors.enqueue(orderId);
+  deps.log("checkout completed", {
+    orderId,
+    status: record.status,
+    platformOrderId: record.platformOrderId,
+    txHash: settlement.txHash,
+    amountUSDC: record.amountUSDC,
+    receiptHash: record.receipt.hash,
+  });
+  return { record, replayed: false };
+}
+
 /**
  * Runs after the facilitator settled the payment. Creates the platform
  * order, signs the receipt, queues its anchor, and answers with everything
@@ -371,88 +477,11 @@ export function completeCheckout(deps: CheckoutDeps): RequestHandler {
 
     // One settlement, one order — whatever the facilitator or a replay says.
     const duplicate = deps.orders.findBySettlementTx(settlement.txHash);
-    if (duplicate !== undefined) {
-      deps.log("settlement already fulfilled, returning existing order", { orderId: duplicate.orderId, txHash: settlement.txHash });
-      res.set("Idempotent-Replayed", "true");
-      res.status(200).json(orderResponse(duplicate));
-      return;
-    }
-
-    const payer = settlement.payer ?? (key === undefined ? undefined : payerFromTransactionXdr(key)) ?? body.buyer.stellarAccount;
+    const payer = duplicate?.settlement.payer ?? settlement.payer ?? (key === undefined ? undefined : payerFromTransactionXdr(key)) ?? body.buyer.stellarAccount;
     if (payer === undefined) throw new Error("payment settled but the payer account could not be determined");
 
-    const now = deps.now();
-    const orderId = newOrderId(now);
-    const buyer: Buyer = {
-      stellarAccount: payer,
-      ...(body.buyer.email === undefined ? {} : { email: body.buyer.email }),
-      ...(body.buyer.shipping === undefined ? {} : { shipping: body.buyer.shipping }),
-    };
-
-    const record: OrderRecord = {
-      orderId,
-      status: "paid",
-      createdAt: now.toISOString(),
-      idempotencyKey,
-      product: { id: quote.product.id, sku: quote.product.sku, name: quote.product.name },
-      quantity: quote.quantity,
-      unitPriceUSDCAtomic: quote.unitAtomic.toString(),
-      amountUSDCAtomic: settlement.amountAtomic,
-      amountUSDC: usdcAtomicToDecimal(BigInt(settlement.amountAtomic)),
-      totalLocal: quote.totalLocal,
-      currency: quote.product.currency,
-      buyer,
-      settlement: {
-        txHash: settlement.txHash,
-        network: settlement.network,
-        payer,
-        payTo: settlement.payTo,
-        asset: settlement.asset,
-        amountAtomic: settlement.amountAtomic,
-        explorerUrl: stellarExpertTxUrl(settlement.txHash),
-        settledAt: settlement.settledAt,
-      },
-      platform: deps.adapter.name,
-      platformOrderId: null,
-      platformError: null,
-      receipt: null,
-      anchor: null,
-    };
-
-    try {
-      const platformOrder = await deps.adapter.createOrder({
-        productId: quote.product.id,
-        quantity: quote.quantity,
-        buyer,
-        reference: orderId,
-        paymentRef: {
-          txHash: settlement.txHash,
-          network: settlement.network,
-          asset: settlement.asset,
-          amountUSDCAtomic: settlement.amountAtomic,
-          payerAccount: payer,
-        },
-      });
-      record.platformOrderId = platformOrder.platformOrderId;
-    } catch (error) {
-      record.status = "paid_unfulfilled";
-      record.platformError = error instanceof Error ? error.message : String(error);
-      deps.log("platform order failed after settlement", { orderId, txHash: settlement.txHash, error: record.platformError });
-    }
-
-    record.receipt = signReceipt(buildReceiptClaims(record, deps.config, deps.now()), deps.config.signing.secret);
-    record.anchor = { status: "pending", attempts: 0, registry: deps.config.receiptRegistryId };
-
-    await deps.orders.put(record);
-    deps.anchors.enqueue(orderId);
-    deps.log("checkout completed", {
-      orderId,
-      status: record.status,
-      platformOrderId: record.platformOrderId,
-      txHash: settlement.txHash,
-      amountUSDC: record.amountUSDC,
-      receiptHash: record.receipt.hash,
-    });
+    const { record, replayed } = await fulfilPaidPurchase(deps, { quote, body, idempotencyKey, settlement, payer });
+    if (replayed) res.set("Idempotent-Replayed", "true");
     res.status(200).json(orderResponse(record));
   };
 }

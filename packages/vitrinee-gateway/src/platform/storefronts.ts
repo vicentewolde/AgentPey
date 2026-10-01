@@ -18,6 +18,7 @@ import { createAdapter } from "../adapters.js";
 import { createApp, type AppDeps, type VitrineeApp } from "../app.js";
 import type { GatewayConfig } from "../config.js";
 import { OrderStore, type OrderPersistence } from "../orders.js";
+import type { CheckoutSessionPersistence } from "../ucp/sessions.js";
 import { openComercioSecrets, type Comercio, type ComercioStore } from "./comercios.js";
 import { comercioConfig } from "./config.js";
 import type { SecretBox } from "./secret-box.js";
@@ -30,6 +31,8 @@ export interface StorefrontPoolOptions {
   /** The platform's environment: facilitator, registry, network, FX. No merchant values. */
   env: NodeJS.ProcessEnv;
   ordersFor: (comercio: Comercio) => OrderPersistence;
+  /** Where each store keeps its UCP checkout sessions (T122). Memory when absent. */
+  sessionsFor?: (comercio: Comercio) => CheckoutSessionPersistence;
   /** Tests inject a fake facilitator, registry and Horizon per store. */
   appDeps?: (comercio: Comercio, config: GatewayConfig) => Partial<Omit<AppDeps, "config" | "adapter" | "orders">>;
   createAdapter?: (config: GatewayConfig) => StoreAdapter;
@@ -92,6 +95,7 @@ export class StorefrontPool {
       config,
       adapter,
       orders,
+      ...(this.options.sessionsFor === undefined ? {} : { sessions: this.options.sessionsFor(comercio) }),
       log: (message, fields) => this.log(message, { comercio: comercio.slug, ...fields }),
       ...this.options.appDeps?.(comercio, config),
     });

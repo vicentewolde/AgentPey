@@ -41,6 +41,8 @@
     "vitrinee:bootstrap": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/bootstrap.ts",
     "vitrinee:deploy-registry": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/deploy-registry.ts",
     "exp:sync": "tsx --tsconfig tsconfig.scripts.json scripts/exponential/sync-board.ts",
+    "ucp:buy": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-buy.ts",
+    "ucp:probe-per-tx": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-probe-per-tx.ts",
     "vitrinee:ucp:list": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/ucp-list.ts",
     "vitrinee:shopify:probe": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/shopify-probe.ts",
     "vitrinee:platform-setup": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/platform-setup.ts",

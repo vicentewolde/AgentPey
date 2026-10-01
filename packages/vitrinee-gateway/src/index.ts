@@ -24,6 +24,8 @@ export {
 export { comercioConfig, loadPlatformSettings, type PlatformSettings } from "./platform/config.js";
 export { COMERCIO_SLUG_MAX, COMERCIO_SLUG_PATTERN, isComercioSlug, routeHost, type HostRoute } from "./platform/hosts.js";
 export { DIRECTORY_PATH, createPlatformApp, type PlatformAppOptions } from "./platform/platform-app.js";
-export { PostgresComercioStore, PostgresOrderPersistence, VITRINEE_SCHEMA_SQL, createVitrineePool, migrate } from "./platform/postgres.js";
+export { PostgresCheckoutSessions, PostgresComercioStore, PostgresOrderPersistence, VITRINEE_SCHEMA_SQL, createVitrineePool, migrate } from "./platform/postgres.js";
+export { MemoryCheckoutSessions, checkoutSessionSchema, type CheckoutSession, type CheckoutSessionPersistence } from "./ucp/sessions.js";
+export { stellarX402CredentialSchema } from "./ucp/checkout.js";
 export { createSecretBox, generateMasterKey, type SecretBox } from "./platform/secret-box.js";
 export { StorefrontPool, type StorefrontPoolOptions } from "./platform/storefronts.js";

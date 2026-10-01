@@ -70,9 +70,17 @@ describe("UCP surface of a storefront", () => {
       expect(profile.ucp.services["dev.ucp.shopping"]).toEqual([expect.objectContaining({ transport: "rest", endpoint: `${url}/ucp/v1` })]);
     });
 
-    it("declares only the capabilities it answers: no checkout until it exists", async () => {
+    it("declares the capabilities it answers: catalog, checkout with fulfillment, order and the receipt extension", async () => {
       const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
-      expect(Object.keys(profile.ucp.capabilities ?? {}).sort()).toEqual(["dev.ucp.shopping.catalog.lookup", "dev.ucp.shopping.catalog.search"]);
+      expect(Object.keys(profile.ucp.capabilities ?? {}).sort()).toEqual([
+        "com.agentpey.shopping.receipt",
+        "dev.ucp.shopping.catalog.lookup",
+        "dev.ucp.shopping.catalog.search",
+        "dev.ucp.shopping.checkout",
+        "dev.ucp.shopping.fulfillment",
+        "dev.ucp.shopping.order",
+      ]);
+      expect(profile.ucp.capabilities?.["com.agentpey.shopping.receipt"]?.[0]).toMatchObject({ extends: ["dev.ucp.shopping.checkout", "dev.ucp.shopping.order"] });
     });
 
     it("declares the Stellar x402 handler with a config that validates against the handler's own schema", async () => {

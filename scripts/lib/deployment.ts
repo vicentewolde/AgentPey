@@ -50,6 +50,8 @@ export const deploymentSchema = z.strictObject({
   protocolVersion: z.number().int().positive().nullable(),
   agentRegistry: agentRegistryDeploymentSchema.nullable(),
   policyRail: policyRailDeploymentSchema.nullable().default(null),
+  /** The rail that pays UCP purchases (T122): same contract, its own instance and limits. */
+  policyRailUcp: policyRailDeploymentSchema.nullable().default(null),
 });
 
 export type Deployment = z.infer<typeof deploymentSchema>;
@@ -63,6 +65,7 @@ export const EMPTY_DEPLOYMENT: Deployment = {
   protocolVersion: null,
   agentRegistry: null,
   policyRail: null,
+  policyRailUcp: null,
 };
 
 export async function readDeployment(path: string): Promise<Deployment> {

@@ -10,6 +10,7 @@ import { VitrineeError } from "@vitrinee/core";
 import pg from "pg";
 
 import { orderRecordSchema, type OrderPersistence, type OrderRecord } from "../orders.js";
+import { checkoutSessionSchema, sessionFromRecord, type CheckoutSession, type CheckoutSessionPersistence } from "../ucp/sessions.js";
 import { comercioSchema, type Comercio, type ComercioStore } from "./comercios.js";
 
 export const VITRINEE_SCHEMA_SQL: readonly string[] = [
@@ -41,6 +42,16 @@ export const VITRINEE_SCHEMA_SQL: readonly string[] = [
      updated_at  timestamptz not null default now()
    )`,
   `create index if not exists orders_comercio_created_idx on vitrinee.orders (comercio_id, created_at desc)`,
+  // UCP checkout sessions (T122). Short-lived; `expires_at` lets them be swept.
+  `create table if not exists vitrinee.checkout_sessions (
+     session_id  text        primary key,
+     comercio_id text        not null references vitrinee.comercios(id),
+     record      jsonb       not null,
+     expires_at  timestamptz not null,
+     created_at  timestamptz not null,
+     updated_at  timestamptz not null default now()
+   )`,
+  `create index if not exists checkout_sessions_comercio_idx on vitrinee.checkout_sessions (comercio_id, expires_at)`,
 ];
 
 export function createVitrineePool(connectionString: string): pg.Pool {
@@ -198,6 +209,43 @@ export class PostgresOrderPersistence implements OrderPersistence {
     } catch (error) {
       if (error instanceof VitrineeError) throw error;
       throw storageError("could not save the order", error);
+    }
+  }
+}
+
+/** One comercio's UCP checkout sessions. Like its orders, every statement carries the comercio id. */
+export class PostgresCheckoutSessions implements CheckoutSessionPersistence {
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly comercioId: string,
+  ) {}
+
+  async get(id: string): Promise<CheckoutSession | undefined> {
+    let rows: { record: unknown }[];
+    try {
+      rows = (await this.pool.query(`select record from vitrinee.checkout_sessions where session_id = $1 and comercio_id = $2`, [id, this.comercioId])).rows;
+    } catch (error) {
+      throw storageError("could not read the checkout session", error);
+    }
+    return rows[0] === undefined ? undefined : sessionFromRecord(id, rows[0].record);
+  }
+
+  async save(s: CheckoutSession): Promise<void> {
+    const session = checkoutSessionSchema.parse(s);
+    try {
+      const result = await this.pool.query(
+        `insert into vitrinee.checkout_sessions (session_id, comercio_id, record, expires_at, created_at, updated_at)
+         values ($1, $2, $3, $4, $5, now())
+         on conflict (session_id) do update set record = excluded.record, expires_at = excluded.expires_at, updated_at = now()
+           where vitrinee.checkout_sessions.comercio_id = excluded.comercio_id`,
+        [session.id, this.comercioId, JSON.stringify(session), session.expiresAt, session.createdAt],
+      );
+      if (result.rowCount === 0) {
+        throw new VitrineeError("StorageError", "that checkout session belongs to another comercio", { details: { id: session.id } });
+      }
+    } catch (error) {
+      if (error instanceof VitrineeError) throw error;
+      throw storageError("could not save the checkout session", error);
     }
   }
 }

@@ -16,7 +16,7 @@
 |---|---|---|---|
 | T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
-| T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ⏳ pendiente | |
+| T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | 🔨 en curso (plan presentado, espera OK) | `cc/t122-compra-ucp-stellar` |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |
 | T125 Anexo técnico para el SEP | al final | ⏳ pendiente | |

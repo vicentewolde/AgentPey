@@ -10,7 +10,7 @@ import { seedComercioFromEnv, type Comercio } from "./platform/comercios.js";
 import { loadPlatformSettings, type PlatformSettings } from "./platform/config.js";
 import { storeCatalogueReader } from "./platform/onboarding.js";
 import { createPlatformApp } from "./platform/platform-app.js";
-import { PostgresComercioStore, PostgresOrderPersistence, createVitrineePool, migrate } from "./platform/postgres.js";
+import { PostgresCheckoutSessions, PostgresComercioStore, PostgresOrderPersistence, createVitrineePool, migrate } from "./platform/postgres.js";
 import { createSecretBox, deriveKey } from "./platform/secret-box.js";
 import { testnet } from "./platform/stellar-network.js";
 import { StorefrontPool } from "./platform/storefronts.js";
@@ -104,6 +104,7 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
     box,
     env: process.env,
     ordersFor,
+    sessionsFor: (comercio) => new PostgresCheckoutSessions(pool, comercio.id),
     log,
   });
   const app = createPlatformApp({

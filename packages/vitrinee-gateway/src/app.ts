@@ -25,7 +25,10 @@ import {
   searchCatalog,
   searchRequestSchema,
 } from "./ucp/catalog.js";
+import { registerUcpCheckout } from "./ucp/checkout.js";
+import { registerUcpOrders } from "./ucp/order.js";
 import { buildUcpProfile } from "./ucp/profile.js";
+import { MemoryCheckoutSessions, type CheckoutSessionPersistence } from "./ucp/sessions.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
 
 export interface AppDeps {
@@ -35,6 +38,8 @@ export interface AppDeps {
   facilitator?: FacilitatorClient;
   /** Defaults to a store on `config.ordersFile`. */
   orders?: OrderStore;
+  /** UCP checkout sessions (T122). Defaults to memory; the platform passes Postgres. */
+  sessions?: CheckoutSessionPersistence;
   /** Defaults to receipt-registry over Soroban RPC, signed by the merchant's signing key. */
   anchorer?: Anchorer;
   /** Defaults to receipt-registry over Soroban RPC (read-only). */
@@ -64,6 +69,7 @@ export function createApp({
   adapter,
   facilitator = createFacilitatorClient(config),
   orders = new OrderStore(config.ordersFile),
+  sessions = new MemoryCheckoutSessions(),
   anchorer,
   registry,
   horizonFetch,
@@ -175,6 +181,19 @@ export function createApp({
     const { id } = getProductRequestSchema.parse(req.body ?? {});
     res.json(getCatalogProduct({ config, products: await catalog.get(), id }));
   });
+
+  // The UCP checkout pays through the same resource server as the x402 checkout,
+  // outside its middleware: the payment arrives in the body of `complete` (E-1).
+  let initializing: Promise<void> | undefined;
+  const ready = (): Promise<void> => {
+    initializing ??= x402.initialize().catch((error: unknown) => {
+      initializing = undefined;
+      throw new VitrineeError("NetworkError", "could not reach the payment facilitator", { cause: error, details: {} });
+    });
+    return initializing;
+  };
+  registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready }, baseUrlOf);
+  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf);
 
   app.get("/products/:id", async (req, res) => {
     const id = String(req.params.id);

@@ -14,6 +14,7 @@ describe("the UCP documents agentpey.com publishes (Fase 7, E-1)", () => {
     { url: "https://agentpey.com/ucp/handlers/stellar-x402/schema.json", file: "/ucp/handlers/stellar-x402/schema.json" },
     { url: "https://agentpey.com/ucp/extensions/receipt/spec", file: "/ucp/extensions/receipt/spec.md" },
     { url: "https://agentpey.com/ucp/extensions/receipt/schema.json", file: "/ucp/extensions/receipt/schema.json" },
+    { url: "https://agentpey.com/ucp/platform/agentpey.json", file: "/ucp/platform/agentpey.json" },
   ];
 
   for (const { url, file } of published) {
@@ -24,7 +25,7 @@ describe("the UCP documents agentpey.com publishes (Fase 7, E-1)", () => {
   }
 
   it("gives each schema the $id of the URL it is served at, so references resolve", async () => {
-    for (const { url, file } of published.filter((p) => p.file.endsWith(".json"))) {
+    for (const { url, file } of published.filter((p) => p.file.endsWith("schema.json"))) {
       const schema = JSON.parse(await readFile(resolve(PUBLIC_DIR, `.${file}`), "utf8")) as { $id: string };
       expect(schema.$id).toBe(url);
     }

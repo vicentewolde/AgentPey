@@ -51,6 +51,8 @@ export interface OrderRecord {
   platformError: string | null;
   receipt: { jws: string; hash: string } | null;
   anchor: OrderAnchor | null;
+  /** The UCP checkout session that produced this order (T122). Absent for the x402 checkout. */
+  ucpCheckoutId?: string;
 }
 
 /**
@@ -109,6 +111,7 @@ export const orderRecordSchema = z.object({
       lastError: z.string().optional(),
     })
     .nullable(),
+  ucpCheckoutId: z.string().optional(),
 });
 
 interface PersistedOrders {

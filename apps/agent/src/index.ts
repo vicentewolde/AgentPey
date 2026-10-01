@@ -294,6 +294,15 @@ export {
 } from "./payment/x402.js";
 
 export {
+  AGENTPEY_PLATFORM_PROFILE,
+  executeUcpPayment,
+  type ExecuteUcpPaymentDeps,
+  type ExecuteUcpPaymentInput,
+  type UcpDestination,
+  type UcpPaymentReceipt,
+} from "./payment/ucp.js";
+
+export {
   PolicyRailStellarScheme,
   authorizeAsPolicyRailOwner,
   type PolicyRailPayer,

@@ -259,7 +259,7 @@ export const PAYMENT_SENT_DETAIL = "paymentSent";
  * not to catch. `code`, `message` and `cause` are carried over untouched, so
  * every existing `hasErrorCode(...)` check upstream keeps matching.
  */
-function withPaymentSent(error: unknown, paymentSent: boolean): unknown {
+export function withPaymentSent(error: unknown, paymentSent: boolean): unknown {
   // An untyped error from a dependency (the x402 client, the Stellar SDK)
   // thrown before the door is still a failure before anything was sent: this
   // function knows which side of the door it fell on, which is the whole
