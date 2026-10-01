@@ -7,10 +7,11 @@
 > tomado de `deployments/`.
 >
 > Fecha: 2026-10-01 · Red: Stellar testnet · UCP `2026-04-08` (`E-2`) ·
-> x402 versión 2 · Tarea T125. Un test (`scripts/fase7-anexo.test.ts`) falla si
-> deja de coincidir con el código o con `deployments/`: los ejemplos JSON de 2.1
-> y 2.3 contra sus esquemas, los campos del recibo, cada función y archivo
-> citados, los códigos de rechazo y de error, y cada contrato en su fila.
+> x402 versión 2 · AP2 `v0.2` · Tareas T125 y T123 (sección 4.5). Un test
+> (`scripts/fase7-anexo.test.ts`) falla si deja de coincidir con el código o
+> con `deployments/`: los ejemplos JSON de 2.1, 2.3 y 4.5 contra sus esquemas,
+> los campos del recibo, cada función y archivo citados, los códigos de
+> rechazo y de error, y cada contrato en su fila.
 >
 > Los nombres de campos, los JSON y los mensajes van tal cual están en el
 > código, en inglés; la prosa, en español (regla 4 de `CLAUDE.md`). La spec
@@ -375,6 +376,112 @@ Evidencia en T122: `Error(Contract, #7)`.
 
 Es la brecha 11 para el SEP.
 
+### 4.5 El Mandato como mandatos AP2 v0.2 (T123)
+
+AP2 `v0.2` (repo `google-agentic-commerce/AP2`, commit `e1ea56d`, 2026-04-28)
+tiene dos tipos de mandato, el de checkout y el de pago, cada uno **abierto**
+(límites más la llave del agente en `cnf`) o **cerrado** (firmado por el agente
+al comprar). El Mandato de AgentPey corresponde a los dos abiertos, en el modo
+"sin humano presente" de AP2. AgentPey los emite como SD-JWT y los firma como
+"Trusted Agent Provider", porque la wallet del principal firma SEP-53 y no puede
+producir un JWS (`E-8`). Se emite un par por compra (`E-11`): AP2 exige que el
+mandato abierto de checkout nombre los productos y que el de pago apunte a él.
+
+`exportMandateAsAp2` (`apps/agent/src/ap2/export.ts`) emite el par solo después
+de tres pasos: el Mandato se verifica en la red (firma, ventana, anclado y no
+revocado), la intención de compra se verifica contra la llave del agente, y
+`checkMandate` (sin cambios) la permite. La firma y el formato están en
+`issueOpenMandatePair` (`packages/ap2/src/issue.ts`); la verificación, en
+`verifyOpenMandatePair` (`packages/ap2/src/verify.ts`), con los esquemas
+`openCheckoutMandateSchema` y `openPaymentMandateSchema`
+(`packages/ap2/src/schemas.ts`).
+
+**Formato.** SD-JWT sin Key Binding, `typ: "dc+sd-jwt"`, `alg` `EdDSA` (la llave
+del emisor es un `did:stellar`) o `ES256` (`E-9`). La raíz firmada lleva `iss`,
+`iat`, el claim `com.agentpey.mandate` y `delegate_payload` con un solo
+elemento divulgable: el mandato. Dentro, el producto, el comercio, el
+beneficiario y el instrumento también son divulgables.
+
+**Correspondencia.**
+
+| Mandato de AgentPey | Mandato AP2 abierto |
+|---|---|
+| `credentialSubject.id` (el agente) | `cnf.jwk`, la llave Ed25519 de su `did:stellar` |
+| `grant.limits.perTx` | `payment.amount_range.max`, en unidades atómicas (7 decimales) |
+| `grant.limits.currency` | `payment.amount_range.currency` (`"USDC"`: no es ISO 4217, brecha 13) |
+| `grant.limits.perDay` | no se exporta: lo aplica el `policy_rail` (`E-10`, brecha 12) |
+| la venue de la intención | `checkout.allowed_merchants` y `payment.allowed_payees` |
+| el activo de la intención | `payment.allowed_payment_instruments`, `type: "stellar_x402"` |
+| producto y cantidad de la intención | `checkout.line_items` |
+| `validUntil` | `exp`, como máximo una hora después de emitir (`E-10`) |
+| `credentialStatus` y el hash del Mandato | `com.agentpey.mandate`: `mandate_id`, `hash`, `registry` |
+
+#### Mandato abierto de checkout (el elemento de `delegate_payload`)
+
+```json
+{
+  "vct": "mandate.checkout.open.1",
+  "constraints": [
+    {
+      "type": "checkout.line_items",
+      "items": [{ "id": "line_1", "acceptable_items": [{ "id": "67624104591666", "title": "Imán de cobre Atacama" }], "quantity": 1 }]
+    },
+    {
+      "type": "checkout.allowed_merchants",
+      "allowed": [{ "id": "vitrinee-agentcommerce:GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN", "name": "agentcommerce.vitrinee.agentpey.com", "website": "https://agentcommerce.vitrinee.agentpey.com" }]
+    }
+  ],
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "FeJ0n1-3nBc5yW454qbzKgUhcjo6VEzH7TjogETMOGI" } },
+  "iat": 1790882834,
+  "exp": 1790886434
+}
+```
+
+#### Mandato abierto de pago
+
+```json
+{
+  "vct": "mandate.payment.open.1",
+  "constraints": [
+    { "type": "payment.reference", "conditional_transaction_id": "FKuXCH_2AfdYx1F64a3Uky2Rrk5ODywsNOjgM1thZ98" },
+    { "type": "payment.amount_range", "currency": "USDC", "max": 30000000 },
+    {
+      "type": "payment.allowed_payees",
+      "allowed": [{ "id": "vitrinee-agentcommerce:GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN", "name": "agentcommerce.vitrinee.agentpey.com", "website": "https://agentcommerce.vitrinee.agentpey.com" }]
+    },
+    {
+      "type": "payment.allowed_payment_instruments",
+      "allowed": [{ "id": "USDC:CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", "type": "stellar_x402", "description": "USDC on Stellar, paid with x402 (exact)" }]
+    },
+    { "type": "payment.execution_date", "not_after": "2026-10-01T20:27:14.817Z" }
+  ],
+  "cnf": { "jwk": { "kty": "OKP", "crv": "Ed25519", "x": "FeJ0n1-3nBc5yW454qbzKgUhcjo6VEzH7TjogETMOGI" } },
+  "iat": 1790882834,
+  "exp": 1790886434
+}
+```
+
+Son los del export real de T123 ([evidencia](evidencia/T123.md)), sobre el
+Mandato `874339dd…` anclado en `agent-registry`. `conditional_transaction_id`
+es el `sd_hash` del token de checkout: `base64url(sha256(token))`, con los
+disclosures incluidos, igual que lo calcula la librería oficial de AP2.
+
+**Verificación, en orden.** Firma con la llave del emisor que elige quien
+verifica (el `alg` tiene que ser el de esa llave) → disclosures (uno que no
+corresponda a ningún digest firmado rechaza el token) → raíz → un solo mandato
+→ tipos de restricción → esquema → ventana (`iat`, `exp`, bordes inclusivos).
+Para el par, además, `payment.reference` tiene que ser el `sd_hash` del de
+checkout, y los dos tienen que coincidir en emisor, `cnf` y Mandato de origen.
+Códigos: `Ap2MandateInvalid`, `Ap2SignatureInvalid`, `Ap2DisclosureMismatch`,
+`Ap2MandateExpired`, `Ap2MandateNotYetValid`, `Ap2ReferenceMismatch`,
+`Ap2ConstraintUnsupported`.
+
+**Interoperabilidad.** La librería oficial de AP2 en Python (commit `e1ea56d`)
+verifica los dos mandatos del export real en Ed25519 y los del mismo export
+firmado con llaves P-256 de un solo uso (`scripts/ap2-crosscheck/verify.py`).
+Lo que no se hace: negociar `dev.ucp.shopping.ap2_mandate` en el checkout UCP,
+ni mandatos cerrados (`E-8`, brecha 14).
+
 ## 5. Contratos desplegados (testnet)
 
 | Contrato | Id | Wasm (sha256) | Para qué |
@@ -401,7 +508,7 @@ Fuente de los ids: `deployments/testnet.json` y
 
 Las seis de T120 (sección 8 de
 [T120-handler-stellar-ucp.md](T120-handler-stellar-ucp.md)), confirmadas al
-construir, más cinco que aparecieron después:
+construir, más ocho que aparecieron después:
 
 1. **No hay handlers de stablecoins ni de pagos en cadena** en UCP. Este es de
    los primeros.
@@ -417,9 +524,14 @@ construir, más cinco que aparecieron después:
    fijar cómo atar la firma a la sesión.
 4. **No hay lugar para recibos verificables en la orden.** De ahí la extensión
    `com.agentpey.shopping.receipt`.
-5. **AP2 en UCP exige ECDSA** (ES256/384/512) y mandatos SD-JWT; el Mandato y
-   los recibos de AgentPey usan Ed25519, la curva de Stellar. Exportar exige un
-   segundo par de llaves o que AP2 acepte EdDSA (T123).
+5. **Algoritmos de AP2.** AP2 `v0.2` exige ECDSA para el checkout que firma el
+   comercio (`specification.md`, líneas 155–157) y su sección de seguridad lo
+   contradice (permite Ed25519 con entropía en el checkout); el issue AP2 #268,
+   abierto, propone quedarse con lo segundo. Los mandatos abiertos de AgentPey
+   van en Ed25519 y la librería oficial los verifica; pero la misma librería
+   solo sigue un `cnf` P-256 cuando el agente cierra el mandato. Un SEP debería
+   pedir Ed25519 en los dos lugares, para que una sola llave Stellar alcance
+   (T123, `E-9`).
 6. **Las disputas** son un `adjustment` de texto libre en la orden, sin proceso (T124).
 7. **Resultado dudoso de la liquidación.** Ni UCP ni x402 dicen qué hacer
    cuando el facilitator no responde o da por fallida una transacción ya
@@ -439,6 +551,18 @@ construir, más cinco que aparecieron después:
 11. **La revocación no llega a la cuenta pagadora** (sección 4.4). Un SEP
     podría pedir que la cuenta pagadora consulte el estado del Mandato, o que
     fije el destinatario, a costa de una lectura más por pago.
+12. **AP2 no tiene un tope diario.** `payment.budget` es un total, y una
+    restricción propia haría fallar a cualquier verificador AP2. `perDay` no se
+    exporta (sección 4.5, `E-10`).
+13. **Montos en un activo sin código ISO 4217.** `payment.amount_range` pide
+    ISO 4217 y unidades menores; USDC en Stellar tiene 7 decimales y ningún
+    código. El export usa `"USDC"` y unidades atómicas. Un SEP debería fijarlo.
+14. **AP2 en el checkout UCP, y mandatos cerrados.** Negociar la extensión deja
+    la sesión "security locked" y exige la firma del comercio en cada
+    respuesta; en UCP `2026-08-25` la extensión se renombró
+    (`dev.ucp.common.payment.ap2_mandate`). Tampoco hay revocación en AP2: un
+    mandato abierto vale hasta su `exp`. T123 exporta y verifica fuera de línea
+    (`E-8`).
 
 ## 7. Reproducir
 
@@ -458,5 +582,15 @@ pnpm run vitrinee:verify -- .vitrinee/last-ucp-receipt.jws
 pnpm run ucp:probe-per-tx -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --quantity 2
 ```
 
+```bash
+pnpm run ap2:export -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --ephemeral-p256
+```
+
+```bash
+python scripts/ap2-crosscheck/verify.py .vitrinee/ap2
+```
+
 `ucp:buy` mueve USDC de testnet y crea un pedido real; necesita `.env.local`
-con el rail UCP (sección 5). Los otros tres no mueven plata.
+con el rail UCP (sección 5). `ap2:export` ancla una credencial y un Mandato
+(solo comisión). Los otros no mueven plata. El chequeo en Python necesita un
+entorno virtual con `scripts/ap2-crosscheck/requirements.txt`.

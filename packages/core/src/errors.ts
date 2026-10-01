@@ -188,7 +188,21 @@ export type AgentPassErrorCode =
   /** The consent session was already signed; a second principal cannot complete it again. */
   | "ConsentSessionAlreadyCompleted"
   /** The server-wide cap on automatic issuer registrations (`G10`) was reached — the admin key stops paying for more until the window resets. */
-  | "IssuerRegistrationRateLimited";
+  | "IssuerRegistrationRateLimited"
+  /** An AP2 mandate (SD-JWT) is malformed, off its AP2 v0.2 schema, or not the type it claims to be (T123). */
+  | "Ap2MandateInvalid"
+  /** An AP2 mandate's issuer signature does not verify against the trusted key. */
+  | "Ap2SignatureInvalid"
+  /** An AP2 mandate's disclosures do not match the digests its issuer signed. */
+  | "Ap2DisclosureMismatch"
+  /** `now` is past an AP2 mandate's `exp`. */
+  | "Ap2MandateExpired"
+  /** `now` is before an AP2 mandate's `iat`. */
+  | "Ap2MandateNotYetValid"
+  /** An AP2 payment mandate's `payment.reference` is not the hash of the checkout mandate it travels with, or the pair disagrees on agent or source Mandate. */
+  | "Ap2ReferenceMismatch"
+  /** An AP2 mandate carries a constraint type this verifier does not know — AP2 says that fails evaluation. */
+  | "Ap2ConstraintUnsupported";
 
 /** Structured, non-secret context attached to an error for logs and tests. */
 export type AgentPassErrorDetails = Readonly<Record<string, unknown>>;

@@ -30,3 +30,6 @@ credential.jws
 
 # Exponential (/start-ticket marker)
 .exponential/
+
+# AP2 reference SDK virtualenv for scripts/ap2-crosscheck (T123)
+.venv-ap2/

@@ -1,5 +1,5 @@
 {
-  "name": "@agentpey/agent",
+  "name": "@agentpey/ap2",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,14 +16,10 @@
   },
   "dependencies": {
     "@agentpass/core": "workspace:*",
-    "@agentpass/sdk": "workspace:*",
-    "@agentpey/ap2": "workspace:*",
-    "@agentpey/mandate": "workspace:*",
-    "@agentpey/vault": "workspace:*",
-    "@stellar/stellar-sdk": "^17.0.1",
-    "@x402/core": "~2.24.0",
-    "@x402/stellar": "^2.24.0",
     "jose": "^6.2.10",
     "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
   }
 }

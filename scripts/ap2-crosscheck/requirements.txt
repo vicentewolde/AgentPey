@@ -1,0 +1,7 @@
+# The AP2 reference SDK, at the commit T123 was written against (release 0.2.0),
+# and the exact versions its pyproject.toml pins.
+ap2 @ git+https://github.com/google-agentic-commerce/AP2.git@e1ea56db72a6385bce3e5c1112b3a56ce60acb43
+cryptography==46.0.5
+jwcrypto==1.5.6
+pydantic==2.12.5
+sd-jwt==0.10.4

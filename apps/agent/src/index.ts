@@ -307,3 +307,14 @@ export {
   authorizeAsPolicyRailOwner,
   type PolicyRailPayer,
 } from "./payment/policy-rail-payer.js";
+
+// T123: the Mandate as AP2 v0.2 open mandates, signed as Trusted Agent Provider.
+export {
+  AP2_EXPORT_MAX_TTL_SECONDS,
+  AP2_STELLAR_X402_INSTRUMENT,
+  exportMandateAsAp2,
+  stellarAp2Issuer,
+  type Ap2Issuer,
+  type ExportMandateAsAp2Input,
+  type ExportedAp2Mandates,
+} from "./ap2/export.js";

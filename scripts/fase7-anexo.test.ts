@@ -10,6 +10,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { AGENTPEY_MANDATE_CLAIM, OPEN_CHECKOUT_MANDATE_VCT, OPEN_PAYMENT_MANDATE_VCT, openCheckoutMandateSchema, openPaymentMandateSchema } from "../packages/ap2/src/schemas.js";
+import { AP2_SD_JWT_TYP } from "../packages/ap2/src/sd-jwt.js";
+import { AP2_SCHEMA, ap2Errors } from "../packages/ap2/src/test/ap2-schemas.js";
 import { AGENTPAY_MANDATE_TYP } from "../packages/mandate/src/sign.js";
 import { RECEIPT_TYPE, receiptClaimsSchema } from "../packages/vitrinee-core/src/receipt.js";
 import {
@@ -145,6 +148,11 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
       ["authorise", "apps/agent/src/policy/policy-rail.ts"],
       ["__check_auth", "contracts/policy-rail/src/lib.rs"],
       ["anchor", "contracts/receipt-registry/src/lib.rs"],
+      ["exportMandateAsAp2", "apps/agent/src/ap2/export.ts"],
+      ["issueOpenMandatePair", "packages/ap2/src/issue.ts"],
+      ["verifyOpenMandatePair", "packages/ap2/src/verify.ts"],
+      ["openCheckoutMandateSchema", "packages/ap2/src/schemas.ts"],
+      ["openPaymentMandateSchema", "packages/ap2/src/schemas.ts"],
     ];
     for (const [symbol, path] of cited) {
       expect(annex, symbol).toContain(`\`${symbol}`);
@@ -163,6 +171,25 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
       "MandateDailyLimitExceeded",
     ];
     expect(codes.length).toBeGreaterThan(15);
+    for (const code of codes) expect(annex, code).toContain(`\`${code}\``);
+  });
+
+  it("shows AP2 open mandates that this code's schemas and the official AP2 v0.2 schemas both accept (T123)", () => {
+    const checkout = jsonAfter("#### Mandato abierto de checkout");
+    const payment = jsonAfter("#### Mandato abierto de pago");
+    expect(openCheckoutMandateSchema.safeParse(checkout).success).toBe(true);
+    expect(openPaymentMandateSchema.safeParse(payment).success).toBe(true);
+    expect(ap2Errors(AP2_SCHEMA.openCheckoutMandate, checkout)).toEqual([]);
+    expect(ap2Errors(AP2_SCHEMA.openPaymentMandate, payment)).toEqual([]);
+    expect(annex).toContain(`"vct": "${OPEN_CHECKOUT_MANDATE_VCT}"`);
+    expect(annex).toContain(`"vct": "${OPEN_PAYMENT_MANDATE_VCT}"`);
+    expect(annex).toContain(`\`typ: "${AP2_SD_JWT_TYP}"\``);
+    expect(annex).toContain(`\`${AGENTPEY_MANDATE_CLAIM}\``);
+  });
+
+  it("names every AP2 error code the verifier can raise (T123)", () => {
+    const codes = [...read("../packages/core/src/errors.ts").matchAll(/\| "(Ap2[A-Za-z]+)"/g)].map(([, code]) => code ?? "");
+    expect(codes).toHaveLength(7);
     for (const code of codes) expect(annex, code).toContain(`\`${code}\``);
   });
 
