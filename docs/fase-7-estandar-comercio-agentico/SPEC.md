@@ -198,7 +198,7 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   esquema del recibo firmado, la configuración del payment handler, cómo se
   verifica un mandato y los contratos desplegados (ids de testnet).
 - **Hecho cuando:**
-  - [ ] cada formato del anexo coincide con el código (esquemas zod citados por ruta) y con `deployments/`
+  - [x] cada formato del anexo coincide con el código (esquemas zod citados por ruta) y con `deployments/` (`scripts/fase7-anexo.test.ts`)
 
 ## 6. Criterios de aceptación de la fase
 

@@ -7327,3 +7327,17 @@ El usuario vio el pedido en Shopify y autorizó el merge de `cc/t122-evidencia`:
 Pendiente: T123 (replantear: AP2 en UCP exige ECDSA) o T125. Reserva de cuentas patrocinadas: 223,43 →
 218,43 USDC. Compras retenidas por pago dudoso: conciliación manual (`E-6`). `AGENTS.md`: sin cambios
 (T122 no es delegable). No se tocó `checkMandate`, `policyRail.authorise` ni ningún contrato.
+
+## 2026-10-01 (2) — cc/t125-anexo-sep (sin mergear, espera al usuario)
+
+Agente: Claude Code.
+
+Qué: T125. `docs/fase-7-estandar-comercio-agentico/ANEXO-SEP.md`, el anexo técnico para el borrador de SEP
+"Agentic Commerce on Stellar": recorrido, handler `com.agentpey.stellar_x402`, recibo y su extensión UCP,
+verificación del Mandato, contratos desplegados y nueve brechas. `scripts/fase7-anexo.test.ts` falla si un
+id, nombre o código del anexo deja de coincidir con el código o con `deployments/`.
+
+Exponential: T125 a `IN_PROGRESS`.
+
+Pendiente: `/revisar`, merge con OK del usuario. Después: T123 (replantear, AP2 exige ECDSA) o T124.
+`AGENTS.md`: sin cambios.

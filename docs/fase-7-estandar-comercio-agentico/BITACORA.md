@@ -16,14 +16,16 @@
 `E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP. **T122
 cerrada**: un agente compró por UCP en una tienda Shopify real, pagando en
 Stellar desde un `policy_rail`, con pedido en Shopify (visto por el usuario) y
-recibo válido. **Sigue:** T123 o T125.
+recibo válido. **T125 en revisión**: el anexo técnico para el SEP está escrito. **Sigue:**
+T123 o T124, si alcanzan.
 
 | Tarea | Estado |
 |---|---|
 | T120 Prueba técnica | cerrada |
 | T121 Perfil y catálogo UCP | cerrada |
 | T122 Compra UCP de punta a punta | cerrada |
-| T123 a T125 | pendientes |
+| T123, T124 | pendientes |
+| T125 Anexo para el SEP | en revisión |
 
 ## Apertura de la fase (2026-09-30)
 
@@ -131,3 +133,15 @@ pedido se arma con los datos de cuando se pagó (`E-6`).
 **Decisiones:** `E-5` (el rail UCP, 3,00 y 5,00), `E-6` (el cobro nunca se
 repite; conciliación manual de compras retenidas), `E-7` (la orden no muestra
 la dirección del comprador). Evidencia: [evidencia/T122.md](evidencia/T122.md).
+
+## T125 · El anexo técnico para el SEP (2026-10-01, en revisión)
+
+**En lenguaje llano.** El chat de estrategia está escribiendo una propuesta de
+estándar para Stellar ("Agentic Commerce on Stellar"), y AgentPey es el
+ejemplo que funciona. Este anexo le da los detalles exactos: cómo se ve cada
+documento firmado, qué revisa cada parte antes de pagar, qué contratos están
+desplegados y dónde, y nueve cosas que el estándar de Google y Shopify no
+resuelve y la propuesta debería resolver. Un test avisa si algún dato del
+anexo deja de coincidir con lo que está desplegado.
+
+Documento: [ANEXO-SEP.md](ANEXO-SEP.md). Evidencia: [evidencia/T125.md](evidencia/T125.md).
