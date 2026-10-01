@@ -7366,3 +7366,19 @@ AP2 solo exige P-256 al cerrar el mandato, no en los abiertos (`E-9` corregida).
 Pendiente: `/revisar`, push, PR y merge con OK del usuario. No se tocó `checkMandate`, `scope.limits`,
 `perDay`, `policyRail.authorise`, Vitrinee ni contratos. `AGENTS.md`: sin cambios (T123 no es delegable).
 Exponential: T123 a `IN_PROGRESS` (pasa a `QA` con el PR).
+
+## 2026-10-01 (4) — cc/t123-mandatos-ap2, correcciones de /revisar (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T123 (subagente `revisor` más revisión propia de firma). Corregido todo a pedido del
+usuario: tope AP2 en centavos y el menor de `perTx`/`perDay` de credencial y Mandato (`E-12`; antes salía
+×100.000 para un lector de AP2), listas de permitidos con al menos un elemento revelado, credencial
+verificada en la red, atada a la intención y `checkScope` (`E-13`), `cnf` fijo en la exportación real
+(variante P-256 en `apps/agent/src/ap2/cross-check.ts`, fuera del índice, `iss` `urn:…`), `exp` ≤ intención,
+`vct` primero, ventana igual en el par, objetos sin prototipo, texto de terceros acotado, tests nuevos.
+Con OK del usuario: exportación real repetida en testnet (Mandato `e5eae6ce…`, dos transacciones de solo
+comisión), la librería oficial de AP2 verifica los dos pares. Anexo, evidencia y bitácora al día.
+
+Pendiente: push, PR y merge con OK del usuario. Deuda anotada en ESTADO: un par por intención no se hace
+cumplir (brecha 14). Perímetro intacto. `AGENTS.md`: sin cambios.

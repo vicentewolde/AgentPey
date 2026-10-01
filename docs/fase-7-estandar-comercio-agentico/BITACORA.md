@@ -167,9 +167,11 @@ tienda, con USDC en Stellar". Cualquiera que tenga la llave pública de AgentPey
 los puede verificar sin preguntarle nada a nadie. La librería oficial de AP2,
 escrita por otros, los acepta.
 
-AgentPey solo los firma si el Mandato está vigente y no revocado en la red, y si
-la compra cabe dentro de lo que el usuario autorizó. Si alguien sube el monto en
-una copia, la verificación lo rechaza y dice por qué.
+AgentPey solo los firma si la credencial del agente y el Mandato están vigentes y
+no revocados en la red, y si la compra cabe dentro de lo que permiten los dos.
+El monto máximo es el más chico de los cuatro límites (por compra y por día, de
+la credencial y del Mandato), en centavos. Si alguien sube el monto en una
+copia, o le quita la tienda, la verificación lo rechaza y dice por qué.
 
 **Lo que cambió al leer las fuentes.** AP2 sacó su versión 0.2 en abril y ya no
 tiene los tres mandatos que nombraba el spec (Intent, Cart, Payment): tiene uno
@@ -187,22 +189,33 @@ AP2 solo acepta llaves P-256. Al probarla, verificó también los mandatos en
 Ed25519, la curva de Stellar. Donde sí pide P-256 es un paso después, cuando el
 agente "cierra" el mandato, que T123 no hace. `E-9` quedó corregida.
 
+**Lo que encontró la revisión.** El error más serio: el monto iba en unidades
+de Stellar y AP2 lo lee en centavos, así que 3 dólares se leían como 300.000.
+También: se podía vaciar la lista de tiendas permitidas sin romper la firma, el
+tope diario no se respetaba si era menor que el tope por compra, la llave del
+agente se podía elegir desde afuera, y no se revisaba la credencial del agente.
+El usuario pidió corregir todo (`E-12`, `E-13`) y la exportación real se volvió
+a correr en testnet.
+
 **Qué no se hizo.** Negociar AP2 dentro del checkout UCP de Vitrinee, y los
 mandatos cerrados: es el camino de la grabación del 11 de octubre y la
-extensión cambió de nombre en UCP `2026-08-25`. Queda como brecha 14 del anexo.
+extensión cambió de nombre en UCP `2026-08-25`. Tampoco se impide exportar dos
+veces la misma intención: cada par queda acotado al mismo tope y a la vida de
+la intención. Las dos cosas quedan como brecha 14 del anexo.
 
 **Evidencia técnica.**
 
 - Paquete nuevo `@agentpey/ap2`: SD-JWT sobre `jose`, esquemas zod de AP2 v0.2,
   emisión y verificación del par, siete códigos `Ap2*` nuevos en `AgentPassError`.
-- `exportMandateAsAp2` en el agente: Mandato verificado en la red, intención
-  verificada, `checkMandate` sin cambios; solo entonces firma.
-- `pnpm run ap2:export`: Mandato real `874339dd…` anclado en testnet, par
-  exportado en Ed25519 y verificado; una copia alterada es rechazada con
-  `Ap2DisclosureMismatch`.
+- `exportMandateAsAp2` en el agente: credencial y Mandato verificados en la
+  red, intención verificada y atada a ellos, `checkScope` y `checkMandate` sin
+  cambios; solo entonces firma.
+- `pnpm run ap2:export`: Mandato real `e5eae6ce…` anclado en testnet, par
+  exportado en Ed25519 con tope de `300` centavos y verificado; una copia
+  alterada es rechazada con `Ap2DisclosureMismatch`.
 - `scripts/ap2-crosscheck/verify.py`: la librería oficial de AP2 (commit
   `e1ea56d`) verifica el par real en Ed25519 y el mismo par en P-256.
-- Sección 4.5 y brechas 5, 12, 13 y 14 del anexo para el SEP, atadas al código
+- Decisiones `E-8` a `E-13`. Sección 4.5 y brechas 5, 12, 13 y 14 del anexo para el SEP, atadas al código
   por `scripts/fase7-anexo.test.ts`. Salidas crudas en
   [evidencia/T123.md](evidencia/T123.md).
 

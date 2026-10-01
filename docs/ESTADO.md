@@ -29,6 +29,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Deuda y pendientes fuera de la fase
 
+- T123 (brecha 14 del anexo): la misma intención se puede exportar a AP2 más de una vez mientras no vence. Cada par está acotado al mismo tope y a la vida de la intención. Hacerlo cumplir pide memoria por `intentId`.
+
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Después de la Fase 7.
 - Fase 6 sigue abierta en `ROADMAP.md`: no se cerró formalmente al abrir la Fase 7.
@@ -44,3 +46,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-01, T122: compra UCP real en `agentcommerce` (Shopify) pagada desde el rail UCP `CA6P4KKV…` (`E-5`): tx `06ff47cf…`, pedido Shopify `18946533884210`, recibo con los tres checks en verde. `per_tx` rechazado por el contrato (`#7`). `/revisar` encontró tres bloqueantes en el cobro, corregidos (`E-6`).
 - 2026-10-01, T125: `ANEXO-SEP.md` con formatos, verificación del Mandato, contratos y nueve brechas para el SEP; `scripts/fase7-anexo.test.ts` lo mantiene alineado con el código y `deployments/`.
 - 2026-10-01, T123: replanteo leído del fuente (AP2 `v0.2`, UCP `2026-04-08` y `2026-08-25`). El usuario eligió exportar y verificar fuera de línea, llaves Ed25519 existentes con chequeo P-256 de un uso, sin `perDay` ni revocación (`E-8` a `E-11`). Paquete `@agentpey/ap2`, `exportMandateAsAp2` en el agente, `pnpm run ap2:export`. Mandato real `874339dd…` exportado y verificado; la librería oficial de AP2 verifica el par en Ed25519 y en P-256. Corregido `E-9`: la librería solo exige P-256 al cerrar el mandato.
+- 2026-10-01, T123 `/revisar`: un bloqueante (el tope iba en unidades de Stellar y AP2 lo lee en centavos) y cinco importantes, todos corregidos a pedido del usuario (`E-12`, `E-13`): tope en centavos y el menor de los cuatro límites, listas de AP2 no vacías, credencial verificada con `checkScope`, `cnf` fijo en la exportación real, `exp` ≤ intención. Exportación real repetida en testnet: Mandato `e5eae6ce…`, tope `300`, la librería oficial de AP2 verifica los dos pares.
