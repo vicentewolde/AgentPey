@@ -288,13 +288,15 @@ describe("UCP checkout sessions (T122)", () => {
 describe("a store that fails after the payment settled", () => {
   // The first write of an order fails, as a database blip would; later writes work.
   let failures = 1;
+  const saved: Array<{ orderId: string }> = [];
   const persistence: OrderPersistence = {
     load: async () => [],
-    save: async () => {
+    save: async (order) => {
       if (failures > 0) {
         failures -= 1;
         throw new Error("database unavailable");
       }
+      saved.push({ orderId: order.orderId });
     },
   };
   const h = harness({ orders: new OrderStore(persistence, []) });
@@ -320,6 +322,10 @@ describe("a store that fails after the payment settled", () => {
     expect(h.facilitator.settleCalls).toHaveLength(settled + 1);
     const order = await h.call("GET", `/orders/${retry.body.order?.id}`);
     expect(order.body).toMatchObject({ checkout_id: created.id, totals: expect.arrayContaining([{ type: "total", amount: 12990 }]) });
+    // The order the failed attempt left only in memory is written and its receipt anchored after all.
+    expect(saved.map((o) => o.orderId)).toContain(retry.body.order?.id);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(((await h.call("GET", `/orders/${retry.body.order?.id}`)).body["receipt"] as { anchor: { status: string } }).anchor.status).toBe("anchored");
   });
 });
 

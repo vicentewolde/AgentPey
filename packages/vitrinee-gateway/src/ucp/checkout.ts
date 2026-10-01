@@ -698,6 +698,8 @@ async function complete(
       return;
     }
     const settled = outcome.response;
+    // Logged before anything else can fail: if the save below does, reconciliation still has the hash.
+    deps.log("ucp payment settled", { checkoutId: session.id, txHash: settled.transaction, amountAtomic: stored.amount, payTo: stored.payTo });
     session.settlement = {
       txHash: settled.transaction,
       network: settled.network,
@@ -754,7 +756,7 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
     totalAtomic: BigInt(snapshot.totalAtomic),
     totalLocal: snapshot.totalLocal,
   };
-  const { record } = await fulfilPaidPurchase(deps, {
+  const { record, replayed } = await fulfilPaidPurchase(deps, {
     quote,
     body: bodyFor(session),
     idempotencyKey: session.completeIdempotencyKey,
@@ -766,6 +768,12 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
     throw new VitrineeError("PaymentError", "this settlement already produced another checkout's order", {
       details: { checkoutId: session.id, orderId: record.orderId, txHash: settlement.txHash },
     });
+  }
+  if (replayed) {
+    // An earlier attempt created this order but may have failed to persist it, and then
+    // never queued its anchor. Writing it again is an upsert; the queue skips an anchored receipt.
+    await deps.orders.put(record);
+    deps.anchors.enqueue(record.orderId);
   }
   session.status = "completed";
   session.orderId = record.orderId;
