@@ -43,7 +43,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T121 | `cmuo4y1iv0009lg04th8bckfc` | Vitrinee publica `/.well-known/ucp` por comercio | SPEC | `DONE` | 2026-09-30 | 2026-09-30 | 2026-09-30 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 | T122 | `cmuo4y3gv000dlg0410k5yyoz` | Compra UCP pagada sobre Stellar, de punta a punta | SPEC | `DONE` | 2026-09-30 | 2026-09-30 | 2026-10-01 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 | T123 | `cmuo4y5ej000hlg048z72tc58` | Mandato exportable como mandatos AP2 (si alcanza) | SPEC | `DONE` | 2026-09-30 | 2026-10-01 | 2026-10-01 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
-| T124 | `cmuo4y7c7000llg042dzcvuby` | Disputas v0 (si alcanza; espera dos decisiones del usuario) | SPEC | `NEEDS_REFINEMENT` | 2026-09-30 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T124 | `cmuo4y7c7000llg042dzcvuby` | Disputas v0, AgentResolve (si alcanza) | SPEC | `IN_PROGRESS` | 2026-09-30 | 2026-10-01 | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 | T125 | `cmuo4y9b5000plg04nr6y0ywc` | Anexo técnico para el SEP | SPEC | `DONE` | 2026-09-30 | 2026-10-01 | 2026-10-01 | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)

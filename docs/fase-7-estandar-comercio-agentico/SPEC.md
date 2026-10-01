@@ -186,15 +186,22 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   - [x] una intención que el Mandato no permite no produce ningún mandato AP2
   - [x] el diff no toca `checkMandate` ni el enforcement de `scope.limits` o `perDay`
 
-### T124 · Disputas v0
-- **Prioridad:** si alcanza (se corta primero) · **Estimación:** 35 h · **Delegable a Codex:** no
-- **Depende de:** T122, y dos decisiones del usuario (sección 9)
-- **Descripción:** revivir Fallo (`~/fallo`: árbitro con IA, veredicto anclado
-  con `manageData`) con otro nombre. Flujo: desde un recibo de Vitrinee se
-  abre un reclamo con evidencia; el árbitro emite un veredicto razonado; el
-  hash del veredicto se ancla, enlazado al recibo; el veredicto se ejecuta
-  sobre la plata según la opción que elija el usuario.
-- **Hecho cuando:** se define al planificarla, después de las decisiones del usuario.
+### T124 · Disputas v0 (AgentResolve)
+- **Prioridad:** si alcanza (se corta primero) · **Estimación:** 32 h (replanificada) · **Delegable a Codex:** no
+- **Depende de:** T122, y las decisiones del usuario `E-14` (garantía del comercio) y `E-15` (nombre)
+- **Descripción:** AgentResolve, a partir de la idea de Fallo (`~/fallo`, que
+  solo anclaba el hash de un texto con `manageData`). Quien pagó abre un
+  reclamo firmado sobre su recibo de Vitrinee, con motivo y evidencia; un
+  árbitro con IA (`E-17`) emite un veredicto razonado; una persona lo confirma
+  (`E-18`); el contrato nuevo `agent-resolve` guarda el hash del veredicto
+  ligado al recibo y paga el reembolso desde la garantía del comercio
+  (`E-14`, `E-19`). Llave del árbitro según `E-16`.
+- **Hecho cuando:**
+  - [ ] un reclamo firmado por el pagador sobre un recibo real de Vitrinee se abre en el contrato y bloquea el monto en la garantía del comercio
+  - [ ] el árbitro emite un veredicto razonado validado con zod; su hash queda en el contrato ligado al recibo y el reembolso llega al pagador en testnet
+  - [ ] el contrato rechaza, con su error: reembolso mayor que el recibo, recibo no anclado, garantía de otro comercio, doble resolución, fuera de plazo y quien no es el árbitro
+  - [ ] un reclamo con inyección de prompt en la evidencia no obtiene más que el monto del recibo
+  - [ ] `cargo test` y `pnpm check` en verde; el diff no toca el flujo de pago, `checkMandate` ni `receipt-registry`
 
 ### T125 · Anexo técnico para el SEP
 - **Prioridad:** al final · **Estimación:** 3 h · **Delegable a Codex:** no (narrativa SCF)
@@ -237,8 +244,8 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 ## 9. Preguntas abiertas
 
 - [x] ¿Está confirmada la extensión de Find Your Way más allá del 30-sep? **Sí**, confirmado por el usuario el 2026-09-30: el calendario de la sección 8 vale
-- [ ] T124, qué hace el veredicto con la plata: (a) garantía del comercio en un contrato, de donde salen los reembolsos (recomendada para v0: no toca el flujo de pago existente); (b) retención del pago antes de liberarlo al comercio (cambia el `payTo` de x402 y el recibo); (c) solo veredicto público, sin mover fondos. Se decide antes de T124, no ahora
-- [ ] T124, el nombre: Veredicto, Dictamen o AgentPey Resolve. Se decide antes de T124
+- [x] T124, qué hace el veredicto con la plata: **(a)**, decidido por el usuario el 2026-10-01 (`E-14`). (a) garantía del comercio en un contrato, de donde salen los reembolsos (recomendada para v0: no toca el flujo de pago existente); (b) retención del pago antes de liberarlo al comercio (cambia el `payTo` de x402 y el recibo); (c) solo veredicto público, sin mover fondos. Se decide antes de T124, no ahora
+- [x] T124, el nombre: **AgentResolve**, decidido por el usuario el 2026-10-01 (`E-15`)
 
 ## 10. Registro de cambios del spec
 
@@ -252,3 +259,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-01 | T122 cerrada: compra UCP real pagada en Stellar, pedido en Shopify, recibo válido, `per_tx` rechazado por el contrato (`E-5` a `E-7`) |
 | 2026-10-01 | T123 replanificada tras leer AP2 `v0.2` y UCP `2026-08-25` del fuente: mandatos abiertos de checkout y de pago, exportación fuera de línea con chequeo cruzado, 16 h (`E-8` a `E-11`) |
 | 2026-10-01 | T123 cerrada: Mandato real exportado y verificado, la librería oficial de AP2 acepta el par en Ed25519 y en P-256; tras `/revisar`, tope en centavos y credencial verificada (`E-12`, `E-13`). [PR #34](https://github.com/vicentewolde/AgentPey/pull/34) |
+| 2026-10-01 | T124 planificada: AgentResolve, contrato `agent-resolve` con garantía del comercio, árbitro Claude con confirmación humana, 32 h y criterios (`E-14` a `E-19`), aprobados por el usuario |

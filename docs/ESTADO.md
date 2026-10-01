@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-01
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T123 · el Mandato exportado como mandatos AP2 v0.2, verificado por la librería oficial de AP2
-**Siguiente paso:** T124 (disputas v0), si alcanza antes del 11-oct: primero las dos decisiones del usuario (qué hace el veredicto con la plata y el nombre)
+**Siguiente paso:** el usuario aprueba el plan de T124 (AgentResolve) y sus cuatro decisiones
 
 ## Progreso de la fase
 
@@ -18,14 +18,13 @@
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ✅ terminada | `cc/t122-compra-ucp-stellar`, `cc/t122-evidencia`, mergeadas |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ✅ terminada | `cc/t123-mandatos-ap2`, mergeada ([PR #34](https://github.com/vicentewolde/AgentPey/pull/34)) |
-| T124 Disputas v0 | si alcanza | ⏳ pendiente | |
+| T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en curso (plan, espera OK del usuario) | `cc/t124-agentresolve` |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Antes de T124: qué hace el veredicto con la plata (a, b o c) y el nombre de las disputas
 
 ## Deuda y pendientes fuera de la fase
 

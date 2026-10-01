@@ -299,3 +299,68 @@ en la exportación real; la variante con llave P-256 vive aparte
 (`apps/agent/src/ap2/cross-check.ts`), fuera del índice del paquete, y su `iss`
 es `urn:agentpey:ap2-cross-check:…`, nunca el `did:stellar` del emisor. El par
 vence a más tardar con la intención.
+
+---
+
+### E-14 · El veredicto de una disputa se paga desde una garantía del comercio en un contrato · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T124 · Decidido por el usuario (opción a de la sección 9 del spec)
+
+Cada comercio tiene una garantía en USDC dentro de un contrato. Si el veredicto
+da la razón al comprador, el reembolso sale de esa garantía hacia quien pagó.
+El flujo de pago existente (x402, `policy_rail`, recibo) no cambia.
+
+**Alternativas descartadas:** (b) retener el pago antes de liberarlo al
+comercio, que cambia el `payTo` de x402 y el recibo; (c) un veredicto público
+sin mover fondos, que no resuelve nada para el comprador.
+
+---
+
+### E-15 · Las disputas se llaman AgentResolve · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T124 · Decidido por el usuario
+
+Descartados: Veredicto, Dictamen, AgentPey Resolve.
+
+---
+
+### E-16 · El árbitro de AgentResolve tiene su propia llave, `RESOLVE_ARBITER_SECRET_KEY` · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T124 · Decidido por el usuario (`P-10`)
+
+Una cuenta de testnet nueva, solo para abrir y resolver disputas en el contrato
+`agent-resolve`. Vive en `.env.local`. No firma credenciales, Mandatos ni
+pagos.
+
+**Alternativa descartada: reusar `ADMIN_SECRET_KEY`.** Mezcla la llave que
+registra emisores con la que decide reembolsos: comprometer una daría las dos.
+
+---
+
+### E-17 · El árbitro es Claude Opus 5.5, por la API de Anthropic · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T124 · Decidido por el usuario
+
+Salida estructurada y validada con zod. El reclamo y la evidencia son datos no
+confiables: el monto que propone el modelo se recorta en el código al monto en
+disputa, y el contrato lo vuelve a recortar al monto del recibo anclado.
+`ANTHROPIC_API_KEY` la agrega el usuario a `.env.local`.
+
+---
+
+### E-18 · En v0 una persona confirma el veredicto antes de mover fondos · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T124 · Decidido por el usuario
+
+`resolve:decide` muestra el veredicto y su razonamiento y pide confirmación
+antes de llamar a `resolve` en el contrato.
+
+**Alternativa descartada: pagar sin confirmación cuando el monto cabe en los
+límites.** Los límites acotan el daño, no lo anulan: un reclamo falso dentro
+del monto del recibo igual sería pagado.
+
+---
+
+### E-19 · El comercio retira lo que no está bloqueado; sin aviso previo en v0 · `Vigente`
+**Fecha:** 2026-10-01 · **Tarea:** T124 · Decidido por el usuario
+
+`withdraw` permite sacar el saldo de la garantía menos lo bloqueado por
+disputas abiertas. Brecha que queda escrita para el SEP: un comercio podría
+retirar todo antes de que llegue un reclamo.
+
+**Alternativa descartada por ahora: retiro con aviso previo** (unas 2 h más).
