@@ -18,7 +18,9 @@ cerrada**: un agente compró por UCP en una tienda Shopify real, pagando en
 Stellar desde un `policy_rail`, con pedido en Shopify (visto por el usuario) y
 recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y revisado.
 **T123 cerrada**: el Mandato se exporta como mandatos AP2 v0.2 y la librería
-oficial de AP2 los verifica (`E-8` a `E-13`). **Sigue:** T124, si alcanza.
+oficial de AP2 los verifica (`E-8` a `E-13`). **T124 en curso**: AgentResolve
+desplegado y probado con un reclamo real (rechazado); falta el reembolso real,
+el 8 o 9 de octubre.
 
 | Tarea | Estado |
 |---|---|
@@ -26,7 +28,7 @@ oficial de AP2 los verifica (`E-8` a `E-13`). **Sigue:** T124, si alcanza.
 | T121 Perfil y catálogo UCP | cerrada |
 | T122 Compra UCP de punta a punta | cerrada |
 | T123 Mandato como mandatos AP2 | cerrada |
-| T124 Disputas | pendiente |
+| T124 Disputas (AgentResolve) | en curso |
 | T125 Anexo para el SEP | cerrada |
 
 ## Apertura de la fase (2026-09-30)
@@ -218,4 +220,37 @@ la intención. Las dos cosas quedan como brecha 14 del anexo.
 - Decisiones `E-8` a `E-13`. Sección 4.5 y brechas 5, 12, 13 y 14 del anexo para el SEP, atadas al código
   por `scripts/fase7-anexo.test.ts`. Salidas crudas en
   [evidencia/T123.md](evidencia/T123.md).
+
+## T124 · AgentResolve: reclamar y que te devuelvan la plata (2026-10-01, en curso)
+
+**En lenguaje llano.** Si un agente compra algo y el pedido falla, ahora puede
+pedir su plata de vuelta. Firma un reclamo sobre su recibo: qué pasó, qué
+evidencia tiene, cuánto pide. AgentPey revisa que el recibo sea auténtico y que
+quien reclama sea quien pagó, y abre la disputa en un contrato de Stellar que
+congela ese monto en la garantía que el comercio dejó depositada. Un árbitro con
+IA (Claude) lee el caso y escribe un veredicto razonado; una persona lo
+confirma; recién entonces el contrato paga, y deja escrito en la red qué
+veredicto se aplicó a qué recibo. El contrato nunca deja devolver más que el
+recibo, tocar la garantía de otra tienda ni resolver dos veces.
+
+**Lo que pasó en la prueba real.** Se reclamó la compra de T122. Claude rechazó
+el reclamo: llegó 7,7 horas después del pago, y decir "nunca se despachó" era
+prematuro. Tenía razón. Pero le dijo al comprador que podía reclamar de nuevo, y
+el contrato no lo permite. Lo corregimos: el árbitro ahora sabe que su veredicto
+es final, y todos los veredictos quedan archivados, para que no se pueda pedir
+otro hasta que salga uno conveniente sin dejar rastro. Para mostrar un
+reembolso real se hizo una compra nueva, que se reclamará el 8 o 9 de octubre
+si sigue sin despacho.
+
+**Evidencia técnica.**
+
+- Contrato `agent-resolve` en testnet (`CCYMGX56…`), 14 tests de Rust; lee el
+  `receipt-registry` real.
+- Paquete `@agentpey/resolve`: reclamo firmado, chequeos, árbitro Claude Opus
+  5.5 con salida estructurada y fallback, veredicto acotado y con hash; 26 tests,
+  incluida una inyección de prompt acotada al monto del recibo.
+- `pnpm run resolve:*`: garantía de 3 USDC, disputa abierta, veredicto,
+  confirmación por hash, verificación en la red.
+- Anexo para el SEP: sección 4.6, fila del contrato y brechas 15 a 17.
+  [evidencia/T124.md](evidencia/T124.md).
 

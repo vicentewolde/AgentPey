@@ -7393,3 +7393,22 @@ SYNC. Exponential: T123 a `DONE`.
 
 Pendiente: T124 (disputas v0), si alcanza: antes, dos decisiones del usuario (sección 9 del spec).
 Deuda de T123 en ESTADO: un par AP2 por intención no se hace cumplir. `AGENTS.md`: sin cambios.
+
+## 2026-10-01 (6) — cc/t124-agentresolve (sin push, en curso)
+
+Agente: Claude Code.
+
+Qué: T124, AgentResolve. Decisiones del usuario `E-14` (garantía del comercio) a `E-19`. Contrato nuevo
+`contracts/agent-resolve` (workspace de Cargo, sdk 27; lee `receipt-registry` por interfaz declarada),
+desplegado con OK del usuario (`CCYMGX56…`); llave del árbitro nueva `RESOLVE_ARBITER_SECRET_KEY`
+(`.env.local`). Paquete `@agentpey/resolve` (reclamo firmado, `checkClaim`, árbitro Claude Opus 5.5 vía
+`@anthropic-ai/sdk` con `fallbacks: "default"`, veredicto acotado y con hash) y `scripts/resolve.ts`
+(`resolve:deposit|open|decide|execute|verify`). En testnet, con OK: garantía 3 USDC, reclamo sobre el recibo
+de T122, veredicto `rejected` confirmado por el usuario y ejecutado; compra UCP nueva (`0922707…`).
+
+Por qué: `P-14` prometía disputas sobre el recibo; (a) no toca el flujo de pago.
+
+Pendiente: `/revisar`; el 8–9 oct, reclamo sobre `0922707…` para el reembolso real (criterio 2). Deuda:
+la disputa oye a una sola parte, el comercio puede vaciar la garantía antes del reclamo (`E-19`), y el
+veredicto de un modelo no es determinista (brechas 15–17 del anexo). No se tocó el flujo de pago,
+`checkMandate` ni `receipt-registry`. `AGENTS.md`: sin cambios (no delegable). Exponential: T124 a `IN_PROGRESS`.

@@ -487,6 +487,57 @@ firmado con llaves P-256 de un solo uso (`scripts/ap2-crosscheck/verify.py`).
 Lo que no se hace: negociar `dev.ucp.shopping.ap2_mandate` en el checkout UCP,
 ni mandatos cerrados (`E-8`, brecha 14).
 
+### 4.6 Disputas: AgentResolve (T124)
+
+Quien pagó un recibo de Vitrinee puede pedir su dinero de vuelta. El reembolso
+sale de una **garantía del comercio** en USDC, guardada en el contrato
+`agent-resolve` (`E-14`); el flujo de pago (x402, `policy_rail`, recibo) no
+cambia.
+
+**Recorrido.**
+
+1. **Reclamo.** El pagador firma un `AgentResolveClaim`
+   (`agentResolveClaimSchema`, `packages/resolve/src/claim.ts`), un JWS con
+   `typ: "agentresolve-claim+jwt"` que lleva el recibo entero, el motivo
+   (`not_delivered`, `not_as_described`, `damaged`, `unauthorized`, `other`), la
+   descripción, hasta cinco evidencias y el monto pedido. Si el pagador es un
+   contrato (un `policy_rail`), firma la llave que devuelve su `owner()`.
+2. **Apertura.** El árbitro (`E-16`) verifica los tres checks del recibo, la
+   firma del reclamo, la ventana de reembolso y el monto (`checkClaim`), y llama
+   `open` en el contrato. El contrato lee `receipt-registry` por su cuenta: el
+   comercio y el tope salen del recibo anclado, nunca de quien llama. El monto
+   queda bloqueado en la garantía de ese comercio.
+3. **Veredicto.** Claude Opus 5.5 (`E-17`) lee los hechos del recibo y el
+   reclamo, este último como datos no confiables entre `<claim_data>`, y
+   propone `refund_full`, `refund_partial` o `rejected` con su razonamiento
+   (`createClaudeArbiter`, `packages/resolve/src/arbiter.ts`). El código lo
+   acota al monto en disputa (`decideDispute`, `packages/resolve/src/decide.ts`)
+   y calcula `verdict_hash` = `sha256` del JSON canónico del veredicto. Cada
+   veredicto queda archivado; solo el último se puede ejecutar.
+4. **Confirmación y pago.** Una persona confirma pasando ese hash exacto
+   (`E-18`); recién entonces el árbitro llama `resolve`, que guarda el hash del
+   veredicto junto al recibo y paga el reembolso desde la garantía al pagador.
+   El veredicto es final: un recibo admite una sola disputa.
+
+**Lo que la red garantiza**, decida lo que decida el árbitro o su modelo
+(`contracts/agent-resolve/src/lib.rs`):
+
+| Regla | Error |
+|---|---|
+| El recibo tiene que estar anclado en `receipt-registry` | `ReceiptNotAnchored` = 1 |
+| La disputa se abre dentro de la ventana, contada desde el anclaje | `ClaimWindowClosed` = 2 |
+| El monto en disputa no supera el recibo anclado | `AmountExceedsReceipt` = 4 |
+| Una sola disputa por recibo, abierta o resuelta | `AlreadyDisputed` = 5 |
+| Solo se bloquea la garantía del comercio del recibo, y si alcanza | `InsufficientGuarantee` = 6 |
+| No se resuelve dos veces | `AlreadyResolved` = 8 |
+| El reembolso no supera lo bloqueado | `RefundExceedsClaim` = 9 |
+| El comercio no retira lo bloqueado por disputas abiertas | `InsufficientFree` = 10 |
+| `open` y `resolve` exigen la firma del árbitro | autorización de Soroban |
+
+Errores del lado de AgentPey: `ResolveClaimInvalid`, `ResolveReceiptInvalid`,
+`ResolveClaimantNotPayer`, `ResolveClaimWindowClosed`, `ResolveAmountExceeded`,
+`ResolveVerdictInvalid`, `ResolveConfirmationMismatch`.
+
 ## 5. Contratos desplegados (testnet)
 
 | Contrato | Id | Wasm (sha256) | Para qué |
@@ -495,6 +546,7 @@ ni mandatos cerrados (`E-8`, brecha 14).
 | `policy_rail` compartido | `CBWRKZ3SL4EAXOS5XAV6CXVRRTBNPPFFC5TKSLW3FTXFTQZNBAZY6Z5U` | `8690d1f5ce18e6ef6209a400918d095450c01d7a8621ac795f404e11ea7e3175` | Pagos del piloto: 0.0020000 por compra, 0.0100000 por día |
 | `policy_rail` UCP | `CA6P4KKV77Q5J4AH6L4V7S42QNF6DLKUAM4SCOQO4GMLB7V7STC5VIYP` | `8690d1f5ce18e6ef6209a400918d095450c01d7a8621ac795f404e11ea7e3175` | Compras UCP: 3.0000000 por compra, 5.0000000 por día (`E-5`) |
 | `receipt-registry` | `CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5` | `e0a871502c4bdf5a396483664f32b5006083648b7ac9546c9ce2a7ed105ac13f` | Hash de cada recibo |
+| `agent-resolve` | `CCYMGX56FJ65EVXUY2M4BTVBCCOBXBTAMGSCWN5X4TQLQTCCEAHDCD3F` | `fbefa298e9f5554cc2cf8930c938680d493324a6cb5bd552340597626ca210b9` | Garantías de comercios y disputas sobre recibos (T124); árbitro `GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6`, ventana de 864000 s |
 | USDC (SAC) | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` | — | Emisor `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`, 7 decimales |
 
 Facilitator x402: Built on Stellar (OpenZeppelin Channels),
@@ -513,7 +565,7 @@ Fuente de los ids: `deployments/testnet.json` y
 
 Las seis de T120 (sección 8 de
 [T120-handler-stellar-ucp.md](T120-handler-stellar-ucp.md)), confirmadas al
-construir, más ocho que aparecieron después:
+construir, más once que aparecieron después:
 
 1. **No hay handlers de stablecoins ni de pagos en cadena** en UCP. Este es de
    los primeros.
@@ -537,7 +589,10 @@ construir, más ocho que aparecieron después:
    solo sigue un `cnf` P-256 cuando el agente cierra el mandato. Un SEP debería
    pedir Ed25519 en los dos lugares, para que una sola llave Stellar alcance
    (T123, `E-9`).
-6. **Las disputas** son un `adjustment` de texto libre en la orden, sin proceso (T124).
+6. **Las disputas** son un `adjustment` de texto libre en la orden de UCP, sin
+   proceso. AgentResolve (sección 4.6) las resuelve fuera de UCP, con una
+   garantía del comercio en un contrato; la orden UCP no muestra todavía el
+   estado de la disputa.
 7. **Resultado dudoso de la liquidación.** Ni UCP ni x402 dicen qué hacer
    cuando el facilitator no responde o da por fallida una transacción ya
    emitida. AgentPey retiene la compra y concilia a mano (`E-6`). Un SEP
@@ -574,6 +629,17 @@ construir, más ocho que aparecieron después:
     hace cumplir: la misma intención se puede exportar otra vez hasta que vence,
     cada par con el mismo tope y la misma ventana. T123 exporta y verifica
     fuera de línea (`E-8`).
+15. **La disputa oye a una sola parte.** En v0 el comercio no presenta
+    descargos y el árbitro no puede verificar la entrega; lo compensa la
+    confirmación humana (`E-18`). Un SEP debería fijar el plazo y el formato de
+    la respuesta del comercio.
+16. **El comercio puede vaciar su garantía antes del reclamo** (`E-19`): solo lo
+    bloqueado por una disputa abierta está protegido. Un retiro con aviso previo
+    lo cerraría.
+17. **El veredicto de un modelo no es determinista.** Pedirlo otra vez puede dar
+    otro resultado. AgentResolve archiva cada veredicto y solo ejecuta el último
+    confirmado por una persona; un SEP debería fijar cuántos intentos valen y
+    cómo se publican.
 
 ## 7. Reproducir
 

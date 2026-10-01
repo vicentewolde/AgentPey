@@ -81,6 +81,11 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
       expect(row(label)).toContain(rail.wasmHash);
       expect(row(label)).toContain(`${rail.perTx} por compra, ${rail.perDay} por día`);
     }
+    const resolve = agentpey.agentResolve;
+    if (resolve === null) throw new TypeError("agent-resolve is not deployed");
+    expect(row("`agent-resolve`")).toContain(resolve.contractId);
+    expect(row("`agent-resolve`")).toContain(resolve.wasmHash);
+    expect(row("`agent-resolve`")).toContain(resolve.arbiter);
     expect(row("`receipt-registry`")).toContain(vitrinee.receiptRegistry.contractId);
     expect(row("`receipt-registry`")).toContain(vitrinee.receiptRegistry.wasmHash);
     expect(row("USDC (SAC)")).toContain(vitrinee.usdc.contractId);
@@ -153,6 +158,10 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
       ["verifyOpenMandatePair", "packages/ap2/src/verify.ts"],
       ["openCheckoutMandateSchema", "packages/ap2/src/schemas.ts"],
       ["openPaymentMandateSchema", "packages/ap2/src/schemas.ts"],
+      ["agentResolveClaimSchema", "packages/resolve/src/claim.ts"],
+      ["checkClaim", "packages/resolve/src/claim.ts"],
+      ["createClaudeArbiter", "packages/resolve/src/arbiter.ts"],
+      ["decideDispute", "packages/resolve/src/decide.ts"],
     ];
     for (const [symbol, path] of cited) {
       expect(annex, symbol).toContain(`\`${symbol}`);
@@ -191,6 +200,22 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
     const codes = [...read("../packages/core/src/errors.ts").matchAll(/\| "(Ap2[A-Za-z]+)"/g)].map(([, code]) => code ?? "");
     expect(codes).toHaveLength(7);
     for (const code of codes) expect(annex, code).toContain(`\`${code}\``);
+  });
+
+  it("numbers the agent-resolve errors as the contract does, and names AgentResolve's own codes (T124)", () => {
+    const source = read("../contracts/agent-resolve/src/lib.rs");
+    const body = /pub enum Error \{([\s\S]*?)\}/.exec(source)?.[1] ?? "";
+    const codes = [...body.matchAll(/^\s+([A-Z][A-Za-z]+) = (\d+),/gm)].map(([, name, code]) => ({ name: name ?? "", code: code ?? "" }));
+    expect(codes.length).toBeGreaterThanOrEqual(11);
+    for (const { name, code } of codes) {
+      if (annex.includes(`\`${name}\``)) expect(annex, name).toContain(`\`${name}\` = ${code}`);
+    }
+    for (const name of ["ReceiptNotAnchored", "ClaimWindowClosed", "AmountExceedsReceipt", "AlreadyDisputed", "InsufficientGuarantee", "AlreadyResolved", "RefundExceedsClaim", "InsufficientFree"]) {
+      expect(annex, name).toContain(`\`${name}\``);
+    }
+    const resolveCodes = [...read("../packages/core/src/errors.ts").matchAll(/\| "(Resolve[A-Za-z]+)"/g)].map(([, code]) => code ?? "");
+    expect(resolveCodes).toHaveLength(7);
+    for (const code of resolveCodes) expect(annex, code).toContain(`\`${code}\``);
   });
 
   it("numbers the policy_rail errors as the contract does", () => {
