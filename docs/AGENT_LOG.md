@@ -7323,7 +7323,7 @@ autorización del usuario: merge y deploy, rail UCP desplegado y fondeado (`CA6P
 
 Exponential: T122 a `QA`.
 
-Pendiente: el usuario confirma el pedido en Shopify; merge de `cc/t122-evidencia` (documentación y
-`deployments/testnet.json` con `policyRailUcp`); T122 a `DONE`. Reserva de cuentas patrocinadas: 223,43 →
+El usuario vio el pedido en Shopify y autorizó el merge de `cc/t122-evidencia`: T122 `DONE`.
+Pendiente: T123 (replantear: AP2 en UCP exige ECDSA) o T125. Reserva de cuentas patrocinadas: 223,43 →
 218,43 USDC. Compras retenidas por pago dudoso: conciliación manual (`E-6`). `AGENTS.md`: sin cambios
 (T122 no es delegable). No se tocó `checkMandate`, `policyRail.authorise` ni ningún contrato.

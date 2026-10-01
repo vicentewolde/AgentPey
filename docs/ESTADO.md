@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-09-30
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T121 · perfil y catálogo UCP por tienda; reglas del handler en `agentpey.com`
-**Siguiente paso:** el usuario confirma el pedido Shopify `18946533884210`; después cerrar T122 y elegir entre `/tarea T123` y `/tarea T125`
+**Última tarea terminada:** T122 · compra UCP real pagada en Stellar desde un `policy_rail`, con pedido en Shopify y recibo válido
+**Siguiente paso:** elegir entre `/tarea T123` (replantearla antes: AP2 en UCP exige ECDSA) y `/tarea T125`
 
 ## Progreso de la fase
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
-| T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | 👀 en revisión (código mergeado y desplegado; falta ver el pedido en Shopify) | `cc/t122-evidencia` |
+| T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ✅ terminada | `cc/t122-compra-ucp-stellar`, `cc/t122-evidencia`, mergeadas |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |
 | T125 Anexo técnico para el SEP | al final | ⏳ pendiente | |

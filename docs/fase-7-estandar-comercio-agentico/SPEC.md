@@ -161,7 +161,7 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   de la tienda, y el recibo se ancla y queda enlazado en la orden UCP.
 - **Hecho cuando:**
   - [x] hash de la transacción de pago en testnet
-  - [ ] pedido visible en el panel de la tienda (Shopify `18946533884210`; falta la confirmación del usuario)
+  - [x] pedido visible en el panel de la tienda (el usuario vio el pedido del imán el 2026-10-01; Shopify `18946533884210`)
   - [x] recibo con los tres checks en verde (`pnpm run vitrinee:verify`)
   - [x] un intento que excede `per_tx` es rechazado por el contrato `policy_rail` (`PerTxExceeded` en la simulación). La evidencia sale de un script de prueba aparte que firma directo contra el contrato; el camino de producción sigue cortando antes en `policyRail.authorise` y **no gana ningún modo que lo salte**
   - [x] las rutas actuales, incluida `GET /orders/:orderId`, siguen respondiendo igual (tests existentes en verde)
@@ -243,3 +243,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-09-30 | **Aprobado** por el usuario, sin cambios en las tareas. Extensión de Find Your Way confirmada por el usuario |
 | 2026-09-30 | T120 (cerrada al mergear): sección 4 completa, opción A (`E-1` a `E-4`), T121 a 16 h y T122 a 29 h, aviso sobre AP2 en T123 |
 | 2026-09-30 | Correcciones de `/revisar` sobre T120: prefijo `/ucp/v1` para no chocar con `GET /orders/:orderId`, y cómo se obtiene la evidencia de `per_tx` sin atajos en producción |
+| 2026-10-01 | T122 cerrada: compra UCP real pagada en Stellar, pedido en Shopify, recibo válido, `per_tx` rechazado por el contrato (`E-5` a `E-7`) |
