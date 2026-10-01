@@ -6,6 +6,7 @@
     { "path": "./packages/cli" },
     { "path": "./packages/mandate" },
     { "path": "./packages/ap2" },
+    { "path": "./packages/resolve" },
     { "path": "./packages/vault" },
     { "path": "./packages/tenancy" },
     { "path": "./packages/directory" },

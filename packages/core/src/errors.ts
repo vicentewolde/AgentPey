@@ -202,7 +202,21 @@ export type AgentPassErrorCode =
   /** An AP2 payment mandate's `payment.reference` is not the hash of the checkout mandate it travels with, or the pair disagrees on agent or source Mandate. */
   | "Ap2ReferenceMismatch"
   /** An AP2 mandate carries a constraint type this verifier does not know — AP2 says that fails evaluation. */
-  | "Ap2ConstraintUnsupported";
+  | "Ap2ConstraintUnsupported"
+  /** An AgentResolve claim is malformed, off its schema, or not signed by its claimant (T124). */
+  | "ResolveClaimInvalid"
+  /** The receipt a claim is about did not verify, or is not the receipt the claim embeds. */
+  | "ResolveReceiptInvalid"
+  /** The claimant is not the receipt's payer, nor the key that controls it. */
+  | "ResolveClaimantNotPayer"
+  /** The receipt's refund window has closed. */
+  | "ResolveClaimWindowClosed"
+  /** The claim asks for more than the receipt paid. */
+  | "ResolveAmountExceeded"
+  /** The arbiter returned no usable verdict: a refusal, unparseable output, or a verdict off its schema. */
+  | "ResolveVerdictInvalid"
+  /** A refund was confirmed for a verdict other than the one on file. */
+  | "ResolveConfirmationMismatch";
 
 /** Structured, non-secret context attached to an error for logs and tests. */
 export type AgentPassErrorDetails = Readonly<Record<string, unknown>>;

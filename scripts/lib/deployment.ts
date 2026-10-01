@@ -43,6 +43,22 @@ export const policyRailDeploymentSchema = z.strictObject({
   protocolVersion: z.number().int().positive(),
 });
 
+/** AgentResolve (T124, `E-14` to `E-19`): merchant guarantees and disputes over Vitrinee receipts. */
+export const agentResolveDeploymentSchema = z.strictObject({
+  contractId: stellarContractIdSchema,
+  wasmHash: z.string().regex(/^[0-9a-f]{64}$/),
+  /** The only account that opens and resolves disputes (`E-16`). */
+  arbiter: stellarAddressSchema,
+  /** USDC: the asset guarantees are held and refunds paid in. */
+  token: stellarContractIdSchema,
+  /** Vitrinee's `receipt-registry`, which this contract reads. */
+  registry: stellarContractIdSchema,
+  claimWindowSeconds: z.number().int().positive(),
+  schemaVersion: z.number().int().nonnegative(),
+  deployedAt: z.iso.datetime(),
+  protocolVersion: z.number().int().positive(),
+});
+
 export const deploymentSchema = z.strictObject({
   network: z.literal("testnet"),
   networkPassphrase: z.string().min(1),
@@ -52,11 +68,13 @@ export const deploymentSchema = z.strictObject({
   policyRail: policyRailDeploymentSchema.nullable().default(null),
   /** The rail that pays UCP purchases (T122): same contract, its own instance and limits. */
   policyRailUcp: policyRailDeploymentSchema.nullable().default(null),
+  agentResolve: agentResolveDeploymentSchema.nullable().default(null),
 });
 
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type AgentRegistryDeployment = z.infer<typeof agentRegistryDeploymentSchema>;
 export type PolicyRailDeployment = z.infer<typeof policyRailDeploymentSchema>;
+export type AgentResolveDeployment = z.infer<typeof agentResolveDeploymentSchema>;
 
 export const EMPTY_DEPLOYMENT: Deployment = {
   network: "testnet",
@@ -66,6 +84,7 @@ export const EMPTY_DEPLOYMENT: Deployment = {
   agentRegistry: null,
   policyRail: null,
   policyRailUcp: null,
+  agentResolve: null,
 };
 
 export async function readDeployment(path: string): Promise<Deployment> {

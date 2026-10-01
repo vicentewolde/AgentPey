@@ -11,6 +11,7 @@
       "@agentpass/sdk": ["./packages/sdk/src/index.ts"],
       "@agentpey/activity": ["./packages/activity/src/index.ts"],
       "@agentpey/ap2": ["./packages/ap2/src/index.ts"],
+      "@agentpey/resolve": ["./packages/resolve/src/index.ts"],
       "@agentpey/agent": ["./apps/agent/src/index.ts"],
       "@agentpey/directory": ["./packages/directory/src/index.ts"],
       "@agentpey/mandate": ["./packages/mandate/src/index.ts"],
