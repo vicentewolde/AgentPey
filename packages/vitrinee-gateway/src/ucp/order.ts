@@ -16,7 +16,6 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
   // The total is unit × quantity, so this division is exact; it stays in bigint (VT-7, VT-36).
   const unitMinor = toMinorUnits(formatUnits(parseDecimal(record.totalLocal, decimals) / BigInt(record.quantity), decimals), record.currency);
   const shipping = record.buyer.shipping;
-  const [firstName, ...rest] = (shipping?.name ?? "").split(" ").filter((part) => part !== "");
   const receipt = receiptExtension(record, origin);
   return {
     ucp: {
@@ -49,14 +48,9 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
                 id: "exp_1",
                 line_items: [{ id: "li_1", quantity: record.quantity }],
                 method_type: "shipping",
-                destination: {
-                  address_country: shipping.country,
-                  ...(firstName === undefined ? {} : { first_name: firstName }),
-                  ...(rest.length === 0 ? {} : { last_name: rest.join(" ") }),
-                  ...(shipping.address === undefined ? {} : { street_address: shipping.address }),
-                  ...(shipping.city === undefined ? {} : { address_locality: shipping.city }),
-                  ...(shipping.region === undefined ? {} : { address_region: shipping.region }),
-                },
+                // Country only: the order id travels inside the public receipt, so
+                // anyone holding a receipt can read this. The address stays with the store.
+                destination: { address_country: shipping.country },
               },
             ],
     },

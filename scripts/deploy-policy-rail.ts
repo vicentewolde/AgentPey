@@ -96,6 +96,10 @@ const UCP: RailProfile = {
 };
 
 function readProfile(): RailProfile {
+  // `--profile=ucp` would otherwise be ignored and fall through to the shared rail.
+  if (ARGV.some((arg) => arg.startsWith("--profile="))) {
+    throw new AgentPassError("ConfigError", "write --profile <shared|ucp>, with a space", { details: {} });
+  }
   const at = ARGV.indexOf("--profile");
   if (at === -1) return SHARED;
   const value = (ARGV[at + 1] ?? "").trim();

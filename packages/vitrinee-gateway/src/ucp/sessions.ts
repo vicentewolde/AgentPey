@@ -67,6 +67,9 @@ export const checkoutSessionSchema = z.object({
       totalLocal: z.string(),
       currency: z.string(),
       fx: z.object({ base: z.literal("USD"), quote: z.string(), rate: z.string(), asOf: z.string() }),
+      /** What the order is created from once paid, without asking the store again. */
+      productSku: z.string(),
+      productName: z.string(),
     })
     .nullable(),
   requirements: storedRequirementsSchema.nullable(),
@@ -74,6 +77,29 @@ export const checkoutSessionSchema = z.object({
   paymentKey: z.string().nullable(),
   completeIdempotencyKey: z.string().nullable(),
   orderId: z.string().nullable(),
+  /**
+   * The settlement, persisted the moment the facilitator confirms it and before
+   * the order is created: a `complete` that failed after paying finishes from
+   * here, never by settling again.
+   */
+  settlement: z
+    .object({
+      txHash: z.string(),
+      network: z.string(),
+      payer: z.string().optional(),
+      payTo: z.string(),
+      asset: z.string(),
+      amountAtomic: z.string().regex(/^\d+$/),
+      settledAt: z.string(),
+    })
+    .nullable()
+    .default(null),
+  /**
+   * A settlement whose outcome is unknown (timeout, network error, a broadcast
+   * transaction the facilitator gave up on). The checkout stays
+   * `complete_in_progress` and is never settled again until someone reconciles it.
+   */
+  settleAttempt: z.object({ transaction: z.string().nullable(), error: z.string(), at: z.string() }).nullable().default(null),
 });
 export type CheckoutSession = z.infer<typeof checkoutSessionSchema>;
 

@@ -31,10 +31,11 @@ import type { PaymentPayload, PaymentRequirements, SettleResponse } from "@x402/
 import type { Express, Request, Response } from "express";
 import { z, ZodError } from "zod";
 
+import type { Product } from "@vitrinee/adapters";
+
 import { fulfilPaidPurchase, quoteCheckout, type CheckoutBody, type CheckoutDeps, type CheckoutQuote } from "../checkout.js";
 import type { OrderRecord } from "../orders.js";
 import { payerFromTransactionXdr } from "../payer.js";
-import type { SettlementRecord } from "../settlements.js";
 import {
   SESSION_TTL_MS,
   newSessionId,
@@ -242,6 +243,8 @@ function snapshot(deps: UcpCheckoutDeps, quote: CheckoutQuote): NonNullable<Chec
     totalLocal: quote.totalLocal,
     currency: quote.product.currency,
     fx: { base: "USD", quote: deps.config.fx.quote, rate: deps.config.fx.rate, asOf: deps.now().toISOString() },
+    productSku: quote.product.sku,
+    productName: quote.product.name,
   };
 }
 
@@ -431,20 +434,29 @@ function failureSeverity(reason: string | undefined): Severity {
   return "recoverable";
 }
 
-async function settle(deps: UcpCheckoutDeps, requirements: StoredRequirements, transaction: string): Promise<SettleResponse> {
+type SettleOutcome =
+  | { kind: "settled"; response: SettleResponse }
+  /** The facilitator answered no, and nothing was broadcast: safe to sign again. */
+  | { kind: "refused"; reason: string }
+  /** Nobody knows whether money moved. The checkout must not be settled again. */
+  | { kind: "unknown"; reason: string; transaction: string | null };
+
+async function settle(deps: UcpCheckoutDeps, requirements: StoredRequirements, transaction: string): Promise<SettleOutcome> {
   const payload: PaymentPayload = { x402Version: 2, accepted: requirements as PaymentRequirements, payload: { transaction } };
+  let response: SettleResponse;
   try {
-    return await deps.x402.settlePayment(payload, requirements as PaymentRequirements);
+    response = await deps.x402.settlePayment(payload, requirements as PaymentRequirements);
   } catch (error) {
-    const response = (error as { response?: Partial<SettleResponse> } | undefined)?.response;
-    return {
-      success: false,
-      transaction: "",
-      network: STELLAR_TESTNET_CAIP2,
-      errorReason: response?.errorReason ?? (error instanceof Error ? error.message : String(error)),
-      ...(response?.errorMessage === undefined ? {} : { errorMessage: response.errorMessage }),
-    } as SettleResponse;
+    const answered = (error as { response?: Partial<SettleResponse> } | undefined)?.response;
+    const reason = answered?.errorReason ?? (error instanceof Error ? error.message : String(error));
+    // An explicit refusal with no transaction broadcast is a definite "no"; anything else
+    // (a timeout, a dropped connection, an answer we cannot read) may have paid.
+    if (answered !== undefined && answered.success === false && (answered.transaction ?? "") === "") return { kind: "refused", reason };
+    return { kind: "unknown", reason, transaction: answered?.transaction === undefined || answered.transaction === "" ? null : answered.transaction };
   }
+  if (response.success) return { kind: "settled", response };
+  const reason = response.errorReason ?? "unknown reason";
+  return response.transaction === "" ? { kind: "refused", reason } : { kind: "unknown", reason, transaction: response.transaction };
 }
 
 // ---------------------------------------------------------------- routes
@@ -481,6 +493,21 @@ function ucpRoute(deps: UcpCheckoutDeps, handler: (req: Request, res: Response) 
   };
 }
 
+/**
+ * One writer per session at a time: `complete`, `PUT` and `cancel` all take
+ * this lock, so a change can never land between a settlement and its order.
+ */
+async function withSessionLock(deps: UcpCheckoutDeps, id: string, res: Response, work: () => Promise<void>): Promise<void> {
+  const lock = `ucp:${id}`;
+  if (deps.inFlight.has(lock)) return sendError(res, 409, "invalid_state", "this checkout is being changed or completed right now", "recoverable");
+  deps.inFlight.add(lock);
+  try {
+    await work();
+  } finally {
+    deps.inFlight.delete(lock);
+  }
+}
+
 export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheckoutDeps, originOf: (req: Request) => string): void {
   const notFound = (res: Response, id: string) => sendError(res, 404, "not_found", `no checkout session "${id}"`);
 
@@ -504,6 +531,8 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         paymentKey: null,
         completeIdempotencyKey: null,
         orderId: null,
+        settlement: null,
+        settleAttempt: null,
       };
       applyInput(session, input);
       const messages = await refresh(deps, session);
@@ -526,16 +555,19 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
     `${prefix}/checkout-sessions/:id`,
     ucpRoute(deps, async (req, res) => {
       const id = String(req.params["id"]);
-      const session = await loadSession(deps, id);
-      if (session === undefined) return notFound(res, id);
-      if (session.status !== "incomplete" && session.status !== "ready_for_complete") {
-        return sendError(res, 409, "invalid_state", `checkout is ${session.status} and can no longer change`);
-      }
-      applyInput(session, sessionInput.parse(req.body ?? {}));
-      const messages = await refresh(deps, session);
-      session.updatedAt = deps.now().toISOString();
-      await deps.sessions.save(session);
-      res.json(await checkoutResponse(deps, session, originOf(req), messages));
+      const input = sessionInput.parse(req.body ?? {});
+      await withSessionLock(deps, id, res, async () => {
+        const session = await loadSession(deps, id);
+        if (session === undefined) return notFound(res, id);
+        if (session.status !== "incomplete" && session.status !== "ready_for_complete") {
+          return sendError(res, 409, "invalid_state", `checkout is ${session.status} and can no longer change`);
+        }
+        applyInput(session, input);
+        const messages = await refresh(deps, session);
+        session.updatedAt = deps.now().toISOString();
+        await deps.sessions.save(session);
+        res.json(await checkoutResponse(deps, session, originOf(req), messages));
+      });
     }),
   );
 
@@ -543,15 +575,17 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
     `${prefix}/checkout-sessions/:id/cancel`,
     ucpRoute(deps, async (req, res) => {
       const id = String(req.params["id"]);
-      const session = await loadSession(deps, id);
-      if (session === undefined) return notFound(res, id);
-      if (session.status === "completed" || session.status === "complete_in_progress") {
-        return sendError(res, 409, "invalid_state", `checkout is ${session.status} and cannot be canceled`);
-      }
-      session.status = "canceled";
-      session.updatedAt = deps.now().toISOString();
-      await deps.sessions.save(session);
-      res.json(await checkoutResponse(deps, session, originOf(req)));
+      await withSessionLock(deps, id, res, async () => {
+        const session = await loadSession(deps, id);
+        if (session === undefined) return notFound(res, id);
+        if (session.status === "completed" || session.status === "complete_in_progress") {
+          return sendError(res, 409, "invalid_state", `checkout is ${session.status} and cannot be canceled`);
+        }
+        session.status = "canceled";
+        session.updatedAt = deps.now().toISOString();
+        await deps.sessions.save(session);
+        res.json(await checkoutResponse(deps, session, originOf(req)));
+      });
     }),
   );
 
@@ -561,14 +595,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       const id = String(req.params["id"]);
       const idempotencyKey = readIdempotencyKey(req);
       const input = completeInput.parse(req.body ?? {});
-      const lock = `ucp:${id}`;
-      if (deps.inFlight.has(lock)) return sendError(res, 409, "invalid_state", "this checkout is being completed right now", "recoverable");
-      deps.inFlight.add(lock);
-      try {
-        await complete(deps, id, idempotencyKey, input, res, originOf(req));
-      } finally {
-        deps.inFlight.delete(lock);
-      }
+      await withSessionLock(deps, id, res, () => complete(deps, id, idempotencyKey, input, res, originOf(req)));
     }),
   );
 }
@@ -590,6 +617,17 @@ async function complete(
   }
   if (session.status === "canceled") return sendError(res, 409, "invalid_state", "checkout is canceled");
 
+  // Money may already have moved for this checkout. Whatever this request carries, it is never settled.
+  if (session.status === "complete_in_progress") {
+    if (session.settlement !== null) {
+      await finish(deps, session);
+      res.json(await checkoutResponse(deps, session, origin));
+      return;
+    }
+    res.json(await checkoutResponse(deps, session, origin, [held()]));
+    return;
+  }
+
   const selected = input.payment.instruments.filter((instrument) => instrument.selected !== false);
   const instrument = selected.length === 1 ? selected[0] : undefined;
   if (instrument === undefined || instrument.handler_id !== STELLAR_X402_HANDLER_ID || instrument.type !== STELLAR_X402_INSTRUMENT_TYPE) {
@@ -603,109 +641,132 @@ async function complete(
   }
   const transaction = credential.data.payload.transaction;
 
-  // Retrying a completion whose settlement already went through: finish it, do not settle again.
-  const settledBefore = session.paymentKey === transaction ? deps.ledger.take(transaction) : undefined;
+  if (session.status === "incomplete") {
+    const messages = await refresh(deps, session);
+    await deps.sessions.save(session);
+    res.json(await checkoutResponse(deps, session, origin, messages.length > 0 ? messages : [message("invalid_state", "checkout was not ready; review the refreshed terms and complete again", "recoverable")]));
+    return;
+  }
+  const stored = session.requirements;
+  if (stored === null || session.quote === null) throw new VitrineeError("StorageError", "a ready checkout has no payment requirements", { details: { checkoutId: session.id } });
 
-  if (settledBefore === undefined) {
-    if (session.status === "incomplete") {
-      const messages = await refresh(deps, session);
-      await deps.sessions.save(session);
-      res.json(await checkoutResponse(deps, session, origin, messages.length > 0 ? messages : [message("invalid_state", "checkout was not ready; review the refreshed terms and complete again", "recoverable")]));
-      return;
-    }
-    const stored = session.requirements;
-    if (stored === null || session.quote === null) throw new Error("a ready checkout has no payment requirements");
+  // The price may have moved since the platform signed. Nothing is charged for a stale quote.
+  const { quote, messages } = await evaluate(deps, session);
+  if (quote === null || messages.length > 0 || quote.totalAtomic.toString() !== stored.amount) {
+    await refresh(deps, session);
+    session.updatedAt = deps.now().toISOString();
+    await deps.sessions.save(session);
+    const why = messages.length > 0 ? messages : [message("payment_failed", "the total changed since these terms were issued; sign the refreshed requirements", "recoverable", "$.totals")];
+    res.json(await checkoutResponse(deps, session, origin, why));
+    return;
+  }
+  if (!sameRequirements(credential.data.accepted, stored)) {
+    res.json(await checkoutResponse(deps, session, origin, [message("payment_failed", "the credential was signed for other payment requirements than this checkout's", "recoverable", "$.payment.instruments[0].credential.accepted")]));
+    return;
+  }
 
-    // The price may have moved since the platform signed. Nothing is charged for a stale quote.
-    const { quote, messages } = await evaluate(deps, session);
-    if (quote === null || messages.length > 0 || quote.totalAtomic.toString() !== stored.amount) {
-      await refresh(deps, session);
+  if (!deps.reservations.tryReserve(session.productId, session.quantity, quote.product.stock)) {
+    res.json(await checkoutResponse(deps, session, origin, [message("out_of_stock", `the last units of "${quote.product.name}" are being bought right now`, "recoverable", "$.line_items[0]")]));
+    return;
+  }
+  try {
+    // Persisted before settling: from here on, a crash or a retry finds the checkout in progress, never ready to pay again.
+    session.status = "complete_in_progress";
+    session.paymentKey = transaction;
+    session.completeIdempotencyKey = idempotencyKey === null ? null : `ucp:${idempotencyKey}`;
+    session.settlement = null;
+    session.settleAttempt = null;
+    session.updatedAt = deps.now().toISOString();
+    await deps.sessions.save(session);
+
+    const outcome = await settle(deps, stored, transaction);
+    if (outcome.kind === "refused") {
+      deps.log("ucp settlement refused", { checkoutId: session.id, errorReason: outcome.reason });
+      session.status = "ready_for_complete";
+      session.paymentKey = null;
       session.updatedAt = deps.now().toISOString();
       await deps.sessions.save(session);
-      const why = messages.length > 0 ? messages : [message("payment_failed", "the total changed since these terms were issued; sign the refreshed requirements", "recoverable", "$.totals")];
-      res.json(await checkoutResponse(deps, session, origin, why));
+      res.json(await checkoutResponse(deps, session, origin, [message("payment_failed", `the payment did not settle: ${outcome.reason}`, failureSeverity(outcome.reason), "$.payment")]));
       return;
     }
-    if (!sameRequirements(credential.data.accepted, stored)) {
-      res.json(await checkoutResponse(deps, session, origin, [message("payment_failed", "the credential was signed for other payment requirements than this checkout's", "recoverable", "$.payment.instruments[0].credential.accepted")]));
-      return;
-    }
-
-    if (!deps.reservations.tryReserve(session.productId, session.quantity, quote.product.stock)) {
-      res.json(await checkoutResponse(deps, session, origin, [message("out_of_stock", `the last units of "${quote.product.name}" are being bought right now`, "recoverable", "$.line_items[0]")]));
-      return;
-    }
-    try {
-      session.status = "complete_in_progress";
-      session.paymentKey = transaction;
-      session.completeIdempotencyKey = idempotencyKey;
+    if (outcome.kind === "unknown") {
+      session.settleAttempt = { transaction: outcome.transaction, error: outcome.reason, at: deps.now().toISOString() };
       session.updatedAt = deps.now().toISOString();
       await deps.sessions.save(session);
-
-      const result = await settle(deps, stored, transaction);
-      if (!result.success) {
-        deps.log("ucp settlement refused", { checkoutId: session.id, errorReason: result.errorReason ?? null });
-        session.status = "ready_for_complete";
-        session.paymentKey = null;
-        session.updatedAt = deps.now().toISOString();
-        await deps.sessions.save(session);
-        res.json(
-          await checkoutResponse(deps, session, origin, [
-            message("payment_failed", `the payment did not settle: ${result.errorReason ?? "unknown reason"}`, failureSeverity(result.errorReason), "$.payment"),
-          ]),
-        );
-        return;
-      }
-      // The x402 server's settle hook also filed this settlement in the ledger. It stays there
-      // until the order exists, so a `complete` retried after a failure below finds it.
-      await finish(deps, session, quote, stored, result, transaction);
-      deps.ledger.take(transaction);
-    } finally {
-      deps.reservations.release(session.productId, session.quantity);
+      deps.log("ucp settlement outcome unknown; checkout held for reconciliation", { checkoutId: session.id, transaction: outcome.transaction, error: outcome.reason });
+      res.json(await checkoutResponse(deps, session, origin, [held()]));
+      return;
     }
-  } else {
-    try {
-      const quote = await quoteCheckout(deps, session.productId, bodyFor(session));
-      await finish(deps, session, quote, session.requirements ?? credential.data.accepted, settledBefore, transaction);
-    } catch (error) {
-      deps.ledger.put(transaction, settledBefore);
-      throw error;
-    }
+    const settled = outcome.response;
+    session.settlement = {
+      txHash: settled.transaction,
+      network: settled.network,
+      ...(settled.payer === undefined ? {} : { payer: settled.payer }),
+      payTo: stored.payTo,
+      asset: stored.asset,
+      amountAtomic: stored.amount,
+      settledAt: deps.now().toISOString(),
+    };
+    session.updatedAt = deps.now().toISOString();
+    await deps.sessions.save(session);
+    // The x402 server's settle hook filed it in the in-memory ledger too; the session is the record now.
+    deps.ledger.take(transaction);
+    await finish(deps, session);
+  } finally {
+    deps.reservations.release(session.productId, session.quantity);
   }
   res.json(await checkoutResponse(deps, session, origin));
 }
 
-/** Money moved: create the order through the shared path and close the session. */
-async function finish(
-  deps: UcpCheckoutDeps,
-  session: CheckoutSession,
-  quote: CheckoutQuote,
-  requirements: StoredRequirements,
-  settled: SettleResponse | SettlementRecord,
-  transaction: string,
-): Promise<void> {
-  const settlement: SettlementRecord =
-    "success" in settled
-      ? {
-          txHash: settled.transaction,
-          network: settled.network,
-          payer: settled.payer,
-          payTo: requirements.payTo,
-          asset: requirements.asset,
-          amountAtomic: requirements.amount,
-          settledAt: deps.now().toISOString(),
-        }
-      : settled;
-  const payer = settlement.payer ?? payerFromTransactionXdr(transaction);
-  if (payer === undefined) throw new Error("payment settled but the payer account could not be determined");
+function held(): UcpMessage {
+  return message("payment_pending", "a payment for this checkout may already have moved; it is held for reconciliation and will not be charged again", "requires_buyer_review", "$.payment");
+}
+
+/**
+ * Money moved and the session holds the settlement: create the order from the
+ * session's own snapshot (never a fresh quote, which could now say out of
+ * stock) and close the session. Safe to call again after a failure.
+ */
+async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<void> {
+  const settlement = session.settlement;
+  const snapshot = session.quote;
+  if (settlement === null || snapshot === null) {
+    throw new VitrineeError("StorageError", "a paid checkout lost its settlement or its quote", { details: { checkoutId: session.id } });
+  }
+  const payer = settlement.payer ?? (session.paymentKey === null ? undefined : payerFromTransactionXdr(session.paymentKey));
+  if (payer === undefined) {
+    throw new VitrineeError("PaymentError", "payment settled but the payer account could not be determined", { details: { checkoutId: session.id, txHash: settlement.txHash } });
+  }
+  const product: Product = {
+    id: session.productId,
+    sku: snapshot.productSku,
+    name: snapshot.productName,
+    description: "",
+    priceLocal: "0",
+    currency: snapshot.currency,
+    stock: null,
+    images: [],
+  };
+  const quote: CheckoutQuote = {
+    product,
+    quantity: session.quantity,
+    unitAtomic: BigInt(snapshot.unitAtomic),
+    totalAtomic: BigInt(snapshot.totalAtomic),
+    totalLocal: snapshot.totalLocal,
+  };
   const { record } = await fulfilPaidPurchase(deps, {
     quote,
     body: bodyFor(session),
     idempotencyKey: session.completeIdempotencyKey,
-    settlement,
+    settlement: { ...settlement, payer },
     payer,
     ucpCheckoutId: session.id,
   });
+  if (record.ucpCheckoutId !== session.id) {
+    throw new VitrineeError("PaymentError", "this settlement already produced another checkout's order", {
+      details: { checkoutId: session.id, orderId: record.orderId, txHash: settlement.txHash },
+    });
+  }
   session.status = "completed";
   session.orderId = record.orderId;
   session.updatedAt = deps.now().toISOString();
