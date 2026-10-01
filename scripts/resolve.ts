@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
 
-import { AgentPassError, isAgentPassError, stellarAddressToDid } from "@agentpass/core";
+import { AgentPassError, didToStellarAddress, isAgentPassError, stellarAddressToDid } from "@agentpass/core";
 import { toScaledAmount, fromScaledAmount } from "@agentpey/agent";
 import type { AgentResolveVerdict, ClaimReason } from "@agentpey/resolve";
 import {
@@ -129,8 +129,12 @@ async function readGuarantee(contractId: string, merchant: string, secret: strin
 
 /** `policy_rail.owner()`: the key that may speak for a rail payer. */
 async function railOwner(rail: string, secret: string): Promise<string> {
-  const hex = lastLine(await stellarCli(["contract", "invoke", "--id", rail, "--send", "no", "--", "owner"], secret)).replaceAll('"', "");
-  return StrKey.encodeEd25519PublicKey(Buffer.from(hex, "hex"));
+  const answer = lastLine(await stellarCli(["contract", "invoke", "--id", rail, "--send", "no", "--", "owner"], secret)).replaceAll('"', "");
+  const hex = hex64.safeParse(answer);
+  if (!hex.success) {
+    throw new AgentPassError("ResolveClaimantNotPayer", "the payer contract did not answer owner() with an Ed25519 key, so no one can speak for it", { details: { payer: rail, answer: answer.slice(0, 80) } });
+  }
+  return StrKey.encodeEd25519PublicKey(Buffer.from(hex.data, "hex"));
 }
 
 async function verifiedReceipt(jws: string) {
@@ -144,6 +148,20 @@ async function verifiedReceipt(jws: string) {
     throw new AgentPassError("ResolveReceiptInvalid", "the receipt did not pass its three checks", { details: { hash: result.hash, checks: result.checks } });
   }
   return { valid: true as const, hash: result.hash, receipt: result.receipt };
+}
+
+/** The verdict on file, or `null` when it is missing, not JSON, or off its schema. */
+async function readVerdictFile(dir: string): Promise<AgentResolveVerdict | null> {
+  const raw = await readFile(resolve(dir, "verdict.json"), "utf8").catch(() => null);
+  if (raw === null) return null;
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const parsed = agentResolveVerdictSchema.safeParse(json);
+  return parsed.success ? parsed.data : null;
 }
 
 function stateDir(receipt: string): string {
@@ -207,14 +225,16 @@ async function open(): Promise<void> {
   line("✅ firmante", `controla al pagador ${checked.payer}`);
   line("✅ plazo", `hasta ${checked.receipt.refundWindowEndsAt}`);
   const hash = claimHash(signed.jws);
-  const { txHash } = await stellarCliTx(
-    ["contract", "invoke", "--id", contractId, "--", "open", "--receipt", verified.hash, "--payer", checked.payer, "--claim_hash", hash, "--amount", checked.disputedAtomic.toString()],
-    arbiter.secret(),
-  );
+  // Written before `open` is sent: if the transaction lands but the CLI fails
+  // waiting for it, the claim behind the on-chain `claim_hash` must still exist.
   const dir = stateDir(verified.hash);
   await mkdir(dir, { recursive: true });
   await writeFile(resolve(dir, "claim.jws"), `${signed.jws}\n`);
   await writeFile(resolve(dir, "receipt.jws"), `${receiptJws}\n`);
+  const { txHash } = await stellarCliTx(
+    ["contract", "invoke", "--id", contractId, "--", "open", "--receipt", verified.hash, "--payer", checked.payer, "--claim_hash", hash, "--amount", checked.disputedAtomic.toString()],
+    arbiter.secret(),
+  );
   const dispute = await readDispute(contractId, verified.hash, arbiter.secret());
   const guarantee = await readGuarantee(contractId, dispute?.merchant ?? "", arbiter.secret());
   if (txHash !== undefined) line("tx", `${EXPLORER}/tx/${txHash}`);
@@ -234,11 +254,19 @@ async function decide(): Promise<void> {
   out("\nAgentResolve · veredicto · testnet");
   const claim = await verifyClaim(claimJws);
   const verified = await verifiedReceipt(claim.document.receipt.jws);
-  const checked = await checkClaim(claim.document, verified, { controllerOf: (payer) => railOwner(payer, arbiterKey.secret()) });
   const dispute = await readDispute(contractId, verified.hash, arbiterKey.secret());
   if (dispute === null || dispute.status !== "Open" || dispute.claim_hash !== claimHash(claimJws)) {
     throw new AgentPassError("ResolveReceiptInvalid", "there is no open dispute on chain for this claim", { details: { receipt: verified.hash, dispute } });
   }
+  // The claim is re-checked as of the moment the dispute opened, not now: the
+  // window and the claimant were validated then, by `open` and by the
+  // contract. Re-reading them today would strand an open dispute whose window
+  // closed since, or whose rail rotated its owner, with its amount locked.
+  // The claimant is the one `open` accepted, bound by `claim_hash` on chain.
+  const checked = await checkClaim(claim.document, verified, {
+    controllerOf: () => Promise.resolve(didToStellarAddress(claim.document.claimant)),
+    now: new Date(dispute.opened_at * 1000),
+  });
 
   const { verdict, hash } = await decideDispute({ checked, receiptHash: verified.hash, claimHash: claimHash(claimJws), arbiter: createClaudeArbiterWithKey(apiKey) });
   // Every verdict is kept, in order: asking again until one comes out
@@ -272,6 +300,9 @@ async function execute(): Promise<void> {
   const dir = stateDir(values.receipt);
   const verdict: AgentResolveVerdict = agentResolveVerdictSchema.parse(JSON.parse(await readFile(resolve(dir, "verdict.json"), "utf8")));
   const hash = verdictHash(verdict);
+  if (verdict.receiptHash !== values.receipt) {
+    throw new AgentPassError("ResolveConfirmationMismatch", "the verdict on file is about another receipt; nothing was paid", { details: { receipt: values.receipt, verdict: verdict.receiptHash } });
+  }
   if (values.confirm !== hash) {
     throw new AgentPassError("ResolveConfirmationMismatch", "the confirmed hash is not the verdict on file; nothing was paid", { details: { confirmed: values.confirm, onFile: hash } });
   }
@@ -317,15 +348,24 @@ async function verify(): Promise<void> {
   line("pagador", dispute.payer);
   line("en disputa", usdc(dispute.amount));
   line("reembolso", usdc(dispute.refund));
-  let ok = true;
-  try {
-    const verdict = agentResolveVerdictSchema.parse(JSON.parse(await readFile(resolve(stateDir(values.receipt), "verdict.json"), "utf8")));
-    const local = verdictHash(verdict);
-    const matches = dispute.verdict_hash === local && BigInt(verdict.refundAtomic) === dispute.refund && verdict.claimHash === dispute.claim_hash;
-    line(`${matches ? "✅" : "❌"} veredicto`, matches ? `el hash en la red es el del veredicto archivado (${local.slice(0, 16)}…)` : `no coincide: red ${dispute.verdict_hash ?? "—"}, archivo ${local}`);
-    ok = matches;
-  } catch {
-    line("veredicto", dispute.verdict_hash ?? "sin veredicto todavía (y sin archivo local para comparar)");
+  // A resolved dispute must match a valid verdict on file; an open one has none yet.
+  let ok = dispute.status === "Open";
+  const parsed = await readVerdictFile(stateDir(values.receipt));
+  if (parsed === null) {
+    if (dispute.status === "Resolved") {
+      line("❌ veredicto", `en la red ${dispute.verdict_hash ?? "—"}, pero no hay un veredicto válido archivado con qué compararlo`);
+    } else {
+      line("veredicto", "sin veredicto todavía");
+    }
+  } else {
+    const local = verdictHash(parsed);
+    const matches = dispute.verdict_hash === local && BigInt(parsed.refundAtomic) === dispute.refund && parsed.claimHash === dispute.claim_hash;
+    if (dispute.status === "Resolved") {
+      line(`${matches ? "✅" : "❌"} veredicto`, matches ? `el hash en la red es el del veredicto archivado (${local.slice(0, 16)}…)` : `no coincide: red ${dispute.verdict_hash ?? "—"}, archivo ${local}`);
+      ok = matches;
+    } else {
+      line("veredicto", `archivado ${local.slice(0, 16)}…, todavía sin ejecutar`);
+    }
   }
   const produced = (await readdir(resolve(stateDir(values.receipt), "verdicts")).catch(() => [] as string[])).filter((name) => name.endsWith(".json")).length;
   if (produced > 0) line("historial", `${produced} veredicto${produced === 1 ? "" : "s"} producido${produced === 1 ? "" : "s"} para este reclamo (verdicts/)`);

@@ -203,6 +203,23 @@ fn never_touches_another_merchants_guarantee() {
 }
 
 #[test]
+fn with_two_funded_merchants_only_the_receipts_merchant_pays() {
+    let f = Fixture::setup();
+    let other = Address::generate(&f.env);
+    f.fund(&f.merchant, 3_0000000);
+    f.fund(&other, 3_0000000);
+    let receipt = f.anchor(1, &f.merchant, RECEIPT_AMOUNT, DAY);
+
+    f.client.open(&receipt, &f.payer, &hash(&f.env, 9), &RECEIPT_AMOUNT);
+    assert_eq!(f.client.guarantee(&other), Guarantee { balance: 3_0000000, locked: 0 });
+    f.client.resolve(&receipt, &hash(&f.env, 7), &RECEIPT_AMOUNT);
+
+    assert_eq!(f.client.guarantee(&f.merchant), Guarantee { balance: 3_0000000 - RECEIPT_AMOUNT, locked: 0 });
+    assert_eq!(f.client.guarantee(&other), Guarantee { balance: 3_0000000, locked: 0 });
+    assert_eq!(f.token.balance(&f.payer), RECEIPT_AMOUNT);
+}
+
+#[test]
 fn refuses_to_open_twice_or_resolve_twice() {
     let f = Fixture::setup();
     f.fund(&f.merchant, 3_0000000);
@@ -255,11 +272,17 @@ fn only_the_arbiter_opens_and_resolves() {
     let (signer, _) = f.env.auths().into_iter().next().unwrap();
     assert_eq!(signer, f.arbiter);
 
-    // With nobody's authorisation mocked, neither call goes through.
-    let receipt = f.anchor(2, &f.merchant, RECEIPT_AMOUNT, DAY);
+    // With nobody's authorisation mocked, neither call goes through: not
+    // `open` on a fresh receipt, not `resolve` on an open dispute.
+    let fresh = f.anchor(2, &f.merchant, RECEIPT_AMOUNT, DAY);
+    let open_one = f.anchor(3, &f.merchant, RECEIPT_AMOUNT, DAY);
+    f.client.open(&open_one, &f.payer, &hash(&f.env, 9), &RECEIPT_AMOUNT);
     f.env.set_auths(&[]);
-    assert!(f.client.try_open(&receipt, &f.payer, &hash(&f.env, 9), &1).is_err());
-    assert!(f.client.get(&receipt).is_none());
+    assert!(f.client.try_open(&fresh, &f.payer, &hash(&f.env, 9), &1).is_err());
+    assert!(f.client.get(&fresh).is_none());
+    assert!(f.client.try_resolve(&open_one, &hash(&f.env, 7), &RECEIPT_AMOUNT).is_err());
+    assert_eq!(f.client.get(&open_one).unwrap().status, Status::Open);
+    assert_eq!(f.token.balance(&f.payer), 1); // only the first, authorised refund
 }
 
 #[test]
@@ -273,4 +296,25 @@ fn only_the_merchant_withdraws_and_only_the_funder_deposits() {
     f.client.withdraw(&f.merchant, &to, &1);
     let (signer, _) = f.env.auths().into_iter().next().unwrap();
     assert_eq!(signer, f.merchant);
+}
+
+/// `receipt-registry` is its own Cargo workspace on soroban-sdk 28, and this
+/// test host (sdk 27) refuses to run protocol-28 wasm, so the real contract
+/// cannot be called from here. What can drift is its record and its `get`:
+/// this reads its source and fails if either stops matching the interface
+/// `agent-resolve` declares. Running against the deployed contract was checked
+/// on testnet (evidence T124, section 1).
+const REGISTRY_SOURCE: &str = include_str!("../../receipt-registry/src/lib.rs");
+
+#[test]
+fn the_declared_registry_interface_matches_receipt_registrys_source() {
+    let squash = |s: &str| s.split_whitespace().collect::<std::vec::Vec<_>>().join(" ");
+    let source = squash(REGISTRY_SOURCE);
+    for expected in [
+        "pub struct ReceiptRecord { pub merchant: Address, pub amount: i128, pub order_ref: Bytes, pub ledger: u32, pub timestamp: u64, }",
+        "pub fn get(env: Env, hash: BytesN<32>) -> Option<ReceiptRecord>",
+        "pub const STORAGE_SCHEMA_VERSION: u32 = 1;",
+    ] {
+        assert!(source.contains(expected), "receipt-registry no longer has: {expected}");
+    }
 }
