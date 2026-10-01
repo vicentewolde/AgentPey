@@ -16,7 +16,7 @@
 `E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP. **T122
 cerrada**: un agente compró por UCP en una tienda Shopify real, pagando en
 Stellar desde un `policy_rail`, con pedido en Shopify (visto por el usuario) y
-recibo válido. **T125 en revisión**: el anexo técnico para el SEP está escrito. **Sigue:**
+recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y revisado. **Sigue:**
 T123 o T124, si alcanzan.
 
 | Tarea | Estado |
@@ -25,7 +25,7 @@ T123 o T124, si alcanzan.
 | T121 Perfil y catálogo UCP | cerrada |
 | T122 Compra UCP de punta a punta | cerrada |
 | T123, T124 | pendientes |
-| T125 Anexo para el SEP | en revisión |
+| T125 Anexo para el SEP | cerrada |
 
 ## Apertura de la fase (2026-09-30)
 
@@ -134,7 +134,7 @@ pedido se arma con los datos de cuando se pagó (`E-6`).
 repite; conciliación manual de compras retenidas), `E-7` (la orden no muestra
 la dirección del comprador). Evidencia: [evidencia/T122.md](evidencia/T122.md).
 
-## T125 · El anexo técnico para el SEP (2026-10-01, en revisión)
+## T125 · El anexo técnico para el SEP (2026-10-01, cerrada)
 
 **En lenguaje llano.** El chat de estrategia está escribiendo una propuesta de
 estándar para Stellar ("Agentic Commerce on Stellar"), y AgentPey es el

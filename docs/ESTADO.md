@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-01
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T122 · compra UCP real pagada en Stellar desde un `policy_rail`, con pedido en Shopify y recibo válido
-**Siguiente paso:** `/revisar` de T125 y merge; después decidir si T123 (replantear: AP2 en UCP exige ECDSA) o T124 entran antes del 11 de octubre
+**Última tarea terminada:** T125 · anexo técnico para el SEP (`ANEXO-SEP.md`), alineado con el código por test
+**Siguiente paso:** decidir si T123 (replantear: AP2 en UCP exige ECDSA) o T124 (dos decisiones del usuario pendientes) entran antes del congelamiento del 11 de octubre
 
 ## Progreso de la fase
 
@@ -19,7 +19,7 @@
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ✅ terminada | `cc/t122-compra-ucp-stellar`, `cc/t122-evidencia`, mergeadas |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ⏳ pendiente | |
 | T124 Disputas v0 | si alcanza | ⏳ pendiente | |
-| T125 Anexo técnico para el SEP | al final | 👀 en revisión | `cc/t125-anexo-sep` |
+| T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 

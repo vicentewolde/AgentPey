@@ -7339,5 +7339,7 @@ id, nombre o código del anexo deja de coincidir con el código o con `deploymen
 
 Exponential: T125 a `IN_PROGRESS`.
 
-Pendiente: `/revisar`, merge con OK del usuario. Después: T123 (replantear, AP2 exige ECDSA) o T124.
+`/revisar`: un bloqueante (el anexo exageraba la seguridad en la red: la revocación del Mandato no
+corta el `policy_rail`), corregido con la sección 4.4 y la brecha 11; test reforzado. Mergeado con el OK
+del usuario. Pendiente: T123 (replantear, AP2 exige ECDSA) o T124.
 `AGENTS.md`: sin cambios.
