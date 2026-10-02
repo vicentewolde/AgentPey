@@ -79,8 +79,8 @@ misma vive en `cc/t103-plataforma-comercios` (solo documentación).
 | `cmuebnn3v0005ie04c2a4skbg` | Emitir la partner key y cargar el secreto en Render (`P-10`) (**completada** 2026-09-24) | 2026-09-26 | |
 | `cmuebnzs4000bie04zs6bi6sz` | T100 · fecha objetivo | 2026-09-26 | T100 |
 | `cmuebo32v000fie04kwurqfre` | T102 · fecha objetivo (era 30 sep; movida el 2026-09-23 por el reorden) | 2026-09-27 | T102 |
-| `cmuebo1im000die04z2cpfzdu` | T101 · fecha objetivo (era 27 sep; movida el 2026-09-23 por el reorden) | 2026-09-28 | T101 |
-| `cmuebnpem0009ie04s3zm69vv` | Grabar el video del 29 | 2026-09-29 | |
+| `cmuebo1im000die04z2cpfzdu` | T101 · fecha objetivo (era 27 sep; movida el 2026-09-23 por el reorden; **cancelada**, T101 cortada, `C-161`) | 2026-09-28 | T101 |
+| `cmuebnpem0009ie04s3zm69vv` | Grabar la compra de punta a punta (video de Find Your Way). Era "Grabar el video del 29"; movida el 2026-10-02 al 11-oct, decisión del usuario | 2026-10-11 | |
 | `cmuedg7ot000vl004mbbiwtbk` | Archivar el repo viejo de Vitrinee | 2026-09-30 | `cmuedg4ld…` (chore) |
 | `cmueytyol002hjx04cfdfili5` | Crear el rol de Postgres de Vitrinee; cargar `VITRINEE_DATABASE_URL` y `VITRINEE_MASTER_KEY` en Render | 2026-09-25 | T103 |
 | `cmueyu1ka002njx04fln2263j` | Dominio comodín `*.vitrinee.agentpey.com` en Render y tres CNAME en Vercel | 2026-09-25 | T103 |
@@ -89,13 +89,23 @@ misma vive en `cc/t103-plataforma-comercios` (solo documentación).
 | `cmueyu8l60035jx041ogelaea` | Crear la segunda tienda Jumpseller en prueba gratuita (**completada** 2026-09-24) | 2026-09-26 | T105 |
 | `cmueyub38003bjx04igqgkjgo` | T104 · fecha objetivo | 2026-09-27 | T104 |
 | `cmueyucwc003hjx042fystisz` | T105 · fecha objetivo (**completada** 2026-09-24) | 2026-09-28 | T105 |
-| `cmueyueuv003njx04dsnuo7uf` | Trámite de la app de Jumpseller (portal de partners, publicación, tienda de desarrollo) | 2026-09-30 | App OAuth |
+| `cmueyueuv003njx04dsnuo7uf` | Trámite de la app de Jumpseller (portal de partners, publicación, tienda de desarrollo) (**cancelada**) | 2026-09-30 | App OAuth |
 | `cmug344iu0005kz04c47qyor9` | T106 · fecha objetivo (sigue al ticket con `exp:sync`) | 2026-09-25 | T106 |
 | `cmug3475y000bkz04j6mh98tr` | Contratar en RealOps el comprador nuevo y firmar su permiso con Freighter (**completada** 2026-09-25) | 2026-09-25 | T106 |
 | `cmug349ul000hkz04sg32oyyv` | Grabar el video de respaldo de la demo (11:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
 | `cmug34c64000nkz04mak51an0` | Ensayar el pitch con cronómetro (3 veces, corte a los 5:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
 | `cmug34eos000tkz04wi0c15d2` | Revisar Freighter, testnet y pestañas antes de salir (18:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
 | `cmug34gz5000zkz04s5r9bfr6` | Presentar en el Demo Day Stellarbarrio (19:00) (**completada** 2026-09-25) | 2026-09-25 | T106 |
+| `cmuo4ynnx0013lg04zaaexpzq` | T120 · fecha objetivo (**completada**) | 2026-10-03 | T120 |
+| `cmuo4yqhu0019lg0461hubeef` | T121 · fecha objetivo (**completada**) | 2026-10-07 | T121 |
+| `cmuo4yt03001flg04up23fnbq` | T122 · fecha objetivo (**completada**) | 2026-10-07 | T122 |
+| `cmuo4yvmg001llg04luphiss2` | T123 · fecha objetivo (si alcanza) (**completada**) | 2026-10-10 | T123 |
+| `cmuo4yxmw001rlg0472z2msmn` | T124 · fecha objetivo (si alcanza) | 2026-10-10 | T124 |
+| `cmuo4yzsl001xlg04skvvr28i` | T125 · fecha objetivo (**completada**) | 2026-10-11 | T125 |
+| `cmur4oprv000hl804qr322o57` | T126 · fecha objetivo (**completada** 2026-10-02) | 2026-10-06 | T126 |
+| `cmur4oriy000vl804es2cy63r` | T127 · fecha objetivo (si alcanza) | 2026-10-07 | T127 |
+| `cmur4ot8v0017l804ps4mrg65` | Reembolso real de T124: confirmar que el pedido Shopify `18952373174578` sigue sin despacho, responder como comercio y confirmar el hash del veredicto (`E-18`) | 2026-10-08 | T124 |
+| `cmur4ou5a001dl804n7skvxth` | Entregar el anexo técnico (`ANEXO-SEP.md`) al chat de estrategia (criterio 4 de la Fase 7) | 2026-10-11 | T125 |
 
 ## Metas
 
@@ -207,3 +217,17 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   "T<n> · fecha objetivo" (3, 7, 7, 10, 10 y 11 de octubre). El spec está en borrador: si el usuario
   cambia tareas al aprobarlo, los tickets se ajustan. Encontrado y **no tocado**: el ticket T114
   sigue en `QA` en Exponential, y esta tabla dice `DONE`.
+- **2026-10-02**, Claude Code (`cc/sync-exponential`), revisión de Exponential pedida por el usuario,
+  sobre todo las acciones. Corregido: las acciones canceladas de T101 y de la app de Jumpseller
+  seguían en las columnas In Progress y To Do (pasaron a Done); faltaban las acciones "T126 · fecha
+  objetivo" (6-oct, completada) y "T127 · fecha objetivo" (7-oct, In Review), creadas y enlazadas a
+  sus tickets; los pendientes del usuario de ESTADO no tenían acción (reembolso real del 8-oct y
+  anexo al chat de estrategia, creadas); el Feature de la Fase 7 estaba en `DEFINED` (pasó a
+  `IN_PROGRESS`). Con decisión del usuario: "Grabar el video del 29", vencida, pasó al 11-oct como
+  "Grabar la compra de punta a punta"; los Features "Hackathon Find Your Way" y "Plataforma de
+  comercios" pasaron a `SHIPPED` (Fase 6 cerrada, `C-161`) y sus cuatro tickets de deuda quedaron
+  sueltos en el producto. Esta tabla no listaba las acciones T120 a T125: agregadas. Antes, al cerrar
+  la Fase 6: T101 a `ARCHIVED` y T114 a `DONE`. Queda para la web: archivar la meta 96 (vencida).
+  `exp:sync` no mueve las acciones canceladas (solo sigue a los tickets y a las completadas): si
+  vuelve a pasar, se corrige a mano o se agrega esa regla al script.
+
