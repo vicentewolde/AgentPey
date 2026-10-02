@@ -1,6 +1,6 @@
 # Plataforma para partners — diseño, sin implementar
 
-> **Estado: propuesta. Nada de este documento está construido.**
+> **Estado al cierre de la Fase 6 (2026-10-02, `C-161`): F1 a F8 construidas; F9 reemplazada por [PILOTO-F9.md](PILOTO-F9.md) (`C-74`), con su criterio de salida sin cumplir; F10 (evaluación de mainnet) nunca empezó y queda sin fase.** Lo que sigue es la propuesta original del 2026-09-10, como se escribió.
 > Fecha: 2026-09-10 · Autor: Claude Code · Rama: `cc/diseno-plataforma-partners`
 >
 > Este documento **no** modifica ninguna decisión vigente, ningún contrato,

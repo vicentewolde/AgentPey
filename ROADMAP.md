@@ -1,6 +1,6 @@
 # AgentPey — Plan maestro del proyecto
 
-> Vista de conjunto de **todo** el proyecto, de la Fase 0 a la Fase 6. Los demás
+> Vista de conjunto de **todo** el proyecto, de la Fase 0 a la Fase 7. Los demás
 > documentos (`docs/fase-1-agentpass/CONTEXTO.md`, `docs/fase-1-agentpass/ARQUITECTURA.md`, `docs/fase-1-agentpass/BITACORA.md`,
 > `docs/fase-1-agentpass/DECISIONES.md`) describen **AgentPass**, que es la Fase 1 — la primera
 > pieza ya construida. Este archivo es el nivel por encima: dónde está AgentPass
@@ -10,7 +10,7 @@
 > cualquiera —humano o Claude Code— que necesite entender el proyecto entero
 > antes de tocar una fase específica.
 
-Última revisión: 2026-09-09 · Fase actual: **Fase 6, en curso** — producto real buscando partners piloto en testnet, mientras se espera la resolución de la Instaward de SCF (ver `P-6` en [docs/DECISIONES.md](docs/DECISIONES.md)) — Fases 1 a 5 completas (T1–T31)
+Última revisión: 2026-10-02 · Fase actual: **Fase 7, en curso** — AgentPey como implementación de referencia del comercio agéntico sobre Stellar (UCP, AP2, x402; ver `P-14` en [docs/DECISIONES.md](docs/DECISIONES.md)) — Fases 1 a 6 cerradas (T1–T119)
 
 ---
 
@@ -107,15 +107,19 @@ las decisiones estratégicas que llevaron al código, y para SCF eso es evidenci
 | 3 | **PolicyRail + Mandato** | El límite de gasto vive en infraestructura, no en el prompt; el consentimiento del principal es una estructura firmada, no una casilla marcada | ✅ Completa (T16–T23) | — |
 | 4 | **MandateGate** | La cadena completa —identidad, política, mandato— funciona dentro del checkout **real** de un comercio on-chain existente | ✅ Completa (T24–T26) | — |
 | 5 | **MandateVault + cierre de piloto** | Cada decisión del sistema queda como evidencia verificable; el MVP y la landing funcionan bien de cara al mensaje a Tellus, que gestiona la Instaward | ✅ Completa (T27–T31) — mensaje a Tellus enviado 2026-09-08 | — |
-| 6 | **Después: AgentGuard + comercialización** | Convertir el piloto en un producto real con partners en testnet, mientras se espera la resolución de SCF | 🔄 En curso, iniciada 2026-09-09 (`P-6`) | Ninguno técnico — depende de decisiones de negocio y del propio ritmo del founder |
-| 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | 🔄 Abierta 2026-09-30 (`P-14`), spec en borrador, T120–T125 | La spec de UCP tiene que admitir un handler x402 (se resuelve en T120) |
+| 6 | **Después: AgentGuard + comercialización** | Convertir el piloto en un producto real con partners en testnet, mientras se espera la resolución de SCF | ✅ Cerrada 2026-10-02 (T32–T119, `C-161`): plataforma para partners, piloto F9 y Vitrinee; AgentGuard sin alcance | — |
+| 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | 🔄 En curso desde 2026-09-30 (`P-14`), spec aprobado, T120–T127 | — |
 
 Las Fases 0 a 5 están cerradas — el piloto técnico completo.
-La Fase 6 arrancó el 2026-09-09 por la mitad de "comercialización"; la mitad
-de AgentGuard sigue deliberadamente sin alcance — ver §4.6.
+La Fase 6 hizo la mitad de "comercialización" y se cerró el 2026-10-02; la
+mitad de AgentGuard sigue deliberadamente sin alcance — ver §4.6.
 La Fase 7 se abrió el 2026-09-30, con la Fase 6 todavía abierta: es un
 reposicionamiento (`P-14`), no la continuación de la lista original de siete
 fases (0 a 6) — ver §4.7.
+
+**Sin fase** (`C-161`): AgentGuard, la evaluación de mainnet, la publicación
+en npm y el modelo de cobro. Ninguno tiene alcance; mainnet sigue fuera
+(`CLAUDE.md`, regla 5).
 
 ---
 
@@ -526,7 +530,7 @@ de alumnos, la demo grabable, y el formulario de interés de Build Award. No
 se descartan — se sacan del camino crítico de esta fase mientras la
 Instaward se gestiona por otro canal.
 
-### 4.6 · Fase 6 — Después: AgentGuard + comercialización 🔄 en curso, iniciada 2026-09-09
+### 4.6 · Fase 6 — Después: AgentGuard + comercialización ✅ cerrada 2026-10-02 (T32–T119)
 
 Esta fase se reservó, desde el diseño original del proyecto, para diseñarse
 **recién cuando las Fases 2–5 dieran evidencia real sobre la que apoyarse**
@@ -608,7 +612,16 @@ No hay tareas, ni siquiera un desglose aproximado, porque cualquier desglose
 escrito hoy sería una suposición disfrazada de plan. Esta fase se diseña
 después de que las Fases 2–5 den evidencia real sobre la que apoyarse.
 
-### 4.7 · Fase 7 — Estándar de comercio agéntico sobre Stellar 🔄 abierta 2026-09-30
+**Cierre (2026-10-02, `C-161`).** La fase entregó la plataforma para partners
+(F1 a F8 del plano), el piloto público F9 y Vitrinee dentro de AgentPey.
+T101 quedó cortada (crear pedidos es del plan PRO de Jumpseller, `C-151`). El
+criterio de salida de F9, que una persona ajena al desarrollo complete sola el
+recorrido, no se cumplió y pasa a la meta "Primer partner piloto real".
+AgentGuard, la evaluación de mainnet, npm y el modelo de cobro quedan sin fase.
+Detalle y retro en
+[docs/fase-6-agentguard-comercializacion/BITACORA.md](docs/fase-6-agentguard-comercializacion/BITACORA.md#cierre-de-la-fase-2026-10-02).
+
+### 4.7 · Fase 7 — Estándar de comercio agéntico sobre Stellar 🔄 en curso, abierta 2026-09-30
 
 No estaba en el diseño original. La abre `P-14`
 ([docs/DECISIONES.md](docs/DECISIONES.md)): la capa de identidad y permisos
@@ -622,7 +635,7 @@ HackMeridian (25 y 26 de octubre).
 
 Es la primera fase que se trabaja con el método de `P-15`: un spec aprobado
 antes de escribir código, y tareas con su rama, su commit y su revisión.
-Alcance, tareas (T120 a T125), orden y cortes viven en
+Alcance, tareas (T120 a T127), orden y cortes viven en
 [docs/fase-7-estandar-comercio-agentico/SPEC.md](docs/fase-7-estandar-comercio-agentico/SPEC.md);
 el avance, en [docs/ESTADO.md](docs/ESTADO.md).
 

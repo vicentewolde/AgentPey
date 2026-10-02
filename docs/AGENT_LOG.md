@@ -7532,3 +7532,24 @@ Qué: T127 verificada en vivo con la orden de T122 (`ord_mupk7srw006dfebad8`): a
 
 Pendiente: push y merge de esta rama con OK; el 8-oct, `ord_muq1gqhycf4961492c` abierta y luego resuelta
 (cierra T127, junto con el reembolso de T124). `AGENTS.md`: sin cambios.
+
+## 2026-10-02 (8) — cc/ordenar-casa (sin push)
+
+Agente: Claude Code.
+
+Qué: ordenar la casa. (1) Criterios de aceptación 1 a 3 de la Fase 7 marcados con evidencia
+(`evidencia/criterios-fase7.md`; `vitrinee:ucp:list` y `vitrinee:verify` repetidos hoy, solo lectura); el 4
+es del usuario. (2) **Fase 6 cerrada** (T32–T119, `C-161`, decisiones del usuario): T101 cortada (`C-151`), el
+criterio de salida de F9 queda sin cumplir y pasa a la meta "Primer partner piloto real", AgentGuard, mainnet,
+npm y cobro quedan sin fase. Bitácora de la Fase 6 (estado, tabla con T59 y T101–T119, títulos viejos, cierre
+y retro), CONTEXTO, PLATAFORMA-PARTNERS, PILOTO-F9, ROADMAP, CLAUDE.md, ESTADO y SYNC al día. Exponential:
+T101 a `ARCHIVED`, T114 a `DONE`.
+
+Ramas viejas de Codex sin mergear, que se dejan como están (`C-161`): `origin/codex/agentpay-explainer` y
+`origin/codex/agentpay-explainer-mp4` (video explicativo, 2026-09-11; la segunda también en un worktree
+prunable en `/private/tmp/agentpay-explainer-mp4`), `origin/codex/check-render-env-vars` y
+`origin/codex/vault-amount-tests` (tests, 2026-09-10), y las locales `codex/agengent-brand-assets`,
+`codex/aiengent-brand-assets` y `codex/vyngent-brand-assets` (kits de cambio de nombre abandonados).
+
+Pendiente: push y merge con OK del usuario; plan de demo del 11-oct; archivar en la web la meta 96 (vencida).
+`AGENTS.md`: sin cambios (no menciona el estado de la Fase 6; T126 y T127 no se delegan).

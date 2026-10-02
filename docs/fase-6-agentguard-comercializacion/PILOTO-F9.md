@@ -1,5 +1,7 @@
 # F9 · Piloto externo público — propuesta de arquitectura y plan
 
+> **Al cierre de la Fase 6 (2026-10-02, `C-161`):** las nueve decisiones se respondieron el 2026-09-12 y los hitos se ejecutaron como T73–T85 (más T86–T97). El criterio de salida (§11, una persona ajena al desarrollo completa sola el recorrido) **no se cumplió** y pasa a la meta "Primer partner piloto real". D1 (correo de enlace mágico) no se cableó (T88) y D9 (segunda wallet) quedó como `C-160`.
+
 > **Qué es este documento.** La respuesta de Claude Code al brief
 > [`docs/fase-0-fundamentos/agentpey-f9-brief-para-claude.md`](../fase-0-fundamentos/agentpey-f9-brief-para-claude.md)
 > (2026-09-12). Es una **propuesta**: no crea tickets aprobados, no cambia

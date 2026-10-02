@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-02
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T126 · el comercio responde un reclamo de AgentResolve firmado con su wallet
-**Siguiente paso:** T126 (respuesta del comercio, `E-20` a `E-22`) del 2 al 6 de octubre, T127 (la disputa en la orden UCP, `E-23`, `E-24`) del 6 al 7 con deploy antes del 8. El 8 o 9, el reembolso real de T124 en una rama de evidencia aparte. Después: criterios de la Fase 7, cerrar la Fase 6 y el plan de demo del 11-oct
+**Siguiente paso:** el plan de demo del 11-oct (sección 7 del spec). El 8 o 9 de octubre, el reembolso real de T124 en una rama de evidencia, y con él ver `ord_muq1gqhycf4961492c` con su disputa (cierra T127). El criterio 4 de la fase (anexo entregado al chat de estrategia) es del usuario
 
 ## Progreso de la fase
 
@@ -40,7 +40,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Después de la Fase 7.
-- Fase 6 sigue abierta en `ROADMAP.md`: no se cerró formalmente al abrir la Fase 7.
+- **Sin fase** (`C-161`, cierre de la Fase 6): AgentGuard (sin alcance), evaluación de mainnet, publicación en npm, modelo de cobro. Y la meta "Primer partner piloto real": el criterio de salida de F9 (una persona ajena completa sola el recorrido) quedó sin cumplir.
+- Fase 6 (`C-161`): `C-122` (MPP Session) y `C-130` pendientes, `C-156` en investigación; mejora anotada en T117 (revisar el saldo de XLM antes de pedir la firma).
 
 ## Notas de la última sesión
 
@@ -64,3 +65,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02, T127: `GET /ucp/v1/orders/{id}` lee la disputa de `agent-resolve` (`AgentResolveReader`, sin llave) y la muestra como ajuste UCP más `receipt.dispute`. Versión de la extensión sin cambios (`VT-37`); reembolso en CLP en el ajuste y exacto en USDC en el recibo (`VT-38`). Leído en testnet: la disputa de T122 decodifica igual que `resolve:verify`.
 - 2026-10-02, T127 `/revisar`: sin bloqueantes. Corregidos los cuatro importantes (test del layout con tipos y durabilidad, test del timeout, error tipado, variable en `.env.vitrinee.example`) y dos sugerencias (id del contrato leído con zod sin tumbar la tienda si es inválido; disputas imposibles rechazadas al decodificar, para que un dato raro dé aviso y no 500).
 - 2026-10-02: T127 en vivo. La orden UCP de T122 en `agentcommerce` muestra el ajuste `dispute` (`completed`, sin montos) y `receipt.dispute` (`resolved`, reembolso 0, veredicto `ff3ef9b0…`), y valida contra UCP y la extensión.
+- 2026-10-02, ordenar la casa: criterios 1 a 3 de la Fase 7 marcados con evidencia (`evidencia/criterios-fase7.md`). **Fase 6 cerrada** (T32–T119, `C-161`): T101 cortada, criterio de salida de F9 sin cumplir y pasado a la meta "Primer partner piloto real", lo no construido sin fase, ramas viejas de Codex sin tocar. ROADMAP, CLAUDE.md y la bitácora de la Fase 6 al día.

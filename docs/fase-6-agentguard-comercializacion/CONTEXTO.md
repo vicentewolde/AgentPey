@@ -1,5 +1,7 @@
 # Contexto — Fase 6 (AgentGuard + comercialización)
 
+> **Fase cerrada el 2026-10-02 (T32–T119, `C-161`).** De las cuatro etapas de §5 se hicieron la 1 (multi-tenancy y persistencia) y la 2 (API para terceros); la 3 (npm) y la 4 (modelo de cobro) quedan sin fase. AgentGuard sigue sin alcance. Cierre completo en [BITACORA.md](BITACORA.md#cierre-de-la-fase-2026-10-02).
+
 > Plan maestro: [../../ROADMAP.md](../../ROADMAP.md) §4.6 · Decisión de
 > arranque: [docs/DECISIONES.md § P-6](../DECISIONES.md) · Bitácora:
 > [BITACORA.md](BITACORA.md) · Decisiones de esta fase:

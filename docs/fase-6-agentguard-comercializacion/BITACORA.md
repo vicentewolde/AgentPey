@@ -12,7 +12,18 @@
 
 ## Estado actual
 
-**Fecha:** 2026-09-25 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 cerrado y en vivo (2026-09-24):** Vitrinee atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); Bazar Cordillera vende desde `bazar-cordillera.vitrinee.agentpey.com` y el pedido pendiente de T101 quedó rescatado. · **T104 cerrado y en vivo (2026-09-24):** AgentPey y RealOps encuentran los comercios de Vitrinee en su directorio público, en vez de una fila fija (`C-145`); una compra real de stickers desde un `policy_rail` salió por ese camino, con los tres checks del recibo en verde. · **T105 cerrado y en vivo (2026-09-24):** el dueño de una tienda Jumpseller entra a `vitrinee.agentpey.com` firmando con Freighter, pega sus credenciales y, si pasan las cuatro pruebas, su tienda queda publicada y en el directorio; ve sus pedidos en un panel (`VT-31`). La tienda de prueba MycoKit se dio de alta así, sin deploy, y aparece en AgentPey y en RealOps · **T106 cerrado (2026-09-25):** Demo Day preparado (guion, deck, paso a paso), demo en MycoKit y compra de la grabación verificada (`C-146`) · **T107 a T109 cerrados y en vivo (2026-09-25):** RealOps se entiende, firma y recibo claros, contratar en menos pasos (`C-148` a `C-150`) · **Fase 6: en curso**
+**Fase 6 cerrada el 2026-10-02, T32–T119** (`C-161`). Entregó la plataforma
+para partners (directorio, `/v1`, consentimiento hospedado, rails por tenant,
+webhooks), el piloto público F9 (RealOps, SignalDesk, revocación hospedada,
+un solo servicio bajo `agentpey.com`) y Vitrinee dentro de AgentPey, con
+comercios Jumpseller y Shopify que se suman solos. T101 quedó **cortada**
+(`C-151`); el criterio de salida de F9 (una persona ajena completa sola el
+recorrido) **no se cumplió** y pasa a la meta "Primer partner piloto real";
+AgentGuard, la evaluación de mainnet, npm y el modelo de cobro quedan sin fase.
+Detalle en [Cierre de la fase](#cierre-de-la-fase-2026-10-02). Lo que sigue
+abajo es el estado al 25 de septiembre, como quedó escrito.
+
+**Fecha:** 2026-09-25 · **Últimos hitos cerrados:** T92 (liberar el gasto de una compra que nunca se pagó, `C-124`), T93 (`POST /v1/purchases/preview`, `C-125`), T94 (webhooks en vivo, `C-126`), T95 (límite de tasa por API key, `C-127`) y **T96 (comprar del bazaar, con el catálogo contrastado contra el permiso firmado, `C-128`, mergeado)** y **T97 (`pnpm run partner:key`, rotar la clave de `/v1` sin crear un partner nuevo, `C-129`)** y **T98 (Vitrinee fusionada en AgentPey con su historia completa, `P-12` y `C-130`, mergeado)** y **T99 (el comprador de AgentPey ya puede pagarle a Vitrinee desde un `policy_rail`, probado en testnet con los tres checks del recibo en verde, `VT-22` a `VT-25`, mergeado; la dirección de despacho ya no le llega al facilitator)** y **T100 (Vitrinee es un venue de `venues.json`, agregado con `scripts/register-venue.ts` arreglado, y RealOps muestra la tienda real y propone el permiso de un "Comprador de la tienda", también por frase escrita, `C-134`, `C-135`; mergeado)** y **T102 (Vitrinee como cuarto proceso del servicio único de Render, en `vitrinee.agentpey.com`, con sus claves aisladas, `C-136`; PR abierto, falta el deploy)** · **Sigue:** T101 sigue abierto: la compra real se pagó y su recibo verifica, pero Jumpseller responde `404 Account not found` al crear el pedido y no aparece en su panel; falta que Jumpseller lo habilite (`C-139`, `VT-26`). Los tres puntos abiertos de T99 quedaron resueltos: crédito de 3 USDC por tenant (`C-131`), límites del rail de 3,00/3,00 (`C-133`) y una sola `quantity` (`C-132`). La compra de T101 necesita un tenant creado después de esos cambios. Jumpseller ya está pagado y la API acepta crear pedidos (verificado 2026-09-23). Para usar T93, T94 y T95 en producción falta que el usuario corra `pnpm run partner:key -- --issue` y cargue el secreto en Render (`P-10`) · **T103 cerrado y en vivo (2026-09-24):** Vitrinee atiende a varios comercios, cada uno en su subdominio y con sus datos en Postgres (`C-140` a `C-144`, `VT-27` a `VT-30`); Bazar Cordillera vende desde `bazar-cordillera.vitrinee.agentpey.com` y el pedido pendiente de T101 quedó rescatado. · **T104 cerrado y en vivo (2026-09-24):** AgentPey y RealOps encuentran los comercios de Vitrinee en su directorio público, en vez de una fila fija (`C-145`); una compra real de stickers desde un `policy_rail` salió por ese camino, con los tres checks del recibo en verde. · **T105 cerrado y en vivo (2026-09-24):** el dueño de una tienda Jumpseller entra a `vitrinee.agentpey.com` firmando con Freighter, pega sus credenciales y, si pasan las cuatro pruebas, su tienda queda publicada y en el directorio; ve sus pedidos en un panel (`VT-31`). La tienda de prueba MycoKit se dio de alta así, sin deploy, y aparece en AgentPey y en RealOps · **T106 cerrado (2026-09-25):** Demo Day preparado (guion, deck, paso a paso), demo en MycoKit y compra de la grabación verificada (`C-146`) · **T107 a T109 cerrados y en vivo (2026-09-25):** RealOps se entiende, firma y recibo claros, contratar en menos pasos (`C-148` a `C-150`) · **Fase 6: en curso** (al 25-sep; cerrada el 2-oct)
 
 Un visitante ya puede conectar una wallet Stellar real (Freighter), firmar
 de verdad su propio Mandato, y cada tenant deriva y ancla su propia
@@ -184,6 +195,7 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T54 | Comercio de referencia x402 independiente (`examples/reference-merchant/**`) — segundo venue real, cierra F7 | ✅ cerrado 2026-09-11 (Codex, PR #17) |
 | T58 | Rail `policy_rail` por tenant: desplegado y fondeado sin CLI, la primera vez que un tenant con wallet real paga; verificado en testnet con dos tenants en rails distintos y un tercero rechazado por `per_day` | ✅ cerrado 2026-09-11 |
 | T60 | `scripts/check-rail-balances.ts`: lee el saldo USDC real de cada rail de tenant, avisa si está bajo — completa los tres entregables de F6 | ✅ cerrado 2026-09-11 |
+| T59 | Panel de estado (`status-dashboard`) de solo lectura para F8 | ✅ cerrado 2026-09-12 (Codex, PR #18) |
 | — | Rename a AgentPey (ejecuta `P-11`): scope de npm, contenido y docs vivos, repo de GitHub. Render, pendiente del usuario | ✅ cerrado 2026-09-11 (sin numerar) |
 | — | Migración del rail compartido al contrato de T57 (`withdraw`/`set_owner`) | ✅ cerrado 2026-09-12 (sin numerar) |
 | T61 | F8: `spentOn` lee Postgres en vivo (no un caché), `append` serializa `seq` con un advisory lock — `perDay` aguanta dos procesos de verdad | ✅ cerrado 2026-09-12 |
@@ -225,11 +237,25 @@ pantalla y las tarjetas quedan del mismo tamaño (T88, `C-119`).
 | T98 | Vitrinee se fusiona en AgentPey con su historia completa (20 commits como ancestros reales, igual que AgentPass en `P-1`) y pasa a ser la forma en que un comercio real se suma sin escribir código. Corre desde la raíz con `pnpm run vitrinee:*`; toda la suite de AgentPey y la de Vitrinee en verde | ✅ cerrado 2026-09-23 · mergeado a `main` (`9ecec52`) (`P-12`, `C-130`) |
 | T99 | Vitrinee habla el dialecto del comprador de AgentPey: discovery en formato `ServiceCard` con los datos de despacho como `input`, checkout también por `GET`, y pagador `C…` aceptado de punta a punta (recibo, lectura del pagador y el check de settlement, que era un cuarto punto de quiebre que `C-130` no listaba). Probado primero contra el facilitator y después de punta a punta en testnet, con código real de los dos lados | ✅ cerrado 2026-09-23 · mergeado a `main` (`24a2c1b`); después, el `resource.url` sin query en `cc/t99-resource-url` (`VT-22` a `VT-25`) |
 | T100 | Vitrinee como venue: fila `vitrinee` en `venues.json` agregada con `scripts/register-venue.ts` (que estaba roto desde T79 y se arregló), y en RealOps una tercera sección del catálogo leída en vivo de la tienda real más un cuarto `agentKind`, `vitrinee_shopper`, con grant propio (venue, seis productos, `payTo`), 3,00/3,00 por defecto y la cantidad leída como la de la compra (`C-132`). Ningún `.ts` del comprador cambió | ✅ cerrado 2026-09-23 · mergeado a `main` (`9e4627b`); después, frases escritas (`d9ed9a5`) (`C-134`, `C-135`) |
+| T101 | La compra real de punta a punta hasta el panel de Jumpseller: se pagó y el recibo verifica, pero crear pedidos por la API es del plan PRO de Jumpseller | ✂️ cortada 2026-10-02 (`C-151`, `C-161`): la compra real en una tienda de terceros se demostró con Shopify (T112, y T122 en la Fase 7) |
 | T102 | Vitrinee se despliega desde el `render.yaml` de AgentPey: cuarto proceso del gateway en `vitrinee.agentpey.com`, variables con prefijo `VITRINEE_` que solo le llegan a ella, arranque solo con sus secretos, y una caída suya no tumba al piloto | ✅ cerrado 2026-09-23 · mergeado (`c2eaae4`, `8c3d5e3`) y verificado en vivo en `vitrinee.agentpey.com`; el servicio de Render subió a 1 CPU y 2 GB por memoria (`C-136`, `C-138`) |
 | T103 | Vitrinee atiende a varios comercios: comercios y pedidos en el esquema `vitrinee` de la base del piloto con un rol propio, secretos sellados con la llave maestra, una tienda por subdominio; Bazar Cordillera es el primero y el pedido pendiente de T101 se rescató | ✅ cerrado 2026-09-24 · mergeado (`20754f4`) y en vivo (`C-140` a `C-144`, `VT-27` a `VT-30`) |
 | T104 | AgentPey y RealOps leen el directorio público de Vitrinee: fila de plataforma en `venues.json`, comercios `vitrinee-<slug>:<cuenta>`, cobro fijado a la cuenta del id, un comprador por tienda en RealOps. Compra real por ese camino | ✅ cerrado 2026-09-24 · mergeado (`332a306`) y en vivo (`C-145`) |
 | T105 | El dueño de una tienda Jumpseller se da de alta solo en el portal: entra con su wallet (SEP-0053), cuatro pruebas antes de guardar (slug, línea de confianza de USDC, credenciales que leen el catálogo, llave de firma fondeada), y un panel con sus pedidos | ✅ cerrado 2026-09-24 · mergeado (`71c4f4c`) y en vivo: una segunda tienda Jumpseller (MycoKit) se dio de alta sola por el portal y aparece en el directorio, en AgentPey y en RealOps (`VT-31`) |
 | T106 | Demo Day Stellarbarrio (2026-09-25, presencial, 5 minutos): guion hablado con los tiempos del Notion, deck de 8 slides con el guion en las notas, y paso a paso del video de respaldo y de la demo en vivo. Sin código | ✅ cerrado 2026-09-25 · guion, deck y paso a paso listos; demo pasada a MycoKit; compra de la grabación verificada con recibo válido (`C-146`) |
+| T107 | RealOps se entiende: nombres, aviso de rechazo, email y grillas ordenadas | ✅ cerrado 2026-09-25 (`C-148`) |
+| T108 | Firma y recibo claros: wallet arriba, vuelta al catálogo, recibo legible | ✅ cerrado 2026-09-25 (`C-149`) |
+| T109 | Contratar en menos pasos: una pregunta, contratar y firmar, catálogo por agente, búsqueda | ✅ cerrado 2026-09-25 (`C-150`) |
+| T110 | Vitrinee no publica productos con SKU repetido | ✅ cerrado 2026-09-25 (`VT-32`) |
+| T111 | `pnpm run rail:topup`: recargar el contrato de pago de una cuenta desde la reserva | ✅ cerrado 2026-09-25 (`C-152`) |
+| T112 | Una tienda Shopify gratuita se suma a Vitrinee: conector, alta y pedido real | ✅ cerrado 2026-09-26 · mergeado (`f192c42`) y en vivo (`VT-33` a `VT-35`) |
+| T113 | RealOps: saldos visibles donde se compra, rechazo por stock claro y compradores por tienda explicados | ✅ cerrado 2026-09-26 · mergeado (`fc707a0`) (`C-153`) |
+| T114 | Wallet arriba al revocar, permisos revocados a la vista y "Volver" que funciona | ✅ cerrado 2026-09-27 · mergeado (`e7671a5`, `b2760a5`), "Volver" confirmado en vivo (`C-154`) |
+| T115 | Revocar y volver a firmar: el permiso revocado se ve como tal y ya se puede firmar de nuevo | ✅ cerrado 2026-09-27 · mergeado (`3f9acae`) (`C-155`) |
+| T116 | `/volver` con reintento y registro: diagnosticar "no está firmado" tras completar Freighter | ✅ cerrado 2026-09-27 · mergeado (`66f6f47`) (`C-156`) |
+| T117 | La razón real de un anclaje rechazado por la red queda en los logs | ✅ cerrado 2026-09-28 · mergeado (`3119956`), causa confirmada (`tx_insufficient_balance`) (`C-157`) |
+| T118 | Un segundo agente del mismo tipo ve su propio catálogo, no uno vacío | ✅ cerrado 2026-09-27 · mergeado (`b05779c`) (`C-158`) |
+| T119 | Tope de cuentas patrocinadas: 20 a 40, reserva recargada | ✅ cerrado 2026-09-28 · mergeado (`071d079`) (`C-159`) |
 
 ---
 
@@ -3625,7 +3651,7 @@ usuario. Más los pendientes que siguen desde T84.
 
 ---
 
-## T86 · Un solo servicio bajo `agentpey.com` — cerrado 2026-09-14, sin mergear
+## T86 · Un solo servicio bajo `agentpey.com` — cerrado 2026-09-14, mergeado
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -4663,7 +4689,7 @@ largo plazo.
 
 ---
 
-## T100 · La tienda real ya está en el catálogo de RealOps · cerrado 2026-09-23, PR abierto
+## T100 · La tienda real ya está en el catálogo de RealOps · cerrado 2026-09-23, mergeado
 
 **Qué quedó funcionando, en palabras simples.** Hasta hoy, AgentPey sabía
 comprarle a Vitrinee (T99) pero no sabía que la tienda existía: no estaba en
@@ -4834,7 +4860,7 @@ funciona hasta que el nuevo esté en vivo y la compra de T101 pase por él.
 
 ---
 
-## T101 · La compra real, de punta a punta, menos el pedido en Jumpseller · en curso 2026-09-23
+## T101 · La compra real, de punta a punta, menos el pedido en Jumpseller · cortada 2026-10-02 (`C-151`, `C-161`)
 
 **Qué quedó funcionando, en palabras simples.** Un agente de AgentPey compró de
 verdad un café de la tienda real: el permiso firmado por el usuario lo dejó
@@ -5205,7 +5231,7 @@ verde.
 **Sin desplegar.** Vive en la rama `cc/realops-store-hire`; en producción no
 cambia nada hasta mergear. Salidas en [`evidencia/T106.md`](evidencia/T106.md) § 8.
 
-## T107 · RealOps se entiende · en curso 2026-09-25
+## T107 · RealOps se entiende · cerrado 2026-09-25
 
 **Qué quedó funcionando, en palabras simples.** Cuatro cosas que anotaste al
 recorrer el flujo:
@@ -5225,7 +5251,7 @@ recorrer el flujo:
 Decisión: `C-148`. Tests: RealOps 201 (eran 193). Sin desplegar: rama
 `cc/t107-realops-legible`. Salidas en [`evidencia/T107.md`](evidencia/T107.md).
 
-## T108 · Firma y recibo claros · en curso 2026-09-25
+## T108 · Firma y recibo claros · cerrado 2026-09-25
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -5247,7 +5273,7 @@ Decisión: `C-149`. Tests: gateway de Vitrinee 112, web 255, RealOps 201. Sin
 desplegar: rama `cc/t108-firma-recibo`, encima de T107. Salidas en
 [`evidencia/T108.md`](evidencia/T108.md).
 
-## T109 · Contratar en menos pasos · en curso 2026-09-25
+## T109 · Contratar en menos pasos · cerrado 2026-09-25
 
 **Qué quedó funcionando, en palabras simples.**
 
@@ -5370,7 +5396,7 @@ despliegue.
 diario y por permiso revocado, el rechazo por stock, y la etiqueta de la tarjeta revocada. Sin
 permiso activo la franja mostraba solo el saldo: mejorada en T114. Evidencia: `evidencia/T113.md`.
 
-## T114 · Wallet arriba al revocar, permisos revocados a la vista y "Volver" que funciona (2026-09-26, en QA)
+## T114 · Wallet arriba al revocar, permisos revocados a la vista y "Volver" que funciona (2026-09-26, cerrado)
 
 **En lenguaje llano.** Al probar el rechazo por permiso revocado: la página de AgentPey para
 revocar no tenía el botón de conectar wallet arriba a la derecha (ahora sí, como la de firmar), y
@@ -5383,7 +5409,7 @@ opciones en `C-154`; espera decisión del usuario porque toca la autorización.
 `revocar.html` sin errores de sintaxis, `public-pages.test.ts` 5/5. **Sin verificar en pantalla:** el
 aspecto del botón en la barra de la página de revocar.
 
-## T115 · Revocar y volver a firmar (2026-09-27, en curso)
+## T115 · Revocar y volver a firmar (2026-09-27, cerrado)
 
 **En lenguaje llano.** Dos preguntas del usuario al revocar un comprador durante la prueba: "¿por
 qué la página de firmar sigue diciendo que está firmado?" y "¿puedo reactivarlo o tengo que
@@ -5398,7 +5424,7 @@ contratar de nuevo un comprador revocado lleva a firmar, no al catálogo, y el a
 el mismo). `pnpm test` del repo entero en verde. **Sin verificar en vivo**: falta que el usuario
 revoque y vuelva a firmar en `agentpey.com`/`realops.agentpey.com`.
 
-## T116 · Diagnóstico de "no está firmado" tras completar Freighter (2026-09-27, en curso)
+## T116 · Diagnóstico de "no está firmado" tras completar Freighter (2026-09-27, cerrado)
 
 **En lenguaje llano.** El usuario terminó de firmar en AgentPey y, al volver, RealOps le dijo que
 no estaba firmado. No se pudo reproducir ni encontrar la causa con certeza revisando el código. Se
@@ -5426,7 +5452,7 @@ entero en verde. **Cierre (2026-09-27).** El registro nuevo funcionó al primer 
 tenía saldo. Se resuelve fondeando la wallet con Friendbot, sin cambiar código. Detalle en `C-157`.
 Queda anotada, sin hacer, una mejora: revisar el saldo de XLM antes de pedir la firma.
 
-## T118 · Un segundo agente del mismo tipo ve su propio catálogo (2026-09-27, en curso)
+## T118 · Un segundo agente del mismo tipo ve su propio catálogo (2026-09-27, cerrado)
 
 **En lenguaje llano.** Al probar H4 con dos agentes de informes de mercado —uno con
 el tope chico por defecto y otro con 5 USDC—, "lo que puede comprar" del segundo
@@ -5450,7 +5476,7 @@ revocar y las tarjetas "revocado"/"vencido" se vieron correctamente, falta un ca
 enlace "Volver" para cerrarlo del todo. Siguen: I (AgentPass) y J (PolicyRail) del guion.
 
 
-## T119 · Tope de cuentas patrocinadas: 20 a 40, reserva recargada (2026-09-28)
+## T119 · Tope de cuentas patrocinadas: 20 a 40, reserva recargada (2026-09-28, cerrado)
 
 **En lenguaje llano.** Tantas pruebas de hoy y de días anteriores agotaron el
 cupo de cuentas nuevas que reciben crédito automático: 20 de 20 usadas. El
@@ -5459,3 +5485,58 @@ usuario recargó la reserva (ahora 223 USDC) y pidió 20 cupos más. `C-159`.
 **Evidencia.** `pnpm build` + `pnpm test` del repo entero en verde (1069 tests).
 Confirmado sin gastar nada: `pnpm run rail:topup` sin `--yes` muestra el saldo
 real de la reserva antes y después.
+
+---
+
+## Cierre de la fase (2026-10-02)
+
+La Fase 6 se cerró formalmente el 2026-10-02, al ordenar la casa durante la
+Fase 7, con las decisiones del usuario registradas en `C-161`. Había quedado
+abierta al abrir la Fase 7 el 2026-09-30.
+
+**Qué entregó (T32–T119).**
+- **Plataforma para partners** (`P-6`, el plano de
+  [PLATAFORMA-PARTNERS.md](PLATAFORMA-PARTNERS.md), F1 a F8): llaves por tenant,
+  vault en Postgres, wallet conectada que firma el Mandato, directorio durable,
+  la API `/v1` con su OpenAPI y su SDK, consentimiento hospedado, rails
+  `policy_rail` por tenant con `withdraw`/`set_owner`, webhooks, límite de tasa,
+  `perDay` a prueba de procesos concurrentes y panel de estado.
+- **El piloto público F9** ([PILOTO-F9.md](PILOTO-F9.md)): RealOps y
+  SignalDesk, compra y revocación hospedadas, un solo servicio de Render bajo
+  `agentpey.com`, la suite de aceptación (casos 1 a 10) y el piloto en inglés y
+  español.
+- **Vitrinee dentro de AgentPey** (`P-12`, desde T98): varios comercios en
+  Postgres, alta sola por el portal con Freighter, conectores Jumpseller y
+  Shopify, directorio leído por AgentPey y RealOps, y la demo del Demo Day.
+
+**Qué no se cumplió o no se construyó.**
+- **T101, cortada.** Crear pedidos por la API es del plan PRO de Jumpseller
+  (`C-151`). La compra real en una tienda de terceros se demostró con Shopify
+  (T112, y T122 en la Fase 7).
+- **El criterio de salida de F9 no se cumplió.** "Una persona ajena al
+  desarrollo completó sola" el recorrido (PILOTO-F9 §11) nunca pasó: el caso 1
+  (T84) lo hizo el usuario con su wallet y los casos 2 a 10 (T85) los corre un
+  programa. Pasa a la meta "Primer partner piloto real" de Exponential.
+- **Sin fase:** AgentGuard (monitoreo y kill-switch en tiempo de ejecución), que
+  nunca tuvo alcance; la evaluación de mainnet (F10 del plano), la publicación
+  en npm y el modelo de cobro (etapas 3 y 4 de [CONTEXTO.md](CONTEXTO.md) §5). Ninguno
+  cambia de alcance: siguen fuera como dice `CLAUDE.md`, regla 5.
+
+**Lo que pasa como deuda** (en `docs/ESTADO.md` y en la sección "Deuda anotada"
+de `planificacion-exponential/SYNC.md`): `C-154` (dos comercios en una cuenta)
+y `C-160` (más wallets que Freighter), aprobadas para después de la Fase 7;
+`C-122` (MPP Session) y `C-130`, pendientes; `C-156`, en investigación; la
+mejora anotada en T117 (revisar el saldo de XLM antes de pedir la firma); y los
+pendientes de "Deuda anotada" (rieles con los límites del Mandato, panel completo
+del comercio, el comercio trae su propia llave).
+
+**Retro.**
+- **Funcionó:** hitos chicos con evidencia en testnet y producción, y el plano
+  de partners con puertas de aprobación; F1 a F8 salieron en cuatro días sin
+  romper el perímetro de autorización.
+- **No funcionó:** la fase no tuvo spec ni criterios de salida propios, así que
+  nunca se cerró sola y su bitácora quedó desactualizada (títulos "en curso" de
+  tareas cerradas, T107 a T119 fuera de la tabla).
+- **Para la próxima:** cada fase con su `SPEC.md` y criterios desde el día uno,
+  como ya pide `P-15` desde la Fase 7, y cerrarla antes de abrir la siguiente.
+

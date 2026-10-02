@@ -6713,3 +6713,29 @@ del video del 29**. Toca las tres pantallas de firma/conexión — la parte más
 sensible del proyecto — y necesita tiempo para probarlo con al menos dos
 wallets antes de confiar en que funciona; no es algo para tocar la noche
 anterior a grabar. Ticket en Exponential, sin número T todavía.
+
+---
+
+### C-161 · Cierre de la Fase 6: T101 cortada, el criterio de salida de F9 queda sin cumplir y lo no construido queda sin fase · `Vigente`
+**Fecha:** 2026-10-02 · **Hito:** cierre de la fase (durante la Fase 7) · Del usuario las cuatro decisiones
+
+La fase se cierra con T32–T119. El usuario decidió:
+
+1. **T101 se corta** (✂️). Crear pedidos por la API es del plan PRO de
+   Jumpseller (`C-151`); la compra real en una tienda de terceros ya se demostró
+   con Shopify (T112, T122). Su ticket de Exponential pasa a archivado.
+2. **La fase se cierra aunque el criterio de salida de F9 no se cumplió**
+   (PILOTO-F9 §11: una persona ajena al desarrollo completa sola el recorrido).
+   Queda escrito como no cumplido y pasa a la meta "Primer partner piloto real".
+3. **Lo que la fase no construyó queda sin fase**: AgentGuard (sigue sin alcance),
+   la evaluación de mainnet (F10 del plano de partners), la publicación en npm y
+   el modelo de cobro. Ninguno cambia de alcance.
+4. **Las siete ramas viejas de Codex sin mergear se dejan como están**, listadas
+   en `docs/AGENT_LOG.md`.
+
+**Alternativas descartadas.** Pasar T101 a deuda con el ticket bloqueado (no
+aporta: el camino Shopify ya cubre el caso). No cerrar hasta tener una persona
+externa (la fase llevaba abierta una semana en paralelo a la 7 sin trabajo
+propio). Decidir ahora el destino de AgentGuard y mainnet (es una decisión de
+producto aparte). Borrar las ramas (difícil de deshacer en el remoto, y no
+molestan).
