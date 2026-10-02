@@ -227,13 +227,13 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   (`E-22`). El veredicto lleva el hash de la respuesta, así que el hash
   anclado la cubre sin tocar el contrato.
 - **Hecho cuando:**
-  - [ ] el comercio firma su respuesta con Freighter sobre un reclamo real, y el verificador acepta solo si quien firma es la cuenta de cobro del recibo (`merchantAccount`) y la respuesta apunta al `claim_hash` de la disputa en la red
-  - [ ] una respuesta alterada, firmada por otra cuenta o sobre otro reclamo se rechaza con un error tipado
-  - [ ] el veredicto incluye `responseHash` (o `null` si no hubo respuesta) y su hash anclado la cubre; los veredictos anteriores siguen verificando igual
-  - [ ] `decide` no corre sin respuesta antes de las 48 h; con respuesta corre de inmediato
-  - [ ] una respuesta con inyección de prompt no consigue más de lo que acotan `decideDispute` y el contrato; la brecha nueva (el comercio puede empujar el reembolso hacia abajo, y la defensa es la confirmación humana de `E-18`) queda en el anexo
-  - [ ] el mensaje que firma la página coincide byte a byte con el que reconstruye el verificador (test)
-  - [ ] `pnpm check` en verde; el diff no toca el contrato, el flujo de pago, `checkMandate` ni `receipt-registry`
+  - [ ] el comercio firma su respuesta con Freighter sobre un reclamo real, y el verificador acepta solo si quien firma es la cuenta de cobro del recibo (`merchantAccount`) y la respuesta apunta al `claim_hash` de la disputa en la red (verificador hecho y probado; falta la firma real con Freighter, ensayo tras el deploy)
+  - [x] una respuesta alterada, firmada por otra cuenta o sobre otro reclamo se rechaza con un error tipado
+  - [x] el veredicto incluye `responseHash` (o `null` si no hubo respuesta) y su hash anclado la cubre; los veredictos anteriores siguen verificando igual (`resolve:verify` sobre T122)
+  - [x] `decide` no corre sin respuesta antes de las 48 h; con respuesta corre de inmediato
+  - [x] una respuesta con inyección de prompt no consigue más de lo que acotan `decideDispute` y el contrato; la brecha nueva (el comercio puede empujar el reembolso hacia abajo, y la defensa es la confirmación humana de `E-18`) queda en el anexo
+  - [x] el mensaje que firma la página coincide byte a byte con el que reconstruye el verificador (test)
+  - [x] `pnpm check` en verde; el diff no toca el contrato, el flujo de pago, `checkMandate` ni `receipt-registry`
 
 ### T127 · La disputa visible en la orden UCP
 - **Prioridad:** si alcanza, antes del 11-oct · **Estimación:** 10 h · **Delegable a Codex:** solo el mapeo al esquema UCP y sus tests
@@ -306,3 +306,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-01 | T124 planificada: AgentResolve, contrato `agent-resolve` con garantía del comercio, árbitro Claude con confirmación humana, 32 h y criterios (`E-14` a `E-19`), aprobados por el usuario |
 | 2026-10-02 | T124 mergeada a `main` con cuatro de cinco criterios cumplidos; el reembolso real (criterio 2) va en una rama de evidencia aparte el 8 o 9 de octubre, como `cc/t122-evidencia` (decisión del usuario) |
 | 2026-10-02 | T126 (respuesta del comercio, 12 h) y T127 (la disputa en la orden UCP, 10 h) agregadas y aprobadas por el usuario, con `E-20` a `E-24` |
+| 2026-10-02 | T126 mergeada a `main` ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)) con seis de siete criterios; falta la firma real con Freighter, que se ensaya con la página ya publicada |

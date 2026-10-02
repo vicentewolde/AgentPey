@@ -7472,3 +7472,16 @@ Por qué: brecha 15, para que el reembolso real del 8-oct ya tenga las dos parte
 Pendiente: `/revisar`; merge con OK (publica la página); ensayo del usuario con Freighter sobre el reclamo de
 T122. Después T127. No tocó contratos, fondos, flujo de pago, `checkMandate` ni `receipt-registry`.
 `AGENTS.md`: sin cambios (no delegable, `P-10`). Exponential: T126 y T127 creadas, T124 con su PR.
+
+## 2026-10-02 (3) — cc/t126-respuesta-comercio → main
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T126 sin bloqueantes; corregidos los dos importantes y cuatro sugerencias a pedido del
+usuario (la página verifica la firma de Freighter antes de dar el archivo; `responses/<hash>.json` y `verify`
+que la vuelve a hashear). Con OK del usuario: PR [#36](https://github.com/vicentewolde/AgentPey/pull/36) y
+fast-forward a `main`, que publica `agentpey.com/resolve/responder`. Spec con seis de siete criterios.
+
+Pendiente: el ensayo del usuario con Freighter sobre el reclamo de T122 (`resolve:check-response`), que cierra
+T126. Después T127. Deuda en ESTADO: `integrity` para `freighter-api`, test del cableado de `decide`.
+`AGENTS.md`: sin cambios. Exponential: T126 a `QA` con su PR.

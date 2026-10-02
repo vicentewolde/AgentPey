@@ -20,7 +20,7 @@
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ✅ terminada | `cc/t123-mandatos-ap2`, mergeada ([PR #34](https://github.com/vicentewolde/AgentPey/pull/34)) |
 | T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en `main`, cuatro de cinco criterios; falta el reembolso real (8–9 oct), en una rama de evidencia aparte | `cc/t124-agentresolve`, mergeada |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
-| T126 Respuesta del comercio en AgentResolve | antes del 8-oct | 👀 en revisión: implementada; falta `/revisar`, merge (publica la página) y el ensayo con Freighter | `cc/t126-respuesta-comercio` |
+| T126 Respuesta del comercio en AgentResolve | antes del 8-oct | 👀 en `main`, seis de siete criterios; falta el ensayo con Freighter | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)) |
 | T127 La disputa visible en la orden UCP | si alcanza | ⏳ pendiente | |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
