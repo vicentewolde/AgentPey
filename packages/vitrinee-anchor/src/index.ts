@@ -2,3 +2,12 @@ export { ReceiptRegistryClient, type AnchorInput, type AnchorResult, type Regist
 export { anchorArgs, countKey, decodeRecord, isAlreadyAnchored, receiptKey, type AnchoredRecord } from "./scval.js";
 export { checkSettlement, type SettlementCheck } from "./settlement.js";
 export { verifyReceipt, type ReceiptVerification, type VerifyOptions } from "./verify.js";
+export {
+  AGENT_RESOLVE_STORAGE_SCHEMA_VERSION,
+  AgentResolveReader,
+  decodeDispute,
+  disputeKey,
+  type AgentResolveReaderConfig,
+  type DisputeReader,
+  type DisputeRecord,
+} from "./agent-resolve.js";

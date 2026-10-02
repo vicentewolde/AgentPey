@@ -1,5 +1,5 @@
 import type { StoreAdapter } from "@vitrinee/adapters";
-import { ReceiptRegistryClient, verifyReceipt, type RegistryReader } from "@vitrinee/anchor";
+import { AgentResolveReader, ReceiptRegistryClient, verifyReceipt, type DisputeReader, type RegistryReader } from "@vitrinee/anchor";
 import { MANIFEST_PATH, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddlewareFromHTTPServer } from "@x402/express";
@@ -44,6 +44,8 @@ export interface AppDeps {
   anchorer?: Anchorer;
   /** Defaults to receipt-registry over Soroban RPC (read-only). */
   registry?: RegistryReader & { contractId?: string };
+  /** Disputes over receipts, shown on UCP orders (T127). Defaults to `agent-resolve` over Soroban RPC when configured; `null` turns it off. */
+  disputes?: DisputeReader | null;
   /** Used for the Horizon settlement check. Tests inject a fake Horizon. */
   horizonFetch?: typeof fetch;
   anchorRetryDelaysMs?: readonly number[];
@@ -72,6 +74,7 @@ export function createApp({
   sessions = new MemoryCheckoutSessions(),
   anchorer,
   registry,
+  disputes,
   horizonFetch,
   anchorRetryDelaysMs,
   syncFacilitatorOnStart = true,
@@ -193,7 +196,13 @@ export function createApp({
     return initializing;
   };
   registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready }, baseUrlOf);
-  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf);
+  const disputeReader =
+    disputes !== undefined
+      ? disputes
+      : config.agentResolveId === undefined
+        ? null
+        : new AgentResolveReader({ contractId: config.agentResolveId, rpcUrl: config.stellar.rpcUrl });
+  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log);
 
   app.get("/products/:id", async (req, res) => {
     const id = String(req.params.id);

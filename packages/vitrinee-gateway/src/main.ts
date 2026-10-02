@@ -50,6 +50,16 @@ if (process.env["RECEIPT_REGISTRY_ID"] === undefined || process.env["RECEIPT_REG
   }
 }
 
+// AgentResolve (T127) is AgentPey's contract, so its id lives in AgentPey's
+// deployments file; the env var only overrides it, as with the registry above.
+if (process.env["AGENT_RESOLVE_CONTRACT_ID"] === undefined || process.env["AGENT_RESOLVE_CONTRACT_ID"] === "") {
+  const deployments = resolve(root, "deployments/testnet.json");
+  if (existsSync(deployments)) {
+    const id = (JSON.parse(readFileSync(deployments, "utf8")) as { agentResolve?: { contractId?: string } | null }).agentResolve?.contractId;
+    if (id !== undefined) process.env["AGENT_RESOLVE_CONTRACT_ID"] = id;
+  }
+}
+
 function useLocalFiles(): void {
   process.env["ORDERS_FILE"] ??= resolve(root, ".vitrinee/orders.json");
   process.env["MOCK_ORDERS_FILE"] ??= resolve(root, ".vitrinee/mock-store.json");

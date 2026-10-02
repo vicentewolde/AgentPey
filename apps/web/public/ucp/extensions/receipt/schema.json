@@ -26,7 +26,24 @@
             "anchored_at": { "type": "string", "format": "date-time" }
           }
         },
-        "verify_url": { "type": "string", "format": "uri" }
+        "verify_url": { "type": "string", "format": "uri" },
+        "dispute": { "$ref": "#/$defs/dispute" }
+      }
+    },
+    "dispute": {
+      "type": "object",
+      "description": "A refund claim over this receipt in AgentPey's AgentResolve contract, as the contract holds it. Present only on orders, and only when the receipt is disputed. Amounts are strings of the receipt asset's atomic units (7 decimals).",
+      "required": ["contract", "status", "claim_hash", "asset", "amount_atomic", "opened_at"],
+      "properties": {
+        "contract": { "type": "string", "pattern": "^C[A-Z2-7]{55}$", "description": "The agent-resolve contract; read its get(receipt) to check every field below." },
+        "status": { "type": "string", "enum": ["open", "resolved"] },
+        "claim_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 of the payer's signed claim." },
+        "asset": { "type": "string", "pattern": "^C[A-Z2-7]{55}$", "description": "The receipt asset's contract, in which the amounts are paid." },
+        "amount_atomic": { "type": "string", "pattern": "^[0-9]+$", "description": "Locked in the merchant's guarantee while the dispute is open." },
+        "opened_at": { "type": "string", "format": "date-time" },
+        "verdict_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 of the verdict; present once resolved." },
+        "refund_atomic": { "type": "string", "pattern": "^[0-9]+$", "description": "Paid back to the payer; present once resolved, 0 when the claim was rejected." },
+        "resolved_at": { "type": "string", "format": "date-time" }
       }
     },
     "dev.ucp.shopping.checkout": {

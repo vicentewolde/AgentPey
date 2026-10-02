@@ -41,6 +41,8 @@ const envSchema = z.object({
   FACILITATOR_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   CHECKOUT_MAX_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
   RECEIPT_REGISTRY_ID: stellarContractIdSchema,
+  /** AgentPey's AgentResolve contract (T127): the UCP order shows its dispute. Unset: orders say nothing about disputes. */
+  AGENT_RESOLVE_CONTRACT_ID: optionalString.pipe(stellarContractIdSchema.optional()),
   STELLAR_RPC_URL: z.url().default("https://soroban-testnet.stellar.org"),
   STELLAR_HORIZON_URL: z.url().default("https://horizon-testnet.stellar.org"),
   STELLAR_NETWORK_PASSPHRASE: z.string().default("Test SDF Network ; September 2015"),
@@ -62,6 +64,7 @@ export interface GatewayConfig {
   checkout: { maxTimeoutSeconds: number };
   stellar: { rpcUrl: string; horizonUrl: string; networkPassphrase: string };
   receiptRegistryId: string;
+  agentResolveId: string | undefined;
   manifestCacheSeconds: number;
   mockOrdersFile: string | undefined;
   /** Present only when ADAPTER=jumpseller; loadConfig refuses that adapter without it. */
@@ -128,6 +131,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     checkout: { maxTimeoutSeconds: e.CHECKOUT_MAX_TIMEOUT_SECONDS },
     stellar: { rpcUrl: e.STELLAR_RPC_URL, horizonUrl: e.STELLAR_HORIZON_URL, networkPassphrase: e.STELLAR_NETWORK_PASSPHRASE },
     receiptRegistryId: e.RECEIPT_REGISTRY_ID,
+    agentResolveId: e.AGENT_RESOLVE_CONTRACT_ID,
     manifestCacheSeconds: e.MANIFEST_CACHE_SECONDS,
     mockOrdersFile: e.MOCK_ORDERS_FILE,
     jumpseller:

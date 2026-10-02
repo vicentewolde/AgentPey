@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 
 import { MockStoreAdapter, type MOCK_CATALOG } from "@vitrinee/adapters";
+import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
 import { STELLAR_X402_HANDLER, UCP_REST_PREFIX, USDC_TESTNET } from "@vitrinee/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import type { Anchorer } from "../anchoring.js";
 import { createApp } from "../app.js";
 import { OrderStore, type OrderPersistence } from "../orders.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../test/fake-facilitator.js";
@@ -77,7 +79,7 @@ function uniqueFacilitator(): FakeFacilitator {
   };
 }
 
-function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore } = {}) {
+function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; anchorer?: Anchorer } = {}) {
   const clock = { now: new Date("2026-09-30T12:00:00.000Z") };
   const facilitator = options.facilitator ?? uniqueFacilitator();
   const registry = fakeRegistry();
@@ -86,10 +88,11 @@ function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK
     config: testConfig(),
     adapter,
     facilitator,
-    anchorer: registry.anchorer,
+    anchorer: options.anchorer ?? registry.anchorer,
     registry: registry.registry,
     sessions: new MemoryCheckoutSessions(),
     ...(options.orders === undefined ? {} : { orders: options.orders }),
+    ...(options.disputes === undefined ? {} : { disputes: options.disputes }),
     anchorRetryDelaysMs: [1],
     now: () => clock.now,
   });
@@ -407,3 +410,142 @@ describe("a store that refuses the order after payment", () => {
     expect(FAKE_PAYER).toMatch(/^G/);
   });
 });
+
+const AGENT_RESOLVE = "CCYMGX56FJ65EVXUY2M4BTVBCCOBXBTAMGSCWN5X4TQLQTCCEAHDCD3F";
+const ORDER_WITH_RECEIPT = `${RECEIPT.$id}#/$defs/dev.ucp.shopping.order`;
+
+/** `agent-resolve` as the chain would answer, one dispute per receipt hash. */
+function fakeDisputes() {
+  const byReceipt = new Map<string, DisputeRecord>();
+  const calls: string[] = [];
+  let failure: Error | null = null;
+  const reader: DisputeReader = {
+    contractId: AGENT_RESOLVE,
+    get: (hash) => {
+      calls.push(hash);
+      return failure === null ? Promise.resolve(byReceipt.get(hash) ?? null) : Promise.reject(failure);
+    },
+  };
+  return { reader, byReceipt, calls, fail: (error: Error | null) => (failure = error) };
+}
+
+function dispute(overrides: Partial<DisputeRecord> = {}): DisputeRecord {
+  return {
+    status: "open",
+    merchant: "GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ",
+    payer: FAKE_PAYER,
+    claimHash: "12075d85a757b96394b63a52e19dc18842b335eb4f6a3d321b408202d9f7d37f",
+    amountAtomic: 0n,
+    openedAt: 1_791_000_000,
+    verdictHash: null,
+    refundAtomic: 0n,
+    resolvedAt: null,
+    ...overrides,
+  };
+}
+
+describe("a UCP order shows the dispute over its receipt, read from agent-resolve (T127)", () => {
+  const disputes = fakeDisputes();
+  const h = harness({ disputes: disputes.reader });
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+
+  /** A completed purchase whose receipt is anchored: the only kind that can be disputed. */
+  async function anchoredOrder() {
+    const { body: created } = await h.create(ready("gorro-andes"));
+    const { body } = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return { orderId: body.order?.id ?? "", hash: body.receipt?.hash ?? "", paid: BigInt(requirementsOf(created).amount) };
+  }
+
+  async function order(orderId: string) {
+    const { status, body } = await h.call("GET", `/orders/${orderId}`);
+    expect(status).toBe(200);
+    expect(ucpErrors(ORDER_SCHEMA, body)).toEqual([]);
+    expect(ucpErrors(ORDER_WITH_RECEIPT, body)).toEqual([]);
+    return body as Record<string, unknown> & { adjustments?: Array<Record<string, unknown>>; receipt: Record<string, unknown> & { dispute?: Record<string, unknown> }; messages: unknown[] };
+  }
+
+  it("says nothing about disputes when the receipt has none, as before", async () => {
+    const { orderId, hash } = await anchoredOrder();
+    const body = await order(orderId);
+    expect(disputes.calls).toContain(hash);
+    expect(body).not.toHaveProperty("adjustments");
+    expect(body.receipt).not.toHaveProperty("dispute");
+    expect(body.messages).toEqual([]);
+  });
+
+  it("shows an open dispute as a pending UCP adjustment, and its on-chain facts in the receipt", async () => {
+    const { orderId, hash, paid } = await anchoredOrder();
+    disputes.byReceipt.set(hash, dispute({ amountAtomic: paid }));
+    const body = await order(orderId);
+    expect(body.adjustments).toEqual([
+      { id: "dispute_12075d85a757b963", type: "dispute", occurred_at: "2026-10-03T04:00:00.000Z", status: "pending", description: expect.stringContaining("open") },
+    ]);
+    expect(body.receipt.dispute).toEqual({
+      contract: AGENT_RESOLVE,
+      status: "open",
+      claim_hash: "12075d85a757b96394b63a52e19dc18842b335eb4f6a3d321b408202d9f7d37f",
+      asset: USDC_TESTNET.contractId,
+      amount_atomic: paid.toString(),
+      opened_at: "2026-10-03T04:00:00.000Z",
+    });
+  });
+
+  it("shows a full refund as a completed adjustment of minus the order total", async () => {
+    const { orderId, hash, paid } = await anchoredOrder();
+    disputes.byReceipt.set(hash, dispute({ status: "resolved", amountAtomic: paid, refundAtomic: paid, verdictHash: "f".repeat(64), resolvedAt: 1_791_003_600 }));
+    const body = await order(orderId);
+    expect(body.adjustments?.[0]).toMatchObject({ status: "completed", occurred_at: "2026-10-03T05:00:00.000Z", totals: [{ type: "total", display_text: "Refunded", amount: -12990 }] });
+    expect(body.receipt.dispute).toMatchObject({ status: "resolved", verdict_hash: "f".repeat(64), refund_atomic: paid.toString(), resolved_at: "2026-10-03T05:00:00.000Z" });
+  });
+
+  it("shows a partial refund as the same share of the order total, rounded down, and the exact USDC in the receipt", async () => {
+    const { orderId, hash, paid } = await anchoredOrder();
+    const refund = paid / 3n;
+    disputes.byReceipt.set(hash, dispute({ status: "resolved", amountAtomic: paid, refundAtomic: refund, verdictHash: "e".repeat(64), resolvedAt: 1_791_003_600 }));
+    const body = await order(orderId);
+    expect(body.adjustments?.[0]?.["totals"]).toEqual([{ type: "total", display_text: "Refunded", amount: -Number((12990n * refund) / paid) }]);
+    expect(body.receipt.dispute?.["refund_atomic"]).toBe(refund.toString());
+  });
+
+  it("shows a rejected claim as completed with nothing refunded", async () => {
+    const { orderId, hash, paid } = await anchoredOrder();
+    disputes.byReceipt.set(hash, dispute({ status: "resolved", amountAtomic: paid, refundAtomic: 0n, verdictHash: "d".repeat(64), resolvedAt: 1_791_003_600 }));
+    const body = await order(orderId);
+    expect(body.adjustments?.[0]).toMatchObject({ status: "completed", description: expect.stringContaining("rejected") });
+    expect(body.adjustments?.[0]).not.toHaveProperty("totals");
+    expect(body.receipt.dispute).toMatchObject({ status: "resolved", refund_atomic: "0" });
+  });
+
+  it("answers the order with a warning, never a 503, when the chain cannot be read", async () => {
+    const { orderId } = await anchoredOrder();
+    disputes.fail(new Error("rpc down"));
+    try {
+      const body = await order(orderId);
+      expect(body).not.toHaveProperty("adjustments");
+      expect(body.messages).toEqual([expect.objectContaining({ type: "warning", code: "dispute_state_unavailable" })]);
+    } finally {
+      disputes.fail(null);
+    }
+  });
+});
+
+describe("a UCP order whose receipt is not anchored yet is never looked up (T127)", () => {
+  it("reads no dispute before the anchor, since the contract refuses one", async () => {
+    const disputes = fakeDisputes();
+    // An anchor that never lands: the receipt stays `pending`.
+    const h = harness({ disputes: disputes.reader, anchorer: { anchor: () => new Promise(() => {}) } });
+    await h.start();
+    try {
+      const { body: created } = await h.create(ready("gorro-andes"));
+      const { body } = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
+      const { body: orderBody } = await h.call("GET", `/orders/${body.order?.id}`);
+      expect((orderBody["receipt"] as { anchor: { status: string } }).anchor.status).toBe("pending");
+      expect(disputes.calls).toEqual([]);
+    } finally {
+      await h.stop();
+    }
+  });
+});
+

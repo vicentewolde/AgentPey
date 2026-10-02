@@ -65,3 +65,24 @@ A receipt is valid when all three hold:
 
 `verify_url` runs the three checks at the business, but a platform **SHOULD**
 be able to run them itself against the network.
+
+## Disputes
+
+On an **order**, `receipt.dispute` appears when the payer has opened a refund
+claim over this receipt in AgentPey's AgentResolve contract. It holds only what
+that contract stores: `status` (`open` or `resolved`), `claim_hash`,
+`amount_atomic` locked while open, `opened_at`, and once resolved
+`verdict_hash`, `refund_atomic` (`0` when the claim was rejected) and
+`resolved_at`. Amounts are strings of the receipt asset's atomic units.
+
+The order also carries the same event as a native UCP adjustment, so a platform
+that does not know this extension still sees it: `type` `dispute`, `status`
+`pending` while open and `completed` once resolved, and when money came back a
+negative `total` in the order's currency (the share of the order total that the
+refund represents, rounded down).
+
+To check it, call `get(receipt)` on `contract` with `hash` as the key; every
+field must match. The verdict's reasoning is not published here.
+
+The field is optional and additive: version `2026-09-30` of this extension
+is unchanged for checkouts and for orders without a dispute.

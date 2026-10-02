@@ -471,6 +471,9 @@ importers:
       '@vitrinee/core':
         specifier: workspace:*
         version: link:../vitrinee-core
+      zod:
+        specifier: ^4.5.4
+        version: 4.6.5
     devDependencies:
       typescript:
         specifier: ~5.9.3

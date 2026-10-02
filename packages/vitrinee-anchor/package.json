@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^17.1.0",
-    "@vitrinee/core": "workspace:*"
+    "@vitrinee/core": "workspace:*",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "typescript": "~5.9.3",
