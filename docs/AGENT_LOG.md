@@ -7485,3 +7485,14 @@ fast-forward a `main`, que publica `agentpey.com/resolve/responder`. Spec con se
 Pendiente: el ensayo del usuario con Freighter sobre el reclamo de T122 (`resolve:check-response`), que cierra
 T126. Después T127. Deuda en ESTADO: `integrity` para `freighter-api`, test del cableado de `decide`.
 `AGENTS.md`: sin cambios. Exponential: T126 a `QA` con su PR.
+
+## 2026-10-02 (4) — cc/t126-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: T126 cerrada. El usuario firmó con Freighter en `agentpey.com/resolve/responder` (ya publicada) una
+respuesta sobre el reclamo de T122, y `resolve:check-response` la aceptó contra la disputa en la red. Spec,
+bitácora, evidencia (§8), ESTADO y SYNC al día.
+
+Pendiente: push y merge de esta rama con OK del usuario; después `/tarea T127`. `AGENTS.md`: sin cambios.
+Exponential: T126 a `DONE`.

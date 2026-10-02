@@ -7,7 +7,7 @@
 
 **Actualizado:** 2026-10-02
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T123 · el Mandato exportado como mandatos AP2 v0.2, verificado por la librería oficial de AP2
+**Última tarea terminada:** T126 · el comercio responde un reclamo de AgentResolve firmado con su wallet
 **Siguiente paso:** T126 (respuesta del comercio, `E-20` a `E-22`) del 2 al 6 de octubre, T127 (la disputa en la orden UCP, `E-23`, `E-24`) del 6 al 7 con deploy antes del 8. El 8 o 9, el reembolso real de T124 en una rama de evidencia aparte. Después: criterios de la Fase 7, cerrar la Fase 6 y el plan de demo del 11-oct
 
 ## Progreso de la fase
@@ -20,14 +20,13 @@
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ✅ terminada | `cc/t123-mandatos-ap2`, mergeada ([PR #34](https://github.com/vicentewolde/AgentPey/pull/34)) |
 | T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en `main`, cuatro de cinco criterios; falta el reembolso real (8–9 oct), en una rama de evidencia aparte | `cc/t124-agentresolve`, mergeada |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
-| T126 Respuesta del comercio en AgentResolve | antes del 8-oct | 👀 en `main`, seis de siete criterios; falta el ensayo con Freighter | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)) |
+| T126 Respuesta del comercio en AgentResolve | antes del 8-oct | ✅ terminada | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)); `cc/t126-evidencia` |
 | T127 La disputa visible en la orden UCP | si alcanza | ⏳ pendiente | |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Tras el merge de T126: ensayo con Freighter. Firmar en `agentpey.com/resolve/responder` una respuesta sobre el reclamo de T122 con la cuenta de cobro de `agentcommerce` (`GD2MC…`) y enviar el archivo
 - [ ] 8 o 9 de octubre: confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página
 
 
@@ -59,3 +58,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02: T126 y T127 agregadas al spec y aprobadas. El usuario eligió firma con Freighter desde la cuenta de cobro, página estática con archivo, 48 h para responder, ajuste UCP más campo `dispute`, y solo lo que está en la red (`E-20` a `E-24`). Los pedidos de la plataforma viven en Postgres desde T103: un deploy no los borra (la nota de `INSTRUCCIONES.md` quedó vieja; se corrige en T127).
 - 2026-10-02, T126: el comercio responde en `agentpey.com/resolve/responder` (página estática más `responder.js`), firma con Freighter desde `merchantAccount` y devuelve un archivo; `resolve:decide -- --response` y `resolve:check-response`. El veredicto lleva `responseHash`; el de T122 sigue verificando. Un test fija que el mensaje de la página y el del verificador coinciden byte a byte. Brechas 15 (reescrita) y 20 en el anexo.
 - 2026-10-02, T126 `/revisar`: sin bloqueantes. Corregidos, a pedido del usuario, los dos importantes (la página verifica la firma de Freighter en el navegador antes de dar el archivo; cada respuesta queda en `responses/<hash>.json` y `verify` la vuelve a hashear) y cuatro sugerencias (errores tipados, el monto en disputa sale de la red en las dos rutas, normalización de la firma, reclamo validado al leerlo).
+- 2026-10-02: T126 cerrada. El usuario firmó con Freighter en `agentpey.com/resolve/responder` sobre el reclamo de T122 y `resolve:check-response` lo aceptó. Siguiente: T127.

@@ -20,7 +20,7 @@ recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y 
 **T123 cerrada**: el Mandato se exporta como mandatos AP2 v0.2 y la librería
 oficial de AP2 los verifica (`E-8` a `E-13`). **T124 en curso**: AgentResolve
 desplegado y probado con un reclamo real (rechazado), y en `main` desde el
-2-oct; falta el reembolso real, el 8 o 9 de octubre. **T126 en revisión**: el
+2-oct; falta el reembolso real, el 8 o 9 de octubre. **T126 cerrada**: el
 comercio responde al reclamo firmado con su wallet, y el árbitro decide con las
 dos versiones (`E-20` a `E-22`). **T127 pendiente**: la disputa visible en la
 orden UCP.
@@ -33,7 +33,7 @@ orden UCP.
 | T123 Mandato como mandatos AP2 | cerrada |
 | T124 Disputas (AgentResolve) | en curso (en `main`, falta el reembolso real) |
 | T125 Anexo para el SEP | cerrada |
-| T126 Respuesta del comercio | en revisión |
+| T126 Respuesta del comercio | cerrada |
 | T127 La disputa en la orden UCP | pendiente |
 
 ## Apertura de la fase (2026-09-30)
@@ -263,7 +263,7 @@ si sigue sin despacho.
 - Anexo para el SEP: sección 4.6, fila del contrato y brechas 15 a 19.
   [evidencia/T124.md](evidencia/T124.md).
 
-## T126 · El comercio también tiene voz (2026-10-02, en revisión)
+## T126 · El comercio también tiene voz (2026-10-02, cerrada)
 
 **Qué quedó funcionando.** Hasta ahora, cuando un comprador reclamaba, el
 árbitro (Claude) leía solo su versión. Ahora el comercio puede responder. El
@@ -292,7 +292,9 @@ también puede intentar manipular al árbitro, esta vez para bajar el
 reembolso; la defensa es la confirmación humana (`E-18`). Quedó escrito en el
 anexo (brechas 15 y 20).
 
-**Lo que falta.** `/revisar`, el merge (que publica la página en
-`agentpey.com`) y un ensayo con Freighter real: el usuario firma una respuesta
-sobre el reclamo de T122, ya resuelto, y `resolve:check-response` la verifica
-contra la red. Evidencia en [`evidencia/T126.md`](evidencia/T126.md).
+**Cómo se cerró.** Tras `/revisar` (sin bloqueantes; la página ahora comprueba
+la firma antes de entregar el archivo) y el merge, que publicó la página, el
+usuario la abrió en `agentpey.com`, cargó el reclamo de T122, firmó con
+Freighter desde la cuenta de cobro de `agentcommerce`, y `resolve:check-response`
+aceptó la respuesta contra la disputa en la red. Evidencia en
+[`evidencia/T126.md`](evidencia/T126.md).
