@@ -21,7 +21,7 @@
 | T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en `main`, cuatro de cinco criterios; falta el reembolso real (8–9 oct), en una rama de evidencia aparte | `cc/t124-agentresolve`, mergeada |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 | T126 Respuesta del comercio en AgentResolve | antes del 8-oct | ✅ terminada | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)); `cc/t126-evidencia` |
-| T127 La disputa visible en la orden UCP | si alcanza | ⏳ pendiente | |
+| T127 La disputa visible en la orden UCP | si alcanza | 👀 en revisión: implementada; falta `/revisar`, merge (despliega Vitrinee) y verificar en vivo | `cc/t127-disputa-orden-ucp` |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
@@ -59,3 +59,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02, T126: el comercio responde en `agentpey.com/resolve/responder` (página estática más `responder.js`), firma con Freighter desde `merchantAccount` y devuelve un archivo; `resolve:decide -- --response` y `resolve:check-response`. El veredicto lleva `responseHash`; el de T122 sigue verificando. Un test fija que el mensaje de la página y el del verificador coinciden byte a byte. Brechas 15 (reescrita) y 20 en el anexo.
 - 2026-10-02, T126 `/revisar`: sin bloqueantes. Corregidos, a pedido del usuario, los dos importantes (la página verifica la firma de Freighter en el navegador antes de dar el archivo; cada respuesta queda en `responses/<hash>.json` y `verify` la vuelve a hashear) y cuatro sugerencias (errores tipados, el monto en disputa sale de la red en las dos rutas, normalización de la firma, reclamo validado al leerlo).
 - 2026-10-02: T126 cerrada. El usuario firmó con Freighter en `agentpey.com/resolve/responder` sobre el reclamo de T122 y `resolve:check-response` lo aceptó. Siguiente: T127.
+- 2026-10-02, T127: `GET /ucp/v1/orders/{id}` lee la disputa de `agent-resolve` (`AgentResolveReader`, sin llave) y la muestra como ajuste UCP más `receipt.dispute`. Versión de la extensión sin cambios (`VT-37`); reembolso en CLP en el ajuste y exacto en USDC en el recibo (`VT-38`). Leído en testnet: la disputa de T122 decodifica igual que `resolve:verify`.

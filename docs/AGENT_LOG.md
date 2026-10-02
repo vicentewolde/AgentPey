@@ -7496,3 +7496,18 @@ bitácora, evidencia (§8), ESTADO y SYNC al día.
 
 Pendiente: push y merge de esta rama con OK del usuario; después `/tarea T127`. `AGENTS.md`: sin cambios.
 Exponential: T126 a `DONE`.
+
+## 2026-10-02 (5) — cc/t127-disputa-orden-ucp (sin push)
+
+Agente: Claude Code.
+
+Qué: T126 cerrada en `main` (PR #37). T127 implementada: la orden UCP de Vitrinee lee la disputa del recibo
+en `agent-resolve` (`packages/vitrinee-anchor/src/agent-resolve.ts`, `getLedgerEntries`, sin llave, layout
+fijado por test contra el contrato) y la muestra como ajuste UCP `dispute` más `receipt.dispute`; esquema y
+spec de la extensión con el campo opcional. Decisiones `VT-37` y `VT-38`. `INSTRUCCIONES.md`: corregida la
+nota del disco efímero. `vitrinee:check` y `pnpm check` en verde.
+
+Por qué: brecha 6 del anexo; que el reclamo del 8-oct se vea en la orden.
+
+Pendiente: `/revisar`; merge con OK (despliega Vitrinee); verificar en vivo la orden de T122 y, el 8-oct,
+`ord_muq1gqhycf4961492c`. `AGENTS.md`: sin cambios. Exponential: T127 a `IN_PROGRESS`.

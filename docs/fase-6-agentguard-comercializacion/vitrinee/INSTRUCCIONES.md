@@ -156,6 +156,18 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   página en `apps/vitrinee-portal/public/`. Solo existe en modo plataforma. La
   sesión se firma con una llave derivada de `MASTER_KEY`: no hay variable nueva.
 
+## Estado al 2026-10-02 (T127)
+
+- **La orden UCP muestra la disputa del recibo** (`E-23`, `E-24`, `VT-37`,
+  `VT-38`): `GET /ucp/v1/orders/{id}` lee del contrato `agent-resolve` de AgentPey
+  (`AgentResolveReader`, `packages/vitrinee-anchor/src/agent-resolve.ts`) con
+  `getLedgerEntries`, sin llave. Su layout está espejado ahí igual que el de
+  `receipt-registry`: si cambia el contrato, subir
+  `AGENT_RESOLVE_STORAGE_SCHEMA_VERSION` en ambos lados. El id sale de
+  `deployments/testnet.json` (`agentResolve.contractId`);
+  `AGENT_RESOLVE_CONTRACT_ID` solo lo pisa. Sin red o sin respuesta en 3 s, la
+  orden sale igual con un aviso.
+
 ## Estado al 2026-09-24 (T103 en PR)
 
 - **Multi-comercio (T103, `C-140` a `C-144`, `VT-27` a `VT-30`).** Con
@@ -188,8 +200,9 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   Ojo: el servicio no lee `render.yaml`, así que las variables `VITRINEE_` hay
   que cargarlas también en el panel. Si faltan sus secretos, el gateway no la arranca y su
   dominio responde 503; si se cae, responde 503 y el resto del piloto sigue.
-  Los pedidos viven en un archivo en el disco efímero de Render: un redeploy
-  los borra.
+  En modo tienda única los pedidos viven en un archivo en el disco efímero de
+  Render y un redeploy los borra; desde T103 la plataforma (modo en vivo) los
+  guarda en Postgres (`vitrinee.orders`) y un deploy no los toca.
 - **Deploy viejo:** `https://vitrinee-gateway.onrender.com`, desde el repo
   viejo `vicentewolde/Vitrinee`, rama `day-3-jumpseller-catalog`, con
   `ADAPTER=mock` y **sin la compatibilidad de T99**. **No archivar ni borrar

@@ -22,8 +22,8 @@ oficial de AP2 los verifica (`E-8` a `E-13`). **T124 en curso**: AgentResolve
 desplegado y probado con un reclamo real (rechazado), y en `main` desde el
 2-oct; falta el reembolso real, el 8 o 9 de octubre. **T126 cerrada**: el
 comercio responde al reclamo firmado con su wallet, y el árbitro decide con las
-dos versiones (`E-20` a `E-22`). **T127 pendiente**: la disputa visible en la
-orden UCP.
+dos versiones (`E-20` a `E-22`). **T127 en revisión**: la orden UCP muestra la
+disputa leída del contrato (`E-23`, `E-24`).
 
 | Tarea | Estado |
 |---|---|
@@ -34,7 +34,7 @@ orden UCP.
 | T124 Disputas (AgentResolve) | en curso (en `main`, falta el reembolso real) |
 | T125 Anexo para el SEP | cerrada |
 | T126 Respuesta del comercio | cerrada |
-| T127 La disputa en la orden UCP | pendiente |
+| T127 La disputa en la orden UCP | en revisión |
 
 ## Apertura de la fase (2026-09-30)
 
@@ -298,3 +298,31 @@ usuario la abrió en `agentpey.com`, cargó el reclamo de T122, firmó con
 Freighter desde la cuenta de cobro de `agentcommerce`, y `resolve:check-response`
 aceptó la respuesta contra la disputa en la red. Evidencia en
 [`evidencia/T126.md`](evidencia/T126.md).
+
+## T127 · El reclamo se ve en la orden (2026-10-02, en revisión)
+
+**Qué quedó funcionando.** Cuando un agente consulta una orden por UCP, Vitrinee
+ahora le pregunta al contrato de AgentResolve si el recibo tiene un reclamo, y
+lo muestra dentro de la orden. Lo muestra de dos maneras. La primera es la que
+UCP ya trae para esto (un "ajuste" de tipo disputa: pendiente mientras está
+abierto, completado al resolverse, con lo reembolsado en negativo), así que
+cualquier agente UCP lo entiende aunque no conozca AgentPey. La segunda va
+dentro del recibo, con los datos exactos del contrato (montos en USDC, hashes
+del reclamo y del veredicto, fechas), para que quien quiera pueda comprobarlo
+en la red. Vitrinee lo lee sin ninguna llave, igual que ya leía el registro de
+recibos.
+
+**Por qué así.** El usuario aprobó las dos decisiones de forma (`E-23`, `E-24`)
+y el plan con sus supuestos (`VT-37`, `VT-38`): la versión de la extensión no
+cambia porque el campo es opcional; el reembolso se muestra en pesos en el
+ajuste (UCP no permite otra moneda en la orden) y exacto en USDC en el recibo; y
+si la red no responde, la orden sale igual con un aviso.
+
+**Lo que no hace.** No publica el razonamiento del veredicto, que sigue en la
+máquina del árbitro (`E-24`).
+
+**Lo que falta.** `/revisar` y el merge, que despliega Vitrinee. Después, ver en
+vivo la orden de T122 con su disputa resuelta y, el 8 de octubre, la orden
+`ord_muq1gqhycf4961492c` con la suya. Evidencia en
+[`evidencia/T127.md`](evidencia/T127.md).
+

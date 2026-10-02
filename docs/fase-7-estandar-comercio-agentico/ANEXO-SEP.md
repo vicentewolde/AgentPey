@@ -275,6 +275,39 @@ Extiende `dev.ucp.shopping.checkout` y `dev.ucp.shopping.order`. Esquema:
 asíncrono: `anchor.status` pasa de `pending` a `anchored` (o a `failed` si se
 agotan los reintentos), y se ve leyendo la orden (`GET /ucp/v1/orders/{id}`).
 
+**La disputa en la orden (T127, `E-23`, `E-24`).** Si el recibo tiene un reclamo
+en AgentResolve (sección 4.6), la orden lo muestra de dos formas, leídas del
+contrato `agent-resolve` en cada consulta: un ajuste nativo de UCP, que cualquier
+cliente entiende, y el campo `receipt.dispute`, con lo necesario para comprobarlo
+contra la red (`get(receipt)` del contrato). Solo lo que el contrato guarda: el
+razonamiento del veredicto no se publica.
+
+```json
+"adjustments": [
+  { "id": "dispute_12075d85a757b963", "type": "dispute", "status": "completed",
+    "occurred_at": "2026-10-01T21:19:47.000Z",
+    "description": "Refund claim resolved in AgentResolve: rejected, nothing refunded." }
+],
+"receipt": {
+  "…": "…",
+  "dispute": {
+    "contract": "CCYMGX56FJ65EVXUY2M4BTVBCCOBXBTAMGSCWN5X4TQLQTCCEAHDCD3F",
+    "status": "resolved",
+    "claim_hash": "12075d85a757b96394b63a52e19dc18842b335eb4f6a3d321b408202d9f7d37f",
+    "asset": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    "amount_atomic": "15684211",
+    "opened_at": "2026-10-01T20:58:02.000Z",
+    "verdict_hash": "ff3ef9b02f6f6791db924fe97a6c2707c50a2d792deb9550a8214f2228d83df3",
+    "refund_atomic": "0",
+    "resolved_at": "2026-10-01T21:19:47.000Z"
+  }
+}
+```
+
+Abierta, el ajuste está en `pending`. Con reembolso, lleva un `total` negativo en
+la moneda de la orden, la proporción del total que representa lo devuelto
+(`VT-38`); el monto exacto en USDC es `refund_atomic`.
+
 ## 4. Cómo se verifica un Mandato
 
 ### 4.1 Formato
@@ -608,8 +641,10 @@ construir, más trece que aparecieron después:
    (T123, `E-9`).
 6. **Las disputas** son un `adjustment` de texto libre en la orden de UCP, sin
    proceso. AgentResolve (sección 4.6) las resuelve fuera de UCP, con una
-   garantía del comercio en un contrato; la orden UCP no muestra todavía el
-   estado de la disputa.
+   garantía del comercio en un contrato, y desde T127 la orden muestra el estado
+   como ajuste más `receipt.dispute` (sección 3.4). Pero UCP no tiene un formato
+   para el proceso: quién abre, en qué plazo, cómo se prueba, y el ajuste solo
+   puede expresar el reembolso en la moneda de la orden. Un SEP debería fijarlo.
 7. **Resultado dudoso de la liquidación.** Ni UCP ni x402 dicen qué hacer
    cuando el facilitator no responde o da por fallida una transacción ya
    emitida. AgentPey retiene la compra y concilia a mano (`E-6`). Un SEP

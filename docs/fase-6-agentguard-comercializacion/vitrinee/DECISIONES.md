@@ -1043,3 +1043,35 @@ cliente que lea la respuesta con `JSON.parse` lo vuelve `number` igual. No
 cambia nada para montos en CLP, que están lejos del límite.
 
 Implementado así en T121. El usuario eligió esta opción frente a la alternativa.
+
+---
+
+### VT-37 · La disputa entra a la extensión de recibo sin cambiar su versión · `Vigente`
+**Fecha:** 2026-10-02 · **Hito:** T127 (Fase 7) · Propuesta de Claude Code, **aprobada por el usuario** con el plan de T127
+
+`com.agentpey.shopping.receipt` gana un campo opcional `dispute`, solo en la
+orden y solo cuando el recibo tiene un reclamo en AgentResolve (`E-23`). La
+versión de la extensión sigue en `2026-09-30`: el campo es aditivo, ninguna
+respuesta existente cambia, y un cliente que no lo conoce lo ignora.
+
+**Alternativa descartada: versión nueva (`2026-10-02`).** Obligaba a cambiar a la
+vez el perfil de cada tienda, el cliente `ucp:buy` y lo que ya negocia la compra
+de T122, por un campo que ningún cliente está obligado a leer.
+
+---
+
+### VT-38 · En la orden UCP, el reembolso va en la moneda de la tienda; el monto exacto, en USDC dentro del recibo · `Vigente`
+**Fecha:** 2026-10-02 · **Hito:** T127 (Fase 7) · Propuesta de Claude Code, **aprobada por el usuario** con el plan de T127
+
+Los `totals` de una orden UCP van en la moneda de la orden (CLP, `E-3`), pero
+AgentResolve reembolsa en USDC. El ajuste `dispute` muestra el reembolso como un
+`total` negativo en CLP: el total completo de la orden si se devolvió todo lo
+pagado, o la misma proporción, redondeada hacia abajo, con aritmética `bigint`
+(`VT-7`, `VT-36`). El monto exacto en USDC va en `receipt.dispute.refund_atomic`.
+Una disputa abierta o rechazada no lleva `totals`: todavía no se devolvió nada, o
+no se devolverá. Si la lectura del contrato falla o tarda más de 3 s, la orden
+responde igual con un aviso `dispute_state_unavailable`, nunca con un error.
+
+**Alternativa descartada: el ajuste en USDC.** UCP no permite otra moneda dentro
+de una orden; un `total` en USDC con la orden en CLP sería un número sin sentido
+para un cliente UCP.
