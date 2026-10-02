@@ -7441,3 +7441,17 @@ implementarlas (`P-15`). Sigue en un chat nuevo.
 
 Pendiente: decidir cómo se ramifican las mejoras, porque AgentResolve todavía no está en `main`. El plan de
 demo del 11-oct (sección 7 del spec) sigue sin escribir. `AGENTS.md`: sin cambios.
+
+## 2026-10-02 — cc/t124-agentresolve → main
+
+Agente: Claude Code.
+
+Qué: el usuario eligió la opción 1: push, PR y merge de T124 ahora, con el reembolso real (criterio 2) en
+una rama de evidencia aparte el 8 o 9 de octubre, como `cc/t122-evidencia`. Criterios 1, 3, 4 y 5 de T124
+marcados en el spec con su evidencia; ESTADO al día. `pnpm check` en verde antes del push.
+
+Por qué: T126 (respuesta del comercio) y T127 (disputa en la orden UCP) dependen de AgentResolve; así salen
+de `origin/main` y T127 se despliega desde `main`.
+
+Pendiente: proponer T126 y T127 al spec (con OK del usuario antes de construir). El plan de demo del 11-oct
+sigue sin escribir. `AGENTS.md`: sin cambios.

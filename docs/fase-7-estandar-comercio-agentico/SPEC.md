@@ -197,11 +197,11 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   ligado al recibo y paga el reembolso desde la garantía del comercio
   (`E-14`, `E-19`). Llave del árbitro según `E-16`.
 - **Hecho cuando:**
-  - [ ] un reclamo firmado por el pagador sobre un recibo real de Vitrinee se abre en el contrato y bloquea el monto en la garantía del comercio
-  - [ ] el árbitro emite un veredicto razonado validado con zod; su hash queda en el contrato ligado al recibo y el reembolso llega al pagador en testnet
-  - [ ] el contrato rechaza, con su error: reembolso mayor que el recibo, recibo no anclado, garantía de otro comercio, doble resolución, fuera de plazo y quien no es el árbitro
-  - [ ] un reclamo con inyección de prompt en la evidencia no obtiene más que el monto del recibo
-  - [ ] `cargo test` y `pnpm check` en verde; el diff no toca el flujo de pago, `checkMandate` ni `receipt-registry`
+  - [x] un reclamo firmado por el pagador sobre un recibo real de Vitrinee se abre en el contrato y bloquea el monto en la garantía del comercio (recibo de T122, [evidencia](evidencia/T124.md) §3)
+  - [ ] el árbitro emite un veredicto razonado validado con zod; su hash queda en el contrato ligado al recibo y el reembolso llega al pagador en testnet (veredicto y hash ya probados con el rechazo del recibo de T122; falta el reembolso real, el 8 o 9 de octubre, en una rama de evidencia aparte)
+  - [x] el contrato rechaza, con su error: reembolso mayor que el recibo, recibo no anclado, garantía de otro comercio, doble resolución, fuera de plazo y quien no es el árbitro (`cargo test`, 16 tests)
+  - [x] un reclamo con inyección de prompt en la evidencia no obtiene más que el monto del recibo (`decideDispute` acota y el contrato vuelve a acotar)
+  - [x] `cargo test` y `pnpm check` en verde; el diff no toca el flujo de pago, `checkMandate` ni `receipt-registry`
 
 ### T125 · Anexo técnico para el SEP
 - **Prioridad:** al final · **Estimación:** 3 h · **Delegable a Codex:** no (narrativa SCF)
@@ -260,3 +260,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-01 | T123 replanificada tras leer AP2 `v0.2` y UCP `2026-08-25` del fuente: mandatos abiertos de checkout y de pago, exportación fuera de línea con chequeo cruzado, 16 h (`E-8` a `E-11`) |
 | 2026-10-01 | T123 cerrada: Mandato real exportado y verificado, la librería oficial de AP2 acepta el par en Ed25519 y en P-256; tras `/revisar`, tope en centavos y credencial verificada (`E-12`, `E-13`). [PR #34](https://github.com/vicentewolde/AgentPey/pull/34) |
 | 2026-10-01 | T124 planificada: AgentResolve, contrato `agent-resolve` con garantía del comercio, árbitro Claude con confirmación humana, 32 h y criterios (`E-14` a `E-19`), aprobados por el usuario |
+| 2026-10-02 | T124 mergeada a `main` con cuatro de cinco criterios cumplidos; el reembolso real (criterio 2) va en una rama de evidencia aparte el 8 o 9 de octubre, como `cc/t122-evidencia` (decisión del usuario) |
