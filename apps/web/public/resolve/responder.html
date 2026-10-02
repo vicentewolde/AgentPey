@@ -242,7 +242,7 @@
 </main>
 
 <script type="module">
-import { formatAtomic, parseUsdc, readClaim, buildResponse, responseChallengeMessage, responseHash, responseFile, toBase64Signature } from "./responder.js";
+import { formatAtomic, parseUsdc, readClaim, buildResponse, responseChallengeMessage, responseHash, responseFile, toBase64Signature, verifySep53 } from "./responder.js";
 
 var T = {
   pasteOrChoose: { en: "Choose the claim file or paste it first.", es: "Primero elige el archivo del reclamo o pégalo." },
@@ -259,6 +259,9 @@ var T = {
   waitingSignature: { en: "Waiting for your signature in Freighter…", es: "Esperando tu firma en Freighter…" },
   signed: { en: "Signed. Download the file and send it to the arbiter.", es: "Firmada. Descarga el archivo y envíaselo al árbitro." },
   signFailed: { en: "Could not sign.", es: "No se pudo firmar." },
+  walletChanged: { en: "Freighter signed with another account. Select the store's payout account in Freighter, connect again and sign.", es: "Freighter firmó con otra cuenta. Elige en Freighter la cuenta de cobro de la tienda, vuelve a conectar y firma." },
+  signatureInvalid: { en: "The signature Freighter returned does not verify, so the arbiter would reject it. Try signing again.", es: "La firma que devolvió Freighter no verifica, así que el árbitro la rechazaría. Intenta firmar de nuevo." },
+  signedUnchecked: { en: "Signed. This browser could not check the signature itself; the arbiter will. Download the file and send it to the arbiter.", es: "Firmada. Este navegador no pudo comprobar la firma; lo hará el árbitro. Descarga el archivo y envíaselo al árbitro." },
   store: { en: "Store", es: "Tienda" },
   order: { en: "Order", es: "Pedido" },
   products: { en: "Products", es: "Productos" },
@@ -437,16 +440,23 @@ async function sign() {
     var message = await responseChallengeMessage(response);
     var signed = await freighterApi.signMessage(message, { address: address });
     if (signed && signed.error) throw new Error(signed.error);
-    var signature = toBase64Signature(signed.signedMessage || signed);
+    if (signed && signed.signerAddress && signed.signerAddress !== address) throw { key: "walletChanged" };
+    var signature = toBase64Signature(signed && signed.signedMessage !== undefined ? signed.signedMessage : signed);
+    // Checked here, before the file exists: a bad signature found by the
+    // arbiter could come after the 48 h, and the dispute would be decided
+    // with one side (E-22).
+    var verified = await verifySep53(address, message, signature);
+    if (verified === false) throw { key: "signatureInvalid" };
     signedResult = { response: response, hash: await responseHash(response) };
     var link = document.getElementById("download-link");
     link.href = URL.createObjectURL(new Blob([responseFile(response, signature)], { type: "application/json" }));
     link.download = "agentresolve-response-" + read.claimHash.slice(0, 12) + ".json";
     renderDone();
     document.getElementById("done-row").hidden = false;
-    setStatus("sign-status", "ok", { key: "signed" });
+    setStatus("sign-status", "ok", { key: verified === null ? "signedUnchecked" : "signed" });
   } catch (error) {
-    setStatus("sign-status", "error", error && error.message ? { text: error.message } : { key: "signFailed" });
+    document.getElementById("done-row").hidden = true;
+    setStatus("sign-status", "error", error && error.key ? { key: error.key } : error && error.message ? { text: error.message } : { key: "signFailed" });
   } finally {
     refreshSignButton();
   }

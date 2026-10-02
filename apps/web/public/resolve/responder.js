@@ -58,6 +58,10 @@ export async function readClaim(claimJws) {
     throw new Error("not an AgentResolve claim");
   }
   const receipt = decodeJwsPayload(claim.receipt.jws);
+  // Only what the page relies on; the arbiter verifies the rest.
+  if (typeof claim.claimId !== "string" || !/^[1-9]\d*$/.test(String(claim.amountAtomic)) || publicKeyBytes(receipt && receipt.merchantAccount) === null) {
+    throw new Error("not an AgentResolve claim");
+  }
   return { claim, receipt, claimHash: await sha256Hex(jws) };
 }
 
@@ -116,13 +120,84 @@ export async function responseChallengeMessage(response) {
   ].join("\n");
 }
 
-/** Freighter returns a signature either as base64 already, or as bytes. */
+/**
+ * Freighter returns a signature as base64 already, or as bytes in one of
+ * several shapes (Uint8Array, ArrayBuffer, a serialised Buffer, a plain object
+ * of indices). Anything else is an empty string, which never verifies.
+ */
 export function toBase64Signature(signed) {
   if (typeof signed === "string") return signed;
-  const bytes = new Uint8Array(signed);
+  if (signed === null || typeof signed !== "object") return "";
+  let values;
+  if (signed instanceof ArrayBuffer) values = new Uint8Array(signed);
+  else if (ArrayBuffer.isView(signed)) values = new Uint8Array(signed.buffer, signed.byteOffset, signed.byteLength);
+  else if (Array.isArray(signed.data)) values = signed.data;
+  else values = Object.values(signed);
+  if (!values.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) return "";
   let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  for (const byte of values) binary += String.fromCharCode(byte);
   return btoa(binary);
+}
+
+const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const ED25519_PUBLIC_KEY_VERSION = 6 << 3;
+
+/** CRC16-XModem, the checksum of a Stellar strkey. */
+function crc16(bytes) {
+  let crc = 0;
+  for (const byte of bytes) {
+    crc ^= byte << 8;
+    for (let i = 0; i < 8; i += 1) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+  }
+  return crc;
+}
+
+/** The 32 raw bytes of a `G...` address, or `null` if it is not a valid one (checksum included). */
+export function publicKeyBytes(address) {
+  const text = String(address);
+  if (!/^G[A-Z2-7]{55}$/.test(text)) return null;
+  let bits = 0;
+  let value = 0;
+  const out = [];
+  for (const char of text) {
+    value = (value << 5) | BASE32.indexOf(char);
+    bits += 5;
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  const bytes = Uint8Array.from(out);
+  if (bytes.length !== 35 || bytes[0] !== ED25519_PUBLIC_KEY_VERSION) return null;
+  const expected = crc16(bytes.subarray(0, 33));
+  if (bytes[33] !== (expected & 0xff) || bytes[34] !== expected >> 8) return null;
+  return bytes.slice(1, 33);
+}
+
+/**
+ * Checks a SEP-53 signature in the browser, as `verifyStellarMessage` does on
+ * the arbiter's side: Ed25519 over `sha256("Stellar Signed Message:\n" + message)`.
+ * `true` or `false`; `null` only when this browser has no Ed25519 in WebCrypto,
+ * so the page can say it could not check instead of claiming it did.
+ */
+export async function verifySep53(address, message, signatureBase64) {
+  const publicKey = publicKeyBytes(address);
+  if (publicKey === null || !signatureBase64) return false;
+  let signature;
+  try {
+    signature = Uint8Array.from(atob(signatureBase64), (char) => char.charCodeAt(0));
+  } catch {
+    return false;
+  }
+  if (signature.length !== 64) return false;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("Stellar Signed Message:\n" + message));
+  let key;
+  try {
+    key = await crypto.subtle.importKey("raw", publicKey, { name: "Ed25519" }, false, ["verify"]);
+  } catch {
+    return null;
+  }
+  return crypto.subtle.verify({ name: "Ed25519" }, key, signature, digest);
 }
 
 /** The file the merchant downloads and sends back to the arbiter. */

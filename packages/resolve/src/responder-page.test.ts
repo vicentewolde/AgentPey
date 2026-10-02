@@ -7,6 +7,7 @@
 import { fileURLToPath } from "node:url";
 
 import { signStellarMessage } from "@agentpass/core";
+import { Keypair } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 
 import { checkClaim, claimHash, signClaim } from "./claim.js";
@@ -22,6 +23,9 @@ interface ResponderModule {
   responseFile(response: AgentResolveResponse, signature: string): string;
   formatAtomic(atomic: string): string;
   parseUsdc(text: string): string | null;
+  publicKeyBytes(address: string): Uint8Array | null;
+  verifySep53(address: string, message: string, signature: string): Promise<boolean | null>;
+  toBase64Signature(signed: unknown): string;
 }
 
 const PAGE_MODULE = fileURLToPath(new URL("../../../apps/web/public/resolve/responder.js", import.meta.url));
@@ -87,5 +91,47 @@ describe("the merchant's page signs exactly what the verifier checks", () => {
   it("refuses to read something that is not a claim", async () => {
     await expect(page.readClaim("not.a.claim")).rejects.toThrow();
     await expect(page.readClaim(verifiedReceipt().jws)).rejects.toThrow("not an AgentResolve claim");
+  });
+
+  it("refuses a claim whose amount or payout account the page could not use", async () => {
+    const { signed } = await claimJws();
+    const [header, body = "", signature] = signed.jws.split(".");
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Record<string, unknown>;
+    const forged = [header, Buffer.from(JSON.stringify({ ...payload, amountAtomic: "abc" })).toString("base64url"), signature].join(".");
+    await expect(page.readClaim(forged)).rejects.toThrow("not an AgentResolve claim");
+  });
+});
+
+describe("the page checks Freighter's signature before it hands out the file", () => {
+  const message = "AgentResolve merchant response\nHash: " + "a".repeat(64);
+
+  it("decodes a G address to the same 32 bytes as the Stellar SDK, and refuses a bad checksum", () => {
+    const key = Keypair.random();
+    expect(Buffer.from(page.publicKeyBytes(key.publicKey()) ?? []).equals(Buffer.from(key.rawPublicKey()))).toBe(true);
+    const address = key.publicKey();
+    const tampered = address.slice(0, -1) + (address.endsWith("A") ? "B" : "A");
+    expect(page.publicKeyBytes(tampered)).toBeNull();
+    expect(page.publicKeyBytes("CA6P4KKV77Q5J4AH6L4V7S42QNF6DLKUAM4SCOQO4GMLB7V7STC5VIYP")).toBeNull();
+  });
+
+  it("accepts the SEP-53 signature the verifier accepts, and only that", async () => {
+    const signature = signStellarMessage(merchantOwnerKey, message);
+    expect(await page.verifySep53(merchantOwnerKey.publicKey(), message, signature)).toBe(true);
+    expect(await page.verifySep53(Keypair.random().publicKey(), message, signature)).toBe(false);
+    expect(await page.verifySep53(merchantOwnerKey.publicKey(), `${message}x`, signature)).toBe(false);
+    expect(await page.verifySep53(merchantOwnerKey.publicKey(), message, "")).toBe(false);
+    expect(await page.verifySep53(merchantOwnerKey.publicKey(), message, "not base64!")).toBe(false);
+  });
+
+  it("reads every shape Freighter returns a signature in, and turns anything else into an empty one", () => {
+    const signature = signStellarMessage(merchantOwnerKey, message);
+    const bytes = Buffer.from(signature, "base64");
+    expect(page.toBase64Signature(signature)).toBe(signature);
+    expect(page.toBase64Signature(new Uint8Array(bytes))).toBe(signature);
+    expect(page.toBase64Signature(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength))).toBe(signature);
+    expect(page.toBase64Signature(bytes.toJSON())).toBe(signature);
+    expect(page.toBase64Signature({ ...Array.from(bytes) })).toBe(signature);
+    expect(page.toBase64Signature(null)).toBe("");
+    expect(page.toBase64Signature({ a: "x" })).toBe("");
   });
 });

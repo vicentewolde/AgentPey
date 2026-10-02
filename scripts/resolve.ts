@@ -41,6 +41,7 @@ import { toScaledAmount, fromScaledAmount } from "@agentpey/agent";
 import type { AgentResolveVerdict, ClaimReason, ResponseContext, VerifiedResponse } from "@agentpey/resolve";
 import {
   CLAIM_REASONS,
+  agentResolveResponseSchema,
   agentResolveVerdictSchema,
   assertMayDecide,
   checkClaim,
@@ -49,7 +50,9 @@ import {
   decideDispute,
   formatAtomic,
   responseDeadline,
+  responseHash,
   signClaim,
+  signedResponseFileSchema,
   verdictHash,
   verifyClaim,
   verifyMerchantResponse,
@@ -295,7 +298,8 @@ async function decide(): Promise<void> {
     receiptHash: verified.hash,
     claimHash: dispute.claim_hash,
     claimId: claim.document.claimId,
-    disputedAtomic: checked.disputedAtomic,
+    // What the contract locked: the same source `check-response` uses.
+    disputedAtomic: dispute.amount,
   });
   assertMayDecide({ openedAt: dispute.opened_at, hasResponse: response !== null });
   if (response === null) {
@@ -345,18 +349,23 @@ async function readResponseFile(path: string): Promise<unknown> {
 
 /**
  * The merchant's response for a dispute: the file passed with `--response`
- * (verified, then kept as `response.json`), or the one kept earlier
- * (verified again), or `null` when there is none.
+ * (verified, then kept), or the one kept earlier (verified again), or `null`
+ * when there is none. Every response is kept under `responses/<hash>.json`
+ * and never overwritten, so each archived verdict's `responseHash` still
+ * points at a file; `response.json` is the latest, the one `decide` reuses.
  */
 async function merchantResponse(dir: string, path: string | undefined, context: ResponseContext): Promise<VerifiedResponse | null> {
-  const kept = resolve(dir, "response.json");
+  const latest = resolve(dir, "response.json");
   if (path !== undefined) {
     const verified = verifyMerchantResponse(await readResponseFile(resolve(path)), context);
-    await writeFile(kept, `${JSON.stringify({ response: verified.response, signature: verified.signature }, null, 2)}\n`);
+    const json = `${JSON.stringify({ response: verified.response, signature: verified.signature }, null, 2)}\n`;
+    await mkdir(resolve(dir, "responses"), { recursive: true });
+    await writeFile(resolve(dir, "responses", `${verified.hash}.json`), json);
+    await writeFile(latest, json);
     return verified;
   }
-  const existing = await readFile(kept, "utf8").catch(() => null);
-  return existing === null ? null : verifyMerchantResponse(JSON.parse(existing) as unknown, context);
+  const exists = await readFile(latest, "utf8").then(() => true, () => false);
+  return exists ? verifyMerchantResponse(await readResponseFile(latest), context) : null;
 }
 
 /** Verifies a merchant's response against the dispute on chain, open or resolved. Decides nothing, writes nothing. */
@@ -371,7 +380,7 @@ async function checkResponse(): Promise<void> {
   const verified = await verifiedReceipt(claim.document.receipt.jws);
   const dispute = await readDispute(contractId, verified.hash, reader.secret());
   if (dispute === null || dispute.claim_hash !== claimHash(claimJws)) {
-    throw new AgentPassError("ResolveResponseMismatch", "there is no dispute on chain for this claim", { details: { receipt: verified.hash, dispute } });
+    throw new AgentPassError("ResolveReceiptInvalid", "there is no dispute on chain for this claim", { details: { receipt: verified.hash, dispute } });
   }
   const response = verifyMerchantResponse(await readResponseFile(resolve(values.response)), {
     receipt: verified.receipt,
@@ -386,6 +395,26 @@ async function checkResponse(): Promise<void> {
   line("descargos", response.response.statement);
   for (const item of response.response.evidence) line("evidencia", item.content);
   line("hash", response.hash);
+}
+
+/**
+ * The response a verdict names, read back from `responses/` and hashed again:
+ * whoever confirms (E-18) or audits sees that the anchored verdict covers the
+ * response on file. `true` when there is nothing to check (no response, or a
+ * verdict from before T126).
+ */
+async function checkArchivedResponse(dir: string, hash: string | null | undefined): Promise<boolean> {
+  if (hash === undefined) return true;
+  if (hash === null) {
+    line("respuesta", "el comercio no respondió en 48 h");
+    return true;
+  }
+  const json = await readResponseFile(resolve(dir, "responses", `${hex64.parse(hash)}.json`)).catch(() => null);
+  const file = json === null ? null : signedResponseFileSchema.safeParse(json);
+  const parsed = file?.success === true ? agentResolveResponseSchema.safeParse(file.data.response) : null;
+  const matches = parsed?.success === true && responseHash(parsed.data) === hash;
+  line(`${matches ? "✅" : "❌"} respuesta`, matches ? `la del comercio archivada en responses/ es la que cubre el veredicto (${hash.slice(0, 16)}…)` : `el veredicto nombra ${hash}, pero no hay una respuesta archivada con ese hash`);
+  return matches;
 }
 
 async function execute(): Promise<void> {
@@ -454,11 +483,11 @@ async function verify(): Promise<void> {
     }
   } else {
     const local = verdictHash(parsed);
-    if (parsed.responseHash !== undefined) line("respuesta", parsed.responseHash === null ? "el comercio no respondió en 48 h" : `del comercio, ${parsed.responseHash.slice(0, 16)}… (cubierta por el hash del veredicto)`);
+    const responseOk = await checkArchivedResponse(stateDir(values.receipt), parsed.responseHash);
     const matches = dispute.verdict_hash === local && BigInt(parsed.refundAtomic) === dispute.refund && parsed.claimHash === dispute.claim_hash;
     if (dispute.status === "Resolved") {
       line(`${matches ? "✅" : "❌"} veredicto`, matches ? `el hash en la red es el del veredicto archivado (${local.slice(0, 16)}…)` : `no coincide: red ${dispute.verdict_hash ?? "—"}, archivo ${local}`);
-      ok = matches;
+      ok = matches && responseOk;
     } else {
       line("veredicto", `archivado ${local.slice(0, 16)}…, todavía sin ejecutar`);
     }
