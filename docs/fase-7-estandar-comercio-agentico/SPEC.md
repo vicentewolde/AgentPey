@@ -212,6 +212,47 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
 - **Hecho cuando:**
   - [x] cada formato del anexo coincide con el código (esquemas zod citados por ruta) y con `deployments/` (`scripts/fase7-anexo.test.ts`: ejemplos JSON contra los esquemas zod, campos del recibo, funciones citadas, códigos, contratos por fila)
 
+### T126 · Respuesta del comercio en AgentResolve
+- **Prioridad:** antes del reembolso real del 8-oct · **Estimación:** 12 h · **Delegable a Codex:** no (firma de wallet, `P-10`)
+- **Depende de:** T124 (en `main`)
+- **Agregada:** 2026-10-02, aprobada por el usuario (brecha 15 del anexo)
+- **Descripción:** hoy el árbitro oye a una sola parte. El dueño del comercio
+  responde al reclamo con sus descargos y su posición (acepta todo, acepta una
+  parte o rechaza), firmados con **Freighter** (SEP-53) desde la cuenta de
+  cobro del recibo (`E-20`). Responde en una página estática de
+  `agentpey.com`: abre el reclamo que le envía el árbitro, escribe, firma y
+  descarga la respuesta, que devuelve al árbitro (`E-21`).
+  `resolve:decide -- --response <archivo>` la verifica y Claude decide con las
+  dos versiones. Sin respuesta, `decide` espera 48 h desde la apertura
+  (`E-22`). El veredicto lleva el hash de la respuesta, así que el hash
+  anclado la cubre sin tocar el contrato.
+- **Hecho cuando:**
+  - [ ] el comercio firma su respuesta con Freighter sobre un reclamo real, y el verificador acepta solo si quien firma es la cuenta de cobro del recibo (`merchantAccount`) y la respuesta apunta al `claim_hash` de la disputa en la red
+  - [ ] una respuesta alterada, firmada por otra cuenta o sobre otro reclamo se rechaza con un error tipado
+  - [ ] el veredicto incluye `responseHash` (o `null` si no hubo respuesta) y su hash anclado la cubre; los veredictos anteriores siguen verificando igual
+  - [ ] `decide` no corre sin respuesta antes de las 48 h; con respuesta corre de inmediato
+  - [ ] una respuesta con inyección de prompt no consigue más de lo que acotan `decideDispute` y el contrato; la brecha nueva (el comercio puede empujar el reembolso hacia abajo, y la defensa es la confirmación humana de `E-18`) queda en el anexo
+  - [ ] el mensaje que firma la página coincide byte a byte con el que reconstruye el verificador (test)
+  - [ ] `pnpm check` en verde; el diff no toca el contrato, el flujo de pago, `checkMandate` ni `receipt-registry`
+
+### T127 · La disputa visible en la orden UCP
+- **Prioridad:** si alcanza, antes del 11-oct · **Estimación:** 10 h · **Delegable a Codex:** solo el mapeo al esquema UCP y sus tests
+- **Depende de:** T124 · **Toca Vitrinee:** sí
+- **Agregada:** 2026-10-02, aprobada por el usuario (brecha 6 del anexo)
+- **Descripción:** `GET /ucp/v1/orders/{id}` lee la disputa del recibo en el
+  contrato `agent-resolve` (`get`, por `getLedgerEntries`, sin llave) y la
+  muestra como un ajuste UCP nativo (`adjustments[]`, `type: "dispute"`) más
+  un campo opcional `dispute` en la extensión `com.agentpey.shopping.receipt`
+  (`E-23`). Solo lo que está en la red: estado, hash del reclamo y del
+  veredicto, montos y fechas (`E-24`). UCP sigue en `2026-04-08` (`E-2`).
+- **Hecho cuando:**
+  - [ ] la orden muestra la disputa leída del contrato, como ajuste UCP más el campo `dispute`, y valida contra los esquemas UCP `2026-04-08` versionados y el esquema de la extensión (test sin red)
+  - [ ] una orden sin disputa responde igual que antes; si la lectura del contrato falla, la orden responde con un aviso, nunca con un 503
+  - [ ] la clave de almacenamiento que lee Vitrinee está fijada por un test contra el fuente del contrato
+  - [ ] el id del contrato sale de `deployments/testnet.json`, sin variables nuevas en el panel de Render
+  - [ ] en vivo, tras el deploy con OK del usuario: la orden de T122 muestra la disputa resuelta con reembolso 0, y `ord_muq1gqhycf4961492c` la muestra abierta el 8-oct y resuelta después
+  - [ ] `pnpm run vitrinee:check` y `pnpm check` en verde
+
 ## 6. Criterios de aceptación de la fase
 
 - [ ] Un cliente UCP lee el perfil de una tienda real de terceros y lista sus productos
@@ -232,6 +273,9 @@ terceros, que es también lo que se graba el 11-oct.
 | 4 al 7 de octubre | T121 y T122 |
 | 8 al 10 de octubre | T123 y T124, si alcanzan |
 | 11 de octubre | Congelar código, grabar la compra, T125 |
+| 2 al 6 de octubre (agregado el 2-oct) | T126, para que el reembolso real ya tenga las dos partes |
+| 6 al 7 de octubre (agregado el 2-oct) | T127, con deploy antes del 8 |
+| 8 o 9 de octubre | Reembolso real de T124 (pedido Shopify `18952373174578`), en una rama de evidencia aparte |
 
 Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 
@@ -261,3 +305,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-01 | T123 cerrada: Mandato real exportado y verificado, la librería oficial de AP2 acepta el par en Ed25519 y en P-256; tras `/revisar`, tope en centavos y credencial verificada (`E-12`, `E-13`). [PR #34](https://github.com/vicentewolde/AgentPey/pull/34) |
 | 2026-10-01 | T124 planificada: AgentResolve, contrato `agent-resolve` con garantía del comercio, árbitro Claude con confirmación humana, 32 h y criterios (`E-14` a `E-19`), aprobados por el usuario |
 | 2026-10-02 | T124 mergeada a `main` con cuatro de cinco criterios cumplidos; el reembolso real (criterio 2) va en una rama de evidencia aparte el 8 o 9 de octubre, como `cc/t122-evidencia` (decisión del usuario) |
+| 2026-10-02 | T126 (respuesta del comercio, 12 h) y T127 (la disputa en la orden UCP, 10 h) agregadas y aprobadas por el usuario, con `E-20` a `E-24` |

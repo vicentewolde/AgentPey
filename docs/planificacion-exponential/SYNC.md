@@ -43,8 +43,10 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T121 | `cmuo4y1iv0009lg04th8bckfc` | Vitrinee publica `/.well-known/ucp` por comercio | SPEC | `DONE` | 2026-09-30 | 2026-09-30 | 2026-09-30 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 | T122 | `cmuo4y3gv000dlg0410k5yyoz` | Compra UCP pagada sobre Stellar, de punta a punta | SPEC | `DONE` | 2026-09-30 | 2026-09-30 | 2026-10-01 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 | T123 | `cmuo4y5ej000hlg048z72tc58` | Mandato exportable como mandatos AP2 (si alcanza) | SPEC | `DONE` | 2026-09-30 | 2026-10-01 | 2026-10-01 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
-| T124 | `cmuo4y7c7000llg042dzcvuby` | Disputas v0, AgentResolve (si alcanza) | SPEC | `IN_PROGRESS` | 2026-09-30 | 2026-10-01 | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T124 | `cmuo4y7c7000llg042dzcvuby` | Disputas v0, AgentResolve (si alcanza) | SPEC | `IN_PROGRESS` | 2026-09-30 | 2026-10-01 | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | mergeada ([PR #35](https://github.com/vicentewolde/AgentPey/pull/35), `6a989ea`); falta el reembolso real (8–9 oct) |
 | T125 | `cmuo4y9b5000plg04nr6y0ywc` | Anexo técnico para el SEP | SPEC | `DONE` | 2026-09-30 | 2026-10-01 | 2026-10-01 | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
+| T126 | `cmuqg0pch000tlb04ac5yoe0s` | Respuesta del comercio en AgentResolve | SPEC | `IN_PROGRESS` | 2026-10-02 | 2026-10-02 | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [E-20 a E-22](../fase-7-estandar-comercio-agentico/DECISIONES.md) | |
+| T127 | `cmuqg0qfh000xlb04gbvk9fyl` | La disputa visible en la orden UCP | SPEC | `READY_TO_PLAN` | 2026-10-02 | | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [E-23 y E-24](../fase-7-estandar-comercio-agentico/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y

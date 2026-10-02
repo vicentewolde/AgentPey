@@ -371,3 +371,92 @@ disputas abiertas. Brecha que queda escrita para el SEP: un comercio podría
 retirar todo antes de que llegue un reclamo.
 
 **Alternativa descartada por ahora: retiro con aviso previo** (unas 2 h más).
+
+---
+
+### E-20 · El comercio firma su respuesta con Freighter, desde la cuenta de cobro del recibo · `Vigente`
+**Fecha:** 2026-10-02 · **Tarea:** T126 · Decidido por el usuario (opción A)
+
+La respuesta del comercio a un reclamo se firma con la wallet del dueño
+(SEP-53, `signMessage`) sobre un mensaje legible que lleva el hash del
+documento, como el Mandato firmado con wallet (`packages/mandate/src/wallet-sign.ts`).
+El verificador exige que quien firma sea `merchantAccount`, la cuenta de cobro
+que el comercio firmó dentro del recibo, y que la respuesta apunte al
+`claim_hash` de la disputa en la red.
+
+**Motivo.** Es la llave del dueño, la misma con la que entra al portal (`VT-29`),
+y AgentPey no la custodia. Se verifica con el recibo solo, sin consultar la
+base de la plataforma. La firma del recibo (`merchantDid`) y la de la respuesta
+son cuentas distintas, pero el recibo firmado las une.
+
+**Alternativa descartada: (B) la plataforma firma con la llave cifrada del
+comercio** (`merchantDid`) después del login del dueño. Mismo formato JWS que el
+reclamo, pero la firma probaría que firmó la plataforma, no el dueño, y le daba
+un uso nuevo a una llave custodiada (`P-10`).
+
+---
+
+### E-21 · El comercio responde en una página estática de `agentpey.com`, y la respuesta viaja como archivo · `Vigente`
+**Fecha:** 2026-10-02 · **Tarea:** T126 · Decidido por el usuario (canal 2)
+
+Una página en `agentpey.com`, como `consent.html` y `revocar.html`: el dueño
+carga el reclamo que le envía el árbitro, lo lee, escribe su posición y sus
+descargos, firma con Freighter y descarga la respuesta firmada, que devuelve al
+árbitro. `resolve:decide -- --response <archivo>` la verifica y la guarda junto
+al reclamo.
+
+**Motivo.** Sin base de datos ni backend nuevo, llega con holgura al reembolso
+real del 8-oct. El mensaje firmado lo arma la página y lo reconstruye el
+verificador; un test fija que coincidan byte a byte.
+
+**Alternativa descartada por ahora: (1) bandeja de reclamos en el portal de
+Vitrinee** (unas 22 h: tabla nueva, endpoints, pantalla y deploy, y Vitrinee no
+tiene notificaciones). Es la evolución natural; queda para después de la fase.
+Brecha que queda escrita: el ida y vuelta entre árbitro y comercio es a mano.
+
+---
+
+### E-22 · El comercio tiene 48 h desde la apertura para responder · `Vigente`
+**Fecha:** 2026-10-02 · **Tarea:** T126 · Decidido por el usuario
+
+`resolve:decide` corre de inmediato si hay respuesta. Sin respuesta, se niega
+con un error tipado hasta que pasan 48 h desde `opened_at` (la hora que guarda
+el contrato); después decide con una sola parte y el veredicto lo dice
+(`responseHash: null`). El plazo no vive en el contrato, que sigue igual.
+
+**Motivo.** Da al comercio un tiempo razonable sin que una disputa quede abierta
+indefinidamente, y en el caso real del 8-oct permite `open`, respuesta y
+`decide` el mismo día.
+
+**Alternativa descartada: 24 h**, demasiado corto para un comercio pequeño sin
+notificaciones. **Y: plazo en el contrato**, que obliga a redesplegarlo.
+
+---
+
+### E-23 · La disputa se muestra en la orden UCP como ajuste nativo más un campo `dispute` en la extensión de recibo · `Vigente`
+**Fecha:** 2026-10-02 · **Tarea:** T127 · Decidido por el usuario
+
+`GET /ucp/v1/orders/{id}` agrega un elemento a `adjustments[]` (el campo de UCP
+para "refunds, returns, credits, disputes"): `type: "dispute"`, `pending`
+mientras está abierta, `completed` al resolverse, con el reembolso como monto
+negativo. Y la extensión `com.agentpey.shopping.receipt` gana un campo opcional
+`dispute` con lo que un verificador necesita: contrato, estado, `claim_hash`,
+`verdict_hash`, montos y fechas. Compatible hacia atrás.
+
+**Motivo.** Un cliente UCP cualquiera entiende el ajuste sin conocer AgentPey,
+y uno que sí lo conoce tiene los hashes para verificar contra la red.
+
+**Alternativa descartada: una extensión nueva solo para disputas.** Duplicaba
+la relación con el recibo, que ya vive en su extensión.
+
+---
+
+### E-24 · La orden muestra solo lo que está en la red, no el razonamiento del veredicto · `Vigente`
+**Fecha:** 2026-10-02 · **Tarea:** T127 · Decidido por el usuario
+
+El estado, el hash del veredicto y el reembolso se leen del contrato. El
+razonamiento de Claude vive en la máquina del árbitro (`verdict.json`) y no se
+publica en v0. Límite que queda escrito para el SEP.
+
+**Alternativa descartada por ahora: publicar el veredicto completo**, que pide
+dónde alojarlo y decidir qué partes del caso son públicas.

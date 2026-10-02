@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-02
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T123 · el Mandato exportado como mandatos AP2 v0.2, verificado por la librería oficial de AP2
-**Siguiente paso:** antes del 8-oct, proponer al spec y hacer dos mejoras de AgentResolve (respuesta del comercio; disputa visible en la orden UCP) y después ordenar la casa (criterios de la Fase 7, cerrar la Fase 6). El 8 o 9 de octubre, el reclamo sobre `0922707…` (pedido Shopify `18952373174578`) para el reembolso real
+**Siguiente paso:** T126 (respuesta del comercio, `E-20` a `E-22`) del 2 al 6 de octubre, T127 (la disputa en la orden UCP, `E-23`, `E-24`) del 6 al 7 con deploy antes del 8. El 8 o 9, el reembolso real de T124 en una rama de evidencia aparte. Después: criterios de la Fase 7, cerrar la Fase 6 y el plan de demo del 11-oct
 
 ## Progreso de la fase
 
@@ -20,6 +20,8 @@
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ✅ terminada | `cc/t123-mandatos-ap2`, mergeada ([PR #34](https://github.com/vicentewolde/AgentPey/pull/34)) |
 | T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en `main`, cuatro de cinco criterios; falta el reembolso real (8–9 oct), en una rama de evidencia aparte | `cc/t124-agentresolve`, mergeada |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
+| T126 Respuesta del comercio en AgentResolve | antes del 8-oct | 🔨 en curso: plan | `cc/t126-respuesta-comercio` |
+| T127 La disputa visible en la orden UCP | si alcanza | ⏳ pendiente | |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
@@ -51,3 +53,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-01, T124: AgentResolve (`E-14` a `E-19`). Contrato `agent-resolve` desplegado (`CCYMGX56…`), árbitro `GAEB2EG3…`, garantía de `agentcommerce` con 3 USDC. Reclamo real sobre el recibo de T122: Claude lo rechazó por prematuro, el usuario confirmó y quedó resuelto en la red sin pago. Corregido: veredicto final en el prompt e historial de veredictos. Compra nueva (`0922707…`) para el reembolso real el 8–9 oct.
 - 2026-10-01, T124 `/revisar`: sin bloqueantes; corregidos los cuatro importantes y las ocho sugerencias a pedido del usuario. Sin fallback a otro modelo (`E-17`), brechas 18 y 19 en el anexo.
 - 2026-10-02: el usuario eligió mergear T124 ya y dejar el reembolso real en una rama de evidencia aparte (como `cc/t122-evidencia`), para que T126 y T127 salgan de `origin/main`. El reembolso del 8 corre con el código de `main`.
+- 2026-10-02: T126 y T127 agregadas al spec y aprobadas. El usuario eligió firma con Freighter desde la cuenta de cobro, página estática con archivo, 48 h para responder, ajuste UCP más campo `dispute`, y solo lo que está en la red (`E-20` a `E-24`). Los pedidos de la plataforma viven en Postgres desde T103: un deploy no los borra (la nota de `INSTRUCCIONES.md` quedó vieja; se corrige en T127).
