@@ -246,12 +246,12 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   (`E-23`). Solo lo que está en la red: estado, hash del reclamo y del
   veredicto, montos y fechas (`E-24`). UCP sigue en `2026-04-08` (`E-2`).
 - **Hecho cuando:**
-  - [ ] la orden muestra la disputa leída del contrato, como ajuste UCP más el campo `dispute`, y valida contra los esquemas UCP `2026-04-08` versionados y el esquema de la extensión (test sin red)
-  - [ ] una orden sin disputa responde igual que antes; si la lectura del contrato falla, la orden responde con un aviso, nunca con un 503
-  - [ ] la clave de almacenamiento que lee Vitrinee está fijada por un test contra el fuente del contrato
-  - [ ] el id del contrato sale de `deployments/testnet.json`, sin variables nuevas en el panel de Render
+  - [x] la orden muestra la disputa leída del contrato, como ajuste UCP más el campo `dispute`, y valida contra los esquemas UCP `2026-04-08` versionados y el esquema de la extensión (test sin red)
+  - [x] una orden sin disputa responde igual que antes; si la lectura del contrato falla, la orden responde con un aviso, nunca con un 503
+  - [x] la clave de almacenamiento que lee Vitrinee está fijada por un test contra el fuente del contrato
+  - [x] el id del contrato sale de `deployments/testnet.json`, sin variables nuevas en el panel de Render
   - [ ] en vivo, tras el deploy con OK del usuario: la orden de T122 muestra la disputa resuelta con reembolso 0, y `ord_muq1gqhycf4961492c` la muestra abierta el 8-oct y resuelta después
-  - [ ] `pnpm run vitrinee:check` y `pnpm check` en verde
+  - [x] `pnpm run vitrinee:check` y `pnpm check` en verde
 
 ## 6. Criterios de aceptación de la fase
 
@@ -308,3 +308,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-02 | T126 (respuesta del comercio, 12 h) y T127 (la disputa en la orden UCP, 10 h) agregadas y aprobadas por el usuario, con `E-20` a `E-24` |
 | 2026-10-02 | T126 mergeada a `main` ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)) con seis de siete criterios; falta la firma real con Freighter, que se ensaya con la página ya publicada |
 | 2026-10-02 | T126 cerrada: el usuario firmó con Freighter en la página publicada y `resolve:check-response` lo aceptó |
+| 2026-10-02 | T127 mergeada a `main` ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)) con cinco de seis criterios; falta verla en vivo tras el deploy (T122 hoy, `ord_muq1gqhycf4961492c` el 8-oct) (`VT-37`, `VT-38`) |

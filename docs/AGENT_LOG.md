@@ -7511,3 +7511,14 @@ Por qué: brecha 6 del anexo; que el reclamo del 8-oct se vea en la orden.
 
 Pendiente: `/revisar`; merge con OK (despliega Vitrinee); verificar en vivo la orden de T122 y, el 8-oct,
 `ord_muq1gqhycf4961492c`. `AGENTS.md`: sin cambios. Exponential: T127 a `IN_PROGRESS`.
+
+## 2026-10-02 (6) — cc/t127-disputa-orden-ucp → main
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T127 sin bloqueantes; corregidos los cuatro importantes y dos sugerencias. Con OK del
+usuario y CI 4/4 en verde: PR [#38](https://github.com/vicentewolde/AgentPey/pull/38) por fast-forward a `main`,
+que redespliega el servicio único de Render. Spec con cinco de seis criterios.
+
+Pendiente: ver en vivo la orden de T122 con su disputa resuelta (cierra el criterio en vivo de hoy) y, el
+8-oct, `ord_muq1gqhycf4961492c`. Deuda en ESTADO. `AGENTS.md`: sin cambios. Exponential: T127 a `QA`.
