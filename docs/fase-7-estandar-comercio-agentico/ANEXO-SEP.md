@@ -507,14 +507,28 @@ cambia.
    `open` en el contrato. El contrato lee `receipt-registry` por su cuenta: el
    comercio y el tope salen del recibo anclado, nunca de quien llama. El monto
    queda bloqueado en la garantía de ese comercio.
-3. **Veredicto.** Claude Opus 5.5 (`E-17`) lee los hechos del recibo y el
-   reclamo, este último como datos no confiables entre `<claim_data>`, y
+3. **Respuesta del comercio (T126).** El dueño del comercio responde en
+   `agentpey.com/resolve/responder` con el reclamo que le envía el árbitro: una
+   posición (`accept_full`, `accept_partial` con monto, `contest`), sus
+   descargos y hasta cinco evidencias (`agentResolveResponseSchema`,
+   `packages/resolve/src/response.ts`). Firma con su wallet (SEP-53) un mensaje
+   legible que lleva el `sha256` del JSON canónico de la respuesta
+   (`responseChallengeMessage`), desde la cuenta de cobro que el comercio puso
+   en el recibo (`merchantAccount`, `E-20`). `verifyMerchantResponse` exige esa
+   cuenta y que la respuesta apunte al `claim_hash` de la disputa en la red. La
+   respuesta viaja como archivo (`E-21`). Sin respuesta, no se decide antes de
+   48 h desde `opened_at` (`E-22`).
+4. **Veredicto.** Claude Opus 5.5 (`E-17`) lee los hechos del recibo, el
+   reclamo y la respuesta, los dos últimos como datos no confiables entre
+   `<claim_data>` y `<response_data>`, y
    propone `refund_full`, `refund_partial` o `rejected` con su razonamiento
    (`createClaudeArbiter`, `packages/resolve/src/arbiter.ts`). El código lo
    acota al monto en disputa (`decideDispute`, `packages/resolve/src/decide.ts`)
    y calcula `verdict_hash` = `sha256` del JSON canónico del veredicto. Cada
-   veredicto queda archivado; solo el último se puede ejecutar.
-4. **Confirmación y pago.** Una persona confirma pasando ese hash exacto
+   veredicto queda archivado; solo el último se puede ejecutar. El veredicto
+   lleva `responseHash` (o `null` si el comercio no respondió), así que el hash
+   anclado cubre también la respuesta, sin tocar el contrato.
+5. **Confirmación y pago.** Una persona confirma pasando ese hash exacto
    (`E-18`); recién entonces el script del árbitro llama `resolve`, que guarda
    el hash del veredicto junto al recibo y paga el reembolso desde la garantía
    al pagador. La confirmación es un paso del procedimiento, no una regla de la
@@ -537,7 +551,9 @@ cambia.
 
 Errores del lado de AgentPey: `ResolveClaimInvalid`, `ResolveReceiptInvalid`,
 `ResolveClaimantNotPayer`, `ResolveClaimWindowClosed`, `ResolveAmountExceeded`,
-`ResolveVerdictInvalid`, `ResolveConfirmationMismatch`.
+`ResolveVerdictInvalid`, `ResolveConfirmationMismatch`, y para la respuesta
+del comercio `ResolveResponseInvalid`, `ResolveRespondentNotMerchant`,
+`ResolveResponseMismatch`, `ResolveResponsePending`.
 
 ## 5. Contratos desplegados (testnet)
 
@@ -630,10 +646,11 @@ construir, más trece que aparecieron después:
     hace cumplir: la misma intención se puede exportar otra vez hasta que vence,
     cada par con el mismo tope y la misma ventana. T123 exporta y verifica
     fuera de línea (`E-8`).
-15. **La disputa oye a una sola parte.** En v0 el comercio no presenta
-    descargos y el árbitro no puede verificar la entrega; lo compensa la
-    confirmación humana (`E-18`). Un SEP debería fijar el plazo y el formato de
-    la respuesta del comercio.
+15. **La respuesta del comercio no vive en la red.** Desde T126 el comercio
+    responde firmado (sección 4.6) y el veredicto ancla el hash de la respuesta,
+    pero el plazo de 48 h (`E-22`) lo aplica el script del árbitro, no el
+    contrato, y el árbitro sigue sin poder verificar la entrega. Un SEP debería
+    fijar en la red el plazo y el formato de la respuesta.
 16. **El comercio puede vaciar su garantía antes del reclamo** (`E-19`): solo lo
     bloqueado por una disputa abierta está protegido. Un retiro con aviso previo
     lo cerraría.
@@ -652,6 +669,14 @@ construir, más trece que aparecieron después:
 19. **Sin anclaje no hay disputa.** Un comercio que no ancla un recibo, o lo
     ancla con otro monto (y `verifyReceipt` lo invalida), queda fuera de
     AgentResolve.
+20. **El ida y vuelta con el comercio es a mano, y las dos partes pueden
+    intentar manipular al árbitro.** El árbitro le envía el reclamo y el
+    comercio le devuelve un archivo (`E-21`): no hay bandeja ni aviso, y una
+    respuesta que no llega a tiempo deja la decisión con una sola parte. La
+    respuesta es texto no confiable igual que el reclamo: un comercio puede
+    intentar empujar el reembolso hacia abajo, y ningún tope del código ni del
+    contrato lo impide; la defensa es la confirmación humana (`E-18`). Un SEP
+    debería definir el canal y cómo se notifica a cada parte.
 
 ## 7. Reproducir
 

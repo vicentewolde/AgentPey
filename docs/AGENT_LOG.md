@@ -7455,3 +7455,20 @@ de `origin/main` y T127 se despliega desde `main`.
 
 Pendiente: proponer T126 y T127 al spec (con OK del usuario antes de construir). El plan de demo del 11-oct
 sigue sin escribir. `AGENTS.md`: sin cambios.
+
+## 2026-10-02 (2) — cc/t126-respuesta-comercio (sin push)
+
+Agente: Claude Code.
+
+Qué: T126 y T127 agregadas al spec y aprobadas (`E-20` a `E-24`), y T126 implementada. El comercio responde
+al reclamo en `agentpey.com/resolve/responder` (`apps/web/public/resolve/`), firma con Freighter (SEP-53)
+desde la cuenta de cobro del recibo y devuelve un archivo. `packages/resolve/src/response.ts` (esquema,
+mensaje firmado, `verifyMerchantResponse`, plazo de 48 h), el árbitro lee las dos versiones (`<response_data>`),
+el veredicto lleva `responseHash`, `resolve:decide -- --response` y `resolve:check-response`. Cuatro códigos
+`Resolve*` nuevos. Anexo: 4.6, brechas 15 y 20. `pnpm check` en verde.
+
+Por qué: brecha 15, para que el reembolso real del 8-oct ya tenga las dos partes.
+
+Pendiente: `/revisar`; merge con OK (publica la página); ensayo del usuario con Freighter sobre el reclamo de
+T122. Después T127. No tocó contratos, fondos, flujo de pago, `checkMandate` ni `receipt-registry`.
+`AGENTS.md`: sin cambios (no delegable, `P-10`). Exponential: T126 y T127 creadas, T124 con su PR.

@@ -162,6 +162,9 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
       ["checkClaim", "packages/resolve/src/claim.ts"],
       ["createClaudeArbiter", "packages/resolve/src/arbiter.ts"],
       ["decideDispute", "packages/resolve/src/decide.ts"],
+      ["agentResolveResponseSchema", "packages/resolve/src/response.ts"],
+      ["responseChallengeMessage", "packages/resolve/src/response.ts"],
+      ["verifyMerchantResponse", "packages/resolve/src/response.ts"],
     ];
     for (const [symbol, path] of cited) {
       expect(annex, symbol).toContain(`\`${symbol}`);
@@ -214,7 +217,7 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
       expect(annex, name).toContain(`\`${name}\``);
     }
     const resolveCodes = [...read("../packages/core/src/errors.ts").matchAll(/\| "(Resolve[A-Za-z]+)"/g)].map(([, code]) => code ?? "");
-    expect(resolveCodes).toHaveLength(7);
+    expect(resolveCodes).toHaveLength(11);
     for (const code of resolveCodes) expect(annex, code).toContain(`\`${code}\``);
   });
 

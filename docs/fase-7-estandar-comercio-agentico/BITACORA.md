@@ -12,15 +12,18 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-01 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
+**Fecha:** 2026-10-02 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
 `E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP. **T122
 cerrada**: un agente compró por UCP en una tienda Shopify real, pagando en
 Stellar desde un `policy_rail`, con pedido en Shopify (visto por el usuario) y
 recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y revisado.
 **T123 cerrada**: el Mandato se exporta como mandatos AP2 v0.2 y la librería
 oficial de AP2 los verifica (`E-8` a `E-13`). **T124 en curso**: AgentResolve
-desplegado y probado con un reclamo real (rechazado); falta el reembolso real,
-el 8 o 9 de octubre.
+desplegado y probado con un reclamo real (rechazado), y en `main` desde el
+2-oct; falta el reembolso real, el 8 o 9 de octubre. **T126 en revisión**: el
+comercio responde al reclamo firmado con su wallet, y el árbitro decide con las
+dos versiones (`E-20` a `E-22`). **T127 pendiente**: la disputa visible en la
+orden UCP.
 
 | Tarea | Estado |
 |---|---|
@@ -28,8 +31,10 @@ el 8 o 9 de octubre.
 | T121 Perfil y catálogo UCP | cerrada |
 | T122 Compra UCP de punta a punta | cerrada |
 | T123 Mandato como mandatos AP2 | cerrada |
-| T124 Disputas (AgentResolve) | en curso |
+| T124 Disputas (AgentResolve) | en curso (en `main`, falta el reembolso real) |
 | T125 Anexo para el SEP | cerrada |
+| T126 Respuesta del comercio | en revisión |
+| T127 La disputa en la orden UCP | pendiente |
 
 ## Apertura de la fase (2026-09-30)
 
@@ -258,3 +263,36 @@ si sigue sin despacho.
 - Anexo para el SEP: sección 4.6, fila del contrato y brechas 15 a 19.
   [evidencia/T124.md](evidencia/T124.md).
 
+## T126 · El comercio también tiene voz (2026-10-02, en revisión)
+
+**Qué quedó funcionando.** Hasta ahora, cuando un comprador reclamaba, el
+árbitro (Claude) leía solo su versión. Ahora el comercio puede responder. El
+árbitro le manda el reclamo. El dueño de la tienda lo abre en una página de
+`agentpey.com` (`/resolve/responder`), lo lee, dice si lo rechaza, si acepta
+una parte o si lo acepta completo, escribe sus descargos, y firma con
+Freighter. Firmar no mueve dinero. La página le da un archivo, que el dueño
+devuelve al árbitro. Al decidir, el árbitro comprueba dos cosas antes de leer
+nada: que firmó la cuenta donde la tienda recibe sus pagos (la que la tienda
+misma puso en el recibo) y que la respuesta habla del mismo reclamo que está
+guardado en la red. Recién entonces Claude lee las dos versiones. Si el
+comercio no responde, el árbitro espera 48 horas antes de decidir con una sola
+parte.
+
+**Por qué así.** El usuario eligió las tres cosas (`E-20` a `E-22`): que firme
+la wallet del dueño y no la llave que custodia la plataforma, porque así la
+firma prueba que respondió el dueño; una página con archivo en vez de una
+bandeja en el portal, porque llega con holgura al reembolso del 8; y 48 horas
+de plazo. El veredicto guarda el hash de la respuesta, y como el hash del
+veredicto ya se guarda en el contrato, la respuesta queda anclada sin
+redesplegar nada.
+
+**Lo que no hace todavía.** El ida y vuelta es a mano (no hay aviso ni
+bandeja), el plazo lo aplica el script del árbitro y no la red, y el comercio
+también puede intentar manipular al árbitro, esta vez para bajar el
+reembolso; la defensa es la confirmación humana (`E-18`). Quedó escrito en el
+anexo (brechas 15 y 20).
+
+**Lo que falta.** `/revisar`, el merge (que publica la página en
+`agentpey.com`) y un ensayo con Freighter real: el usuario firma una respuesta
+sobre el reclamo de T122, ya resuelto, y `resolve:check-response` la verifica
+contra la red. Evidencia en [`evidencia/T126.md`](evidencia/T126.md).
