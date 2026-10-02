@@ -255,10 +255,10 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
 
 ## 6. Criterios de aceptación de la fase
 
-- [ ] Un cliente UCP lee el perfil de una tienda real de terceros y lista sus productos
-- [ ] Una compra UCP se paga en USDC testnet desde un `policy_rail`, con pedido real y recibo verificable
-- [ ] La red rechaza un pago que excede `per_tx`
-- [ ] El anexo técnico está entregado al chat de estrategia
+- [x] Un cliente UCP lee el perfil de una tienda real de terceros y lista sus productos (T121 con `bazar-cordillera`; repetido el 2-oct con `agentcommerce`, [evidencia](evidencia/criterios-fase7.md) §1)
+- [x] Una compra UCP se paga en USDC testnet desde un `policy_rail`, con pedido real y recibo verificable (T122, pedido Shopify `18946533884210`; segunda compra verificada el 2-oct, [evidencia](evidencia/criterios-fase7.md) §2)
+- [x] La red rechaza un pago que excede `per_tx` (`PerTxExceeded`, T122, [evidencia](evidencia/criterios-fase7.md) §3)
+- [ ] El anexo técnico está entregado al chat de estrategia (lo hace el usuario)
 
 ## 7. Plan de demo
 
@@ -309,3 +309,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-02 | T126 mergeada a `main` ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)) con seis de siete criterios; falta la firma real con Freighter, que se ensaya con la página ya publicada |
 | 2026-10-02 | T126 cerrada: el usuario firmó con Freighter en la página publicada y `resolve:check-response` lo aceptó |
 | 2026-10-02 | T127 mergeada a `main` ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)) con cinco de seis criterios; falta verla en vivo tras el deploy (T122 hoy, `ord_muq1gqhycf4961492c` el 8-oct) (`VT-37`, `VT-38`) |
+| 2026-10-02 | Criterios de aceptación 1 a 3 marcados con su evidencia (`evidencia/criterios-fase7.md`); el 4 queda para el usuario |
