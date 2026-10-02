@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-01
 **Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
 **Última tarea terminada:** T123 · el Mandato exportado como mandatos AP2 v0.2, verificado por la librería oficial de AP2
-**Siguiente paso:** el 8 o 9 de octubre, el reclamo sobre la compra `0922707…` (pedido Shopify `18952373174578`) para el reembolso real, con confirmación del usuario; después push, PR y merge de T124
+**Siguiente paso:** antes del 8-oct, proponer al spec y hacer dos mejoras de AgentResolve (respuesta del comercio; disputa visible en la orden UCP) y después ordenar la casa (criterios de la Fase 7, cerrar la Fase 6). El 8 o 9 de octubre, el reclamo sobre `0922707…` (pedido Shopify `18952373174578`) para el reembolso real
 
 ## Progreso de la fase
 

@@ -7428,3 +7428,16 @@ caso, `execute` compara el recibo.
 
 Pendiente: el reembolso real el 8–9 oct (pedido Shopify `18952373174578`), después push, PR y merge con OK
 del usuario. `AGENTS.md`: sin cambios.
+
+## 2026-10-01 (8) — cc/t124-agentresolve (sin push)
+
+Agente: Claude Code.
+
+Qué: el usuario eligió el trabajo de la semana del 2 al 7 de octubre, antes del reembolso real de T124:
+(1) dos mejoras de AgentResolve, la respuesta del comercio (brecha 15) y la disputa visible en la orden
+UCP (brecha 6); (2) ordenar la casa: marcar los criterios de aceptación de la Fase 7 ya cumplidos y cerrar
+formalmente la Fase 6. Las dos mejoras entran al spec como tareas nuevas, con aprobación, antes de
+implementarlas (`P-15`). Sigue en un chat nuevo.
+
+Pendiente: decidir cómo se ramifican las mejoras, porque AgentResolve todavía no está en `main`. El plan de
+demo del 11-oct (sección 7 del spec) sigue sin escribir. `AGENTS.md`: sin cambios.
