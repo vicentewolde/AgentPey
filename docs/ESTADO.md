@@ -21,13 +21,13 @@
 | T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en `main`, cuatro de cinco criterios; falta el reembolso real (8–9 oct), en una rama de evidencia aparte | `cc/t124-agentresolve`, mergeada |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 | T126 Respuesta del comercio en AgentResolve | antes del 8-oct | ✅ terminada | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)); `cc/t126-evidencia` |
-| T127 La disputa visible en la orden UCP | si alcanza | 👀 en `main` (merge despliega Vitrinee); falta verificar en vivo | `cc/t127-disputa-orden-ucp` |
+| T127 La disputa visible en la orden UCP | si alcanza | 👀 en `main` y en vivo (la orden de T122 muestra su disputa); falta ver `ord_muq1…` el 8-oct | `cc/t127-disputa-orden-ucp`, mergeada ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)) |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] 8 o 9 de octubre: confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página
+- [ ] 8 o 9 de octubre: confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página; después, comprobar que `ord_muq1gqhycf4961492c` muestra la disputa abierta y luego resuelta (cierra T127)
 
 
 ## Deuda y pendientes fuera de la fase
@@ -63,3 +63,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02: T126 cerrada. El usuario firmó con Freighter en `agentpey.com/resolve/responder` sobre el reclamo de T122 y `resolve:check-response` lo aceptó. Siguiente: T127.
 - 2026-10-02, T127: `GET /ucp/v1/orders/{id}` lee la disputa de `agent-resolve` (`AgentResolveReader`, sin llave) y la muestra como ajuste UCP más `receipt.dispute`. Versión de la extensión sin cambios (`VT-37`); reembolso en CLP en el ajuste y exacto en USDC en el recibo (`VT-38`). Leído en testnet: la disputa de T122 decodifica igual que `resolve:verify`.
 - 2026-10-02, T127 `/revisar`: sin bloqueantes. Corregidos los cuatro importantes (test del layout con tipos y durabilidad, test del timeout, error tipado, variable en `.env.vitrinee.example`) y dos sugerencias (id del contrato leído con zod sin tumbar la tienda si es inválido; disputas imposibles rechazadas al decodificar, para que un dato raro dé aviso y no 500).
+- 2026-10-02: T127 en vivo. La orden UCP de T122 en `agentcommerce` muestra el ajuste `dispute` (`completed`, sin montos) y `receipt.dispute` (`resolved`, reembolso 0, veredicto `ff3ef9b0…`), y valida contra UCP y la extensión.

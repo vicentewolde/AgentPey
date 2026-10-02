@@ -7522,3 +7522,13 @@ que redespliega el servicio único de Render. Spec con cinco de seis criterios.
 
 Pendiente: ver en vivo la orden de T122 con su disputa resuelta (cierra el criterio en vivo de hoy) y, el
 8-oct, `ord_muq1gqhycf4961492c`. Deuda en ESTADO. `AGENTS.md`: sin cambios. Exponential: T127 a `QA`.
+
+## 2026-10-02 (7) — cc/t127-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: T127 verificada en vivo con la orden de T122 (`ord_mupk7srw006dfebad8`): ajuste `dispute` y
+`receipt.dispute` leídos del contrato, válidos contra UCP y la extensión. Evidencia §6, spec, ESTADO.
+
+Pendiente: push y merge de esta rama con OK; el 8-oct, `ord_muq1gqhycf4961492c` abierta y luego resuelta
+(cierra T127, junto con el reembolso de T124). `AGENTS.md`: sin cambios.

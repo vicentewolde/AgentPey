@@ -250,7 +250,7 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   - [x] una orden sin disputa responde igual que antes; si la lectura del contrato falla, la orden responde con un aviso, nunca con un 503
   - [x] la clave de almacenamiento que lee Vitrinee está fijada por un test contra el fuente del contrato
   - [x] el id del contrato sale de `deployments/testnet.json`, sin variables nuevas en el panel de Render
-  - [ ] en vivo, tras el deploy con OK del usuario: la orden de T122 muestra la disputa resuelta con reembolso 0, y `ord_muq1gqhycf4961492c` la muestra abierta el 8-oct y resuelta después
+  - [ ] en vivo, tras el deploy con OK del usuario: la orden de T122 muestra la disputa resuelta con reembolso 0, y `ord_muq1gqhycf4961492c` la muestra abierta el 8-oct y resuelta después (T122: ✅ en vivo el 2-oct, [evidencia](evidencia/T127.md) §6; `ord_muq1…`: el 8-oct)
   - [x] `pnpm run vitrinee:check` y `pnpm check` en verde
 
 ## 6. Criterios de aceptación de la fase
