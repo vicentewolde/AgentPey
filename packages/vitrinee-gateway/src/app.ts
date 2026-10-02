@@ -46,6 +46,8 @@ export interface AppDeps {
   registry?: RegistryReader & { contractId?: string };
   /** Disputes over receipts, shown on UCP orders (T127). Defaults to `agent-resolve` over Soroban RPC when configured; `null` turns it off. */
   disputes?: DisputeReader | null;
+  /** How long an order waits for the dispute read before answering without it (default 3 s). */
+  disputeTimeoutMs?: number;
   /** Used for the Horizon settlement check. Tests inject a fake Horizon. */
   horizonFetch?: typeof fetch;
   anchorRetryDelaysMs?: readonly number[];
@@ -75,6 +77,7 @@ export function createApp({
   anchorer,
   registry,
   disputes,
+  disputeTimeoutMs,
   horizonFetch,
   anchorRetryDelaysMs,
   syncFacilitatorOnStart = true,
@@ -202,7 +205,7 @@ export function createApp({
       : config.agentResolveId === undefined
         ? null
         : new AgentResolveReader({ contractId: config.agentResolveId, rpcUrl: config.stellar.rpcUrl });
-  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log);
+  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs);
 
   app.get("/products/:id", async (req, res) => {
     const id = String(req.params.id);

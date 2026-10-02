@@ -11,7 +11,7 @@
  * what the contract holds: the verdict's reasoning stays with the arbiter.
  */
 import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
-import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_ORDER, UCP_VERSION, currencyDecimals, formatUnits, parseDecimal, toMinorUnits } from "@vitrinee/core";
+import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_ORDER, UCP_VERSION, VitrineeError, currencyDecimals, formatUnits, parseDecimal, toMinorUnits } from "@vitrinee/core";
 import type { Express, Request, Response } from "express";
 
 import type { OrderRecord, OrderStore } from "../orders.js";
@@ -20,7 +20,7 @@ import { receiptExtension } from "./checkout.js";
 /** What the order knows about its receipt's dispute: none, one read from the chain, or a read that failed. */
 export type DisputeLookup = { kind: "none" } | { kind: "found"; contractId: string; dispute: DisputeRecord } | { kind: "unavailable" };
 
-const DISPUTE_READ_TIMEOUT_MS = 3_000;
+export const DISPUTE_READ_TIMEOUT_MS = 3_000;
 
 function iso(seconds: number): string {
   return new Date(seconds * 1000).toISOString();
@@ -143,14 +143,19 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
  * receipt can be disputed (`ReceiptNotAnchored` in the contract). A read that
  * fails or takes too long never fails the order (T127).
  */
-export async function lookupDispute(record: OrderRecord, disputes: DisputeReader | null, log: (message: string, fields?: Record<string, unknown>) => void = () => {}): Promise<DisputeLookup> {
+export async function lookupDispute(
+  record: OrderRecord,
+  disputes: DisputeReader | null,
+  log: (message: string, fields?: Record<string, unknown>) => void = () => {},
+  timeoutMs: number = DISPUTE_READ_TIMEOUT_MS,
+): Promise<DisputeLookup> {
   if (disputes === null || record.receipt === null || record.anchor?.status !== "anchored") return { kind: "none" };
   let timer: NodeJS.Timeout | undefined;
   try {
     const dispute = await Promise.race([
       disputes.get(record.receipt.hash),
       new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => reject(new Error(`no answer in ${DISPUTE_READ_TIMEOUT_MS} ms`)), DISPUTE_READ_TIMEOUT_MS);
+        timer = setTimeout(() => reject(new VitrineeError("NetworkError", `agent-resolve gave no answer in ${timeoutMs} ms`, { details: { timeoutMs } })), timeoutMs);
       }),
     ]);
     return dispute === null ? { kind: "none" } : { kind: "found", contractId: disputes.contractId, dispute };
@@ -169,6 +174,7 @@ export function registerUcpOrders(
   originOf: (req: Request) => string,
   disputes: DisputeReader | null = null,
   log: (message: string, fields?: Record<string, unknown>) => void = () => {},
+  disputeTimeoutMs: number = DISPUTE_READ_TIMEOUT_MS,
 ): void {
   app.get(`${prefix}/orders/:id`, async (req: Request, res: Response) => {
     res.set("Cache-Control", "no-store");
@@ -182,7 +188,7 @@ export function registerUcpOrders(
       });
       return;
     }
-    const lookup = await lookupDispute(record, disputes, log);
+    const lookup = await lookupDispute(record, disputes, log, disputeTimeoutMs);
     res.json(ucpOrder({ ...record, ucpCheckoutId: record.ucpCheckoutId }, originOf(req), lookup));
   });
 }

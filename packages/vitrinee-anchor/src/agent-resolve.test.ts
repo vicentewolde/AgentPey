@@ -69,9 +69,32 @@ describe("the reader mirrors the contract's storage layout", () => {
   it("names the same key, struct fields, statuses and storage version as contracts/agent-resolve", () => {
     expect(CONTRACT_SOURCE).toMatch(/pub enum DataKey \{[^}]*\bDispute\(BytesN<32>\)/);
     const struct = /pub struct Dispute \{([\s\S]*?)\n\}/.exec(CONTRACT_SOURCE)?.[1] ?? "";
-    const fields = [...struct.matchAll(/^\s+pub (\w+):/gm)].map(([, name]) => name);
-    expect(fields).toEqual(["merchant", "payer", "claim_hash", "amount", "opened_at", "status", "verdict_hash", "refund", "resolved_at"]);
+    const fields = [...struct.matchAll(/^\s+pub (\w+): ([^,]+),/gm)].map(([, name, type]) => [name, type]);
+    expect(fields).toEqual([
+      ["merchant", "Address"],
+      ["payer", "Address"],
+      ["claim_hash", "BytesN<32>"],
+      ["amount", "i128"],
+      ["opened_at", "u64"],
+      ["status", "Status"],
+      ["verdict_hash", "Option<BytesN<32>>"],
+      ["refund", "i128"],
+      ["resolved_at", "u64"],
+    ]);
+    // Read from persistent storage: under any other durability the ledger key differs and every order would say "no dispute".
+    expect(CONTRACT_SOURCE).toContain("env.storage().persistent().get(&DataKey::Dispute(receipt))");
     expect(CONTRACT_SOURCE).toMatch(/pub enum Status \{\s*Open,\s*Resolved,\s*\}/);
     expect(CONTRACT_SOURCE).toContain(`pub const STORAGE_SCHEMA_VERSION: u32 = ${AGENT_RESOLVE_STORAGE_SCHEMA_VERSION};`);
+  });
+
+});
+
+describe("a dispute the contract could never hold is refused, not shown", () => {
+  it.each([
+    ["a negative refund", disputeScVal("Resolved", VERDICT, -1n, 1_791_003_600)],
+    ["a refund above the disputed amount", disputeScVal("Resolved", VERDICT, 15_684_212n, 1_791_003_600)],
+    ["a time no date can hold", disputeScVal("Resolved", VERDICT, 0n, 99_999_999_999_999)],
+  ])("%s", (_name, value) => {
+    expect(() => decodeDispute(value)).toThrow(expect.objectContaining({ code: "AnchorError" }));
   });
 });

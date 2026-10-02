@@ -50,20 +50,29 @@ export function disputeKey(receiptHash: string): xdr.ScVal {
 }
 
 const bytes32 = z.instanceof(Uint8Array).refine((value) => value.length === 32, "expected 32 bytes");
-const u64 = z.union([z.bigint(), z.number()]).transform((value) => Number(value));
+/** Ledger seconds, up to the last second a date can print (9999-12-31): beyond that `toISOString` throws. */
+const MAX_SECONDS = 253_402_300_799n;
+const u64 = z
+  .union([z.bigint(), z.number().int()])
+  .transform((value) => BigInt(value))
+  .refine((value) => value >= 0n && value <= MAX_SECONDS, "a time outside any date")
+  .transform((value) => Number(value));
+const atomic = z.bigint().nonnegative();
 
 /** `Dispute` as `scValToNative` decodes it. A unit enum variant (`Status::Open`) arrives as `["Open"]`. */
 const disputeScSchema = z.object({
   merchant: z.string(),
   payer: z.string(),
   claim_hash: bytes32,
-  amount: z.bigint(),
+  amount: atomic,
   opened_at: u64,
   status: z.tuple([z.enum(["Open", "Resolved"])]),
   verdict_hash: bytes32.nullable().optional(),
-  refund: z.bigint(),
+  refund: atomic,
   resolved_at: u64,
-});
+})
+  // The contract never pays back more than it locked (`RefundExceedsClaim`); a reader holds it to that too.
+  .refine((d) => d.refund <= d.amount, "refund above the disputed amount");
 
 export function decodeDispute(value: xdr.ScVal): DisputeRecord {
   const parsed = disputeScSchema.safeParse(scValToNative(value));

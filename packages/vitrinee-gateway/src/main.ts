@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { MANIFEST_PATH, isVitrineeError } from "@vitrinee/core";
+import { MANIFEST_PATH, isVitrineeError, stellarContractIdSchema } from "@vitrinee/core";
+import { z } from "zod";
 
 import { createAdapter } from "./adapters.js";
 import { createApp } from "./app.js";
@@ -52,12 +53,20 @@ if (process.env["RECEIPT_REGISTRY_ID"] === undefined || process.env["RECEIPT_REG
 
 // AgentResolve (T127) is AgentPey's contract, so its id lives in AgentPey's
 // deployments file; the env var only overrides it, as with the registry above.
+const agentResolveDeploymentSchema = z.object({ agentResolve: z.object({ contractId: stellarContractIdSchema }).nullish() });
+
+// A bad id must not keep a storefront from starting for a display-only
+// feature: anything that is not a contract id is dropped, and the orders
+// simply say nothing about disputes.
 if (process.env["AGENT_RESOLVE_CONTRACT_ID"] === undefined || process.env["AGENT_RESOLVE_CONTRACT_ID"] === "") {
   const deployments = resolve(root, "deployments/testnet.json");
   if (existsSync(deployments)) {
-    const id = (JSON.parse(readFileSync(deployments, "utf8")) as { agentResolve?: { contractId?: string } | null }).agentResolve?.contractId;
-    if (id !== undefined) process.env["AGENT_RESOLVE_CONTRACT_ID"] = id;
+    const parsed = agentResolveDeploymentSchema.safeParse(JSON.parse(readFileSync(deployments, "utf8")));
+    if (parsed.success && parsed.data.agentResolve?.contractId !== undefined) process.env["AGENT_RESOLVE_CONTRACT_ID"] = parsed.data.agentResolve.contractId;
   }
+} else if (!stellarContractIdSchema.safeParse(process.env["AGENT_RESOLVE_CONTRACT_ID"].trim()).success) {
+  process.stdout.write(`${JSON.stringify({ at: new Date().toISOString(), message: "AGENT_RESOLVE_CONTRACT_ID is not a contract id; orders will not show disputes" })}\n`);
+  delete process.env["AGENT_RESOLVE_CONTRACT_ID"];
 }
 
 function useLocalFiles(): void {

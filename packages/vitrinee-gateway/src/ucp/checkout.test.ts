@@ -79,7 +79,7 @@ function uniqueFacilitator(): FakeFacilitator {
   };
 }
 
-function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; anchorer?: Anchorer } = {}) {
+function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; disputeTimeoutMs?: number; anchorer?: Anchorer } = {}) {
   const clock = { now: new Date("2026-09-30T12:00:00.000Z") };
   const facilitator = options.facilitator ?? uniqueFacilitator();
   const registry = fakeRegistry();
@@ -93,6 +93,7 @@ function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK
     sessions: new MemoryCheckoutSessions(),
     ...(options.orders === undefined ? {} : { orders: options.orders }),
     ...(options.disputes === undefined ? {} : { disputes: options.disputes }),
+    ...(options.disputeTimeoutMs === undefined ? {} : { disputeTimeoutMs: options.disputeTimeoutMs }),
     anchorRetryDelaysMs: [1],
     now: () => clock.now,
   });
@@ -418,15 +419,16 @@ const ORDER_WITH_RECEIPT = `${RECEIPT.$id}#/$defs/dev.ucp.shopping.order`;
 function fakeDisputes() {
   const byReceipt = new Map<string, DisputeRecord>();
   const calls: string[] = [];
-  let failure: Error | null = null;
+  let failure: Error | "hang" | null = null;
   const reader: DisputeReader = {
     contractId: AGENT_RESOLVE,
     get: (hash) => {
       calls.push(hash);
+      if (failure === "hang") return new Promise(() => {});
       return failure === null ? Promise.resolve(byReceipt.get(hash) ?? null) : Promise.reject(failure);
     },
   };
-  return { reader, byReceipt, calls, fail: (error: Error | null) => (failure = error) };
+  return { reader, byReceipt, calls, fail: (error: Error | "hang" | null) => (failure = error) };
 }
 
 function dispute(overrides: Partial<DisputeRecord> = {}): DisputeRecord {
@@ -446,7 +448,7 @@ function dispute(overrides: Partial<DisputeRecord> = {}): DisputeRecord {
 
 describe("a UCP order shows the dispute over its receipt, read from agent-resolve (T127)", () => {
   const disputes = fakeDisputes();
-  const h = harness({ disputes: disputes.reader });
+  const h = harness({ disputes: disputes.reader, disputeTimeoutMs: 50 });
   beforeAll(() => h.start());
   afterAll(() => h.stop());
 
@@ -518,9 +520,12 @@ describe("a UCP order shows the dispute over its receipt, read from agent-resolv
     expect(body.receipt.dispute).toMatchObject({ status: "resolved", refund_atomic: "0" });
   });
 
-  it("answers the order with a warning, never a 503, when the chain cannot be read", async () => {
+  it.each([
+    ["the read fails", new Error("rpc down")],
+    ["the RPC never answers", "hang"],
+  ] as const)("answers the order with a warning, never a 503, when %s", async (_name, failure) => {
     const { orderId } = await anchoredOrder();
-    disputes.fail(new Error("rpc down"));
+    disputes.fail(failure);
     try {
       const body = await order(orderId);
       expect(body).not.toHaveProperty("adjustments");
