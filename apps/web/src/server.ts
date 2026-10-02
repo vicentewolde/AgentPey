@@ -1139,7 +1139,11 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
           // mandate id is read client-side from the path.
           pathname.startsWith("/revocar/")
           ? "/revocar.html"
-          : (ucpPublicPath(pathname) ?? pathname);
+          : // T126: where a merchant answers an AgentResolve claim. Static: the
+            // claim is loaded and the answer signed and downloaded in the page.
+            pathname === "/resolve/responder"
+            ? "/resolve/responder.html"
+            : (ucpPublicPath(pathname) ?? pathname);
   const filePath = join(PUBLIC_DIR, relative);
   // No user input reaches this join beyond the URL pathname of a same-origin
   // GET, and every route below is fixed — but refuse a path that escapes

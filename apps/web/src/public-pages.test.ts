@@ -14,7 +14,7 @@ const PUBLIC_DIR = resolve(fileURLToPath(new URL("../public", import.meta.url)))
  * that break a page without any test noticing.
  */
 describe("the static pages", () => {
-  for (const name of ["landing.html", "consent.html", "revocar.html"]) {
+  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html"]) {
     it(`${name} never combines timeZoneName with dateStyle or timeStyle`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
       const combined = /\{[^}]*(dateStyle|timeStyle)[^}]*timeZoneName[^}]*\}|\{[^}]*timeZoneName[^}]*(dateStyle|timeStyle)[^}]*\}/;
@@ -30,6 +30,17 @@ describe("the static pages", () => {
     expect(button).toBeLessThan(html.indexOf('<header class="hero">'));
     expect(html).not.toContain('id="wallet-panel"');
     expect(html).toContain('<a id="return-link" class="btn big">');
+  });
+
+  it("resolve/responder.html signs with the tested module, shows no em dash, and every Spanish line has its English one (T126)", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "resolve/responder.html"), "utf8");
+
+    // The page builds the signed message only through responder.js, the module
+    // `packages/resolve/src/responder-page.test.ts` holds to the verifier.
+    expect(html).toContain('from "./responder.js"');
+    expect(html).not.toMatch(/Stellar Signed Message|canonicalJson\(/);
+    expect(html).not.toContain("—");
+    expect(html.match(/data-tr="es"/g)?.length).toBe(html.match(/data-tr="en"/g)?.length);
   });
 
   it("the landing's live buttons go to RealOps, not to the removed demo", async () => {

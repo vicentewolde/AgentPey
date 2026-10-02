@@ -216,7 +216,15 @@ export type AgentPassErrorCode =
   /** The arbiter returned no usable verdict: a refusal, unparseable output, or a verdict off its schema. */
   | "ResolveVerdictInvalid"
   /** A refund was confirmed for a verdict other than the one on file. */
-  | "ResolveConfirmationMismatch";
+  | "ResolveConfirmationMismatch"
+  /** A merchant response is malformed, off its schema, or its wallet signature does not verify (T126). */
+  | "ResolveResponseInvalid"
+  /** A merchant response was signed by an account other than the receipt's payout account. */
+  | "ResolveRespondentNotMerchant"
+  /** A merchant response answers a different receipt or claim than the dispute on chain. */
+  | "ResolveResponseMismatch"
+  /** The dispute cannot be decided yet: no merchant response, and its 48 h have not passed (`E-22`). */
+  | "ResolveResponsePending";
 
 /** Structured, non-secret context attached to an error for logs and tests. */
 export type AgentPassErrorDetails = Readonly<Record<string, unknown>>;

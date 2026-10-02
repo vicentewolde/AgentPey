@@ -46,6 +46,12 @@ export const agentResolveVerdictSchema = z.strictObject({
   receiptHash: hex64,
   claimHash: hex64,
   claimId: z.uuid(),
+  /**
+   * The merchant's signed response the arbiter read (T126): its hash, or
+   * `null` when none arrived within the 48 h (`E-22`). Absent only on
+   * verdicts from before T126, so their hash, already on chain, still holds.
+   */
+  responseHash: hex64.nullable().optional(),
   outcome: z.enum(VERDICT_OUTCOMES),
   /** What the contract pays. Never above `disputedAtomic`. */
   refundAtomic: atomic,

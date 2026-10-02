@@ -8,6 +8,7 @@
  */
 import type { Arbiter } from "./arbiter.js";
 import type { CheckedClaim } from "./claim.js";
+import type { VerifiedResponse } from "./response.js";
 import { AGENTRESOLVE_VERDICT_TYPE, agentResolveVerdictSchema, boundProposal, verdictHash } from "./verdict.js";
 import type { AgentResolveVerdict } from "./verdict.js";
 
@@ -16,6 +17,8 @@ export interface DecideDisputeInput {
   readonly receiptHash: string;
   readonly claimHash: string;
   readonly arbiter: Arbiter;
+  /** The merchant's verified response, or `null` when none arrived in time (T126). */
+  readonly response: VerifiedResponse | null;
   readonly now?: Date;
 }
 
@@ -27,7 +30,12 @@ export interface DecidedDispute {
 
 export async function decideDispute(input: DecideDisputeInput): Promise<DecidedDispute> {
   const { checked } = input;
-  const decision = await input.arbiter.decide({ claim: checked.claim, receipt: checked.receipt, disputedAtomic: checked.disputedAtomic });
+  const decision = await input.arbiter.decide({
+    claim: checked.claim,
+    receipt: checked.receipt,
+    disputedAtomic: checked.disputedAtomic,
+    response: input.response?.response ?? null,
+  });
   const proposed = BigInt(decision.proposal.refund_atomic);
   const bounded = boundProposal(decision.proposal.outcome, proposed, checked.disputedAtomic);
 
@@ -36,6 +44,7 @@ export async function decideDispute(input: DecideDisputeInput): Promise<DecidedD
     receiptHash: input.receiptHash,
     claimHash: input.claimHash,
     claimId: checked.claim.claimId,
+    responseHash: input.response?.hash ?? null,
     outcome: bounded.outcome,
     refundAtomic: bounded.refund.toString(),
     disputedAtomic: checked.disputedAtomic.toString(),

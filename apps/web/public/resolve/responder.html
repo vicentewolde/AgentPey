@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en" data-title-en="AgentPey · Answer a claim" data-title-es="AgentPey · Responder un reclamo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · Answer a claim</title>
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #fbfaf8;
+    --paper-2: #f2f0ea;
+    --ink: #0f1211;
+    --ink-2: #434946;
+    --ink-3: #707875;
+    --rule: #e3e0d9;
+    --accent: #0a7a56;
+    --accent-wash: #e9f3ee;
+    --danger: #b3261e;
+    --danger-wash: #fbeceb;
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html[lang="en"] [data-tr="es"],
+  html[lang="es"] [data-tr="en"] { display: none; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 56px) 72px; }
+
+  /* ---------- top bar (shared pilot chrome) ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .mark .logo { width: 24px; height: 24px; flex: none; }
+  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
+  @media (max-width: 560px) { .mark .tagline { display: none; } }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .apps { display: flex; align-items: center; gap: 16px; }
+  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .apps a:hover { color: var(--accent); }
+  .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
+  .gh:hover { color: var(--ink); }
+  .lang { display: flex; align-items: center; gap: 8px; }
+  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
+  .lang span { color: var(--rule); font-size: 11.5px; }
+  .lang button:hover { color: var(--ink-2); background: none; transform: none; }
+  html[lang="en"] .lang button[data-set-lang="en"],
+  html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
+  .mark:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: live-pulse 2s ease-out infinite; }
+  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+  /* ---------- page ---------- */
+  .hero { padding: clamp(30px, 6vw, 54px) 0 32px; }
+  .kicker { margin: 22px 0 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+  h1 { margin: 12px 0 0; font-family: var(--serif); font-size: clamp(2.25rem, 7vw, 3.25rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; }
+  .intro { max-width: 80ch; margin: 16px 0 0; color: var(--ink-2); }
+  .session-id { margin: 16px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+
+  .panel { border-top: 1px solid var(--rule); padding: 28px 0; }
+  .panel:last-child { border-bottom: 1px solid var(--rule); }
+  .panel-kicker { color: var(--ink-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
+  h2 { margin: 6px 0 8px; font-family: var(--serif); font-size: 1.75rem; font-weight: 400; letter-spacing: -0.015em; line-height: 1.15; }
+  .lead { max-width: 80ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
+
+  .grant { margin: 0; }
+  .grant-row { display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 1fr); gap: 16px; padding: 15px 0; border-top: 1px dashed var(--rule); }
+  .grant-row:first-child { border-top: 0; }
+  .grant dt { color: var(--ink-3); font-size: 14px; }
+  .grant dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .time-note { margin: 18px 0 0; color: var(--ink-3); font-size: 13px; }
+  .time-note strong { color: var(--ink-2); font-weight: 500; }
+
+  .btn { appearance: none; display: inline-block; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: var(--paper); cursor: pointer; font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 11px 18px; text-decoration: none; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
+  .btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+  .btn:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-3); cursor: not-allowed; }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .btn.secondary { background: transparent; border-color: var(--rule); color: var(--ink); }
+  .btn.secondary:hover:not(:disabled) { background: var(--paper-2); border-color: var(--ink-3); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .status { min-height: 1.5em; margin: 14px 0 0; color: var(--ink-2); font-size: 14px; }
+  .status.ok { color: var(--accent); }
+  .status.err { color: var(--danger); }
+  .notice { border-left: 3px solid var(--accent); background: var(--accent-wash); color: var(--ink-2); margin: 0; padding: 13px 15px; font-size: 14px; }
+  .notice.err { border-color: var(--danger); background: var(--danger-wash); color: var(--danger); }
+  /* The wallet lives in the top bar, where every web3 site puts it (T114, as on the signing page). */
+  .wallet-top { appearance: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--accent); border-radius: 999px;
+          background: var(--paper); color: var(--accent); cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 7px 14px; }
+  .wallet-top:hover:not(:disabled) { background: var(--accent-wash); }
+  .wallet-top:disabled { opacity: .6; cursor: wait; }
+  .wallet-top.connected { border-color: var(--rule); color: var(--ink); font-family: var(--mono); font-weight: 500; }
+  .wallet-top.connected::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .wallet-address { margin: 14px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+  .result { margin: 14px 0 0; }
+  .result-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
+  .result-row:first-child { border-top: 0; }
+  .result dt { color: var(--ink-3); }
+  .result dd { margin: 0; color: var(--ink); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+
+  @media (max-width: 520px) {
+    .wrap { padding-bottom: 56px; }
+    .grant-row, .result-row { grid-template-columns: 1fr; gap: 5px; }
+  }
+  /* ---------- T126: the merchant's answer ---------- */
+  label { display: block; margin: 18px 0 6px; color: var(--ink-2); font-size: 14px; }
+  .field { width: 100%; max-width: 80ch; border: 1px solid var(--rule); border-radius: 7px; background: #fff; color: var(--ink); font-family: var(--sans); font-size: 14.5px; padding: 10px 12px; }
+  .field:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .field.mono { font-family: var(--mono); font-size: 12px; margin-top: 12px; }
+  .field.short { max-width: 14ch; }
+  .choices { border: 0; margin: 0; padding: 0; }
+  .choices label { display: flex; align-items: center; gap: 9px; margin: 8px 0; color: var(--ink); font-size: 15px; cursor: pointer; }
+  #claim-facts dd { white-space: pre-line; }
+  .actions + .field, .field + .actions { margin-top: 12px; }
+</style>
+</head>
+<body>
+<script src="https://unpkg.com/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
+
+<main class="wrap">
+  <div class="top">
+    <a class="mark" href="/">
+      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
+      <span>AgentPey</span>
+      <span class="tagline"><span data-tr="en">Payment infrastructure for agents</span><span data-tr="es">Infraestructura de pagos para agentes</span></span>
+    </a>
+    <div class="utils">
+      <button id="wallet-btn" class="wallet-top" type="button" hidden><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button>
+      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
+      <div class="lang">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+      </div>
+      <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <p class="kicker">AgentResolve</p>
+    <h1><span data-tr="en">Answer a claim</span><span data-tr="es">Responder un reclamo</span></h1>
+    <p class="intro">
+      <span data-tr="en">A buyer asked for a refund on one of your receipts. Read the claim, give your side and sign it with the wallet that receives your payments. The arbiter decides with both versions, and a person confirms the verdict before any money moves.</span>
+      <span data-tr="es">Un comprador pidió un reembolso sobre uno de tus recibos. Lee el reclamo, da tu versión y fírmala con la wallet donde recibes tus pagos. El árbitro decide con las dos versiones, y una persona confirma el veredicto antes de que se mueva dinero.</span>
+    </p>
+  </header>
+
+  <p id="page-notice" class="notice" hidden></p>
+
+  <section class="panel">
+    <p class="panel-kicker"><span data-tr="en">01 · The claim</span><span data-tr="es">01 · El reclamo</span></p>
+    <h2><span data-tr="en">Load the claim the arbiter sent you</span><span data-tr="es">Carga el reclamo que te envió el árbitro</span></h2>
+    <p class="lead">
+      <span data-tr="en">It is a file named claim.jws. Choose it, or paste its content. Nothing leaves this page until you download your answer.</span>
+      <span data-tr="es">Es un archivo llamado claim.jws. Elígelo o pega su contenido. Nada sale de esta página hasta que descargas tu respuesta.</span>
+    </p>
+    <div class="actions"><input id="claim-file" type="file" accept=".jws,.txt,text/plain"></div>
+    <textarea id="claim-text" class="field mono" rows="4" spellcheck="false" data-placeholder-en="Or paste the claim here (eyJ...)" data-placeholder-es="O pega el reclamo aquí (eyJ...)"></textarea>
+    <div class="actions"><button id="read-btn" class="btn secondary" type="button"><span data-tr="en">Read the claim</span><span data-tr="es">Leer el reclamo</span></button></div>
+    <p id="claim-status" class="status" role="status"></p>
+    <dl id="claim-facts" class="grant" hidden></dl>
+  </section>
+
+  <section id="wallet-panel" class="panel" hidden>
+    <p class="panel-kicker"><span data-tr="en">02 · Your wallet</span><span data-tr="es">02 · Tu wallet</span></p>
+    <h2><span data-tr="en">Connect the wallet that receives this store's payments</span><span data-tr="es">Conecta la wallet donde recibe sus pagos esta tienda</span></h2>
+    <p class="lead">
+      <span data-tr="en">Only that account can answer: it is the payout account your store wrote into the receipt. Use the Connect wallet button at the top right.</span>
+      <span data-tr="es">Solo esa cuenta puede responder: es la cuenta de cobro que tu tienda puso en el recibo. Usa el botón Conectar wallet de arriba a la derecha.</span>
+    </p>
+    <p class="wallet-address"><span data-tr="en">Expected account:</span><span data-tr="es">Cuenta esperada:</span> <span id="expected-account"></span></p>
+    <p id="wallet-status" class="status" role="status"></p>
+  </section>
+
+  <section id="answer-panel" class="panel" hidden>
+    <p class="panel-kicker"><span data-tr="en">03 · Your answer</span><span data-tr="es">03 · Tu respuesta</span></p>
+    <h2><span data-tr="en">What do you say about this claim?</span><span data-tr="es">¿Qué dices sobre este reclamo?</span></h2>
+    <fieldset class="choices">
+      <label><input type="radio" name="position" value="contest" checked> <span data-tr="en">I contest it: no refund is owed</span><span data-tr="es">Lo rechazo: no corresponde reembolso</span></label>
+      <label><input type="radio" name="position" value="accept_partial"> <span data-tr="en">I accept part of it</span><span data-tr="es">Acepto una parte</span></label>
+      <label><input type="radio" name="position" value="accept_full"> <span data-tr="en">I accept it in full</span><span data-tr="es">Lo acepto completo</span></label>
+    </fieldset>
+    <p id="partial-row" hidden>
+      <label for="accepted"><span data-tr="en">Amount you accept to refund, in USDC (less than the amount claimed)</span><span data-tr="es">Monto que aceptas reembolsar, en USDC (menos que lo reclamado)</span></label>
+      <input id="accepted" class="field short" type="text" inputmode="decimal" placeholder="0.50">
+    </p>
+    <label for="statement"><span data-tr="en">Your statement (up to 2000 characters)</span><span data-tr="es">Tus descargos (hasta 2000 caracteres)</span></label>
+    <textarea id="statement" class="field" rows="6" maxlength="2000"></textarea>
+    <label for="evidence"><span data-tr="en">Evidence: one item per line, up to 5 (tracking numbers, links)</span><span data-tr="es">Evidencia: una por línea, hasta 5 (números de seguimiento, enlaces)</span></label>
+    <textarea id="evidence" class="field" rows="3"></textarea>
+  </section>
+
+  <section id="sign-panel" class="panel" hidden>
+    <p class="panel-kicker"><span data-tr="en">04 · Sign and send</span><span data-tr="es">04 · Firma y envía</span></p>
+    <h2><span data-tr="en">Sign your answer</span><span data-tr="es">Firma tu respuesta</span></h2>
+    <p class="lead">
+      <span data-tr="en">Freighter shows a short message with the receipt, the claim, your position and the hash of your answer. Signing moves no money. Then download the file and send it back to the arbiter.</span>
+      <span data-tr="es">Freighter te muestra un mensaje corto con el recibo, el reclamo, tu posición y el hash de tu respuesta. Firmar no mueve dinero. Después descarga el archivo y envíaselo al árbitro.</span>
+    </p>
+    <div class="actions"><button id="sign-btn" class="btn" type="button" disabled><span data-tr="en">Sign with Freighter</span><span data-tr="es">Firmar con Freighter</span></button></div>
+    <p id="sign-status" class="status" role="status"></p>
+    <div id="done-row" hidden>
+      <dl id="done-facts" class="result"></dl>
+      <div class="actions"><a id="download-link" class="btn" download><span data-tr="en">Download your answer</span><span data-tr="es">Descargar tu respuesta</span></a></div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import { formatAtomic, parseUsdc, readClaim, buildResponse, responseChallengeMessage, responseHash, responseFile, toBase64Signature } from "./responder.js";
+
+var T = {
+  pasteOrChoose: { en: "Choose the claim file or paste it first.", es: "Primero elige el archivo del reclamo o pégalo." },
+  notAClaim: { en: "This is not an AgentResolve claim. Check that you loaded claim.jws.", es: "Esto no es un reclamo de AgentResolve. Revisa que cargaste claim.jws." },
+  claimRead: { en: "Claim loaded. Now connect your wallet.", es: "Reclamo cargado. Ahora conecta tu wallet." },
+  walletMissing: { en: "Freighter was not found. Install it and reload the page.", es: "No encontramos Freighter. Instálalo y vuelve a cargar la página." },
+  walletWaiting: { en: "Waiting for Freighter…", es: "Esperando a Freighter…" },
+  walletOk: { en: "This is the store's payout account. You can answer.", es: "Es la cuenta de cobro de la tienda. Puedes responder." },
+  walletWrong: { en: "This wallet is not the payout account in the receipt. Switch accounts in Freighter and connect again.", es: "Esta wallet no es la cuenta de cobro del recibo. Cambia de cuenta en Freighter y vuelve a conectar." },
+  walletFailed: { en: "Could not connect the wallet.", es: "No se pudo conectar la wallet." },
+  needStatement: { en: "Write your statement before signing.", es: "Escribe tus descargos antes de firmar." },
+  badAmount: { en: "Enter an amount greater than 0 and less than the amount claimed.", es: "Ingresa un monto mayor que 0 y menor que lo reclamado." },
+  tooMuchEvidence: { en: "Up to 5 lines of evidence, each up to 2000 characters.", es: "Hasta 5 líneas de evidencia, de hasta 2000 caracteres cada una." },
+  waitingSignature: { en: "Waiting for your signature in Freighter…", es: "Esperando tu firma en Freighter…" },
+  signed: { en: "Signed. Download the file and send it to the arbiter.", es: "Firmada. Descarga el archivo y envíaselo al árbitro." },
+  signFailed: { en: "Could not sign.", es: "No se pudo firmar." },
+  store: { en: "Store", es: "Tienda" },
+  order: { en: "Order", es: "Pedido" },
+  products: { en: "Products", es: "Productos" },
+  paid: { en: "Paid", es: "Pagado" },
+  paidOn: { en: "Paid on", es: "Pagado el" },
+  reason: { en: "Reason", es: "Motivo" },
+  description: { en: "What the buyer says", es: "Lo que dice el comprador" },
+  evidence: { en: "Buyer's evidence", es: "Evidencia del comprador" },
+  asked: { en: "Amount claimed", es: "Monto reclamado" },
+  claimHash: { en: "Claim hash", es: "Hash del reclamo" },
+  position: { en: "Your position", es: "Tu posición" },
+  answerHash: { en: "Hash of your answer", es: "Hash de tu respuesta" },
+  signer: { en: "Signed by", es: "Firmada por" },
+  none: { en: "None", es: "Ninguna" },
+  not_delivered: { en: "Not delivered", es: "No llegó" },
+  not_as_described: { en: "Not as described", es: "No es lo que se describía" },
+  damaged: { en: "Damaged", es: "Llegó dañado" },
+  unauthorized: { en: "Not authorized", es: "Compra no autorizada" },
+  other: { en: "Other", es: "Otro" },
+  contest: { en: "Contests the claim", es: "Rechaza el reclamo" },
+  accept_full: { en: "Accepts it in full", es: "Lo acepta completo" },
+  accept_partial: { en: "Accepts part of it", es: "Acepta una parte" },
+};
+
+function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
+function t(key) { var entry = T[key]; return entry ? entry[lang()] : key; }
+
+var read = null;
+var address = "";
+var signedResult = null;
+var statuses = {};
+
+function setStatus(id, kind, message) {
+  statuses[id] = { kind: kind, message: message };
+  paintStatus(id);
+}
+function paintStatus(id) {
+  var state = statuses[id];
+  var el = document.getElementById(id);
+  el.className = "status " + (state.kind === "error" ? "err" : state.kind === "ok" ? "ok" : "");
+  el.textContent = state.message.key ? t(state.message.key) : state.message.text;
+}
+
+function formatDate(value) {
+  var date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(lang() === "es" ? "es" : "en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
+}
+
+function row(label, value) {
+  var wrapper = document.createElement("div");
+  wrapper.className = "grant-row";
+  var name = document.createElement("dt");
+  var detail = document.createElement("dd");
+  name.textContent = label;
+  detail.textContent = value;
+  wrapper.append(name, detail);
+  return wrapper;
+}
+
+function renderClaim() {
+  var facts = document.getElementById("claim-facts");
+  facts.innerHTML = "";
+  if (!read) return;
+  var claim = read.claim;
+  var receipt = read.receipt;
+  facts.append(row(t("store"), receipt.platform + " · " + receipt.merchantDid));
+  facts.append(row(t("order"), receipt.platformOrderId || receipt.orderId));
+  facts.append(row(t("products"), (receipt.items || []).map(function (item) { return item.quantity + " × " + item.name; }).join(", ")));
+  facts.append(row(t("paid"), receipt.amountUSDC + " USDC"));
+  facts.append(row(t("paidOn"), formatDate(receipt.issuedAt)));
+  facts.append(row(t("reason"), t(claim.reason)));
+  facts.append(row(t("description"), claim.description));
+  facts.append(row(t("evidence"), (claim.evidence || []).length ? claim.evidence.map(function (item) { return item.content; }).join("\n") : t("none")));
+  facts.append(row(t("asked"), formatAtomic(claim.amountAtomic) + " USDC"));
+  facts.append(row(t("claimHash"), read.claimHash));
+  facts.hidden = false;
+  document.getElementById("expected-account").textContent = receipt.merchantAccount;
+}
+
+function renderDone() {
+  var facts = document.getElementById("done-facts");
+  facts.innerHTML = "";
+  if (!signedResult) return;
+  var response = signedResult.response;
+  var position = t(response.position) + (response.acceptedAtomic ? " (" + formatAtomic(response.acceptedAtomic) + " USDC)" : "");
+  facts.append(row(t("position"), position));
+  facts.append(row(t("answerHash"), signedResult.hash));
+  facts.append(row(t("signer"), address));
+}
+
+async function loadClaim() {
+  var text = document.getElementById("claim-text").value.trim();
+  var input = document.getElementById("claim-file");
+  if (!text && input.files && input.files[0]) text = (await input.files[0].text()).trim();
+  if (!text) { setStatus("claim-status", "error", { key: "pasteOrChoose" }); return; }
+  try {
+    read = await readClaim(text);
+  } catch (error) {
+    read = null;
+    document.getElementById("claim-facts").hidden = true;
+    setStatus("claim-status", "error", { key: "notAClaim" });
+    return;
+  }
+  signedResult = null;
+  document.getElementById("done-row").hidden = true;
+  renderClaim();
+  setStatus("claim-status", "ok", { key: "claimRead" });
+  document.getElementById("wallet-btn").hidden = false;
+  document.getElementById("wallet-panel").hidden = false;
+  document.getElementById("answer-panel").hidden = false;
+  document.getElementById("sign-panel").hidden = false;
+  refreshSignButton();
+}
+
+function refreshSignButton() {
+  document.getElementById("sign-btn").disabled = !(read && address && address === read.receipt.merchantAccount);
+}
+
+async function connectWallet() {
+  var button = document.getElementById("wallet-btn");
+  if (typeof freighterApi === "undefined") { setStatus("wallet-status", "error", { key: "walletMissing" }); return; }
+  button.disabled = true;
+  setStatus("wallet-status", "", { key: "walletWaiting" });
+  try {
+    var presence = await freighterApi.isConnected();
+    if (presence && presence.error) throw new Error(presence.error);
+    var access = await freighterApi.requestAccess();
+    if (access && access.error) throw new Error(access.error);
+    address = access.address || access;
+    button.textContent = address.slice(0, 4) + "…" + address.slice(-4);
+    button.classList.add("connected");
+    button.title = address;
+    if (read && address === read.receipt.merchantAccount) setStatus("wallet-status", "ok", { key: "walletOk" });
+    else setStatus("wallet-status", "error", { key: "walletWrong" });
+  } catch (error) {
+    address = "";
+    setStatus("wallet-status", "error", error && error.message ? { text: error.message } : { key: "walletFailed" });
+  } finally {
+    button.disabled = false;
+    refreshSignButton();
+  }
+}
+
+function selectedPosition() {
+  return document.querySelector('input[name="position"]:checked').value;
+}
+
+async function sign() {
+  var statement = document.getElementById("statement").value.trim();
+  if (!statement) { setStatus("sign-status", "error", { key: "needStatement" }); return; }
+  var position = selectedPosition();
+  var acceptedAtomic = null;
+  if (position === "accept_partial") {
+    acceptedAtomic = parseUsdc(document.getElementById("accepted").value);
+    if (!acceptedAtomic || BigInt(acceptedAtomic) >= BigInt(read.claim.amountAtomic)) { setStatus("sign-status", "error", { key: "badAmount" }); return; }
+  }
+  var lines = document.getElementById("evidence").value.split("\n").map(function (line) { return line.trim(); }).filter(Boolean);
+  if (lines.length > 5 || lines.some(function (line) { return line.length > 2000; })) { setStatus("sign-status", "error", { key: "tooMuchEvidence" }); return; }
+
+  var response = buildResponse({
+    claim: read.claim,
+    claimHash: read.claimHash,
+    address: address,
+    position: position,
+    acceptedAtomic: acceptedAtomic,
+    statement: statement,
+    evidence: lines.map(function (line) { return { kind: /^https?:\/\//.test(line) ? "url" : "text", content: line }; }),
+    responseId: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+  });
+
+  var button = document.getElementById("sign-btn");
+  button.disabled = true;
+  setStatus("sign-status", "", { key: "waitingSignature" });
+  try {
+    var message = await responseChallengeMessage(response);
+    var signed = await freighterApi.signMessage(message, { address: address });
+    if (signed && signed.error) throw new Error(signed.error);
+    var signature = toBase64Signature(signed.signedMessage || signed);
+    signedResult = { response: response, hash: await responseHash(response) };
+    var link = document.getElementById("download-link");
+    link.href = URL.createObjectURL(new Blob([responseFile(response, signature)], { type: "application/json" }));
+    link.download = "agentresolve-response-" + read.claimHash.slice(0, 12) + ".json";
+    renderDone();
+    document.getElementById("done-row").hidden = false;
+    setStatus("sign-status", "ok", { key: "signed" });
+  } catch (error) {
+    setStatus("sign-status", "error", error && error.message ? { text: error.message } : { key: "signFailed" });
+  } finally {
+    refreshSignButton();
+  }
+}
+
+document.getElementById("read-btn").addEventListener("click", loadClaim);
+document.getElementById("wallet-btn").addEventListener("click", connectWallet);
+document.getElementById("sign-btn").addEventListener("click", sign);
+document.querySelectorAll('input[name="position"]').forEach(function (radio) {
+  radio.addEventListener("change", function () { document.getElementById("partial-row").hidden = selectedPosition() !== "accept_partial"; });
+});
+document.addEventListener("agentpey:lang", function () {
+  renderClaim();
+  renderDone();
+  Object.keys(statuses).forEach(paintStatus);
+});
+</script>
+
+
+<script>
+  /* EN/ES switch. Text lives in [data-tr] pairs; attributes that cannot hold markup carry data-*-en / data-*-es. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      var texts = document.querySelectorAll("[data-text-en]");
+      for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
+      var holders = document.querySelectorAll("[data-placeholder-en]");
+      for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
+</script>
+</body>
+</html>

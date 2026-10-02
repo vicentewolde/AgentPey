@@ -18,6 +18,7 @@
     "resolve:decide": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts decide",
     "resolve:execute": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts execute",
     "resolve:verify": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts verify",
+    "resolve:check-response": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts check-response",
     "check:rail-balances": "tsx --tsconfig tsconfig.scripts.json scripts/check-rail-balances.ts",
     "rail:topup": "tsx --tsconfig tsconfig.scripts.json scripts/topup-rail.ts",
     "loadtest:perday": "tsx --tsconfig tsconfig.scripts.json scripts/loadtest-perday.ts",

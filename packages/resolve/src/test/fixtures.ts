@@ -10,6 +10,8 @@ export const RAIL = "CA6P4KKV77Q5J4AH6L4V7S42QNF6DLKUAM4SCOQO4GMLB7V7STC5VIYP";
 export const PAID_ATOMIC = "15684211";
 
 export const merchantKey = Keypair.random();
+/** The merchant owner's wallet: the payout account in the receipt, which signs a response (T126). */
+export const merchantOwnerKey = Keypair.random();
 /** The rail's owner: the agent's key, the one allowed to speak for the rail. */
 export const agentKey = Keypair.random();
 
@@ -20,7 +22,7 @@ export function receiptClaims(overrides: Partial<ReceiptClaims> = {}): ReceiptCl
     platformOrderId: "18946533884210",
     platform: "shopify",
     merchantDid: stellarAddressToDid(merchantKey.publicKey(), "testnet"),
-    merchantAccount: Keypair.random().publicKey(),
+    merchantAccount: merchantOwnerKey.publicKey(),
     payerAccount: RAIL,
     network: STELLAR_TESTNET_CAIP2,
     asset: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",

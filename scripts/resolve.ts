@@ -3,7 +3,8 @@
  *
  *   pnpm run resolve:deposit -- --merchant <G...> --amount 3.00
  *   pnpm run resolve:open    -- --receipt .vitrinee/last-ucp-receipt.jws --reason not_delivered --description "…" [--evidence "…"]… [--amount 1.00]
- *   pnpm run resolve:decide  -- --receipt <hash>
+ *   pnpm run resolve:decide  -- --receipt <hash> [--response <response.json>]
+ *   pnpm run resolve:check-response -- --receipt <hash> --response <response.json>
  *   pnpm run resolve:execute -- --receipt <hash> --confirm <verdict hash>
  *   pnpm run resolve:verify  -- --receipt <hash>
  *
@@ -14,8 +15,14 @@
  *   UCP `policy_rail` that paid); the arbiter (`RESOLVE_ARBITER_SECRET_KEY`)
  *   verifies the receipt's three checks, that the claimant controls the payer,
  *   the window and the amount, then opens the dispute on chain.
- * - **decide**: Claude Opus 5.5 proposes, the code bounds it, the verdict is
- *   written to disk with its hash. Nothing moves.
+ * - **respond** (T126, `E-20` to `E-22`): the merchant's owner answers on
+ *   `agentpey.com/resolve/responder` with the `claim.jws` the arbiter sends,
+ *   signs with Freighter from the receipt's payout account, and sends back the
+ *   downloaded file. `check-response` verifies it without deciding anything.
+ * - **decide**: with the merchant's response (`--response`, kept as
+ *   `response.json`), or without one only 48 h after the dispute opened.
+ *   Claude Opus 5.5 proposes, the code bounds it, the verdict is written to
+ *   disk with its hash. Nothing moves.
  * - **execute**: a person confirms by passing that exact hash (`E-18`); only
  *   then does the arbiter call `resolve`, which pays from the guarantee.
  * - **verify**: reads the dispute on chain and checks it against the verdict
@@ -31,17 +38,21 @@ import { randomUUID } from "node:crypto";
 
 import { AgentPassError, didToStellarAddress, isAgentPassError, stellarAddressToDid } from "@agentpass/core";
 import { toScaledAmount, fromScaledAmount } from "@agentpey/agent";
-import type { AgentResolveVerdict, ClaimReason } from "@agentpey/resolve";
+import type { AgentResolveVerdict, ClaimReason, ResponseContext, VerifiedResponse } from "@agentpey/resolve";
 import {
   CLAIM_REASONS,
   agentResolveVerdictSchema,
+  assertMayDecide,
   checkClaim,
   claimHash,
   createClaudeArbiterWithKey,
   decideDispute,
+  formatAtomic,
+  responseDeadline,
   signClaim,
   verdictHash,
   verifyClaim,
+  verifyMerchantResponse,
 } from "@agentpey/resolve";
 import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import { z } from "zod";
@@ -57,6 +68,7 @@ const STATE_ROOT = resolve(REPO_ROOT, ".vitrinee/agentresolve");
 const VITRINEE_DEPLOYMENT = resolve(REPO_ROOT, "deployments/vitrinee-testnet.json");
 const HORIZON = "https://horizon-testnet.stellar.org";
 const EXPLORER = "https://stellar.expert/explorer/testnet";
+const RESPONDER_URL = "https://agentpey.com/resolve/responder";
 
 const [command = "", ...rest] = process.argv.slice(2).filter((arg) => arg !== "--");
 const { values } = parseArgs({
@@ -69,6 +81,7 @@ const { values } = parseArgs({
     description: { type: "string" },
     evidence: { type: "string", multiple: true },
     confirm: { type: "string" },
+    response: { type: "string" },
   },
 });
 
@@ -240,7 +253,13 @@ async function open(): Promise<void> {
   if (txHash !== undefined) line("tx", `${EXPLORER}/tx/${txHash}`);
   line("disputa", `${dispute?.status ?? "?"}, ${usdc(dispute?.amount ?? 0n)} bloqueados en la garantía de ${dispute?.merchant ?? "?"}`);
   line("garantía", `${usdc(guarantee.balance)} (bloqueado ${usdc(guarantee.locked)})`);
-  out(`\nSiguiente: pnpm run resolve:decide -- --receipt ${verified.hash}\n`);
+  section("[comercio] tiene 48 h para responder (E-22)");
+  line("enviarle", resolve(dir, "claim.jws"));
+  line("responde en", RESPONDER_URL);
+  line("firma", `con Freighter, desde la cuenta de cobro del recibo ${checked.receipt.merchantAccount}`);
+  if (dispute !== null) line("plazo", responseDeadline(dispute.opened_at).toISOString());
+  out(`\nCon su respuesta: pnpm run resolve:decide -- --receipt ${verified.hash} --response <archivo>`);
+  out(`Sin respuesta, después del plazo: pnpm run resolve:decide -- --receipt ${verified.hash}\n`);
 }
 
 async function decide(): Promise<void> {
@@ -268,7 +287,24 @@ async function decide(): Promise<void> {
     now: new Date(dispute.opened_at * 1000),
   });
 
-  const { verdict, hash } = await decideDispute({ checked, receiptHash: verified.hash, claimHash: claimHash(claimJws), arbiter: createClaudeArbiterWithKey(apiKey) });
+  // The merchant's side (T126): a new file passed now, or the one an earlier
+  // `decide` kept. Verified against the dispute on chain either way, and
+  // without one, no decision before the 48 h (E-22).
+  const response = await merchantResponse(dir, values.response, {
+    receipt: checked.receipt,
+    receiptHash: verified.hash,
+    claimHash: dispute.claim_hash,
+    claimId: claim.document.claimId,
+    disputedAtomic: checked.disputedAtomic,
+  });
+  assertMayDecide({ openedAt: dispute.opened_at, hasResponse: response !== null });
+  if (response === null) {
+    line("respuesta", `ninguna; el plazo venció el ${responseDeadline(dispute.opened_at).toISOString()}`);
+  } else {
+    line("✅ respuesta", `${describePosition(response)}, firmada por ${didToStellarAddress(response.response.respondent)} (cuenta de cobro del recibo)`);
+  }
+
+  const { verdict, hash } = await decideDispute({ checked, receiptHash: verified.hash, claimHash: claimHash(claimJws), arbiter: createClaudeArbiterWithKey(apiKey), response });
   // Every verdict is kept, in order: asking again until one comes out
   // convenient must leave a trail. `verdict.json` is the latest, the only one
   // `execute` will pay.
@@ -291,6 +327,65 @@ async function decide(): Promise<void> {
   section("Hash del veredicto");
   line("sha256", hash);
   out(`\nNada se pagó. Para confirmar y pagar (E-18), una persona corre:\n  pnpm run resolve:execute -- --receipt ${verified.hash} --confirm ${hash}\n`);
+}
+
+function describePosition(verified: VerifiedResponse): string {
+  const { position, acceptedAtomic } = verified.response;
+  return acceptedAtomic === null ? position : `${position} (${formatAtomic(acceptedAtomic)} USDC)`;
+}
+
+async function readResponseFile(path: string): Promise<unknown> {
+  const raw = await readFile(path, "utf8");
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch (error) {
+    throw new AgentPassError("ResolveResponseInvalid", "the response file is not JSON", { details: { path }, cause: error });
+  }
+}
+
+/**
+ * The merchant's response for a dispute: the file passed with `--response`
+ * (verified, then kept as `response.json`), or the one kept earlier
+ * (verified again), or `null` when there is none.
+ */
+async function merchantResponse(dir: string, path: string | undefined, context: ResponseContext): Promise<VerifiedResponse | null> {
+  const kept = resolve(dir, "response.json");
+  if (path !== undefined) {
+    const verified = verifyMerchantResponse(await readResponseFile(resolve(path)), context);
+    await writeFile(kept, `${JSON.stringify({ response: verified.response, signature: verified.signature }, null, 2)}\n`);
+    return verified;
+  }
+  const existing = await readFile(kept, "utf8").catch(() => null);
+  return existing === null ? null : verifyMerchantResponse(JSON.parse(existing) as unknown, context);
+}
+
+/** Verifies a merchant's response against the dispute on chain, open or resolved. Decides nothing, writes nothing. */
+async function checkResponse(): Promise<void> {
+  const { env, contractId } = await context();
+  if (values.receipt === undefined || values.response === undefined) usage("usage: resolve:check-response -- --receipt <hash> --response <file>");
+  const reader = Keypair.fromSecret(requireEnv(env, "RESOLVE_ARBITER_SECRET_KEY", "pnpm run deploy:agent-resolve"));
+  const claimJws = (await readFile(resolve(stateDir(values.receipt), "claim.jws"), "utf8")).trim();
+
+  out("\nAgentResolve · verificar la respuesta de un comercio · testnet");
+  const claim = await verifyClaim(claimJws);
+  const verified = await verifiedReceipt(claim.document.receipt.jws);
+  const dispute = await readDispute(contractId, verified.hash, reader.secret());
+  if (dispute === null || dispute.claim_hash !== claimHash(claimJws)) {
+    throw new AgentPassError("ResolveResponseMismatch", "there is no dispute on chain for this claim", { details: { receipt: verified.hash, dispute } });
+  }
+  const response = verifyMerchantResponse(await readResponseFile(resolve(values.response)), {
+    receipt: verified.receipt,
+    receiptHash: verified.hash,
+    claimHash: dispute.claim_hash,
+    claimId: claim.document.claimId,
+    disputedAtomic: dispute.amount,
+  });
+  line("✅ firma", `SEP-53 de ${didToStellarAddress(response.response.respondent)}, la cuenta de cobro del recibo`);
+  line("✅ disputa", `responde al reclamo ${dispute.claim_hash.slice(0, 16)}… que está en la red (${dispute.status})`);
+  line("posición", describePosition(response));
+  line("descargos", response.response.statement);
+  for (const item of response.response.evidence) line("evidencia", item.content);
+  line("hash", response.hash);
 }
 
 async function execute(): Promise<void> {
@@ -359,6 +454,7 @@ async function verify(): Promise<void> {
     }
   } else {
     const local = verdictHash(parsed);
+    if (parsed.responseHash !== undefined) line("respuesta", parsed.responseHash === null ? "el comercio no respondió en 48 h" : `del comercio, ${parsed.responseHash.slice(0, 16)}… (cubierta por el hash del veredicto)`);
     const matches = dispute.verdict_hash === local && BigInt(parsed.refundAtomic) === dispute.refund && parsed.claimHash === dispute.claim_hash;
     if (dispute.status === "Resolved") {
       line(`${matches ? "✅" : "❌"} veredicto`, matches ? `el hash en la red es el del veredicto archivado (${local.slice(0, 16)}…)` : `no coincide: red ${dispute.verdict_hash ?? "—"}, archivo ${local}`);
@@ -374,7 +470,7 @@ async function verify(): Promise<void> {
   process.exitCode = ok ? 0 : 1;
 }
 
-const COMMANDS: Record<string, () => Promise<void>> = { deposit, open, decide, execute, verify };
+const COMMANDS: Record<string, () => Promise<void>> = { deposit, open, decide, execute, verify, "check-response": checkResponse };
 
 const run = COMMANDS[command];
 (run ?? (() => Promise.reject(new AgentPassError("InvalidArguments", `unknown command "${command}": ${Object.keys(COMMANDS).join(", ")}`, { details: {} }))))().catch((error: unknown) => {
