@@ -21,7 +21,7 @@
 | T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en `main`, cuatro de cinco criterios; falta el reembolso real (8–9 oct), en una rama de evidencia aparte | `cc/t124-agentresolve`, mergeada |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 | T126 Respuesta del comercio en AgentResolve | antes del 8-oct | ✅ terminada | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)); `cc/t126-evidencia` |
-| T127 La disputa visible en la orden UCP | si alcanza | 👀 en revisión: implementada; falta `/revisar`, merge (despliega Vitrinee) y verificar en vivo | `cc/t127-disputa-orden-ucp` |
+| T127 La disputa visible en la orden UCP | si alcanza | 👀 en `main` (merge despliega Vitrinee); falta verificar en vivo | `cc/t127-disputa-orden-ucp` |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
@@ -35,6 +35,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - T123 (brecha 14 del anexo): la misma intención se puede exportar a AP2 más de una vez mientras no vence. Cada par está acotado al mismo tope y a la vida de la intención. Hacerlo cumplir pide memoria por `intentId`.
 
 - T126 (`/revisar`, sugerencias que quedaron): `freighter-api` se carga de unpkg sin `integrity` en `responder.html` (igual que `consent.html` y `revocar.html`; pesa más aquí porque Freighter solo muestra el hash de los descargos); y el cableado `merchantResponse` → `assertMayDecide` → `decideDispute` dentro de `scripts/resolve.ts` no tiene test propio (cada pieza sí).
+
+- T127 (`/revisar`, sugerencias que quedaron): la orden no cruza `dispute.merchant` con la cuenta firmante de la tienda; el esquema de la extensión no exige `verdict_hash`, `refund_atomic` y `resolved_at` cuando `status` es `resolved`; cada GET de una orden anclada lee la red sin caché (una disputa resuelta es inmutable y se podría cachear); `zod` de `vitrinee-anchor` en `^4.5.4` frente a `^4.6.0` del resto.
 
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Después de la Fase 7.
@@ -60,3 +62,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02, T126 `/revisar`: sin bloqueantes. Corregidos, a pedido del usuario, los dos importantes (la página verifica la firma de Freighter en el navegador antes de dar el archivo; cada respuesta queda en `responses/<hash>.json` y `verify` la vuelve a hashear) y cuatro sugerencias (errores tipados, el monto en disputa sale de la red en las dos rutas, normalización de la firma, reclamo validado al leerlo).
 - 2026-10-02: T126 cerrada. El usuario firmó con Freighter en `agentpey.com/resolve/responder` sobre el reclamo de T122 y `resolve:check-response` lo aceptó. Siguiente: T127.
 - 2026-10-02, T127: `GET /ucp/v1/orders/{id}` lee la disputa de `agent-resolve` (`AgentResolveReader`, sin llave) y la muestra como ajuste UCP más `receipt.dispute`. Versión de la extensión sin cambios (`VT-37`); reembolso en CLP en el ajuste y exacto en USDC en el recibo (`VT-38`). Leído en testnet: la disputa de T122 decodifica igual que `resolve:verify`.
+- 2026-10-02, T127 `/revisar`: sin bloqueantes. Corregidos los cuatro importantes (test del layout con tipos y durabilidad, test del timeout, error tipado, variable en `.env.vitrinee.example`) y dos sugerencias (id del contrato leído con zod sin tumbar la tienda si es inválido; disputas imposibles rechazadas al decodificar, para que un dato raro dé aviso y no 500).
