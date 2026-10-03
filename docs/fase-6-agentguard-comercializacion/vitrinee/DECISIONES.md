@@ -1075,3 +1075,53 @@ responde igual con un aviso `dispute_state_unavailable`, nunca con un error.
 **Alternativa descartada: el ajuste en USDC.** UCP no permite otra moneda dentro
 de una orden; un `total` en USDC con la orden en CLP sería un número sin sentido
 para un cliente UCP.
+
+---
+
+### VT-39 · Un recibo que se contradice falla el check 1; siguen siendo tres checks · `Vigente`
+**Fecha:** 2026-10-03 · **Hito:** T132 (Fase 8) · Propuesta de Claude Code, **aprobada por el usuario** con el plan de T132
+
+Un recibo trae cada monto dos veces: en decimal, para personas, y en unidades
+atómicas, que es lo que se compara con el registro y con el pago. Desde T132,
+`receiptIncoherence` exige que los dos digan lo mismo (total e ítems) y que
+`asset` sea el USDC que el verificador tiene fijo. `signReceipt` se niega a
+firmar un recibo que no lo cumple (`VitrineeError`, `ReceiptInvalid`), y
+`checkReceiptSignature` lo da por malo dentro del check 1, que pasa a ser
+"firma y contenido". El resultado de `verifyReceipt` no cambia de forma. La
+versión de la extensión de recibo sigue en `2026-09-30`: todos los recibos
+emitidos hasta hoy ya cumplen la regla.
+
+No se comprueba que la suma de los ítems sea igual al total: el spec no lo
+pide, y hoy una compra tiene un solo ítem.
+
+**Motivo.** La página del recibo, el CLI, la orden UCP y el video hablan de
+"tres checks". Un recibo incoherente es un problema de contenido, que es lo que
+el check 1 ya miraba con el esquema.
+
+**Alternativa descartada: un cuarto check**, que cambiaba la forma del
+resultado, la página, el CLI y la spec de la extensión por una regla que cabe
+en el primero.
+
+---
+
+### VT-40 · "Un pago, un recibo" lo garantiza la tienda; el verificador no lo comprueba · `Vigente`
+**Fecha:** 2026-10-03 · **Hito:** T132 (Fase 8) · Propuesta de Claude Code, **aprobada por el usuario** con el plan de T132
+
+`fulfilPaidPurchase` ya devolvía el pedido existente para un pago repetido.
+T132 cierra la ventana que quedaba: dos solicitudes simultáneas con el mismo
+pago pasaban la búsqueda antes de que la primera guardara su pedido, y salían
+dos pedidos y dos recibos (reproducido con un test). Ahora la segunda espera el
+pedido de la primera. El mapa de pedidos en curso vive en el proceso, que es
+suficiente porque un proceso es dueño de la tienda de un comercio.
+
+El verificador no comprueba la unicidad. El spec de la Fase 8 decía que la
+comprobaría "contra los recibos que conoce"; se quitó.
+
+**Motivo.** El único que puede firmar dos recibos sobre un pago es el comercio,
+y su propia tienda no se va a delatar. Un tercero no puede comprobarlo mientras
+`receipt-registry` no guarde el hash de la transacción.
+
+**Alternativa descartada: guardar el hash de la transacción en
+`receipt-registry`.** Es lo que lo cerraría de verdad, pero es redesplegar el
+contrato, fuera del alcance de la fase. Queda como brecha 10 del anexo.
+

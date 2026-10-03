@@ -240,18 +240,27 @@ más de 64 bytes, y no acepta anclar dos veces el mismo hash
 
 `verifyReceipt` en `packages/vitrinee-anchor/src/verify.ts`:
 
-1. **Firma:** el cuerpo cumple el esquema, el DID del `kid` es `merchantDid`, y
-   la firma Ed25519 verifica contra la llave del DID. Sin red.
+1. **Firma y contenido:** el cuerpo cumple el esquema, el DID del `kid` es
+   `merchantDid`, y la firma Ed25519 verifica contra la llave del DID. Además el
+   recibo no se contradice (`receiptIncoherence`,
+   `packages/vitrinee-core/src/receipt.ts`, desde T132): `amountUSDC` es el
+   mismo monto que `amountUSDCAtomic`, cada `unitPriceUSDC` es el mismo que su
+   `unitPriceUSDCAtomic`, y `asset` es el contrato de USDC que el verificador
+   tiene fijo. Sin red. `signReceipt` se niega a firmar un recibo que no lo
+   cumple (`ReceiptInvalid`).
 2. **Anclaje:** `get(sha256(jws))` existe en `receipt-registry`, con
    `merchant` igual a la cuenta del DID, `amount` igual a `amountUSDCAtomic` y
    `order_ref` igual a `orderId`.
 3. **Pago:** en Horizon (`packages/vitrinee-anchor/src/settlement.ts`),
    `settlementTxHash` existe, fue exitosa, y movió exactamente
    `amountUSDCAtomic` del pagador a `merchantAccount`, en el USDC que el
-   verificador tiene fijo (no en el `asset` que dice el recibo).
+   verificador tiene fijo, que por el check 1 es el mismo `asset` del recibo.
 
-Lo que estos checks no miran: que `amountUSDC` y `amountUSDCAtomic` sean el
-mismo monto, y que una misma transacción respalde un solo recibo (brecha 10).
+Lo que estos checks no miran: que una misma transacción respalde un solo
+recibo (brecha 10). La tienda de Vitrinee lo garantiza al emitir
+(`fulfilPaidPurchase`: un pago, un pedido, un recibo, también con dos
+solicitudes simultáneas), pero quien verifica un recibo suelto no puede
+comprobarlo.
 
 ### 3.4 En UCP: la extensión `com.agentpey.shopping.receipt`
 
@@ -656,10 +665,15 @@ construir, más trece que aparecieron después:
    perfil referencia `../schemas/ucp.json` desde
    `https://ucp.dev/schemas/discovery/profile.json`, que no resuelve
    ([evidencia de T121](evidencia/T121.md)).
-10. **Coherencia del recibo.** La verificación compara el monto atómico y usa
-    un USDC fijo; no comprueba que `amountUSDC` y `amountUSDCAtomic` digan lo
-    mismo, que `asset` sea ese USDC, ni que una transacción respalde un solo
-    recibo. Un SEP debería fijar qué campo manda y la unicidad.
+10. **Una transacción, un recibo: la red no lo impide.** Desde T132 el
+    verificador sí exige que el recibo no se contradiga (los dos montos dicen lo
+    mismo y `asset` es el USDC confiado), y la tienda no emite dos recibos sobre
+    un pago. Pero `receipt-registry` guarda el recibo por su hash y no guarda el
+    hash de la transacción: un comercio que firmara y anclara dos recibos
+    distintos sobre el mismo pago pasaría los tres checks con los dos. Lo
+    cerraría que el registro guarde el hash de la transacción y rechace un
+    segundo anclaje sobre ella, lo que pide un contrato nuevo. Un SEP debería
+    exigir la coherencia con DEBE, y la unicidad en el registro.
 11. **La revocación no llega a la cuenta pagadora** (sección 4.4). Un SEP
     podría pedir que la cuenta pagadora consulte el estado del Mandato, o que
     fije el destinatario, a costa de una lectura más por pago.

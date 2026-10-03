@@ -195,13 +195,13 @@ más rápido que lo estimado.
 #### T132 · Coherencia del recibo (brecha 10 del anexo)
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (verificación de pagos) · **Toca Vitrinee:** sí
 - **Depende de:** spec aprobado
-- **Descripción:** hoy el verificador solo usa `amountUSDCAtomic`, ignora `claims.asset` y no mira si una transacción respalda más de un recibo. `verifyReceipt` pasa a exigir que `amountUSDC` y `amountUSDCAtomic` digan lo mismo y que `asset` sea el USDC confiado. "Una transacción, un recibo" se comprueba donde se puede sin tocar el contrato: `receipt-registry` no guarda el hash de la transacción, así que la tienda lo garantiza en su base y el verificador lo comprueba contra los recibos que conoce. El límite se escribe en el anexo.
+- **Descripción:** hoy el verificador solo usa `amountUSDCAtomic`, ignora `claims.asset` y no mira si una transacción respalda más de un recibo. `verifyReceipt` pasa a exigir que `amountUSDC` y `amountUSDCAtomic` digan lo mismo (también el precio de cada ítem) y que `asset` sea el USDC confiado, dentro del check 1 (`VT-39`). "Una transacción, un recibo" lo garantiza la tienda al emitir, también con solicitudes simultáneas; el verificador no lo comprueba, porque `receipt-registry` no guarda el hash de la transacción (`VT-40`). El límite se escribe en el anexo.
 - **Archivos principales:** `packages/vitrinee-core/src/receipt.ts`, `packages/vitrinee-anchor/src/verify.ts`, `packages/vitrinee-anchor/src/settlement.ts`, `ANEXO-SEP.md`
 - **Hecho cuando:**
-  - [ ] un recibo con montos que no coinciden, o con otro `asset`, se rechaza con un error tipado (`VitrineeError`)
-  - [ ] la tienda no emite un segundo recibo sobre la misma transacción (test)
-  - [ ] los recibos reales de T122 y T124 siguen verificando
-  - [ ] el diff no toca `receipt-registry`; la brecha 10 del anexo queda reescrita con lo que la red todavía no impide
+  - [x] un recibo con montos que no coinciden, o con otro `asset`, se rechaza: el verificador lo da inválido con el motivo, y la tienda se niega a firmarlo con un error tipado (`VitrineeError`, `ReceiptInvalid`) ([evidencia](evidencia/T132.md) §1)
+  - [x] la tienda no emite un segundo recibo sobre la misma transacción, tampoco con dos solicitudes simultáneas (test; [evidencia](evidencia/T132.md) §2)
+  - [x] los recibos reales de T122 y T124 siguen verificando ([evidencia](evidencia/T132.md) §3)
+  - [x] el diff no toca `receipt-registry`; la brecha 10 del anexo queda reescrita con lo que la red todavía no impide
 
 ### Bloque B · El estándar completo (si alcanza, en este orden)
 
@@ -393,6 +393,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | Borrador, a partir del traspaso del chat de estrategia del 3-oct, con las fuentes oficiales leídas ese día y el código revisado. Cambios frente al traspaso en la sección 4.1 |
 | 2026-10-03 | Respuestas del usuario a las preguntas 1 a 4 (`R-2` a `R-5`): OAuth desde el inicio (T128 pasa de 14 h a 22 h, en dos PR), modo de conformidad solo local, MPP se documenta y no se paga con llave clásica, P-256 para AP2. Sigue en borrador |
 | 2026-10-03 | **Aprobado** por el usuario, con las dos versiones de UCP en paralelo (`R-6`). Queda abierta la pregunta 6 (servidor de autorización de OAuth), que se resuelve en el plan de T128 |
+| 2026-10-03 | T132: con el plan aprobado por el usuario, el verificador no comprueba la unicidad "contra los recibos que conoce" (`VT-40`); se agrega la coherencia del precio por ítem (`VT-39`). Criterios marcados; falta `/revisar` |
 
 ## 11. Fuentes externas
 

@@ -7598,3 +7598,19 @@ Pendiente: `/tarea T132` y `/tarea T128` (su plan propone el servidor de autoriz
 fondear el rail del MCP, firmar su Mandato, dominio `mcp.agentpey.com`, la tienda de T130. `AGENTS.md`:
 actualizado (spec aprobado).
 
+## 2026-10-03 (4) — cc/t132-coherencia-recibo (sin push)
+
+Agente: Claude Code.
+
+Qué: T132. `receiptIncoherence` en `packages/vitrinee-core/src/receipt.ts`: un recibo cuyos montos decimal y
+atómico no coinciden, o cuyo `asset` no es el USDC confiado, falla el check 1 y `signReceipt` no lo firma
+(`VT-39`). `fulfilPaidPurchase` (`packages/vitrinee-gateway/src/checkout.ts`) ya no crea dos pedidos cuando dos
+solicitudes traen el mismo pago a la vez (`VT-40`); el test lo reprodujo antes del arreglo. Anexo (§3.3, brecha
+10) y spec de la extensión de recibo. `pnpm check` y `vitrinee:check` en verde.
+
+Por qué: brecha 10 del anexo; el borrador del SEP ya lo pide con DEBE.
+
+Pendiente: `/revisar`; push y merge con OK (despliega Vitrinee y publica la spec de la extensión). Después,
+`/tarea T128`. `AGENTS.md`: sin cambios (T132 no es delegable y no cambia nada que Codex toque).
+Exponential: T132 a `IN_PROGRESS`.
+

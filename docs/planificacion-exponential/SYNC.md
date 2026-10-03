@@ -51,7 +51,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T129 | `cmusmuu5c0009kx04bxcst1e3` | Claude y ChatGPT conectados | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T130 | `cmusmuval000dkx04643nofzw` | Tienda de terceros real | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T131 | `cmusmuwdw000hkx04g3g7t8ia` | Suite oficial de conformidad UCP | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
-| T132 | `cmusmuxhh000lkx04w8xgzx8c` | Coherencia del recibo (brecha 10 del anexo) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T132 | `cmusmuxhh000lkx04w8xgzx8c` | Coherencia del recibo (brecha 10 del anexo) | SPEC | `IN_PROGRESS` | 2026-10-03 | 2026-10-03 | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T133 | `cmusmuykm000pkx04knp793iq` | UCP `2026-08-25`, con `2026-04-08` en paralelo | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T134 | `cmusmuzmr000tkx04nyi33mal` | AP2 dentro del checkout UCP | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T135 | `cmusmv0q2000xkx040q8r4rbr` | MPP charge sobre Stellar (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |

@@ -57,7 +57,12 @@ trusting the business.
 
 A receipt is valid when all three hold:
 
-1. **Signature:** the JWS verifies against the key in its `kid`.
+1. **Signature and content:** the JWS verifies against the key in its `kid`,
+   and the receipt does not contradict itself: `amountUSDC` **MUST** be the
+   same amount as `amountUSDCAtomic`, each item's `unitPriceUSDC` the same as
+   its `unitPriceUSDCAtomic`, and `asset` **MUST** be the asset contract of the
+   handler's `config`. A business **MUST NOT** sign a receipt that fails this,
+   and a verifier **MUST** reject one.
 2. **Anchor:** the registry contract holds `hash`, recorded by that same key,
    for the receipt's amount and order reference.
 3. **Settlement:** `settlement_tx_hash` is a successful Stellar transaction
@@ -65,6 +70,11 @@ A receipt is valid when all three hold:
 
 `verify_url` runs the three checks at the business, but a platform **SHOULD**
 be able to run them itself against the network.
+
+A business **MUST NOT** issue two receipts over one settlement transaction.
+The registry does not enforce this yet: it keys a record by receipt hash and
+does not store the transaction hash, so a verifier holding a single receipt
+cannot tell.
 
 ## Disputes
 

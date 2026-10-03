@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T127 · la disputa visible en la orden UCP (cierre de la Fase 7)
-**Siguiente paso:** `/tarea T132` y `/tarea T128` (su plan propone el servidor de autorización de OAuth). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
+**Última tarea terminada:** T127 · la disputa visible en la orden UCP (cierre de la Fase 7). T132 está en revisión
+**Siguiente paso:** `/revisar` de T132 y su merge con OK; después `/tarea T128` (su plan propone el servidor de autorización de OAuth). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
 
 ## Progreso de la fase
 
@@ -18,7 +18,7 @@
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
-| T132 Coherencia del recibo (brecha 10) | imprescindible | ⏳ pendiente | |
+| T132 Coherencia del recibo (brecha 10) | imprescindible | 👀 en revisión | `cc/t132-coherencia-recibo` |
 | T133 UCP `2026-08-25` | si alcanza | ⏳ pendiente | |
 | T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ⏳ pendiente | |
@@ -57,7 +57,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Es T143 de la Fase 8.
-- Brecha 10 del anexo (coherencia del recibo): es T132 de la Fase 8. Brecha 14: es parte de T134.
+- Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción (pide un contrato nuevo, fuera de alcance). Brecha 14: es parte de T134.
+- T132: `signReceipt` todavía lanza un error de zod, no un `VitrineeError`, cuando los datos no cumplen el esquema (ya era así).
 - **Sin fase** (`C-161`, cierre de la Fase 6): AgentGuard (sin alcance), evaluación de mainnet, modelo de cobro (la publicación en npm entró en la Fase 8, `P-16`). Y la meta "Primer partner piloto real": el criterio de salida de F9 (una persona ajena completa sola el recorrido) quedó sin cumplir.
 - Fase 6 (`C-161`): `C-122` (MPP Session) y `C-130` pendientes, `C-156` en investigación; mejora anotada en T117 (revisar el saldo de XLM antes de pedir la firma).
 
@@ -87,3 +88,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03: **Fase 7 cerrada** (T120–T127, `E-25`, decisión del usuario). Criterio 4 cumplido (con el anexo se escribió el borrador del SEP); criterios 1 y 2 repetidos hoy y `pnpm check` en verde. El reembolso real de T124 y la orden `ord_muq1…` de T127 pasan a la Fase 8 con fecha; el plan de demo pasa a T142.
 - 2026-10-03, `/fase-plan 8`: `P-16` y spec de la Fase 8 **en borrador** (T128–T146, `R-1`). Leídas las fuentes: la suite de UCP paga con un medio de prueba y solo conoce `2026-04-08`; `@stellar/mpp` no admite una cuenta-contrato como pagador; la extensión de AP2 en UCP solo admite ES256/384/512; Claude y ChatGPT aceptan OAuth o sin autenticación; Cards402 y ASGCard solo en mainnet. Sección 4.1 del spec.
 - 2026-10-03: spec de la Fase 8 **aprobado** por el usuario. Decisiones `R-2` a `R-6`: OAuth 2.1 desde el inicio, modo de conformidad solo local, MPP se documenta si no admite `policy_rail`, P-256 para AP2, y UCP `2026-04-08` en paralelo con `2026-08-25`. Tickets T128 a T146 creados en Exponential.
+- 2026-10-03, T132: `receiptIncoherence` en `@vitrinee/core` (montos decimal y atómico iguales, `asset` confiado); `signReceipt` se niega a firmar y el check 1 sale en rojo (`VT-39`). Encontrada y cerrada una ventana real: dos solicitudes simultáneas con el mismo pago daban dos pedidos y dos recibos (`VT-40`). Los recibos de T122 y T124 siguen válidos. `pnpm check` y `vitrinee:check` en verde.

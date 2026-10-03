@@ -13,8 +13,9 @@
 ## Estado actual
 
 **Fecha:** 2026-10-03 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
-el 3-oct, con sus decisiones `R-1` a `R-6`. No hay nada construido todavía:
-sigue T128 (el servidor MCP) y T132 (la coherencia del recibo).
+el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 en revisión**: el
+verificador rechaza un recibo que se contradice y la tienda no emite dos
+recibos sobre un pago. Sigue T128 (el servidor MCP).
 
 | Tarea | Estado |
 |---|---|
@@ -22,7 +23,7 @@ sigue T128 (el servidor MCP) y T132 (la coherencia del recibo).
 | T129 Claude y ChatGPT conectados | pendiente |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
-| T132 Coherencia del recibo | pendiente |
+| T132 Coherencia del recibo | en revisión |
 | T133 UCP `2026-08-25` | pendiente |
 | T134 AP2 en el checkout | pendiente |
 | T135 MPP charge (prueba técnica) | pendiente |
@@ -55,3 +56,33 @@ del traspaso cambiaron de forma: la suite oficial de UCP no se puede correr
 contra una tienda real tal cual, MPP en Stellar hoy no acepta como pagador una
 cuenta con límites, y UCP solo admite un tipo de llave para los mandatos AP2.
 El detalle está en la sección 4.1 del spec.
+
+## T132 · Un recibo que no se contradice (2026-10-03, en revisión)
+
+**Qué quedó funcionando.** Un recibo de Vitrinee dice cuánto se pagó de dos
+maneras: en un número con decimales, que es el que lee una persona, y en
+unidades enteras, que es el que se compara con la red. Hasta hoy nadie miraba
+que los dos dijeran lo mismo, ni que el recibo nombrara el mismo USDC que el
+verificador busca en el pago. Un recibo podía mostrar "0,94 USDC" a quien lo lee
+y pasar los tres checks por 9,46. Ahora ese recibo sale inválido, con el motivo
+escrito, y la tienda se niega a firmarlo.
+
+Lo segundo: un pago respalda un solo recibo. La tienda ya lo cuidaba cuando el
+mismo pago llegaba dos veces seguidas, pero no cuando llegaba dos veces al mismo
+tiempo. Un test nuevo lo reprodujo: salían dos pedidos y dos recibos. Quedó
+cerrado: la segunda solicitud espera y recibe el pedido de la primera.
+
+**Por qué así.** Siguen siendo tres checks: el recibo incoherente falla el
+primero, que ahora es "firma y contenido" (`VT-39`). Y la unicidad la garantiza
+la tienda, no el verificador (`VT-40`): el único que podría firmar dos recibos
+sobre un pago es el comercio, y un tercero no tiene cómo notarlo mientras el
+registro en la red no guarde el hash del pago.
+
+**Lo que no hace.** No impide, en la red, que un comercio deshonesto ancle dos
+recibos sobre un mismo pago. Eso pide un contrato nuevo y quedó escrito como
+brecha 10 del anexo. Tampoco comprueba que la suma de los ítems sea el total.
+
+**Lo que falta.** `/revisar` y el merge, que despliega Vitrinee y publica el
+cambio en la spec de la extensión de recibo. Evidencia en
+[`evidencia/T132.md`](evidencia/T132.md).
+
