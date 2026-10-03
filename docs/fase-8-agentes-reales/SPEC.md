@@ -171,9 +171,9 @@ más rápido que lo estimado.
 - **Depende de:** T128
 - **Descripción:** agregar el conector en Claude (Settings → Connectors → conector personalizado) y en ChatGPT (modo desarrollador, planes Plus y superiores). Guía paso a paso en el README.
 - **Hecho cuando:**
-  - [ ] una compra real desde Claude, con capturas (lo que es "desde Claude": `R-11`)
-  - [ ] una compra real desde ChatGPT, con capturas; o, si la cuenta no tiene el modo desarrollador, el motivo documentado
-  - [ ] el README dice el paso exacto para conectar cada uno
+  - [x] una compra real desde Claude, con capturas (lo que es "desde Claude": `R-11`): la de T128, `ord_muszfkwz2604255e03` ([evidencia](evidencia/T129.md) §1)
+  - [x] una compra real desde ChatGPT, con capturas; o, si la cuenta no tiene el modo desarrollador, el motivo documentado: ChatGPT llamó `pay` él mismo tras la confirmación, `ord_mut0b5rm04b66bd5de` ([evidencia](evidencia/T129.md) §2)
+  - [x] el README dice el paso exacto para conectar cada uno (`apps/mcp/README.md`, y un resumen en el README raíz)
 
 #### T130 · Tienda de terceros real
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no
@@ -404,6 +404,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T128 en testnet con OK del usuario: agente, credencial y Mandato, rail `mcp` con 10 USDC, y la red rechaza sobre el tope. Tercer criterio marcado; falta la compra desde Claude |
 | 2026-10-03 | T128, PR 2, `/revisar`: sin bloqueantes; corregidos los 14 hallazgos a pedido del usuario (renovación de un uso, wallet comprobada contra el rail en la red, desafío sin estado, retorno de loopback sin puerto, errores en JSON, CSP exacta, entre otros). El hallazgo de una URL de retorno en `claude.com` no aplica: la documentación de Claude solo lista `claude.ai` |
 | 2026-10-03 | T128 cerrada: en vivo en `mcp.agentpey.com` y compra real en `agentcommerce` (orden `ord_muszfkwz2604255e03`, recibo con los tres checks en verde). Claude en claude.ai no ejecuta `pay`; con el OK del usuario, `R-11` precisa qué es "una compra desde Claude" en T128, T129, T130 y el criterio 1 de la fase. Criterio 2 de la fase marcado |
+| 2026-10-03 | T129: Claude y ChatGPT conectados y comprando; guía en `apps/mcp/README.md`. ChatGPT sí llama `pay` tras la confirmación de la persona. Tres criterios marcados; falta `/revisar` |
 
 ## 11. Fuentes externas
 

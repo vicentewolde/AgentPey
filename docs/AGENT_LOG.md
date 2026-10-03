@@ -7729,3 +7729,18 @@ criterio 1 de la fase). Spec, ESTADO, BITACORA y SYNC al día; ticket en `DONE`;
 
 Pendiente: push y merge de `cc/t128-evidencia` con OK del usuario. Después `/tarea T129`. `AGENTS.md`: sin cambios
 (`R-11` no toca nada delegable).
+
+## 2026-10-03 (14) — cc/t129-conectar-claude-chatgpt (sin push)
+
+Agente: Claude Code.
+
+Qué: T129. Guía para conectar Claude (Customize → Connectors → Add custom connector) y ChatGPT (Developer mode →
+chatgpt.com/plugins → Create custom MCP server, OAuth) en `apps/mcp/README.md`, con pagar desde el MCP Inspector
+(`R-11`); resumen en el README raíz. Claude: la compra de T128 con tres capturas. ChatGPT Plus conectó a la primera
+y llamó `pay` él mismo tras "confirmo el pago": `ord_mut0b5rm04b66bd5de`, Shopify `18990505394482`, tx `d6c2fa8d…`,
+`vitrinee:verify` en verde y en rojo con `--tamper`. Capturas renombradas a `evidencia/T129/claude-*.png` y
+`chatgpt-*.png`. Sin cambios de código.
+
+Pendiente: el usuario decide si las capturas (muestran nombre y dirección de despacho; repo público) se commitean
+tal cual, recortadas o no; `/revisar`; push y merge con OK. `AGENTS.md`: sin cambios. Exponential: T129 a
+`IN_PROGRESS`.

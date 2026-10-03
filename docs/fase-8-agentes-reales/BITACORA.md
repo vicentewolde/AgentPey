@@ -18,12 +18,14 @@ verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
 `mcp.agentpey.com` y Claude cotizó un imán en `agentcommerce` que terminó en un
 pedido real y un recibo con los tres checks en verde; el pago lo apretó la
-persona, porque claude.ai no ejecuta pagos (`R-11`). Sigue T129.
+persona, porque claude.ai no ejecuta pagos (`R-11`). **T129 en revisión**:
+Claude y ChatGPT conectados, y ChatGPT compró pagando él mismo tras la
+confirmación.
 
 | Tarea | Estado |
 |---|---|
 | T128 Servidor MCP | cerrada |
-| T129 Claude y ChatGPT conectados | pendiente |
+| T129 Claude y ChatGPT conectados | en revisión |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
 | T132 Coherencia del recibo | cerrada |
@@ -173,4 +175,24 @@ T130 y al primer criterio de la fase.
 
 **Lo que quedó en deuda.** Las sugerencias de los dos `/revisar` que no se
 corrigieron siguen en `docs/ESTADO.md`. Ninguna bloquea.
+
+## T129 · Claude y ChatGPT conectados (2026-10-03, en revisión)
+
+**Qué quedó funcionando.** AgentPey se puede agregar a Claude y a ChatGPT como
+cualquier otra herramienta, y la guía paso a paso quedó en el README del
+servidor (`apps/mcp/README.md`), con los nombres de menú que se vieron al
+hacerlo. Desde los dos chats se compró un imán real en `agentcommerce`, con
+pedido en Shopify y un recibo que se verifica por fuera.
+
+**La diferencia entre los dos.** Claude busca y cotiza, pero no paga: deja ese
+botón a la persona, que lo aprieta desde el MCP Inspector (`R-11`, la compra
+de T128). ChatGPT, en modo desarrollador, hizo todo el recorrido: encontró el
+producto, pidió el despacho, cotizó, preguntó "¿Confirmas que pague
+1,5684211 USDC?", y con "confirmo el pago" llamó `pay` él mismo. En los dos
+casos el dinero sale del mismo rail y la red aplica los mismos topes: entre
+las dos compras el rail gastó 3,14 de los 5,00 del día.
+
+**Lo que no hizo falta.** El plan anotaba dos riesgos con ChatGPT (dónde busca
+los metadatos y qué valor manda en `resource`); la conexión funcionó a la
+primera y no se tocó el servidor de autorización.
 

@@ -12,6 +12,81 @@ Connect a client to:
 https://mcp.agentpey.com/mcp
 ```
 
+Signing in needs [Freighter](https://www.freighter.app/) in the browser, on
+testnet, holding the wallet that owns the rail (`MCP_ALLOWED_WALLET`). Any
+other wallet is refused.
+
+## Connect Claude
+
+On Free, Pro and Max you add it yourself; on claude.ai and the desktop app.
+
+1. Open **Customize → Connectors**, click **+ Add**, then **Add custom
+   connector**.
+2. Name: `AgentPey`. Remote MCP server URL:
+   `https://mcp.agentpey.com/mcp`. Click **Continue**.
+3. Authentication: **Sign in when needed**. OAuth client: keep the option
+   Claude marks as detected. Leave **Request headers** empty. Click **Add**.
+4. Claude opens "Connect to AgentPey". Click the button, approve the message
+   in Freighter, and you are back in Claude, connected.
+5. In a chat, open **+ → Connectors** and turn **AgentPey** on. Then ask, for
+   example: `compra un imán en agentcommerce`.
+
+On a Team or Enterprise plan an owner adds it first, under **Organization
+settings → Connectors → Add → Custom → Web**, with the same URL. Members then
+click **Connect** under **Customize → Connectors**.
+
+Claude searches, quotes and reads the order with its receipt, but it does not
+call `pay`: it leaves moving funds to the person, even on testnet and even when
+asked (`R-11`). Pay the quote yourself, below.
+
+## Connect ChatGPT
+
+Needs ChatGPT Plus or higher, on the web, with developer mode.
+
+1. Open **Settings → Security and login** and turn on **Developer mode**.
+2. Go to [ChatGPT Plugins](https://chatgpt.com/plugins), click **+ Add**,
+   then **Create custom MCP server**. Name: `AgentPey`. Description: one
+   line on what it does. MCP server URL: `https://mcp.agentpey.com/mcp`.
+   Authentication: **OAuth**.
+3. ChatGPT opens "Connect to AgentPey". Sign in with Freighter as above.
+4. In a chat, open **+ → Developer mode** and select **AgentPey**. Name the
+   tool when you ask, for example: `Use the AgentPey app to buy a magnet in
+   agentcommerce`.
+
+ChatGPT asks you to confirm before it pays, and then calls `pay` itself: no
+need for the Inspector. Write calls (`quote`, `pay`, `open_claim`) may also
+show their arguments for approval first.
+
+## Pay a quote yourself
+
+When the chat does not call `pay` (Claude would not, `R-11`), press it from
+the official MCP Inspector, signed in with the same wallet. Connect first:
+the quote lasts ten minutes and lives only in the server's memory.
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+
+1. In the page it opens: Transport Type **Streamable HTTP**, URL
+   `https://mcp.agentpey.com/mcp`, **Connect**. Sign in with Freighter; the
+   page warns that a local app is asking, which is expected.
+2. Ask the chat for a quote. Copy its quote id (`q_…`).
+3. In the Inspector: **Tools → List Tools → pay**. `quote_id`: the id;
+   `confirm`: true. **Run Tool**. The result has the order id and the receipt.
+4. Tell the chat you paid and give it the order id; it reads the order with
+   `get_order` and checks the receipt.
+
+Check the receipt yourself, without trusting AgentPey or the store: save
+`receipt.jws` from the order and run
+
+```bash
+curl -s https://agentcommerce.vitrinee.agentpey.com/ucp/v1/orders/<order_id> | jq -r .receipt.jws > receipt.jws
+```
+
+```bash
+pnpm run vitrinee:verify -- receipt.jws
+```
+
 ## Set up, once
 
 Create the agent's key, its credential and its Mandate, and the OAuth secret

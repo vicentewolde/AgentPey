@@ -5,6 +5,21 @@ verifiable agent identity through spending policy, signed mandates, real
 commerce, and verifiable evidence. See **[ROADMAP.md](ROADMAP.md)** for the
 phases, what is done, and what comes next.
 
+## Buy from Claude or ChatGPT
+
+AgentPey runs an MCP server that Claude and ChatGPT connect to as a custom
+connector or app:
+
+```
+https://mcp.agentpey.com/mcp
+```
+
+The chat searches Vitrinee stores, quotes, and reads the order with its
+verified receipt; the payment comes from the MCP's own `policy_rail` on
+Stellar testnet, whose limits the network enforces. Only the wallet that owns
+that rail can sign in. Exact steps to connect each one, and to press `pay`
+yourself when the chat will not: [`apps/mcp/README.md`](apps/mcp/README.md).
+
 ## Vitrinee: real stores join without writing code
 
 AgentPey is the **buyer** with rules: identity, a signed Mandate, a
