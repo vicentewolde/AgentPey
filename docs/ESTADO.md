@@ -7,14 +7,14 @@
 
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T132 · el verificador rechaza un recibo que se contradice, y un pago respalda un solo recibo
-**Siguiente paso:** el usuario agrega `mcp.agentpey.com` en Render y el CNAME `mcp` en el DNS, y copia a Render las 7 variables `MCP_*` de `.env.local`; `/revisar` y merge del PR 2 (despliega); compra real desde Claude. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T128 · servidor MCP en vivo en `mcp.agentpey.com`; Claude cotizó y la persona pagó un imán en `agentcommerce`, recibo con los tres checks en verde (`R-11`)
+**Siguiente paso:** `/tarea T129`: README con los pasos exactos para conectar Claude y ChatGPT, y ChatGPT en modo desarrollador. Después T130 y T131 (spec §8). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; PR 1 y PR 2 en `main`; agente, rail (10 USDC) y rechazo en la red listos en testnet; faltan las variables y el dominio en Render y la compra desde Claude | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados |
+| T128 Servidor MCP de AgentPey | imprescindible | ✅ terminada: en vivo en `mcp.agentpey.com`; orden `ord_muszfkwz2604255e03` cotizada por Claude y pagada por la persona (`R-11`) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; `cc/t128-evidencia` (sin push) |
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
@@ -40,7 +40,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Para T128: agregar `mcp.agentpey.com` en Render y un CNAME `mcp` en el DNS; copiar a Render las 7 variables `MCP_*` de `.env.local` (wallet, agente, rail y fondeo ya están)
+- [ ] Para T129: entrar a ChatGPT en modo desarrollador (Plus o superior) y conectar `https://mcp.agentpey.com/mcp`; capturas de la compra desde Claude y desde ChatGPT
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
@@ -97,3 +97,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T128 PR 2 en código: OAuth propio (`R-7`) con login de wallet, PKCE, tokens con audiencia y sin base de datos; `main.ts` verifica credencial y Mandato al arrancar; `mcp:setup`; perfil `mcp` del rail (no lo fondea el script: lo fondea la principal); `mcp.agentpey.com` en el gateway (no crítico, variables propias) y `render.yaml`. 18 tests en la app, 4 nuevos en el gateway.
 - 2026-10-03, T128 en testnet: agente del MCP `GC7ALMLY…23LB` con credencial y Mandato anclados (30 días, tres tiendas), rail `CB4WVTJ4…FRQ6L` (3,00/5,00) con 10 USDC desde la reserva, y la red rechaza 6 USDC con `PerTxExceeded`. El servidor arranca en local con la configuración real y cotiza en `agentcommerce`.
 - 2026-10-03, T128 PR 2 `/revisar`: sin bloqueantes; corregidos los 14 hallazgos a pedido del usuario. El servidor comprueba en la red que el rail es de su agente y de la wallet que inicia sesión; renovación de un uso; desafío sin estado. 27 tests en la app.
+- 2026-10-03, T128 cerrada: el usuario puso dominio, variables y CNAME; `mcp.agentpey.com` responde 401 con sus metadatos y la página de inicio de sesión carga con CSP y Freighter fijado. En claude.ai, Claude cotizó un imán y se negó dos veces a llamar `pay` (mover un activo financiero lo deja a la persona); el usuario pagó esa cotización desde el MCP Inspector. Orden `ord_muszfkwz2604255e03`, Shopify `18990053523762`, tx `ba3abab7…`, `vitrinee:verify` en verde y en rojo manipulado. `R-11` aprobada: "desde Claude" es Claude cotiza y verifica, la persona paga.

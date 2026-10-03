@@ -163,15 +163,15 @@ más rápido que lo estimado.
   - [x] sin token, con un token vencido o con un token emitido para otro recurso, el servidor responde 401 con sus metadatos y no ejecuta ninguna herramienta (tests; PR 2, [evidencia](evidencia/T128.md) §3)
   - [x] la llave y los tokens no aparecen en logs ni en respuestas (tests que buscan los secretos en la salida: la llave en el PR 1, los tokens y el secreto de OAuth en el PR 2)
   - [x] `executeUcpPayment` se comporta igual que antes (sus tests y `ucp-contract.test.ts` sin cambios, en verde)
-  - [ ] desplegado con OK del usuario: desde un chat de Claude, "compra un imán en agentcommerce" termina en un pedido real y un recibo con los tres checks en verde
-  - [ ] todo en `evidencia/T128.md`
+  - [x] desplegado con OK del usuario: desde un chat de Claude, "compra un imán en agentcommerce" termina en un pedido real y un recibo con los tres checks en verde. Precisado por `R-11` con el OK del usuario: Claude busca y cotiza, y la persona aprieta `pay`, porque claude.ai no ejecuta pagos. Orden `ord_muszfkwz2604255e03`, pedido Shopify `18990053523762`, tx `ba3abab7…6f70` ([evidencia](evidencia/T128.md) §6 y §7)
+  - [x] todo en `evidencia/T128.md`
 
 #### T129 · Claude y ChatGPT conectados
 - **Prioridad:** imprescindible (Claude); ChatGPT, si la cuenta lo permite · **Estimación:** 3 h · **Delegable a Codex:** no (lo hace el usuario en sus cuentas)
 - **Depende de:** T128
 - **Descripción:** agregar el conector en Claude (Settings → Connectors → conector personalizado) y en ChatGPT (modo desarrollador, planes Plus y superiores). Guía paso a paso en el README.
 - **Hecho cuando:**
-  - [ ] una compra real desde Claude, con capturas
+  - [ ] una compra real desde Claude, con capturas (lo que es "desde Claude": `R-11`)
   - [ ] una compra real desde ChatGPT, con capturas; o, si la cuenta no tiene el modo desarrollador, el motivo documentado
   - [ ] el README dice el paso exacto para conectar cada uno
 
@@ -181,7 +181,7 @@ más rápido que lo estimado.
 - **Descripción:** dar de alta por el portal (T105) una tienda que no es del usuario. Si es Jumpseller, confirmar antes que su plan crea pedidos por API (`C-151`).
 - **Hecho cuando:**
   - [ ] la tienda aparece en el directorio y publica su perfil UCP
-  - [ ] una compra hecha desde Claude en esa tienda, con el pedido visto por el dueño del comercio
+  - [ ] una compra hecha desde Claude en esa tienda (`R-11`), con el pedido visto por el dueño del comercio
   - [ ] recibo con los tres checks en verde
 
 #### T131 · Suite oficial de conformidad UCP
@@ -334,8 +334,8 @@ No son tareas: no hay nada que construir. Su evidencia va a la carpeta de la Fas
 
 ## 6. Criterios de aceptación de la fase
 
-- [ ] Una compra hecha desde un chat de Claude, en una tienda que no es del usuario, pagada en USDC testnet desde un `policy_rail`, con pedido real y recibo con los tres checks en verde (T128, T129, T130)
-- [ ] La red rechaza un pago del servidor MCP que excede su tope (T128)
+- [ ] Una compra hecha desde un chat de Claude (`R-11`), en una tienda que no es del usuario, pagada en USDC testnet desde un `policy_rail`, con pedido real y recibo con los tres checks en verde (T128, T129, T130)
+- [x] La red rechaza un pago del servidor MCP que excede su tope (T128, [evidencia](evidencia/T128.md) §4)
 - [ ] La salida de la suite oficial de conformidad de UCP está en el repo, con su alcance escrito (T131)
 - [ ] El verificador rechaza un recibo incoherente (T132)
 - [ ] El video está grabado y entregado (T142; lo hace el usuario)
@@ -403,6 +403,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T128, PR 2 en código: OAuth propio con inicio de sesión de wallet, `main.ts`, `mcp:setup`, perfil `mcp` de `deploy:policy-rail`, host `mcp.agentpey.com` en el gateway y `render.yaml`, `ucp:probe-per-tx -- --rail mcp`. Dos criterios marcados |
 | 2026-10-03 | T128 en testnet con OK del usuario: agente, credencial y Mandato, rail `mcp` con 10 USDC, y la red rechaza sobre el tope. Tercer criterio marcado; falta la compra desde Claude |
 | 2026-10-03 | T128, PR 2, `/revisar`: sin bloqueantes; corregidos los 14 hallazgos a pedido del usuario (renovación de un uso, wallet comprobada contra el rail en la red, desafío sin estado, retorno de loopback sin puerto, errores en JSON, CSP exacta, entre otros). El hallazgo de una URL de retorno en `claude.com` no aplica: la documentación de Claude solo lista `claude.ai` |
+| 2026-10-03 | T128 cerrada: en vivo en `mcp.agentpey.com` y compra real en `agentcommerce` (orden `ord_muszfkwz2604255e03`, recibo con los tres checks en verde). Claude en claude.ai no ejecuta `pay`; con el OK del usuario, `R-11` precisa qué es "una compra desde Claude" en T128, T129, T130 y el criterio 1 de la fase. Criterio 2 de la fase marcado |
 
 ## 11. Fuentes externas
 

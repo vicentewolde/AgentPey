@@ -7714,3 +7714,18 @@ de Render; el MCP no arranca hasta que estén sus 8 variables (`MCP_*` y `AGENT_
 Pendiente: variables y dominio `mcp.agentpey.com` en Render, CNAME en el DNS; compra real desde Claude (cierra
 T128). `AGENTS.md`: sin cambios. Exponential: T128 sigue `IN_PROGRESS`, con los dos PR enlazados.
 
+
+## 2026-10-03 (13) — cc/t128-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: T128 cerrada. Evidencia §6 (en vivo en `mcp.agentpey.com`: 401 con `resource_metadata`, metadatos de
+recurso y de autorización, página de inicio de sesión con CSP y Freighter fijado) y §7 (la compra). En claude.ai,
+Claude cotizó un imán en `agentcommerce` y se negó dos veces a llamar `pay`; el usuario pagó esa cotización desde
+el MCP Inspector. Orden `ord_muszfkwz2604255e03`, Shopify `18990053523762`, tx `ba3abab7…6f70` (rail del MCP →
+cuenta de cobro, 1,5684211 USDC); `vitrinee:verify` en verde y en rojo con `--tamper`. `R-11` aprobada por el
+usuario: "desde Claude" es Claude busca, cotiza y verifica, la persona aprieta `pay` (aplica a T128, T129, T130 y al
+criterio 1 de la fase). Spec, ESTADO, BITACORA y SYNC al día; ticket en `DONE`; `exp:sync` sin cambios.
+
+Pendiente: push y merge de `cc/t128-evidencia` con OK del usuario. Después `/tarea T129`. `AGENTS.md`: sin cambios
+(`R-11` no toca nada delegable).

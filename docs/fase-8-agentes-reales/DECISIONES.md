@@ -199,3 +199,31 @@ cotizar.
 
 **Alternativa descartada: `readOnlyHint: true` para que cotizar no interrumpa.**
 
+
+### R-11 · Desde Claude, el agente busca, cotiza y verifica; la persona aprieta `pay` · `Vigente` — precisa los criterios de T128, T129, T130 y el 1 de la fase
+**Fecha:** 2026-10-03 · **Tarea:** T128 · Propuesta de Claude Code, **aprobada por el usuario** al cerrar T128
+
+El spec pedía que "desde un chat de Claude, compra un imán" terminara en un
+pedido real. En la prueba real, Claude en claude.ai buscó y cotizó con el
+conector, pero se negó a llamar `pay` dos veces, también con la confirmación
+explícita del usuario: ejecutar un pago mueve un activo financiero, aunque sea
+en testnet, y esa acción la deja a la persona (`evidencia/T128.md` §7.1). Es la
+política del modelo, no un fallo del servidor.
+
+Desde ahora, "una compra hecha desde un chat de Claude" significa: Claude
+busca, cotiza y lee la orden con su recibo; la persona aprieta `pay` sobre esa
+misma cotización, con `confirm: true`, desde un cliente MCP donde ella misma
+invoca la herramienta (el MCP Inspector oficial, con el mismo OAuth y la misma
+wallet). Nada más cambia: `pay` sigue exigiendo una cotización vigente que el
+servidor emitió y la confirmación, y la red aplica los topes del rail igual.
+Aplica a los criterios de T128, T129 y T130 y al criterio 1 de la fase. Si
+ChatGPT (T129) sí llama `pay`, se registra como tal.
+
+Para la tesis no es una pérdida: el agente no mueve fondos sin que la persona
+apriete el botón, y ni así puede salirse del tope.
+
+**Alternativa descartada: reescribir la descripción de `pay` para que no
+parezca un pago.** Sería engañar al modelo y le quitaría sentido a la demo.
+**Alternativa descartada: dar el criterio por no cumplido y esperar a ChatGPT.**
+El pedido, el recibo y el pago en la red son los mismos; lo único que cambia es
+quién aprieta el botón.

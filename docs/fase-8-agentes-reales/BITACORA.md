@@ -15,13 +15,14 @@
 **Fecha:** 2026-10-03 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
-recibos sobre un pago. **T128 en curso**: el servidor MCP
-funciona en local con sus seis herramientas (PR 1); falta OAuth, la
-preparación del agente y el deploy (PR 2).
+recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
+`mcp.agentpey.com` y Claude cotizó un imán en `agentcommerce` que terminó en un
+pedido real y un recibo con los tres checks en verde; el pago lo apretó la
+persona, porque claude.ai no ejecuta pagos (`R-11`). Sigue T129.
 
 | Tarea | Estado |
 |---|---|
-| T128 Servidor MCP | en curso (PR 1 y PR 2 en `main`; falta la compra desde Claude) |
+| T128 Servidor MCP | cerrada |
 | T129 Claude y ChatGPT conectados | pendiente |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
@@ -96,7 +97,7 @@ base de datos todavía no la respalda.
 extensión de recibo. Evidencia en
 [`evidencia/T132.md`](evidencia/T132.md).
 
-## T128 · El servidor MCP de AgentPey (2026-10-03, en curso)
+## T128 · El servidor MCP de AgentPey (2026-10-03, cerrada)
 
 **Qué quedó funcionando (PR 1).** Existe un servidor nuevo, `apps/mcp`, que habla
 MCP, el idioma con el que Claude y ChatGPT usan herramientas de terceros. Tiene
@@ -145,4 +146,31 @@ desde Claude.
 inicio de sesión firmando con la wallet, `R-7`), preparar la llave, la
 credencial, el Mandato y el rail del agente (`mcp:setup`, `R-8`, `R-9`), y
 publicarlo en `mcp.agentpey.com`. Recién ahí la compra desde un chat de Claude.
+
+**En vivo y la compra (3-oct, cierre).** El usuario puso el dominio
+`mcp.agentpey.com` y las variables en Render, y el CNAME en el DNS. Desde fuera,
+el servidor responde lo que esperan Claude y ChatGPT: sin sesión, 401 y dónde
+iniciarla; la página de inicio de sesión carga con su política de seguridad y
+Freighter fijado.
+
+Después, la compra. En un chat de claude.ai con el conector AgentPey, "compra un
+imán en agentcommerce": Claude buscó el producto y lo cotizó (1.490 CLP, 1,5684211
+USDC, desde el rail del MCP a la cuenta de cobro de la tienda), y ahí se detuvo.
+Se negó a pagar dos veces, también con la confirmación explícita del usuario: mover
+un activo financiero, aunque sea de prueba, lo deja a la persona. No es un fallo
+nuestro, es la política del modelo. Así que el usuario apretó `pay` él mismo, sobre
+la cotización que dio Claude, desde el MCP Inspector oficial con el mismo inicio
+de sesión. Resultado: orden `ord_muszfkwz2604255e03`, pedido real en Shopify
+(`18990053523762`), y un recibo que se verificó por fuera, sin confiar en AgentPey
+ni en la tienda: firma, anclaje y pago en verde. En la red, la transacción mueve
+exactamente lo cotizado del rail a la tienda, dentro de los topes.
+
+**Qué cambió del spec (`R-11`, con el OK del usuario).** "Una compra desde
+Claude" ahora quiere decir: Claude busca, cotiza y verifica; la persona aprieta
+pagar. Para la tesis no es una pérdida: el agente no mueve fondos sin que la
+persona apriete el botón, y ni así puede salirse del tope. Aplica también a T129,
+T130 y al primer criterio de la fase.
+
+**Lo que quedó en deuda.** Las sugerencias de los dos `/revisar` que no se
+corrigieron siguen en `docs/ESTADO.md`. Ninguna bloquea.
 
