@@ -14,7 +14,7 @@
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; PR 2 (OAuth, setup, gateway) en código, sin desplegar; falta correr el setup en testnet, el deploy y la compra desde Claude | PR 1 mergeado ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)); PR 2 en `cc/t128-mcp-oauth-deploy` |
+| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; PR 2 (OAuth, setup, gateway) revisado y corregido; agente, rail (10 USDC) y rechazo en la red listos en testnet; faltan el deploy y la compra desde Claude | PR 1 mergeado ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)); PR 2 en `cc/t128-mcp-oauth-deploy` |
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
@@ -58,6 +58,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Es T143 de la Fase 8.
 - Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción (pide un contrato nuevo, fuera de alcance). Brecha 14: es parte de T134.
+- T128 (PR 2): el servidor guarda en memoria qué tokens de renovación ya se usaron; tras un reinicio, uno usado sirve una vez más hasta vencer (una semana). Y el rail `mcp` tiene como principal la misma cuenta que cobra en `agentcommerce` y `mycokit`.
 - T128 (`/revisar` del PR 1, sugerencias que quedaron): un pago incierto no se reintenta con la misma clave (la cotización ya se consumió); `recheck` apagado por defecto en `payUcpQuote`; la relectura no compara el id del checkout; una cotización con fecha inválida no vence; la tienda por primera etiqueta no avisa ambigüedad; `open_claim` no comprueba que el rail del MCP pagó el recibo (el árbitro sí); total 0 si la tienda no manda línea `total`; `start` apunta a `main.ts` (llega en el PR 2) y tres dependencias sin usar; tests con `any`.
 - T132: `signReceipt` todavía lanza un error de zod, no un `VitrineeError`, cuando los datos no cumplen el esquema (ya era así). Y "un pago, un recibo" vale dentro de un proceso: `vitrinee.orders` no tiene índice único sobre el hash del pago (`VT-40`); hace falta si un comercio llega a tener más de un proceso.
 - **Sin fase** (`C-161`, cierre de la Fase 6): AgentGuard (sin alcance), evaluación de mainnet, modelo de cobro (la publicación en npm entró en la Fase 8, `P-16`). Y la meta "Primer partner piloto real": el criterio de salida de F9 (una persona ajena completa sola el recorrido) quedó sin cumplir.
@@ -95,3 +96,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T128 PR 1 `/revisar`: sin bloqueantes; corregidos los ocho importantes a pedido del usuario. El cliente UCP pasó a `@vitrinee/anchor` (core es sin I/O). `R-10` aprobada.
 - 2026-10-03, T128 PR 2 en código: OAuth propio (`R-7`) con login de wallet, PKCE, tokens con audiencia y sin base de datos; `main.ts` verifica credencial y Mandato al arrancar; `mcp:setup`; perfil `mcp` del rail (no lo fondea el script: lo fondea la principal); `mcp.agentpey.com` en el gateway (no crítico, variables propias) y `render.yaml`. 18 tests en la app, 4 nuevos en el gateway.
 - 2026-10-03, T128 en testnet: agente del MCP `GC7ALMLY…23LB` con credencial y Mandato anclados (30 días, tres tiendas), rail `CB4WVTJ4…FRQ6L` (3,00/5,00) con 10 USDC desde la reserva, y la red rechaza 6 USDC con `PerTxExceeded`. El servidor arranca en local con la configuración real y cotiza en `agentcommerce`.
+- 2026-10-03, T128 PR 2 `/revisar`: sin bloqueantes; corregidos los 14 hallazgos a pedido del usuario. El servidor comprueba en la red que el rail es de su agente y de la wallet que inicia sesión; renovación de un uso; desafío sin estado. 27 tests en la app.

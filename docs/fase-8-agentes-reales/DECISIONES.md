@@ -46,7 +46,8 @@ más. Consecuencia aceptada: T128 pasa de 14 h a 22 h y la primera compra desde
 Claude se mueve del 4 al 5 de octubre.
 
 **Lo que queda abierto.** Qué servidor de autorización se usa: un proveedor de
-identidad externo o uno mínimo propio. Se propone en el plan de T128.
+identidad externo o uno mínimo propio. Se propone en el plan de T128. Cerrado
+por `R-7`.
 
 ---
 
@@ -135,6 +136,17 @@ la principal del rail del MCP, la única que puede retirar sus fondos.
 **Motivo.** Autoriza al agente quien controla la plata, con la misma prueba que
 el resto de AgentPey, y sin una cuenta en un tercero. El alcance es chico: un
 solo usuario, tokens de vida corta, testnet.
+
+**Precisado tras `/revisar` del PR 2 (2026-10-03):** el acceso dura una hora y
+la renovación una semana, y cada token de renovación sirve una vez (OAuth 2.1
+§4.3.1). El desafío que se firma es un token firmado, no un registro en
+memoria, y se gasta solo con una firma válida: nadie puede bloquear el inicio
+de sesión pidiendo desafíos. Un retorno de loopback se compara sin el puerto
+(RFC 8252 §7.3), porque Claude Code cambia de puerto en cada sesión; la única
+URL de retorno de las apps alojadas de Claude es
+`https://claude.ai/api/mcp/auth_callback` (su documentación, leída el 3-oct). Y
+el servidor no arranca si, en la red, el rail no es de la llave del agente o
+su principal no es la wallet que inicia sesión.
 
 **Alternativa descartada: un proveedor externo (WorkOS o Auth0).** Menos código
 (cerca de 4 h contra 10 h), pero inicio de sesión por email, una cuenta que el

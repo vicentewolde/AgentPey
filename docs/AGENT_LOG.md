@@ -7689,3 +7689,18 @@ variables. `render.yaml` y `.env.example`. `pnpm check` y `vitrinee:check` en ve
 Pendiente: wallet del usuario y su OK para `mcp:setup` y el deploy del rail en testnet; dominio, variables en
 Render y fondeo (usuario); `/revisar` y merge; compra real desde Claude. `AGENTS.md`: sin cambios (nada delegable).
 
+## 2026-10-03 (11) — cc/t128-mcp-oauth-deploy (sin push)
+
+Agente: Claude Code.
+
+Qué: T128 en testnet, con la wallet del usuario (`GD2MCESI…K5GN`) y su OK: `mcp:setup` (agente `GC7ALMLY…23LB`,
+credencial y Mandato anclados), `deploy:policy-rail --profile mcp` (rail `CB4WVTJ4…FRQ6L`, 3,00/5,00), 10 USDC desde
+la reserva con `rail:topup` (autorizado por el usuario), y `ucp:probe-per-tx --rail mcp`: `PerTxExceeded`. Después,
+`/revisar` del PR 2 sin bloqueantes y los 14 hallazgos corregidos: renovación de un uso y una semana, el servidor
+lee `owner`/`principal` del rail en la red al arrancar, desafío sin estado, loopback sin puerto (Claude Code),
+errores JSON, CSP exacta, CIMD con tope y caché, `jti` en DCR, avisos de consentimiento, zod en los bordes,
+`AGENT_REGISTRY_CONTRACT_ID` requerida en el gateway, `iss`. `pnpm check` en verde.
+
+Pendiente: el usuario agrega `mcp.agentpey.com` en Render y el DNS y copia las variables `MCP_*`; push y merge del
+PR 2 con OK; compra real desde Claude. `AGENTS.md`: sin cambios.
+

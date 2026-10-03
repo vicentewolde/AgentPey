@@ -126,7 +126,18 @@ una página de AgentPey donde la persona firma un mensaje con Freighter, y solo
 entra la wallet dueña del rail. Lo demás quedó listo para encenderlo: el
 arranque real (que se niega a partir si la credencial o el Mandato no
 verifican), el script que prepara al agente, el rail propio y el lugar del
-servidor en `mcp.agentpey.com`. Falta correrlo en testnet y publicarlo.
+servidor en `mcp.agentpey.com`.
+
+**En testnet (3-oct).** Con la wallet del usuario como principal: el agente del
+MCP tiene su credencial y su Mandato anclados, el rail propio está desplegado
+con 10 USDC, y la red rechazó una compra de 6 USDC por encima del tope sin que
+se enviara nada.
+
+**La revisión del PR 2.** `/revisar` sin bloqueantes; se corrigieron los 14
+hallazgos. Lo más importante: el servidor no arranca si, en la red, el rail no
+es de su agente o su principal no es la wallet que inicia sesión; cada token
+de renovación sirve una vez; y nadie puede bloquear el inicio de sesión
+pidiendo desafíos en masa. Falta publicarlo y la compra desde Claude.
 
 **Lo que faltaba (PR 2).** Que nadie más que el usuario pueda usarlo (OAuth con
 inicio de sesión firmando con la wallet, `R-7`), preparar la llave, la
