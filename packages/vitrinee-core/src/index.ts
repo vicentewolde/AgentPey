@@ -6,3 +6,4 @@ export * from "./receipt.js";
 export * from "./explorer.js";
 export * from "./jws.js";
 export * from "./ucp.js";
+export * from "./ucp-client.js";

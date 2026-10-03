@@ -45,7 +45,7 @@ describe("UCP test client", () => {
       if (handler !== undefined) handler.spec = "https://evil.example/stellar-x402/spec";
       return Response.json(profile);
     };
-    await expect(readUcpStorefront(url, hijacked)).rejects.toMatchObject({ code: "ValidationError", message: /outside its namespace/ });
+    await expect(readUcpStorefront(url, { fetchImpl: hijacked })).rejects.toMatchObject({ code: "ValidationError", message: /outside its namespace/ });
   });
 
   it("refuses a profile whose handler simply omits its spec and schema", async () => {
@@ -61,7 +61,7 @@ describe("UCP test client", () => {
       }
       return Response.json(profile);
     };
-    await expect(readUcpStorefront(url, stripped)).rejects.toMatchObject({ code: "ValidationError", message: /declares no spec URL/ });
+    await expect(readUcpStorefront(url, { fetchImpl: stripped })).rejects.toMatchObject({ code: "ValidationError", message: /declares no spec URL/ });
   });
 
   it("stops instead of looping when a page claims a next page without a cursor", async () => {
@@ -70,12 +70,12 @@ describe("UCP test client", () => {
       const body = (await (await fetch(input, init)).json()) as Record<string, unknown>;
       return Response.json({ ...body, pagination: { has_next_page: true } });
     };
-    await expect(readUcpStorefront(url, stuck)).rejects.toMatchObject({ code: "ValidationError", message: /without a new cursor/ });
+    await expect(readUcpStorefront(url, { fetchImpl: stuck })).rejects.toMatchObject({ code: "ValidationError", message: /without a new cursor/ });
   });
 
   it("says so when a host answers something that is not JSON", async () => {
     const html: typeof fetch = async () => new Response("<html>hi</html>", { status: 200, headers: { "content-type": "text/html" } });
-    await expect(readUcpStorefront(url, html)).rejects.toMatchObject({ code: "ValidationError", message: /did not answer JSON/ });
+    await expect(readUcpStorefront(url, { fetchImpl: html })).rejects.toMatchObject({ code: "ValidationError", message: /did not answer JSON/ });
   });
 
   it("refuses a host that does not speak UCP, and says so when it cannot connect", async () => {
