@@ -29,6 +29,12 @@
  * per purchase and 5.00 per day, the same as a tenant's rail (C-133). It is
  * recorded apart (`policyRailUcp`, `UCP_POLICY_RAIL_CONTRACT_ID`), so the
  * shared rail and everything that pays from it are untouched.
+ *
+ * `--profile mcp` (T128, `R-9`) is the MCP server's own rail: the same limits
+ * as `ucp`, but owned by the MCP agent's key (`MCP_AGENT_SECRET_KEY`, written
+ * by `pnpm run mcp:setup`), recorded as `policyRailMcp`. That key holds no
+ * USDC, so this script does not fund it: the principal sends USDC to the
+ * rail's contract id from their own wallet.
  */
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -58,13 +64,17 @@ const ARGV = process.argv.slice(2);
 const REDEPLOY = ARGV.includes("--redeploy");
 
 interface RailProfile {
-  readonly name: "shared" | "ucp";
+  readonly name: "shared" | "ucp" | "mcp";
   readonly perTx: string;
   readonly perDay: string;
   readonly fundThreshold: string;
   readonly fundTarget: string;
-  readonly recordKey: "policyRail" | "policyRailUcp";
+  readonly recordKey: "policyRail" | "policyRailUcp" | "policyRailMcp";
   readonly envKey: string;
+  /** The `.env.local` key of the rail's owner: the agent that spends from it. */
+  readonly ownerEnvKey: "AGENT_SECRET_KEY" | "MCP_AGENT_SECRET_KEY";
+  /** Whether this script tops the rail up from the owner's own USDC. */
+  readonly fundFromOwner: boolean;
 }
 
 /**
@@ -82,6 +92,8 @@ const SHARED: RailProfile = {
   fundTarget: "0.0500000",
   recordKey: "policyRail",
   envKey: "POLICY_RAIL_CONTRACT_ID",
+  ownerEnvKey: "AGENT_SECRET_KEY",
+  fundFromOwner: true,
 };
 
 /** Real store products cost 1.5 to 3 USDC: one fits, three of them in a day, and a 3.01 purchase is refused on chain. */
@@ -93,19 +105,32 @@ const UCP: RailProfile = {
   fundTarget: "5.0000000",
   recordKey: "policyRailUcp",
   envKey: "UCP_POLICY_RAIL_CONTRACT_ID",
+  ownerEnvKey: "AGENT_SECRET_KEY",
+  fundFromOwner: true,
+};
+
+/** The MCP server's rail (R-9): the UCP limits, its own owner, funded by the principal. */
+const MCP: RailProfile = {
+  ...UCP,
+  name: "mcp",
+  recordKey: "policyRailMcp",
+  envKey: "MCP_POLICY_RAIL_CONTRACT_ID",
+  ownerEnvKey: "MCP_AGENT_SECRET_KEY",
+  fundFromOwner: false,
 };
 
 function readProfile(): RailProfile {
   // `--profile=ucp` would otherwise be ignored and fall through to the shared rail.
   if (ARGV.some((arg) => arg.startsWith("--profile="))) {
-    throw new AgentPassError("ConfigError", "write --profile <shared|ucp>, with a space", { details: {} });
+    throw new AgentPassError("ConfigError", "write --profile <shared|ucp|mcp>, with a space", { details: {} });
   }
   const at = ARGV.indexOf("--profile");
   if (at === -1) return SHARED;
   const value = (ARGV[at + 1] ?? "").trim();
   if (value === "shared") return SHARED;
   if (value === "ucp") return UCP;
-  throw new AgentPassError("ConfigError", "--profile takes shared or ucp", { details: { profile: value } });
+  if (value === "mcp") return MCP;
+  throw new AgentPassError("ConfigError", "--profile takes shared, ucp or mcp", { details: { profile: value } });
 }
 
 const PROFILE = readProfile();
@@ -280,7 +305,7 @@ async function main(): Promise<void> {
   const principal = readPrincipal();
   const env = await readEnvFile(ENV_PATH);
   const admin = Keypair.fromSecret(requireEnv(env, "ADMIN_SECRET_KEY"));
-  const agent = Keypair.fromSecret(requireEnv(env, "AGENT_SECRET_KEY"));
+  const agent = Keypair.fromSecret(requireEnv(env, PROFILE.ownerEnvKey));
 
   const [version, recorded] = await Promise.all([
     getLiveVersion(TESTNET.rpcUrl),
@@ -362,7 +387,8 @@ async function main(): Promise<void> {
       upsertEnvValue(await readFile(ENV_PATH, "utf8"), PROFILE.envKey, previous.contractId),
     );
     await writeDeployment(DEPLOYMENT_PATH, { ...recorded, protocolVersion: version.protocolVersion });
-    await ensureFunded(previous.contractId, agent);
+    if (PROFILE.fundFromOwner) await ensureFunded(previous.contractId, agent);
+    else process.stdout.write(`  funding      by the principal: send USDC to ${previous.contractId}\n\n`);
     return;
   }
 
@@ -447,7 +473,8 @@ async function main(): Promise<void> {
   process.stdout.write(`  verified     principal ${live.principal}\n\n`);
   process.stdout.write("  wrote deployments/testnet.json and .env.local\n\n");
 
-  await ensureFunded(contractId, agent);
+  if (PROFILE.fundFromOwner) await ensureFunded(contractId, agent);
+  else process.stdout.write(`  funding      by the principal: send USDC to ${contractId}\n\n`);
 }
 
 try {

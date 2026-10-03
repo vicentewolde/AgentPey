@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `pnpm run ucp:probe-per-tx -- --store <URL> --product <id> --quantity <n>` —
+ * `pnpm run ucp:probe-per-tx -- --store <URL> --product <id> --quantity <n> [--rail mcp]` —
  * proves that the network, not the agent, refuses a UCP purchase above the
  * rail's per-transaction limit (T122 acceptance criterion).
  *
@@ -14,6 +14,9 @@
  * **Nothing is sent and no money moves**: the refusal happens in simulation,
  * and the checkout is canceled at the end. It is a separate script on
  * purpose: the production path gains no mode that skips the local check.
+ *
+ * `--rail mcp` (T128) asks the MCP server's own rail instead, signed by its
+ * owner, the MCP agent's key.
  */
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,7 +35,7 @@ type PaymentRequirements = Parameters<PolicyRailStellarScheme["createPaymentPayl
 
 const { values } = parseArgs({
   args: process.argv.slice(2).filter((arg) => arg !== "--"),
-  options: { store: { type: "string" }, product: { type: "string" }, quantity: { type: "string", default: "2" } },
+  options: { store: { type: "string" }, product: { type: "string" }, quantity: { type: "string", default: "2" }, rail: { type: "string", default: "ucp" } },
 });
 
 const out = (line = "") => process.stdout.write(`${line}\n`);
@@ -52,10 +55,12 @@ async function main(): Promise<void> {
     throw new AgentPassError("InvalidArguments", "usage: pnpm run ucp:probe-per-tx -- --store <URL> --product <id> --quantity <n>", { details: {} });
   }
   const env = await readEnvFile(ENV_PATH);
-  const railId = env.get("UCP_POLICY_RAIL_CONTRACT_ID")?.trim() ?? "";
-  const ownerSecret = env.get("AGENT_SECRET_KEY")?.trim() ?? "";
+  if (values.rail !== "ucp" && values.rail !== "mcp") throw new AgentPassError("InvalidArguments", "--rail takes ucp or mcp", { details: { rail: values.rail } });
+  const [railKey, ownerKey] = values.rail === "mcp" ? ["MCP_POLICY_RAIL_CONTRACT_ID", "MCP_AGENT_SECRET_KEY"] : ["UCP_POLICY_RAIL_CONTRACT_ID", "AGENT_SECRET_KEY"];
+  const railId = env.get(railKey)?.trim() ?? "";
+  const ownerSecret = env.get(ownerKey)?.trim() ?? "";
   if (railId === "" || ownerSecret === "") {
-    throw new AgentPassError("ConfigError", "needs UCP_POLICY_RAIL_CONTRACT_ID and AGENT_SECRET_KEY in .env.local", { details: {} });
+    throw new AgentPassError("ConfigError", `needs ${railKey} and ${ownerKey} in .env.local`, { details: {} });
   }
   const endpoint = `${new URL(values.store).origin}/ucp/v1`;
 

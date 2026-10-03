@@ -68,6 +68,8 @@ export const deploymentSchema = z.strictObject({
   policyRail: policyRailDeploymentSchema.nullable().default(null),
   /** The rail that pays UCP purchases (T122): same contract, its own instance and limits. */
   policyRailUcp: policyRailDeploymentSchema.nullable().default(null),
+  /** T128 (R-9): the MCP server's own rail, owned by its agent key. */
+  policyRailMcp: policyRailDeploymentSchema.nullable().default(null),
   agentResolve: agentResolveDeploymentSchema.nullable().default(null),
 });
 
@@ -84,6 +86,7 @@ export const EMPTY_DEPLOYMENT: Deployment = {
   agentRegistry: null,
   policyRail: null,
   policyRailUcp: null,
+  policyRailMcp: null,
   agentResolve: null,
 };
 
