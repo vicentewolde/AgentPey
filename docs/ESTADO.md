@@ -8,13 +8,13 @@
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T132 · el verificador rechaza un recibo que se contradice, y un pago respalda un solo recibo
-**Siguiente paso:** `/revisar` del PR 1 de T128 y su merge con OK; después el PR 2 (OAuth con login de wallet, `mcp:setup`, host `mcp.agentpey.com`). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
+**Siguiente paso:** el PR 2 de T128 (OAuth con login de wallet, `mcp:setup`, host `mcp.agentpey.com`), en una rama nueva desde `main`. El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) listo para `/revisar`; falta el PR 2 (OAuth, setup y deploy) | `cc/t128-servidor-mcp` |
+| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; falta el PR 2 (OAuth, setup y deploy) | `cc/t128-servidor-mcp`, PR 1 mergeado ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)) |
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |

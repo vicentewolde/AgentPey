@@ -21,7 +21,7 @@ preparación del agente y el deploy (PR 2).
 
 | Tarea | Estado |
 |---|---|
-| T128 Servidor MCP | en curso (PR 1 en revisión) |
+| T128 Servidor MCP | en curso (PR 1 en `main`) |
 | T129 Claude y ChatGPT conectados | pendiente |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
@@ -115,6 +115,11 @@ nada: una compra sobre el tope se corta ahí.
 sale de la tienda y se compara con lo que la tienda declara en público. Un
 texto malicioso en un catálogo puede pedirle cosas al modelo, pero no cambiar la
 cotización ni el tope.
+
+**La revisión del PR 1.** `/revisar` sin bloqueantes; se corrigieron los ocho
+hallazgos importantes, entre ellos que `get_order` ahora comprueba que el recibo
+que muestra la tienda es de esa orden y de esa tienda. Mergeado con el OK del
+usuario ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)).
 
 **Lo que falta (PR 2).** Que nadie más que el usuario pueda usarlo (OAuth con
 inicio de sesión firmando con la wallet, `R-7`), preparar la llave, la

@@ -7664,3 +7664,13 @@ confirmación ausente tipada, directorio leído antes de tomar la cotización, g
 
 Pendiente: push y merge del PR 1 con OK; después el PR 2. `AGENTS.md`: sin cambios.
 
+## 2026-10-03 (9) — cc/t128-servidor-mcp → main (PR 1)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI 4/4 en verde, el PR 1 de T128 ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)) por fast-forward a `main`. No despliega
+`apps/mcp` (no está en el gateway ni en `render.yaml`); Vitrinee se redespliega sin cambio de comportamiento.
+
+Pendiente: PR 2 en una rama nueva desde `main`. `AGENTS.md`: sin cambios. Exponential: T128 sigue `IN_PROGRESS`,
+con el PR enlazado.
+
