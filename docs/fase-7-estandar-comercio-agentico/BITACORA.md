@@ -12,18 +12,15 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-02 · Spec aprobado. **T120 cerrada** (opción A, `E-1` a
-`E-4`). **T121 cerrada**: cada tienda publica su perfil y su catálogo UCP. **T122
-cerrada**: un agente compró por UCP en una tienda Shopify real, pagando en
-Stellar desde un `policy_rail`, con pedido en Shopify (visto por el usuario) y
-recibo válido. **T125 cerrada**: el anexo técnico para el SEP está escrito y revisado.
-**T123 cerrada**: el Mandato se exporta como mandatos AP2 v0.2 y la librería
-oficial de AP2 los verifica (`E-8` a `E-13`). **T124 en curso**: AgentResolve
-desplegado y probado con un reclamo real (rechazado), y en `main` desde el
-2-oct; falta el reembolso real, el 8 o 9 de octubre. **T126 cerrada**: el
-comercio responde al reclamo firmado con su wallet, y el árbitro decide con las
-dos versiones (`E-20` a `E-22`). **T127 en revisión**: la orden UCP muestra la
-disputa leída del contrato (`E-23`, `E-24`).
+**Fecha:** 2026-10-03 · **Fase cerrada (T120–T127, `E-25`).** Las ocho tareas
+están en `main` y los cuatro criterios de aceptación del spec, cumplidos. Un
+agente que habla UCP descubre una tienda real de Vitrinee, compra y paga en
+Stellar desde un `policy_rail`, y recibe un recibo que cualquiera verifica; el
+Mandato se exporta como mandatos AP2; hay disputas con las dos partes
+(AgentResolve) y se ven en la orden; y el anexo técnico ya se usó para escribir
+el borrador del SEP. Pasan a la Fase 8, con fecha, el reembolso real de T124 (8
+o 9 de octubre) y ver ese día la orden `ord_muq1gqhycf4961492c` con su disputa
+(T127). Detalle en [Cierre de la fase](#cierre-de-la-fase-2026-10-03).
 
 | Tarea | Estado |
 |---|---|
@@ -31,10 +28,10 @@ disputa leída del contrato (`E-23`, `E-24`).
 | T121 Perfil y catálogo UCP | cerrada |
 | T122 Compra UCP de punta a punta | cerrada |
 | T123 Mandato como mandatos AP2 | cerrada |
-| T124 Disputas (AgentResolve) | en curso (en `main`, falta el reembolso real) |
+| T124 Disputas (AgentResolve) | cerrada con un pendiente con fecha: el reembolso real, 8 o 9 de octubre (`E-25`) |
 | T125 Anexo para el SEP | cerrada |
 | T126 Respuesta del comercio | cerrada |
-| T127 La disputa en la orden UCP | en revisión |
+| T127 La disputa en la orden UCP | cerrada con un pendiente con fecha: ver `ord_muq1…` el 8 de octubre (`E-25`) |
 
 ## Apertura de la fase (2026-09-30)
 
@@ -226,7 +223,7 @@ la intención. Las dos cosas quedan como brecha 14 del anexo.
   por `scripts/fase7-anexo.test.ts`. Salidas crudas en
   [evidencia/T123.md](evidencia/T123.md).
 
-## T124 · AgentResolve: reclamar y que te devuelvan la plata (2026-10-01, en curso)
+## T124 · AgentResolve: reclamar y que te devuelvan la plata (2026-10-01, cerrada; el reembolso real pasa a la Fase 8)
 
 **En lenguaje llano.** Si un agente compra algo y el pedido falla, ahora puede
 pedir su plata de vuelta. Firma un reclamo sobre su recibo: qué pasó, qué
@@ -299,7 +296,7 @@ Freighter desde la cuenta de cobro de `agentcommerce`, y `resolve:check-response
 aceptó la respuesta contra la disputa en la red. Evidencia en
 [`evidencia/T126.md`](evidencia/T126.md).
 
-## T127 · El reclamo se ve en la orden (2026-10-02, en revisión)
+## T127 · El reclamo se ve en la orden (2026-10-02, cerrada; falta ver `ord_muq1…` el 8-oct)
 
 **Qué quedó funcionando.** Cuando un agente consulta una orden por UCP, Vitrinee
 ahora le pregunta al contrato de AgentResolve si el recibo tiene un reclamo, y
@@ -321,8 +318,66 @@ si la red no responde, la orden sale igual con un aviso.
 **Lo que no hace.** No publica el razonamiento del veredicto, que sigue en la
 máquina del árbitro (`E-24`).
 
-**Lo que falta.** `/revisar` y el merge, que despliega Vitrinee. Después, ver en
-vivo la orden de T122 con su disputa resuelta y, el 8 de octubre, la orden
-`ord_muq1gqhycf4961492c` con la suya. Evidencia en
-[`evidencia/T127.md`](evidencia/T127.md).
+**Cómo se cerró.** `/revisar` sin bloqueantes, merge y deploy el 2-oct. La orden
+de T122 muestra en vivo su disputa resuelta. Falta ver, el 8 de octubre, la
+orden `ord_muq1gqhycf4961492c` con la suya: pasa a la Fase 8 como pendiente con
+fecha (`E-25`). Evidencia en [`evidencia/T127.md`](evidencia/T127.md).
+
+---
+
+## Cierre de la fase (2026-10-03)
+
+La Fase 7 se cerró el 2026-10-03, por decisión del usuario (`E-25`), a tres
+días de abrirse.
+
+**Qué entregó (T120–T127).**
+- **UCP sobre Stellar.** Cada tienda de Vitrinee publica su perfil y su catálogo
+  UCP, y hay un medio de pago de Stellar para UCP (`com.agentpey.stellar_x402`)
+  con sus reglas publicadas en `agentpey.com`.
+- **Una compra UCP real.** Un agente compró en una tienda Shopify de verdad,
+  pagó en USDC de testnet desde un `policy_rail`, el pedido apareció en Shopify
+  y el recibo verifica con sus tres checks. La red rechazó un pago sobre el tope.
+- **Mandatos AP2.** El Mandato se exporta como los dos mandatos abiertos de AP2
+  `v0.2`, y la librería oficial de AP2 los verifica.
+- **Disputas (AgentResolve).** Quien pagó reclama sobre su recibo, el comercio
+  responde firmado con su wallet, un árbitro con IA decide, una persona
+  confirma, y el contrato guarda el veredicto y paga desde la garantía del
+  comercio. La disputa se ve en la orden UCP.
+- **El anexo para el SEP**, con veinte brechas anotadas. Con él se escribió el
+  borrador del SEP "Agentic Commerce on Stellar".
+
+**Criterios de aceptación.** Los cuatro cumplidos
+([evidencia](evidencia/criterios-fase7.md)); el 1 y el 2 se repitieron el día
+del cierre.
+
+**Qué pasa a la Fase 8, con fecha.**
+- 8 o 9 de octubre: el reembolso real de T124 sobre el pedido Shopify
+  `18952373174578`, en una rama de evidencia aparte.
+- El mismo día: ver `ord_muq1gqhycf4961492c` con su disputa abierta y después
+  resuelta (T127).
+- El plan de demo (sección 7 del spec), que no se escribió: es la tarea T142.
+
+**Lo que queda como deuda** (en `docs/ESTADO.md`): la brecha 14 (una intención
+se puede exportar a AP2 más de una vez) y la brecha 10 (coherencia del recibo),
+que la Fase 8 propone tomar; y las sugerencias de `/revisar` de T126 y T127
+que no se aplicaron.
+
+**Coherencia entre documentos y código.** `scripts/fase7-anexo.test.ts`
+mantiene el anexo alineado con los esquemas zod y con `deployments/`; pasó en el
+`pnpm check` del cierre. Corregido en el cierre: el encabezado del spec decía
+"T120 a T125".
+
+**Retro.**
+- **Funcionó:** el spec aprobado con el orden de corte escrito de antemano, y
+  empezar por una prueba técnica (T120) que fijó el diseño y las horas. Las
+  ocho tareas salieron en tres días, y `/revisar` encontró bloqueantes reales
+  (el cobro en T122, el tope en centavos en T123) antes de `main`.
+- **No funcionó:** los criterios que dependen de una fecha o de una persona
+  (el reembolso del 8, la firma con Freighter, el anexo entregado) dejaron
+  tareas "casi cerradas" varios días, y la precondición de `/fase-cerrar` no
+  contempla ese caso. El plan de demo quedó como una línea que nadie escribió.
+- **Para la próxima:** separar en el spec lo que se construye de lo que se
+  comprueba en una fecha ("pendientes con fecha", fuera del "Hecho cuando"), y
+  dar al plan de demo su propia tarea. Propuesta: que `/fase-cerrar` acepte
+  pendientes con fecha si están registrados como decisión.
 

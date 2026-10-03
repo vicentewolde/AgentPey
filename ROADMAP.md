@@ -10,7 +10,7 @@
 > cualquiera —humano o Claude Code— que necesite entender el proyecto entero
 > antes de tocar una fase específica.
 
-Última revisión: 2026-10-02 · Fase actual: **Fase 7, en curso** — AgentPey como implementación de referencia del comercio agéntico sobre Stellar (UCP, AP2, x402; ver `P-14` en [docs/DECISIONES.md](docs/DECISIONES.md)) — Fases 1 a 6 cerradas (T1–T119)
+Última revisión: 2026-10-03 · Fase actual: **entre fases** — la Fase 7 (UCP, AP2 y x402 sobre Stellar, `P-14`) se cerró el 2026-10-03 (`E-25`); la Fase 8 está por planificarse (`/fase-plan 8`) — Fases 1 a 7 cerradas (T1–T127)
 
 ---
 
@@ -108,7 +108,7 @@ las decisiones estratégicas que llevaron al código, y para SCF eso es evidenci
 | 4 | **MandateGate** | La cadena completa —identidad, política, mandato— funciona dentro del checkout **real** de un comercio on-chain existente | ✅ Completa (T24–T26) | — |
 | 5 | **MandateVault + cierre de piloto** | Cada decisión del sistema queda como evidencia verificable; el MVP y la landing funcionan bien de cara al mensaje a Tellus, que gestiona la Instaward | ✅ Completa (T27–T31) — mensaje a Tellus enviado 2026-09-08 | — |
 | 6 | **Después: AgentGuard + comercialización** | Convertir el piloto en un producto real con partners en testnet, mientras se espera la resolución de SCF | ✅ Cerrada 2026-10-02 (T32–T119, `C-161`): plataforma para partners, piloto F9 y Vitrinee; AgentGuard sin alcance | — |
-| 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | 🔄 En curso desde 2026-09-30 (`P-14`), spec aprobado, T120–T127 | — |
+| 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | ✅ Cerrada 2026-10-03 (T120–T127, `E-25`): perfil y catálogo UCP, compra UCP pagada en Stellar, mandatos AP2, AgentResolve y anexo del SEP; el reembolso real de T124 pasa a la Fase 8 con fecha | — |
 
 Las Fases 0 a 5 están cerradas — el piloto técnico completo.
 La Fase 6 hizo la mitad de "comercialización" y se cerró el 2026-10-02; la
@@ -621,7 +621,7 @@ AgentGuard, la evaluación de mainnet, npm y el modelo de cobro quedan sin fase.
 Detalle y retro en
 [docs/fase-6-agentguard-comercializacion/BITACORA.md](docs/fase-6-agentguard-comercializacion/BITACORA.md#cierre-de-la-fase-2026-10-02).
 
-### 4.7 · Fase 7 — Estándar de comercio agéntico sobre Stellar 🔄 en curso, abierta 2026-09-30
+### 4.7 · Fase 7 — Estándar de comercio agéntico sobre Stellar ✅ cerrada 2026-10-03
 
 No estaba en el diseño original. La abre `P-14`
 ([docs/DECISIONES.md](docs/DECISIONES.md)): la capa de identidad y permisos
@@ -638,6 +638,15 @@ antes de escribir código, y tareas con su rama, su commit y su revisión.
 Alcance, tareas (T120 a T127), orden y cortes viven en
 [docs/fase-7-estandar-comercio-agentico/SPEC.md](docs/fase-7-estandar-comercio-agentico/SPEC.md);
 el avance, en [docs/ESTADO.md](docs/ESTADO.md).
+
+**Cierre (2026-10-03, `E-25`).** Las ocho tareas están en `main` y los cuatro
+criterios de aceptación, cumplidos: un agente UCP compra en una tienda real de
+Vitrinee pagando en Stellar desde un `policy_rail`, con recibo verificable; el
+Mandato se exporta como mandatos AP2; hay disputas con las dos partes
+(AgentResolve), visibles en la orden; y con el anexo técnico se escribió el
+borrador del SEP. Pasan a la Fase 8, con fecha, el reembolso real de T124 (8 o
+9 de octubre) y la comprobación en vivo de T127. Detalle y retro en
+[docs/fase-7-estandar-comercio-agentico/BITACORA.md](docs/fase-7-estandar-comercio-agentico/BITACORA.md#cierre-de-la-fase-2026-10-03).
 
 ---
 

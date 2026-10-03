@@ -75,7 +75,8 @@ acotadas: la UI de RealOps, el comercio SignalDesk, fixtures y tests. Hasta
 entonces, si una tarea parece de F9, preguntá antes de escribir nada.
 
 **Fase 7 y método de trabajo, desde 2026-09-30 (`P-14`, `P-15`):** el trabajo
-se organiza ahora como fase → spec → tareas. El spec de la fase en curso es
+se organiza ahora como fase → spec → tareas. La Fase 7 se cerró el 2026-10-03
+(`E-25`); su spec es
 [`docs/fase-7-estandar-comercio-agentico/SPEC.md`](docs/fase-7-estandar-comercio-agentico/SPEC.md)
 y cada tarea dice ahí si es delegable. De la Fase 7 solo te puede llegar el
 mapeo mecánico de campos de T121 (catálogo de Vitrinee a perfil UCP), con el

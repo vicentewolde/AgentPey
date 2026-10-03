@@ -1,8 +1,8 @@
 # Spec Fase 7 · Estándar de comercio agéntico sobre Stellar
 
-- **Estado:** Aprobado (2026-09-30)
+- **Estado:** Cerrado (2026-10-03, `E-25`). Aprobado el 2026-09-30
 - **Rama base:** `main`
-- **Tareas:** T120 a T125
+- **Tareas:** T120 a T127
 - **Referencias:** [`P-14`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método),
   el traspaso del 29-sep (`docs/traspaso-estandar-comercio-agentico.md`, archivo local sin versionar),
   [INSTRUCCIONES de Vitrinee](../fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md),
@@ -198,7 +198,7 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   (`E-14`, `E-19`). Llave del árbitro según `E-16`.
 - **Hecho cuando:**
   - [x] un reclamo firmado por el pagador sobre un recibo real de Vitrinee se abre en el contrato y bloquea el monto en la garantía del comercio (recibo de T122, [evidencia](evidencia/T124.md) §3)
-  - [ ] el árbitro emite un veredicto razonado validado con zod; su hash queda en el contrato ligado al recibo y el reembolso llega al pagador en testnet (veredicto y hash ya probados con el rechazo del recibo de T122; falta el reembolso real, el 8 o 9 de octubre, en una rama de evidencia aparte)
+  - [ ] el árbitro emite un veredicto razonado validado con zod; su hash queda en el contrato ligado al recibo y el reembolso llega al pagador en testnet (veredicto y hash ya probados con el rechazo del recibo de T122; falta el reembolso real, el 8 o 9 de octubre, en una rama de evidencia aparte; **pasa a la Fase 8 como pendiente con fecha**, `E-25`)
   - [x] el contrato rechaza, con su error: reembolso mayor que el recibo, recibo no anclado, garantía de otro comercio, doble resolución, fuera de plazo y quien no es el árbitro (`cargo test`, 16 tests)
   - [x] un reclamo con inyección de prompt en la evidencia no obtiene más que el monto del recibo (`decideDispute` acota y el contrato vuelve a acotar)
   - [x] `cargo test` y `pnpm check` en verde; el diff no toca el flujo de pago, `checkMandate` ni `receipt-registry`
@@ -250,7 +250,7 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
   - [x] una orden sin disputa responde igual que antes; si la lectura del contrato falla, la orden responde con un aviso, nunca con un 503
   - [x] la clave de almacenamiento que lee Vitrinee está fijada por un test contra el fuente del contrato
   - [x] el id del contrato sale de `deployments/testnet.json`, sin variables nuevas en el panel de Render
-  - [ ] en vivo, tras el deploy con OK del usuario: la orden de T122 muestra la disputa resuelta con reembolso 0, y `ord_muq1gqhycf4961492c` la muestra abierta el 8-oct y resuelta después (T122: ✅ en vivo el 2-oct, [evidencia](evidencia/T127.md) §6; `ord_muq1…`: el 8-oct)
+  - [ ] en vivo, tras el deploy con OK del usuario: la orden de T122 muestra la disputa resuelta con reembolso 0, y `ord_muq1gqhycf4961492c` la muestra abierta el 8-oct y resuelta después (T122: ✅ en vivo el 2-oct, [evidencia](evidencia/T127.md) §6; `ord_muq1…`: el 8-oct, **pasa a la Fase 8 como pendiente con fecha**, `E-25`)
   - [x] `pnpm run vitrinee:check` y `pnpm check` en verde
 
 ## 6. Criterios de aceptación de la fase
@@ -258,12 +258,14 @@ bitácora, evidencia y `docs/ESTADO.md` al día.
 - [x] Un cliente UCP lee el perfil de una tienda real de terceros y lista sus productos (T121 con `bazar-cordillera`; repetido el 2-oct con `agentcommerce`, [evidencia](evidencia/criterios-fase7.md) §1)
 - [x] Una compra UCP se paga en USDC testnet desde un `policy_rail`, con pedido real y recibo verificable (T122, pedido Shopify `18946533884210`; segunda compra verificada el 2-oct, [evidencia](evidencia/criterios-fase7.md) §2)
 - [x] La red rechaza un pago que excede `per_tx` (`PerTxExceeded`, T122, [evidencia](evidencia/criterios-fase7.md) §3)
-- [ ] El anexo técnico está entregado al chat de estrategia (lo hace el usuario)
+- [x] El anexo técnico está entregado al chat de estrategia (confirmado por el usuario el 3-oct: con él se escribió el borrador del SEP "Agentic Commerce on Stellar", [evidencia](evidencia/criterios-fase7.md) §4)
 
 ## 7. Plan de demo
 
-Se escribe al cerrar T122: la compra de punta a punta en una tienda real de
-terceros, que es también lo que se graba el 11-oct.
+No se escribió en esta fase. Al cerrarla (`E-25`), la demo pasa a la Fase 8:
+lo que se graba para Find Your Way es una compra hecha desde Claude en una
+tienda de terceros, que todavía no existe. El guion es la tarea T142 del
+[spec de la Fase 8](../fase-8-agentes-reales/SPEC.md).
 
 ## 8. Orden, fechas y cortes
 
@@ -310,3 +312,4 @@ Si falta tiempo se corta primero T124 y después T123. T120 a T122 no se tocan.
 | 2026-10-02 | T126 cerrada: el usuario firmó con Freighter en la página publicada y `resolve:check-response` lo aceptó |
 | 2026-10-02 | T127 mergeada a `main` ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)) con cinco de seis criterios; falta verla en vivo tras el deploy (T122 hoy, `ord_muq1gqhycf4961492c` el 8-oct) (`VT-37`, `VT-38`) |
 | 2026-10-02 | Criterios de aceptación 1 a 3 marcados con su evidencia (`evidencia/criterios-fase7.md`); el 4 queda para el usuario |
+| 2026-10-03 | **Cerrado** por decisión del usuario (`E-25`): criterio 4 cumplido; los criterios 1 y 2 repetidos hoy. Pasan a la Fase 8, con fecha, el reembolso real de T124 (8 o 9 de octubre) y ver `ord_muq1gqhycf4961492c` con su disputa (T127). El plan de demo pasa a T142 |

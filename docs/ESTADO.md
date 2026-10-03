@@ -5,12 +5,12 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-02
-**Fase actual:** Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md), **aprobado**)
-**Última tarea terminada:** T126 · el comercio responde un reclamo de AgentResolve firmado con su wallet
-**Siguiente paso:** el plan de demo del 11-oct (sección 7 del spec). El 8 o 9 de octubre, el reembolso real de T124 en una rama de evidencia, y con él ver `ord_muq1gqhycf4961492c` con su disputa (cierra T127). El criterio 4 de la fase (anexo entregado al chat de estrategia) es del usuario
+**Actualizado:** 2026-10-03
+**Fase actual:** entre fases. La Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md)) se **cerró** el 2026-10-03 (`E-25`); sigue la Fase 8
+**Última tarea terminada:** T127 · la disputa visible en la orden UCP (cierre de la Fase 7)
+**Siguiente paso:** `/fase-plan 8`. El 8 o 9 de octubre, el reembolso real de T124 en una rama de evidencia, y con él ver `ord_muq1gqhycf4961492c` con su disputa (pendientes con fecha que pasan a la Fase 8, `E-25`)
 
-## Progreso de la fase
+## Progreso de la fase (Fase 7, cerrada)
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
@@ -18,10 +18,10 @@
 | T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
 | T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ✅ terminada | `cc/t122-compra-ucp-stellar`, `cc/t122-evidencia`, mergeadas |
 | T123 Mandato exportable como mandatos AP2 | si alcanza | ✅ terminada | `cc/t123-mandatos-ap2`, mergeada ([PR #34](https://github.com/vicentewolde/AgentPey/pull/34)) |
-| T124 Disputas v0 (AgentResolve) | si alcanza | 🔨 en `main`, cuatro de cinco criterios; falta el reembolso real (8–9 oct), en una rama de evidencia aparte | `cc/t124-agentresolve`, mergeada |
+| T124 Disputas v0 (AgentResolve) | si alcanza | ✅ terminada (`E-25`); el reembolso real (8–9 oct) pasa a la Fase 8 como pendiente con fecha | `cc/t124-agentresolve`, mergeada |
 | T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
 | T126 Respuesta del comercio en AgentResolve | antes del 8-oct | ✅ terminada | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)); `cc/t126-evidencia` |
-| T127 La disputa visible en la orden UCP | si alcanza | 👀 en `main` y en vivo (la orden de T122 muestra su disputa); falta ver `ord_muq1…` el 8-oct | `cc/t127-disputa-orden-ucp`, mergeada ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)) |
+| T127 La disputa visible en la orden UCP | si alcanza | ✅ terminada (`E-25`), en vivo con la orden de T122; ver `ord_muq1…` el 8-oct pasa a la Fase 8 | `cc/t127-disputa-orden-ucp`, mergeada ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)) |
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
@@ -40,6 +40,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Después de la Fase 7.
+- Brecha 10 del anexo: coherencia del recibo (`amountUSDC` contra `amountUSDCAtomic`, `asset` confiado, una transacción por recibo).
 - **Sin fase** (`C-161`, cierre de la Fase 6): AgentGuard (sin alcance), evaluación de mainnet, publicación en npm, modelo de cobro. Y la meta "Primer partner piloto real": el criterio de salida de F9 (una persona ajena completa sola el recorrido) quedó sin cumplir.
 - Fase 6 (`C-161`): `C-122` (MPP Session) y `C-130` pendientes, `C-156` en investigación; mejora anotada en T117 (revisar el saldo de XLM antes de pedir la firma).
 
@@ -66,3 +67,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02, T127 `/revisar`: sin bloqueantes. Corregidos los cuatro importantes (test del layout con tipos y durabilidad, test del timeout, error tipado, variable en `.env.vitrinee.example`) y dos sugerencias (id del contrato leído con zod sin tumbar la tienda si es inválido; disputas imposibles rechazadas al decodificar, para que un dato raro dé aviso y no 500).
 - 2026-10-02: T127 en vivo. La orden UCP de T122 en `agentcommerce` muestra el ajuste `dispute` (`completed`, sin montos) y `receipt.dispute` (`resolved`, reembolso 0, veredicto `ff3ef9b0…`), y valida contra UCP y la extensión.
 - 2026-10-02, ordenar la casa: criterios 1 a 3 de la Fase 7 marcados con evidencia (`evidencia/criterios-fase7.md`). **Fase 6 cerrada** (T32–T119, `C-161`): T101 cortada, criterio de salida de F9 sin cumplir y pasado a la meta "Primer partner piloto real", lo no construido sin fase, ramas viejas de Codex sin tocar. ROADMAP, CLAUDE.md y la bitácora de la Fase 6 al día.
+- 2026-10-03: **Fase 7 cerrada** (T120–T127, `E-25`, decisión del usuario). Criterio 4 cumplido (con el anexo se escribió el borrador del SEP); criterios 1 y 2 repetidos hoy y `pnpm check` en verde. El reembolso real de T124 y la orden `ord_muq1…` de T127 pasan a la Fase 8 con fecha; el plan de demo pasa a T142.

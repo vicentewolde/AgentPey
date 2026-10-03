@@ -460,3 +460,33 @@ publica en v0. Límite que queda escrito para el SEP.
 
 **Alternativa descartada por ahora: publicar el veredicto completo**, que pide
 dónde alojarlo y decidir qué partes del caso son públicas.
+
+---
+
+### E-25 · La Fase 7 se cierra con dos comprobaciones pendientes, que pasan a la Fase 8 con fecha · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** cierre de la fase · Decidido por el usuario
+
+La Fase 7 se cierra el 2026-10-03 con sus ocho tareas (T120 a T127) en `main` y
+sus cuatro criterios de aceptación cumplidos. Quedan dos casillas de "Hecho
+cuando" sin marcar, las dos atadas a una fecha y no a código:
+
+- T124: el reembolso real en testnet, el 8 o 9 de octubre, sobre el pedido
+  Shopify `18952373174578`, en una rama de evidencia aparte.
+- T127: ver `ord_muq1gqhycf4961492c` con su disputa abierta ese día y resuelta
+  después.
+
+Las dos pasan a la Fase 8 como pendientes con fecha, y su evidencia se sigue
+guardando en `evidencia/T124.md` y `evidencia/T127.md` de esta fase. El plan de
+demo (sección 7 del spec), que nunca se escribió, pasa a la tarea T142 de la
+Fase 8.
+
+**Motivo.** El reembolso espera a que venza el plazo de despacho del pedido: no
+hay nada que construir antes del 8. Mantener la fase abierta cinco días solo
+por eso impedía abrir la Fase 8, que es la que produce lo que se graba para
+Find Your Way (entrega el 11-oct). Es lo mismo que se hizo al cerrar la Fase 6
+(`C-161`): se cierra diciendo qué quedó sin cumplir y a dónde va.
+
+**Alternativa descartada: cerrar la Fase 7 después del reembolso**, como pide
+la precondición de `/fase-cerrar` (todas las tareas ✅ o ✂️). Dejaba dos fases
+abiertas a la vez, que es lo que la retro de la Fase 6 pidió no repetir.
+
