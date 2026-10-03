@@ -7704,3 +7704,13 @@ errores JSON, CSP exacta, CIMD con tope y caché, `jti` en DCR, avisos de consen
 Pendiente: el usuario agrega `mcp.agentpey.com` en Render y el DNS y copia las variables `MCP_*`; push y merge del
 PR 2 con OK; compra real desde Claude. `AGENTS.md`: sin cambios.
 
+## 2026-10-03 (12) — cc/t128-mcp-oauth-deploy → main (PR 2)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI en verde, el PR 2 de T128 ([PR #46](https://github.com/vicentewolde/AgentPey/pull/46)) por fast-forward a `main`. Redespliega el servicio
+de Render; el MCP no arranca hasta que estén sus 8 variables (`MCP_*` y `AGENT_REGISTRY_CONTRACT_ID`).
+
+Pendiente: variables y dominio `mcp.agentpey.com` en Render, CNAME en el DNS; compra real desde Claude (cierra
+T128). `AGENTS.md`: sin cambios. Exponential: T128 sigue `IN_PROGRESS`, con los dos PR enlazados.
+

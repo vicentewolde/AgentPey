@@ -14,7 +14,7 @@
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; PR 2 (OAuth, setup, gateway) revisado y corregido; agente, rail (10 USDC) y rechazo en la red listos en testnet; faltan el deploy y la compra desde Claude | PR 1 mergeado ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)); PR 2 en `cc/t128-mcp-oauth-deploy` |
+| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; PR 1 y PR 2 en `main`; agente, rail (10 USDC) y rechazo en la red listos en testnet; faltan las variables y el dominio en Render y la compra desde Claude | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados |
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |

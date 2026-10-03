@@ -21,7 +21,7 @@ preparación del agente y el deploy (PR 2).
 
 | Tarea | Estado |
 |---|---|
-| T128 Servidor MCP | en curso (PR 1 en `main`) |
+| T128 Servidor MCP | en curso (PR 1 y PR 2 en `main`; falta la compra desde Claude) |
 | T129 Claude y ChatGPT conectados | pendiente |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
@@ -137,7 +137,9 @@ se enviara nada.
 hallazgos. Lo más importante: el servidor no arranca si, en la red, el rail no
 es de su agente o su principal no es la wallet que inicia sesión; cada token
 de renovación sirve una vez; y nadie puede bloquear el inicio de sesión
-pidiendo desafíos en masa. Falta publicarlo y la compra desde Claude.
+pidiendo desafíos en masa. Mergeado con el OK del usuario ([PR #46](https://github.com/vicentewolde/AgentPey/pull/46)); el
+servidor queda apagado hasta que estén sus variables en Render. Falta la compra
+desde Claude.
 
 **Lo que faltaba (PR 2).** Que nadie más que el usuario pueda usarlo (OAuth con
 inicio de sesión firmando con la wallet, `R-7`), preparar la llave, la
