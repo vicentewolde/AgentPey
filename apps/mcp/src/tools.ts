@@ -69,7 +69,7 @@ export const outputSchemas = {
         settlement_tx_hash: z.string().nullable(),
         anchor: z.string().nullable(),
         valid: z.boolean(),
-        checks: z.object({ signature: check, anchored: check, settlement: check }),
+        checks: z.object({ order: check, signature: check, anchored: check, settlement: check }),
       })
       .nullable(),
   }),
@@ -150,7 +150,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Quote a purchase",
       description:
-        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. Signs nothing and moves no money. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
+        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. The agent signs a purchase intent for it, but nothing is paid and no money moves. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
       inputSchema: quoteInputSchema,
       outputSchema: outputSchemas.quote,
       annotations: { title: "Quote a purchase", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -166,7 +166,8 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
         "Pay a quote from AgentPey's spending account on Stellar testnet, whose limits the network enforces. Only after the person saw the quote and said yes: pass confirm: true. A quote pays once. Returns the order and its receipt.",
       inputSchema: z.object({
         quote_id: z.string().trim().min(1).max(100),
-        confirm: z.boolean().describe("true only if the person explicitly confirmed this quote"),
+        // Optional on purpose: a call without it must reach `pay` and be refused with its typed code.
+        confirm: z.boolean().optional().describe("true only if the person explicitly confirmed this quote"),
       }),
       outputSchema: outputSchemas.pay,
       annotations: { title: "Pay a quote", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
@@ -179,7 +180,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Get an order and check its receipt",
       description:
-        "Read an order from its store and verify its receipt independently of the store: the merchant's signature, its anchor on Stellar, and the payment on Stellar.",
+        "Read an order from its store and verify its receipt independently of the store: that it is this order's receipt from this store, the merchant's signature, its anchor on Stellar, and the payment on Stellar.",
       inputSchema: z.object({ store: z.string().trim().min(1).max(200), order_id: z.string().trim().min(1).max(200) }),
       outputSchema: outputSchemas.get_order,
       annotations: { title: "Get an order", ...READ_ONLY },

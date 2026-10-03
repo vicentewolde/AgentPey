@@ -19,7 +19,7 @@ import { QuoteBook } from "../../apps/mcp/src/quotes.js";
 import { Shopper, type ShopperDeps } from "../../apps/mcp/src/shopper.js";
 import { createMandate } from "../../packages/mandate/src/index.js";
 import { verifyClaim } from "../../packages/resolve/src/index.js";
-import { MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
+import { MOCK_CATALOG, MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
 import { verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
@@ -85,7 +85,9 @@ function horizonFor(amount: string): typeof fetch {
 
 beforeAll(async () => {
   facilitator = uniqueFacilitator();
-  store = createApp({ config: testConfig(), adapter: new MockStoreAdapter(), facilitator, anchorer: anchors.anchorer, registry: anchors.registry });
+  // Plenty of hats: this file buys more than the mock catalog's eight.
+  const catalog = MOCK_CATALOG.map((product) => (product.id === "gorro-andes" ? { ...product, stock: 1000 } : product));
+  store = createApp({ config: testConfig(), adapter: new MockStoreAdapter({ catalog }), facilitator, anchorer: anchors.anchorer, registry: anchors.registry });
   storeServer = await listen(store);
 });
 afterAll(async () => {
@@ -94,14 +96,14 @@ afterAll(async () => {
 });
 
 const venueId = () => makeVenueId("vitrinee", MERCHANT);
-const venues = () => loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: storeServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }]);
+const venues = (payTo: string = MERCHANT) => loadVenueRegistry([{ slug: "vitrinee", address: payTo, baseUrl: storeServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }]);
 const storeName = () => new URL(storeServer.url).host;
 
-const scope = (perTx = "50.00"): Scope => ({
+const scope = (perTx = "50.00", perDay = "100.00"): Scope => ({
   actions: ["catalog:read", "intent:create"],
   venues: [venueId()],
   assets: [USDC],
-  limits: { perTx, perDay: "100.00", currency: "USDC" },
+  limits: { perTx, perDay, currency: "USDC" },
 });
 
 /** Stands in for `create_purchase_intent`: the intent the agent would sign for this product. */
@@ -123,16 +125,23 @@ function signIntent({ productId, quantity }: { productId: string; quantity: numb
 }
 
 /** Stands in for PolicyRailStellarScheme: records what it was asked to sign. */
-function fakeScheme(): SchemeNetworkClient & { calls: PaymentRequirements[] } {
+function fakeScheme(): SchemeNetworkClient & { calls: PaymentRequirements[]; failNext: boolean } {
   const calls: PaymentRequirements[] = [];
-  return {
+  const scheme = {
     scheme: "exact",
     calls,
+    failNext: false,
     async createPaymentPayload(_version: number, requirements: PaymentRequirements) {
+      if (scheme.failNext) {
+        scheme.failNext = false;
+        // A signer that cannot build the payment: nothing leaves this process.
+        throw new TypeError("the signer is unavailable");
+      }
       calls.push(requirements);
       return { x402Version: 2, payload: { transaction: Buffer.from(`rail-tx-${calls.length}-${Math.random()}`).toString("base64") } };
     },
-  } as SchemeNetworkClient & { calls: PaymentRequirements[] };
+  };
+  return scheme as unknown as SchemeNetworkClient & { calls: PaymentRequirements[]; failNext: boolean };
 }
 
 interface Mcp {
@@ -145,14 +154,14 @@ interface Mcp {
   close(): Promise<void>;
 }
 
-async function startMcp(overrides: Partial<ShopperDeps> & { perTx?: string } = {}): Promise<Mcp> {
-  const grant = scope(overrides.perTx);
+async function startMcp(overrides: Partial<ShopperDeps> & { perTx?: string; perDay?: string; payTo?: string } = {}): Promise<Mcp> {
+  const grant = scope(overrides.perTx, overrides.perDay);
   const scheme = fakeScheme();
   const logs: string[] = [];
   const replies: string[] = [];
   const log = (message: string, fields?: Record<string, unknown>) => logs.push(JSON.stringify({ message, ...fields }));
   const shopper = new Shopper({
-    venues: () => Promise.resolve(venues()),
+    venues: () => Promise.resolve(venues(overrides.payTo)),
     fixedVenues: loadVenueRegistry([]),
     signIntent,
     scope: grant,
@@ -240,7 +249,7 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
     expect(read.structuredContent).toMatchObject({
       order_id: order["order_id"],
       total: { amount: 12990, currency: "CLP" },
-      receipt: { valid: true, anchor: "anchored", checks: { signature: { ok: true }, anchored: { ok: true }, settlement: { ok: true } } },
+      receipt: { valid: true, anchor: "anchored", checks: { order: { ok: true }, signature: { ok: true }, anchored: { ok: true }, settlement: { ok: true } } },
     });
 
     const claimed = await mcp.call("open_claim", { store: storeName(), order_id: order["order_id"], reason: "not_delivered", description: "Never arrived" });
@@ -250,13 +259,16 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
     expect(claim.hash).toBe(claimed.structuredContent!["claim_hash"]);
   });
 
-  it("refuses to pay without the person's confirmation, and the quote stays payable", async () => {
+  it("refuses to pay without the person's confirmation, false or missing, and the quote stays payable", async () => {
     const quoted = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
     const quoteId = quoted.structuredContent!["quote_id"];
     const settled = facilitator.settleCalls.length;
     const refused = await mcp.call("pay", { quote_id: quoteId, confirm: false });
     expect(refused.isError).toBe(true);
     expect(errorOf(refused)).toMatchObject({ error: "ConfirmationRequired", payment_may_have_been_sent: false });
+    expect(facilitator.settleCalls).toHaveLength(settled);
+    const missing = await mcp.call("pay", { quote_id: quoteId });
+    expect(errorOf(missing)).toMatchObject({ error: "ConfirmationRequired", payment_may_have_been_sent: false });
     expect(facilitator.settleCalls).toHaveLength(settled);
     const paid = await mcp.call("pay", { quote_id: quoteId, confirm: true });
     expect(paid.isError).toBeFalsy();
@@ -292,27 +304,52 @@ describe("pay refuses what changed or what the limits do not allow (T128)", () =
     }
   });
 
-  for (const [field, value] of [
-    ["amount", "1"],
-    ["payTo", Keypair.random().publicKey()],
-    ["asset", "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5"],
-  ] as const) {
-    it(`refuses a quote whose ${field} the store changed before payment, signing nothing`, async () => {
-      let armed = false;
-      // The store answers the quote honestly, then says something else when pay reads the checkout again.
-      const rewrite: typeof fetch = async (input, init) => {
-        const res = await fetch(input, init);
-        if (!armed || (init?.method ?? "GET") !== "GET" || !/\/checkout-sessions\/[^/]+$/.test(String(input))) return res;
+  /**
+   * Answers the quote honestly, then, once armed, rewrites what pay reads
+   * again: the checkout's requirement and, when given, the profile's handler
+   * declaration, so the two still agree with each other and only the
+   * comparison against the quote can catch the change.
+   */
+  function shiftingStore(change: { requirement: Record<string, string>; declared?: (config: Record<string, any>) => void }) {
+    const state = { armed: false };
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (!state.armed || method !== "GET") return res;
+      if (/\/checkout-sessions\/[^/]+$/.test(url)) {
         const body = (await res.json()) as { ucp: { payment_handlers: Record<string, Array<{ config: { payment_requirements: Record<string, string> } }>> } };
         const handler = body.ucp.payment_handlers["com.agentpey.stellar_x402"]?.[0];
-        if (handler !== undefined) handler.config.payment_requirements[field] = value;
+        if (handler !== undefined) Object.assign(handler.config.payment_requirements, change.requirement);
         return Response.json(body, { status: res.status });
-      };
-      const mcp = await startMcp({ fetchImpl: rewrite });
+      }
+      if (url.endsWith("/.well-known/ucp") && change.declared !== undefined) {
+        const body = (await res.json()) as { ucp: { payment_handlers: Record<string, Array<{ config: Record<string, any> }>> } };
+        const handler = body.ucp.payment_handlers["com.agentpey.stellar_x402"]?.[0];
+        if (handler !== undefined) change.declared(handler.config);
+        return Response.json(body, { status: res.status });
+      }
+      return res;
+    };
+    return { state, fetchImpl };
+  }
+
+  const OTHER_ACCOUNT = Keypair.random().publicKey();
+  const OTHER_ASSET = "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5";
+  const shifts: Array<[string, Parameters<typeof shiftingStore>[0]]> = [
+    ["amount, in the checkout", { requirement: { amount: "1" } }],
+    ["recipient, in the profile and the checkout alike", { requirement: { payTo: OTHER_ACCOUNT }, declared: (config) => (config["pay_to"] = OTHER_ACCOUNT) }],
+    ["asset, in the profile and the checkout alike", { requirement: { asset: OTHER_ASSET }, declared: (config) => (config["asset"].contract = OTHER_ASSET) }],
+    ["network, in the profile and the checkout alike", { requirement: { network: "stellar:pubnet" }, declared: (config) => (config["network"] = "stellar:pubnet") }],
+  ];
+  for (const [what, change] of shifts) {
+    it(`refuses a quote whose ${what}, changed before payment, signing nothing`, async () => {
+      const store = shiftingStore(change);
+      const mcp = await startMcp({ fetchImpl: store.fetchImpl });
       try {
         const quoted = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
         expect(quoted.isError).toBeFalsy();
-        armed = true;
+        store.state.armed = true;
         const settled = facilitator.settleCalls.length;
         const refused = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
         expect(errorOf(refused)).toMatchObject({ error: "QuoteChanged", payment_may_have_been_sent: false });
@@ -323,6 +360,39 @@ describe("pay refuses what changed or what the limits do not allow (T128)", () =
       }
     });
   }
+
+  it("gives the day's budget back when the payment fails before anything is sent", async () => {
+    // 13.67 USDC a hat and 20.00 a day: a failed attempt that kept its
+    // reservation would leave no room for the retry.
+    const mcp = await startMcp({ perDay: "20.00" });
+    try {
+      const first = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+      mcp.scheme.failNext = true;
+      const failed = await mcp.call("pay", { quote_id: first.structuredContent!["quote_id"], confirm: true });
+      expect(errorOf(failed)).toMatchObject({ error: "PaymentNotCreated", payment_may_have_been_sent: false });
+      const second = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+      const paid = await mcp.call("pay", { quote_id: second.structuredContent!["quote_id"], confirm: true });
+      expect(paid.isError).toBeFalsy();
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it("leaves the quote payable when the directory cannot be read at payment time", async () => {
+    let directoryUp = true;
+    const mcp = await startMcp({ venues: () => (directoryUp ? Promise.resolve(venues()) : Promise.reject(new TypeError("directory unreachable"))) });
+    try {
+      const quoted = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+      directoryUp = false;
+      const failed = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+      expect(errorOf(failed).payment_may_have_been_sent).toBe(false);
+      expect(mcp.scheme.calls).toEqual([]);
+      directoryUp = true;
+      expect((await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true })).isError).toBeFalsy();
+    } finally {
+      await mcp.close();
+    }
+  });
 
   it("refuses above the limit before anything is signed", async () => {
     const mcp = await startMcp({ perTx: "10.00" });
@@ -337,6 +407,56 @@ describe("pay refuses what changed or what the limits do not allow (T128)", () =
       expect(facilitator.settleCalls).toHaveLength(settled);
     } finally {
       await mcp.close();
+    }
+  });
+});
+
+describe("an order's receipt must be that order's, from that store (T128)", () => {
+  it("does not call a genuine receipt valid when the store shows it under another order", async () => {
+    let swap: { from: string; to: string } | undefined;
+    // A store that answers order B with order A's receipt, which passes all three checks.
+    const swapping: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      if (swap === undefined || !String(input).endsWith(`/ucp/v1/orders/${swap.to}`)) return res;
+      const body = (await res.json()) as Record<string, unknown>;
+      const other = (await (await fetch(String(input).replace(swap.to, swap.from))).json()) as Record<string, unknown>;
+      return Response.json({ ...body, receipt: other["receipt"] }, { status: res.status });
+    };
+    const mcp = await startMcp({ fetchImpl: swapping });
+    try {
+      const buy = async () => {
+        const quoted = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+        return (await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true })).structuredContent!["order_id"] as string;
+      };
+      const a = await buy();
+      const b = await buy();
+      await store.anchors.idle();
+      swap = { from: a, to: b };
+      const read = await mcp.call("get_order", { store: storeName(), order_id: b });
+      expect(read.structuredContent!["receipt"]).toMatchObject({
+        valid: false,
+        checks: { order: { ok: false, reason: expect.stringContaining(a) }, signature: { ok: true }, anchored: { ok: true }, settlement: { ok: true } },
+      });
+      const claim = await mcp.call("open_claim", { store: storeName(), order_id: b, reason: "not_delivered", description: "Never arrived" });
+      expect(errorOf(claim)).toMatchObject({ error: "InvalidArguments" });
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it("does not call a receipt valid when another merchant than the directory's store issued it", async () => {
+    const buyer = await startMcp();
+    // The same store, but the directory now pins another payout account for it.
+    const reader = await startMcp({ payTo: Keypair.random().publicKey() });
+    try {
+      const quoted = await buyer.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+      const orderId = (await buyer.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true })).structuredContent!["order_id"];
+      await store.anchors.idle();
+      const read = await reader.call("get_order", { store: storeName(), order_id: orderId });
+      expect(read.structuredContent!["receipt"]).toMatchObject({ valid: false, checks: { order: { ok: false, reason: expect.stringMatching(/another merchant/) } } });
+    } finally {
+      await buyer.close();
+      await reader.close();
     }
   });
 });

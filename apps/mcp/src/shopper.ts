@@ -14,7 +14,7 @@
  */
 import { randomUUID } from "node:crypto";
 
-import { AgentPassError, stellarAddressToDid, type Scope } from "@agentpass/core";
+import { AgentPassError, isAgentPassError, stellarAddressToDid, type Scope } from "@agentpass/core";
 import {
   AGENTPEY_PLATFORM_PROFILE,
   payUcpQuote,
@@ -26,12 +26,14 @@ import {
   type UcpPaymentReceipt,
   type VenueId,
   type VenueRegistry,
+  mayHaveBeenPaid,
+  parseVenueId,
   withPaymentSent,
 } from "@agentpey/agent";
 import type { AgentPayMandate } from "@agentpey/mandate";
 import { CLAIM_REASONS, signClaim, type ClaimReason } from "@agentpey/resolve";
-import type { ReceiptVerification } from "@vitrinee/anchor";
-import { checkReceiptSignature, getUcpProduct, searchUcpStore, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
+import { getUcpProduct, searchUcpStore, type ReceiptVerification } from "@vitrinee/anchor";
+import { checkReceiptSignature, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
 import type { Keypair } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
@@ -70,6 +72,8 @@ export interface Store {
   readonly name: string;
   readonly url: string;
   readonly venueId: VenueId;
+  /** The payout account the platform's directory pins for this store: the one in its venue id. */
+  readonly payTo: string;
 }
 
 export interface ProductHit {
@@ -142,7 +146,8 @@ export class Shopper {
     const stores: Store[] = [];
     for (const [venueId, venue] of registry.venues) {
       if (this.deps.fixedVenues.venues.has(venueId) || venue.baseUrl === undefined) continue;
-      stores.push({ name: new URL(venue.baseUrl).host, url: venue.baseUrl, venueId });
+      // A platform merchant's pinned payee is the account in its venue id (`platforms.ts`).
+      stores.push({ name: new URL(venue.baseUrl).host, url: venue.baseUrl, venueId, payTo: venue.payTo ?? parseVenueId(venueId).address });
     }
     return { registry, stores };
   }
@@ -189,8 +194,9 @@ export class Shopper {
   }
 
   /**
-   * Opens a checkout and signs the intent for it. Moves no money. The quote
-   * says what `pay` would pay, to whom, until when.
+   * Opens a checkout at the store and signs the agent's purchase intent for
+   * it (a signed statement, not a payment). Moves no money. The quote says
+   * what `pay` would pay, to whom, until when.
    */
   async quote(raw: QuoteInput) {
     const input = quoteInputSchema.parse(raw);
@@ -230,30 +236,41 @@ export class Shopper {
    * `QuoteExpired`, `QuoteChanged`, the rail's own refusal, or what
    * `payUcpQuote` throws.
    */
-  async pay(input: { quote_id: string; confirm: boolean }) {
+  async pay(input: { quote_id: string; confirm?: boolean | undefined }) {
     let entry: QuoteEntry;
+    let registry: VenueRegistry;
     try {
       if (input.confirm !== true) {
         throw new AgentPassError("ConfirmationRequired", "pay only after the person confirmed this exact quote; call again with confirm: true", { details: { quoteId: input.quote_id } });
       }
+      // Read before the quote is taken: a directory that is down leaves the quote payable.
+      registry = await this.deps.venues();
       entry = this.deps.quotes.take(input.quote_id);
     } catch (error) {
       // Nothing was signed yet: say so, or the chat would be told money may have moved.
       throw withPaymentSent(error, false);
     }
-    const paid: UcpPaymentReceipt = await payUcpQuote(
-      { policyRail: this.deps.policyRail, ...this.deps.payment, ...this.fetchOption() },
-      entry.quote,
-      {
-        intent: entry.intent,
-        scope: this.deps.scope,
-        mandate: this.deps.mandate,
-        venueId: entry.venueId,
-        registry: await this.deps.venues(),
-        idempotencyKey: `mcp-${entry.id}`,
-        recheck: true,
-      },
-    );
+    let paid: UcpPaymentReceipt;
+    try {
+      paid = await payUcpQuote(
+        { policyRail: this.deps.policyRail, ...this.deps.payment, ...this.fetchOption() },
+        entry.quote,
+        {
+          intent: entry.intent,
+          scope: this.deps.scope,
+          mandate: this.deps.mandate,
+          venueId: entry.venueId,
+          registry,
+          idempotencyKey: `mcp-${entry.id}`,
+          recheck: true,
+        },
+      );
+    } catch (error) {
+      // `authorise` reserved the day's budget. A payment that provably never
+      // left gives it back (`C-113`); one that may have been sent stays counted.
+      if (!mayHaveBeenPaid(error)) await this.release(entry.intent.intentId, error);
+      throw error;
+    }
     this.log("quote paid", { quoteId: entry.id, orderId: paid.orderId, transaction: paid.transaction ?? null });
     return {
       order_id: paid.orderId,
@@ -274,6 +291,7 @@ export class Shopper {
     const order = await this.readOrder(store, input.order_id);
     const receipt = order.receipt;
     const verification = receipt === undefined ? null : await this.deps.verifyReceipt(receipt.jws);
+    const binding = receipt === undefined ? null : this.receiptBinding(store, order.id, receipt.jws);
     return {
       order_id: order.id,
       store: store.name,
@@ -289,8 +307,9 @@ export class Shopper {
               verify_url: receipt.verify_url ?? null,
               settlement_tx_hash: receipt.settlement_tx_hash ?? null,
               anchor: receipt.anchor?.status ?? null,
-              valid: verification.valid,
+              valid: verification.valid && binding?.ok === true,
               checks: {
+                order: { ok: binding?.ok === true, reason: binding?.reason ?? null },
                 signature: { ok: verification.checks.signature.ok, reason: verification.checks.signature.reason ?? null },
                 anchored: { ok: verification.checks.anchored.ok, reason: verification.checks.anchored.reason ?? null },
                 settlement: { ok: verification.checks.settlement.ok, reason: verification.checks.settlement.reason ?? null },
@@ -313,6 +332,10 @@ export class Shopper {
     const receipt = checkReceiptSignature(jws);
     if (!receipt.ok || receipt.claims === null) {
       throw new AgentPassError("InvalidArguments", "the order's receipt does not verify; a claim needs a valid receipt", { details: { orderId: input.order_id, reason: receipt.reason ?? null } });
+    }
+    const binding = this.receiptBinding(store, order.id, jws);
+    if (!binding.ok) {
+      throw new AgentPassError("InvalidArguments", `the store shows a receipt that is not this order's: ${binding.reason ?? ""}`, { details: { orderId: input.order_id } });
     }
     const signed = await signClaim(
       {
@@ -337,6 +360,31 @@ export class Shopper {
       claim_jws: signed.jws,
       next_step: "Send claim_jws to the AgentResolve arbiter, who opens the dispute on Stellar with: pnpm run resolve:open -- --claim <file with claim_jws>",
     };
+  }
+
+  private async release(intentId: string, cause: unknown): Promise<void> {
+    try {
+      await this.deps.policyRail.release({ intentId, reason: isAgentPassError(cause) ? cause.code : "UnexpectedError" });
+    } catch (error) {
+      // Nothing to release (refused before `authorise` reserved anything), or the ledger failed: never mask the refusal.
+      this.log("spend not released", { intentId, error: isAgentPassError(error) ? error.code : error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  /**
+   * Whether the receipt a store shows for an order is that order's receipt,
+   * from that store: same order id, and issued by the payout account the
+   * directory pins for the store. The three checks say a receipt is genuine;
+   * this says it is the right one (T128).
+   */
+  private receiptBinding(store: Store, orderId: string, jws: string): { ok: boolean; reason: string | null } {
+    const claims = checkReceiptSignature(jws).claims;
+    if (claims === null) return { ok: false, reason: "the receipt cannot be read" };
+    if (claims.orderId !== orderId) return { ok: false, reason: `the receipt is for order ${claims.orderId}, not ${orderId}` };
+    if (claims.merchantAccount !== store.payTo) {
+      return { ok: false, reason: "the receipt pays another merchant than the one AgentPey's directory lists for this store" };
+    }
+    return { ok: true, reason: null };
   }
 
   private async readOrder(store: Store, orderId: string): Promise<z.infer<typeof orderSchema>> {
