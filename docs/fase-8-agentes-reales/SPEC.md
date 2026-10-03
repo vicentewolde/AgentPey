@@ -159,7 +159,7 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] las seis herramientas responden por Streamable HTTP y sus entradas y salidas pasan por zod (tests sin red, con la tienda de prueba; PR 1, [evidencia](evidencia/T128.md) §1)
   - [x] `pay` rechaza, con error tipado: una cotización vencida o desconocida, la falta de `confirm`, y una cotización cuyo destinatario, activo o monto ya no coinciden con el perfil de la tienda (PR 1)
-  - [ ] un intento sobre el tope es rechazado antes de firmar (✅ PR 1), y el rail del MCP lo rechaza también en la red (simulación, como en T122; PR 2, con el rail desplegado)
+  - [x] un intento sobre el tope es rechazado antes de firmar (PR 1), y el rail del MCP lo rechaza también en la red: `PerTxExceeded` (#7) en simulación, sin enviar nada ([evidencia](evidencia/T128.md) §4)
   - [x] sin token, con un token vencido o con un token emitido para otro recurso, el servidor responde 401 con sus metadatos y no ejecuta ninguna herramienta (tests; PR 2, [evidencia](evidencia/T128.md) §3)
   - [x] la llave y los tokens no aparecen en logs ni en respuestas (tests que buscan los secretos en la salida: la llave en el PR 1, los tokens y el secreto de OAuth en el PR 2)
   - [x] `executeUcpPayment` se comporta igual que antes (sus tests y `ucp-contract.test.ts` sin cambios, en verde)

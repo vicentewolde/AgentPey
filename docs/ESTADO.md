@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T132 · el verificador rechaza un recibo que se contradice, y un pago respalda un solo recibo
-**Siguiente paso:** con la wallet del usuario y su OK, correr `mcp:setup` y desplegar el rail `mcp` en testnet; el usuario agrega `mcp.agentpey.com` en Render y el DNS, copia las variables y fondea el rail; `/revisar` y merge del PR 2; compra real desde Claude. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** el usuario agrega `mcp.agentpey.com` en Render y el CNAME `mcp` en el DNS, y copia a Render las 7 variables `MCP_*` de `.env.local`; `/revisar` y merge del PR 2 (despliega); compra real desde Claude. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -40,7 +40,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Para T128: dar la dirección de la wallet de Freighter (principal del rail y la única que inicia sesión); agregar `mcp.agentpey.com` en Render y un CNAME `mcp` en el DNS; copiar a Render las variables `MCP_*` que deja `mcp:setup`; fondear el rail con USDC de testnet
+- [ ] Para T128: agregar `mcp.agentpey.com` en Render y un CNAME `mcp` en el DNS; copiar a Render las 7 variables `MCP_*` de `.env.local` (wallet, agente, rail y fondeo ya están)
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
@@ -94,3 +94,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T128 PR 1: `apps/mcp` con las seis herramientas sobre el SDK oficial v2 (fijado en 2.2.0 y 2.0.1: pnpm no deja instalar paquetes publicados hace menos de un día, y no se le agregó la excepción), `quoteUcpCheckout` y `payUcpQuote` con relectura de la tienda antes de pagar, cliente UCP en `@vitrinee/core`, `resolve:open -- --claim`. Decisiones `R-7` a `R-10`. 15 tests nuevos.
 - 2026-10-03, T128 PR 1 `/revisar`: sin bloqueantes; corregidos los ocho importantes a pedido del usuario. El cliente UCP pasó a `@vitrinee/anchor` (core es sin I/O). `R-10` aprobada.
 - 2026-10-03, T128 PR 2 en código: OAuth propio (`R-7`) con login de wallet, PKCE, tokens con audiencia y sin base de datos; `main.ts` verifica credencial y Mandato al arrancar; `mcp:setup`; perfil `mcp` del rail (no lo fondea el script: lo fondea la principal); `mcp.agentpey.com` en el gateway (no crítico, variables propias) y `render.yaml`. 18 tests en la app, 4 nuevos en el gateway.
+- 2026-10-03, T128 en testnet: agente del MCP `GC7ALMLY…23LB` con credencial y Mandato anclados (30 días, tres tiendas), rail `CB4WVTJ4…FRQ6L` (3,00/5,00) con 10 USDC desde la reserva, y la red rechaza 6 USDC con `PerTxExceeded`. El servidor arranca en local con la configuración real y cotiza en `agentcommerce`.
