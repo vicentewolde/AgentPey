@@ -289,6 +289,28 @@ describe("UCP checkout sessions (T122)", () => {
   });
 });
 
+describe("one settlement backs one receipt (T132)", () => {
+  // The plain fake facilitator answers every settlement with the same hash:
+  // two checkouts that claim the same transaction.
+  const h = harness({ facilitator: fakeFacilitator() });
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+
+  it("refuses a second checkout that settles with a transaction another order already used", async () => {
+    const { body: one } = await h.create(ready("gorro-andes"));
+    const { body: two } = await h.create(ready("stickers-cordillera"));
+    const first = await h.call("POST", `/checkout-sessions/${one.id}/complete`, instrument(requirementsOf(one)));
+    expect(first.body.status).toBe("completed");
+    const second = await h.call("POST", `/checkout-sessions/${two.id}/complete`, instrument(requirementsOf(two)));
+    expect(second.status).toBe(402);
+    expect(second.body.order).toBeUndefined();
+    expect(second.body.receipt).toBeUndefined();
+    // The first order still stands, alone.
+    const order = await h.call("GET", `/orders/${first.body.order?.id}`);
+    expect(order.body).toMatchObject({ checkout_id: one.id });
+  });
+});
+
 describe("a store that fails after the payment settled", () => {
   // The first write of an order fails, as a database blip would; later writes work.
   let failures = 1;

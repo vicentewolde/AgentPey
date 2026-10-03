@@ -367,18 +367,51 @@ export interface PaidPurchase {
  * checkout and the UCP checkout (T122), so both doors produce the same order
  * and the same receipt from the same code.
  *
- * One settlement is one order: a settlement that already produced an order
- * returns that order, flagged `replayed`. Never throws for a platform failure
- * once money moved: the order is recorded as `paid_unfulfilled` (VT-10).
+ * One settlement is one order, and so one receipt: a settlement that already
+ * produced an order returns that order, flagged `replayed`. That holds for
+ * two requests at once too: the second waits for the first one's order
+ * instead of racing it past the lookup (T132). Never throws for a platform
+ * failure once money moved: the order is recorded as `paid_unfulfilled` (VT-10).
  */
 export async function fulfilPaidPurchase(deps: CheckoutDeps, purchase: PaidPurchase): Promise<{ record: OrderRecord; replayed: boolean }> {
-  const { quote, body, idempotencyKey, settlement, payer } = purchase;
-  const duplicate = deps.orders.findBySettlementTx(settlement.txHash);
+  const { txHash } = purchase.settlement;
+  const duplicate = deps.orders.findBySettlementTx(txHash);
   if (duplicate !== undefined) {
-    deps.log("settlement already fulfilled, returning existing order", { orderId: duplicate.orderId, txHash: settlement.txHash });
+    deps.log("settlement already fulfilled, returning existing order", { orderId: duplicate.orderId, txHash });
     return { record: duplicate, replayed: true };
   }
 
+  let pending = ordersInFlight.get(deps.orders);
+  if (pending === undefined) {
+    pending = new Map();
+    ordersInFlight.set(deps.orders, pending);
+  }
+  const running = pending.get(txHash);
+  if (running !== undefined) {
+    const record = await running;
+    deps.log("settlement being fulfilled by another request, returning its order", { orderId: record.orderId, txHash });
+    return { record, replayed: true };
+  }
+  const created = createPaidOrder(deps, purchase);
+  pending.set(txHash, created);
+  try {
+    return { record: await created, replayed: false };
+  } finally {
+    pending.delete(txHash);
+  }
+}
+
+/**
+ * Orders being created right now, per store and per settlement hash. The
+ * store is only written once the platform order exists, so without this a
+ * second request for the same settlement finds nothing and creates another.
+ * One process owns one merchant's store (see `OrderStore`), which is what
+ * makes an in-process map enough.
+ */
+const ordersInFlight = new WeakMap<object, Map<string, Promise<OrderRecord>>>();
+
+async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Promise<OrderRecord> {
+  const { quote, body, idempotencyKey, settlement, payer } = purchase;
   const now = deps.now();
   const orderId = newOrderId(now);
   const buyer: Buyer = {
@@ -452,7 +485,7 @@ export async function fulfilPaidPurchase(deps: CheckoutDeps, purchase: PaidPurch
     amountUSDC: record.amountUSDC,
     receiptHash: record.receipt.hash,
   });
-  return { record, replayed: false };
+  return record;
 }
 
 /**

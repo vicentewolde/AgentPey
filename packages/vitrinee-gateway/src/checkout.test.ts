@@ -225,6 +225,39 @@ describe("POST /checkout/:productId — idempotency, duplicates, stock", () => {
     }
   });
 
+  it("signs one receipt for one settlement even when two requests carry it at once (T132)", async () => {
+    // A store platform that takes a moment, as a real one does: that pause is
+    // where a second request could slip past the duplicate lookup.
+    const mock = new MockStoreAdapter();
+    let created = 0;
+    const adapter: StoreAdapter = {
+      name: "slow",
+      listProducts: () => mock.listProducts(),
+      getProduct: (id) => mock.getProduct(id),
+      getOrder: () => Promise.resolve(null),
+      createOrder: async (input) => {
+        created += 1;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return mock.createOrder(input);
+      },
+    };
+    const env = await start({ adapter });
+    try {
+      const [a, b] = await Promise.all([buy(env.url, "/checkout/gorro-andes"), buy(env.url, "/checkout/gorro-andes")]);
+      expect([a.status, b.status]).toEqual([200, 200]);
+      const [first, second] = (await Promise.all([a.json(), b.json()])) as Array<Record<string, any>>;
+      expect(second["orderId"]).toBe(first["orderId"]);
+      expect(second["receipt"]["hash"]).toBe(first["receipt"]["hash"]);
+      expect([a.headers.get("idempotent-replayed"), b.headers.get("idempotent-replayed")].filter((v) => v === "true")).toHaveLength(1);
+      const orders = env.deps.orders!.list();
+      expect(orders).toHaveLength(1);
+      expect(orders[0]!.settlement.txHash).toBe(FAKE_TX_HASH);
+      expect(created).toBe(1);
+    } finally {
+      await env.close();
+    }
+  });
+
   it("holds stock while a payment settles, so two buyers cannot pay for the last unit", async () => {
     let releaseSettle!: () => void;
     const gate = new Promise<void>((resolve) => (releaseSettle = resolve));
