@@ -13,7 +13,7 @@
 ## Estado actual
 
 **Fecha:** 2026-10-03 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
-el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 en revisión**: el
+el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. Sigue T128 (el servidor MCP).
 
@@ -23,7 +23,7 @@ recibos sobre un pago. Sigue T128 (el servidor MCP).
 | T129 Claude y ChatGPT conectados | pendiente |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
-| T132 Coherencia del recibo | en revisión |
+| T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | pendiente |
 | T134 AP2 en el checkout | pendiente |
 | T135 MPP charge (prueba técnica) | pendiente |
@@ -57,7 +57,7 @@ contra una tienda real tal cual, MPP en Stellar hoy no acepta como pagador una
 cuenta con límites, y UCP solo admite un tipo de llave para los mandatos AP2.
 El detalle está en la sección 4.1 del spec.
 
-## T132 · Un recibo que no se contradice (2026-10-03, en revisión)
+## T132 · Un recibo que no se contradice (2026-10-03, cerrada)
 
 **Qué quedó funcionando.** Un recibo de Vitrinee dice cuánto se pagó de dos
 maneras: en un número con decimales, que es el que lee una persona, y en
@@ -89,7 +89,8 @@ pago podía dar dos recibos. Corregido, junto con los otros seis hallazgos
 (`VT-41`). Queda un límite escrito: la garantía vale dentro de un proceso, la
 base de datos todavía no la respalda.
 
-**Lo que falta.** El merge, que despliega Vitrinee y publica el
-cambio en la spec de la extensión de recibo. Evidencia en
+**Cómo se cerró.** Con el OK del usuario, a `main` por fast-forward
+(PR #44). El merge despliega Vitrinee y publica el cambio en la spec de la
+extensión de recibo. Evidencia en
 [`evidencia/T132.md`](evidencia/T132.md).
 

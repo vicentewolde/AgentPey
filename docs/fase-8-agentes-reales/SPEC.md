@@ -394,6 +394,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | Respuestas del usuario a las preguntas 1 a 4 (`R-2` a `R-5`): OAuth desde el inicio (T128 pasa de 14 h a 22 h, en dos PR), modo de conformidad solo local, MPP se documenta y no se paga con llave clásica, P-256 para AP2. Sigue en borrador |
 | 2026-10-03 | **Aprobado** por el usuario, con las dos versiones de UCP en paralelo (`R-6`). Queda abierta la pregunta 6 (servidor de autorización de OAuth), que se resuelve en el plan de T128 |
 | 2026-10-03 | T132: con el plan aprobado por el usuario, el verificador no comprueba la unicidad "contra los recibos que conoce" (`VT-40`); se agrega la coherencia del precio por ítem (`VT-39`). Criterios marcados; falta `/revisar` |
+| 2026-10-03 | T132 cerrada: `/revisar` sin bloqueantes, siete hallazgos corregidos (`VT-41`), [PR #44](https://github.com/vicentewolde/AgentPey/pull/44) |
 
 ## 11. Fuentes externas
 

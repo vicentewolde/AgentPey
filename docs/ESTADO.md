@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T127 · la disputa visible en la orden UCP (cierre de la Fase 7). T132 está en revisión
-**Siguiente paso:** `/revisar` de T132 y su merge con OK; después `/tarea T128` (su plan propone el servidor de autorización de OAuth). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
+**Última tarea terminada:** T132 · el verificador rechaza un recibo que se contradice, y un pago respalda un solo recibo
+**Siguiente paso:** `/tarea T128` (su plan propone el servidor de autorización de OAuth). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
 
 ## Progreso de la fase
 
@@ -18,7 +18,7 @@
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
-| T132 Coherencia del recibo (brecha 10) | imprescindible | 👀 en revisión | `cc/t132-coherencia-recibo` |
+| T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ⏳ pendiente | |
 | T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ⏳ pendiente | |

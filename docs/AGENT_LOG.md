@@ -7626,3 +7626,13 @@ de error nuevo `SettlementUnaccounted` (500) en `@vitrinee/core` (`VT-41`). Spec
 Pendiente: push y merge con OK. Deuda: índice único en `vitrinee.orders` sobre el hash del pago (`VT-40`).
 `AGENTS.md`: sin cambios. Exponential: sin cambios (T132 sigue `IN_PROGRESS` hasta el PR).
 
+## 2026-10-03 (6) — cc/t132-coherencia-recibo → main
+
+Agente: Claude Code.
+
+Qué: T132 cerrada. Con OK del usuario: PR [#44](https://github.com/vicentewolde/AgentPey/pull/44) por fast-forward a
+`main`, que redespliega el servicio de Render (Vitrinee y la spec de la extensión de recibo en `agentpey.com`).
+
+Pendiente: `/tarea T128`. Deuda en ESTADO (índice único en `vitrinee.orders`). `AGENTS.md`: sin cambios.
+Exponential: T132 a `QA` con el PR y, tras el merge, a `DONE`.
+
