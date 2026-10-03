@@ -786,3 +786,55 @@ abriría un segundo registro de decisiones al lado de 160 entradas `C-`.
 **Otra alternativa descartada: dejar Exponential en pausa** mientras dure la
 hackathon. La recomendó Claude Code para evitar doble contabilidad; el
 usuario prefirió mantener el tablero.
+
+---
+
+### P-16 · Se abre la Fase 8: agentes reales comprando en Stellar, y el estándar completo · `Vigente`
+**Fecha:** 2026-10-03 · **Hito:** ninguno; rige desde T128 · Decidido por el usuario (traspaso del chat de estrategia, 3-oct)
+
+**Qué cambia.** La Fase 7 dejó funcionando lo que su spec pedía, pero no lo
+que ve el jurado de Find Your Way (entrega el 11-oct, solo se evalúa un
+video): una compra hecha desde Claude o ChatGPT de verdad y no desde un script
+propio, en una tienda de terceros, y poder decir con evidencia "cumplimos
+UCP", "implementamos AP2" y "soportamos MPP". La Fase 8 lo construye, con una
+regla de orden: primero lo que sale en el video, después el estándar completo,
+al final las pruebas técnicas de resolutores externos.
+
+**Entra en alcance** (todo en testnet):
+
+1. Un servidor MCP remoto de AgentPey, conectado a Claude y a ChatGPT.
+2. Correr la suite oficial de conformidad de UCP y migrar a UCP `2026-08-25`.
+3. AP2 dentro del checkout UCP y mandatos cerrados.
+4. MPP charge sobre Stellar como segunda forma de pago.
+5. **Publicar en npm** un SDK del lado del agente. Sale de "sin fase"
+   (`C-161`). Cada publicación, con permiso del usuario.
+6. Un kit de conformidad abierto para el medio de pago de Stellar.
+7. Pruebas técnicas de dos resolutores externos para AgentResolve: GenLayer
+   (Internet Court) y Trustless Work (escrow con rol Dispute Resolver).
+8. Más wallets que Freighter en las pantallas de firma (`C-160`), con Stellar
+   Wallets Kit.
+9. Los agentes "siempre activos" de 2026 como clientes de AgentPey: dots
+   (OpenAI), Muse (Meta) y Grok Bot (xAI).
+10. Que los equipos financiados por SCF paguen planes de IA y servicios en
+    línea desde su tesorería en Stellar, con límites y recibos de AgentPey.
+    En esta fase es **diseño y demo en testnet**: nada con dinero real.
+
+**Sigue fuera.** Mainnet, rieles fiat y tarjetas reales; AgentGuard; el modo
+Session de MPP (`C-122`); el modelo de cobro. `P-10` no cambia: el servidor
+MCP guarda una llave que paga, así que es de Claude Code y no se delega.
+
+**Motivo.** El ritmo real de la Fase 7 (ocho tareas en tres días) permite
+intentar el estándar completo antes del video, y el usuario quiere llegar al
+video pudiendo afirmar conformidad con UCP, AP2 y MPP con evidencia. El riesgo
+de abarcar de más se controla con una línea de corte fijada de antemano: si el
+7-oct en la noche el Bloque A no está completo, se corta en un orden ya
+escrito en el spec, y eso no se renegocia el 10-oct.
+
+**Alternativa descartada: una fase corta solo con el servidor MCP y la tienda
+de terceros.** Aseguraba el video, pero dejaba las tres afirmaciones (UCP, AP2,
+MPP) sin evidencia.
+
+Tareas T128 a T146, orden, cortes y preguntas abiertas en
+[`fase-8-agentes-reales/SPEC.md`](fase-8-agentes-reales/SPEC.md). Decisiones
+de la fase con prefijo `R-`.
+

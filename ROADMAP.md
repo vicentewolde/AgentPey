@@ -1,6 +1,6 @@
 # AgentPey — Plan maestro del proyecto
 
-> Vista de conjunto de **todo** el proyecto, de la Fase 0 a la Fase 7. Los demás
+> Vista de conjunto de **todo** el proyecto, de la Fase 0 a la Fase 8. Los demás
 > documentos (`docs/fase-1-agentpass/CONTEXTO.md`, `docs/fase-1-agentpass/ARQUITECTURA.md`, `docs/fase-1-agentpass/BITACORA.md`,
 > `docs/fase-1-agentpass/DECISIONES.md`) describen **AgentPass**, que es la Fase 1 — la primera
 > pieza ya construida. Este archivo es el nivel por encima: dónde está AgentPass
@@ -10,7 +10,7 @@
 > cualquiera —humano o Claude Code— que necesite entender el proyecto entero
 > antes de tocar una fase específica.
 
-Última revisión: 2026-10-03 · Fase actual: **entre fases** — la Fase 7 (UCP, AP2 y x402 sobre Stellar, `P-14`) se cerró el 2026-10-03 (`E-25`); la Fase 8 está por planificarse (`/fase-plan 8`) — Fases 1 a 7 cerradas (T1–T127)
+Última revisión: 2026-10-03 · Fase actual: **Fase 8, spec en borrador** — agentes reales (Claude, ChatGPT) comprando en Stellar por un servidor MCP, y el estándar completo (conformidad UCP, AP2, MPP; ver `P-16` en [docs/DECISIONES.md](docs/DECISIONES.md)) — Fases 1 a 7 cerradas (T1–T127)
 
 ---
 
@@ -109,6 +109,7 @@ las decisiones estratégicas que llevaron al código, y para SCF eso es evidenci
 | 5 | **MandateVault + cierre de piloto** | Cada decisión del sistema queda como evidencia verificable; el MVP y la landing funcionan bien de cara al mensaje a Tellus, que gestiona la Instaward | ✅ Completa (T27–T31) — mensaje a Tellus enviado 2026-09-08 | — |
 | 6 | **Después: AgentGuard + comercialización** | Convertir el piloto en un producto real con partners en testnet, mientras se espera la resolución de SCF | ✅ Cerrada 2026-10-02 (T32–T119, `C-161`): plataforma para partners, piloto F9 y Vitrinee; AgentGuard sin alcance | — |
 | 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | ✅ Cerrada 2026-10-03 (T120–T127, `E-25`): perfil y catálogo UCP, compra UCP pagada en Stellar, mandatos AP2, AgentResolve y anexo del SEP; el reembolso real de T124 pasa a la Fase 8 con fecha | — |
+| 8 | **Agentes reales comprando en Stellar** | Que un agente que la gente ya usa (Claude, ChatGPT) compra en una tienda de terceros pagando en Stellar con topes aplicados por la red, y qué cumple AgentPey, con evidencia, de UCP, AP2 y MPP | 📝 Abierta 2026-10-03 (`P-16`), spec en borrador, T128–T146 | Aprobación del spec por el usuario |
 
 Las Fases 0 a 5 están cerradas — el piloto técnico completo.
 La Fase 6 hizo la mitad de "comercialización" y se cerró el 2026-10-02; la
@@ -647,6 +648,19 @@ Mandato se exporta como mandatos AP2; hay disputas con las dos partes
 borrador del SEP. Pasan a la Fase 8, con fecha, el reembolso real de T124 (8 o
 9 de octubre) y la comprobación en vivo de T127. Detalle y retro en
 [docs/fase-7-estandar-comercio-agentico/BITACORA.md](docs/fase-7-estandar-comercio-agentico/BITACORA.md#cierre-de-la-fase-2026-10-03).
+
+### 4.8 · Fase 8 — Agentes reales comprando en Stellar 📝 abierta 2026-10-03, spec en borrador
+
+La abre `P-16`. La Fase 7 probó la compra por UCP desde un programa propio;
+esta la pone en manos de agentes que la gente ya usa. Un servidor MCP de
+AgentPey, conectado a Claude y a ChatGPT, busca, cotiza y paga desde un
+`policy_rail` propio cuyos topes aplica la red. Alrededor: una tienda de
+terceros, la suite oficial de conformidad de UCP, UCP `2026-08-25`, AP2 en el
+checkout, MPP charge, un SDK en npm, más wallets, y pruebas técnicas de
+resolutores externos y de pagos de servicios desde una tesorería. Objetivo
+inmediato: el video de Find Your Way, el 11-oct. Alcance, tareas (T128 a
+T146), línea de corte y preguntas abiertas en
+[docs/fase-8-agentes-reales/SPEC.md](docs/fase-8-agentes-reales/SPEC.md).
 
 ---
 

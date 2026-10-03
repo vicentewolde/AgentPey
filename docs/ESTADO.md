@@ -6,27 +6,47 @@
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
 **Actualizado:** 2026-10-03
-**Fase actual:** entre fases. La Fase 7 · Estándar de comercio agéntico sobre Stellar ([spec](fase-7-estandar-comercio-agentico/SPEC.md)) se **cerró** el 2026-10-03 (`E-25`); sigue la Fase 8
+**Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **en borrador**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T127 · la disputa visible en la orden UCP (cierre de la Fase 7)
-**Siguiente paso:** `/fase-plan 8`. El 8 o 9 de octubre, el reembolso real de T124 en una rama de evidencia, y con él ver `ord_muq1gqhycf4961492c` con su disputa (pendientes con fecha que pasan a la Fase 8, `E-25`)
+**Siguiente paso:** que el usuario responda las preguntas abiertas del spec de la Fase 8 y lo apruebe; después, `/tarea T128` y `/tarea T132`. El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
 
-## Progreso de la fase (Fase 7, cerrada)
+## Progreso de la fase
+
+Spec en borrador: nada se implementa hasta que el usuario lo apruebe.
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T120 Prueba técnica: payment handler de Stellar en UCP | imprescindible | ✅ terminada | `cc/t120-handler-stellar-ucp`, mergeada |
-| T121 Vitrinee publica `/.well-known/ucp` por comercio | imprescindible | ✅ terminada | `cc/t121-vitrinee-perfil-ucp`, mergeada |
-| T122 Compra UCP pagada sobre Stellar, de punta a punta | imprescindible | ✅ terminada | `cc/t122-compra-ucp-stellar`, `cc/t122-evidencia`, mergeadas |
-| T123 Mandato exportable como mandatos AP2 | si alcanza | ✅ terminada | `cc/t123-mandatos-ap2`, mergeada ([PR #34](https://github.com/vicentewolde/AgentPey/pull/34)) |
-| T124 Disputas v0 (AgentResolve) | si alcanza | ✅ terminada (`E-25`); el reembolso real (8–9 oct) pasa a la Fase 8 como pendiente con fecha | `cc/t124-agentresolve`, mergeada |
-| T125 Anexo técnico para el SEP | al final | ✅ terminada | `cc/t125-anexo-sep`, mergeada |
-| T126 Respuesta del comercio en AgentResolve | antes del 8-oct | ✅ terminada | `cc/t126-respuesta-comercio`, mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)); `cc/t126-evidencia` |
-| T127 La disputa visible en la orden UCP | si alcanza | ✅ terminada (`E-25`), en vivo con la orden de T122; ver `ord_muq1…` el 8-oct pasa a la Fase 8 | `cc/t127-disputa-orden-ucp`, mergeada ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)) |
+| T128 Servidor MCP de AgentPey | imprescindible | ⏳ pendiente | |
+| T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
+| T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
+| T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
+| T132 Coherencia del recibo (brecha 10) | imprescindible | ⏳ pendiente | |
+| T133 UCP `2026-08-25` | si alcanza | ⏳ pendiente | |
+| T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |
+| T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ⏳ pendiente | |
+| T136 SDK publicado en npm | si alcanza | ⏳ pendiente | |
+| T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ⏳ pendiente | |
+| T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente | |
+| T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente | |
+| T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
+| T141 Página "Tiendas comprables por agentes" | para el video | ⏳ pendiente | |
+| T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
+| T143 Más wallets que Freighter (`C-160`) | si alcanza | ⏳ pendiente | |
+| T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente | |
+| T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
+| T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
+
+Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T143.
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
 ## Bloqueos y pendientes del usuario
 
+- [ ] Responder las preguntas abiertas del spec de la Fase 8 (autenticación del conector, modo de conformidad, MPP, llave de AP2, dos versiones de UCP) y aprobarlo
+- [ ] Para T128: fondear el `policy_rail` del MCP, firmar el Mandato de su agente, y el dominio `mcp.agentpey.com` en Render y en el DNS
+- [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
+- [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
+- [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
 - [ ] 8 o 9 de octubre: confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página; después, comprobar que `ord_muq1gqhycf4961492c` muestra la disputa abierta y luego resuelta (cierra T127)
 
 
@@ -39,9 +59,9 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - T127 (`/revisar`, sugerencias que quedaron): la orden no cruza `dispute.merchant` con la cuenta firmante de la tienda; el esquema de la extensión no exige `verdict_hash`, `refund_atomic` y `resolved_at` cuando `status` es `resolved`; cada GET de una orden anclada lee la red sin caché (una disputa resuelta es inmutable y se podría cachear); `zod` de `vitrinee-anchor` en `^4.5.4` frente a `^4.6.0` del resto.
 
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
-- `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Después de la Fase 7.
-- Brecha 10 del anexo: coherencia del recibo (`amountUSDC` contra `amountUSDCAtomic`, `asset` confiado, una transacción por recibo).
-- **Sin fase** (`C-161`, cierre de la Fase 6): AgentGuard (sin alcance), evaluación de mainnet, publicación en npm, modelo de cobro. Y la meta "Primer partner piloto real": el criterio de salida de F9 (una persona ajena completa sola el recorrido) quedó sin cumplir.
+- `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Es T143 de la Fase 8.
+- Brecha 10 del anexo (coherencia del recibo): es T132 de la Fase 8. Brecha 14: es parte de T134.
+- **Sin fase** (`C-161`, cierre de la Fase 6): AgentGuard (sin alcance), evaluación de mainnet, modelo de cobro (la publicación en npm entró en la Fase 8, `P-16`). Y la meta "Primer partner piloto real": el criterio de salida de F9 (una persona ajena completa sola el recorrido) quedó sin cumplir.
 - Fase 6 (`C-161`): `C-122` (MPP Session) y `C-130` pendientes, `C-156` en investigación; mejora anotada en T117 (revisar el saldo de XLM antes de pedir la firma).
 
 ## Notas de la última sesión
@@ -68,3 +88,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02: T127 en vivo. La orden UCP de T122 en `agentcommerce` muestra el ajuste `dispute` (`completed`, sin montos) y `receipt.dispute` (`resolved`, reembolso 0, veredicto `ff3ef9b0…`), y valida contra UCP y la extensión.
 - 2026-10-02, ordenar la casa: criterios 1 a 3 de la Fase 7 marcados con evidencia (`evidencia/criterios-fase7.md`). **Fase 6 cerrada** (T32–T119, `C-161`): T101 cortada, criterio de salida de F9 sin cumplir y pasado a la meta "Primer partner piloto real", lo no construido sin fase, ramas viejas de Codex sin tocar. ROADMAP, CLAUDE.md y la bitácora de la Fase 6 al día.
 - 2026-10-03: **Fase 7 cerrada** (T120–T127, `E-25`, decisión del usuario). Criterio 4 cumplido (con el anexo se escribió el borrador del SEP); criterios 1 y 2 repetidos hoy y `pnpm check` en verde. El reembolso real de T124 y la orden `ord_muq1…` de T127 pasan a la Fase 8 con fecha; el plan de demo pasa a T142.
+- 2026-10-03, `/fase-plan 8`: `P-16` y spec de la Fase 8 **en borrador** (T128–T146, `R-1`). Leídas las fuentes: la suite de UCP paga con un medio de prueba y solo conoce `2026-04-08`; `@stellar/mpp` no admite una cuenta-contrato como pagador; la extensión de AP2 en UCP solo admite ES256/384/512; Claude y ChatGPT aceptan OAuth o sin autenticación; Cards402 y ASGCard solo en mainnet. Sección 4.1 del spec.

@@ -7569,3 +7569,19 @@ Pendiente: push y merge con OK del usuario. Pasan a la Fase 8 con fecha: reembol
 octubre, pedido Shopify `18952373174578`) y ver `ord_muq1gqhycf4961492c` con su disputa. `AGENTS.md`:
 actualizado (la Fase 7 figura como cerrada; nada nuevo delegable).
 
+## 2026-10-03 (2) — cc/fase8-plan (sin push, sobre cc/fase7-cierre)
+
+Agente: Claude Code.
+
+Qué: `/fase-plan 8`. `P-16` (abre la Fase 8) y `R-1` (el servidor MCP firma con la llave de un `policy_rail`
+propio). Spec **en borrador** en `docs/fase-8-agentes-reales/SPEC.md` (T128–T146), con bitácora y decisiones.
+`CLAUDE.md` (tabla y regla 5), ROADMAP, ESTADO y `AGENTS.md`. Solo documentación.
+
+Por qué: el video de Find Your Way (11-oct) necesita a Claude comprando en una tienda de terceros. Las fuentes
+leídas hoy cambiaron tareas del traspaso: la suite de UCP exige un medio de pago de prueba y solo conoce
+`2026-04-08`; `@stellar/mpp` no admite cuentas-contrato como pagador; AP2 en UCP solo admite P-256.
+
+Pendiente: respuestas del usuario a las preguntas abiertas y su aprobación; recién entonces tickets en
+Exponential, filas en SYNC y `/tarea T128`. Push y merge de las dos ramas con OK. `AGENTS.md`: actualizado
+(Fase 8, qué no es delegable).
+
