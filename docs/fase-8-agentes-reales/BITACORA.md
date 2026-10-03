@@ -15,11 +15,13 @@
 **Fecha:** 2026-10-03 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
-recibos sobre un pago. Sigue T128 (el servidor MCP).
+recibos sobre un pago. **T128 en curso**: el servidor MCP
+funciona en local con sus seis herramientas (PR 1); falta OAuth, la
+preparación del agente y el deploy (PR 2).
 
 | Tarea | Estado |
 |---|---|
-| T128 Servidor MCP | pendiente |
+| T128 Servidor MCP | en curso (PR 1 en revisión) |
 | T129 Claude y ChatGPT conectados | pendiente |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
@@ -93,4 +95,29 @@ base de datos todavía no la respalda.
 (PR #44). El merge despliega Vitrinee y publica el cambio en la spec de la
 extensión de recibo. Evidencia en
 [`evidencia/T132.md`](evidencia/T132.md).
+
+## T128 · El servidor MCP de AgentPey (2026-10-03, en curso)
+
+**Qué quedó funcionando (PR 1).** Existe un servidor nuevo, `apps/mcp`, que habla
+MCP, el idioma con el que Claude y ChatGPT usan herramientas de terceros. Tiene
+seis: buscar productos en las tiendas de Vitrinee, ver uno, cotizar, pagar, ver
+la orden con su recibo verificado, y firmar un reclamo. Por ahora corre en local
+y se prueba contra una tienda de Vitrinee de prueba, sin red.
+
+Lo importante está en `pay`. Solo paga una cotización que el propio servidor
+emitió, una sola vez, antes de que venza, y solo si viene con la confirmación
+explícita de la persona. Justo antes de firmar vuelve a leer la tienda: si el
+destinatario, el activo o el monto cambiaron desde la cotización, no paga. Y el
+pago pasa por el mismo control de siempre contra el Mandato, antes de firmar
+nada: una compra sobre el tope se corta ahí.
+
+**Por qué así.** El modelo de lenguaje nunca elige a quién pagar ni cuánto: eso
+sale de la tienda y se compara con lo que la tienda declara en público. Un
+texto malicioso en un catálogo puede pedirle cosas al modelo, pero no cambiar la
+cotización ni el tope.
+
+**Lo que falta (PR 2).** Que nadie más que el usuario pueda usarlo (OAuth con
+inicio de sesión firmando con la wallet, `R-7`), preparar la llave, la
+credencial, el Mandato y el rail del agente (`mcp:setup`, `R-8`, `R-9`), y
+publicarlo en `mcp.agentpey.com`. Recién ahí la compra desde un chat de Claude.
 

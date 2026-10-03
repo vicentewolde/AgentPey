@@ -8,13 +8,13 @@
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T132 · el verificador rechaza un recibo que se contradice, y un pago respalda un solo recibo
-**Siguiente paso:** `/tarea T128` (su plan propone el servidor de autorización de OAuth). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
+**Siguiente paso:** `/revisar` del PR 1 de T128 y su merge con OK; después el PR 2 (OAuth con login de wallet, `mcp:setup`, host `mcp.agentpey.com`). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T128 Servidor MCP de AgentPey | imprescindible | ⏳ pendiente | |
+| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) listo para `/revisar`; falta el PR 2 (OAuth, setup y deploy) | `cc/t128-servidor-mcp` |
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
@@ -90,3 +90,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03: spec de la Fase 8 **aprobado** por el usuario. Decisiones `R-2` a `R-6`: OAuth 2.1 desde el inicio, modo de conformidad solo local, MPP se documenta si no admite `policy_rail`, P-256 para AP2, y UCP `2026-04-08` en paralelo con `2026-08-25`. Tickets T128 a T146 creados en Exponential.
 - 2026-10-03, T132: `receiptIncoherence` en `@vitrinee/core` (montos decimal y atómico iguales, `asset` confiado); `signReceipt` se niega a firmar y el check 1 sale en rojo (`VT-39`). Encontrada y cerrada una ventana real: dos solicitudes simultáneas con el mismo pago daban dos pedidos y dos recibos (`VT-40`). Los recibos de T122 y T124 siguen válidos. `pnpm check` y `vitrinee:check` en verde.
 - 2026-10-03, T132 `/revisar`: sin bloqueantes. Corregidos los siete hallazgos a pedido del usuario: pedidos en curso indexados por comercio y no por store, test UCP concurrente, coherencia antes de crear el pedido en la plataforma, spec pública precisada, errores tipados con `SettlementUnaccounted` (`VT-41`), y el reintento x402 vuelve a guardar y anclar.
+- 2026-10-03, T128 PR 1: `apps/mcp` con las seis herramientas sobre el SDK oficial v2 (fijado en 2.2.0 y 2.0.1: pnpm no deja instalar paquetes publicados hace menos de un día, y no se le agregó la excepción), `quoteUcpCheckout` y `payUcpQuote` con relectura de la tienda antes de pagar, cliente UCP en `@vitrinee/core`, `resolve:open -- --claim`. Decisiones `R-7` a `R-10`. 15 tests nuevos.

@@ -7636,3 +7636,20 @@ Qué: T132 cerrada. Con OK del usuario: PR [#44](https://github.com/vicentewolde
 Pendiente: `/tarea T128`. Deuda en ESTADO (índice único en `vitrinee.orders`). `AGENTS.md`: sin cambios.
 Exponential: T132 a `QA` con el PR y, tras el merge, a `DONE`.
 
+## 2026-10-03 (7) — cc/t128-servidor-mcp (sin push)
+
+Agente: Claude Code.
+
+Qué: T128, PR 1. App nueva `apps/mcp` (`@agentpey/mcp`) con seis herramientas MCP sobre el SDK oficial v2
+(2.2.0 y 2.0.1; se revirtió la excepción que pnpm agregó para el 2.3.0). `executeUcpPayment` partido en
+`quoteUcpCheckout` y `payUcpQuote` (relectura de la tienda antes de pagar, `QuoteChanged`). Cliente UCP movido de
+`scripts/vitrinee/lib` a `@vitrinee/core` (`searchUcpStore`, `getUcpProduct`). `resolve:open -- --claim`.
+Códigos nuevos en `AgentPassError`: `QuoteNotFound`, `QuoteExpired`, `QuoteChanged`, `ConfirmationRequired`.
+Decisiones `R-7` a `R-10`. `pnpm check` y `vitrinee:check` en verde.
+
+Por qué: que Claude y ChatGPT compren en Vitrinee pagando desde un rail con topes (video del 11-oct).
+
+Pendiente: `/revisar` y merge del PR 1 con OK. PR 2: OAuth con login de wallet, `mcp:setup` (llave, credencial,
+Mandato, rail `mcp`), host `mcp.agentpey.com` en el gateway y Render. `AGENTS.md`: sin cambios (nada delegable).
+Exponential: T128 a `IN_PROGRESS`.
+

@@ -120,3 +120,70 @@ siguen funcionando sin cambios.
 mantener, pero se pierde la evidencia de conformidad y se rompen los clientes
 actuales.
 
+---
+
+### R-7 · El servidor de autorización de OAuth es propio, mínimo, y se inicia sesión firmando con la wallet · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T128 · Decidido por el usuario (pregunta 6 del spec)
+
+Cierra lo que `R-2` dejó abierto. El servidor de autorización vive dentro de
+`apps/mcp`: registra clientes por CIMD y por DCR, exige PKCE S256 y emite tokens
+firmados con audiencia `https://mcp.agentpey.com/mcp`, sin base de datos. La
+pantalla de inicio de sesión pide firmar un mensaje con la wallet (SEP-53, como
+el portal de comercios, `WalletSessions`), y solo entra la wallet configurada:
+la principal del rail del MCP, la única que puede retirar sus fondos.
+
+**Motivo.** Autoriza al agente quien controla la plata, con la misma prueba que
+el resto de AgentPey, y sin una cuenta en un tercero. El alcance es chico: un
+solo usuario, tokens de vida corta, testnet.
+
+**Alternativa descartada: un proveedor externo (WorkOS o Auth0).** Menos código
+(cerca de 4 h contra 10 h), pero inicio de sesión por email, una cuenta que el
+usuario tiene que crear, y depender de que el proveedor maneje bien la audiencia
+del token para MCP.
+
+---
+
+### R-8 · El Mandato del agente del MCP lo firma la llave del emisor, como en T122 · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T128 · Decidido por el usuario
+
+`pnpm run mcp:setup` emite la credencial del agente del MCP y su Mandato, y los
+ancla en testnet, con `ISSUER_SECRET_KEY` de `.env.local`, igual que
+`ucp:buy` en T122. El Mandato lista las tiendas del directorio de Vitrinee al
+momento de correrlo: una tienda nueva (T130) pide correrlo otra vez. La wallet
+del usuario es la principal del rail y la que inicia sesión (`R-7`).
+
+**Motivo.** Sale el 4-oct y reusa un camino ya probado en una compra real.
+
+**Alternativa descartada por ahora: que el usuario firme el Mandato con
+Freighter**, en una página como la de consentimiento. Más fiel a "el usuario
+autoriza", medio día más.
+
+---
+
+### R-9 · El rail del MCP tiene 3.00 USDC por compra y 5.00 por día, con un perfil propio en `deploy:policy-rail` · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T128 · Decidido por el usuario
+
+Los mismos topes que el rail UCP de T122 y que el de un tenant (`C-133`): cabe
+el imán (1,57 USDC) y casi todo `agentcommerce`. `deploy:policy-rail` gana un
+perfil `mcp` cuyo dueño es la llave del agente del MCP, registrado aparte; los
+perfiles `shared` y `ucp` no cambian. El spec decía que el script "se usa, no se
+cambia": no alcanzaba, porque hoy el dueño del rail siempre es
+`AGENT_SECRET_KEY`.
+
+**Alternativa descartada: 2.00 por compra y 4.00 por día.** Deja fuera la taza
+(cerca de 2,09 USDC).
+
+---
+
+### R-10 · `quote` no se declara de solo lectura · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T128 · Propuesta de Claude Code, se informa al usuario con el PR 1
+
+El spec decía que solo `pay` y `open_claim` piden confirmación. `quote` no mueve
+plata, pero abre una sesión de checkout en la tienda y firma una intención de
+compra: declararla de solo lectura sería falso, y los clientes la ejecutarían
+sin preguntar. Lleva `readOnlyHint: false` y `destructiveHint: false`; `pay` es
+la única destructiva. En la práctica Claude puede pedir permiso también antes de
+cotizar.
+
+**Alternativa descartada: `readOnlyHint: true` para que cotizar no interrumpa.**
+

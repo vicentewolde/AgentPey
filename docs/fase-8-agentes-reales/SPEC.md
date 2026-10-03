@@ -83,16 +83,17 @@ Lo que abre `P-16`, todo en testnet:
 | Host | `mcp.agentpey.com`, como un proceso hijo más de `apps/gateway` (`hosts.ts`), en el mismo servicio de Render. Precedente: Vitrinee en T102. Pide un dominio nuevo en Render y en el DNS: lo hace el usuario |
 | Pagador | Un `policy_rail` **propio del MCP**, con topes bajos, fondeado por el usuario. El servidor guarda la llave dueña (`R-1`). La red aplica los topes en `__check_auth`, y `policyRail.authorise` sigue cortando antes |
 | Mandato | El agente del MCP necesita su credencial AgentPass y un Mandato firmado por el usuario, como cualquier agente. `executeUcpPayment` no paga sin eso |
-| Autenticación | OAuth 2.1 desde el inicio (`R-2`). El servidor MCP es el servidor de recursos: publica sus metadatos de recurso protegido (RFC 9728), responde 401 con `WWW-Authenticate` y valida el token y su audiencia, con los ayudantes del SDK (`requireBearerAuth`, `mcpAuthMetadataRouter`). El servidor de autorización tiene que aceptar PKCE S256, registro por CIMD y por DCR, y las URL de retorno de Claude (`https://claude.ai/api/mcp/auth_callback`) y de ChatGPT (`https://chatgpt.com/connector_platform_oauth_redirect`). Cuál se usa (un proveedor de identidad externo, que es lo que recomienda el SDK, o uno mínimo propio) se propone en el plan de T128, antes de escribir código |
+| Autenticación | OAuth 2.1 desde el inicio (`R-2`), con servidor de autorización propio e inicio de sesión con la wallet (`R-7`). El servidor MCP es el servidor de recursos: publica sus metadatos de recurso protegido (RFC 9728), responde 401 con `WWW-Authenticate` y valida el token y su audiencia, con los ayudantes del SDK (`requireBearerAuth`, `mcpAuthMetadataRouter`). El servidor de autorización tiene que aceptar PKCE S256, registro por CIMD y por DCR, y las URL de retorno de Claude (`https://claude.ai/api/mcp/auth_callback`) y de ChatGPT (`https://chatgpt.com/connector_platform_oauth_redirect`). Cuál se usa (un proveedor de identidad externo, que es lo que recomienda el SDK, o uno mínimo propio) se propone en el plan de T128, antes de escribir código |
 | Secretos | En el entorno de Render y en `.env.local`, nunca en el repo ni en logs. Variables nuevas en `.env.example`, sin valor |
 
-Herramientas. Las de lectura llevan `readOnlyHint`; `pay` y `open_claim` no,
-así que Claude y ChatGPT piden confirmación a la persona antes de llamarlas.
+Herramientas. Las de lectura llevan `readOnlyHint`; `quote`, `pay` y
+`open_claim` no (`R-10`), así que Claude y ChatGPT pueden pedir confirmación a
+la persona antes de llamarlas. `pay` es la única destructiva.
 
 | Herramienta | Qué hace | Se apoya en |
 |---|---|---|
-| `search_products` | Busca en las tiendas de Vitrinee por su catálogo UCP | Directorio `GET /api/comercios`; `readUcpStorefront` (`scripts/vitrinee/lib/ucp-client.ts`), que pasa a un paquete |
-| `get_product` | Detalle de un producto | `POST /ucp/v1/catalog/product` |
+| `search_products` | Busca en las tiendas de Vitrinee por su catálogo UCP | Directorio `GET /api/comercios` (`expandPlatformVenues`); el cliente UCP de `scripts/vitrinee/lib/ucp-client.ts` pasó a `@vitrinee/core` (`searchUcpStore`) |
+| `get_product` | Detalle de un producto | `POST /ucp/v1/catalog/product` (`getUcpProduct`, `@vitrinee/core`) |
 | `quote` | Abre la sesión de checkout y devuelve total, tienda, destinatario y vencimiento. No firma nada | La primera mitad de `executeUcpPayment` (`apps/agent/src/payment/ucp.ts:185`) |
 | `pay` | Paga una cotización vigente, con `confirm: true` | La segunda mitad: `policyRail.authorise`, firma y `complete` |
 | `get_order` | La orden, con su recibo y sus tres checks | `GET /ucp/v1/orders/{id}`; `verifyReceipt` (`packages/vitrinee-anchor/src/verify.ts:32`) |
@@ -105,7 +106,9 @@ Dos cambios en código existente, los dos dentro de `P-10`:
   con sus tests actuales sin cambios. `pay` vuelve a comprobar la cotización
   contra el perfil de la tienda: no confía en lo que guardó `quote`.
 - `open_claim` solo firma. Abrir el reclamo en la red lo sigue haciendo el
-  árbitro con su llave (`resolve:open`), a mano. Es un límite de v0.
+  árbitro con su llave, a mano: `resolve:open -- --claim <archivo>` acepta un
+  reclamo firmado afuera y lo comprueba igual que uno firmado ahí. Es un límite
+  de v0.
 
 ### 4.3 Conformidad UCP y versiones (T131, T133)
 
@@ -154,12 +157,12 @@ más rápido que lo estimado.
 - **Descripción:** lo de la sección 4.2.
 - **Archivos principales:** `apps/mcp/` (nuevo), `apps/agent/src/payment/ucp.ts`, `apps/gateway/src/hosts.ts`, `render.yaml`, `.env.example`, `scripts/deploy-policy-rail.ts` (se usa, no se cambia)
 - **Hecho cuando:**
-  - [ ] las seis herramientas responden por Streamable HTTP y sus entradas y salidas pasan por zod (tests sin red, con la tienda de prueba)
-  - [ ] `pay` rechaza, con error tipado: una cotización vencida o desconocida, la falta de `confirm`, y una cotización cuyo destinatario, activo o monto ya no coinciden con el perfil de la tienda
-  - [ ] un intento sobre el tope es rechazado antes de firmar, y el rail del MCP lo rechaza también en la red (simulación, como en T122)
+  - [x] las seis herramientas responden por Streamable HTTP y sus entradas y salidas pasan por zod (tests sin red, con la tienda de prueba; PR 1, [evidencia](evidencia/T128.md) §1)
+  - [x] `pay` rechaza, con error tipado: una cotización vencida o desconocida, la falta de `confirm`, y una cotización cuyo destinatario, activo o monto ya no coinciden con el perfil de la tienda (PR 1)
+  - [ ] un intento sobre el tope es rechazado antes de firmar (✅ PR 1), y el rail del MCP lo rechaza también en la red (simulación, como en T122; PR 2, con el rail desplegado)
   - [ ] sin token, con un token vencido o con un token emitido para otro recurso, el servidor responde 401 con sus metadatos y no ejecuta ninguna herramienta (tests)
-  - [ ] la llave y los tokens no aparecen en logs ni en respuestas (test que busca los secretos en la salida)
-  - [ ] `executeUcpPayment` se comporta igual que antes (sus tests y `ucp-contract.test.ts` sin cambios, en verde)
+  - [ ] la llave y los tokens no aparecen en logs ni en respuestas (test que busca los secretos en la salida; la llave ✅ PR 1, los tokens en el PR 2)
+  - [x] `executeUcpPayment` se comporta igual que antes (sus tests y `ucp-contract.test.ts` sin cambios, en verde)
   - [ ] desplegado con OK del usuario: desde un chat de Claude, "compra un imán en agentcommerce" termina en un pedido real y un recibo con los tres checks en verde
   - [ ] todo en `evidencia/T128.md`
 
@@ -383,7 +386,7 @@ renegocia el 10-oct.**
 - [x] **3. MPP, si se confirma que no admite `policy_rail`:** documentar la brecha y abrir un issue; no pagar con una llave clásica (`R-4`)
 - [x] **4. Llave para cerrar mandatos AP2:** P-256; Ed25519 queda como brecha del SEP (`R-5`)
 - [x] **5. Dos versiones de UCP en paralelo:** sí, aprobado por el usuario el 3-oct (`R-6`, ajusta `E-2`)
-- [ ] **6. Servidor de autorización de OAuth** (sale de `R-2`): proveedor de identidad externo o uno mínimo propio. Se propone, con opciones, en el plan de T128
+- [x] **6. Servidor de autorización de OAuth:** propio, mínimo, con inicio de sesión firmando con la wallet (`R-7`), decidido por el usuario el 3-oct
 - [x] Quién firma los pagos del servidor MCP: **opción (a)**, decidido por el usuario el 3-oct (`R-1`)
 
 ## 10. Registro de cambios del spec
@@ -395,6 +398,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | **Aprobado** por el usuario, con las dos versiones de UCP en paralelo (`R-6`). Queda abierta la pregunta 6 (servidor de autorización de OAuth), que se resuelve en el plan de T128 |
 | 2026-10-03 | T132: con el plan aprobado por el usuario, el verificador no comprueba la unicidad "contra los recibos que conoce" (`VT-40`); se agrega la coherencia del precio por ítem (`VT-39`). Criterios marcados; falta `/revisar` |
 | 2026-10-03 | T132 cerrada: `/revisar` sin bloqueantes, siete hallazgos corregidos (`VT-41`), [PR #44](https://github.com/vicentewolde/AgentPey/pull/44) |
+| 2026-10-03 | T128, PR 1: respuestas del usuario a la pregunta 6 y al plan (`R-7` a `R-9`); `quote` no es de solo lectura (`R-10`); `resolve:open -- --claim`; el cliente UCP pasa a `@vitrinee/core`. Cinco criterios marcados, los otros tres van en el PR 2 |
 
 ## 11. Fuentes externas
 
