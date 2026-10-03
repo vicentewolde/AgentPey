@@ -138,6 +138,14 @@ export type AgentPassErrorCode =
   | "SpendNotRecorded"
   /** A spend was asked to be released for an intent whose payment is already anchored on-chain. */
   | "SpendAlreadySettled"
+  /** A payment was asked for a quote this process never issued, or already paid (T128). */
+  | "QuoteNotFound"
+  /** A payment was asked for a quote past its validity window (T128). */
+  | "QuoteExpired"
+  /** The store's checkout or profile no longer says what the quote said: recipient, asset, network or amount (T128). */
+  | "QuoteChanged"
+  /** A payment was asked without the person's explicit confirmation (T128). */
+  | "ConfirmationRequired"
   /** The agent's `policy_rail` does not hold enough USDC to pay for this purchase. */
   | "RailInsufficientFunds"
   /** The x402 client could not build the payment, before anything was signed or sent: nothing was paid. */

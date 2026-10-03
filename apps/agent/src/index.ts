@@ -286,6 +286,7 @@ export {
   executeBazaarPayment,
   fillRouteTemplate,
   mayHaveBeenPaid,
+  withPaymentSent,
   requestPaymentChallenge,
   toPaymentTerms,
   type BazaarPaymentReceipt,
@@ -295,11 +296,17 @@ export {
 
 export {
   AGENTPEY_PLATFORM_PROFILE,
+  STELLAR_X402_HANDLER,
   executeUcpPayment,
+  payUcpQuote,
+  quoteUcpCheckout,
   type ExecuteUcpPaymentDeps,
   type ExecuteUcpPaymentInput,
+  type PayUcpQuoteInput,
+  type QuoteUcpCheckoutInput,
   type UcpDestination,
   type UcpPaymentReceipt,
+  type UcpQuote,
 } from "./payment/ucp.js";
 
 export {
