@@ -12,8 +12,9 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-03 · Fase abierta (`P-16`). **Spec en borrador**, a la
-espera de las respuestas y la aprobación del usuario. No hay nada construido.
+**Fecha:** 2026-10-03 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+el 3-oct, con sus decisiones `R-1` a `R-6`. No hay nada construido todavía:
+sigue T128 (el servidor MCP) y T132 (la coherencia del recibo).
 
 | Tarea | Estado |
 |---|---|

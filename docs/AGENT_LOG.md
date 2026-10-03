@@ -7585,3 +7585,16 @@ Pendiente: respuestas del usuario a las preguntas abiertas y su aprobación; rec
 Exponential, filas en SYNC y `/tarea T128`. Push y merge de las dos ramas con OK. `AGENTS.md`: actualizado
 (Fase 8, qué no es delegable).
 
+## 2026-10-03 (3) — cc/fase7-cierre y cc/fase8-plan → main
+
+Agente: Claude Code.
+
+Qué: el usuario respondió las preguntas (`R-2` a `R-6`: OAuth 2.1 desde el inicio, modo de conformidad solo
+local, MPP se documenta, P-256 para AP2, dos versiones de UCP en paralelo) y **aprobó el spec de la Fase 8**.
+Con su OK, las dos ramas a `main` por fast-forward. Exponential: Feature de la Fase 8 y tickets T128 a T146
+creados, con dependencias; filas en SYNC.
+
+Pendiente: `/tarea T132` y `/tarea T128` (su plan propone el servidor de autorización de OAuth). Del usuario:
+fondear el rail del MCP, firmar su Mandato, dominio `mcp.agentpey.com`, la tienda de T130. `AGENTS.md`:
+actualizado (spec aprobado).
+

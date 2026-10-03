@@ -47,6 +47,25 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T125 | `cmuo4y9b5000plg04nr6y0ywc` | Anexo técnico para el SEP | SPEC | `DONE` | 2026-09-30 | 2026-10-01 | 2026-10-01 | | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [P-14](../DECISIONES.md) | |
 | T126 | `cmuqg0pch000tlb04ac5yoe0s` | Respuesta del comercio en AgentResolve | SPEC | `DONE` | 2026-10-02 | 2026-10-02 | 2026-10-02 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [E-20 a E-22](../fase-7-estandar-comercio-agentico/DECISIONES.md) | mergeada ([PR #36](https://github.com/vicentewolde/AgentPey/pull/36)); ensayo con Freighter en `cc/t126-evidencia` |
 | T127 | `cmuqg0qfh000xlb04gbvk9fyl` | La disputa visible en la orden UCP | SPEC | `DONE` | 2026-10-02 | 2026-10-02 | 2026-10-03 | [SPEC](../fase-7-estandar-comercio-agentico/SPEC.md), [E-23 y E-24](../fase-7-estandar-comercio-agentico/DECISIONES.md), [VT-37 y VT-38](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md), [E-25](../fase-7-estandar-comercio-agentico/DECISIONES.md) | mergeada ([PR #38](https://github.com/vicentewolde/AgentPey/pull/38)); en vivo con la orden de T122; `ord_muq1…` se mira el 8-oct |
+| T128 | `cmusmut0q0005kx04v6b55rxr` | Servidor MCP de AgentPey | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T129 | `cmusmuu5c0009kx04bxcst1e3` | Claude y ChatGPT conectados | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T130 | `cmusmuval000dkx04643nofzw` | Tienda de terceros real | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T131 | `cmusmuwdw000hkx04g3g7t8ia` | Suite oficial de conformidad UCP | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T132 | `cmusmuxhh000lkx04w8xgzx8c` | Coherencia del recibo (brecha 10 del anexo) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T133 | `cmusmuykm000pkx04knp793iq` | UCP `2026-08-25`, con `2026-04-08` en paralelo | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T134 | `cmusmuzmr000tkx04nyi33mal` | AP2 dentro del checkout UCP | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T135 | `cmusmv0q2000xkx040q8r4rbr` | MPP charge sobre Stellar (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T136 | `cmusmv1wc0011kx04svie8fz2` | SDK publicado en npm | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T137 | `cmusmv2z70015kx04wgz6chdr` | Kit de conformidad del medio de pago de Stellar | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T138 | `cmusmv44q0019kx04zm1e1as6` | Prueba técnica: GenLayer como jurado de AgentResolve | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T139 | `cmusmv58s001dkx04ptrhqd4y` | Prueba técnica: Trustless Work como escrow por compra | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T140 | `cmusmv6be001hkx041xa4bf06` | Resolutor intercambiable en AgentResolve (pide aprobación) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T141 | `cmusmv7d8001lkx048cfbear7` | Página pública: tiendas comprables por agentes | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T142 | `cmusmv8du001pkx04tifjz4j7` | Guion y grabación de la demo | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T143 | `cmusmv9l0001tkx049cepmzg5` | Más wallets que Freighter (`C-160`) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T144 | `cmusmvarv001xkx045fmtjf76` | dots, Muse y Grok Bot como agentes de AgentPey (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T145 | `cmusmvbuz0021kx04srcpkpxd` | Equipos SCF pagando IA y servicios con Stellar (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T146 | `cmusmvcw70025kx042wrweuku` | Demo: presupuesto de equipo en testnet (pide aprobación) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
@@ -234,4 +253,9 @@ desde la web, porque el CLI no lo hace: el producto vacío y la página
   acción del anexo, completada (criterio 4); `exp:sync` cerró las acciones "fecha objetivo" de T124 y
   T127. Sigue abierta, a propósito, la acción del reembolso real del 8-oct. El Feature de la Fase 7
   sigue en `IN_PROGRESS` hasta ese reembolso.
+- **2026-10-03**, Claude Code (`cc/fase8-plan`): spec de la Fase 8 **aprobado** por el usuario (`P-16`).
+  Creados: Feature "Agentes reales comprando en Stellar (Fase 8)" (`cmusmurth0001kx0484mndgz0`) y los
+  tickets T128 a T146 con su rama. Dependencias: T129, T130, T136, T141 y T144 bloqueados por T128;
+  T133 y T137 por T131 (T137 también por T132); T134 por T133; T140 por T138; T142 por T130; T146 por
+  T145. Sin acciones de fecha por tarea: las fechas viven en la sección 8 del spec.
 

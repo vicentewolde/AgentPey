@@ -100,3 +100,23 @@ verifique el mandato de una compra real.
 
 **Alternativa descartada: Ed25519**, una sola llave, pero fuera de lo que UCP
 permite hoy.
+
+---
+
+### R-6 · Vitrinee sirve UCP `2026-08-25` y mantiene `2026-04-08` en paralelo · `Vigente` — ajusta `E-2`
+**Fecha:** 2026-10-03 · **Tarea:** T133 · Decidido por el usuario
+
+Al migrar, cada tienda sirve `2026-08-25` por defecto y declara `2026-04-08`
+en `supported_versions`, con su perfil propio, como recomienda la spec de UCP.
+Una versión que la tienda no conoce recibe 422 `version_unsupported`. `E-2`
+fijaba `2026-04-08` como única versión; deja de ser la única, no deja de
+servirse.
+
+**Motivo.** La suite oficial de conformidad solo conoce `2026-04-08`: sin esa
+versión, migrar la deja sin nada que probar. Y los clientes de la Fase 7
+siguen funcionando sin cambios.
+
+**Alternativa descartada: migrar y retirar `2026-04-08`.** Menos código que
+mantener, pero se pierde la evidencia de conformidad y se rompen los clientes
+actuales.
+

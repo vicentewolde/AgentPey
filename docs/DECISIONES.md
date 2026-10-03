@@ -834,7 +834,7 @@ escrito en el spec, y eso no se renegocia el 10-oct.
 de terceros.** Aseguraba el video, pero dejaba las tres afirmaciones (UCP, AP2,
 MPP) sin evidencia.
 
-Tareas T128 a T146, orden, cortes y preguntas abiertas en
+Spec aprobado por el usuario el 2026-10-03. Tareas T128 a T146, orden, cortes y preguntas abiertas en
 [`fase-8-agentes-reales/SPEC.md`](fase-8-agentes-reales/SPEC.md). Decisiones
 de la fase con prefijo `R-`.
 

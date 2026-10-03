@@ -87,7 +87,7 @@ sigue siendo `docs/AGENT_LOG.md` y tu rama `codex/<task>`.
 
 **Fase 8, desde 2026-10-03 (`P-16`):** el spec es
 [`docs/fase-8-agentes-reales/SPEC.md`](docs/fase-8-agentes-reales/SPEC.md),
-**en borrador**: no se implementa nada hasta que el usuario lo apruebe. El
+aprobado el mismo día. El
 servidor MCP (`apps/mcp`, T128) guarda una llave que paga y es de Claude Code,
 igual que el modo de conformidad de T131, la verificación del recibo (T132),
 AP2 (T134), MPP (T135) y las wallets (T143). Lo delegable, si te llega, está

@@ -1,6 +1,6 @@
 # Spec Fase 8 · Agentes reales comprando en Stellar, y el estándar completo
 
-- **Estado:** Borrador (2026-10-03). **No se implementa nada hasta que el usuario lo apruebe**
+- **Estado:** Aprobado (2026-10-03)
 - **Rama base:** `main`
 - **Tareas:** T128 a T146
 - **Referencias:** [`P-16`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método),
@@ -114,7 +114,7 @@ Dos cambios en código existente, los dos dentro de `P-10`:
   prueba, el endpoint de simulación y los datos sembrados. Vive en código de
   test o detrás de una variable que el arranque de producción rechaza. Toca el
   cobro, así que no es delegable y `/revisar` lo mira como punto de autorización.
-- **Dos versiones en paralelo (propuesta, cambia `E-2`).** Cada tienda sirve
+- **Dos versiones en paralelo (`R-6`, ajusta `E-2`).** Cada tienda sirve
   `2026-08-25` por defecto y declara `2026-04-08` en `supported_versions`,
   como recomienda la spec. Los clientes de hoy y la suite siguen funcionando.
 - **Cambios de `2026-08-25` que tocan a Vitrinee:** `keys[]` en vez de
@@ -382,7 +382,7 @@ renegocia el 10-oct.**
 - [x] **2. Dónde vive el modo de conformidad de T131:** solo local, nunca desplegado (`R-3`)
 - [x] **3. MPP, si se confirma que no admite `policy_rail`:** documentar la brecha y abrir un issue; no pagar con una llave clásica (`R-4`)
 - [x] **4. Llave para cerrar mandatos AP2:** P-256; Ed25519 queda como brecha del SEP (`R-5`)
-- [ ] **5. Dos versiones de UCP en paralelo** (cambia `E-2`). Propuesta de la sección 4.3; se confirma al aprobar el spec
+- [x] **5. Dos versiones de UCP en paralelo:** sí, aprobado por el usuario el 3-oct (`R-6`, ajusta `E-2`)
 - [ ] **6. Servidor de autorización de OAuth** (sale de `R-2`): proveedor de identidad externo o uno mínimo propio. Se propone, con opciones, en el plan de T128
 - [x] Quién firma los pagos del servidor MCP: **opción (a)**, decidido por el usuario el 3-oct (`R-1`)
 
@@ -392,6 +392,7 @@ renegocia el 10-oct.**
 |---|---|
 | 2026-10-03 | Borrador, a partir del traspaso del chat de estrategia del 3-oct, con las fuentes oficiales leídas ese día y el código revisado. Cambios frente al traspaso en la sección 4.1 |
 | 2026-10-03 | Respuestas del usuario a las preguntas 1 a 4 (`R-2` a `R-5`): OAuth desde el inicio (T128 pasa de 14 h a 22 h, en dos PR), modo de conformidad solo local, MPP se documenta y no se paga con llave clásica, P-256 para AP2. Sigue en borrador |
+| 2026-10-03 | **Aprobado** por el usuario, con las dos versiones de UCP en paralelo (`R-6`). Queda abierta la pregunta 6 (servidor de autorización de OAuth), que se resuelve en el plan de T128 |
 
 ## 11. Fuentes externas
 

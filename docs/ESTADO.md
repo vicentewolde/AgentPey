@@ -6,13 +6,11 @@
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
 **Actualizado:** 2026-10-03
-**Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **en borrador**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
+**Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T127 · la disputa visible en la orden UCP (cierre de la Fase 7)
-**Siguiente paso:** que el usuario apruebe el spec de la Fase 8 (preguntas 1 a 4 ya respondidas); después, `/tarea T128` y `/tarea T132`. El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
+**Siguiente paso:** `/tarea T132` y `/tarea T128` (su plan propone el servidor de autorización de OAuth). El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
 
 ## Progreso de la fase
-
-Spec en borrador: nada se implementa hasta que el usuario lo apruebe.
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
@@ -42,7 +40,6 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Aprobar el spec de la Fase 8 (preguntas 1 a 4 respondidas el 3-oct, `R-2` a `R-5`; falta confirmar las dos versiones de UCP en paralelo)
 - [ ] Para T128: fondear el `policy_rail` del MCP, firmar el Mandato de su agente, y el dominio `mcp.agentpey.com` en Render y en el DNS
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
@@ -89,3 +86,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-02, ordenar la casa: criterios 1 a 3 de la Fase 7 marcados con evidencia (`evidencia/criterios-fase7.md`). **Fase 6 cerrada** (T32–T119, `C-161`): T101 cortada, criterio de salida de F9 sin cumplir y pasado a la meta "Primer partner piloto real", lo no construido sin fase, ramas viejas de Codex sin tocar. ROADMAP, CLAUDE.md y la bitácora de la Fase 6 al día.
 - 2026-10-03: **Fase 7 cerrada** (T120–T127, `E-25`, decisión del usuario). Criterio 4 cumplido (con el anexo se escribió el borrador del SEP); criterios 1 y 2 repetidos hoy y `pnpm check` en verde. El reembolso real de T124 y la orden `ord_muq1…` de T127 pasan a la Fase 8 con fecha; el plan de demo pasa a T142.
 - 2026-10-03, `/fase-plan 8`: `P-16` y spec de la Fase 8 **en borrador** (T128–T146, `R-1`). Leídas las fuentes: la suite de UCP paga con un medio de prueba y solo conoce `2026-04-08`; `@stellar/mpp` no admite una cuenta-contrato como pagador; la extensión de AP2 en UCP solo admite ES256/384/512; Claude y ChatGPT aceptan OAuth o sin autenticación; Cards402 y ASGCard solo en mainnet. Sección 4.1 del spec.
+- 2026-10-03: spec de la Fase 8 **aprobado** por el usuario. Decisiones `R-2` a `R-6`: OAuth 2.1 desde el inicio, modo de conformidad solo local, MPP se documenta si no admite `policy_rail`, P-256 para AP2, y UCP `2026-04-08` en paralelo con `2026-08-25`. Tickets T128 a T146 creados en Exponential.

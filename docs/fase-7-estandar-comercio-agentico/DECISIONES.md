@@ -45,6 +45,8 @@ los clientes de hoy.
 ### E-2 · Se implementa UCP `2026-04-08` · `Vigente`
 **Fecha:** 2026-09-30 · **Tarea:** T120 · Decidido por el usuario
 
+> Ajustada el 2026-10-03 por [`R-6`](../fase-8-agentes-reales/DECISIONES.md): desde T133, `2026-04-08` se sirve en paralelo con `2026-08-25`.
+
 **Motivo.** Es la versión que fija el traspaso y la que se leyó del
 repositorio oficial para T120 (las partes de pagos, checkout, orden, catálogo
 y AP2; no la spec entera). Su modelo de despacho es más simple.
