@@ -12,7 +12,7 @@ import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 
 import { createMcpExpressApp, getOAuthProtectedResourceMetadataUrl, mcpAuthMetadataRouter, requireBearerAuth } from "@modelcontextprotocol/express";
 import { createMcpHandler, type AuthInfo, type McpHttpHandler } from "@modelcontextprotocol/server";
-import type { Express, Request, Response } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
 
 import { MCP_SCOPE, type OAuthServer } from "./oauth/server.js";
 import type { Shopper } from "./shopper.js";
@@ -46,6 +46,7 @@ export function createMcpApp(options: McpAppOptions): Express {
   app.disable("x-powered-by");
   if (options.auth === "none-for-tests") {
     app.all(MCP_PATH, (req, res) => void bridge(handler, req, res, options.log));
+    app.use(jsonErrors(options.log));
     return app;
   }
   const { oauth, resource } = options.auth;
@@ -62,7 +63,26 @@ export function createMcpApp(options: McpAppOptions): Express {
   app.use(oauth.router);
   const bearer = requireBearerAuth({ verifier: oauth.verifier, requiredScopes: [MCP_SCOPE], resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl) });
   app.all(MCP_PATH, bearer, (req, res) => void bridge(handler, req, res, options.log));
+  app.use(jsonErrors(options.log));
   return app;
+}
+
+/**
+ * Every error Express would otherwise render as an HTML page with its stack
+ * (a malformed JSON body, most often) answers as an OAuth-shaped JSON error
+ * instead. The gateway does not set `NODE_ENV`, so Express runs in its
+ * development mode and would show the stack in production too.
+ */
+function jsonErrors(log?: McpAppOptions["log"]) {
+  return (error: unknown, _req: Request, res: Response, next: NextFunction): void => {
+    if (res.headersSent) return next(error);
+    const status = typeof (error as { status?: unknown }).status === "number" ? (error as { status: number }).status : 500;
+    if (status >= 500) log?.("request failed", { error: error instanceof Error ? error.message : String(error) });
+    res
+      .status(status >= 400 && status < 600 ? status : 500)
+      .set("Cache-Control", "no-store")
+      .json(status < 500 ? { error: "invalid_request", error_description: "the request body is malformed" } : { error: "server_error" });
+  };
 }
 
 async function bridge(handler: McpHttpHandler, req: Request, res: Response, log?: McpAppOptions["log"]): Promise<void> {

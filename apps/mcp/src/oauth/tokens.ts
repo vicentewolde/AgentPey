@@ -5,24 +5,27 @@
  * token and a refresh token. Each carries its own `typ`, checked on the way
  * back in, so one can never be presented as another.
  *
- * What does need memory is kept in memory, bounded: a code's id once it is
- * redeemed, so it cannot be redeemed twice. A restart forgets that list, and
- * a code lives one minute, so the window it opens is a code issued in the
- * last minute before a restart and redeemed again after it.
+ * What does need memory is kept in memory, bounded: the id of a code, a
+ * refresh token or a sign-in challenge once it is used, so it cannot be used
+ * twice. A restart forgets those lists. A code lives one minute and a
+ * challenge five; a refresh token lives a week, so a restart lets one already
+ * used be used once more, until it expires (written in the README).
  */
 import { AgentPassError } from "@agentpass/core";
 import { SignJWT, errors as joseErrors, jwtVerify, type JWTPayload } from "jose";
 
-export const TOKEN_KINDS = ["client", "request", "code", "access", "refresh"] as const;
+export const TOKEN_KINDS = ["client", "request", "challenge", "code", "access", "refresh"] as const;
 export type TokenKind = (typeof TOKEN_KINDS)[number];
 
 export const TOKEN_TTL_SECONDS: Readonly<Record<TokenKind, number | null>> = {
   /** A registered client does not expire: it is a description, not a grant. */
   client: null,
   request: 10 * 60,
+  challenge: 5 * 60,
   code: 60,
   access: 60 * 60,
-  refresh: 30 * 24 * 60 * 60,
+  /** A week, and each one redeems once: a leaked one is worth little and not for long. */
+  refresh: 7 * 24 * 60 * 60,
 };
 
 export const MIN_SECRET_BYTES = 32;
@@ -69,7 +72,7 @@ export class TokenSigner {
   }
 }
 
-/** Ids of redeemed codes, until they would have expired anyway. */
+/** Ids already used (codes, refresh tokens, challenges), until they would have expired anyway. */
 export class RedeemedCodes {
   private readonly seen = new Map<string, number>();
 

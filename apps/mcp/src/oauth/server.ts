@@ -5,17 +5,22 @@
  * - Clients register by DCR (`POST /register`), and the client id is the
  *   registration itself, signed; or they present a Client ID Metadata
  *   Document (CIMD), fetched only from hosts this server already trusts to
- *   receive codes. Either way a redirect URI must be one of the allowed ones:
- *   Claude's, ChatGPT's, or a loopback address for local clients.
+ *   receive codes, and cached a few minutes. Either way a redirect URI must
+ *   be one of the allowed ones: Claude's, ChatGPT's, or a loopback address
+ *   for local clients, matched without its port (RFC 8252 §7.3; Claude Code
+ *   uses a new port each session).
  * - `GET /authorize` shows a page where the person signs a message with their
  *   wallet (SEP-53). Only the configured wallet, the principal of the MCP's
- *   spending account, gets a code.
+ *   spending account, gets a code. The challenge to sign is itself a signed
+ *   token, so asking for one costs the server no memory; it is spent only
+ *   when a valid signature answers it.
  * - `POST /token` trades the code for an access token bound to this MCP
- *   resource (PKCE S256 required), and refreshes it.
+ *   resource (PKCE S256 required), and refreshes it. Each refresh token works
+ *   once and is replaced in the same answer (OAuth 2.1 §4.3.1).
  * - `verifier` checks access tokens for the `/mcp` route: signature, kind,
  *   audience, expiry, and that the subject is still the allowed wallet.
  */
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { verifyStellarMessage } from "@agentpass/core";
 import { OAuthError, OAuthErrorCode, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier } from "@modelcontextprotocol/server";
@@ -23,7 +28,7 @@ import { StrKey } from "@stellar/stellar-sdk";
 import express, { type Request, type Response, type Router } from "express";
 import { z } from "zod";
 
-import { loginPage } from "./login-page.js";
+import { FREIGHTER_SCRIPT, loginPage } from "./login-page.js";
 import { RedeemedCodes, TokenSigner, TOKEN_TTL_SECONDS } from "./tokens.js";
 
 export const MCP_SCOPE = "shop";
@@ -46,10 +51,10 @@ export interface OAuthServerOptions {
   readonly log?: (message: string, fields?: Record<string, unknown>) => void;
 }
 
-const CHALLENGE_TTL_MS = 5 * 60_000;
-const MAX_PENDING_CHALLENGES = 500;
 const CIMD_TIMEOUT_MS = 5_000;
 const CIMD_MAX_BYTES = 64 * 1024;
+const CIMD_CACHE_MS = 5 * 60_000;
+const CIMD_CACHE_MAX = 50;
 
 interface Client {
   readonly clientId: string;
@@ -88,22 +93,73 @@ const requestClaimsSchema = z.object({
   scope: z.string(),
 });
 
+const challengeClaimsSchema = z.object({ account: z.string(), request_hash: z.string(), client_name: z.string(), nonce: z.string(), expires: z.string(), exp: z.number() });
 const codeClaimsSchema = z.object({ client_id: z.string(), redirect_uri: z.string(), code_challenge: z.string(), scope: z.string(), sub: z.string(), jti: z.string(), exp: z.number() });
-const refreshClaimsSchema = z.object({ client_id: z.string(), scope: z.string(), sub: z.string() });
+const refreshClaimsSchema = z.object({ client_id: z.string(), scope: z.string(), sub: z.string(), jti: z.string(), exp: z.number() });
 const accessClaimsSchema = z.object({ client_id: z.string(), scope: z.string(), sub: z.string(), exp: z.number() });
 
 const challengeBodySchema = z.object({ request: z.string().min(1).max(8000), account: z.string().refine((value) => StrKey.isValidEd25519PublicKey(value)) });
-const approveBodySchema = challengeBodySchema.extend({ nonce: z.string().regex(/^[0-9a-f]{32}$/), signature: z.string().min(1).max(200) });
+const approveBodySchema = challengeBodySchema.extend({ challenge: z.string().min(1).max(4000), signature: z.string().min(1).max(200) });
+const denyBodySchema = z.object({ request: z.string().min(1).max(8000) });
 
 const tokenBodySchema = z.discriminatedUnion("grant_type", [
   z.object({ grant_type: z.literal("authorization_code"), code: z.string().min(1).max(4000), code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/), redirect_uri: z.string(), client_id: z.string().min(1).max(4000), resource: z.string().optional() }),
   z.object({ grant_type: z.literal("refresh_token"), refresh_token: z.string().min(1).max(4000), client_id: z.string().min(1).max(4000), resource: z.string().optional() }),
 ]);
 
-function isLoopback(uri: string): boolean {
+export function isLoopback(uri: string): boolean {
   if (!URL.canParse(uri)) return false;
   const url = new URL(uri);
   return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]");
+}
+
+/**
+ * Whether `actual` is the redirect URI a client `registered`: exactly, or, for
+ * a loopback address, the same host and path on any port (RFC 8252 §7.3).
+ * Claude Code registers `http://localhost/callback` and redirects to a new
+ * port each session.
+ */
+export function redirectMatches(registered: string, actual: string): boolean {
+  if (registered === actual) return true;
+  if (!isLoopback(registered) || !isLoopback(actual)) return false;
+  const a = new URL(registered);
+  const b = new URL(actual);
+  return a.hostname === b.hostname && a.pathname === b.pathname && a.search === b.search;
+}
+
+const sha256 = (value: string): string => createHash("sha256").update(value).digest("base64url");
+
+/** What the wallet signs. Rebuilt on approval from the signed challenge, never taken from the page. */
+function challengeMessage(host: string, claims: { account: string; client_name: string; nonce: string; expires: string }): string {
+  return [
+    `${host} asks you to sign in with your Stellar account:`,
+    claims.account,
+    "",
+    `Allow ${claims.client_name} to search, quote and pay in AgentPey stores for you, from your spending account on Stellar testnet, within its limits.`,
+    "Continue only if you started this connection yourself, from your own Claude or ChatGPT.",
+    "",
+    `Nonce: ${claims.nonce}`,
+    `Expires: ${claims.expires}`,
+  ].join("\n");
+}
+
+/** Reads at most `max` bytes of a response body; `null` when it is longer. */
+async function readCapped(res: globalThis.Response, max: number): Promise<string | null> {
+  if (res.body === null) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 function oauthFail(res: Response, status: number, error: string, description: string): void {
@@ -125,10 +181,13 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
   const now = options.now ?? (() => new Date());
   const issuer = options.publicUrl.replace(/\/+$/, "");
   const signer = new TokenSigner(options.secret, issuer, now);
-  const redeemed = new RedeemedCodes(now);
+  const redeemedCodes = new RedeemedCodes(now);
+  const redeemedRefresh = new RedeemedCodes(now);
+  const answeredChallenges = new RedeemedCodes(now);
   const allowedRedirects = new Set(options.redirectUris ?? DEFAULT_REDIRECT_URIS);
   const cimdHosts = new Set([...allowedRedirects].map((uri) => new URL(uri).host));
-  const challenges = new Map<string, { account: string; requestHash: string; message: string; expires: number }>();
+  const cimdCache = new Map<string, { client: Client; at: number }>();
+  const issuerHost = new URL(issuer).host;
   const log = options.log ?? (() => {});
   const fetchImpl = options.fetchImpl ?? fetch;
 
@@ -145,6 +204,7 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     token_endpoint_auth_methods_supported: ["none"],
     scopes_supported: [MCP_SCOPE],
     client_id_metadata_document_supported: true,
+    authorization_response_iss_parameter_supported: true,
   } as OAuthMetadata;
 
   /** A client from its id: a signed registration, or a metadata document on a trusted host. `null` if neither. */
@@ -152,14 +212,19 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     if (URL.canParse(clientId) && clientId.startsWith("https://")) {
       const url = new URL(clientId);
       if (!cimdHosts.has(url.host)) return null;
+      const cached = cimdCache.get(clientId);
+      if (cached !== undefined && now().getTime() - cached.at < CIMD_CACHE_MS) return cached.client;
       try {
         const res = await fetchImpl(clientId, { headers: { accept: "application/json" }, redirect: "error", signal: AbortSignal.timeout(CIMD_TIMEOUT_MS) });
         if (!res.ok) return null;
-        const text = await res.text();
-        if (text.length > CIMD_MAX_BYTES) return null;
+        const text = await readCapped(res, CIMD_MAX_BYTES);
+        if (text === null) return null;
         const doc = cimdSchema.safeParse(JSON.parse(text));
         if (!doc.success || doc.data.client_id !== clientId) return null;
-        return { clientId, name: doc.data.client_name ?? url.host, redirectUris: doc.data.redirect_uris };
+        const client = { clientId, name: doc.data.client_name ?? url.host, redirectUris: doc.data.redirect_uris };
+        if (cimdCache.size >= CIMD_CACHE_MAX) cimdCache.clear();
+        cimdCache.set(clientId, { client, at: now().getTime() });
+        return client;
       } catch {
         return null;
       }
@@ -189,7 +254,8 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     if (!body.success) return oauthFail(res, 400, "invalid_client_metadata", "redirect_uris is required");
     const refused = body.data.redirect_uris.filter((uri) => !redirectAllowed(uri));
     if (refused.length > 0) return oauthFail(res, 400, "invalid_redirect_uri", "this server only sends people back to Claude, ChatGPT or a loopback address");
-    const clientId = await signer.sign("client", { redirect_uris: body.data.redirect_uris, ...(body.data.client_name === undefined ? {} : { client_name: body.data.client_name }) });
+    // A `jti` so two identical registrations still get two ids (RFC 7591).
+    const clientId = await signer.sign("client", { redirect_uris: body.data.redirect_uris, ...(body.data.client_name === undefined ? {} : { client_name: body.data.client_name }) }, { jti: randomUUID() });
     log("oauth client registered", { clientName: body.data.client_name ?? null });
     res.status(201).set("Cache-Control", "no-store").json({
       client_id: clientId,
@@ -207,15 +273,15 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     // Before the client is known, nothing is redirected: an error goes on the page, never to an unchecked URI.
     if (!query.success) return void res.status(400).type("text/plain").send("invalid authorization request: response_type=code, client_id, redirect_uri, code_challenge and code_challenge_method=S256 are required");
     const client = await resolveClient(query.data.client_id);
-    if (client === null || !client.redirectUris.includes(query.data.redirect_uri) || !redirectAllowed(query.data.redirect_uri)) {
+    if (client === null || !client.redirectUris.some((registered) => redirectMatches(registered, query.data.redirect_uri)) || !redirectAllowed(query.data.redirect_uri)) {
       return void res.status(400).type("text/plain").send("unknown client, or a redirect_uri it did not register");
     }
     if (query.data.resource !== undefined && query.data.resource !== options.resource) {
-      return void res.redirect(errorRedirect(query.data.redirect_uri, "invalid_target", "this server only issues tokens for its own MCP resource", query.data.state));
+      return void res.redirect(errorRedirect(query.data.redirect_uri, "invalid_target", "this server only issues tokens for its own MCP resource", query.data.state, issuer));
     }
     const scope = query.data.scope ?? MCP_SCOPE;
     if (scope.split(" ").some((one) => one !== MCP_SCOPE)) {
-      return void res.redirect(errorRedirect(query.data.redirect_uri, "invalid_scope", `the only scope is ${MCP_SCOPE}`, query.data.state));
+      return void res.redirect(errorRedirect(query.data.redirect_uri, "invalid_scope", `the only scope is ${MCP_SCOPE}`, query.data.state, issuer));
     }
     const request = await signer.sign("request", {
       client_id: client.clientId,
@@ -230,11 +296,16 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       .status(200)
       .set({
         "Cache-Control": "no-store",
-        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}' https://unpkg.com; style-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
+        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}' ${FREIGHTER_SCRIPT.src}; style-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
         "Referrer-Policy": "no-referrer",
       })
       .type("html")
-      .send(loginPage({ request, clientName: client.name, redirectHost: new URL(query.data.redirect_uri).host, walletHint: `${options.allowedWallet.slice(0, 6)}…${options.allowedWallet.slice(-6)}` }, nonce));
+      .send(
+        loginPage(
+          { request, clientName: client.name, redirectHost: new URL(query.data.redirect_uri).host, loopback: isLoopback(query.data.redirect_uri), walletHint: `${options.allowedWallet.slice(0, 6)}…${options.allowedWallet.slice(-6)}` },
+          nonce,
+        ),
+      );
   });
 
   async function readRequest(token: string): Promise<z.infer<typeof requestClaimsSchema> | null> {
@@ -248,37 +319,32 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     const request = await readRequest(body.data.request);
     if (request === null) return oauthFail(res, 400, "invalid_request", "the authorization request expired; start again from the app");
     if (body.data.account !== options.allowedWallet) return oauthFail(res, 403, "access_denied", "this wallet cannot sign in here");
-    for (const [id, pending] of challenges) if (pending.expires < now().getTime()) challenges.delete(id);
-    if (challenges.size >= MAX_PENDING_CHALLENGES) return oauthFail(res, 503, "temporarily_unavailable", "too many sign-ins in progress");
-    const nonce = randomBytes(16).toString("hex");
-    const expires = now().getTime() + CHALLENGE_TTL_MS;
-    const message = [
-      `${new URL(issuer).host} asks you to sign in with your Stellar account:`,
-      body.data.account,
-      "",
-      `Allow ${request.client_name} to search, quote and pay in AgentPey stores for you, from your spending account on Stellar testnet, within its limits.`,
-      "",
-      `Nonce: ${nonce}`,
-      `Expires: ${new Date(expires).toISOString()}`,
-    ].join("\n");
-    challenges.set(nonce, { account: body.data.account, requestHash: body.data.request, message, expires });
-    res.set("Cache-Control", "no-store").json({ message, nonce });
+    // Nothing is stored: the challenge is a signed token, so asking for many costs the server nothing.
+    const claims = {
+      account: body.data.account,
+      request_hash: sha256(body.data.request),
+      client_name: request.client_name,
+      nonce: randomBytes(16).toString("hex"),
+      expires: new Date(now().getTime() + (TOKEN_TTL_SECONDS.challenge ?? 0) * 1000).toISOString(),
+    };
+    const challenge = await signer.sign("challenge", claims);
+    res.set("Cache-Control", "no-store").json({ message: challengeMessage(issuerHost, claims), challenge });
   });
 
   router.post("/authorize/approve", async (req: Request, res: Response) => {
     const body = approveBodySchema.safeParse(req.body);
-    if (!body.success) return oauthFail(res, 400, "invalid_request", "request, account, nonce and signature are required");
-    // Consumed before anything else is looked at: a challenge answers once, right or wrong.
-    const pending = challenges.get(body.data.nonce);
-    challenges.delete(body.data.nonce);
+    if (!body.success) return oauthFail(res, 400, "invalid_request", "request, account, challenge and signature are required");
     const request = await readRequest(body.data.request);
-    if (request === null || pending === undefined || pending.expires < now().getTime() || pending.requestHash !== body.data.request || pending.account !== body.data.account) {
+    const challenge = challengeClaimsSchema.safeParse(await signer.verify("challenge", body.data.challenge));
+    if (request === null || !challenge.success || challenge.data.request_hash !== sha256(body.data.request) || challenge.data.account !== body.data.account) {
       return oauthFail(res, 400, "invalid_request", "the sign-in expired; start again");
     }
-    if (body.data.account !== options.allowedWallet || !verifyStellarMessage(body.data.account, pending.message, body.data.signature)) {
+    if (body.data.account !== options.allowedWallet || !verifyStellarMessage(body.data.account, challengeMessage(issuerHost, challenge.data), body.data.signature)) {
       log("oauth sign-in refused", { account: body.data.account });
       return oauthFail(res, 403, "access_denied", "the signature does not prove control of the allowed wallet");
     }
+    // Spent only once the signature is valid: a stranger cannot use up the owner's challenge.
+    if (!answeredChallenges.redeem(challenge.data.nonce, challenge.data.exp)) return oauthFail(res, 400, "invalid_request", "this sign-in was already used; start again");
     const code = await signer.sign(
       "code",
       { client_id: request.client_id, redirect_uri: request.redirect_uri, code_challenge: request.code_challenge, scope: request.scope },
@@ -293,9 +359,10 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
   });
 
   router.post("/authorize/deny", async (req: Request, res: Response) => {
-    const request = await readRequest(String((req.body as { request?: unknown } | undefined)?.request ?? ""));
+    const body = denyBodySchema.safeParse(req.body);
+    const request = body.success ? await readRequest(body.data.request) : null;
     if (request === null) return oauthFail(res, 400, "invalid_request", "the authorization request expired");
-    res.set("Cache-Control", "no-store").json({ redirect: errorRedirect(request.redirect_uri, "access_denied", "the person cancelled", request.state) });
+    res.set("Cache-Control", "no-store").json({ redirect: errorRedirect(request.redirect_uri, "access_denied", "the person cancelled", request.state, issuer) });
   });
 
   router.post("/token", async (req: Request, res: Response) => {
@@ -313,12 +380,14 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       const code = claims.data;
       if (code.client_id !== body.data.client_id || code.redirect_uri !== body.data.redirect_uri) return oauthFail(res, 400, "invalid_grant", "the code was issued to another client or redirect_uri");
       if ((await s256(body.data.code_verifier)) !== code.code_challenge) return oauthFail(res, 400, "invalid_grant", "code_verifier does not match the code_challenge");
-      if (!redeemed.redeem(code.jti, code.exp)) return oauthFail(res, 400, "invalid_grant", "the code was already used");
+      if (!redeemedCodes.redeem(code.jti, code.exp)) return oauthFail(res, 400, "invalid_grant", "the code was already used");
       subject = code.sub;
       scope = code.scope;
     } else {
       const claims = refreshClaimsSchema.safeParse(await signer.verify("refresh", body.data.refresh_token, { audience: options.resource }));
       if (!claims.success || claims.data.client_id !== body.data.client_id) return oauthFail(res, 400, "invalid_grant", "the refresh token is invalid or expired");
+      // One use each: the answer below carries its replacement (OAuth 2.1 §4.3.1).
+      if (!redeemedRefresh.redeem(claims.data.jti, claims.data.exp)) return oauthFail(res, 400, "invalid_grant", "the refresh token was already used");
       subject = claims.data.sub;
       scope = claims.data.scope;
     }
@@ -338,10 +407,11 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
   return { router, verifier, metadata };
 }
 
-function errorRedirect(redirectUri: string, error: string, description: string, state: string | undefined): string {
+function errorRedirect(redirectUri: string, error: string, description: string, state: string | undefined, issuer: string): string {
   const url = new URL(redirectUri);
   url.searchParams.set("error", error);
   url.searchParams.set("error_description", description);
   if (state !== undefined) url.searchParams.set("state", state);
+  url.searchParams.set("iss", issuer);
   return url.toString();
 }

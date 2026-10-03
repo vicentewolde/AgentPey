@@ -18,6 +18,8 @@ export interface LoginPageInput {
   readonly clientName: string;
   /** Where the person goes back to: shown, so they know which app asked. */
   readonly redirectHost: string;
+  /** Whether the app asking is a local one (a loopback redirect): any local process could be it. */
+  readonly loopback: boolean;
   /** The one wallet that can sign in, shortened for display. */
   readonly walletHint: string;
 }
@@ -50,6 +52,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
   .status { min-height: 24px; margin-top: 12px; }
   .status.ok { color: var(--ok); }
   .status.error { color: var(--err); }
+  .warn { color: var(--fg); border-left: 3px solid var(--err); padding-left: 10px; }
   code { word-break: break-all; }
 </style>
 <script src="${FREIGHTER_SCRIPT.src}" integrity="${FREIGHTER_SCRIPT.integrity}" crossorigin="anonymous"></script>
@@ -61,6 +64,8 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
     <p><strong>${escapeHtml(input.clientName)}</strong> <span data-t="asks">wants to search, quote and pay in AgentPey stores for you, from your spending account on Stellar testnet, within its limits.</span></p>
     <p><span data-t="returns">After you sign in you go back to</span> <strong>${escapeHtml(input.redirectHost)}</strong>.</p>
     <p><span data-t="only">Only this wallet can sign in:</span> <code>${escapeHtml(input.walletHint)}</code></p>
+    <p class="warn" data-t="yours">Continue only if you started this connection yourself, from your own Claude or ChatGPT. If someone sent you this link, close it.</p>
+    ${input.loopback ? '<p class="warn" data-t="local">The app asking runs on this computer. Any program here could claim to be it.</p>' : ""}
     <button id="sign" type="button" data-t="sign">Sign in with Freighter</button>
     <a id="deny" class="deny" href="#" data-t="deny">Cancel</a>
     <div id="status" class="status" role="status"></div>
@@ -70,7 +75,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
 const DATA = ${data};
 const TEXT = {
   en: { missing: "Freighter is not installed in this browser.", waiting: "Waiting for Freighter…", wrong: "That wallet cannot sign in here.", failed: "Sign-in failed. Try again.", done: "Signed in. Going back…" },
-  es: { title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", sign: "Iniciar sesión con Freighter", deny: "Cancelar", missing: "Freighter no está instalado en este navegador.", waiting: "Esperando a Freighter…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
+  es: { yours: "Continúa solo si tú iniciaste esta conexión, desde tu propio Claude o ChatGPT. Si alguien te mandó este enlace, ciérralo.", local: "La app que pide acceso corre en este computador. Cualquier programa aquí podría hacerse pasar por ella.", title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", sign: "Iniciar sesión con Freighter", deny: "Cancelar", missing: "Freighter no está instalado en este navegador.", waiting: "Esperando a Freighter…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
 };
 const lang = (navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en";
 const t = (key) => (TEXT[lang] && TEXT[lang][key]) || TEXT.en[key] || key;
@@ -120,11 +125,11 @@ document.getElementById("sign").addEventListener("click", async () => {
     const access = await freighterApi.requestAccess();
     if (access && access.error) throw new Error(access.error);
     const account = access.address || access;
-    const { message, nonce } = await post("/authorize/challenge", { request: DATA.request, account });
+    const { message, challenge } = await post("/authorize/challenge", { request: DATA.request, account });
     const signed = await freighterApi.signMessage(message, { address: account });
     if (signed && signed.error) throw new Error(signed.error);
     const signature = toBase64Signature(signed && signed.signedMessage !== undefined ? signed.signedMessage : signed);
-    const { redirect } = await post("/authorize/approve", { request: DATA.request, account, nonce, signature });
+    const { redirect } = await post("/authorize/approve", { request: DATA.request, account, challenge, signature });
     say("ok", "done");
     window.location.assign(redirect);
   } catch (error) {

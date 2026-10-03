@@ -27,17 +27,19 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((done) => server.close(done))));
 });
 
-async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string } = {}): Promise<Started> {
+async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string; issuer?: string; wallet?: Keypair } = {}): Promise<Started> {
   const server = createServer();
   servers.push(server);
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const resource = `${url}${options.resourcePath ?? "/mcp"}`;
-  const wallet = Keypair.random();
+  // `issuer` lets a second server share the first one's issuer, to test what only the resource or the wallet changes.
+  const issuer = options.issuer ?? url;
+  const resource = `${issuer}${options.resourcePath ?? "/mcp"}`;
+  const wallet = options.wallet ?? Keypair.random();
   const logs: string[] = [];
   const clock = { now: new Date() };
   const log = (message: string, fields?: Record<string, unknown>) => logs.push(JSON.stringify({ message, ...fields }));
-  const oauth = createOAuthServer({ publicUrl: url, resource, allowedWallet: wallet.publicKey(), secret: SECRET, now: () => clock.now, log, ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }) });
+  const oauth = createOAuthServer({ publicUrl: issuer, resource, allowedWallet: wallet.publicKey(), secret: SECRET, now: () => clock.now, log, ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }) });
   // Tools are never called here: only `tools/list`, which does not touch the shopper.
   const app = createMcpApp({ shopper: {} as unknown as Shopper, log, auth: { oauth, resource, allowInsecureIssuer: true } });
   server.on("request", app);
@@ -82,7 +84,7 @@ async function signIn(s: Started, signer: Keypair = s.wallet) {
   const page = await authorizePage(s, clientId, challenge);
   const request = requestOf(await page.text());
   const asked = await post(`${s.url}/authorize/challenge`, { request, account: s.wallet.publicKey() });
-  const approved = await post(`${s.url}/authorize/approve`, { request, account: s.wallet.publicKey(), nonce: asked.json["nonce"], signature: signStellarMessage(signer, asked.json["message"] as string) });
+  const approved = await post(`${s.url}/authorize/approve`, { request, account: s.wallet.publicKey(), challenge: asked.json["challenge"], signature: signStellarMessage(signer, asked.json["message"] as string) });
   return { clientId, verifier, approved };
 }
 
@@ -125,12 +127,45 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(await res.text()).toContain("search_products");
   });
 
-  it("refreshes, and the new token works", async () => {
+  it("refreshes once per refresh token, and the new token works", async () => {
     const s = await start();
     const { clientId, exchange } = await tokens(s);
-    const refreshed = await post(`${s.url}/token`, { grant_type: "refresh_token", refresh_token: exchange.json["refresh_token"] as string, client_id: clientId }, true);
+    const refresh = (token: string) => post(`${s.url}/token`, { grant_type: "refresh_token", refresh_token: token, client_id: clientId }, true);
+    const refreshed = await refresh(exchange.json["refresh_token"] as string);
     expect(refreshed.status).toBe(200);
     expect((await listTools(s, refreshed.json["access_token"] as string)).status).toBe(200);
+    // The old one is spent; its replacement works, once.
+    expect((await refresh(exchange.json["refresh_token"] as string)).json).toMatchObject({ error: "invalid_grant" });
+    expect((await refresh(refreshed.json["refresh_token"] as string)).status).toBe(200);
+  });
+
+  it("refuses a refresh, and the access token, once the allowed wallet changed", async () => {
+    const s = await start();
+    const { clientId, exchange } = await tokens(s);
+    const other = await start({ issuer: s.url, wallet: Keypair.random() });
+    const refused = await post(`${other.url}/token`, { grant_type: "refresh_token", refresh_token: exchange.json["refresh_token"] as string, client_id: clientId }, true);
+    expect(refused.json).toMatchObject({ error: "invalid_grant" });
+    expect((await listTools(other, exchange.json["access_token"] as string)).status).toBe(401);
+  });
+
+  it("never takes one kind of token for another", async () => {
+    const s = await start();
+    const { clientId, exchange, code } = await tokens(s);
+    const request = requestOf(await (await authorizePage(s, clientId, pkce().challenge)).text());
+    const challenge = (await post(`${s.url}/authorize/challenge`, { request, account: s.wallet.publicKey() })).json["challenge"] as string;
+    for (const notAccess of [exchange.json["refresh_token"] as string, code, clientId, request, challenge]) expect((await listTools(s, notAccess)).status).toBe(401);
+    for (const notRefresh of [exchange.json["access_token"] as string, code, clientId, challenge]) {
+      expect((await post(`${s.url}/token`, { grant_type: "refresh_token", refresh_token: notRefresh, client_id: clientId }, true)).json).toMatchObject({ error: "invalid_grant" });
+    }
+  });
+
+  it("lets anyone ask for challenges without locking the owner out", async () => {
+    const s = await start();
+    const clientId = await register(s);
+    const request = requestOf(await (await authorizePage(s, clientId, pkce().challenge)).text());
+    const asks = await Promise.all(Array.from({ length: 600 }, () => post(`${s.url}/authorize/challenge`, { request, account: s.wallet.publicKey() })));
+    expect(asks.every((ask) => ask.status === 200)).toBe(true);
+    expect((await signIn(s)).approved.status).toBe(200);
   });
 
   it("refuses another wallet, and a signature by another key for the allowed one", async () => {
@@ -148,7 +183,9 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     const clientId = await register(s);
     const request = requestOf(await (await authorizePage(s, clientId, pkce().challenge)).text());
     const asked = await post(`${s.url}/authorize/challenge`, { request, account: s.wallet.publicKey() });
-    const body = { request, account: s.wallet.publicKey(), nonce: asked.json["nonce"], signature: signStellarMessage(s.wallet, asked.json["message"] as string) };
+    const body = { request, account: s.wallet.publicKey(), challenge: asked.json["challenge"], signature: signStellarMessage(s.wallet, asked.json["message"] as string) };
+    // A wrong signature does not use the challenge up: a stranger cannot spend the owner's sign-in.
+    expect((await post(`${s.url}/authorize/approve`, { ...body, signature: signStellarMessage(Keypair.random(), asked.json["message"] as string) })).status).toBe(403);
     expect((await post(`${s.url}/authorize/approve`, body)).status).toBe(200);
     expect((await post(`${s.url}/authorize/approve`, body)).json).toMatchObject({ error: "invalid_request" });
   });
@@ -164,16 +201,15 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(wrong.json).toMatchObject({ error: "invalid_grant" });
   });
 
-  it("refuses an expired token and a token issued for another resource", async () => {
+  it("refuses, over HTTP, a token issued for another resource, an expired one and an altered one", async () => {
     const s = await start();
     const { exchange } = await tokens(s);
     const token = exchange.json["access_token"] as string;
-    // Same secret, another resource: a token minted for it must not open this one.
-    const elsewhere = await start({ resourcePath: "/other" });
-    const foreign = createOAuthServer({ publicUrl: s.url, resource: elsewhere.resource, allowedWallet: s.wallet.publicKey(), secret: SECRET });
-    expect(foreign.verifier).toBeDefined();
-    await expect(createOAuthServer({ publicUrl: s.url, resource: s.resource, allowedWallet: s.wallet.publicKey(), secret: SECRET }).verifier.verifyAccessToken(token)).resolves.toMatchObject({ scopes: ["shop"] });
-    await expect(foreign.verifier.verifyAccessToken(token)).rejects.toMatchObject({ code: "invalid_token" });
+    // Same secret, same issuer, same wallet, another resource: its /mcp must not open with this token.
+    const elsewhere = await start({ issuer: s.url, wallet: s.wallet, resourcePath: "/other" });
+    const res = await listTools(elsewhere, token);
+    expect(res.status).toBe(401);
+    expect(res.headers.get("www-authenticate")).toContain("invalid_token");
     s.clock.now = new Date(s.clock.now.getTime() + 2 * 60 * 60_000);
     expect((await listTools(s, token)).status).toBe(401);
     expect((await listTools(s, `${token}x`)).status).toBe(401);
@@ -196,28 +232,77 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     const clientId = await register(s);
     const res = await authorizePage(s, clientId, pkce().challenge, { resource: "https://elsewhere.example/mcp" });
     expect(res.status).toBe(302);
-    expect(new URL(res.headers.get("location")!).searchParams.get("error")).toBe("invalid_target");
+    const location = new URL(res.headers.get("location")!);
+    expect(location.searchParams.get("error")).toBe("invalid_target");
+    expect(location.searchParams.get("iss")).toBe(s.url);
+    const { clientId: client, verifier, approved } = await signIn(s);
+    const code = new URL(approved.json["redirect"] as string).searchParams.get("code")!;
+    const token = await post(`${s.url}/token`, { grant_type: "authorization_code", code, code_verifier: verifier, redirect_uri: CLAUDE, client_id: client, resource: "https://elsewhere.example/mcp" }, true);
+    expect(token.json).toMatchObject({ error: "invalid_target" });
   });
 
-  it("reads a client metadata document only from a host it already trusts", async () => {
+  it("sends the person back with access_denied when they cancel", async () => {
+    const s = await start();
+    const request = requestOf(await (await authorizePage(s, await register(s), pkce().challenge)).text());
+    const denied = await post(`${s.url}/authorize/deny`, { request });
+    const back = new URL(denied.json["redirect"] as string);
+    expect(back.origin + back.pathname).toBe(CLAUDE);
+    expect(Object.fromEntries(back.searchParams)).toMatchObject({ error: "access_denied", state: "st-1", iss: s.url });
+    expect((await post(`${s.url}/authorize/deny`, { request: "nope" })).status).toBe(400);
+  });
+
+  it("answers a malformed body with a JSON error, never a page with a stack", async () => {
+    const s = await start();
+    for (const path of ["/token", "/register", "/authorize/challenge"]) {
+      const res = await fetch(`${s.url}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{bad" });
+      expect(res.status).toBe(400);
+      const text = await res.text();
+      expect(text).not.toMatch(/<pre>|SyntaxError|at JSON\.parse/);
+      expect(JSON.parse(text)).toMatchObject({ error: "invalid_request" });
+    }
+  });
+
+  it("gives two identical registrations two client ids, and advertises iss in its metadata", async () => {
+    const s = await start();
+    const [a, b] = await Promise.all([register(s), register(s)]);
+    expect(a).not.toBe(b);
+    const as = (await (await fetch(`${s.url}/.well-known/oauth-authorization-server`)).json()) as Record<string, unknown>;
+    expect(as["authorization_response_iss_parameter_supported"]).toBe(true);
+  });
+
+  it("reads a client metadata document only from a host it already trusts, once, and not when it is huge", async () => {
     const fetched: string[] = [];
     const docs: typeof fetch = async (input) => {
       fetched.push(String(input));
+      if (String(input).endsWith("huge.json")) return new Response(JSON.stringify({ client_id: String(input), redirect_uris: [CLAUDE], pad: "x".repeat(100_000) }));
       return Response.json({ client_id: String(input), client_name: "Claude", redirect_uris: [CLAUDE] });
     };
     const s = await start({ fetchImpl: docs });
-    const trusted = await authorizePage(s, "https://claude.ai/oauth/mcp-client.json", pkce().challenge);
-    expect(trusted.status).toBe(200);
-    const untrusted = await authorizePage(s, "https://attacker.example/client.json", pkce().challenge);
-    expect(untrusted.status).toBe(400);
-    expect(fetched).toEqual(["https://claude.ai/oauth/mcp-client.json"]);
+    expect((await authorizePage(s, "https://claude.ai/oauth/mcp-client.json", pkce().challenge)).status).toBe(200);
+    expect((await authorizePage(s, "https://claude.ai/oauth/mcp-client.json", pkce().challenge)).status).toBe(200);
+    expect((await authorizePage(s, "https://attacker.example/client.json", pkce().challenge)).status).toBe(400);
+    expect((await authorizePage(s, "https://claude.ai/oauth/huge.json", pkce().challenge)).status).toBe(400);
+    expect(fetched).toEqual(["https://claude.ai/oauth/mcp-client.json", "https://claude.ai/oauth/huge.json"]);
+  });
+
+  it("matches Claude Code's loopback redirect on any port, and warns that a local app is asking", async () => {
+    const cimd = "https://claude.ai/oauth/claude-code-client-metadata";
+    const docs: typeof fetch = async () => Response.json({ client_id: cimd, client_name: "Claude Code", redirect_uris: ["http://localhost/callback", "http://127.0.0.1/callback"] });
+    const s = await start({ fetchImpl: docs });
+    const page = await authorizePage(s, cimd, pkce().challenge, { redirect_uri: "http://localhost:3118/callback" });
+    expect(page.status).toBe(200);
+    expect(await page.text()).toContain('data-t="local"');
+    const otherPath = await authorizePage(s, cimd, pkce().challenge, { redirect_uri: "http://localhost:3118/elsewhere" });
+    expect(otherPath.status).toBe(400);
   });
 
   it("serves the sign-in page with a strict policy and Freighter pinned by integrity", async () => {
     const s = await start();
     const page = await authorizePage(s, await register(s), pkce().challenge);
-    expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'nonce-[^']+' https:\/\/unpkg\.com/);
-    expect(await page.text()).toMatch(/integrity="sha384-[A-Za-z0-9+/=]+" crossorigin="anonymous"/);
+    expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'nonce-[^']+' https:\/\/unpkg\.com\/@stellar\/freighter-api@6\.0\.1\/build\/index\.min\.js;/);
+    const html = await page.text();
+    expect(html).toMatch(/integrity="sha384-[A-Za-z0-9+/=]+" crossorigin="anonymous"/);
+    expect(html).toContain("Continue only if you started this connection yourself");
   });
 
   it("never writes a token or the secret to its logs", async () => {
