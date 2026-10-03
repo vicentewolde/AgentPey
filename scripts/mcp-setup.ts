@@ -7,7 +7,9 @@
  * 1. The MCP agent's own key (`MCP_AGENT_SECRET_KEY`), created once and given
  *    testnet XLM by friendbot. It signs intents and claims, and owns the rail.
  * 2. `MCP_ALLOWED_WALLET`: the principal, the one wallet that can sign in to
- *    the MCP server (`R-7`) and withdraw from its rail.
+ *    the MCP server (`R-7`) and withdraw from its rail. Written only after
+ *    the recorded rail is checked to have this principal; the server checks
+ *    it again on chain at startup.
  * 3. `MCP_OAUTH_SECRET`, created once. Changing it signs everyone out.
  * 4. The rail: deployed apart, on purpose, with
  *    `pnpm run deploy:policy-rail -- --profile mcp --principal <G...>`, a new
@@ -98,9 +100,7 @@ async function main(): Promise<void> {
     row("XLM", "fondeada con friendbot");
   }
 
-  // 2 and 3. Who signs in, and the OAuth secret.
-  set("MCP_ALLOWED_WALLET", principal);
-  row("wallet", `${principal} (la única que inicia sesión y retira del rail)`);
+  // 3. The OAuth secret. The wallet that signs in (2) is written only once the rail agrees, below.
   if ((env.get("MCP_OAUTH_SECRET") ?? "") === "") {
     set("MCP_OAUTH_SECRET", randomBytes(48).toString("base64url"));
     row("OAuth", "secreto nuevo");
@@ -123,6 +123,13 @@ async function main(): Promise<void> {
     set("MCP_POLICY_RAIL_CONTRACT_ID", rail.contractId);
     row("rail", `${rail.contractId} (${rail.perTx} por compra, ${rail.perDay} por día)`);
   }
+  // 2. Who signs in: the rail's principal, and nobody else. Written after the
+  // check above, so a mistyped --principal never reaches .env.local, and from
+  // there Render. With no rail yet it is written too: the server refuses to
+  // start unless the rail on chain names this wallet as its principal.
+  set("MCP_ALLOWED_WALLET", principal);
+  row("wallet", `${principal} (la única que inicia sesión y retira del rail)`);
+  await writeEnvFile(ENV_PATH, contents);
 
   // 5. Credential and Mandate.
   if (reissue || (env.get("MCP_CREDENTIAL_JWS") ?? "") === "" || (env.get("MCP_MANDATE_JWS") ?? "") === "") {

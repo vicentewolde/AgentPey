@@ -242,7 +242,7 @@ describe("AgentPey's MCP server (T128)", () => {
   });
 
   it("is not started without its secrets, and does not take the pilot down", () => {
-    expect(missingEnv(MCP_TARGET, {})).toHaveLength(7);
+    expect(missingEnv(MCP_TARGET, {})).toHaveLength(8);
     expect(missingEnv(MCP_TARGET, container)).toEqual([]);
     expect(MCP_TARGET.critical).toBe(false);
   });

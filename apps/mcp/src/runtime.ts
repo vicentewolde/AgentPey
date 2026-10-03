@@ -15,10 +15,9 @@ import {
   createX402Catalog,
   expandPlatformVenues,
   verifyIntent,
-  type CreatePurchaseIntentResult,
 } from "@agentpey/agent";
 import { verifyMandate } from "@agentpey/mandate";
-import { Keypair, Networks } from "@stellar/stellar-sdk";
+import { Keypair, Networks, StrKey, contract } from "@stellar/stellar-sdk";
 import { ReceiptRegistryClient, verifyReceipt } from "@vitrinee/anchor";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
@@ -35,6 +34,42 @@ const TESTNET = {
 } as const;
 
 const deploymentSchema = z.object({ receiptRegistry: z.object({ contractId: z.string() }) });
+const intentResultSchema = z.looseObject({ jws: z.string().min(1) });
+
+interface RailGetters {
+  owner(): Promise<contract.AssembledTransaction<unknown>>;
+  principal(): Promise<contract.AssembledTransaction<unknown>>;
+}
+
+/** A contract call's result, unwrapping a Soroban `Result` when the getter returns one. */
+function unwrap(value: unknown): unknown {
+  return typeof (value as { unwrap?: unknown } | null)?.unwrap === "function" ? (value as { unwrap: () => unknown }).unwrap() : value;
+}
+
+/**
+ * Refuses to start unless the rail is owned by this agent's key and its
+ * principal is the wallet allowed to sign in (`R-7`): the person who can use
+ * the server must be the one whose money it spends.
+ */
+export function assertRailMatches(onChain: { owner: string; principal: string }, expected: { agent: string; wallet: string }): void {
+  if (onChain.owner !== expected.agent) {
+    throw new AgentPassError("ConfigError", "the MCP rail is not owned by MCP_AGENT_SECRET_KEY", { details: { owner: onChain.owner, agent: expected.agent } });
+  }
+  if (onChain.principal !== expected.wallet) {
+    throw new AgentPassError("ConfigError", "MCP_ALLOWED_WALLET is not the principal of the MCP rail", { details: { principal: onChain.principal, wallet: expected.wallet } });
+  }
+}
+
+/** The rail's owner key and principal, read from the network (simulation, no fee). */
+async function readRail(contractId: string): Promise<{ owner: string; principal: string }> {
+  const client = await contract.Client.from<RailGetters>({ contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase });
+  const owner = unwrap((await client.owner()).result);
+  const principal = unwrap((await client.principal()).result);
+  if (!(owner instanceof Uint8Array) || typeof principal !== "string") {
+    throw new AgentPassError("ConfigError", "the MCP rail did not answer owner and principal as a policy_rail does", { details: { contractId } });
+  }
+  return { owner: StrKey.encodeEd25519PublicKey(Buffer.from(owner)), principal };
+}
 
 /**
  * The shopper with its real dependencies on testnet, checked: the credential
@@ -56,7 +91,14 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
   const mandateVerifier = createOnChainMandateVerifier(agentpass);
   await mandateVerifier.verify(env.MCP_MANDATE_JWS);
 
-  const deployment = deploymentSchema.parse(JSON.parse(readFileSync(new URL("../../../deployments/vitrinee-testnet.json", import.meta.url), "utf8")));
+  assertRailMatches(await readRail(env.MCP_POLICY_RAIL_CONTRACT_ID), { agent: agentKey.publicKey(), wallet: env.MCP_ALLOWED_WALLET });
+
+  let deployment: z.infer<typeof deploymentSchema>;
+  try {
+    deployment = deploymentSchema.parse(JSON.parse(readFileSync(new URL("../../../deployments/vitrinee-testnet.json", import.meta.url), "utf8")));
+  } catch (error) {
+    throw new AgentPassError("ConfigError", "deployments/vitrinee-testnet.json is missing or does not name the receipt registry", { cause: error, details: {} });
+  }
   const receiptRegistry = new ReceiptRegistryClient({ contractId: deployment.receiptRegistry.contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase });
 
   const ledger = createInMemorySpendLedger();
@@ -75,8 +117,9 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
         ledger,
         now: new Date(),
       });
-      const signed = (await agent.tools.invoke("create_purchase_intent", { product_id: productId, quantity })) as CreatePurchaseIntentResult;
-      return (await verifyIntent(signed.jws)).intent;
+      const signed = intentResultSchema.safeParse(await agent.tools.invoke("create_purchase_intent", { product_id: productId, quantity }));
+      if (!signed.success) throw new AgentPassError("InvalidIntent", "create_purchase_intent did not return a signed intent", { details: {} });
+      return (await verifyIntent(signed.data.jws)).intent;
     },
     scope: credential.credential.credentialSubject.scope,
     mandate: mandate.mandate,

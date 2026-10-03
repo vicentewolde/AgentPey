@@ -216,7 +216,7 @@ export const MCP_TARGET: AppTarget = {
     // Public: the AgentPass registry the credential and the Mandate are anchored in.
     "AGENT_REGISTRY_CONTRACT_ID",
   ],
-  requiredEnv: ["MCP_PUBLIC_URL", "MCP_AGENT_SECRET_KEY", "MCP_POLICY_RAIL_CONTRACT_ID", "MCP_CREDENTIAL_JWS", "MCP_MANDATE_JWS", "MCP_ALLOWED_WALLET", "MCP_OAUTH_SECRET"],
+  requiredEnv: ["MCP_PUBLIC_URL", "MCP_AGENT_SECRET_KEY", "MCP_POLICY_RAIL_CONTRACT_ID", "MCP_CREDENTIAL_JWS", "MCP_MANDATE_JWS", "MCP_ALLOWED_WALLET", "MCP_OAUTH_SECRET", "AGENT_REGISTRY_CONTRACT_ID"],
   critical: false,
 };
 
