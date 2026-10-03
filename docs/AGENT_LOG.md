@@ -7741,6 +7741,17 @@ y llamó `pay` él mismo tras "confirmo el pago": `ord_mut0b5rm04b66bd5de`, Shop
 `vitrinee:verify` en verde y en rojo con `--tamper`. Capturas renombradas a `evidencia/T129/claude-*.png` y
 `chatgpt-*.png`. Sin cambios de código.
 
-Pendiente: el usuario decide si las capturas (muestran nombre y dirección de despacho; repo público) se commitean
-tal cual, recortadas o no; `/revisar`; push y merge con OK. `AGENTS.md`: sin cambios. Exponential: T129 a
-`IN_PROGRESS`.
+Capturas: el usuario decidió publicarlas tal cual (muestran nombre y dirección de despacho; repo público), en
+cffc9d4. `AGENTS.md`: sin cambios. Exponential: T129 a `IN_PROGRESS`.
+
+## 2026-10-03 (15) — cc/t129-conectar-claude-chatgpt (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T129 sin bloqueantes; corregidos los diez hallazgos a pedido del usuario. Evidencia con salidas
+literales (también T128 §7.2, que tenía el mismo defecto); captura nueva `claude-4.png` de Claude leyendo la orden
+con `get_order` (completa `R-11`); lectura del rail en la red (`spent_on` 31368422, saldo 68631578); README con el
+Inspector fijado en 2.9.0, `<store>`, `jq` y raíz del repo, y lo probado separado de lo que sale de la documentación;
+comentario viejo de `tools.ts` sobre `quote`; ESTADO y SYNC sin el "sin push" de T128.
+
+Pendiente: push y merge con OK. Después T130 (la tienda la consigue el usuario) y T131. `AGENTS.md`: sin cambios.

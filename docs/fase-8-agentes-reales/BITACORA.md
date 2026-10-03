@@ -196,3 +196,7 @@ las dos compras el rail gastó 3,14 de los 5,00 del día.
 los metadatos y qué valor manda en `resource`); la conexión funcionó a la
 primera y no se tocó el servidor de autorización.
 
+**La revisión.** `/revisar` sin bloqueantes. Lo más importante que encontró:
+la evidencia mostraba salidas compactadas a mano como si fueran crudas (ya son
+literales, también en T128), y faltaba ver a Claude leyendo la orden, la
+tercera parte de `R-11` (ya hay captura). Se corrigieron los diez hallazgos.

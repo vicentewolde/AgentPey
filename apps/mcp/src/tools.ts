@@ -2,9 +2,10 @@
  * The six MCP tools (T128), each a thin face over `Shopper`. Inputs and
  * outputs are zod schemas the SDK publishes to the client and checks.
  *
- * Only `pay` and `open_claim` are not read-only, so Claude and ChatGPT ask
- * the person before calling them. `pay` asks for `confirm: true` on top of
- * that: a model that skips the question still cannot pay.
+ * `quote`, `pay` and `open_claim` are not read-only (R-10), so Claude and
+ * ChatGPT can ask the person before calling them. `pay` asks for
+ * `confirm: true` on top of that: a model that skips the question still
+ * cannot pay.
  *
  * A failure comes back as a tool error with its typed code and its message,
  * never its details or a stack: an error's details can carry what a store

@@ -18,7 +18,9 @@ other wallet is refused.
 
 ## Connect Claude
 
-On Free, Pro and Max you add it yourself; on claude.ai and the desktop app.
+Tested on claude.ai with an individual account on 2026-10-03. Per Anthropic's
+docs, the same steps apply on Free, Pro and Max and in the desktop app; the
+Team and Enterprise path below comes from those docs too, untested here.
 
 1. Open **Customize → Connectors**, click **+ Add**, then **Add custom
    connector**.
@@ -41,7 +43,8 @@ asked (`R-11`). Pay the quote yourself, below.
 
 ## Connect ChatGPT
 
-Needs ChatGPT Plus or higher, on the web, with developer mode.
+Tested with ChatGPT Plus on the web on 2026-10-03. Per OpenAI's docs,
+developer mode is on Plus, Pro, Business, Enterprise and Education.
 
 1. Open **Settings → Security and login** and turn on **Developer mode**.
 2. Go to [ChatGPT Plugins](https://chatgpt.com/plugins), click **+ Add**,
@@ -64,7 +67,7 @@ the official MCP Inspector, signed in with the same wallet. Connect first:
 the quote lasts ten minutes and lives only in the server's memory.
 
 ```bash
-npx @modelcontextprotocol/inspector
+npx @modelcontextprotocol/inspector@2.9.0
 ```
 
 1. In the page it opens: Transport Type **Streamable HTTP**, URL
@@ -76,11 +79,13 @@ npx @modelcontextprotocol/inspector
 4. Tell the chat you paid and give it the order id; it reads the order with
    `get_order` and checks the receipt.
 
-Check the receipt yourself, without trusting AgentPey or the store: save
-`receipt.jws` from the order and run
+Check the receipt yourself, without trusting AgentPey or the store. From the
+repo root (`pnpm run` scripts resolve a relative path from there), with `jq`
+installed, save the receipt from the order and verify it. `<store>` is the
+store's host, for example `agentcommerce.vitrinee.agentpey.com`:
 
 ```bash
-curl -s https://agentcommerce.vitrinee.agentpey.com/ucp/v1/orders/<order_id> | jq -r .receipt.jws > receipt.jws
+curl -s https://<store>/ucp/v1/orders/<order_id> | jq -r .receipt.jws > receipt.jws
 ```
 
 ```bash
