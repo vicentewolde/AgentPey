@@ -7653,3 +7653,14 @@ Pendiente: `/revisar` y merge del PR 1 con OK. PR 2: OAuth con login de wallet, 
 Mandato, rail `mcp`), host `mcp.agentpey.com` en el gateway y Render. `AGENTS.md`: sin cambios (nada delegable).
 Exponential: T128 a `IN_PROGRESS`.
 
+## 2026-10-03 (8) — cc/t128-servidor-mcp (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` del PR 1 de T128 sin bloqueantes; corregidos los ocho importantes a pedido del usuario. `pay`:
+confirmación ausente tipada, directorio leído antes de tomar la cotización, gasto liberado si nada salió.
+`get_order` y `open_claim` atan el recibo a su orden y a la tienda del directorio. Cliente UCP movido de
+`@vitrinee/core` a `@vitrinee/anchor`. Spec al día y `R-10` aprobada. Sugerencias en deuda en ESTADO.
+
+Pendiente: push y merge del PR 1 con OK; después el PR 2. `AGENTS.md`: sin cambios.
+

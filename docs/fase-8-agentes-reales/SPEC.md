@@ -82,8 +82,8 @@ Lo que abre `P-16`, todo en testnet:
 | App nueva `apps/mcp` (`@agentpey/mcp`) | Servidor MCP por Streamable HTTP, sin estado, con el SDK oficial v2 (`@modelcontextprotocol/server` y `@modelcontextprotocol/express`). Es el primer código MCP del repo |
 | Host | `mcp.agentpey.com`, como un proceso hijo más de `apps/gateway` (`hosts.ts`), en el mismo servicio de Render. Precedente: Vitrinee en T102. Pide un dominio nuevo en Render y en el DNS: lo hace el usuario |
 | Pagador | Un `policy_rail` **propio del MCP**, con topes bajos, fondeado por el usuario. El servidor guarda la llave dueña (`R-1`). La red aplica los topes en `__check_auth`, y `policyRail.authorise` sigue cortando antes |
-| Mandato | El agente del MCP necesita su credencial AgentPass y un Mandato firmado por el usuario, como cualquier agente. `executeUcpPayment` no paga sin eso |
-| Autenticación | OAuth 2.1 desde el inicio (`R-2`), con servidor de autorización propio e inicio de sesión con la wallet (`R-7`). El servidor MCP es el servidor de recursos: publica sus metadatos de recurso protegido (RFC 9728), responde 401 con `WWW-Authenticate` y valida el token y su audiencia, con los ayudantes del SDK (`requireBearerAuth`, `mcpAuthMetadataRouter`). El servidor de autorización tiene que aceptar PKCE S256, registro por CIMD y por DCR, y las URL de retorno de Claude (`https://claude.ai/api/mcp/auth_callback`) y de ChatGPT (`https://chatgpt.com/connector_platform_oauth_redirect`). Cuál se usa (un proveedor de identidad externo, que es lo que recomienda el SDK, o uno mínimo propio) se propone en el plan de T128, antes de escribir código |
+| Mandato | El agente del MCP necesita su credencial AgentPass y un Mandato, como cualquier agente: los emite y ancla `mcp:setup` con la llave del emisor, como `ucp:buy` en T122 (`R-8`). `payUcpQuote` no paga sin eso |
+| Autenticación | OAuth 2.1 desde el inicio (`R-2`), con servidor de autorización propio e inicio de sesión con la wallet (`R-7`). El servidor MCP es el servidor de recursos: publica sus metadatos de recurso protegido (RFC 9728), responde 401 con `WWW-Authenticate` y valida el token y su audiencia, con los ayudantes del SDK (`requireBearerAuth`, `mcpAuthMetadataRouter`). El servidor de autorización tiene que aceptar PKCE S256, registro por CIMD y por DCR, y las URL de retorno de Claude (`https://claude.ai/api/mcp/auth_callback`) y de ChatGPT (`https://chatgpt.com/connector_platform_oauth_redirect`). Es propio y mínimo, dentro de `apps/mcp`, y se inicia sesión firmando con la wallet principal del rail (`R-7`) |
 | Secretos | En el entorno de Render y en `.env.local`, nunca en el repo ni en logs. Variables nuevas en `.env.example`, sin valor |
 
 Herramientas. Las de lectura llevan `readOnlyHint`; `quote`, `pay` y
@@ -94,8 +94,8 @@ la persona antes de llamarlas. `pay` es la única destructiva.
 |---|---|---|
 | `search_products` | Busca en las tiendas de Vitrinee por su catálogo UCP | Directorio `GET /api/comercios` (`expandPlatformVenues`); el cliente UCP de `scripts/vitrinee/lib/ucp-client.ts` pasó a `@vitrinee/core` (`searchUcpStore`) |
 | `get_product` | Detalle de un producto | `POST /ucp/v1/catalog/product` (`getUcpProduct`, `@vitrinee/core`) |
-| `quote` | Abre la sesión de checkout y devuelve total, tienda, destinatario y vencimiento. No firma nada | La primera mitad de `executeUcpPayment` (`apps/agent/src/payment/ucp.ts:185`) |
-| `pay` | Paga una cotización vigente, con `confirm: true` | La segunda mitad: `policyRail.authorise`, firma y `complete` |
+| `quote` | Abre la sesión de checkout y devuelve total, tienda, destinatario y vencimiento. El agente firma la intención de compra, pero no se paga nada (`R-10`) | `quoteUcpCheckout` (`apps/agent/src/payment/ucp.ts`) y `create_purchase_intent` |
+| `pay` | Paga una cotización vigente, con `confirm: true`, una sola vez | `payUcpQuote` con relectura de la tienda: `policyRail.authorise`, firma y `complete`; libera el gasto reservado si nada salió |
 | `get_order` | La orden, con su recibo y sus tres checks | `GET /ucp/v1/orders/{id}`; `verifyReceipt` (`packages/vitrinee-anchor/src/verify.ts:32`) |
 | `open_claim` | Firma un reclamo sobre un recibo y lo deja listo para el árbitro | `signClaim` (`packages/resolve/src/claim.ts:65`) |
 
@@ -153,9 +153,9 @@ más rápido que lo estimado.
 
 #### T128 · Servidor MCP de AgentPey
 - **Prioridad:** imprescindible · **Estimación:** 22 h, en dos PR: primero las herramientas y el pago, probados en local; después OAuth y el deploy (es una app nueva, un cambio en el flujo de pago, autenticación y un deploy; nada de eso sirve por separado) · **Delegable a Codex:** no (`P-10`: llave, firma, fondos, autenticación)
-- **Depende de:** spec aprobado; del usuario: fondear el rail, firmar el Mandato del agente del MCP, y el dominio en Render y DNS
+- **Depende de:** spec aprobado; del usuario: fondear el rail del MCP (su wallet es la principal, `R-8`), y el dominio en Render y DNS
 - **Descripción:** lo de la sección 4.2.
-- **Archivos principales:** `apps/mcp/` (nuevo), `apps/agent/src/payment/ucp.ts`, `apps/gateway/src/hosts.ts`, `render.yaml`, `.env.example`, `scripts/deploy-policy-rail.ts` (se usa, no se cambia)
+- **Archivos principales:** `apps/mcp/` (nuevo), `apps/agent/src/payment/ucp.ts`, `apps/gateway/src/hosts.ts`, `render.yaml`, `.env.example`, `scripts/deploy-policy-rail.ts` (gana un perfil `mcp`, `R-9`; los otros dos no cambian)
 - **Hecho cuando:**
   - [x] las seis herramientas responden por Streamable HTTP y sus entradas y salidas pasan por zod (tests sin red, con la tienda de prueba; PR 1, [evidencia](evidencia/T128.md) §1)
   - [x] `pay` rechaza, con error tipado: una cotización vencida o desconocida, la falta de `confirm`, y una cotización cuyo destinatario, activo o monto ya no coinciden con el perfil de la tienda (PR 1)
@@ -370,7 +370,7 @@ renegocia el 10-oct.**
 |---|---|
 | Diecinueve tareas y unas 135 h estimadas en siete días | El orden por bloques y la línea de corte. El Bloque A solo son unas 41 h |
 | OAuth desde el inicio (`R-2`) mueve la primera compra desde Claude del 4 al 5 de octubre | T128 en dos PR: el pago se prueba en local el 4, sin esperar a OAuth. Si OAuth no está el 6-oct en la noche, parar y mostrar |
-| El Bloque A depende del usuario: dominio y DNS, fondear el rail, firmar el Mandato, conseguir la tienda, conectar sus cuentas | Lista de pendientes del usuario en `docs/ESTADO.md` desde el primer día; T128 se prueba primero contra `agentcommerce` |
+| El Bloque A depende del usuario: dominio y DNS, fondear el rail, conseguir la tienda, conectar sus cuentas | Lista de pendientes del usuario en `docs/ESTADO.md` desde el primer día; T128 se prueba primero contra `agentcommerce` |
 | Un servidor en internet que guarda una llave que paga | Rail propio con topes bajos aplicados por la red, solo testnet, OAuth 2.1 con validación de audiencia (`R-2`), y `pay` exige cotización vigente y confirmación |
 | Un texto malicioso en el catálogo de una tienda intenta que el agente compre otra cosa | El modelo no elige destinatario ni monto: salen de la cotización, que `pay` vuelve a comprobar contra el perfil. El tope de la red acota el daño |
 | El modo de conformidad es un medio de pago que no cobra | Solo en la tienda de prueba local; el arranque de producción lo rechaza; `/revisar` lo trata como punto de autorización |
@@ -399,6 +399,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T132: con el plan aprobado por el usuario, el verificador no comprueba la unicidad "contra los recibos que conoce" (`VT-40`); se agrega la coherencia del precio por ítem (`VT-39`). Criterios marcados; falta `/revisar` |
 | 2026-10-03 | T132 cerrada: `/revisar` sin bloqueantes, siete hallazgos corregidos (`VT-41`), [PR #44](https://github.com/vicentewolde/AgentPey/pull/44) |
 | 2026-10-03 | T128, PR 1: respuestas del usuario a la pregunta 6 y al plan (`R-7` a `R-9`); `quote` no es de solo lectura (`R-10`); `resolve:open -- --claim`; el cliente UCP pasa a `@vitrinee/core`. Cinco criterios marcados, los otros tres van en el PR 2 |
+| 2026-10-03 | T128, PR 1, `/revisar`: sin bloqueantes; corregidos los ocho importantes a pedido del usuario (confirmación ausente tipada, gasto liberado, directorio leído antes de tomar la cotización, recibo atado a su orden y su tienda, tests de cambios coherentes de perfil y checkout, cliente UCP en `@vitrinee/anchor`, spec al día). `R-10` aprobada por el usuario |
 
 ## 11. Fuentes externas
 

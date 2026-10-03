@@ -176,11 +176,11 @@ cambia": no alcanzaba, porque hoy el dueño del rail siempre es
 ---
 
 ### R-10 · `quote` no se declara de solo lectura · `Vigente`
-**Fecha:** 2026-10-03 · **Tarea:** T128 · Propuesta de Claude Code, se informa al usuario con el PR 1
+**Fecha:** 2026-10-03 · **Tarea:** T128 · Propuesta de Claude Code, **aprobada por el usuario** tras `/revisar` del PR 1
 
 El spec decía que solo `pay` y `open_claim` piden confirmación. `quote` no mueve
-plata, pero abre una sesión de checkout en la tienda y firma una intención de
-compra: declararla de solo lectura sería falso, y los clientes la ejecutarían
+plata, pero abre una sesión de checkout en la tienda y el agente firma una
+intención de compra: declararla de solo lectura sería falso, y los clientes la ejecutarían
 sin preguntar. Lleva `readOnlyHint: false` y `destructiveHint: false`; `pay` es
 la única destructiva. En la práctica Claude puede pedir permiso también antes de
 cotizar.
