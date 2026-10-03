@@ -1,0 +1,30 @@
+{
+  "name": "@agentpey/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agentpass/core": "workspace:*",
+    "@agentpass/sdk": "workspace:*",
+    "@agentpey/agent": "workspace:*",
+    "@agentpey/mandate": "workspace:*",
+    "@agentpey/resolve": "workspace:*",
+    "@modelcontextprotocol/express": "2.0.1",
+    "@modelcontextprotocol/server": "2.2.0",
+    "@stellar/stellar-sdk": "17.0.1",
+    "@vitrinee/anchor": "workspace:*",
+    "@vitrinee/core": "workspace:*",
+    "express": "^5.1.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@vitrinee/adapters": "workspace:*",
+    "@vitrinee/gateway": "workspace:*"
+  }
+}

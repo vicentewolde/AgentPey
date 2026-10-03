@@ -20,6 +20,7 @@
     { "path": "./apps/signaldesk" },
     { "path": "./apps/realops" },
     { "path": "./apps/gateway" },
+    { "path": "./apps/mcp" },
     { "path": "./packages/vitrinee-core" },
     { "path": "./packages/vitrinee-adapters" },
     { "path": "./packages/vitrinee-anchor" },

@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/sdk" },
+    { "path": "../../packages/mandate" },
+    { "path": "../../packages/resolve" },
+    { "path": "../../packages/vitrinee-core" },
+    { "path": "../../packages/vitrinee-anchor" },
+    { "path": "../../packages/vitrinee-adapters" },
+    { "path": "../../packages/vitrinee-gateway" },
+    { "path": "../agent" }
+  ]
+}
