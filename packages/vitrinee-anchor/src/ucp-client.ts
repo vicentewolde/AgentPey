@@ -4,27 +4,27 @@
  * only what the storefront publishes, so it works against any UCP business
  * that declares the Stellar x402 handler, not just Vitrinee. Moved here from
  * `scripts/vitrinee/lib` in T128, so AgentPey's MCP server reads stores the
- * same way the `vitrinee:ucp:list` client does.
+ * same way the `vitrinee:ucp:list` client does. It lives in `@vitrinee/anchor`,
+ * the package that already talks to the network, because `@vitrinee/core`
+ * does no I/O.
  */
-import { z } from "zod";
-
-import { VitrineeError } from "./errors.js";
 import {
   STELLAR_X402_HANDLER,
   UCP_CATALOG_SEARCH,
   UCP_PROFILE_PATH,
   UCP_SHOPPING_SERVICE,
+  VitrineeError,
   originMatchesNamespace,
   stellarX402BusinessConfigSchema,
   ucpBusinessProfileSchema,
+  ucpProductSchema,
   ucpSearchResponseSchema,
   type StellarX402BusinessConfig,
   type UcpBusinessProfile,
   type UcpProduct,
-  ucpProductSchema,
-} from "./ucp.js";
+} from "@vitrinee/core";
+import { z } from "zod";
 
-/** Identifies this client to the business. UCP wants a platform profile URL here; this client has none yet (T122). */
 /** The platform profile a client names in `UCP-Agent` unless told otherwise: the test client's. */
 const DEFAULT_UCP_AGENT_PROFILE = "https://agentpey.com/ucp/platform/test-client.json";
 const MAX_PAGES = 50;

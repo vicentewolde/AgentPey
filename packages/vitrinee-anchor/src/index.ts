@@ -11,3 +11,13 @@ export {
   type DisputeReader,
   type DisputeRecord,
 } from "./agent-resolve.js";
+export {
+  assertNamespaceBinding,
+  getUcpProduct,
+  readUcpStoreProfile,
+  readUcpStorefront,
+  searchUcpStore,
+  type UcpClientOptions,
+  type UcpStoreProfile,
+  type UcpStorefront,
+} from "./ucp-client.js";
