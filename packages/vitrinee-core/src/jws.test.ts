@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { stellarDid } from "./did.js";
 import { USDC_TESTNET } from "./manifest.js";
-import { checkReceiptSignature, receiptHash, signReceipt, type ReceiptClaims } from "./receipt.js";
+import { VitrineeError } from "./errors.js";
+import { checkReceiptSignature, receiptHash, receiptIncoherence, signReceipt, type ReceiptClaims } from "./receipt.js";
 import { decodeJws, signJws, verifyJws } from "./jws.js";
 
 const signer = Keypair.random();
@@ -99,5 +100,41 @@ describe("receipts", () => {
 
   it("refuses signing claims that do not validate", () => {
     expect(() => signReceipt(claims({ settlementTxHash: "nope" }), signer.secret())).toThrow();
+  });
+});
+
+describe("receipt coherence (T132)", () => {
+  const item = claims().items[0]!;
+  const incoherent: Array<[string, Partial<ReceiptClaims>, RegExp]> = [
+    ["the two totals disagree", { amountUSDC: "0.9463157" }, /amountUSDC 0\.9463157 is not amountUSDCAtomic 94631579/],
+    ["the decimal total has more precision than USDC", { amountUSDC: "9.46315790001" }, /amountUSDC/],
+    ["the asset is not the trusted USDC", { asset: "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5" }, /not the trusted USDC contract/],
+    ["an item's two prices disagree", { items: [{ ...item, unitPriceUSDC: "1" }] }, /unitPriceUSDC 1 is not unitPriceUSDCAtomic 94631579/],
+  ];
+
+  it.each(incoherent)("refuses to sign when %s, with a typed error", (_name, change, reason) => {
+    let thrown: unknown;
+    try {
+      signReceipt(claims(change), signer.secret());
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(VitrineeError);
+    expect((thrown as VitrineeError).code).toBe("ReceiptInvalid");
+    expect((thrown as VitrineeError).message).toMatch(reason);
+  });
+
+  it.each(incoherent)("goes red on a receipt the merchant signed anyway when %s", (_name, change, reason) => {
+    const forged = signJws(claims(change), signer.secret(), { typ: "JWT" });
+    const check = checkReceiptSignature(forged);
+    expect(check.ok).toBe(false);
+    expect(check.signer).toBe(signer.publicKey());
+    expect(check.reason).toMatch(reason);
+  });
+
+  it("takes the same amount written with fewer decimals or trailing zeros", () => {
+    expect(receiptIncoherence(claims({ amountUSDC: "1.5", amountUSDCAtomic: "15000000" }))).toBeNull();
+    expect(receiptIncoherence(claims({ amountUSDC: "1.5000000", amountUSDCAtomic: "15000000" }))).toBeNull();
+    expect(receiptIncoherence(claims())).toBeNull();
   });
 });

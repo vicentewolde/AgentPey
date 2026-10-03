@@ -1,5 +1,5 @@
 import { Keypair, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
-import { USDC_TESTNET, signReceipt, stellarDid, type ReceiptClaims } from "@vitrinee/core";
+import { USDC_TESTNET, receiptHash, signJws, signReceipt, stellarDid, type ReceiptClaims } from "@vitrinee/core";
 import { describe, expect, it } from "vitest";
 
 import { anchorArgs, countKey, decodeRecord, isAlreadyAnchored, receiptKey, type AnchoredRecord } from "./scval.js";
@@ -10,6 +10,8 @@ const signer = Keypair.random();
 const PAYER = "GAGRRWU5CEYAMHUMVO6DZBXAV7YTQTO2QE7R2KO3TUEN6QR7GRVXQPOM";
 const MERCHANT = "GC5ZY7UJ7CKD7O7YURRSDIDVYEETYP2JXPKUL5E6GIWHUPAH5DCIVCII";
 const TX = "ef86ca2fb6b3fbbe32e89b23c7159a4b13dc02e251bb83a7e75e0ac68f86080f";
+/** A real contract id that is not the USDC contract. */
+const REGISTRY_LIKE_CONTRACT = "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5";
 
 function claims(): ReceiptClaims {
   return {
@@ -155,6 +157,38 @@ describe("verifyReceipt", () => {
     expect(other.checks.anchored).toMatchObject({ ok: false, reason: expect.stringMatching(/different merchant/) });
     const cheaper = await verifyReceipt(jws, { registry: registryWith({ [hash]: { ...record, amount: 1n } }), horizonUrl: "https://h", fetchImpl: fakeHorizon(GOOD_EFFECTS) });
     expect(cheaper.checks.anchored).toMatchObject({ ok: false, reason: expect.stringMatching(/amount differs/) });
+  });
+
+  // Signed with the raw JWS helper: `signReceipt` refuses to sign these, and a
+  // verifier has to hold against a merchant that signs them anyway (T132).
+  const incoherent = (change: Partial<ReceiptClaims>): { jws: string; registry: ReturnType<typeof registryWith> } => {
+    const forged = signJws({ ...claims(), ...change }, signer.secret(), { typ: "JWT" });
+    return { jws: forged, registry: registryWith({ [receiptHash(forged)]: record }) };
+  };
+
+  it("goes red when the decimal amount and the atomic amount disagree, though anchor and payment match", async () => {
+    const { jws: forged, registry } = incoherent({ amountUSDC: "0.9463157" });
+    const result = await verifyReceipt(forged, { registry, horizonUrl: "https://h", fetchImpl: fakeHorizon(GOOD_EFFECTS) });
+    expect(result.valid).toBe(false);
+    expect(result.checks.signature).toMatchObject({ ok: false, reason: expect.stringMatching(/amountUSDC .* amountUSDCAtomic/) });
+    // The other two checks read the atomic amount, so only the coherence rule catches this.
+    expect(result.checks.anchored.ok).toBe(true);
+    expect(result.checks.settlement.ok).toBe(true);
+  });
+
+  it("goes red when the receipt names an asset other than the trusted USDC", async () => {
+    const { jws: forged, registry } = incoherent({ asset: REGISTRY_LIKE_CONTRACT });
+    const result = await verifyReceipt(forged, { registry, horizonUrl: "https://h", fetchImpl: fakeHorizon(GOOD_EFFECTS) });
+    expect(result.valid).toBe(false);
+    expect(result.checks.signature).toMatchObject({ ok: false, reason: expect.stringMatching(/asset/) });
+  });
+
+  it("goes red when an item's decimal price and atomic price disagree", async () => {
+    const item = claims().items[0]!;
+    const { jws: forged, registry } = incoherent({ items: [{ ...item, unitPriceUSDC: "1" }] });
+    const result = await verifyReceipt(forged, { registry, horizonUrl: "https://h", fetchImpl: fakeHorizon(GOOD_EFFECTS) });
+    expect(result.valid).toBe(false);
+    expect(result.checks.signature).toMatchObject({ ok: false, reason: expect.stringMatching(/unitPriceUSDC/) });
   });
 
   it("reports a missing registry instead of pretending", async () => {
