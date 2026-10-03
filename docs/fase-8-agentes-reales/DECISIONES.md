@@ -26,5 +26,77 @@ página aparte.** Es más fuerte, pero saca la compra del chat, que es justo lo
 que el video tiene que mostrar. Queda como camino posible para montos sobre el
 tope.
 
-**Lo que queda abierto.** Cómo se autentica el conector (pregunta abierta 1
-del spec).
+---
+
+### R-2 · El conector MCP se autentica con OAuth 2.1 desde el inicio · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T128 · Decidido por el usuario
+
+El servidor MCP no se publica sin autenticación. Desde su primer deploy exige
+un token OAuth 2.1 (PKCE, metadatos de recurso protegido, validación de
+audiencia), que es lo que aceptan Claude y ChatGPT para un conector propio.
+
+**Motivo.** El servidor guarda una llave que paga (`R-1`). Con una URL secreta,
+quien la consiga puede gastar el rail hasta su tope, y la spec de MCP pide no
+llevar secretos en la URL.
+
+**Alternativa descartada: una URL secreta para el video y OAuth después del
+Bloque A.** La recomendó Claude Code porque adelantaba un día la primera compra
+desde Claude y el tope del rail ya acota el daño. El usuario prefirió el día de
+más. Consecuencia aceptada: T128 pasa de 14 h a 22 h y la primera compra desde
+Claude se mueve del 4 al 5 de octubre.
+
+**Lo que queda abierto.** Qué servidor de autorización se usa: un proveedor de
+identidad externo o uno mínimo propio. Se propone en el plan de T128.
+
+---
+
+### R-3 · El modo de conformidad de UCP vive solo en la tienda de prueba local · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T131 · Decidido por el usuario
+
+La suite oficial de UCP paga siempre con un medio de pago de prueba y pide un
+endpoint de simulación con un secreto. Eso se implementa como un modo de la
+tienda de prueba, que nunca se despliega: el arranque de producción lo rechaza.
+"Cumplimos UCP" se dice con su alcance: qué tests pasan, contra qué, y cuáles
+se saltan.
+
+**Motivo.** Un medio de pago que no cobra, en un servicio desplegado, es un
+punto de autorización abierto; es la misma clase de riesgo que `B-25`.
+
+**Alternativas descartadas.** Una tienda de conformidad desplegada, por ese
+riesgo. Y correr la suite contra una tienda real sin el modo: todos los tests
+que completan una compra fallarían, y el resultado no diría nada.
+
+---
+
+### R-4 · Si MPP no admite un `policy_rail` como pagador, se documenta y no se paga con una llave clásica · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T135 · Decidido por el usuario
+
+`@stellar/mpp` 0.7.1 solo acepta una llave clásica como pagador. Si la prueba
+técnica de T135 lo confirma en testnet, AgentPey no construye el pago por MPP:
+la evidencia va al anexo del SEP y se redacta un issue para
+`stellar/stellar-mpp-sdk`, que se publica cuando el usuario haya visto el
+texto. En el video se dice "evaluamos MPP", no "soportamos MPP".
+
+**Motivo.** Un pago desde una llave clásica no tiene topes aplicados por la
+red, que es lo que AgentPey afirma. Afirmar "soportamos MPP" con ese pago
+sería cierto en la letra y falso en lo que importa.
+
+**Alternativas descartadas.** Pagar MPP con una llave clásica, marcado como
+tal. Y cortar T135 entera: la prueba técnica cuesta poco y es evidencia útil
+para el SEP.
+
+---
+
+### R-5 · Los mandatos AP2 del checkout se cierran con P-256 · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T134 · Decidido por el usuario
+
+La extensión de mandatos AP2 de UCP solo admite ES256, ES384 y ES512. El
+agente y la tienda usan una llave P-256 para esa firma, además de su llave
+Ed25519 de Stellar. Continúa `E-9`. Ed25519 queda como brecha del SEP, con el
+issue AP2 #268 (abierto, sin PR) como referencia.
+
+**Motivo.** El criterio de T134 es que un tercero, con la librería oficial,
+verifique el mandato de una compra real.
+
+**Alternativa descartada: Ed25519**, una sola llave, pero fuera de lo que UCP
+permite hoy.

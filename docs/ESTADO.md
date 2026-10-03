@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **en borrador**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T127 · la disputa visible en la orden UCP (cierre de la Fase 7)
-**Siguiente paso:** que el usuario responda las preguntas abiertas del spec de la Fase 8 y lo apruebe; después, `/tarea T128` y `/tarea T132`. El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
+**Siguiente paso:** que el usuario apruebe el spec de la Fase 8 (preguntas 1 a 4 ya respondidas); después, `/tarea T128` y `/tarea T132`. El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
 
 ## Progreso de la fase
 
@@ -42,7 +42,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Responder las preguntas abiertas del spec de la Fase 8 (autenticación del conector, modo de conformidad, MPP, llave de AP2, dos versiones de UCP) y aprobarlo
+- [ ] Aprobar el spec de la Fase 8 (preguntas 1 a 4 respondidas el 3-oct, `R-2` a `R-5`; falta confirmar las dos versiones de UCP en paralelo)
 - [ ] Para T128: fondear el `policy_rail` del MCP, firmar el Mandato de su agente, y el dominio `mcp.agentpey.com` en Render y en el DNS
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`

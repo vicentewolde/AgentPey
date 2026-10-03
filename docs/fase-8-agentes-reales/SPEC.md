@@ -69,7 +69,7 @@ Lo que abre `P-16`, todo en testnet:
 | Orden T131 y T133 | T131 el 5, T133 el 6 | La suite solo conoce `2026-04-08` | T131 va antes de T133, y `2026-04-08` se mantiene en paralelo: sin eso, migrar deja a la suite sin nada que probar |
 | MPP charge (T135) | La misma compra pagada con MPP desde `policy_rail` | `@stellar/mpp` 0.7.1 solo acepta una llave clásica como pagador; su verificación dice que un autorizador contrato no se puede verificar fuera de la red | T135 empieza como prueba técnica y **para**. Pagar con una llave clásica, sin topes en la red, contradice la tesis del proyecto: es una decisión del usuario, no un atajo |
 | Llave de AP2 (T134) | Decidir entre P-256 y Ed25519 | La extensión de UCP solo admite ES256, ES384 y ES512. El issue AP2 #268 sigue abierto, sin PR | Para que un tercero lo verifique, P-256. Ed25519 queda como brecha del SEP |
-| Autenticación del conector (T128) | OAuth o token | Claude admite OAuth o sin autenticación; el token fijo en un header es beta para algunas organizaciones. ChatGPT admite OAuth o sin autenticación | La opción "token" es, en la práctica, una URL secreta. Pregunta abierta 1 |
+| Autenticación del conector (T128) | OAuth o token | Claude admite OAuth o sin autenticación; el token fijo en un header es beta para algunas organizaciones. ChatGPT admite OAuth o sin autenticación | La opción "token" era, en la práctica, una URL secreta. El usuario eligió OAuth 2.1 desde el inicio (`R-2`) |
 | dots, Muse, Grok Bot (T144) | Probar los tres | dots: planes Pro y superiores, usa "plugins soportados", sin confirmación de que acepte MCP propios. Muse: solo Estados Unidos, paga con Link de Stripe. Grok Bot: opera webs y admite conectores MCP | T144 depende de los accesos del usuario; lo más probable es que salga una tabla y no una compra |
 | Tarjetas (T145) | Evaluar Cards402 y ASGCard | Las dos solo en mainnet. Cards402 emite Visa (no Mastercard). MPP Router cobra en `stellar:pubnet` | El camino de suscripciones es solo diseño. La demo de T146 usa un servicio x402 de testnet |
 | Internet Court (T138) | Veredictos a Base | Contratos solo en Base Sepolia; se presenta el caso con llamadas a contrato, sin API ni SDK | Sirve para demo, no para producción, como ya decía el traspaso |
@@ -83,6 +83,7 @@ Lo que abre `P-16`, todo en testnet:
 | Host | `mcp.agentpey.com`, como un proceso hijo más de `apps/gateway` (`hosts.ts`), en el mismo servicio de Render. Precedente: Vitrinee en T102. Pide un dominio nuevo en Render y en el DNS: lo hace el usuario |
 | Pagador | Un `policy_rail` **propio del MCP**, con topes bajos, fondeado por el usuario. El servidor guarda la llave dueña (`R-1`). La red aplica los topes en `__check_auth`, y `policyRail.authorise` sigue cortando antes |
 | Mandato | El agente del MCP necesita su credencial AgentPass y un Mandato firmado por el usuario, como cualquier agente. `executeUcpPayment` no paga sin eso |
+| Autenticación | OAuth 2.1 desde el inicio (`R-2`). El servidor MCP es el servidor de recursos: publica sus metadatos de recurso protegido (RFC 9728), responde 401 con `WWW-Authenticate` y valida el token y su audiencia, con los ayudantes del SDK (`requireBearerAuth`, `mcpAuthMetadataRouter`). El servidor de autorización tiene que aceptar PKCE S256, registro por CIMD y por DCR, y las URL de retorno de Claude (`https://claude.ai/api/mcp/auth_callback`) y de ChatGPT (`https://chatgpt.com/connector_platform_oauth_redirect`). Cuál se usa (un proveedor de identidad externo, que es lo que recomienda el SDK, o uno mínimo propio) se propone en el plan de T128, antes de escribir código |
 | Secretos | En el entorno de Render y en `.env.local`, nunca en el repo ni en logs. Variables nuevas en `.env.example`, sin valor |
 
 Herramientas. Las de lectura llevan `readOnlyHint`; `pay` y `open_claim` no,
@@ -148,15 +149,16 @@ más rápido que lo estimado.
 ### Bloque A · Lo que sale en el video (imprescindible)
 
 #### T128 · Servidor MCP de AgentPey
-- **Prioridad:** imprescindible · **Estimación:** 14 h (más grande que medio día: es una app nueva, un cambio en el flujo de pago y un deploy; se justifica porque nada de eso sirve por separado) · **Delegable a Codex:** no (`P-10`: llave, firma, fondos)
-- **Depende de:** spec aprobado; respuesta a la pregunta abierta 1; del usuario: fondear el rail, firmar el Mandato del agente del MCP, y el dominio en Render y DNS
+- **Prioridad:** imprescindible · **Estimación:** 22 h, en dos PR: primero las herramientas y el pago, probados en local; después OAuth y el deploy (es una app nueva, un cambio en el flujo de pago, autenticación y un deploy; nada de eso sirve por separado) · **Delegable a Codex:** no (`P-10`: llave, firma, fondos, autenticación)
+- **Depende de:** spec aprobado; del usuario: fondear el rail, firmar el Mandato del agente del MCP, y el dominio en Render y DNS
 - **Descripción:** lo de la sección 4.2.
 - **Archivos principales:** `apps/mcp/` (nuevo), `apps/agent/src/payment/ucp.ts`, `apps/gateway/src/hosts.ts`, `render.yaml`, `.env.example`, `scripts/deploy-policy-rail.ts` (se usa, no se cambia)
 - **Hecho cuando:**
   - [ ] las seis herramientas responden por Streamable HTTP y sus entradas y salidas pasan por zod (tests sin red, con la tienda de prueba)
   - [ ] `pay` rechaza, con error tipado: una cotización vencida o desconocida, la falta de `confirm`, y una cotización cuyo destinatario, activo o monto ya no coinciden con el perfil de la tienda
   - [ ] un intento sobre el tope es rechazado antes de firmar, y el rail del MCP lo rechaza también en la red (simulación, como en T122)
-  - [ ] la llave no aparece en logs ni en respuestas (test que busca el secreto en la salida)
+  - [ ] sin token, con un token vencido o con un token emitido para otro recurso, el servidor responde 401 con sus metadatos y no ejecuta ninguna herramienta (tests)
+  - [ ] la llave y los tokens no aparecen en logs ni en respuestas (test que busca los secretos en la salida)
   - [ ] `executeUcpPayment` se comporta igual que antes (sus tests y `ucp-contract.test.ts` sin cambios, en verde)
   - [ ] desplegado con OK del usuario: desde un chat de Claude, "compra un imán en agentcommerce" termina en un pedido real y un recibo con los tres checks en verde
   - [ ] todo en `evidencia/T128.md`
@@ -181,7 +183,7 @@ más rápido que lo estimado.
 
 #### T131 · Suite oficial de conformidad UCP
 - **Prioridad:** imprescindible · **Estimación:** 8 h · **Delegable a Codex:** solo sembrar los datos de la tienda de prueba y el archivo de configuración de la suite; el modo de conformidad no (toca el cobro)
-- **Depende de:** spec aprobado; respuesta a la pregunta abierta 2. Va **antes** de T133
+- **Depende de:** spec aprobado. Va **antes** de T133. El modo de conformidad es solo local (`R-3`)
 - **Descripción:** correr `Universal-Commerce-Protocol/conformance` (Python, `uv`, pytest) contra una tienda de prueba de Vitrinee en `2026-04-08`, con el modo de conformidad de la sección 4.3. Corregir lo que falle en Vitrinee. Lo que no aplica (descuentos, consentimiento, webhooks, si no se implementan) se declara fuera en la configuración de la suite, y queda escrito.
 - **Archivos principales:** `packages/vitrinee-gateway/src/ucp/`, `packages/vitrinee-gateway/src/test/`, `scripts/vitrinee/` (comando nuevo `pnpm run ucp:conformance`)
 - **Hecho cuando:**
@@ -215,7 +217,7 @@ más rápido que lo estimado.
 
 #### T134 · AP2 dentro del checkout UCP
 - **Prioridad:** si alcanza · **Estimación:** 16 h (se parte en dos PR: la tienda firma y verifica; el agente cierra el mandato) · **Delegable a Codex:** no (llaves y autorización)
-- **Depende de:** T133; respuesta a la pregunta abierta 4
+- **Depende de:** T133. Llave P-256 (`R-5`)
 - **Descripción:** lo de la sección 4.4.
 - **Hecho cuando:**
   - [ ] con la extensión negociada, un `complete` sin mandato, con mandato vencido, con firma inválida o con términos que no coinciden se rechaza con el código de UCP que corresponde
@@ -225,13 +227,13 @@ más rápido que lo estimado.
   - [ ] el diff no toca `checkMandate` ni el enforcement de `scope.limits` o `perDay`
 
 #### T135 · MPP charge sobre Stellar · empieza como prueba técnica, parar y mostrar
-- **Prioridad:** si alcanza · **Estimación:** 4 h la prueba; 8 h más si se construye · **Delegable a Codex:** no
-- **Depende de:** spec aprobado; respuesta a la pregunta abierta 3
-- **Descripción:** comprobar con código, en testnet, si un pago MPP charge puede salir de un `policy_rail`. La lectura del fuente dice que no (sección 4.1). Entregable: la evidencia, y opciones con recomendación. También responder la pregunta del SEP: segunda credencial del mismo medio de pago, o medio de pago aparte.
+- **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no
+- **Depende de:** spec aprobado
+- **Descripción:** comprobar con código, en testnet, si un pago MPP charge puede salir de un `policy_rail`. La lectura del fuente dice que no (sección 4.1). Si se confirma, no se construye el pago (`R-4`): la evidencia va al anexo del SEP y se redacta un issue para `stellar/stellar-mpp-sdk`, que se publica solo cuando el usuario haya visto el texto. Si resulta que sí se puede, parar y mostrar. También responder la pregunta del SEP: segunda credencial del mismo medio de pago, o medio de pago aparte.
 - **Hecho cuando:**
-  - [ ] `T135-mpp-charge.md` con la evidencia del intento desde un `policy_rail` y las opciones
-  - [ ] el usuario eligió una opción
-  - [ ] solo si eligió construir: la misma compra pagada con MPP charge, con recibo válido
+  - [ ] `T135-mpp-charge.md` con la evidencia del intento desde un `policy_rail` en testnet
+  - [ ] la brecha está en el anexo del SEP y el texto del issue, listo; publicado con el OK del usuario
+  - [ ] la frase que se puede decir en el video ("evaluamos MPP", no "soportamos MPP") está escrita con su evidencia
 
 #### T136 · SDK publicado en npm
 - **Prioridad:** si alcanza · **Estimación:** 8 h · **Delegable a Codex:** el README y el ejemplo; el paquete y la publicación no
@@ -346,8 +348,8 @@ Es la tarea T142. Se escribe al cerrar el Bloque A.
 
 | Fecha | Qué |
 |---|---|
-| 3–4 oct | `P-16`, spec aprobado, T128 y T132 |
-| 5 oct | T129 (Claude) y T131 |
+| 3–4 oct | `P-16`, spec aprobado, T132 y el primer PR de T128 (herramientas y pago, en local) |
+| 5 oct | Segundo PR de T128 (OAuth y deploy), T129 (Claude) y T131 |
 | 6 oct | T130, T133 y T143 |
 | 7 oct | T134, T135 y T144 |
 | 8 oct | Reembolso real de T124; T136; T138, T139 y T145 (pruebas técnicas) |
@@ -363,9 +365,10 @@ renegocia el 10-oct.**
 
 | Riesgo | Mitigación |
 |---|---|
-| Diecinueve tareas y unas 135 h estimadas en siete días | El orden por bloques y la línea de corte. El Bloque A solo son unas 33 h |
+| Diecinueve tareas y unas 135 h estimadas en siete días | El orden por bloques y la línea de corte. El Bloque A solo son unas 41 h |
+| OAuth desde el inicio (`R-2`) mueve la primera compra desde Claude del 4 al 5 de octubre | T128 en dos PR: el pago se prueba en local el 4, sin esperar a OAuth. Si OAuth no está el 6-oct en la noche, parar y mostrar |
 | El Bloque A depende del usuario: dominio y DNS, fondear el rail, firmar el Mandato, conseguir la tienda, conectar sus cuentas | Lista de pendientes del usuario en `docs/ESTADO.md` desde el primer día; T128 se prueba primero contra `agentcommerce` |
-| Un servidor en internet que guarda una llave que paga | Rail propio con topes bajos aplicados por la red, solo testnet, `pay` exige cotización vigente y confirmación, y la pregunta abierta 1 |
+| Un servidor en internet que guarda una llave que paga | Rail propio con topes bajos aplicados por la red, solo testnet, OAuth 2.1 con validación de audiencia (`R-2`), y `pay` exige cotización vigente y confirmación |
 | Un texto malicioso en el catálogo de una tienda intenta que el agente compre otra cosa | El modelo no elige destinatario ni monto: salen de la cotización, que `pay` vuelve a comprobar contra el perfil. El tope de la red acota el daño |
 | El modo de conformidad es un medio de pago que no cobra | Solo en la tienda de prueba local; el arranque de producción lo rechaza; `/revisar` lo trata como punto de autorización |
 | La suite de UCP y la verificación real de AP2 se contradicen (la suite espera que un mandato falso se acepte) | El test de AP2 de la suite se corre solo en modo de conformidad y se documenta; T134 se prueba con la librería oficial de AP2 |
@@ -375,11 +378,12 @@ renegocia el 10-oct.**
 
 ## 9. Preguntas abiertas
 
-- [ ] **1. Cómo se autentica el conector MCP.** (a) Sin autenticación de MCP y una URL secreta, con los topes del rail como límite real: sale el 4-oct, pero quien tenga la URL puede gastar el rail hasta su tope, y la spec de MCP no quiere secretos en la URL. (b) OAuth 2.1 desde el inicio: lo correcto para más de un usuario, cerca de un día más, y el SDK recomienda un proveedor de identidad externo. (c) Empezar con (a) para el video y agregar OAuth después del Bloque A. Recomendación: (c)
-- [ ] **2. Dónde vive el modo de conformidad de T131.** (a) Solo local, en la tienda de prueba, nunca desplegado. (b) Una tienda de conformidad desplegada aparte. (c) Correr la suite contra una tienda real y reportar las fallas tal cual. Recomendación: (a)
-- [ ] **3. Qué hacer con MPP si se confirma que no admite `policy_rail`.** (a) Documentar la brecha, abrir un issue en `stellar/stellar-mpp-sdk` y no construir. (b) Pagar MPP con una llave clásica, sin topes en la red, marcado como tal. (c) Cortar T135. Recomendación: (a)
-- [ ] **4. Llave para cerrar mandatos AP2 (T134).** (a) P-256, lo único que admite la extensión de UCP hoy. (b) Ed25519, que no verificaría un tercero. Recomendación: (a), con Ed25519 como brecha del SEP
+- [x] **1. Cómo se autentica el conector MCP:** OAuth 2.1 desde el inicio, decidido por el usuario el 3-oct (`R-2`). Recomendé empezar con una URL secreta y agregar OAuth después; el usuario prefirió no publicar un servidor que paga sin autenticación
+- [x] **2. Dónde vive el modo de conformidad de T131:** solo local, nunca desplegado (`R-3`)
+- [x] **3. MPP, si se confirma que no admite `policy_rail`:** documentar la brecha y abrir un issue; no pagar con una llave clásica (`R-4`)
+- [x] **4. Llave para cerrar mandatos AP2:** P-256; Ed25519 queda como brecha del SEP (`R-5`)
 - [ ] **5. Dos versiones de UCP en paralelo** (cambia `E-2`). Propuesta de la sección 4.3; se confirma al aprobar el spec
+- [ ] **6. Servidor de autorización de OAuth** (sale de `R-2`): proveedor de identidad externo o uno mínimo propio. Se propone, con opciones, en el plan de T128
 - [x] Quién firma los pagos del servidor MCP: **opción (a)**, decidido por el usuario el 3-oct (`R-1`)
 
 ## 10. Registro de cambios del spec
@@ -387,6 +391,7 @@ renegocia el 10-oct.**
 | Fecha | Cambio |
 |---|---|
 | 2026-10-03 | Borrador, a partir del traspaso del chat de estrategia del 3-oct, con las fuentes oficiales leídas ese día y el código revisado. Cambios frente al traspaso en la sección 4.1 |
+| 2026-10-03 | Respuestas del usuario a las preguntas 1 a 4 (`R-2` a `R-5`): OAuth desde el inicio (T128 pasa de 14 h a 22 h, en dos PR), modo de conformidad solo local, MPP se documenta y no se paga con llave clásica, P-256 para AP2. Sigue en borrador |
 
 ## 11. Fuentes externas
 
