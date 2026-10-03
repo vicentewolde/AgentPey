@@ -33,7 +33,7 @@
  * the other two's — see `env-filter.ts`, which does the actual copying.
  */
 
-export type AppName = "web" | "realops" | "signaldesk" | "vitrinee";
+export type AppName = "web" | "realops" | "signaldesk" | "vitrinee" | "mcp";
 
 export interface AppTarget {
   readonly name: AppName;
@@ -192,8 +192,36 @@ export const VITRINEE_TARGET: AppTarget = {
   critical: false,
 };
 
+/**
+ * AgentPey's MCP server (T128, `R-1`, `R-7`): what Claude and ChatGPT connect
+ * to. It holds the key that owns its own `policy_rail` and the secret that
+ * signs its OAuth tokens; neither reaches any other app, and it gets none of
+ * the other apps' keys: not `AGENT_SECRET_KEY`, not `ISSUER_SECRET_KEY`, not
+ * `MASTER_MNEMONIC`, not `DATABASE_URL`. Its names are its own (`MCP_`), so it
+ * needs no aliases. Not critical: a chat connector that is down must not take
+ * the pilot with it.
+ */
+export const MCP_TARGET: AppTarget = {
+  name: "mcp",
+  port: 4105,
+  entry: "apps/mcp/src/main.ts",
+  envKeys: [
+    "MCP_PUBLIC_URL",
+    "MCP_AGENT_SECRET_KEY",
+    "MCP_POLICY_RAIL_CONTRACT_ID",
+    "MCP_CREDENTIAL_JWS",
+    "MCP_MANDATE_JWS",
+    "MCP_ALLOWED_WALLET",
+    "MCP_OAUTH_SECRET",
+    // Public: the AgentPass registry the credential and the Mandate are anchored in.
+    "AGENT_REGISTRY_CONTRACT_ID",
+  ],
+  requiredEnv: ["MCP_PUBLIC_URL", "MCP_AGENT_SECRET_KEY", "MCP_POLICY_RAIL_CONTRACT_ID", "MCP_CREDENTIAL_JWS", "MCP_MANDATE_JWS", "MCP_ALLOWED_WALLET", "MCP_OAUTH_SECRET"],
+  critical: false,
+};
+
 /** Every app this gateway runs, in the order they are started. */
-export const APP_TARGETS: readonly AppTarget[] = [WEB_TARGET, REALOPS_TARGET, SIGNALDESK_TARGET, VITRINEE_TARGET];
+export const APP_TARGETS: readonly AppTarget[] = [WEB_TARGET, REALOPS_TARGET, SIGNALDESK_TARGET, VITRINEE_TARGET, MCP_TARGET];
 
 /**
  * The required variables `env` is missing for `target`, by name, never by
@@ -208,6 +236,7 @@ export interface HostMapConfig {
   readonly realopsHost: string;
   readonly signaldeskHost: string;
   readonly vitrineeHost: string;
+  readonly mcpHost: string;
 }
 
 export type HostMap = ReadonlyMap<string, AppTarget>;
@@ -222,6 +251,7 @@ export function buildHostMap(config: HostMapConfig): HostMap {
     [config.realopsHost, REALOPS_TARGET],
     [config.signaldeskHost, SIGNALDESK_TARGET],
     [config.vitrineeHost, VITRINEE_TARGET],
+    [config.mcpHost, MCP_TARGET],
   ];
   const map = new Map<string, AppTarget>();
   for (const [host, target] of entries) {

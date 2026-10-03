@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { filterEnv } from "./env-filter.js";
 import {
   APP_TARGETS,
+  MCP_TARGET,
   REALOPS_TARGET,
   SIGNALDESK_TARGET,
   VITRINEE_TARGET,
@@ -18,6 +19,7 @@ const CONFIG = {
   realopsHost: "realops.agentpey.com",
   signaldeskHost: "signaldesk.agentpey.com",
   vitrineeHost: "vitrinee.agentpey.com",
+  mcpHost: "mcp.agentpey.com",
 };
 
 describe("normaliseHost", () => {
@@ -40,6 +42,7 @@ describe("resolveTarget", () => {
     expect(resolveTarget(hostMap, "realops.agentpey.com")).toBe(REALOPS_TARGET);
     expect(resolveTarget(hostMap, "signaldesk.agentpey.com")).toBe(SIGNALDESK_TARGET);
     expect(resolveTarget(hostMap, "vitrinee.agentpey.com")).toBe(VITRINEE_TARGET);
+    expect(resolveTarget(hostMap, "mcp.agentpey.com")).toBe(MCP_TARGET);
   });
 
   it("matches case-insensitively and ignores a :port suffix", () => {
@@ -218,3 +221,34 @@ describe("missingEnv", () => {
     expect(VITRINEE_TARGET.critical).toBe(false);
   });
 });
+
+describe("AgentPey's MCP server (T128)", () => {
+  const MCP_SECRETS = { MCP_AGENT_SECRET_KEY: "S-mcp-agent", MCP_OAUTH_SECRET: "mcp-oauth-secret", MCP_CREDENTIAL_JWS: "cred.jws.x", MCP_MANDATE_JWS: "mand.jws.x" };
+  const AGENTPEY_SECRETS = { AGENT_SECRET_KEY: "S-agent", ISSUER_SECRET_KEY: "S-issuer", ADMIN_SECRET_KEY: "S-admin", MASTER_MNEMONIC: "words", DATABASE_URL: "postgres://shared", VITRINEE_MERCHANT_SIGNING_SECRET: "S-vitrinee", SIGNALDESK_SECRET_KEY: "S-signaldesk" };
+  const container = { ...MCP_SECRETS, ...AGENTPEY_SECRETS, MCP_PUBLIC_URL: "https://mcp.agentpey.com", MCP_POLICY_RAIL_CONTRACT_ID: "C", MCP_ALLOWED_WALLET: "G", AGENT_REGISTRY_CONTRACT_ID: "C-registry" };
+
+  it("gets its own values and none of the other apps' secrets", () => {
+    const env = filterEnv(container, MCP_TARGET.envKeys, { PORT: String(MCP_TARGET.port) }, MCP_TARGET.envAliases);
+    expect(env).toMatchObject({ ...MCP_SECRETS, AGENT_REGISTRY_CONTRACT_ID: "C-registry", PORT: "4105" });
+    for (const secret of Object.values(AGENTPEY_SECRETS)) expect(Object.values(env)).not.toContain(secret);
+  });
+
+  it("hands its key and its OAuth secret to no other app", () => {
+    for (const target of APP_TARGETS.filter((candidate) => candidate !== MCP_TARGET)) {
+      const values = Object.values(filterEnv(container, target.envKeys, {}, target.envAliases));
+      for (const secret of Object.values(MCP_SECRETS)) expect(values, `${target.name} got ${secret}`).not.toContain(secret);
+      for (const name of Object.keys(MCP_SECRETS)) expect(target.envKeys).not.toContain(name);
+    }
+  });
+
+  it("is not started without its secrets, and does not take the pilot down", () => {
+    expect(missingEnv(MCP_TARGET, {})).toHaveLength(7);
+    expect(missingEnv(MCP_TARGET, container)).toEqual([]);
+    expect(MCP_TARGET.critical).toBe(false);
+  });
+
+  it("listens on a port no other app uses", () => {
+    expect(new Set(APP_TARGETS.map((target) => target.port)).size).toBe(APP_TARGETS.length);
+  });
+});
+

@@ -49,6 +49,9 @@ services:
       # however many comercios). Needs three CNAMEs in Vercel: `*.vitrinee`,
       # `_acme-challenge.vitrinee` and `_cf-custom-hostname.vitrinee`.
       - "*.vitrinee.agentpey.com"
+      # T128 — AgentPey's MCP server, the URL Claude and ChatGPT connect to
+      # (https://mcp.agentpey.com/mcp). One CNAME in Vercel, `mcp`, to this service.
+      - mcp.agentpey.com
     envVars:
       # pnpm@11.24.0 (pinned via packageManager in package.json) requires
       # Node >=22.13 to run under Corepack — 22.11.0 makes Corepack crash
@@ -250,3 +253,26 @@ services:
       # VITRINEE_ROOT_COMERCIO is gone since T104 (VT-30): AgentPey and RealOps
       # reach every store at its own subdomain, and the root is only the portal
       # and its directory. Delete it from the dashboard too.
+
+      # ---- AgentPey's MCP server (apps/mcp, mcp.agentpey.com, T128) ----------
+      # Not started until every secret below is set (hosts.ts, MCP_TARGET), and
+      # none of them reaches another app. All come out of `pnpm run mcp:setup`
+      # and `pnpm run deploy:policy-rail -- --profile mcp`, copied by hand from
+      # .env.local into the dashboard (P-10).
+      - key: MCP_PUBLIC_URL
+        value: https://mcp.agentpey.com
+      # The agent's key: signs its intents and claims, and owns its rail (R-1).
+      - key: MCP_AGENT_SECRET_KEY
+        sync: false
+      - key: MCP_POLICY_RAIL_CONTRACT_ID
+        sync: false
+      - key: MCP_CREDENTIAL_JWS
+        sync: false
+      - key: MCP_MANDATE_JWS
+        sync: false
+      # The only wallet that can sign in (R-7): the rail's principal. Public.
+      - key: MCP_ALLOWED_WALLET
+        sync: false
+      # Signs the OAuth tokens. Changing it signs everyone out.
+      - key: MCP_OAUTH_SECRET
+        sync: false
