@@ -7755,3 +7755,12 @@ Inspector fijado en 2.9.0, `<store>`, `jq` y raíz del repo, y lo probado separa
 comentario viejo de `tools.ts` sobre `quote`; ESTADO y SYNC sin el "sin push" de T128.
 
 Pendiente: push y merge con OK. Después T130 (la tienda la consigue el usuario) y T131. `AGENTS.md`: sin cambios.
+
+## 2026-10-03 (16) — cc/t129-conectar-claude-chatgpt → main
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, T129 cerrada (ESTADO, BITACORA, SPEC, SYNC) y mergeada por fast-forward. Solo docs y un
+comentario: CI no corre por filtro de `paths`; `pnpm check` en verde en local.
+
+Pendiente: T131. T130 espera la tienda de terceros. `AGENTS.md`: sin cambios. Exponential: T129 a `DONE`.

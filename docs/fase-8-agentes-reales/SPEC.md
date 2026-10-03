@@ -404,7 +404,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T128 en testnet con OK del usuario: agente, credencial y Mandato, rail `mcp` con 10 USDC, y la red rechaza sobre el tope. Tercer criterio marcado; falta la compra desde Claude |
 | 2026-10-03 | T128, PR 2, `/revisar`: sin bloqueantes; corregidos los 14 hallazgos a pedido del usuario (renovación de un uso, wallet comprobada contra el rail en la red, desafío sin estado, retorno de loopback sin puerto, errores en JSON, CSP exacta, entre otros). El hallazgo de una URL de retorno en `claude.com` no aplica: la documentación de Claude solo lista `claude.ai` |
 | 2026-10-03 | T128 cerrada: en vivo en `mcp.agentpey.com` y compra real en `agentcommerce` (orden `ord_muszfkwz2604255e03`, recibo con los tres checks en verde). Claude en claude.ai no ejecuta `pay`; con el OK del usuario, `R-11` precisa qué es "una compra desde Claude" en T128, T129, T130 y el criterio 1 de la fase. Criterio 2 de la fase marcado |
-| 2026-10-03 | T129: Claude y ChatGPT conectados y comprando; guía en `apps/mcp/README.md`. ChatGPT sí llama `pay` tras la confirmación de la persona. Tres criterios marcados; falta `/revisar` |
+| 2026-10-03 | T129: Claude y ChatGPT conectados y comprando; guía en `apps/mcp/README.md`. ChatGPT sí llama `pay` tras la confirmación de la persona. Tres criterios marcados. `/revisar` sin bloqueantes, diez hallazgos corregidos; cerrada |
 
 ## 11. Fuentes externas
 

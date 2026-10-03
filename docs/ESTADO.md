@@ -7,15 +7,15 @@
 
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T128 · servidor MCP en vivo en `mcp.agentpey.com`; Claude cotizó y la persona pagó un imán en `agentcommerce`, recibo con los tres checks en verde (`R-11`)
-**Siguiente paso:** `/revisar` de T129 y merge con OK; después T130 (tienda de terceros, la consigue el usuario) y T131 (spec §8). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T129 · Claude y ChatGPT conectados con la guía del README; ChatGPT compra y paga él mismo, Claude cotiza y verifica (`R-11`)
+**Siguiente paso:** `/tarea T131` (suite oficial de conformidad UCP). T130 espera la tienda de terceros que consigue el usuario. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
 | T128 Servidor MCP de AgentPey | imprescindible | ✅ terminada: en vivo en `mcp.agentpey.com`; orden `ord_muszfkwz2604255e03` cotizada por Claude y pagada por la persona (`R-11`) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; evidencia de cierre en [PR #47](https://github.com/vicentewolde/AgentPey/pull/47), mergeado |
-| T129 Claude y ChatGPT conectados | imprescindible | 👀 en revisión: guía en el README; compras desde Claude (`R-11`) y desde ChatGPT, que paga él mismo | `cc/t129-conectar-claude-chatgpt` (sin push) |
+| T129 Claude y ChatGPT conectados | imprescindible | ✅ terminada: guía en el README; compras desde Claude (`R-11`) y desde ChatGPT, que paga él mismo | `cc/t129-conectar-claude-chatgpt`, mergeada |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
@@ -99,3 +99,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T128 PR 2 `/revisar`: sin bloqueantes; corregidos los 14 hallazgos a pedido del usuario. El servidor comprueba en la red que el rail es de su agente y de la wallet que inicia sesión; renovación de un uso; desafío sin estado. 27 tests en la app.
 - 2026-10-03, T128 cerrada: el usuario puso dominio, variables y CNAME; `mcp.agentpey.com` responde 401 con sus metadatos y la página de inicio de sesión carga con CSP y Freighter fijado. En claude.ai, Claude cotizó un imán y se negó dos veces a llamar `pay` (mover un activo financiero lo deja a la persona); el usuario pagó esa cotización desde el MCP Inspector. Orden `ord_muszfkwz2604255e03`, Shopify `18990053523762`, tx `ba3abab7…`, `vitrinee:verify` en verde y en rojo manipulado. `R-11` aprobada: "desde Claude" es Claude cotiza y verifica, la persona paga.
 - 2026-10-03, T129: guía para conectar Claude y ChatGPT en `apps/mcp/README.md` (y resumen en el README raíz), con los menús reales. ChatGPT Plus en modo desarrollador (Create custom MCP server, OAuth) conectó a la primera y **llamó `pay` él mismo** tras "confirmo el pago": orden `ord_mut0b5rm04b66bd5de`, Shopify `18990505394482`, tx `d6c2fa8d…`, recibo en verde. La de Claude es la de T128 (`R-11`). Rail: 3,14 de 5,00 gastados hoy.
+- 2026-10-03, T129 `/revisar`: sin bloqueantes; corregidos los diez hallazgos (evidencia literal, también en T128; captura de Claude leyendo la orden; README reproducible). Cerrada y mergeada con OK del usuario.

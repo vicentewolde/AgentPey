@@ -18,14 +18,14 @@ verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
 `mcp.agentpey.com` y Claude cotizó un imán en `agentcommerce` que terminó en un
 pedido real y un recibo con los tres checks en verde; el pago lo apretó la
-persona, porque claude.ai no ejecuta pagos (`R-11`). **T129 en revisión**:
+persona, porque claude.ai no ejecuta pagos (`R-11`). **T129 cerrada**:
 Claude y ChatGPT conectados, y ChatGPT compró pagando él mismo tras la
 confirmación.
 
 | Tarea | Estado |
 |---|---|
 | T128 Servidor MCP | cerrada |
-| T129 Claude y ChatGPT conectados | en revisión |
+| T129 Claude y ChatGPT conectados | cerrada |
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | pendiente |
 | T132 Coherencia del recibo | cerrada |
@@ -176,7 +176,7 @@ T130 y al primer criterio de la fase.
 **Lo que quedó en deuda.** Las sugerencias de los dos `/revisar` que no se
 corrigieron siguen en `docs/ESTADO.md`. Ninguna bloquea.
 
-## T129 · Claude y ChatGPT conectados (2026-10-03, en revisión)
+## T129 · Claude y ChatGPT conectados (2026-10-03, cerrada)
 
 **Qué quedó funcionando.** AgentPey se puede agregar a Claude y a ChatGPT como
 cualquier otra herramienta, y la guía paso a paso quedó en el README del
