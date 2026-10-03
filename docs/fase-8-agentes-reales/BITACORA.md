@@ -121,7 +121,14 @@ hallazgos importantes, entre ellos que `get_order` ahora comprueba que el recibo
 que muestra la tienda es de esa orden y de esa tienda. Mergeado con el OK del
 usuario ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)).
 
-**Lo que falta (PR 2).** Que nadie más que el usuario pueda usarlo (OAuth con
+**PR 2, en código.** El servidor ya exige iniciar sesión: Claude o ChatGPT abren
+una página de AgentPey donde la persona firma un mensaje con Freighter, y solo
+entra la wallet dueña del rail. Lo demás quedó listo para encenderlo: el
+arranque real (que se niega a partir si la credencial o el Mandato no
+verifican), el script que prepara al agente, el rail propio y el lugar del
+servidor en `mcp.agentpey.com`. Falta correrlo en testnet y publicarlo.
+
+**Lo que faltaba (PR 2).** Que nadie más que el usuario pueda usarlo (OAuth con
 inicio de sesión firmando con la wallet, `R-7`), preparar la llave, la
 credencial, el Mandato y el rail del agente (`mcp:setup`, `R-8`, `R-9`), y
 publicarlo en `mcp.agentpey.com`. Recién ahí la compra desde un chat de Claude.

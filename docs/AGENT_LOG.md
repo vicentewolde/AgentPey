@@ -7674,3 +7674,18 @@ Qué: con OK del usuario y CI 4/4 en verde, el PR 1 de T128 ([PR #45](https://gi
 Pendiente: PR 2 en una rama nueva desde `main`. `AGENTS.md`: sin cambios. Exponential: T128 sigue `IN_PROGRESS`,
 con el PR enlazado.
 
+## 2026-10-03 (10) — cc/t128-mcp-oauth-deploy (sin push)
+
+Agente: Claude Code.
+
+Qué: T128, PR 2 en código. Servidor de autorización OAuth propio en `apps/mcp/src/oauth/` (`R-7`): DCR y CIMD
+con retornos permitidos (Claude, ChatGPT, loopback), página de login con Freighter (SEP-53, CSP con nonce, script
+fijado por `integrity`), código de un minuto y un solo uso con PKCE S256, tokens HS256 con audiencia, refresh. El
+`/mcp` exige token (`requireBearerAuth`). `config.ts` (zod) y `main.ts` (verifica credencial y Mandato al arrancar).
+`scripts/mcp-setup.ts` (`R-8`), perfil `mcp` en `deploy:policy-rail` (`R-9`; no lo fondea, lo fondea la
+principal), `--rail mcp` en `ucp:probe-per-tx`. Gateway: `MCP_TARGET` en `mcp.agentpey.com`, no crítico, solo sus
+variables. `render.yaml` y `.env.example`. `pnpm check` y `vitrinee:check` en verde.
+
+Pendiente: wallet del usuario y su OK para `mcp:setup` y el deploy del rail en testnet; dominio, variables en
+Render y fondeo (usuario); `/revisar` y merge; compra real desde Claude. `AGENTS.md`: sin cambios (nada delegable).
+

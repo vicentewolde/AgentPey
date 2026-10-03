@@ -8,13 +8,13 @@
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T132 · el verificador rechaza un recibo que se contradice, y un pago respalda un solo recibo
-**Siguiente paso:** el PR 2 de T128 (OAuth con login de wallet, `mcp:setup`, host `mcp.agentpey.com`), en una rama nueva desde `main`. El 8 o 9 de octubre, el reembolso real de T124 y ver `ord_muq1gqhycf4961492c` con su disputa (`E-25`)
+**Siguiente paso:** con la wallet del usuario y su OK, correr `mcp:setup` y desplegar el rail `mcp` en testnet; el usuario agrega `mcp.agentpey.com` en Render y el DNS, copia las variables y fondea el rail; `/revisar` y merge del PR 2; compra real desde Claude. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
-| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; falta el PR 2 (OAuth, setup y deploy) | `cc/t128-servidor-mcp`, PR 1 mergeado ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)) |
+| T128 Servidor MCP de AgentPey | imprescindible | 🔨 en curso: PR 1 (herramientas y pago, en local) en `main`; PR 2 (OAuth, setup, gateway) en código, sin desplegar; falta correr el setup en testnet, el deploy y la compra desde Claude | PR 1 mergeado ([PR #45](https://github.com/vicentewolde/AgentPey/pull/45)); PR 2 en `cc/t128-mcp-oauth-deploy` |
 | T129 Claude y ChatGPT conectados | imprescindible | ⏳ pendiente | |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
@@ -40,7 +40,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Para T128: fondear el `policy_rail` del MCP, firmar el Mandato de su agente, y el dominio `mcp.agentpey.com` en Render y en el DNS
+- [ ] Para T128: dar la dirección de la wallet de Freighter (principal del rail y la única que inicia sesión); agregar `mcp.agentpey.com` en Render y un CNAME `mcp` en el DNS; copiar a Render las variables `MCP_*` que deja `mcp:setup`; fondear el rail con USDC de testnet
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
@@ -93,3 +93,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T132 `/revisar`: sin bloqueantes. Corregidos los siete hallazgos a pedido del usuario: pedidos en curso indexados por comercio y no por store, test UCP concurrente, coherencia antes de crear el pedido en la plataforma, spec pública precisada, errores tipados con `SettlementUnaccounted` (`VT-41`), y el reintento x402 vuelve a guardar y anclar.
 - 2026-10-03, T128 PR 1: `apps/mcp` con las seis herramientas sobre el SDK oficial v2 (fijado en 2.2.0 y 2.0.1: pnpm no deja instalar paquetes publicados hace menos de un día, y no se le agregó la excepción), `quoteUcpCheckout` y `payUcpQuote` con relectura de la tienda antes de pagar, cliente UCP en `@vitrinee/core`, `resolve:open -- --claim`. Decisiones `R-7` a `R-10`. 15 tests nuevos.
 - 2026-10-03, T128 PR 1 `/revisar`: sin bloqueantes; corregidos los ocho importantes a pedido del usuario. El cliente UCP pasó a `@vitrinee/anchor` (core es sin I/O). `R-10` aprobada.
+- 2026-10-03, T128 PR 2 en código: OAuth propio (`R-7`) con login de wallet, PKCE, tokens con audiencia y sin base de datos; `main.ts` verifica credencial y Mandato al arrancar; `mcp:setup`; perfil `mcp` del rail (no lo fondea el script: lo fondea la principal); `mcp.agentpey.com` en el gateway (no crítico, variables propias) y `render.yaml`. 18 tests en la app, 4 nuevos en el gateway.

@@ -160,8 +160,8 @@ más rápido que lo estimado.
   - [x] las seis herramientas responden por Streamable HTTP y sus entradas y salidas pasan por zod (tests sin red, con la tienda de prueba; PR 1, [evidencia](evidencia/T128.md) §1)
   - [x] `pay` rechaza, con error tipado: una cotización vencida o desconocida, la falta de `confirm`, y una cotización cuyo destinatario, activo o monto ya no coinciden con el perfil de la tienda (PR 1)
   - [ ] un intento sobre el tope es rechazado antes de firmar (✅ PR 1), y el rail del MCP lo rechaza también en la red (simulación, como en T122; PR 2, con el rail desplegado)
-  - [ ] sin token, con un token vencido o con un token emitido para otro recurso, el servidor responde 401 con sus metadatos y no ejecuta ninguna herramienta (tests)
-  - [ ] la llave y los tokens no aparecen en logs ni en respuestas (test que busca los secretos en la salida; la llave ✅ PR 1, los tokens en el PR 2)
+  - [x] sin token, con un token vencido o con un token emitido para otro recurso, el servidor responde 401 con sus metadatos y no ejecuta ninguna herramienta (tests; PR 2, [evidencia](evidencia/T128.md) §3)
+  - [x] la llave y los tokens no aparecen en logs ni en respuestas (tests que buscan los secretos en la salida: la llave en el PR 1, los tokens y el secreto de OAuth en el PR 2)
   - [x] `executeUcpPayment` se comporta igual que antes (sus tests y `ucp-contract.test.ts` sin cambios, en verde)
   - [ ] desplegado con OK del usuario: desde un chat de Claude, "compra un imán en agentcommerce" termina en un pedido real y un recibo con los tres checks en verde
   - [ ] todo en `evidencia/T128.md`
@@ -400,6 +400,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T132 cerrada: `/revisar` sin bloqueantes, siete hallazgos corregidos (`VT-41`), [PR #44](https://github.com/vicentewolde/AgentPey/pull/44) |
 | 2026-10-03 | T128, PR 1: respuestas del usuario a la pregunta 6 y al plan (`R-7` a `R-9`); `quote` no es de solo lectura (`R-10`); `resolve:open -- --claim`; el cliente UCP pasa a `@vitrinee/core`. Cinco criterios marcados, los otros tres van en el PR 2 |
 | 2026-10-03 | T128, PR 1, `/revisar`: sin bloqueantes; corregidos los ocho importantes a pedido del usuario (confirmación ausente tipada, gasto liberado, directorio leído antes de tomar la cotización, recibo atado a su orden y su tienda, tests de cambios coherentes de perfil y checkout, cliente UCP en `@vitrinee/anchor`, spec al día). `R-10` aprobada por el usuario |
+| 2026-10-03 | T128, PR 2 en código: OAuth propio con inicio de sesión de wallet, `main.ts`, `mcp:setup`, perfil `mcp` de `deploy:policy-rail`, host `mcp.agentpey.com` en el gateway y `render.yaml`, `ucp:probe-per-tx -- --rail mcp`. Dos criterios marcados; faltan el rechazo en la red y la compra desde Claude, que necesitan el deploy |
 
 ## 11. Fuentes externas
 
