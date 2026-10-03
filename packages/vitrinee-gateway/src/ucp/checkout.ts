@@ -756,7 +756,7 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
     totalAtomic: BigInt(snapshot.totalAtomic),
     totalLocal: snapshot.totalLocal,
   };
-  const { record, replayed } = await fulfilPaidPurchase(deps, {
+  const { record } = await fulfilPaidPurchase(deps, {
     quote,
     body: bodyFor(session),
     idempotencyKey: session.completeIdempotencyKey,
@@ -769,12 +769,7 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
       details: { checkoutId: session.id, orderId: record.orderId, txHash: settlement.txHash },
     });
   }
-  if (replayed) {
-    // An earlier attempt created this order but may have failed to persist it, and then
-    // never queued its anchor. Writing it again is an upsert; the queue skips an anchored receipt.
-    await deps.orders.put(record);
-    deps.anchors.enqueue(record.orderId);
-  }
+  // A replayed order was written and queued for its anchor again by `fulfilPaidPurchase`.
   session.status = "completed";
   session.orderId = record.orderId;
   session.updatedAt = deps.now().toISOString();

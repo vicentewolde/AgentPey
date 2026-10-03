@@ -10,6 +10,7 @@ import {
   formatUnits,
   localToUsdcAtomic,
   parseDecimal,
+  receiptIncoherence,
   signReceipt,
   stellarDid,
   stellarPayerSchema,
@@ -378,37 +379,48 @@ export async function fulfilPaidPurchase(deps: CheckoutDeps, purchase: PaidPurch
   const duplicate = deps.orders.findBySettlementTx(txHash);
   if (duplicate !== undefined) {
     deps.log("settlement already fulfilled, returning existing order", { orderId: duplicate.orderId, txHash });
-    return { record: duplicate, replayed: true };
+    return { record: await keepReplayed(deps, duplicate), replayed: true };
   }
 
-  let pending = ordersInFlight.get(deps.orders);
-  if (pending === undefined) {
-    pending = new Map();
-    ordersInFlight.set(deps.orders, pending);
-  }
-  const running = pending.get(txHash);
+  const inFlightKey = `${deps.config.signing.account}:${txHash}`;
+  const running = ordersInFlight.get(inFlightKey);
   if (running !== undefined) {
     const record = await running;
     deps.log("settlement being fulfilled by another request, returning its order", { orderId: record.orderId, txHash });
-    return { record, replayed: true };
+    return { record: await keepReplayed(deps, record), replayed: true };
   }
   const created = createPaidOrder(deps, purchase);
-  pending.set(txHash, created);
+  ordersInFlight.set(inFlightKey, created);
   try {
     return { record: await created, replayed: false };
   } finally {
-    pending.delete(txHash);
+    ordersInFlight.delete(inFlightKey);
   }
 }
 
 /**
- * Orders being created right now, per store and per settlement hash. The
- * store is only written once the platform order exists, so without this a
- * second request for the same settlement finds nothing and creates another.
- * One process owns one merchant's store (see `OrderStore`), which is what
- * makes an in-process map enough.
+ * Orders being created right now, by merchant signing account and settlement
+ * hash. The store is only written once the platform order exists, so without
+ * this a second request for the same settlement finds nothing and creates
+ * another. Keyed by the merchant, not by its `OrderStore`: the platform builds
+ * a new app and a new store when a merchant edits their shop, and a request
+ * that lands on the new one must still see what the old one is doing.
+ * In-process, which is enough while one process serves a merchant.
  */
-const ordersInFlight = new WeakMap<object, Map<string, Promise<OrderRecord>>>();
+const ordersInFlight = new Map<string, Promise<OrderRecord>>();
+
+/**
+ * An order handed back for a settlement that already has one. The earlier
+ * attempt may have failed to persist it, and then never queued its anchor; or
+ * it was created through another `OrderStore` of the same merchant, and this
+ * one has not seen it. Writing it again is an upsert, and the queue skips a
+ * receipt that is already anchored.
+ */
+async function keepReplayed(deps: CheckoutDeps, record: OrderRecord): Promise<OrderRecord> {
+  await deps.orders.put(record);
+  deps.anchors.enqueue(record.orderId);
+  return record;
+}
 
 async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Promise<OrderRecord> {
   const { quote, body, idempotencyKey, settlement, payer } = purchase;
@@ -450,6 +462,16 @@ async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Prom
     anchor: null,
     ...(purchase.ucpCheckoutId === undefined ? {} : { ucpCheckoutId: purchase.ucpCheckoutId }),
   };
+
+  // Before the platform order exists: a settlement this store could not sign a
+  // receipt for must not leave an order in the shop that nothing here records.
+  const incoherence = receiptIncoherence(buildReceiptClaims(record, deps.config, now));
+  if (incoherence !== null) {
+    deps.log("settlement cannot back a receipt; no order created", { txHash: settlement.txHash, reason: incoherence });
+    throw new VitrineeError("SettlementUnaccounted", `payment settled but it cannot back a receipt: ${incoherence}`, {
+      details: { txHash: settlement.txHash },
+    });
+  }
 
   try {
     const platformOrder = await deps.adapter.createOrder({
@@ -497,7 +519,7 @@ async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Prom
 export function completeCheckout(deps: CheckoutDeps): RequestHandler {
   return async (req: Request, res: Response) => {
     const locals = res.locals["checkout"] as CheckoutLocals | undefined;
-    if (locals === undefined) throw new Error("checkout preflight did not run");
+    if (locals === undefined) throw new VitrineeError("ConfigError", "checkout preflight did not run");
     const { quote, body, idempotencyKey } = locals;
 
     const paymentHeader = req.header("payment-signature") ?? req.header("x-payment");
@@ -505,13 +527,15 @@ export function completeCheckout(deps: CheckoutDeps): RequestHandler {
     const settlement = key === undefined ? undefined : deps.ledger.take(key);
     if (settlement === undefined) {
       // Money moved (upfront flow) but we cannot see it: never charge again — fail loudly.
-      throw new Error("payment settled but no settlement record was found for this request");
+      throw new VitrineeError("SettlementUnaccounted", "payment settled but no settlement record was found for this request");
     }
 
     // One settlement, one order — whatever the facilitator or a replay says.
     const duplicate = deps.orders.findBySettlementTx(settlement.txHash);
     const payer = duplicate?.settlement.payer ?? settlement.payer ?? (key === undefined ? undefined : payerFromTransactionXdr(key)) ?? body.buyer.stellarAccount;
-    if (payer === undefined) throw new Error("payment settled but the payer account could not be determined");
+    if (payer === undefined) {
+      throw new VitrineeError("SettlementUnaccounted", "payment settled but the payer account could not be determined", { details: { txHash: settlement.txHash } });
+    }
 
     const { record, replayed } = await fulfilPaidPurchase(deps, { quote, body, idempotencyKey, settlement, payer });
     if (replayed) res.set("Idempotent-Replayed", "true");

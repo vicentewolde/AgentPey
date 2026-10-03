@@ -79,11 +79,19 @@ function uniqueFacilitator(): FakeFacilitator {
   };
 }
 
-function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; disputeTimeoutMs?: number; anchorer?: Anchorer } = {}) {
+function harness(options: { createOrderDelayMs?: number; facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; disputeTimeoutMs?: number; anchorer?: Anchorer } = {}) {
   const clock = { now: new Date("2026-09-30T12:00:00.000Z") };
   const facilitator = options.facilitator ?? uniqueFacilitator();
   const registry = fakeRegistry();
   const adapter = new MockStoreAdapter(options.catalog === undefined ? {} : { catalog: options.catalog });
+  const platformOrders = { created: 0 };
+  const createOrder = adapter.createOrder.bind(adapter);
+  adapter.createOrder = async (input) => {
+    platformOrders.created += 1;
+    // A store platform that takes a moment, as a real one does.
+    if (options.createOrderDelayMs !== undefined) await new Promise((resolve) => setTimeout(resolve, options.createOrderDelayMs));
+    return createOrder(input);
+  };
   const app = createApp({
     config: testConfig(),
     adapter,
@@ -112,6 +120,7 @@ function harness(options: { facilitator?: FakeFacilitator; catalog?: typeof MOCK
     facilitator,
     registry,
     adapter,
+    platformOrders,
     call,
     create: (body: unknown) => call("POST", "/checkout-sessions", body),
     start: async () => {
@@ -308,6 +317,28 @@ describe("one settlement backs one receipt (T132)", () => {
     // The first order still stands, alone.
     const order = await h.call("GET", `/orders/${first.body.order?.id}`);
     expect(order.body).toMatchObject({ checkout_id: one.id });
+  });
+});
+
+describe("one settlement backs one receipt when two checkouts complete at once (T132)", () => {
+  const h = harness({ facilitator: fakeFacilitator(), createOrderDelayMs: 50 });
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+
+  it("creates one order: the checkout that arrives second waits, and is refused", async () => {
+    const { body: one } = await h.create(ready("gorro-andes"));
+    const { body: two } = await h.create(ready("stickers-cordillera"));
+    const replies = await Promise.all([
+      h.call("POST", `/checkout-sessions/${one.id}/complete`, instrument(requirementsOf(one))),
+      h.call("POST", `/checkout-sessions/${two.id}/complete`, instrument(requirementsOf(two))),
+    ]);
+    expect(replies.map((r) => r.status).sort()).toEqual([200, 402]);
+    expect(h.platformOrders.created).toBe(1);
+    const won = replies.find((r) => r.status === 200)!;
+    const lost = replies.find((r) => r.status === 402)!;
+    expect(won.body.status).toBe("completed");
+    expect(lost.body.order).toBeUndefined();
+    expect(lost.body.receipt).toBeUndefined();
   });
 });
 

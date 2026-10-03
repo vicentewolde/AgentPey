@@ -3,8 +3,12 @@ import { USDC_TESTNET, VitrineeError, checkReceiptSignature, receiptHash } from 
 import { decodePaymentRequiredHeader, decodePaymentResponseHeader, encodePaymentSignatureHeader } from "@x402/core/http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { AnchorWorker } from "./anchoring.js";
 import { createApp, type AppDeps, type VitrineeApp } from "./app.js";
-import { OrderStore } from "./orders.js";
+import { fulfilPaidPurchase, type CheckoutDeps } from "./checkout.js";
+import { OrderStore, type OrderPersistence } from "./orders.js";
+import { Reservations } from "./reservations.js";
+import { SettlementLedger } from "./settlements.js";
 import { FAKE_PAYER, FAKE_TX_HASH, fakeFacilitator } from "./test/fake-facilitator.js";
 import { MERCHANT, REGISTRY_ID, SIGNER, fakeHorizon, fakeRegistry, testConfig } from "./test/fixtures.js";
 import { listen } from "./test/listen.js";
@@ -258,6 +262,45 @@ describe("POST /checkout/:productId — idempotency, duplicates, stock", () => {
     }
   });
 
+  it("signs one receipt when the second request lands on a rebuilt store of the same merchant (T132)", async () => {
+    // The platform builds a new app and a new OrderStore when a merchant edits
+    // their shop. A request on the new one must still wait for the old one's order.
+    const mock = new MockStoreAdapter();
+    let created = 0;
+    const adapter: StoreAdapter = {
+      name: "slow",
+      listProducts: () => mock.listProducts(),
+      getProduct: (id) => mock.getProduct(id),
+      getOrder: () => Promise.resolve(null),
+      createOrder: async (input) => {
+        created += 1;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return mock.createOrder(input);
+      },
+    };
+    const before = await start({ adapter });
+    const after = await start({ adapter });
+    try {
+      const [a, b] = await Promise.all([buy(before.url, "/checkout/gorro-andes"), buy(after.url, "/checkout/gorro-andes")]);
+      expect([a.status, b.status]).toEqual([200, 200]);
+      const [first, second] = (await Promise.all([a.json(), b.json()])) as Array<Record<string, any>>;
+      expect(second["receipt"]["hash"]).toBe(first["receipt"]["hash"]);
+      expect(created).toBe(1);
+      // The store that only waited learned the order too: a third request there replays it.
+      for (const env of [before, after]) {
+        const orders = env.deps.orders!.list();
+        expect(orders).toHaveLength(1);
+        expect(orders[0]!.orderId).toBe(first["orderId"]);
+      }
+      const third = await buy(after.url, "/checkout/gorro-andes");
+      expect(((await third.json()) as Record<string, unknown>)["orderId"]).toBe(first["orderId"]);
+      expect(created).toBe(1);
+    } finally {
+      await before.close();
+      await after.close();
+    }
+  });
+
   it("holds stock while a payment settles, so two buyers cannot pay for the last unit", async () => {
     let releaseSettle!: () => void;
     const gate = new Promise<void>((resolve) => (releaseSettle = resolve));
@@ -384,6 +427,79 @@ describe("POST /checkout/:productId — failures after the money moved", () => {
         await env.close();
       }
     });
+  });
+
+  it("a retry after a failed save persists the order and anchors its receipt (T132)", async () => {
+    // The database refuses the first write: the order exists only in memory, unanchored.
+    const saved: string[] = [];
+    let fail = true;
+    const persistence: OrderPersistence = {
+      load: () => Promise.resolve([]),
+      save: (order) => {
+        if (fail) {
+          fail = false;
+          return Promise.reject(new VitrineeError("StorageError", "the database is unreachable"));
+        }
+        saved.push(order.orderId);
+        return Promise.resolve();
+      },
+    };
+    const env = await start({ orders: new OrderStore(persistence) });
+    try {
+      const lost = await buy(env.url, "/checkout/gorro-andes");
+      expect(lost.status).toBe(503);
+      expect(saved).toEqual([]);
+      const retry = await buy(env.url, "/checkout/gorro-andes");
+      expect(retry.status).toBe(200);
+      expect(retry.headers.get("idempotent-replayed")).toBe("true");
+      const order = (await retry.json()) as Record<string, any>;
+      expect(saved).toContain(order["orderId"]);
+      expect(env.deps.orders!.list()).toHaveLength(1);
+      await env.app.anchors.idle();
+      expect(env.deps.orders!.get(order["orderId"])?.anchor?.status).toBe("anchored");
+    } finally {
+      await env.close();
+    }
+  });
+
+  it("creates no platform order for a settlement in an asset it cannot sign a receipt for (T132)", async () => {
+    const mock = new MockStoreAdapter();
+    let created = 0;
+    const adapter: StoreAdapter = {
+      name: "counting",
+      listProducts: () => mock.listProducts(),
+      getProduct: (id) => mock.getProduct(id),
+      getOrder: () => Promise.resolve(null),
+      createOrder: (input) => {
+        created += 1;
+        return mock.createOrder(input);
+      },
+    };
+    const orders = new OrderStore();
+    const config = testConfig();
+    const product = (await mock.getProduct("gorro-andes"))!;
+    const deps: CheckoutDeps = {
+      config,
+      adapter,
+      orders,
+      ledger: new SettlementLedger(),
+      anchors: new AnchorWorker({ anchorer: fakeRegistry().anchorer, orders }),
+      reservations: new Reservations(),
+      inFlight: new Set(),
+      now: () => new Date("2026-10-03T12:00:00.000Z"),
+      log: () => {},
+    };
+    const purchase = fulfilPaidPurchase(deps, {
+      quote: { product, quantity: 1, unitAtomic: 10_000_000n, totalAtomic: 10_000_000n, totalLocal: product.priceLocal },
+      body: { quantity: 1, buyer: {} },
+      idempotencyKey: null,
+      // Not the USDC contract: the registry's id stands in for "some other asset".
+      settlement: { txHash: "ab".repeat(32), network: "stellar:testnet", payer: FAKE_PAYER, payTo: MERCHANT, asset: REGISTRY_ID, amountAtomic: "10000000", settledAt: "2026-10-03T12:00:00.000Z" },
+      payer: FAKE_PAYER,
+    });
+    await expect(purchase).rejects.toMatchObject({ code: "SettlementUnaccounted", httpStatus: 500 });
+    expect(created).toBe(0);
+    expect(orders.list()).toHaveLength(0);
   });
 
   it("retries a failed anchor and then gives up with the reason recorded", async () => {

@@ -14,6 +14,9 @@ export const ERROR_CODES = [
   "AdapterError",
   "PaymentError",
   "ReceiptInvalid",
+  // Money moved and the gateway cannot turn it into an order. Never a 4xx: the
+  // payer did nothing wrong and must not be invited to pay again.
+  "SettlementUnaccounted",
   "AnchorError",
   "NetworkError",
   // Multi-merchant platform (T103, C-140).
@@ -44,6 +47,7 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   AdapterError: 502,
   PaymentError: 402,
   ReceiptInvalid: 422,
+  SettlementUnaccounted: 500,
   AnchorError: 502,
   NetworkError: 503,
   ComercioNotFound: 404,
