@@ -174,7 +174,7 @@ async function startMcp(overrides: Partial<ShopperDeps> & { perTx?: string; perD
     log,
     ...overrides,
   });
-  const server = await listen(createMcpApp({ shopper, log }));
+  const server = await listen(createMcpApp({ shopper, log, auth: "none-for-tests" }));
   let id = 0;
   const rpc = async (method: string, params: Record<string, unknown> = {}) => {
     id += 1;

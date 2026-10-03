@@ -10,17 +10,31 @@
 import { Readable } from "node:stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 
-import { createMcpExpressApp } from "@modelcontextprotocol/express";
+import { createMcpExpressApp, getOAuthProtectedResourceMetadataUrl, mcpAuthMetadataRouter, requireBearerAuth } from "@modelcontextprotocol/express";
 import { createMcpHandler, type AuthInfo, type McpHttpHandler } from "@modelcontextprotocol/server";
 import type { Express, Request, Response } from "express";
 
+import { MCP_SCOPE, type OAuthServer } from "./oauth/server.js";
 import type { Shopper } from "./shopper.js";
 import { createAgentPeyMcpServer } from "./tools.js";
 
 export const MCP_PATH = "/mcp";
 
+export interface McpAuth {
+  readonly oauth: OAuthServer;
+  /** The protected resource: this server's public URL plus `/mcp`. */
+  readonly resource: string;
+  /** Tests on plain-HTTP localhost only. */
+  readonly allowInsecureIssuer?: boolean;
+}
+
 export interface McpAppOptions {
   readonly shopper: Shopper;
+  /**
+   * OAuth in front of `/mcp` (`R-2`). Not optional: a server that pays has to
+   * say out loud that it runs without it, and only tests do.
+   */
+  readonly auth: McpAuth | "none-for-tests";
   /** Hostnames the `Host` header may carry. Without it, only localhost. */
   readonly allowedHosts?: readonly string[];
   readonly log?: (message: string, fields?: Record<string, unknown>) => void;
@@ -30,7 +44,24 @@ export function createMcpApp(options: McpAppOptions): Express {
   const handler = createMcpHandler(() => createAgentPeyMcpServer(options.shopper, options.log));
   const app = createMcpExpressApp(options.allowedHosts === undefined ? {} : { host: "0.0.0.0", allowedHosts: [...options.allowedHosts] });
   app.disable("x-powered-by");
-  app.all(MCP_PATH, (req, res) => void bridge(handler, req, res, options.log));
+  if (options.auth === "none-for-tests") {
+    app.all(MCP_PATH, (req, res) => void bridge(handler, req, res, options.log));
+    return app;
+  }
+  const { oauth, resource } = options.auth;
+  const resourceUrl = new URL(resource);
+  app.use(
+    mcpAuthMetadataRouter({
+      oauthMetadata: oauth.metadata,
+      resourceServerUrl: resourceUrl,
+      scopesSupported: [MCP_SCOPE],
+      resourceName: "AgentPey",
+      ...(options.auth.allowInsecureIssuer === true ? { dangerouslyAllowInsecureIssuerUrl: true } : {}),
+    }),
+  );
+  app.use(oauth.router);
+  const bearer = requireBearerAuth({ verifier: oauth.verifier, requiredScopes: [MCP_SCOPE], resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl) });
+  app.all(MCP_PATH, bearer, (req, res) => void bridge(handler, req, res, options.log));
   return app;
 }
 
