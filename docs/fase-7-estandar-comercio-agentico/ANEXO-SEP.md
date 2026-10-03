@@ -259,8 +259,8 @@ más de 64 bytes, y no acepta anclar dos veces el mismo hash
 Lo que estos checks no miran: que una misma transacción respalde un solo
 recibo (brecha 10). La tienda de Vitrinee lo garantiza al emitir
 (`fulfilPaidPurchase`: un pago, un pedido, un recibo, también con dos
-solicitudes simultáneas), pero quien verifica un recibo suelto no puede
-comprobarlo.
+solicitudes simultáneas dentro de un mismo proceso), pero quien verifica un
+recibo suelto no puede comprobarlo.
 
 ### 3.4 En UCP: la extensión `com.agentpey.shopping.receipt`
 

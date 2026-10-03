@@ -1111,8 +1111,17 @@ en el primero.
 T132 cierra la ventana que quedaba: dos solicitudes simultáneas con el mismo
 pago pasaban la búsqueda antes de que la primera guardara su pedido, y salían
 dos pedidos y dos recibos (reproducido con un test). Ahora la segunda espera el
-pedido de la primera. El mapa de pedidos en curso vive en el proceso, que es
-suficiente porque un proceso es dueño de la tienda de un comercio.
+pedido de la primera. El mapa de pedidos en curso vive en el proceso y se
+indexa por la cuenta firmante del comercio y el hash del pago, no por el
+`OrderStore`: la plataforma construye una tienda nueva cuando el dueño edita
+sus datos en el portal, y una solicitud que cae en la nueva tiene que ver lo
+que hace la vieja (hallazgo de `/revisar`). Quien espera guarda el pedido
+también en su propio store.
+
+**Límite.** La garantía vale dentro de un proceso. La base no la respalda:
+`vitrinee.orders` no tiene un índice único sobre el hash del pago. Con más de
+un proceso por comercio haría falta ese índice, que es una migración sobre
+datos en producción; queda como deuda en `docs/ESTADO.md`.
 
 El verificador no comprueba la unicidad. El spec de la Fase 8 decía que la
 comprobaría "contra los recibos que conoce"; se quitó.
@@ -1124,4 +1133,27 @@ y su propia tienda no se va a delatar. Un tercero no puede comprobarlo mientras
 **Alternativa descartada: guardar el hash de la transacción en
 `receipt-registry`.** Es lo que lo cerraría de verdad, pero es redesplegar el
 contrato, fuera del alcance de la fase. Queda como brecha 10 del anexo.
+
+---
+
+### VT-41 · Código de error `SettlementUnaccounted` (500) para plata que se movió y no se puede convertir en pedido · `Vigente`
+**Fecha:** 2026-10-03 · **Hito:** T132 (Fase 8), correcciones de `/revisar` pedidas por el usuario
+
+Tres fallas del cobro x402 lanzaban `Error` genérico: el pago se liquidó y no
+aparece su registro, no se puede determinar quién pagó, y (nuevo) el pago está
+en un activo para el que la tienda no puede firmar un recibo. Ahora son
+`VitrineeError` con el código `SettlementUnaccounted`, que responde 500 como
+antes. La tercera se comprueba **antes** de crear el pedido en la plataforma de
+la tienda, para no dejar un pedido que nada registra.
+
+Además, un pedido devuelto como repetido se vuelve a guardar y a encolar para
+su anclaje en las dos puertas (antes solo en UCP): si el primer intento falló
+al guardar, el reintento lo repara.
+
+**Motivo.** Nunca un 4xx: quien pagó no hizo nada mal, y un 402 lo invitaría a
+pagar de nuevo.
+
+**Alternativa descartada: reusar `PaymentError` (402)**, que es lo que usa el
+camino UCP para el pagador indeterminado. Ahí el cliente lee el estado de la
+sesión, que queda retenida; en x402 el status es todo lo que ve.
 

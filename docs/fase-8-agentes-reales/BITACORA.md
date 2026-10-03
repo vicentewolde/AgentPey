@@ -82,7 +82,14 @@ registro en la red no guarde el hash del pago.
 recibos sobre un mismo pago. Eso pide un contrato nuevo y quedó escrito como
 brecha 10 del anexo. Tampoco comprueba que la suma de los ítems sea el total.
 
-**Lo que falta.** `/revisar` y el merge, que despliega Vitrinee y publica el
+**La revisión.** `/revisar` no encontró bloqueantes y sí un caso que se me había
+pasado: si el dueño edita su tienda justo mientras se procesa una compra, la
+plataforma arma una tienda nueva que no sabía del pedido en curso, y el mismo
+pago podía dar dos recibos. Corregido, junto con los otros seis hallazgos
+(`VT-41`). Queda un límite escrito: la garantía vale dentro de un proceso, la
+base de datos todavía no la respalda.
+
+**Lo que falta.** El merge, que despliega Vitrinee y publica el
 cambio en la spec de la extensión de recibo. Evidencia en
 [`evidencia/T132.md`](evidencia/T132.md).
 

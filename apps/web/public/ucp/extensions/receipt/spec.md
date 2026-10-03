@@ -58,11 +58,19 @@ trusting the business.
 A receipt is valid when all three hold:
 
 1. **Signature and content:** the JWS verifies against the key in its `kid`,
-   and the receipt does not contradict itself: `amountUSDC` **MUST** be the
-   same amount as `amountUSDCAtomic`, each item's `unitPriceUSDC` the same as
-   its `unitPriceUSDCAtomic`, and `asset` **MUST** be the asset contract of the
-   handler's `config`. A business **MUST NOT** sign a receipt that fails this,
-   and a verifier **MUST** reject one.
+   and its payload does not contradict itself. The payload states every amount
+   twice, as a decimal string for people and in the asset's atomic units, and
+   only the atomic ones are compared against the chain in checks 2 and 3. So,
+   in the payload's own claim names:
+   * `amountUSDC` **MUST** be the same amount as `amountUSDCAtomic`;
+   * each item's `unitPriceUSDC` **MUST** be the same amount as its
+     `unitPriceUSDCAtomic`;
+   * `asset` **MUST** be the asset contract the verifier trusts for the
+     receipt's `network`. Today that is one contract, Circle's USDC on Stellar
+     testnet, the same one the Stellar x402 handler declares in its `config`.
+
+   A business **MUST NOT** sign a receipt that fails this, and a verifier
+   **MUST** reject one. Not checked: that the items add up to the total.
 2. **Anchor:** the registry contract holds `hash`, recorded by that same key,
    for the receipt's amount and order reference.
 3. **Settlement:** `settlement_tx_hash` is a successful Stellar transaction

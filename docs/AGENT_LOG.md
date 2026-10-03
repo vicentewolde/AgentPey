@@ -7614,3 +7614,15 @@ Pendiente: `/revisar`; push y merge con OK (despliega Vitrinee y publica la spec
 `/tarea T128`. `AGENTS.md`: sin cambios (T132 no es delegable y no cambia nada que Codex toque).
 Exponential: T132 a `IN_PROGRESS`.
 
+## 2026-10-03 (5) — cc/t132-coherencia-recibo (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T132 sin bloqueantes; corregidos los siete hallazgos a pedido del usuario. `fulfilPaidPurchase`
+indexa los pedidos en curso por cuenta firmante y hash del pago (no por `OrderStore`), vuelve a guardar y a encolar
+un pedido repetido en las dos puertas, y comprueba la coherencia antes de crear el pedido en la plataforma. Código
+de error nuevo `SettlementUnaccounted` (500) en `@vitrinee/core` (`VT-41`). Spec pública de la extensión precisada.
+
+Pendiente: push y merge con OK. Deuda: índice único en `vitrinee.orders` sobre el hash del pago (`VT-40`).
+`AGENTS.md`: sin cambios. Exponential: sin cambios (T132 sigue `IN_PROGRESS` hasta el PR).
+
