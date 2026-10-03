@@ -80,6 +80,7 @@ const { values } = parseArgs({
     merchant: { type: "string" },
     amount: { type: "string" },
     receipt: { type: "string" },
+    claim: { type: "string" },
     reason: { type: "string" },
     description: { type: "string" },
     evidence: { type: "string", multiple: true },
@@ -202,50 +203,69 @@ async function deposit(): Promise<void> {
 
 async function open(): Promise<void> {
   const { env, contractId } = await context();
-  if (values.receipt === undefined || values.reason === undefined || values.description === undefined) {
-    usage(`usage: resolve:open -- --receipt <file.jws> --reason <${CLAIM_REASONS.join("|")}> --description <text> [--evidence <text>]… [--amount <USDC>]`);
-  }
-  if (!(CLAIM_REASONS as readonly string[]).includes(values.reason)) usage(`--reason must be one of ${CLAIM_REASONS.join(", ")}`);
-  const buyer = Keypair.fromSecret(requireEnv(env, "AGENT_SECRET_KEY", "pnpm run bootstrap"));
   const arbiter = Keypair.fromSecret(requireEnv(env, "RESOLVE_ARBITER_SECRET_KEY", "pnpm run deploy:agent-resolve"));
-  const receiptJws = (await readFile(resolve(values.receipt), "utf8")).trim();
-
   out("\nAgentResolve · abrir un reclamo · testnet");
-  section("[comprador] firma el reclamo");
-  const verified = await verifiedReceipt(receiptJws);
-  const amountAtomic = values.amount === undefined ? verified.receipt.amountUSDCAtomic : toScaledAmount(values.amount).toString();
-  const signed = await signClaim(
-    {
-      type: "AgentResolveClaim",
-      claimId: randomUUID(),
-      claimant: stellarAddressToDid(buyer.publicKey(), "testnet"),
-      receipt: { hash: verified.hash, jws: receiptJws },
-      reason: values.reason as ClaimReason,
-      description: values.description,
-      evidence: (values.evidence ?? []).map((content) => ({ kind: /^https?:\/\//.test(content) ? ("url" as const) : ("text" as const), content })),
-      amountAtomic,
-      createdAt: new Date().toISOString(),
-    },
-    buyer,
-  );
-  line("recibo", verified.hash);
-  line("pedido", `${verified.receipt.platform} ${verified.receipt.platformOrderId ?? verified.receipt.orderId}`);
-  line("reclamo", `${signed.document.claimId} (${signed.document.reason})`);
-  line("pide", usdc(BigInt(amountAtomic)));
-  line("firmante", signed.document.claimant);
+
+  // A claim the buyer already signed elsewhere (T128: AgentPey's MCP server
+  // signs it with the key of the rail that paid). The arbiter checks it exactly
+  // like one signed here: the same verifyClaim and checkClaim below.
+  let claimJws: string;
+  let receiptJws: string;
+  let verified: Awaited<ReturnType<typeof verifiedReceipt>>;
+  if (values.claim !== undefined) {
+    claimJws = (await readFile(resolve(values.claim), "utf8")).trim();
+    const presented = await verifyClaim(claimJws);
+    receiptJws = presented.document.receipt.jws;
+    section("[comprador] reclamo ya firmado");
+    verified = await verifiedReceipt(receiptJws);
+    line("recibo", verified.hash);
+    line("reclamo", `${presented.document.claimId} (${presented.document.reason})`);
+    line("pide", usdc(BigInt(presented.document.amountAtomic)));
+    line("firmante", presented.document.claimant);
+  } else {
+    if (values.receipt === undefined || values.reason === undefined || values.description === undefined) {
+      usage(`usage: resolve:open -- --receipt <file.jws> --reason <${CLAIM_REASONS.join("|")}> --description <text> [--evidence <text>]… [--amount <USDC>], or resolve:open -- --claim <claim.jws>`);
+    }
+    if (!(CLAIM_REASONS as readonly string[]).includes(values.reason)) usage(`--reason must be one of ${CLAIM_REASONS.join(", ")}`);
+    const buyer = Keypair.fromSecret(requireEnv(env, "AGENT_SECRET_KEY", "pnpm run bootstrap"));
+    receiptJws = (await readFile(resolve(values.receipt), "utf8")).trim();
+    section("[comprador] firma el reclamo");
+    verified = await verifiedReceipt(receiptJws);
+    const amountAtomic = values.amount === undefined ? verified.receipt.amountUSDCAtomic : toScaledAmount(values.amount).toString();
+    const signed = await signClaim(
+      {
+        type: "AgentResolveClaim",
+        claimId: randomUUID(),
+        claimant: stellarAddressToDid(buyer.publicKey(), "testnet"),
+        receipt: { hash: verified.hash, jws: receiptJws },
+        reason: values.reason as ClaimReason,
+        description: values.description,
+        evidence: (values.evidence ?? []).map((content) => ({ kind: /^https?:\/\//.test(content) ? ("url" as const) : ("text" as const), content })),
+        amountAtomic,
+        createdAt: new Date().toISOString(),
+      },
+      buyer,
+    );
+    claimJws = signed.jws;
+    line("recibo", verified.hash);
+    line("pedido", `${verified.receipt.platform} ${verified.receipt.platformOrderId ?? verified.receipt.orderId}`);
+    line("reclamo", `${signed.document.claimId} (${signed.document.reason})`);
+    line("pide", usdc(BigInt(amountAtomic)));
+    line("firmante", signed.document.claimant);
+  }
 
   section("[árbitro] verifica y abre la disputa en el contrato");
-  const claim = await verifyClaim(signed.jws);
+  const claim = await verifyClaim(claimJws);
   const checked = await checkClaim(claim.document, verified, { controllerOf: (payer) => railOwner(payer, arbiter.secret()) });
   line("✅ recibo", "firma del comercio, anclado en receipt-registry, pago confirmado en Horizon");
   line("✅ firmante", `controla al pagador ${checked.payer}`);
   line("✅ plazo", `hasta ${checked.receipt.refundWindowEndsAt}`);
-  const hash = claimHash(signed.jws);
+  const hash = claimHash(claimJws);
   // Written before `open` is sent: if the transaction lands but the CLI fails
   // waiting for it, the claim behind the on-chain `claim_hash` must still exist.
   const dir = stateDir(verified.hash);
   await mkdir(dir, { recursive: true });
-  await writeFile(resolve(dir, "claim.jws"), `${signed.jws}\n`);
+  await writeFile(resolve(dir, "claim.jws"), `${claimJws}\n`);
   await writeFile(resolve(dir, "receipt.jws"), `${receiptJws}\n`);
   const { txHash } = await stellarCliTx(
     ["contract", "invoke", "--id", contractId, "--", "open", "--receipt", verified.hash, "--payer", checked.payer, "--claim_hash", hash, "--amount", checked.disputedAtomic.toString()],
