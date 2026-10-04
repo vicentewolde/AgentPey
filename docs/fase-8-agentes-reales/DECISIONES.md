@@ -409,7 +409,10 @@ tiene un secreto nuevo, `AGENTPEY_PLATFORM_AP2_SECRET` (P-256), solo en
 AP2. `agentpey.json` y `agentpey-2026-08-25.json` no la declaran, así que las
 compras sin AP2 siguen igual. El MCP no usa AP2 por ahora: no hay nada que
 cargar en Render. La llave del agente para el key binding (`cnf`) es P-256
-derivada de su llave de Stellar (como `VT-43`).
+derivada de su llave de Stellar (como `VT-43`). En el `cnf.jwk` del mandato
+abierto va solo con sus miembros públicos (`kty`, `crv`, `x`, `y`, `kid`): con
+`use` adentro, el SDK de AP2 no la puede releer (AP2#372, visto en la primera
+compra real de T134).
 
 **Qué prueba y qué no.** Hoy el mandato abierto lo firma el mismo proceso del
 agente (`ucp:buy`), en el momento de pagar y a partir de la cotización. Prueba

@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-03 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-04 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -21,6 +21,9 @@ pedido real y un recibo con los tres checks en verde; el pago lo apretó la
 persona, porque claude.ai no ejecuta pagos (`R-11`). **T129 cerrada**:
 Claude y ChatGPT conectados, y ChatGPT compró pagando él mismo tras la
 confirmación.
+**T131, T133 y T134 cerradas**: la suite oficial de UCP corre contra la tienda,
+la tienda habla las dos versiones de UCP, y con AP2 no cobra sin un mandato
+que la librería oficial de AP2 verifica sobre una compra real.
 
 | Tarea | Estado |
 |---|---|
@@ -30,7 +33,7 @@ confirmación.
 | T131 Suite de conformidad UCP | cerrada |
 | T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | cerrada |
-| T134 AP2 en el checkout | en revisión (falta la compra real) |
+| T134 AP2 en el checkout | cerrada |
 | T135 MPP charge (prueba técnica) | pendiente |
 | T136 SDK en npm | pendiente |
 | T137 Kit de conformidad de Stellar | pendiente |
@@ -269,7 +272,7 @@ hablando `2026-08-25`: pedido real, pago en Stellar desde el rail UCP y recibo
 válido. La misma orden se lee en la versión vieja si quien pregunta declara la
 vieja, y las dos respuestas validan contra el esquema oficial de su versión.
 
-## T134 · AP2 dentro del checkout UCP (2026-10-04, en revisión)
+## T134 · AP2 dentro del checkout UCP (2026-10-04, cerrada)
 
 **Qué quedó funcionando.** Cuando un agente y una tienda acuerdan usar AP2, la
 compra queda sellada: la tienda firma cada respuesta del checkout, y no cobra
@@ -301,6 +304,12 @@ total), dos pagos simultáneos de una misma intención ya no cierran dos mandato
 y el agente se niega antes de autorizar o firmar nada. La tienda guarda el
 mandato con que cobró.
 
-**Lo que falta.** La compra real con AP2, después del merge, y que la librería
-oficial verifique su mandato.
+**La compra real.** Con la tienda desplegada, dos compras reales de un imán en
+`agentcommerce`. En la primera la tienda verificó el mandato y cobró, pero la
+librería oficial de AP2 lo rechazó: las tres firmas estaban bien, y el problema
+era un bug de la librería, que relee la llave del agente de una forma que la
+rompe si trae el campo `use`. Se lo reportamos (AP2#372) y, de nuestro lado, la
+llave va ahora sin ese campo. En la segunda compra la librería oficial verifica
+el mandato con las llaves publicadas, como lo haría cualquier tercero. Recibo
+válido en las dos.
 

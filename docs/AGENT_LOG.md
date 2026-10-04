@@ -7871,3 +7871,19 @@ bordes, errores tipados, `verify.py` con llaves publicadas, la tienda guarda el 
 Pendiente: push, PR y merge con OK; compra real con `--ap2` tras el deploy. `AGENTS.md`: una línea (llaves de
 `R-16` y `VT-43` dentro de AP2, no delegable).
 
+## 2026-10-04 (25) — cc/t134-ap2-checkout → main, cc/t134-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI 4/4, T134 en `main` por fast-forward ([PR #52](https://github.com/vicentewolde/AgentPey/pull/52)) y desplegada (agentcommerce ofrece AP2,
+agentpey.com sirve `agentpey-ap2.json`). Con OK: rail UCP recargado con 3 USDC (tx `21c88611…`) y dos compras con
+`--ap2`. La primera (`ord_muudqypa510de5700e`) la aceptó la tienda pero el SDK de AP2 la rechazó: relee `cnf.jwk` con
+`model_dump()` y pasa `use` como enum a jwcrypto. Reportado con OK como
+[AP2#372](https://github.com/google-agentic-commerce/AP2/issues/372). Arreglo en `cc/t134-evidencia` (`9dbe8e2`):
+`cnf.jwk` solo con miembros públicos, test, y la muestra del cruce deriva la llave como AgentPey. Segunda compra
+(`ord_muudx8kyda00e05b33`, tx `e8a382ba…`): la librería oficial verifica el mandato con las llaves publicadas, recibo
+válido. T134 cerrada (SPEC, ESTADO, BITACORA, SYNC, evidencia §4, `R-16`).
+
+Pendiente: push y merge de `cc/t134-evidencia` con OK. Rail UCP en 0,1578945 USDC. Siguiente: T130 o T147.
+`AGENTS.md`: sin cambios. Exponential: T134 a `DONE`, `exp:sync` sin cambios.
+

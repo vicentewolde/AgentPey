@@ -229,7 +229,7 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] con la extensión negociada, un `complete` sin mandato, con mandato vencido, con firma inválida o con términos que no coinciden se rechaza con el código de UCP que corresponde ([evidencia](evidencia/T134.md) §2)
   - [x] la misma intención no produce un segundo par (brecha 14): el agente no cierra un segundo mandato para el mismo `intentId` (test de contrato)
-  - [ ] la librería oficial de AP2 verifica el mandato cerrado de una compra real (sobre una cadena de muestra ya verifica: [evidencia](evidencia/T134.md) §3; falta la compra real tras el deploy)
+  - [x] la librería oficial de AP2 verifica el mandato cerrado de una compra real (`ord_muudx8kyda00e05b33`, [evidencia](evidencia/T134.md) §4.2; la primera compra destapó un bug del SDK, [AP2#372](https://github.com/google-agentic-commerce/AP2/issues/372), §4.1)
   - [x] sin la extensión negociada, la compra funciona igual que hoy (test; suite 40/17/20)
   - [x] el diff no toca `checkMandate` ni el enforcement de `scope.limits` o `perDay` ([evidencia](evidencia/T134.md) §2)
 
@@ -447,6 +447,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T133: perfil `2026-08-25` con la hoja `2026-04-08` en `supported_versions`, negociación por el perfil del agente con un lector endurecido (`R-14`, defecto `2026-08-25` por decisión del usuario), respuestas según la versión, perfil de plataforma `agentpey-2026-08-25.json`. Tres criterios marcados; falta la compra real tras el deploy |
 | 2026-10-03 | T133, `/revisar`: dos bloqueantes en el lector de perfiles (sin plazo total, sin límite de lecturas) y 12 hallazgos más, corregidos a pedido del usuario; `R-14` precisada (límites exactos y la desviación de los códigos de error de UCP) |
 | 2026-10-04 | T133 cerrada: mergeada ([PR #50](https://github.com/vicentewolde/AgentPey/pull/50)) y compra real en `2026-08-25` con recibo válido; cuarto criterio marcado |
+| 2026-10-04 | T134 cerrada: mergeada ([PR #52](https://github.com/vicentewolde/AgentPey/pull/52)) y en vivo. Dos compras reales con AP2 en `agentcommerce`: la primera la aceptó la tienda pero el SDK de AP2 la rechazó por un bug suyo (`use` como enum al releer `cnf.jwk`, reportado como AP2#372); con `cnf.jwk` reducido a sus miembros públicos, la segunda la verifica la librería oficial. Quinto criterio marcado |
 | 2026-10-04 | T134, `/revisar`: un bloqueante (el bloqueo AP2 se calculaba por solicitud, así que un `complete` que ya no negociaba AP2 cobraba sin mandato) y 16 hallazgos más, corregidos a pedido del usuario. El bloqueo pasa a ser de la sesión; el `iss` del mandato abierto queda atado al perfil de la plataforma; los términos comparados incluyen destino y comprador. `R-15` y `R-16` precisadas; §4.4 alineada con `R-15` (sin mandato de pago) |
 | 2026-10-04 | T134: la tienda firma cada checkout y verifica el mandato AP2 antes de cobrar; el agente lo cierra (`abierto~~cierre`, `R-15`), con la llave de la plataforma (`R-16`) y la de la tienda derivada (`VT-43`). La librería oficial de AP2 verifica una cadena de muestra. Cuatro criterios marcados; falta la compra real tras el deploy. Se hizo en una rama con los dos lados en vez de dos PR |
 
