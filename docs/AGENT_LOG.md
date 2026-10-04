@@ -7840,3 +7840,18 @@ la orden valida contra el esquema de cada versión. T133 cerrada (SPEC, ESTADO, 
 Pendiente: push y merge de `cc/t133-evidencia` con OK. Siguiente: T130 (tienda de terceros) o T134. `AGENTS.md`: sin
 cambios.
 
+## 2026-10-04 (23) — cc/t134-ap2-checkout (sin push)
+
+Agente: Claude Code.
+
+Qué: T134. `@agentpey/ap2`: JCS (RFC 8785), `deriveP256`, firma de la tienda, cierre y verificación de la cadena
+`abierto~~cierre`. Tienda: AP2 en `2026-08-25` si el perfil del agente lo declara (el lector guarda capacidades y
+llaves P-256), firma cada checkout, verifica el mandato en `complete` con los códigos de UCP. Agente: `payUcpQuote`
+cierra el mandato (una vez por intención), `ucp:buy -- --ap2`, `ap2:platform-key` (secreto nuevo en `.env.local`,
+nunca impreso), `agentpey-ap2.json`, `verify.py --closed`. Decisiones `R-15`, `R-16`, `VT-43`; anexo del SEP con los
+códigos nuevos. La librería oficial de AP2 verifica una cadena de muestra sin observaciones.
+
+Pendiente: `/revisar`; push y merge con OK; compra real con `--ap2` tras el deploy y cruce con la librería oficial.
+`AGENTS.md`: sin cambios (llaves y autorización, nada delegable). Secreto nuevo: `AGENTPEY_PLATFORM_AP2_SECRET`, solo
+local.
+

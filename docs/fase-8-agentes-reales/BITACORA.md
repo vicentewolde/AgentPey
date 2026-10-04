@@ -30,7 +30,7 @@ confirmación.
 | T131 Suite de conformidad UCP | cerrada |
 | T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | cerrada |
-| T134 AP2 en el checkout | pendiente |
+| T134 AP2 en el checkout | en revisión (falta la compra real) |
 | T135 MPP charge (prueba técnica) | pendiente |
 | T136 SDK en npm | pendiente |
 | T137 Kit de conformidad de Stellar | pendiente |
@@ -268,4 +268,24 @@ usa el cobro). Se corrigieron con los otros 12 hallazgos.
 hablando `2026-08-25`: pedido real, pago en Stellar desde el rail UCP y recibo
 válido. La misma orden se lee en la versión vieja si quien pregunta declara la
 vieja, y las dos respuestas validan contra el esquema oficial de su versión.
+
+## T134 · AP2 dentro del checkout UCP (2026-10-04, en revisión)
+
+**Qué quedó funcionando.** Cuando un agente y una tienda acuerdan usar AP2, la
+compra queda sellada: la tienda firma cada respuesta del checkout, y no cobra
+hasta recibir un mandato que diga "mi usuario autorizó exactamente este
+checkout, que la tienda firmó". El agente de AgentPey arma ese mandato: la
+plataforma firma lo que el usuario permite (este producto, esta cantidad, esta
+tienda) y el agente lo cierra sobre el checkout firmado, para esta tienda y este
+checkout. Si algo no calza, la tienda responde con el código de error de UCP y
+no se mueve un peso. Sin AP2 acordado, todo sigue igual.
+
+**Lo que hubo que decidir.** UCP y AP2 no dicen cómo se juntan sus formatos. Se
+eligió la forma que la librería oficial de AP2 entiende, y se comprobó: verifica
+una cadena hecha aquí sin ninguna observación (`R-15`). La tienda usa una llave
+derivada de la que ya tenía (`VT-43`); la plataforma, una llave nueva que solo
+vive en `.env.local` (`R-16`).
+
+**Lo que falta.** La compra real con AP2, después del merge, y que la librería
+oficial verifique su mandato.
 
