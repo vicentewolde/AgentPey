@@ -11,11 +11,12 @@
  * what the contract holds: the verdict's reasoning stays with the arbiter.
  */
 import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
-import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_ORDER, UCP_VERSION, VitrineeError, currencyDecimals, formatUnits, parseDecimal, toMinorUnits } from "@vitrinee/core";
+import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_LATEST_VERSION, UCP_ORDER, VitrineeError, type UcpVersion, currencyDecimals, formatUnits, parseDecimal, toMinorUnits } from "@vitrinee/core";
 import type { Express, Request, Response } from "express";
 
 import type { OrderRecord, OrderStore } from "../orders.js";
 import { SHIPPING_OPTION_TITLE, receiptExtension } from "./checkout.js";
+import { ucpVersionOf } from "./negotiation.js";
 
 /** What the order knows about its receipt's dispute: none, one read from the chain, or a read that failed. */
 export type DisputeLookup = { kind: "none" } | { kind: "found"; contractId: string; dispute: DisputeRecord } | { kind: "unavailable" };
@@ -73,7 +74,7 @@ function disputeExtension(record: OrderRecord, contractId: string, dispute: Disp
   };
 }
 
-export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin: string, lookup: DisputeLookup = { kind: "none" }) {
+export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin: string, lookup: DisputeLookup = { kind: "none" }, version: UcpVersion = UCP_LATEST_VERSION) {
   const decimals = currencyDecimals(record.currency);
   const totalMinor = toMinorUnits(record.totalLocal, record.currency);
   // The total is unit × quantity, so this division is exact; it stays in bigint (VT-7, VT-36).
@@ -92,8 +93,8 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
   ];
   return {
     ucp: {
-      version: UCP_VERSION,
-      capabilities: { [UCP_ORDER]: [{ version: UCP_VERSION }], [RECEIPT_EXTENSION]: [{ version: RECEIPT_EXTENSION_VERSION }] },
+      version,
+      capabilities: { [UCP_ORDER]: [{ version }], [RECEIPT_EXTENSION]: [{ version: RECEIPT_EXTENSION_VERSION }] },
     },
     id: record.orderId,
     ...(record.platformOrderId === null ? {} : { label: record.platformOrderId }),
@@ -184,12 +185,12 @@ export function registerUcpOrders(
     // Only orders a UCP checkout created are UCP orders: the others have no checkout to point at.
     if (record === undefined || record.ucpCheckoutId === undefined) {
       res.status(404).json({
-        ucp: { version: UCP_VERSION, status: "error" },
+        ucp: { version: ucpVersionOf(res), status: "error" },
         messages: [{ type: "error", code: "not_found", content: `no UCP order "${id}"`, severity: "unrecoverable" }],
       });
       return;
     }
     const lookup = await lookupDispute(record, disputes, log, disputeTimeoutMs);
-    res.json(ucpOrder({ ...record, ucpCheckoutId: record.ucpCheckoutId }, originOf(req), lookup));
+    res.json(ucpOrder({ ...record, ucpCheckoutId: record.ucpCheckoutId }, originOf(req), lookup, ucpVersionOf(res)));
   });
 }

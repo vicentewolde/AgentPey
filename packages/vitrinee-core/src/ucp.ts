@@ -6,9 +6,26 @@ import { currencyDecimals, parseDecimal } from "./money.js";
 /**
  * The Universal Commerce Protocol surface of a storefront
  * (docs/fase-7-estandar-comercio-agentico/SPEC.md §4). Vitrinee implements UCP
- * 2026-04-08 (E-2) next to its own agent-storefront manifest, which stays as it is.
+ * 2026-08-25 and keeps serving 2026-04-08 next to it (R-6, T133), next to its
+ * own agent-storefront manifest, which stays as it is.
  */
-export const UCP_VERSION = "2026-04-08";
+/** The UCP versions a storefront serves, newest first. */
+export const UCP_VERSIONS = ["2026-08-25", "2026-04-08"] as const;
+export type UcpVersion = (typeof UCP_VERSIONS)[number];
+/** What a storefront answers in when it cannot tell what the platform speaks (R-14), and what its profile declares. */
+export const UCP_LATEST_VERSION: UcpVersion = "2026-08-25";
+/** The version of Phase 7, still served in parallel (R-6): the conformance suite and the clients of then speak it. */
+export const UCP_LEGACY_VERSION: UcpVersion = "2026-04-08";
+/**
+ * The version AgentPey's own platform profile declares (apps/web/public/ucp/platform/agentpey.json),
+ * so its agent and the stores agree on one name (T133 unified the copy the agent kept).
+ */
+export const UCP_VERSION: UcpVersion = UCP_LEGACY_VERSION;
+
+export function isUcpVersion(value: string): value is UcpVersion {
+  return (UCP_VERSIONS as readonly string[]).includes(value);
+}
+
 export const UCP_PROFILE_PATH = "/.well-known/ucp";
 /** Every UCP REST route lives under this prefix, so none collides with the routes that predate UCP. */
 export const UCP_REST_PREFIX = "/ucp/v1";
@@ -17,15 +34,23 @@ export const UCP_SHOPPING_SERVICE = "dev.ucp.shopping";
 export const UCP_CATALOG_SEARCH = "dev.ucp.shopping.catalog.search";
 export const UCP_CATALOG_LOOKUP = "dev.ucp.shopping.catalog.lookup";
 
-const UCP_DOCS = `https://ucp.dev/${UCP_VERSION}`;
-export const UCP_SPEC_URLS = {
-  service: { spec: `${UCP_DOCS}/specification/overview`, schema: `${UCP_DOCS}/services/shopping/rest.openapi.json` },
-  catalogSearch: { spec: `${UCP_DOCS}/specification/catalog/search`, schema: `${UCP_DOCS}/schemas/shopping/catalog_search.json` },
-  catalogLookup: { spec: `${UCP_DOCS}/specification/catalog/lookup`, schema: `${UCP_DOCS}/schemas/shopping/catalog_lookup.json` },
-  checkout: { spec: `${UCP_DOCS}/specification/checkout`, schema: `${UCP_DOCS}/schemas/shopping/checkout.json` },
-  fulfillment: { spec: `${UCP_DOCS}/specification/fulfillment`, schema: `${UCP_DOCS}/schemas/shopping/fulfillment.json` },
-  order: { spec: `${UCP_DOCS}/specification/order`, schema: `${UCP_DOCS}/schemas/shopping/order.json` },
-} as const;
+type SpecUrls = Readonly<Record<"service" | "catalogSearch" | "catalogLookup" | "checkout" | "fulfillment" | "order", { spec: string; schema: string }>>;
+
+/** Where each version documents its capabilities. 2026-08-25 moved the shopping specs under `/specification/shopping/`. */
+export function ucpSpecUrls(version: UcpVersion): SpecUrls {
+  const docs = `https://ucp.dev/${version}`;
+  const shop = version === "2026-04-08" ? `${docs}/specification` : `${docs}/specification/shopping`;
+  return {
+    service: { spec: `${docs}/specification/overview`, schema: `${docs}/services/shopping/rest.openapi.json` },
+    catalogSearch: { spec: `${shop}/catalog/search`, schema: `${docs}/schemas/shopping/catalog_search.json` },
+    catalogLookup: { spec: `${shop}/catalog/lookup`, schema: `${docs}/schemas/shopping/catalog_lookup.json` },
+    checkout: { spec: `${shop}/checkout`, schema: `${docs}/schemas/shopping/checkout.json` },
+    fulfillment: { spec: version === "2026-04-08" ? `${shop}/fulfillment` : `${shop}/extensions/fulfillment`, schema: `${docs}/schemas/shopping/fulfillment.json` },
+    order: { spec: `${shop}/order`, schema: `${docs}/schemas/shopping/order.json` },
+  };
+}
+/** The 2026-04-08 URLs, as Phase 7 published them. */
+export const UCP_SPEC_URLS = ucpSpecUrls(UCP_LEGACY_VERSION);
 
 export const UCP_CHECKOUT = "dev.ucp.shopping.checkout";
 export const UCP_FULFILLMENT = "dev.ucp.shopping.fulfillment";
@@ -102,8 +127,13 @@ export const ucpBusinessProfileSchema = z.looseObject({
     services: z.record(reverseDomainName, z.array(serviceSchema)),
     capabilities: z.record(reverseDomainName, z.array(entitySchema)).optional(),
     payment_handlers: z.record(reverseDomainName, z.array(paymentHandlerSchema)),
+    /** Older versions this business also serves, each as a whole profile of its own (2026-08-25). */
+    supported_versions: z.record(versionSchema, z.url()).optional(),
   }),
+  /** 2026-04-08. */
   signing_keys: z.array(signingKeySchema).optional(),
+  /** 2026-08-25 (and mirrored in 2026-04-08 leaf profiles). */
+  keys: z.array(signingKeySchema).optional(),
 });
 export type UcpBusinessProfile = z.infer<typeof ucpBusinessProfileSchema>;
 

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { fakeFacilitator } from "./test/fake-facilitator.js";
-import { MERCHANT, REGISTRY_ID, SIGNER, fakeRegistry, testConfig } from "./test/fixtures.js";
+import { MERCHANT, REGISTRY_ID, SIGNER, fakeRegistry, testConfig, fakePlatformProfiles } from "./test/fixtures.js";
 import { listen } from "./test/listen.js";
 
 const REQUIRED = { MERCHANT_STELLAR_ACCOUNT: MERCHANT, MERCHANT_SIGNING_SECRET: SIGNER.secret(), RECEIPT_REGISTRY_ID: REGISTRY_ID };
@@ -14,7 +14,8 @@ describe("gateway (free routes)", () => {
   const config = testConfig({ SHIPPING_COUNTRIES: "CL, AR" });
   const adapter = new MockStoreAdapter();
   const { anchorer, registry } = fakeRegistry();
-  const app = createApp({ config, adapter, facilitator: fakeFacilitator(), anchorer, registry, now: () => new Date("2026-09-22T15:00:00.000Z") });
+  const app = createApp({
+    platformProfiles: fakePlatformProfiles(), config, adapter, facilitator: fakeFacilitator(), anchorer, registry, now: () => new Date("2026-09-22T15:00:00.000Z") });
   let url = "";
   let close: () => Promise<void> = async () => {};
 
@@ -76,7 +77,8 @@ describe("gateway (free routes)", () => {
   it("honours PUBLIC_BASE_URL for absolute endpoints", async () => {
     const publicConfig = testConfig({ PUBLIC_BASE_URL: "https://vitrinee.example.com/" });
     const { url: localUrl, close: closeLocal } = await listen(
-      createApp({ config: publicConfig, adapter, facilitator: fakeFacilitator(), anchorer, registry }),
+      createApp({
+    platformProfiles: fakePlatformProfiles(), config: publicConfig, adapter, facilitator: fakeFacilitator(), anchorer, registry }),
     );
     try {
       const manifest = storefrontManifestSchema.parse(await (await fetch(`${localUrl}${MANIFEST_PATH}`)).json());

@@ -1,6 +1,6 @@
 import type { StoreAdapter } from "@vitrinee/adapters";
 import { AgentResolveReader, ReceiptRegistryClient, verifyReceipt, type DisputeReader, type RegistryReader } from "@vitrinee/anchor";
-import { MANIFEST_PATH, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError } from "@vitrinee/core";
+import { MANIFEST_PATH, UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddlewareFromHTTPServer } from "@x402/express";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
@@ -27,8 +27,9 @@ import {
 } from "./ucp/catalog.js";
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { registerUcpOrders } from "./ucp/order.js";
-import { ucpVersionGuard } from "./ucp/negotiation.js";
-import { buildUcpProfile } from "./ucp/profile.js";
+import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
+import { createPlatformProfileReader, type PlatformProfileReader } from "./ucp/platform-profile.js";
+import { buildUcpProfile, ucpLeafProfilePath } from "./ucp/profile.js";
 import { MemoryCheckoutSessions, type CheckoutSessionPersistence } from "./ucp/sessions.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
 
@@ -52,6 +53,11 @@ export interface AppDeps {
   /** Used for the Horizon settlement check. Tests inject a fake Horizon. */
   horizonFetch?: typeof fetch;
   anchorRetryDelaysMs?: readonly number[];
+  /**
+   * Reads the platform profile `UCP-Agent` points to, to learn the UCP version it speaks (T133, R-14).
+   * Defaults to the hardened HTTPS reader; tests inject a fake; `null` answers every platform in the newest version.
+   */
+  platformProfiles?: PlatformProfileReader | null;
   /** Whether the x402 middleware syncs with the facilitator at startup (default true). */
   syncFacilitatorOnStart?: boolean;
   now?: () => Date;
@@ -82,6 +88,7 @@ export function createApp({
   horizonFetch,
   anchorRetryDelaysMs,
   syncFacilitatorOnStart = true,
+  platformProfiles = createPlatformProfileReader(),
   now = () => new Date(),
   log = () => {},
 }: AppDeps): VitrineeApp {
@@ -173,23 +180,28 @@ export function createApp({
     res.set("Cache-Control", cacheHeader);
     res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req) }));
   });
+  // The 2026-04-08 profile, which the current one lists in `supported_versions` (R-6, T133).
+  app.get(ucpLeafProfilePath(UCP_LEGACY_VERSION), (req, res) => {
+    res.set("Cache-Control", cacheHeader);
+    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), version: UCP_LEGACY_VERSION }));
+  });
 
-  // Every UCP route answers in a version the platform can read, or says it cannot (T131).
-  app.use(UCP_REST_PREFIX, ucpVersionGuard);
+  // Every UCP route answers in the version the platform speaks, or says it cannot (T131, T133).
+  app.use(UCP_REST_PREFIX, ucpVersionGuard(platformProfiles, log));
 
   app.post(`${UCP_REST_PREFIX}/catalog/search`, async (req, res) => {
     const request = searchRequestSchema.parse(req.body ?? {});
-    res.json(searchCatalog({ config, products: await catalog.get(), request }));
+    res.json(searchCatalog({ config, products: await catalog.get(), request, version: ucpVersionOf(res) }));
   });
 
   app.post(`${UCP_REST_PREFIX}/catalog/lookup`, async (req, res) => {
     const { ids } = lookupRequestSchema.parse(req.body ?? {});
-    res.json(lookupCatalog({ config, products: await catalog.get(), ids }));
+    res.json(lookupCatalog({ config, products: await catalog.get(), ids, version: ucpVersionOf(res) }));
   });
 
   app.post(`${UCP_REST_PREFIX}/catalog/product`, async (req, res) => {
     const { id } = getProductRequestSchema.parse(req.body ?? {});
-    res.json(getCatalogProduct({ config, products: await catalog.get(), id }));
+    res.json(getCatalogProduct({ config, products: await catalog.get(), id, version: ucpVersionOf(res) }));
   });
 
   // The UCP checkout pays through the same resource server as the x402 checkout,

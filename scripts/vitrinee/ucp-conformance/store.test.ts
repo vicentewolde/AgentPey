@@ -3,6 +3,8 @@
  * nowhere else.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -12,7 +14,7 @@ import { UCP_REST_PREFIX } from "../../../packages/vitrinee-core/src/index.js";
 import { createApp } from "../../../packages/vitrinee-gateway/src/app.js";
 import { loadConfig } from "../../../packages/vitrinee-gateway/src/config.js";
 import { fakeFacilitator } from "../../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { fakeRegistry, testConfig } from "../../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { fakeRegistry, testConfig, fakePlatformProfiles } from "../../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../../packages/vitrinee-gateway/src/test/listen.js";
 import { MemoryCheckoutSessions } from "../../../packages/vitrinee-gateway/src/ucp/sessions.js";
 import { MOCK_HANDLER_ID, OUT_OF_STOCK_ID, SUCCESS_TOKEN, assertLocalOnly, startConformanceStore, type ConformanceStore } from "./store.js";
@@ -64,6 +66,23 @@ describe("the UCP conformance store (T131)", () => {
     expect(done.body["receipt"]).toMatchObject({ format: "jws" });
   });
 
+  it("reads the suite's agent profile on localhost, and answers in the version it declares (2026-04-08); the well-known profile is the 2026-04-08 leaf", async () => {
+    const profileServer = createServer((_req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ ucp: { version: "2026-04-08", capabilities: {} } }));
+    });
+    await new Promise<void>((done) => profileServer.listen(0, "127.0.0.1", () => done()));
+    const { port } = profileServer.address() as AddressInfo;
+    try {
+      const created = await call(store.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions`, readySession(), { "UCP-Agent": `profile="http://127.0.0.1:${port}/profiles/shopping-agent.json"` });
+      expect((created.body["ucp"] as { version: string }).version).toBe("2026-04-08");
+      const wellKnown = (await (await fetch(`${store.url}/.well-known/ucp`)).json()) as { ucp: { version: string } };
+      expect(wellKnown.ucp.version).toBe("2026-04-08");
+    } finally {
+      await new Promise<void>((done) => profileServer.close(() => done()));
+    }
+  });
+
   it("refuses any other token, as the suite's fail_token must be", async () => {
     const created = await call(store.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions`, readySession());
     const done = await call(store.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions/${created.body.id}/complete`, mockPayment("fail_token"));
@@ -91,6 +110,7 @@ describe("the conformance test payment never reaches a real store", () => {
   it("a store started the production way refuses mock_payment_handler, even with a facilitator that says yes to everything", async () => {
     const registry = fakeRegistry();
     const app = createApp({
+    platformProfiles: fakePlatformProfiles(),
       config: testConfig({ SHIPPING_COUNTRIES: "US" }),
       adapter: new MockStoreAdapter(),
       facilitator: fakeFacilitator(),

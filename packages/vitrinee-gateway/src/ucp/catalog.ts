@@ -3,10 +3,11 @@ import {
   STELLAR_X402_HANDLER,
   UCP_CATALOG_LOOKUP,
   UCP_CATALOG_SEARCH,
-  UCP_VERSION,
+  UCP_LATEST_VERSION,
   USDC_TESTNET,
   localToUsdcAtomic,
   toMinorUnits,
+  type UcpVersion,
 } from "@vitrinee/core";
 import { z } from "zod";
 
@@ -75,10 +76,10 @@ interface UcpCatalogProduct {
   variants: [UcpVariant];
 }
 
-const envelope = (capability: string, status: "success" | "error" = "success") => ({
-  version: UCP_VERSION,
+const envelope = (version: UcpVersion, capability: string, status: "success" | "error" = "success") => ({
+  version,
   status,
-  capabilities: { [capability]: [{ version: UCP_VERSION }] },
+  capabilities: { [capability]: [{ version }] },
 });
 
 /** `null` stock means the platform does not track it, which is the same as available. */
@@ -125,6 +126,8 @@ export function toUcpProduct(product: Product, config: GatewayConfig): UcpCatalo
 
 export interface SearchCatalogInput {
   config: GatewayConfig;
+  /** The version the platform speaks (T133); the catalog's shape is the same in both. */
+  version?: UcpVersion;
   products: readonly Product[];
   request: SearchRequest;
 }
@@ -135,7 +138,7 @@ export interface SearchCatalogInput {
  * the ServiceCard feed. Out-of-stock products are listed and say so: UCP has a
  * field for it, and hiding them would make a lookup disagree with a search.
  */
-export function searchCatalog({ config, products, request }: SearchCatalogInput) {
+export function searchCatalog({ config, products, request, version = UCP_LATEST_VERSION }: SearchCatalogInput) {
   const needle = request.query === undefined || request.query.trim() === "*" ? "" : request.query.trim().toLowerCase();
   // Vitrinee products carry no categories, so a category filter matches none of them (UCP: OR over listed categories).
   const byCategory = (request.filters?.categories ?? []).length > 0;
@@ -158,7 +161,7 @@ export function searchCatalog({ config, products, request }: SearchCatalogInput)
   const hasNext = next < matched.length;
 
   return {
-    ucp: envelope(UCP_CATALOG_SEARCH),
+    ucp: envelope(version, UCP_CATALOG_SEARCH),
     products: page,
     pagination: { has_next_page: hasNext, ...(hasNext ? { cursor: String(next) } : {}), total_count: matched.length },
   };
@@ -166,6 +169,8 @@ export function searchCatalog({ config, products, request }: SearchCatalogInput)
 
 export interface LookupCatalogInput {
   config: GatewayConfig;
+  /** The version the platform speaks (T133); the catalog's shape is the same in both. */
+  version?: UcpVersion;
   products: readonly Product[];
   ids: readonly string[];
 }
@@ -175,7 +180,7 @@ export interface LookupCatalogInput {
  * one variant exactly. Ids that resolve to nothing are left out: a batch lookup
  * returns partial results by design.
  */
-export function lookupCatalog({ config, products, ids }: LookupCatalogInput) {
+export function lookupCatalog({ config, products, ids, version = UCP_LATEST_VERSION }: LookupCatalogInput) {
   const found = new Map<string, { product: Product; inputs: Array<{ id: string; match: "exact" }> }>();
   for (const id of new Set(ids)) {
     const product = products.find((candidate) => candidate.id === id) ?? products.find((candidate) => candidate.sku === id);
@@ -185,7 +190,7 @@ export function lookupCatalog({ config, products, ids }: LookupCatalogInput) {
     found.set(product.id, entry);
   }
   return {
-    ucp: envelope(UCP_CATALOG_LOOKUP),
+    ucp: envelope(version, UCP_CATALOG_LOOKUP),
     products: [...found.values()].map(({ product, inputs }) => {
       const ucpProduct = toUcpProduct(product, config);
       return { ...ucpProduct, variants: [{ ...ucpProduct.variants[0], inputs }] };
@@ -195,6 +200,8 @@ export function lookupCatalog({ config, products, ids }: LookupCatalogInput) {
 
 export interface GetProductInput {
   config: GatewayConfig;
+  /** The version the platform speaks (T133); the catalog's shape is the same in both. */
+  version?: UcpVersion;
   products: readonly Product[];
   id: string;
 }
@@ -203,13 +210,13 @@ export interface GetProductInput {
  * `POST /catalog/product`. A missing product is an application outcome, not a
  * transport error: HTTP 200 with `ucp.status: "error"` and a `not_found` message.
  */
-export function getCatalogProduct({ config, products, id }: GetProductInput) {
+export function getCatalogProduct({ config, products, id, version = UCP_LATEST_VERSION }: GetProductInput) {
   const product = products.find((candidate) => candidate.id === id) ?? products.find((candidate) => candidate.sku === id);
   if (product === undefined) {
     return {
-      ucp: envelope(UCP_CATALOG_LOOKUP, "error"),
+      ucp: envelope(version, UCP_CATALOG_LOOKUP, "error"),
       messages: [{ type: "error" as const, code: "not_found", content: `Product not found: ${id}`, severity: "unrecoverable" as const }],
     };
   }
-  return { ucp: envelope(UCP_CATALOG_LOOKUP), product: toUcpProduct(product, config) };
+  return { ucp: envelope(version, UCP_CATALOG_LOOKUP), product: toUcpProduct(product, config) };
 }

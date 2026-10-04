@@ -10,7 +10,7 @@ import { OrderStore, type OrderPersistence } from "./orders.js";
 import { Reservations } from "./reservations.js";
 import { SettlementLedger } from "./settlements.js";
 import { FAKE_PAYER, FAKE_TX_HASH, fakeFacilitator } from "./test/fake-facilitator.js";
-import { MERCHANT, REGISTRY_ID, SIGNER, fakeHorizon, fakeRegistry, testConfig } from "./test/fixtures.js";
+import { MERCHANT, REGISTRY_ID, SIGNER, fakeHorizon, fakeRegistry, testConfig, fakePlatformProfiles } from "./test/fixtures.js";
 import { listen } from "./test/listen.js";
 
 const JSON_HEADERS = { "content-type": "application/json" };
@@ -52,6 +52,7 @@ async function start(overrides: Partial<AppDeps> = {}) {
     registry: registry.registry,
     horizonFetch: horizon,
     anchorRetryDelaysMs: [5, 5],
+    platformProfiles: fakePlatformProfiles(),
     ...overrides,
   };
   const app = createApp(deps) as VitrineeApp;

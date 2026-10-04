@@ -9,9 +9,10 @@ import type { Anchorer } from "../anchoring.js";
 import { createApp } from "../app.js";
 import { OrderStore, type OrderPersistence } from "../orders.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../test/fake-facilitator.js";
-import { MERCHANT, fakeRegistry, testConfig } from "../test/fixtures.js";
+import { AGENTPEY_PLATFORM_PROFILE, MERCHANT, fakePlatformProfiles, fakeRegistry, testConfig } from "../test/fixtures.js";
 import { listen } from "../test/listen.js";
-import { addSchema, ucpErrors } from "../test/ucp-schemas.js";
+import { UCP_SCHEMA_2026_08_25, addSchema, ucpErrors } from "../test/ucp-schemas.js";
+import type { PlatformProfileReader } from "./platform-profile.js";
 import { MemoryCheckoutSessions } from "./sessions.js";
 
 const read = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")) as { $id: string };
@@ -79,7 +80,7 @@ function uniqueFacilitator(): FakeFacilitator {
   };
 }
 
-function harness(options: { createOrderDelayMs?: number; facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; disputeTimeoutMs?: number; anchorer?: Anchorer } = {}) {
+function harness(options: { profiles?: PlatformProfileReader; createOrderDelayMs?: number; facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; disputeTimeoutMs?: number; anchorer?: Anchorer } = {}) {
   const clock = { now: new Date("2026-09-30T12:00:00.000Z") };
   const facilitator = options.facilitator ?? uniqueFacilitator();
   const registry = fakeRegistry();
@@ -93,6 +94,7 @@ function harness(options: { createOrderDelayMs?: number; facilitator?: FakeFacil
     return createOrder(input);
   };
   const app = createApp({
+    platformProfiles: options.profiles ?? fakePlatformProfiles(),
     config: testConfig(),
     adapter,
     facilitator,
@@ -123,6 +125,7 @@ function harness(options: { createOrderDelayMs?: number; facilitator?: FakeFacil
     platformOrders,
     call,
     create: (body: unknown) => call("POST", "/checkout-sessions", body),
+    url: () => url,
     start: async () => {
       ({ url, close } = await listen(app));
     },
@@ -727,3 +730,69 @@ describe("UCP conformance fixes (T131)", () => {
     expect(h.facilitator.settleCalls).toHaveLength(settled);
   });
 });
+
+describe("UCP 2026-08-25 next to 2026-04-08 (T133, R-6, R-14)", () => {
+  const NEW = "https://platform.example/ucp/profile-2026-08-25.json";
+  const FUTURE = "https://platform.example/ucp/profile-2099.json";
+  const profiles = fakePlatformProfiles({ [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08", [NEW]: "2026-08-25", [FUTURE]: "2099-01-01" });
+  const h = harness({ profiles });
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+  const as = (profile: string) => ({ "UCP-Agent": `profile="${profile}"` });
+
+  it("a platform whose profile says 2026-08-25 gets a checkout and an order in 2026-08-25, valid against that version's schemas", async () => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(NEW));
+    expect(created.status).toBe("ready_for_complete");
+    expect((created as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-08-25");
+    expect(ucpErrors(UCP_SCHEMA_2026_08_25.checkout, created, "2026-08-25")).toEqual([]);
+    const done = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)), as(NEW));
+    expect(done.body.status).toBe("completed");
+    expect(ucpErrors(UCP_SCHEMA_2026_08_25.checkout, done.body, "2026-08-25")).toEqual([]);
+    const order = await h.call("GET", `/orders/${done.body.order?.id}`, undefined, as(NEW));
+    expect(ucpErrors(UCP_SCHEMA_2026_08_25.order, order.body, "2026-08-25")).toEqual([]);
+    expect((order.body as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-08-25");
+  });
+
+  it("is checked for real: a 2026-08-25 checkout without the destination's kind fails that version's schema (negative control)", async () => {
+    const { body } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(NEW));
+    const broken = structuredClone(body) as unknown as { fulfillment: { methods: Array<{ destinations: Array<Record<string, unknown>> }> } };
+    delete broken.fulfillment.methods[0]!.destinations[0]!["type"];
+    expect(ucpErrors(UCP_SCHEMA_2026_08_25.checkout, broken, "2026-08-25")).not.toEqual([]);
+  });
+
+  it("names the destination's kind in 2026-08-25 and not in 2026-04-08", async () => {
+    const fresh = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(NEW));
+    const old = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AGENTPEY_PLATFORM_PROFILE));
+    const destinationOf = (body: unknown) => (body as { fulfillment: { methods: Array<{ destinations: Array<Record<string, unknown>> }> } }).fulfillment.methods[0]?.destinations[0];
+    expect(destinationOf(fresh.body)).toMatchObject({ type: "shipping_address", address_country: "CL" });
+    expect(destinationOf(old.body)).not.toHaveProperty("type");
+    expect(ucpErrors(CHECKOUT_SCHEMA, old.body)).toEqual([]);
+  });
+
+  it("the same session reads back in the version each platform speaks", async () => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(NEW));
+    const asOld = await h.call("GET", `/checkout-sessions/${created.id}`, undefined, as(AGENTPEY_PLATFORM_PROFILE));
+    expect((asOld.body as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-04-08");
+    expect(ucpErrors(CHECKOUT_SCHEMA, asOld.body)).toEqual([]);
+  });
+
+  it("a platform that cannot be read, or sends no UCP-Agent, gets 2026-08-25", async () => {
+    const unknown = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as("https://nobody.example/profile.json"));
+    expect((unknown.body as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-08-25");
+    const res = await fetch(`${h.url()}${UCP_REST_PREFIX}/checkout-sessions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(ready("gorro-andes")) });
+    expect(((await res.json()) as { ucp: { version: string } }).ucp.version).toBe("2026-08-25");
+  });
+
+  it("a platform whose profile declares a version this store does not serve gets 422 version_unsupported, and nothing is created", async () => {
+    const res = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(FUTURE));
+    expect(res.status).toBe(422);
+    expect(res.body.messages).toEqual([expect.objectContaining({ code: "version_unsupported" })]);
+    expect(ucpErrors(UCP_SCHEMA_2026_08_25.errorResponse, res.body, "2026-08-25")).toEqual([]);
+  });
+
+  it("an explicit version parameter on UCP-Agent wins over the profile (the conformance suite sends one)", async () => {
+    const res = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), { "UCP-Agent": `profile="${NEW}"; version="2026-04-08"` });
+    expect((res.body as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-04-08");
+  });
+});
+

@@ -19,8 +19,8 @@ import {
   STELLAR_X402_INSTRUMENT_TYPE,
   UCP_CHECKOUT,
   UCP_FULFILLMENT,
-  UCP_VERSION,
   USDC_TESTNET,
+  type UcpVersion,
   VitrineeError,
   isVitrineeError,
   toMinorUnits,
@@ -46,6 +46,7 @@ import {
   type UcpAddress,
 } from "./sessions.js";
 import { IdempotencyCache, requestHash } from "./idempotency.js";
+import { ucpVersionOf } from "./negotiation.js";
 import { stellarX402Config } from "./profile.js";
 
 
@@ -151,7 +152,7 @@ const message = (code: string, content: string, severity: Severity, path?: strin
 
 /** A UCP error response: the request had no resource to act on. */
 function sendError(res: Response, status: number, code: string, content: string, severity: Severity = "unrecoverable"): void {
-  res.status(status).json({ ucp: { version: UCP_VERSION, status: "error" }, messages: [message(code, content, severity)] });
+  res.status(status).json({ ucp: { version: ucpVersionOf(res), status: "error" }, messages: [message(code, content, severity)] });
 }
 
 // ---------------------------------------------------------------- quoting
@@ -311,7 +312,13 @@ function handlerFor(deps: UcpCheckoutDeps, session: CheckoutSession) {
   return { id: STELLAR_X402_HANDLER_ID, version: STELLAR_X402_HANDLER_VERSION, config };
 }
 
-async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession, origin: string, messages: UcpMessage[] = []) {
+/** Who a response is for: the origin its links use, and the UCP version it is shaped in (T133). */
+interface View {
+  origin: string;
+  version: UcpVersion;
+}
+
+async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession, { origin, version }: View, messages: UcpMessage[] = []) {
   const { product, totalMinor } = await render(deps, session);
   const order = session.orderId === null ? undefined : deps.orders.get(session.orderId);
   const receipt = order === undefined ? undefined : receiptExtension(order, origin);
@@ -319,11 +326,11 @@ async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession,
   const buyer = Object.fromEntries(Object.entries(session.buyer).filter(([, value]) => value !== undefined));
   return {
     ucp: {
-      version: UCP_VERSION,
+      version,
       status: "success",
       capabilities: {
-        [UCP_CHECKOUT]: [{ version: UCP_VERSION }],
-        [UCP_FULFILLMENT]: [{ version: UCP_VERSION }],
+        [UCP_CHECKOUT]: [{ version }],
+        [UCP_FULFILLMENT]: [{ version }],
         [RECEIPT_EXTENSION]: [{ version: RECEIPT_EXTENSION_VERSION }],
       },
       payment_handlers: { [STELLAR_X402_HANDLER]: [handlerFor(deps, session)] },
@@ -349,7 +356,8 @@ async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession,
           id: METHOD_ID,
           type: "shipping",
           line_item_ids: [LINE_ITEM_ID],
-          destinations: d === null ? [] : [d],
+          // 2026-08-25 names each destination's kind (T133); 2026-04-08 has no such field.
+          destinations: d === null ? [] : [version === "2026-04-08" ? d : { type: "shipping_address", ...d }],
           selected_destination_id: d?.id ?? null,
           groups: [
             {
@@ -558,6 +566,7 @@ async function idempotent(
 }
 
 export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheckoutDeps, originOf: (req: Request) => string): void {
+  const viewOf = (req: Request, res: Response): View => ({ origin: originOf(req), version: ucpVersionOf(res) });
   const idempotency = new IdempotencyCache(deps.now);
   const notFound = (res: Response, id: string) => sendError(res, 404, "not_found", `no checkout session "${id}"`);
 
@@ -587,7 +596,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       applyInput(session, input);
       const messages = await refresh(deps, session);
       await deps.sessions.save(session);
-      res.status(201).json(await checkoutResponse(deps, session, originOf(req), messages));
+      res.status(201).json(await checkoutResponse(deps, session, viewOf(req, res), messages));
     })),
   );
 
@@ -597,7 +606,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       const id = String(req.params["id"]);
       const session = await loadSession(deps, id);
       if (session === undefined) return notFound(res, id);
-      res.json(await checkoutResponse(deps, session, originOf(req)));
+      res.json(await checkoutResponse(deps, session, viewOf(req, res)));
     }),
   );
 
@@ -616,7 +625,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         const messages = await refresh(deps, session);
         session.updatedAt = deps.now().toISOString();
         await deps.sessions.save(session);
-        res.json(await checkoutResponse(deps, session, originOf(req), messages));
+        res.json(await checkoutResponse(deps, session, viewOf(req, res), messages));
       });
     })),
   );
@@ -634,7 +643,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         session.status = "canceled";
         session.updatedAt = deps.now().toISOString();
         await deps.sessions.save(session);
-        res.json(await checkoutResponse(deps, session, originOf(req)));
+        res.json(await checkoutResponse(deps, session, viewOf(req, res)));
       });
     })),
   );
@@ -645,7 +654,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       const id = String(req.params["id"]);
       const idempotencyKey = readIdempotencyKey(req);
       const input = completeInput.parse(req.body ?? {});
-      await withSessionLock(deps, id, res, () => complete(deps, id, idempotencyKey, input, res, originOf(req)));
+      await withSessionLock(deps, id, res, () => complete(deps, id, idempotencyKey, input, res, viewOf(req, res)));
     }, keepCompleteAnswer)),
   );
 }
@@ -656,7 +665,7 @@ async function complete(
   idempotencyKey: string | null,
   input: z.infer<typeof completeInput>,
   res: Response,
-  origin: string,
+  view: View,
 ): Promise<void> {
   const session = await loadSession(deps, id);
   if (session === undefined) return sendError(res, 404, "not_found", `no checkout session "${id}"`);
@@ -667,7 +676,7 @@ async function complete(
     if (idempotencyKey !== null && session.completeIdempotencyKey !== `ucp:${idempotencyKey}`) {
       return sendError(res, 409, "invalid_state", "checkout is already completed");
     }
-    res.json(await checkoutResponse(deps, session, origin));
+    res.json(await checkoutResponse(deps, session, view));
     return;
   }
   if (session.status === "canceled") return sendError(res, 409, "invalid_state", "checkout is canceled");
@@ -676,22 +685,22 @@ async function complete(
   if (session.status === "complete_in_progress") {
     if (session.settlement !== null) {
       await finish(deps, session);
-      res.json(await checkoutResponse(deps, session, origin));
+      res.json(await checkoutResponse(deps, session, view));
       return;
     }
-    res.json(await checkoutResponse(deps, session, origin, [held()]));
+    res.json(await checkoutResponse(deps, session, view, [held()]));
     return;
   }
 
   const selected = input.payment.instruments.filter((instrument) => instrument.selected !== false);
   const instrument = selected.length === 1 ? selected[0] : undefined;
   if (instrument === undefined || instrument.handler_id !== STELLAR_X402_HANDLER_ID || instrument.type !== STELLAR_X402_INSTRUMENT_TYPE) {
-    res.json(await checkoutResponse(deps, session, origin, [message("payment_failed", `select exactly one ${STELLAR_X402_INSTRUMENT_TYPE} instrument of handler ${STELLAR_X402_HANDLER_ID}`, "recoverable", "$.payment.instruments")]));
+    res.json(await checkoutResponse(deps, session, view, [message("payment_failed", `select exactly one ${STELLAR_X402_INSTRUMENT_TYPE} instrument of handler ${STELLAR_X402_HANDLER_ID}`, "recoverable", "$.payment.instruments")]));
     return;
   }
   const credential = stellarX402CredentialSchema.safeParse(instrument.credential);
   if (!credential.success) {
-    res.json(await checkoutResponse(deps, session, origin, [message("payment_failed", "the credential is not an x402_payment_payload of version 2", "recoverable", "$.payment.instruments[0].credential")]));
+    res.json(await checkoutResponse(deps, session, view, [message("payment_failed", "the credential is not an x402_payment_payload of version 2", "recoverable", "$.payment.instruments[0].credential")]));
     return;
   }
   const transaction = credential.data.payload.transaction;
@@ -699,7 +708,7 @@ async function complete(
   if (session.status === "incomplete") {
     const messages = await refresh(deps, session);
     await deps.sessions.save(session);
-    res.json(await checkoutResponse(deps, session, origin, messages.length > 0 ? messages : [message("invalid_state", "checkout was not ready; review the refreshed terms and complete again", "recoverable")]));
+    res.json(await checkoutResponse(deps, session, view, messages.length > 0 ? messages : [message("invalid_state", "checkout was not ready; review the refreshed terms and complete again", "recoverable")]));
     return;
   }
   const stored = session.requirements;
@@ -712,16 +721,16 @@ async function complete(
     session.updatedAt = deps.now().toISOString();
     await deps.sessions.save(session);
     const why = messages.length > 0 ? messages : [message("payment_failed", "the total changed since these terms were issued; sign the refreshed requirements", "recoverable", "$.totals")];
-    res.json(await checkoutResponse(deps, session, origin, why));
+    res.json(await checkoutResponse(deps, session, view, why));
     return;
   }
   if (!sameRequirements(credential.data.accepted, stored)) {
-    res.json(await checkoutResponse(deps, session, origin, [message("payment_failed", "the credential was signed for other payment requirements than this checkout's", "recoverable", "$.payment.instruments[0].credential.accepted")]));
+    res.json(await checkoutResponse(deps, session, view, [message("payment_failed", "the credential was signed for other payment requirements than this checkout's", "recoverable", "$.payment.instruments[0].credential.accepted")]));
     return;
   }
 
   if (!deps.reservations.tryReserve(session.productId, session.quantity, quote.product.stock)) {
-    res.json(await checkoutResponse(deps, session, origin, [message("out_of_stock", `the last units of "${quote.product.name}" are being bought right now`, "recoverable", "$.line_items[0]")]));
+    res.json(await checkoutResponse(deps, session, view, [message("out_of_stock", `the last units of "${quote.product.name}" are being bought right now`, "recoverable", "$.line_items[0]")]));
     return;
   }
   try {
@@ -741,7 +750,7 @@ async function complete(
       session.paymentKey = null;
       session.updatedAt = deps.now().toISOString();
       await deps.sessions.save(session);
-      res.json(await checkoutResponse(deps, session, origin, [message("payment_failed", `the payment did not settle: ${outcome.reason}`, failureSeverity(outcome.reason), "$.payment")]));
+      res.json(await checkoutResponse(deps, session, view, [message("payment_failed", `the payment did not settle: ${outcome.reason}`, failureSeverity(outcome.reason), "$.payment")]));
       return;
     }
     if (outcome.kind === "unknown") {
@@ -749,7 +758,7 @@ async function complete(
       session.updatedAt = deps.now().toISOString();
       await deps.sessions.save(session);
       deps.log("ucp settlement outcome unknown; checkout held for reconciliation", { checkoutId: session.id, transaction: outcome.transaction, error: outcome.reason });
-      res.json(await checkoutResponse(deps, session, origin, [held()]));
+      res.json(await checkoutResponse(deps, session, view, [held()]));
       return;
     }
     const settled = outcome.response;
@@ -772,7 +781,7 @@ async function complete(
   } finally {
     deps.reservations.release(session.productId, session.quantity);
   }
-  res.json(await checkoutResponse(deps, session, origin));
+  res.json(await checkoutResponse(deps, session, view));
 }
 
 function held(): UcpMessage {

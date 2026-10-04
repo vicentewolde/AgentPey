@@ -35,10 +35,12 @@ import { z } from "zod";
 
 import type { AnchorInput, AnchorResult, AnchoredRecord } from "../../../packages/vitrinee-anchor/src/index.js";
 import { MockStoreAdapter, MOCK_CATALOG, type Product } from "../../../packages/vitrinee-adapters/src/index.js";
-import { UCP_REST_PREFIX, VitrineeError } from "../../../packages/vitrinee-core/src/index.js";
+import { UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError } from "../../../packages/vitrinee-core/src/index.js";
 import { createApp, type AppDeps } from "../../../packages/vitrinee-gateway/src/app.js";
 import { loadConfig } from "../../../packages/vitrinee-gateway/src/config.js";
 import { OrderStore } from "../../../packages/vitrinee-gateway/src/orders.js";
+import { createPlatformProfileReader } from "../../../packages/vitrinee-gateway/src/ucp/platform-profile.js";
+import { ucpLeafProfilePath } from "../../../packages/vitrinee-gateway/src/ucp/profile.js";
 import { MemoryCheckoutSessions } from "../../../packages/vitrinee-gateway/src/ucp/sessions.js";
 
 /** The gateway's facilitator seam; typed through it, so this script needs no x402 dependency of its own. */
@@ -191,6 +193,8 @@ export async function startConformanceStore(options: { port?: number; simulation
     anchorer: memory.anchorer,
     registry: memory.registry,
     disputes: null,
+    // The suite's agent profile lives on http://localhost:8285; only this local store may read that.
+    platformProfiles: createPlatformProfileReader({ allowLoopbackHttp: true }),
     syncFacilitatorOnStart: false,
     anchorRetryDelaysMs: [10],
   });
@@ -199,6 +203,14 @@ export async function startConformanceStore(options: { port?: number; simulation
   app.disable("x-powered-by");
   // Parsed here, so the rewrite below sees the body; the inner app's parser then skips it.
   app.use(express.json({ limit: "64kb" }));
+
+  // The suite only knows UCP 2026-04-08 (its SDK pins it; conformance#104), and reads the
+  // version at the well-known path. Here that path is the 2026-04-08 leaf profile, which a
+  // real store serves next to it (T133, R-6): the suite tests the version it can test.
+  app.get(UCP_PROFILE_PATH, (req: Request, _res: Response, next: NextFunction) => {
+    req.url = ucpLeafProfilePath(UCP_LEGACY_VERSION);
+    next();
+  });
 
   // A bug in the suite, not in the store (reported as
   // Universal-Commerce-Protocol/conformance#116): its create helper sends a destination's

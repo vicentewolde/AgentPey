@@ -7,13 +7,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
 import { createApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { fakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { MERCHANT, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { MERCHANT, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 import { readUcpStorefront } from "./lib/ucp-client.js";
 
 describe("UCP test client", () => {
   const { anchorer, registry } = fakeRegistry();
-  const app = createApp({ config: testConfig(), adapter: new MockStoreAdapter(), facilitator: fakeFacilitator(), anchorer, registry });
+  const app = createApp({
+    platformProfiles: fakePlatformProfiles(), config: testConfig(), adapter: new MockStoreAdapter(), facilitator: fakeFacilitator(), anchorer, registry });
   let url = "";
   let close: () => Promise<void> = async () => {};
 

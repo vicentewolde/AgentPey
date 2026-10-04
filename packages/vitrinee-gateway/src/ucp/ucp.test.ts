@@ -16,9 +16,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createApp } from "../app.js";
 import { fakeFacilitator } from "../test/fake-facilitator.js";
-import { MERCHANT, SIGNER, fakeRegistry, testConfig } from "../test/fixtures.js";
+import { MERCHANT, SIGNER, fakeRegistry, testConfig, fakePlatformProfiles } from "../test/fixtures.js";
 import { listen } from "../test/listen.js";
-import { UCP_SCHEMA, addSchema, ucpErrors } from "../test/ucp-schemas.js";
+import { UCP_SCHEMA, UCP_SCHEMA_2026_08_25, addSchema, ucpErrors } from "../test/ucp-schemas.js";
 
 const HANDLER_SCHEMA = JSON.parse(
   readFileSync(new URL("../../../../apps/web/public/ucp/handlers/stellar-x402/schema.json", import.meta.url), "utf8"),
@@ -34,7 +34,8 @@ describe("UCP surface of a storefront", () => {
   const out: typeof MOCK_CATALOG = MOCK_CATALOG.map((p) => (p.id === "gorro-andes" ? { ...p, stock: 0 } : p));
   const adapter = new MockStoreAdapter({ catalog: out });
   const { anchorer, registry } = fakeRegistry();
-  const app = createApp({ config, adapter, facilitator: fakeFacilitator(), anchorer, registry, now: () => new Date("2026-09-30T12:00:00.000Z") });
+  const app = createApp({
+    platformProfiles: fakePlatformProfiles(), config, adapter, facilitator: fakeFacilitator(), anchorer, registry, now: () => new Date("2026-09-30T12:00:00.000Z") });
   let url = "";
   let close: () => Promise<void> = async () => {};
 
@@ -47,26 +48,55 @@ describe("UCP surface of a storefront", () => {
   afterAll(() => close());
 
   describe("GET /.well-known/ucp", () => {
-    it("serves a business profile that validates against the official UCP schema", async () => {
+    it("serves the 2026-08-25 business profile, valid against that version's official schema (T133)", async () => {
       const res = await fetch(`${url}${UCP_PROFILE_PATH}`);
       expect(res.status).toBe(200);
       expect(res.headers.get("cache-control")).toBe("public, max-age=60");
       const profile = await res.json();
-      expect(ucpErrors(UCP_SCHEMA.businessProfile, profile)).toEqual([]);
+      expect(ucpErrors(UCP_SCHEMA_2026_08_25.businessProfile, profile, "2026-08-25")).toEqual([]);
       expect(ucpBusinessProfileSchema.safeParse(profile).success).toBe(true);
+    });
+
+    it("lists 2026-04-08 in supported_versions, and serves that leaf profile as Phase 7 did, valid against the 2026-04-08 schema", async () => {
+      const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
+      const leafUrl = profile.ucp.supported_versions?.["2026-04-08"];
+      expect(leafUrl).toBe(`${url}${UCP_PROFILE_PATH}/2026-04-08`);
+      const leaf = (await (await fetch(leafUrl!)).json()) as Record<string, unknown>;
+      expect(ucpErrors(UCP_SCHEMA.businessProfile, leaf)).toEqual([]);
+      const parsed = ucpBusinessProfileSchema.parse(leaf);
+      expect(parsed.ucp.version).toBe("2026-04-08");
+      // A leaf never points to other versions, and every dev.ucp entry speaks its own version.
+      expect(parsed.ucp.supported_versions).toBeUndefined();
+      for (const [name, entries] of Object.entries({ ...parsed.ucp.services, ...parsed.ucp.capabilities })) {
+        if (name.startsWith("dev.ucp.")) for (const entry of entries) expect(entry.version, name).toBe("2026-04-08");
+      }
+      expect(parsed.ucp.capabilities?.["dev.ucp.shopping.fulfillment"]?.[0]?.["config"]).toEqual({
+        allows_multi_destination: { shipping: false, pickup: false },
+        allows_method_combinations: [["shipping"]],
+      });
+    });
+
+    it("speaks one version per profile: every dev.ucp entry of the current profile is 2026-08-25, with the renamed fulfillment config", async () => {
+      const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
+      for (const [name, entries] of Object.entries({ ...profile.ucp.services, ...profile.ucp.capabilities })) {
+        if (name.startsWith("dev.ucp.")) for (const entry of entries) expect(entry.version, name).toBe("2026-08-25");
+      }
+      expect(profile.ucp.capabilities?.["dev.ucp.shopping.fulfillment"]?.[0]?.["config"]).toEqual({ multi_destination: [], method_combinations: [["shipping"]] });
     });
 
     it("is checked for real: the same validator rejects a broken profile (negative control)", async () => {
       const profile = (await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json()) as { ucp: Record<string, unknown> };
       const noVersion: Record<string, unknown> = { ...profile.ucp };
       delete noVersion["version"];
-      expect(ucpErrors(UCP_SCHEMA.businessProfile, { ...profile, ucp: noVersion })).not.toEqual([]);
-      expect(ucpErrors(UCP_SCHEMA.businessProfile, { ...profile, ucp: { ...profile.ucp, services: { "dev.ucp.shopping": [{ version: "2026-04-08", transport: "carrier-pigeon" }] } } })).not.toEqual([]);
+      expect(ucpErrors(UCP_SCHEMA_2026_08_25.businessProfile, { ...profile, ucp: noVersion }, "2026-08-25")).not.toEqual([]);
+      expect(
+        ucpErrors(UCP_SCHEMA_2026_08_25.businessProfile, { ...profile, ucp: { ...profile.ucp, services: { "dev.ucp.shopping": [{ version: "2026-08-25", transport: "carrier-pigeon" }] } } }, "2026-08-25"),
+      ).not.toEqual([]);
     });
 
     it("points the REST service at the /ucp/v1 prefix of this host", async () => {
       const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
-      expect(profile.ucp.version).toBe("2026-04-08");
+      expect(profile.ucp.version).toBe("2026-08-25");
       expect(profile.ucp.services["dev.ucp.shopping"]).toEqual([expect.objectContaining({ transport: "rest", endpoint: `${url}/ucp/v1` })]);
     });
 
@@ -114,12 +144,19 @@ describe("UCP surface of a storefront", () => {
       }
     });
 
-    it("publishes the receipt-signing key, never the payout account", async () => {
+    it("publishes the receipt-signing key in keys[] (2026-08-25), never the payout account", async () => {
       const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
-      const [key] = profile.signing_keys ?? [];
+      expect(profile.signing_keys).toBeUndefined();
+      const [key] = profile.keys ?? [];
       expect(key).toMatchObject({ kid: `did:stellar:testnet:${SIGNER.publicKey()}#key-1`, kty: "OKP", crv: "Ed25519", alg: "EdDSA" });
       expect(String(key?.["x"])).toBe(Buffer.from(SIGNER.rawPublicKey()).toString("base64url"));
-      expect(JSON.stringify(profile.signing_keys)).not.toContain(MERCHANT);
+      expect(JSON.stringify(profile.keys)).not.toContain(MERCHANT);
+    });
+
+    it("publishes the same key in the 2026-04-08 leaf, in signing_keys and mirrored in keys with the same kid", async () => {
+      const leaf = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}/2026-04-08`)).json());
+      expect(leaf.signing_keys).toEqual(leaf.keys);
+      expect(leaf.signing_keys?.[0]).toMatchObject({ kid: `did:stellar:testnet:${SIGNER.publicKey()}#key-1` });
     });
   });
 
@@ -255,6 +292,34 @@ describe("UCP surface of a storefront", () => {
     });
   });
 
+  describe("the catalog in both UCP versions (T133)", () => {
+    const postAs = async (path: string, body: unknown, agent?: string) =>
+      fetch(`${url}${UCP_REST_PREFIX}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(agent === undefined ? {} : { "UCP-Agent": agent }) },
+        body: JSON.stringify(body),
+      });
+
+    it("answers a platform that does not say its version in 2026-08-25, valid against that version's schemas", async () => {
+      const search = (await (await postAs("/catalog/search", { query: "gorro" })).json()) as { ucp: { version: string } };
+      expect(search.ucp.version).toBe("2026-08-25");
+      expect(ucpErrors(UCP_SCHEMA_2026_08_25.searchResponse, search, "2026-08-25")).toEqual([]);
+      const lookup = await (await postAs("/catalog/lookup", { ids: ["gorro-andes"] })).json();
+      expect(ucpErrors(UCP_SCHEMA_2026_08_25.lookupResponse, lookup, "2026-08-25")).toEqual([]);
+      const product = await (await postAs("/catalog/product", { id: "gorro-andes" })).json();
+      expect(ucpErrors(UCP_SCHEMA_2026_08_25.getProductResponse, product, "2026-08-25")).toEqual([]);
+    });
+
+    it("answers AgentPey's platform, whose profile says 2026-04-08, in 2026-04-08", async () => {
+      const search = (await (await postAs("/catalog/search", { query: "gorro" }, 'profile="https://agentpey.com/ucp/platform/agentpey.json"')).json()) as {
+        ucp: { version: string; capabilities: Record<string, Array<{ version: string }>> };
+      };
+      expect(search.ucp.version).toBe("2026-04-08");
+      expect(search.ucp.capabilities["dev.ucp.shopping.catalog.search"]).toEqual([{ version: "2026-04-08" }]);
+      expect(ucpErrors(UCP_SCHEMA.searchResponse, search)).toEqual([]);
+    });
+  });
+
   describe("what predates UCP", () => {
     it("still serves the agent-storefront manifest unchanged", async () => {
       const manifest = storefrontManifestSchema.parse(await (await fetch(`${url}${MANIFEST_PATH}`)).json());
@@ -275,6 +340,22 @@ describe("UCP surface of a storefront", () => {
       const res = await fetch(`${url}/catalog/search`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
       expect(res.status).toBe(404);
     });
+  });
+});
+
+describe("AgentPey's own platform profiles (T133)", () => {
+  const read = (name: string) => JSON.parse(readFileSync(new URL(`../../../../apps/web/public/ucp/platform/${name}`, import.meta.url), "utf8")) as { ucp: { version: string } };
+
+  it("agentpey.json declares 2026-04-08 and is a valid 2026-04-08 platform profile", () => {
+    const profile = read("agentpey.json");
+    expect(profile.ucp.version).toBe("2026-04-08");
+    expect(ucpErrors("https://ucp.dev/schemas/discovery/profile.json#/$defs/platform_profile", profile)).toEqual([]);
+  });
+
+  it("agentpey-2026-08-25.json declares 2026-08-25 and is a valid 2026-08-25 platform profile", () => {
+    const profile = read("agentpey-2026-08-25.json");
+    expect(profile.ucp.version).toBe("2026-08-25");
+    expect(ucpErrors("https://ucp.dev/schemas/profile.json#/$defs/platform_schema", profile, "2026-08-25")).toEqual([]);
   });
 });
 

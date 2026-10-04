@@ -27,7 +27,7 @@ import { MemoryComercioStore, sealComercio } from "../../packages/vitrinee-gatew
 import { createPlatformApp } from "../../packages/vitrinee-gateway/src/platform/platform-app.js";
 import { createSecretBox, generateMasterKey } from "../../packages/vitrinee-gateway/src/platform/secret-box.js";
 import { StorefrontPool } from "../../packages/vitrinee-gateway/src/platform/storefronts.js";
-import { MERCHANT, REGISTRY_ID, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { MERCHANT, REGISTRY_ID, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 import { MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
 import { USDC_TESTNET, checkReceiptSignature } from "../../packages/vitrinee-core/src/index.js";
@@ -55,6 +55,7 @@ const adapter = new MockStoreAdapter();
 beforeAll(async () => {
   const registry = fakeRegistry();
   app = createApp({
+    platformProfiles: fakePlatformProfiles(),
     config: testConfig(),
     adapter,
     facilitator: fakeFacilitator({ verify: { payer: RAIL }, settle: { payer: RAIL } }),

@@ -24,7 +24,7 @@ import { verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { MERCHANT, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { MERCHANT, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 
 type SchemeNetworkClient = NonNullable<ExecuteUcpPaymentDeps["schemeForTests"]>;
@@ -87,7 +87,8 @@ beforeAll(async () => {
   facilitator = uniqueFacilitator();
   // Plenty of hats: this file buys more than the mock catalog's eight.
   const catalog = MOCK_CATALOG.map((product) => (product.id === "gorro-andes" ? { ...product, stock: 1000 } : product));
-  store = createApp({ config: testConfig(), adapter: new MockStoreAdapter({ catalog }), facilitator, anchorer: anchors.anchorer, registry: anchors.registry });
+  store = createApp({
+    platformProfiles: fakePlatformProfiles(), config: testConfig(), adapter: new MockStoreAdapter({ catalog }), facilitator, anchorer: anchors.anchorer, registry: anchors.registry });
   storeServer = await listen(store);
 });
 afterAll(async () => {

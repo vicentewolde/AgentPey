@@ -17,14 +17,16 @@ import {
   UCP_ORDER,
   UCP_REST_PREFIX,
   UCP_SHOPPING_SERVICE,
-  UCP_SPEC_URLS,
-  UCP_VERSION,
+  UCP_LEGACY_VERSION,
+  UCP_PROFILE_PATH,
   USDC_TESTNET,
+  ucpSpecUrls,
   stellarDid,
   stellarX402BusinessConfigSchema,
   ucpBusinessProfileSchema,
   type StellarX402BusinessConfig,
   type UcpBusinessProfile,
+  type UcpVersion,
 } from "@vitrinee/core";
 
 import type { GatewayConfig } from "../config.js";
@@ -44,38 +46,68 @@ export function stellarX402Config(config: GatewayConfig): StellarX402BusinessCon
 export interface BuildUcpProfileInput {
   config: GatewayConfig;
   baseUrl: string;
+  /** Which profile: the current one at `/.well-known/ucp`, or an older version's leaf profile. Defaults to the current one. */
+  version?: UcpVersion;
+}
+
+/** Where a version's leaf profile lives, next to the current one (R-6). */
+export function ucpLeafProfilePath(version: UcpVersion): string {
+  return `${UCP_PROFILE_PATH}/${version}`;
+}
+
+/** The receipt-signing key (VT-8), as a public JWK: with it a UCP client can check a receipt's signature from the profile alone. Never the payTo account. */
+function signingJwk(config: GatewayConfig) {
+  return {
+    kid: `${stellarDid(config.signing.account, "testnet")}#key-1`,
+    kty: "OKP",
+    crv: "Ed25519",
+    x: Buffer.from(StrKey.decodeEd25519PublicKey(config.signing.account)).toString("base64url"),
+    use: "sig",
+    alg: "EdDSA",
+  };
 }
 
 /**
- * The storefront's UCP business profile (`/.well-known/ucp`). It declares only
- * what this gateway answers: catalog (T121), and checkout with fulfillment,
- * order and the anchored-receipt extension (T122). A profile that advertises a
- * capability with no route behind it would send a platform into a 404.
+ * The storefront's UCP business profile. It declares only what this gateway
+ * answers: catalog (T121), and checkout with fulfillment, order and the
+ * anchored-receipt extension (T122). A profile that advertises a capability
+ * with no route behind it would send a platform into a 404.
+ *
+ * `/.well-known/ucp` is the 2026-08-25 profile, and it points to the 2026-04-08
+ * one through `supported_versions` (R-6, T133). UCP forbids listing an older
+ * version's capabilities inside a newer profile, so each version is a whole
+ * profile of its own. They differ where the versions do: 2026-08-25 publishes
+ * the key in `keys[]` (2026-04-08 in `signing_keys`, mirrored in `keys` as its
+ * release branch allows), renamed the fulfillment config and moved the specs.
  */
-export function buildUcpProfile({ config, baseUrl }: BuildUcpProfileInput): UcpBusinessProfile {
+export function buildUcpProfile({ config, baseUrl, version = "2026-08-25" }: BuildUcpProfileInput): UcpBusinessProfile {
   const origin = baseUrl.replace(/\/+$/, "");
+  const urls = ucpSpecUrls(version);
+  const legacy = version === "2026-04-08";
+  const jwk = signingJwk(config);
   return ucpBusinessProfileSchema.parse({
     ucp: {
-      version: UCP_VERSION,
+      version,
+      ...(legacy ? {} : { supported_versions: { [UCP_LEGACY_VERSION]: `${origin}${ucpLeafProfilePath(UCP_LEGACY_VERSION)}` } }),
       services: {
-        [UCP_SHOPPING_SERVICE]: [
-          { version: UCP_VERSION, ...UCP_SPEC_URLS.service, transport: "rest", endpoint: `${origin}${UCP_REST_PREFIX}` },
-        ],
+        [UCP_SHOPPING_SERVICE]: [{ version, ...urls.service, transport: "rest", endpoint: `${origin}${UCP_REST_PREFIX}` }],
       },
       capabilities: {
-        [UCP_CATALOG_SEARCH]: [{ version: UCP_VERSION, ...UCP_SPEC_URLS.catalogSearch }],
-        [UCP_CATALOG_LOOKUP]: [{ version: UCP_VERSION, ...UCP_SPEC_URLS.catalogLookup }],
-        [UCP_CHECKOUT]: [{ version: UCP_VERSION, ...UCP_SPEC_URLS.checkout }],
+        [UCP_CATALOG_SEARCH]: [{ version, ...urls.catalogSearch }],
+        [UCP_CATALOG_LOOKUP]: [{ version, ...urls.catalogLookup }],
+        [UCP_CHECKOUT]: [{ version, ...urls.checkout }],
         [UCP_FULFILLMENT]: [
           {
-            version: UCP_VERSION,
-            ...UCP_SPEC_URLS.fulfillment,
+            version,
+            ...urls.fulfillment,
             extends: UCP_CHECKOUT,
             // One destination, shipping only (E-4).
-            config: { allows_multi_destination: { shipping: false, pickup: false }, allows_method_combinations: [["shipping"]] },
+            config: legacy
+              ? { allows_multi_destination: { shipping: false, pickup: false }, allows_method_combinations: [["shipping"]] }
+              : { multi_destination: [], method_combinations: [["shipping"]] },
           },
         ],
-        [UCP_ORDER]: [{ version: UCP_VERSION, ...UCP_SPEC_URLS.order }],
+        [UCP_ORDER]: [{ version, ...urls.order }],
         [RECEIPT_EXTENSION]: [
           { version: RECEIPT_EXTENSION_VERSION, spec: RECEIPT_EXTENSION_SPEC_URL, schema: RECEIPT_EXTENSION_SCHEMA_URL, extends: [UCP_CHECKOUT, UCP_ORDER] },
         ],
@@ -93,17 +125,6 @@ export function buildUcpProfile({ config, baseUrl }: BuildUcpProfileInput): UcpB
         ],
       },
     },
-    // The receipt-signing key (VT-8), as a JWK: with it a UCP client can check a
-    // receipt's signature from the profile alone. Never the payTo account.
-    signing_keys: [
-      {
-        kid: `${stellarDid(config.signing.account, "testnet")}#key-1`,
-        kty: "OKP",
-        crv: "Ed25519",
-        x: Buffer.from(StrKey.decodeEd25519PublicKey(config.signing.account)).toString("base64url"),
-        use: "sig",
-        alg: "EdDSA",
-      },
-    ],
+    ...(legacy ? { signing_keys: [jwk], keys: [jwk] } : { keys: [jwk] }),
   });
 }
