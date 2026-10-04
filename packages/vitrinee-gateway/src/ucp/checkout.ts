@@ -549,7 +549,8 @@ async function idempotent(
   const key = readIdempotencyKey(req);
   if (key === null) return run();
   const path = req.originalUrl.split("?")[0] ?? "";
-  const scope = `${agentProfile(req)} ${req.method} ${path} ${key}`;
+  // The version is part of the scope: a replay never answers in a version the request did not negotiate.
+  const scope = `${agentProfile(req)} ${ucpVersionOf(res)} ${req.method} ${path} ${key}`;
   const hash = requestHash(req.method, path, req.body);
   const found = cache.lookup(scope, hash);
   if (found.kind === "replay") {

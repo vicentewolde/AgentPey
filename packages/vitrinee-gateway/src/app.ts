@@ -28,7 +28,7 @@ import {
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { registerUcpOrders } from "./ucp/order.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
-import { createPlatformProfileReader, type PlatformProfileReader } from "./ucp/platform-profile.js";
+import { sharedPlatformProfileReader, type PlatformProfileReader } from "./ucp/platform-profile.js";
 import { buildUcpProfile, ucpLeafProfilePath } from "./ucp/profile.js";
 import { MemoryCheckoutSessions, type CheckoutSessionPersistence } from "./ucp/sessions.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
@@ -55,7 +55,8 @@ export interface AppDeps {
   anchorRetryDelaysMs?: readonly number[];
   /**
    * Reads the platform profile `UCP-Agent` points to, to learn the UCP version it speaks (T133, R-14).
-   * Defaults to the hardened HTTPS reader; tests inject a fake; `null` answers every platform in the newest version.
+   * Defaults to the process's one hardened HTTPS reader, shared by every storefront so they share its limits;
+   * tests inject a fake; `null` answers every platform in the newest version.
    */
   platformProfiles?: PlatformProfileReader | null;
   /** Whether the x402 middleware syncs with the facilitator at startup (default true). */
@@ -88,7 +89,7 @@ export function createApp({
   horizonFetch,
   anchorRetryDelaysMs,
   syncFacilitatorOnStart = true,
-  platformProfiles = createPlatformProfileReader(),
+  platformProfiles = sharedPlatformProfileReader(),
   now = () => new Date(),
   log = () => {},
 }: AppDeps): VitrineeApp {

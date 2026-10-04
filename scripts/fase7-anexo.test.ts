@@ -24,7 +24,7 @@ import {
   STELLAR_X402_INSTRUMENT_TYPE,
   STELLAR_X402_SCHEMA_URL,
   STELLAR_X402_SPEC_URL,
-  UCP_VERSION,
+  UCP_LEGACY_VERSION,
   stellarX402BusinessConfigSchema,
 } from "../packages/vitrinee-core/src/ucp.js";
 import { stellarX402CredentialSchema } from "../packages/vitrinee-gateway/src/ucp/checkout.js";
@@ -100,7 +100,7 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
     expect(row("Tipo de instrumento")).toContain(`\`${STELLAR_X402_INSTRUMENT_TYPE}\``);
     expect(row("Spec")).toContain(STELLAR_X402_SPEC_URL);
     expect(row("Esquema")).toContain(STELLAR_X402_SCHEMA_URL);
-    for (const value of [UCP_VERSION, RECEIPT_EXTENSION, RECEIPT_EXTENSION_SCHEMA_URL]) expect(annex).toContain(value);
+    for (const value of [UCP_LEGACY_VERSION, RECEIPT_EXTENSION, RECEIPT_EXTENSION_SCHEMA_URL]) expect(annex).toContain(value);
   });
 
   it("shows a business config, payment requirements and a credential that the code's own schemas accept", () => {

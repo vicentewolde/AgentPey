@@ -46,7 +46,8 @@ async function call(base: string, method: string, path: string, body?: unknown, 
 describe("the UCP conformance store (T131)", () => {
   let store: ConformanceStore;
   beforeAll(async () => {
-    store = await startConformanceStore({ simulationSecret: SECRET, env: {} });
+    // No profile is read in these tests: the one test below that reads a real loopback profile starts its own store.
+    store = await startConformanceStore({ simulationSecret: SECRET, env: {}, platformProfiles: fakePlatformProfiles({}) });
   });
   afterAll(() => store.close());
 
@@ -73,12 +74,14 @@ describe("the UCP conformance store (T131)", () => {
     });
     await new Promise<void>((done) => profileServer.listen(0, "127.0.0.1", () => done()));
     const { port } = profileServer.address() as AddressInfo;
+    const reading = await startConformanceStore({ simulationSecret: SECRET, env: {} });
     try {
-      const created = await call(store.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions`, readySession(), { "UCP-Agent": `profile="http://127.0.0.1:${port}/profiles/shopping-agent.json"` });
+      const created = await call(reading.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions`, readySession(), { "UCP-Agent": `profile="http://127.0.0.1:${port}/profiles/shopping-agent.json"` });
       expect((created.body["ucp"] as { version: string }).version).toBe("2026-04-08");
-      const wellKnown = (await (await fetch(`${store.url}/.well-known/ucp`)).json()) as { ucp: { version: string } };
+      const wellKnown = (await (await fetch(`${reading.url}/.well-known/ucp`)).json()) as { ucp: { version: string } };
       expect(wellKnown.ucp.version).toBe("2026-04-08");
     } finally {
+      await reading.close();
       await new Promise<void>((done) => profileServer.close(() => done()));
     }
   });

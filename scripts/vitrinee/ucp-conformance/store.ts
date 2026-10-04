@@ -39,7 +39,7 @@ import { UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError } 
 import { createApp, type AppDeps } from "../../../packages/vitrinee-gateway/src/app.js";
 import { loadConfig } from "../../../packages/vitrinee-gateway/src/config.js";
 import { OrderStore } from "../../../packages/vitrinee-gateway/src/orders.js";
-import { createPlatformProfileReader } from "../../../packages/vitrinee-gateway/src/ucp/platform-profile.js";
+import { createPlatformProfileReader, type PlatformProfileReader } from "../../../packages/vitrinee-gateway/src/ucp/platform-profile.js";
 import { ucpLeafProfilePath } from "../../../packages/vitrinee-gateway/src/ucp/profile.js";
 import { MemoryCheckoutSessions } from "../../../packages/vitrinee-gateway/src/ucp/sessions.js";
 
@@ -158,7 +158,7 @@ export interface ConformanceStore {
   close(): Promise<void>;
 }
 
-export async function startConformanceStore(options: { port?: number; simulationSecret: string; env?: NodeJS.ProcessEnv }): Promise<ConformanceStore> {
+export async function startConformanceStore(options: { port?: number; simulationSecret: string; env?: NodeJS.ProcessEnv; platformProfiles?: PlatformProfileReader }): Promise<ConformanceStore> {
   assertLocalOnly(options.env ?? process.env);
   if (options.simulationSecret.length < 16) throw new VitrineeError("ConfigError", "the simulation secret must be at least 16 characters");
 
@@ -194,7 +194,7 @@ export async function startConformanceStore(options: { port?: number; simulation
     registry: memory.registry,
     disputes: null,
     // The suite's agent profile lives on http://localhost:8285; only this local store may read that.
-    platformProfiles: createPlatformProfileReader({ allowLoopbackHttp: true }),
+    platformProfiles: options.platformProfiles ?? createPlatformProfileReader({ allowLoopbackHttp: true }),
     syncFacilitatorOnStart: false,
     anchorRetryDelaysMs: [10],
   });

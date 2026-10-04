@@ -16,12 +16,6 @@ export type UcpVersion = (typeof UCP_VERSIONS)[number];
 export const UCP_LATEST_VERSION: UcpVersion = "2026-08-25";
 /** The version of Phase 7, still served in parallel (R-6): the conformance suite and the clients of then speak it. */
 export const UCP_LEGACY_VERSION: UcpVersion = "2026-04-08";
-/**
- * The version AgentPey's own platform profile declares (apps/web/public/ucp/platform/agentpey.json),
- * so its agent and the stores agree on one name (T133 unified the copy the agent kept).
- */
-export const UCP_VERSION: UcpVersion = UCP_LEGACY_VERSION;
-
 export function isUcpVersion(value: string): value is UcpVersion {
   return (UCP_VERSIONS as readonly string[]).includes(value);
 }

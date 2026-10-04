@@ -25,8 +25,11 @@ import {
 } from "@vitrinee/core";
 import { z } from "zod";
 
-/** The platform profile a client names in `UCP-Agent` unless told otherwise: the test client's. */
-const DEFAULT_UCP_AGENT_PROFILE = "https://agentpey.com/ucp/platform/test-client.json";
+/**
+ * The platform profile a client names in `UCP-Agent` unless told otherwise: AgentPey's, which is published and
+ * declares UCP 2026-04-08, so a store answers in the version this client reads (T133).
+ */
+const DEFAULT_UCP_AGENT_PROFILE = "https://agentpey.com/ucp/platform/agentpey.json";
 const MAX_PAGES = 50;
 
 export interface UcpStorefront {

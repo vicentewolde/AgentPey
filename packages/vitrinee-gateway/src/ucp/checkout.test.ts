@@ -790,6 +790,16 @@ describe("UCP 2026-08-25 next to 2026-04-08 (T133, R-6, R-14)", () => {
     expect(ucpErrors(UCP_SCHEMA_2026_08_25.errorResponse, res.body, "2026-08-25")).toEqual([]);
   });
 
+  it("an Idempotency-Key never replays an answer in a version the request did not negotiate", async () => {
+    const first = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), { ...as(NEW), "Idempotency-Key": "versioned-1" });
+    expect((first.body as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-08-25");
+    const other = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), { "UCP-Agent": `profile="${NEW}"; version="2026-04-08"`, "Idempotency-Key": "versioned-1" });
+    expect(other.status).toBe(201);
+    expect((other.body as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-04-08");
+    const again = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), { ...as(NEW), "Idempotency-Key": "versioned-1" });
+    expect(again.body).toEqual(first.body);
+  });
+
   it("an explicit version parameter on UCP-Agent wins over the profile (the conformance suite sends one)", async () => {
     const res = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), { "UCP-Agent": `profile="${NEW}"; version="2026-04-08"` });
     expect((res.body as unknown as { ucp: { version: string } }).ucp.version).toBe("2026-04-08");

@@ -38,7 +38,7 @@ export function platformProfileUrl(header: string | undefined): string | null {
 export async function negotiateUcpVersion(
   header: string | undefined,
   profiles: PlatformProfileReader | null,
-): Promise<{ ok: true; version: UcpVersion; source: "header" | "profile" | "default" } | { ok: false; asked: string }> {
+): Promise<{ ok: true; version: UcpVersion; source: "header" | "profile" | "default"; unread?: { host: string; reason: string } } | { ok: false; asked: string }> {
   const asked = requestedUcpVersion(header);
   if (asked !== null) return isUcpVersion(asked) ? { ok: true, version: asked, source: "header" } : { ok: false, asked };
   const url = platformProfileUrl(header);
@@ -48,8 +48,20 @@ export async function negotiateUcpVersion(
       const declared = read.profile.ucp.version;
       return isUcpVersion(declared) ? { ok: true, version: declared, source: "profile" } : { ok: false, asked: declared };
     }
+    // R-14 departs from UCP here, by the user's decision: the spec answers an unreadable profile with
+    // profile_unreachable (424) or profile_malformed (422); this store answers in its newest version.
+    return { ok: true, version: UCP_LATEST_VERSION, source: "default", unread: { host: hostOf(url), reason: read.reason } };
   }
   return { ok: true, version: UCP_LATEST_VERSION, source: "default" };
+}
+
+/** Only the host goes to the log: the rest of a URL a stranger wrote is theirs. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "(not a URL)";
+  }
 }
 
 /** The version this request was answered in; set by {@link ucpVersionGuard}. */
@@ -59,10 +71,22 @@ export function ucpVersionOf(res: Response): UcpVersion {
 }
 
 export function ucpVersionGuard(profiles: PlatformProfileReader | null, log: (message: string, fields?: Record<string, unknown>) => void = () => {}) {
+  // At most one line a minute per host: a stranger can name any number of unreadable profiles.
+  const lastLogged = new Map<string, number>();
+  const logUnread = (fields: { host: string; reason: string; version: string }) => {
+    const t = Date.now();
+    if ((lastLogged.get(fields.host) ?? 0) > t - 60_000) return;
+    if (lastLogged.size >= 1_000) lastLogged.clear();
+    lastLogged.set(fields.host, t);
+    log("ucp platform profile unread; answering in the default version", fields);
+  };
   return (req: Request, res: Response, next: NextFunction): void => {
     negotiateUcpVersion(req.get("ucp-agent"), profiles)
       .then((outcome) => {
         if (outcome.ok) {
+          // A platform that names a profile the store cannot read gets the default version; say so, or
+          // AgentPey's own agent could drift to it unseen while agentpey.com is down.
+          if (outcome.unread !== undefined) logUnread({ ...outcome.unread, version: outcome.version });
           (res.locals as { ucpVersion?: UcpVersion }).ucpVersion = outcome.version;
           return next();
         }
