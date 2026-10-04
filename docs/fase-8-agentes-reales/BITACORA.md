@@ -29,7 +29,7 @@ confirmación.
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | cerrada |
 | T132 Coherencia del recibo | cerrada |
-| T133 UCP `2026-08-25` | en revisión (falta la compra real) |
+| T133 UCP `2026-08-25` | cerrada |
 | T134 AP2 en el checkout | pendiente |
 | T135 MPP charge (prueba técnica) | pendiente |
 | T136 SDK en npm | pendiente |
@@ -240,7 +240,7 @@ corrigieron sus 12 hallazgos; lo más importante, que la memoria de claves de
 idempotencia ahora tiene tope (las rutas no piden autenticación) y no congela
 un error pasajero de `complete`. La suite dio lo mismo después.
 
-## T133 · UCP `2026-08-25`, con `2026-04-08` al lado (2026-10-03, en revisión)
+## T133 · UCP `2026-08-25`, con `2026-04-08` al lado (2026-10-03, cerrada el 4-oct)
 
 **Qué quedó funcionando.** Las tiendas de Vitrinee hablan las dos versiones de
 UCP a la vez. Su perfil público es el de la versión nueva y apunta al de la
@@ -259,6 +259,13 @@ usará T147 para los webhooks.
 **Lo que decidió el usuario.** Si la versión de un agente no se puede saber, la
 tienda responde en la más nueva, `2026-08-25`.
 
-**Lo que falta.** La compra real en `2026-08-25`, después del merge: el perfil
-nuevo de AgentPey tiene que estar publicado.
+**La revisión.** `/revisar` encontró dos bloqueantes en el lector: no tenía un
+plazo total (un perfil que manda un byte cada pocos segundos sostenía la
+conexión horas) ni límite de lecturas (y su DNS ocupaba los mismos hilos que
+usa el cobro). Se corrigieron con los otros 12 hallazgos.
+
+**La compra (4-oct).** Ya en vivo, AgentPey compró un imán en `agentcommerce`
+hablando `2026-08-25`: pedido real, pago en Stellar desde el rail UCP y recibo
+válido. La misma orden se lee en la versión vieja si quien pregunta declara la
+vieja, y las dos respuestas validan contra el esquema oficial de su versión.
 

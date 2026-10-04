@@ -7828,3 +7828,15 @@ core. `R-14` e INSTRUCCIONES de Vitrinee al día. `pnpm check`, `vitrinee:check`
 
 Pendiente: push y merge con OK; compra real en `2026-08-25` tras el deploy, con OK. `AGENTS.md`: sin cambios.
 
+## 2026-10-04 (22) — cc/t133-ucp-2026-08-25 → main, cc/t133-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI 4/4, T133 en `main` por fast-forward ([PR #50](https://github.com/vicentewolde/AgentPey/pull/50)) y desplegada. En vivo, perfiles y negociación
+como se esperaba. Con OK del usuario, `ucp:buy -- --ucp-version 2026-08-25`: `ord_muu8xxcdbbc5bc4a54`, Shopify
+`19008566264114`, tx `2a30d8f0…8799` (1,5684211 USDC del rail UCP `CA6P4KKV…` a `GD2MCESI…`), recibo con los tres checks;
+la orden valida contra el esquema de cada versión. T133 cerrada (SPEC, ESTADO, BITACORA, SYNC, ticket `DONE`).
+
+Pendiente: push y merge de `cc/t133-evidencia` con OK. Siguiente: T130 (tienda de terceros) o T134. `AGENTS.md`: sin
+cambios.
+

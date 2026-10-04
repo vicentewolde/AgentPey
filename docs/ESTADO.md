@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T131 · la suite oficial de conformidad UCP corre contra una tienda local: 40 pasan, 17 fallan con motivo escrito, 20 se saltan; cinco arreglos en el checkout real (`VT-42`)
-**Siguiente paso:** `/revisar` de T133; merge con OK (despliega el perfil `2026-08-25`); después la compra real en `2026-08-25` con OK. T130 espera la tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T133 · Vitrinee habla UCP `2026-08-25` y `2026-04-08` a la vez, según el perfil de cada agente (`R-14`); compra real en `2026-08-25` con recibo válido
+**Siguiente paso:** T130 en cuanto el usuario consiga la tienda de terceros; mientras, T134 (AP2 en el checkout), que el spec pone el 7-oct. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -19,7 +19,7 @@
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ✅ terminada: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp`, mergeada ([PR #49](https://github.com/vicentewolde/AgentPey/pull/49)) |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
-| T133 UCP `2026-08-25` | si alcanza | 👀 en revisión: dos versiones en paralelo, negociación por el perfil del agente (`R-14`); falta la compra real tras el deploy | `cc/t133-ucp-2026-08-25` (sin push) |
+| T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
 | T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ⏳ pendiente | |
 | T136 SDK publicado en npm | si alcanza | ⏳ pendiente | |
@@ -109,3 +109,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T131 `/revisar`: sin bloqueantes; corregidos los 12 hallazgos a pedido del usuario (memoria de idempotencia con tope y separada por plataforma, `complete` solo guarda respuestas finales, runner que limpia la salida, evidencia precisada). La suite da lo mismo.
 - 2026-10-03, T133: perfil `2026-08-25` en `/.well-known/ucp` con la hoja `2026-04-08`; la versión de cada solicitud sale del perfil del agente con un lector endurecido contra SSRF (`R-14`; defecto `2026-08-25`, decisión del usuario); checkout, orden y catálogo según la versión; `agentpey-2026-08-25.json` y `ucp:buy -- --ucp-version`. La suite sigue 40/17/20. Los tests encontraron que una regla IPv4 mapeada bloqueaba toda IPv4.
 - 2026-10-03, T133 `/revisar`: dos bloqueantes en el lector de perfiles (sin plazo total: un perfil que gotea sostenía la conexión horas; sin límite de lecturas: el DNS ocupaba los hilos que usa el cobro) y 12 más, todos corregidos a pedido del usuario: plazo total, DNS c-ares, un lector por proceso con límites, IPv6 por lista blanca, idempotencia por versión, tests del GET real.
+- 2026-10-04, T133 cerrada: [PR #50](https://github.com/vicentewolde/AgentPey/pull/50) en `main` y desplegado; en vivo el perfil `2026-08-25` apunta a la hoja `2026-04-08` y la versión sale del perfil del agente. Compra real hablando `2026-08-25`: `ord_muu8xxcdbbc5bc4a54`, tx `2a30d8f0…`, recibo con los tres checks; la orden valida contra el esquema de cada versión.

@@ -219,7 +219,7 @@ más rápido que lo estimado.
   - [x] perfil, catálogo, checkout y orden validan contra los esquemas de `2026-08-25` versionados en el repo (test sin red; [evidencia](evidencia/T133.md) §3)
   - [x] un cliente que pide `2026-04-08` recibe lo mismo que hoy (tests de la Fase 7 en verde) y la suite de T131 sigue dando el mismo resultado (40/17/20; [evidencia](evidencia/T133.md) §4)
   - [x] una versión desconocida recibe 422 `version_unsupported` (hecho en T131 para el header; en T133 también para la versión que declara el perfil, `R-14`)
-  - [ ] una compra real en `2026-08-25` con recibo válido, con OK del usuario
+  - [x] una compra real en `2026-08-25` con recibo válido, con OK del usuario: `ord_muu8xxcdbbc5bc4a54`, tx `2a30d8f0…8799` ([evidencia](evidencia/T133.md) §6)
 
 #### T134 · AP2 dentro del checkout UCP
 - **Prioridad:** si alcanza · **Estimación:** 16 h (se parte en dos PR: la tienda firma y verifica; el agente cierra el mandato) · **Delegable a Codex:** no (llaves y autorización)
@@ -445,6 +445,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T131: tienda de conformidad local (`R-13`), `pnpm run ucp:conformance`, cinco arreglos en el checkout UCP (`VT-42`). Corrida final: 40 pasan, 17 fallan, 20 se saltan. El 422 `version_unsupported` que pide T133 quedó hecho aquí. Error de la suite reportado (conformance#116). Cuatro criterios marcados. `/revisar` sin bloqueantes, 12 hallazgos corregidos; cerrada |
 | 2026-10-03 | T133: perfil `2026-08-25` con la hoja `2026-04-08` en `supported_versions`, negociación por el perfil del agente con un lector endurecido (`R-14`, defecto `2026-08-25` por decisión del usuario), respuestas según la versión, perfil de plataforma `agentpey-2026-08-25.json`. Tres criterios marcados; falta la compra real tras el deploy |
 | 2026-10-03 | T133, `/revisar`: dos bloqueantes en el lector de perfiles (sin plazo total, sin límite de lecturas) y 12 hallazgos más, corregidos a pedido del usuario; `R-14` precisada (límites exactos y la desviación de los códigos de error de UCP) |
+| 2026-10-04 | T133 cerrada: mergeada ([PR #50](https://github.com/vicentewolde/AgentPey/pull/50)) y compra real en `2026-08-25` con recibo válido; cuarto criterio marcado |
 
 ## 11. Fuentes externas
 
