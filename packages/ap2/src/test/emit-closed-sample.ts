@@ -1,6 +1,6 @@
 /**
  * Writes a sample closed checkout mandate (T134, R-15) with throwaway P-256 keys, for
- * `scripts/ap2-crosscheck/verify.py --closed`: the AP2 reference SDK must verify its shape.
+ * `scripts/ap2-crosscheck/verify.py --closed <dir>`: the AP2 reference SDK must verify its shape.
  *
  *   pnpm --filter @agentpey/ap2 exec tsx src/test/emit-closed-sample.ts <dir>
  */
@@ -26,4 +26,5 @@ const chain = await closeCheckoutMandate({ open, holder: agent.signer, checkoutJ
 writeFileSync(`${dir}/chain.txt`, chain);
 writeFileSync(`${dir}/platform.jwk.json`, JSON.stringify(platform.public));
 writeFileSync(`${dir}/business.jwk.json`, JSON.stringify(business.public));
+writeFileSync(`${dir}/binding.json`, JSON.stringify({ aud: "https://agentcommerce.vitrinee.agentpey.com", nonce: "cs_abc123" }));
 console.log("chain written", chain.length);

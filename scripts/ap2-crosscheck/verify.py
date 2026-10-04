@@ -10,6 +10,7 @@ Usage (from the repo root, in a virtualenv with requirements.txt installed):
 
     python scripts/ap2-crosscheck/verify.py .vitrinee/ap2
     python scripts/ap2-crosscheck/verify.py .vitrinee/ap2/p256
+    python scripts/ap2-crosscheck/verify.py --closed .vitrinee/ap2-t134
 
 The first is the real export (EdDSA, Stellar keys); the second the same
 Mandate and intent signed with single-use P-256 keys (E-9). The SDK verifies
@@ -31,8 +32,51 @@ from ap2.sdk.sdjwt.common import compute_sd_hash, parse_token
 from jwcrypto.jwk import JWK
 
 
+def verify_closed(folder: Path) -> int:
+    """T134: a closed checkout mandate from a UCP checkout (open~~close, R-15).
+
+    Reads what `pnpm run ucp:buy -- --ucp-version 2026-08-25 --ap2` writes:
+    chain.txt, platform.jwk.json (the key that signed the open mandate),
+    business.jwk.json (the store's AP2 key from its profile) and binding.json
+    (aud, nonce). Verifies the chain as AP2's own code does, evaluates the open
+    mandate's constraints against the checkout the store signed, and checks
+    that signature with the store's key.
+    """
+    from ap2.sdk.checkout_mandate_chain import CheckoutMandateChain
+    from ap2.sdk.jwt_helper import verify_jwt
+
+    chain = (folder / "chain.txt").read_text().strip()
+    platform = JWK(**json.loads((folder / "platform.jwk.json").read_text()))
+    business = JWK(**json.loads((folder / "business.jwk.json").read_text()))
+    binding = json.loads((folder / "binding.json").read_text())
+
+    print(f"AP2 reference SDK · closed checkout mandate · {folder}")
+    print(f"  aud            {binding['aud']}")
+    print(f"  nonce          {binding['nonce']}")
+    try:
+        payloads = MandateClient().verify(chain, lambda _token: platform, expected_aud=binding["aud"], expected_nonce=binding["nonce"])
+    except Exception as error:  # noqa: BLE001 — report whatever the SDK raises
+        print(f"  FAILED         {type(error).__name__}: {error}")
+        return 1
+    print(f"  chain          {len(payloads)} hops: {[p.get('vct') for p in payloads]}")
+    closed = payloads[-1]
+    violations = CheckoutMandateChain.parse(payloads).verify(expected_checkout_hash=closed["checkout_hash"], checkout_jwt=closed["checkout_jwt"])
+    if violations:
+        print(f"  FAILED         constraint violations: {violations}")
+        return 1
+    print("  constraints    none violated (line items, allowed merchants)")
+    if verify_jwt(closed["checkout_jwt"], business) is None:
+        print("  FAILED         checkout_jwt is not signed by the store's key")
+        return 1
+    print(f"  checkout_jwt   signed by the store key {business.get('kid')}")
+    print("\nOK: the AP2 reference SDK verifies the closed mandate.")
+    return 0
+
+
 def main() -> int:
     args = sys.argv[1:]
+    if len(args) == 2 and args[0] == "--closed":
+        return verify_closed(Path(args[1]))
     if len(args) != 1:
         print(__doc__)
         return 2

@@ -26,6 +26,8 @@
  */
 import { AgentPassError } from "@agentpass/core";
 import type { Scope } from "@agentpass/core";
+import { checkoutJwtFrom, closeCheckoutMandate, issueOpenMandatePair, verifyMerchantAuthorization } from "@agentpey/ap2";
+import type { AgentPeyMandateRef, Ap2Signer } from "@agentpey/ap2";
 import type { AgentPayMandate } from "@agentpey/mandate";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { PaymentRequired, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
@@ -50,6 +52,28 @@ export const STELLAR_X402_HANDLER = "com.agentpey.stellar_x402";
 export const AGENTPEY_PLATFORM_PROFILE = "https://agentpey.com/ucp/platform/agentpey.json";
 /** The same platform, declaring UCP 2026-08-25 (T133). */
 export const AGENTPEY_PLATFORM_PROFILE_2026_08_25 = "https://agentpey.com/ucp/platform/agentpey-2026-08-25.json";
+/** The same platform, declaring UCP 2026-08-25 and AP2 mandates, with its P-256 key (T134, R-16). */
+export const AGENTPEY_PLATFORM_PROFILE_AP2 = "https://agentpey.com/ucp/platform/agentpey-ap2.json";
+/** UCP's AP2 mandates extension (T134). */
+export const UCP_AP2_MANDATE = "dev.ucp.common.payment.ap2_mandate";
+
+/**
+ * What the agent needs to close AP2 mandates in a UCP checkout (T134, R-15, R-16): the platform's key that signs
+ * the open mandate, the agent's own key that closes it, the Mandate it comes from, and the intents it already
+ * closed one for (brecha 14: one closed mandate per intent).
+ */
+export interface UcpAp2Options {
+  /** `iss` of the open mandate. */
+  readonly issuer: string;
+  /** The platform's P-256 key (`AGENTPEY_PLATFORM_AP2_SECRET`); its public half is in `agentpey-ap2.json`. */
+  readonly platform: Ap2Signer;
+  /** The agent's P-256 key: the open mandate's `cnf`, and the key that signs the closing hop. */
+  readonly holder: Ap2Signer & { readonly publicJwk: { kty: "EC"; crv: "P-256"; x: string; y: string } };
+  /** The AgentPey Mandate the open mandate is derived from. */
+  readonly source: AgentPeyMandateRef;
+  /** Intent ids a mandate was already closed for, by this agent. */
+  readonly closed: Set<string>;
+}
 
 const reverseDomain = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_]*)+$/;
 
@@ -64,6 +88,16 @@ const profileSchema = z.looseObject({
     capabilities: z.record(z.string().regex(reverseDomain), z.array(declaration)).optional(),
     payment_handlers: z.record(z.string().regex(reverseDomain), z.array(declaration.extend({ id: z.string() }))),
   }),
+  keys: z.array(z.unknown()).optional(),
+});
+
+/** A store's P-256 key, as its profile publishes it for AP2 (T134). */
+const storeP256KeySchema = z.looseObject({
+  kty: z.literal("EC"),
+  crv: z.literal("P-256"),
+  x: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  y: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  kid: z.string().min(1),
 });
 
 const handlerConfigSchema = z.looseObject({
@@ -128,6 +162,8 @@ export interface ExecuteUcpPaymentDeps {
   readonly fetchImpl?: typeof fetch;
   /** The platform profile sent in `UCP-Agent`, which tells the store the UCP version to answer in. Defaults to {@link AGENTPEY_PLATFORM_PROFILE}. */
   readonly platformProfile?: string;
+  /** Close AP2 mandates when the store signs its checkout (T134). Pair it with {@link AGENTPEY_PLATFORM_PROFILE_AP2}. */
+  readonly ap2?: UcpAp2Options;
   /** Tests only: the scheme that builds the payment, in place of the real Stellar one. */
   readonly schemeForTests?: SchemeNetworkClient;
 }
@@ -159,6 +195,8 @@ export interface UcpPaymentReceipt {
   readonly paid: { readonly amount: string; readonly asset: string; readonly payTo: string };
   readonly transaction: string | undefined;
   readonly receipt: NonNullable<UcpCheckout["receipt"]> | undefined;
+  /** The closed AP2 checkout mandate sent in `complete`, when the store asked for one (T134). */
+  readonly ap2Mandate?: string;
 }
 
 function networkError(message: string, details: Record<string, unknown>, cause?: unknown): AgentPassError {
@@ -192,6 +230,10 @@ export interface UcpQuote {
   readonly requirements: PaymentRequirements;
   /** The store's total, in its own currency's minor units. */
   readonly total: { readonly amount: number; readonly currency: string };
+  /** The checkout as the store answered it: with AP2, the signed terms the mandate closes over (T134). */
+  readonly checkout: Readonly<Record<string, unknown>>;
+  /** The store offers AP2 mandates, and these are the P-256 keys its profile publishes (T134). */
+  readonly ap2: { readonly offered: boolean; readonly keys: ReadonlyArray<z.infer<typeof storeP256KeySchema>> };
 }
 
 export interface QuoteUcpCheckoutInput {
@@ -244,6 +286,7 @@ interface StoreHandler {
   readonly handlerId: string;
   readonly declared: z.infer<typeof handlerConfigSchema>;
   readonly endpoint: string;
+  readonly ap2: UcpQuote["ap2"];
 }
 
 /** The store's profile: where to talk to it, and where the money goes. */
@@ -265,7 +308,14 @@ async function readStoreHandler(call: UcpCall, origin: string): Promise<StoreHan
   if (endpoint === undefined || !URL.canParse(endpoint) || new URL(endpoint).origin !== new URL(origin).origin) {
     throw new AgentPassError("MerchantRejectedRequest", "the store declares no REST endpoint of its own", { details: { storeUrl: origin } });
   }
-  return { handlerId: handler.id, declared: declared.data, endpoint };
+  const ap2 = {
+    offered: profile.data.ucp.capabilities?.[UCP_AP2_MANDATE] !== undefined,
+    keys: (profile.data.keys ?? []).flatMap((key) => {
+      const parsed = storeP256KeySchema.safeParse(key);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  };
+  return { handlerId: handler.id, declared: declared.data, endpoint, ap2 };
 }
 
 /**
@@ -332,6 +382,8 @@ export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch
     quantity: input.quantity,
     requirements,
     total: totalOf(checkout),
+    checkout: created.json as Record<string, unknown>,
+    ap2: store.ap2,
   };
 }
 
@@ -359,6 +411,8 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
     const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
     let requirements = quote.requirements;
     let handlerId = quote.handlerId;
+    let latest = quote.checkout;
+    let storeAp2 = quote.ap2;
     if (input.recheck === true) {
       const store = await readStoreHandler(call, quote.storeUrl);
       if (store.endpoint !== quote.endpoint) {
@@ -379,6 +433,8 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
       }
       requirements = fresh;
       handlerId = store.handlerId;
+      latest = current.json as Record<string, unknown>;
+      storeAp2 = store.ap2;
     }
 
     // With the venue's pinned account and assets, and with the Mandate.
@@ -402,6 +458,10 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
     const transaction = (payload.payload as { transaction?: unknown }).transaction;
     if (typeof transaction !== "string") throw new AgentPassError("PaymentNotCreated", "the payment scheme produced no transaction", { details: {} });
 
+    // AP2 (T134, R-15): after the rail authorised and before anything leaves, close the mandate over the
+    // checkout the store signed, having checked that signature against the key its profile publishes.
+    const ap2Mandate = deps.ap2 !== undefined && storeAp2.offered ? await closeMandate(deps.ap2, storeAp2, latest, quote, input) : undefined;
+
     // The door. From here on money may have moved.
     paymentSent = true;
     const completed = await call(
@@ -419,6 +479,7 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
             },
           ],
         },
+        ...(ap2Mandate === undefined ? {} : { ap2: { checkout_mandate: ap2Mandate } }),
       },
       input.idempotencyKey === undefined ? {} : { "Idempotency-Key": input.idempotencyKey },
     );
@@ -439,8 +500,63 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
       paid: { amount: requirements.amount, asset: requirements.asset, payTo: requirements.payTo },
       transaction: done.data.receipt?.settlement_tx_hash,
       receipt: done.data.receipt,
+      ...(ap2Mandate === undefined ? {} : { ap2Mandate }),
     };
   }
+}
+
+/** Seven-decimal Stellar units per AP2 minor unit (cents, E-12). */
+const STELLAR_UNITS_PER_CENT = 100_000n;
+
+/**
+ * The agent's side of AP2 in the UCP checkout (T134, R-15): check the store's
+ * signature on the checkout against its published key, then have the
+ * platform sign an open checkout mandate for exactly this item, quantity and
+ * store, and close it over the signed checkout for this store (`aud`) and
+ * this checkout (`nonce`). One closed mandate per intent (brecha 14).
+ */
+async function closeMandate(ap2: UcpAp2Options, store: UcpQuote["ap2"], checkout: Readonly<Record<string, unknown>>, quote: UcpQuote, input: PayUcpQuoteInput): Promise<string> {
+  if (ap2.closed.has(input.intent.intentId)) {
+    throw new AgentPassError("Ap2MandateInvalid", "this intent already closed an AP2 mandate; a second one is not issued (brecha 14)", { details: { intentId: input.intent.intentId } });
+  }
+  const authorization = (checkout.ap2 as { merchant_authorization?: unknown } | undefined)?.merchant_authorization;
+  if (typeof authorization !== "string") {
+    throw new AgentPassError("Ap2MerchantAuthorizationInvalid", "the store offers AP2 but did not sign its checkout (merchant_authorization_missing)", { details: { checkoutId: quote.checkoutId } });
+  }
+  let kid: unknown;
+  try {
+    kid = (JSON.parse(Buffer.from(authorization.split(".")[0] ?? "", "base64url").toString("utf8")) as { kid?: unknown }).kid;
+  } catch {
+    kid = undefined;
+  }
+  const key = store.keys.find((candidate) => candidate.kid === kid);
+  if (key === undefined) throw new AgentPassError("Ap2MerchantAuthorizationInvalid", "the store's profile publishes no key for its checkout signature", { details: { kid } });
+  await verifyMerchantAuthorization(checkout, key);
+
+  const now = new Date();
+  const line = (checkout.line_items as Array<{ item?: { title?: unknown } }> | undefined)?.[0];
+  const maxCents = BigInt(quote.requirements.amount) / STELLAR_UNITS_PER_CENT;
+  const open = (
+    await issueOpenMandatePair(
+      {
+        issuer: ap2.issuer,
+        source: ap2.source,
+        agentKey: ap2.holder.publicJwk,
+        merchant: { id: quote.storeUrl, name: String((checkout.merchant as { name?: unknown } | undefined)?.name ?? new URL(quote.storeUrl).host), website: quote.storeUrl },
+        item: { id: quote.productId, title: typeof line?.item?.title === "string" ? line.item.title : quote.productId },
+        quantity: quote.quantity,
+        maxAmount: maxCents > 0n ? maxCents : 1n,
+        currency: "USDC",
+        paymentInstrument: { id: quote.handlerId, type: "stellar_x402" },
+        issuedAt: now,
+        expiresAt: new Date(Math.min(now.getTime() + 15 * 60_000, Date.parse(input.intent.expiresAt))),
+      },
+      ap2.platform,
+    )
+  ).checkout;
+  const chain = await closeCheckoutMandate({ open, holder: ap2.holder, checkoutJwt: checkoutJwtFrom(checkout), aud: quote.storeUrl, nonce: quote.checkoutId, issuedAt: now });
+  ap2.closed.add(input.intent.intentId);
+  return chain;
 }
 
 /**

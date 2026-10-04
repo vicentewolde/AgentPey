@@ -353,6 +353,15 @@ describe("AgentPey's own platform profiles (T133)", () => {
     expect(ucpErrors("https://ucp.dev/schemas/discovery/profile.json#/$defs/platform_profile", profile)).toEqual([]);
   });
 
+  it("agentpey-ap2.json declares 2026-08-25 and AP2, publishes one public P-256 key and no private member, and is a valid 2026-08-25 platform profile", () => {
+    const profile = read("agentpey-ap2.json") as { ucp: { version: string; capabilities: Record<string, unknown> }; keys: Array<Record<string, unknown>> };
+    expect(profile.ucp.version).toBe("2026-08-25");
+    expect(profile.ucp.capabilities).toHaveProperty("dev.ucp.common.payment.ap2_mandate");
+    expect(profile.keys).toEqual([expect.objectContaining({ kty: "EC", crv: "P-256", alg: "ES256" })]);
+    expect(profile.keys[0]).not.toHaveProperty("d");
+    expect(ucpErrors("https://ucp.dev/schemas/profile.json#/$defs/platform_schema", profile, "2026-08-25")).toEqual([]);
+  });
+
   it("agentpey-2026-08-25.json declares 2026-08-25 and is a valid 2026-08-25 platform profile", () => {
     const profile = read("agentpey-2026-08-25.json");
     expect(profile.ucp.version).toBe("2026-08-25");

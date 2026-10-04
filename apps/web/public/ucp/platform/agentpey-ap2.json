@@ -1,0 +1,97 @@
+{
+  "ucp": {
+    "version": "2026-08-25",
+    "services": {
+      "dev.ucp.shopping": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/overview",
+          "schema": "https://ucp.dev/2026-08-25/services/shopping/rest.openapi.json",
+          "transport": "rest"
+        }
+      ]
+    },
+    "capabilities": {
+      "dev.ucp.shopping.catalog.search": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/catalog/search",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/catalog_search.json"
+        }
+      ],
+      "dev.ucp.shopping.catalog.lookup": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/catalog/lookup",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/catalog_lookup.json"
+        }
+      ],
+      "dev.ucp.shopping.checkout": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/checkout",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/checkout.json"
+        }
+      ],
+      "dev.ucp.shopping.fulfillment": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/extensions/fulfillment",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/fulfillment.json",
+          "extends": "dev.ucp.shopping.checkout"
+        }
+      ],
+      "com.agentpey.shopping.receipt": [
+        {
+          "version": "2026-09-30",
+          "spec": "https://agentpey.com/ucp/extensions/receipt/spec",
+          "schema": "https://agentpey.com/ucp/extensions/receipt/schema.json",
+          "extends": [
+            "dev.ucp.shopping.checkout",
+            "dev.ucp.shopping.order"
+          ]
+        }
+      ],
+      "dev.ucp.common.payment.ap2_mandate": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/payment/extensions/ap2-mandates",
+          "schema": "https://ucp.dev/2026-08-25/schemas/common/payment_ap2_mandate.json",
+          "extends": "dev.ucp.shopping.checkout"
+        }
+      ]
+    },
+    "payment_handlers": {
+      "com.agentpey.stellar_x402": [
+        {
+          "id": "stellar_x402",
+          "version": "2026-09-30",
+          "spec": "https://agentpey.com/ucp/handlers/stellar-x402/spec",
+          "schema": "https://agentpey.com/ucp/handlers/stellar-x402/schema.json",
+          "available_instruments": [
+            {
+              "type": "stellar_x402"
+            }
+          ],
+          "config": {
+            "x402_version": 2,
+            "networks": [
+              "stellar:testnet"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "keys": [
+    {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "y91E5INiJZisWCbTmoQUKwvxyZuRDstVyuR6lor-aCw",
+      "y": "qvgma2lN66y-P2_bOt48jggBsIY-Le1zfMHy_Bqx7k0",
+      "kid": "https://agentpey.com/ucp/platform/agentpey-ap2.json#ap2-p256-1",
+      "alg": "ES256",
+      "use": "sig"
+    }
+  ]
+}

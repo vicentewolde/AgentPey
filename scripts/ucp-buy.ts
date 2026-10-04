@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 /**
- * `pnpm run ucp:buy -- --store <URL> --product <id> [--quantity <n>] [--ucp-version 2026-08-25]`
+ * `pnpm run ucp:buy -- --store <URL> --product <id> [--quantity <n>] [--ucp-version 2026-08-25] [--ap2]`
  * — a real UCP purchase on Stellar testnet, end to end (T122, Fase 7). With
  * `--ucp-version 2026-08-25` the agent sends its 2026-08-25 platform profile
  * and the store answers in that version (T133); without it, 2026-04-08.
+ * With `--ap2` (T134, R-15) the agent sends its AP2 platform profile: the
+ * store signs its checkout, and the agent closes an AP2 mandate over it with
+ * the platform key (`AGENTPEY_PLATFORM_AP2_SECRET`, `pnpm run ap2:platform-key`).
+ * The mandate and the keys a third party needs to check it are written to
+ * `.vitrinee/ap2-t134/` for `scripts/ap2-crosscheck/verify.py --closed`.
  *
  * The same chain of trust as `pnpm run demo:pay-real`, through UCP instead
  * of a bare HTTP 402:
@@ -36,6 +41,7 @@ import type { CreatePurchaseIntentResult } from "@agentpey/agent";
 import {
   AGENTPEY_PLATFORM_PROFILE,
   AGENTPEY_PLATFORM_PROFILE_2026_08_25,
+  AGENTPEY_PLATFORM_PROFILE_AP2,
   DEFAULT_VENUE_REGISTRY,
   createAgent,
   createInMemorySpendLedger,
@@ -48,7 +54,10 @@ import {
   verifyIntent,
 } from "@agentpey/agent";
 import { anchorMandate, createMandate } from "@agentpey/mandate";
-import { Keypair } from "@stellar/stellar-sdk";
+import { Keypair, StrKey } from "@stellar/stellar-sdk";
+
+import { deriveP256, p256FromScalar } from "../packages/ap2/src/keys.js";
+import { PLATFORM_AP2_KID } from "./lib/ap2-platform.js";
 
 import { ReceiptRegistryClient, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
 import { readEnvFile } from "./lib/env-file.js";
@@ -58,6 +67,9 @@ const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const ENV_PATH = resolve(REPO_ROOT, ".env.local");
 const VITRINEE_DEPLOYMENT = resolve(REPO_ROOT, "deployments/vitrinee-testnet.json");
 const RECEIPT_OUT = resolve(REPO_ROOT, ".vitrinee/last-ucp-receipt.jws");
+const AP2_OUT = resolve(REPO_ROOT, ".vitrinee/ap2-t134");
+/** The label the agent's AP2 key is derived under, from its Stellar seed (R-16). */
+const AGENT_AP2_KEY_LABEL = "agentpey/ap2-holder/p256/v1";
 const USDC_CONTRACT = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
 const HORIZON = "https://horizon-testnet.stellar.org";
 
@@ -69,6 +81,7 @@ const { values } = parseArgs({
     quantity: { type: "string", default: "1" },
     email: { type: "string", default: "comprador@agentpey.com" },
     "ucp-version": { type: "string", default: "2026-04-08" },
+    ap2: { type: "boolean", default: false },
   },
 });
 
@@ -104,7 +117,10 @@ async function main(): Promise<void> {
   if (ucpVersion !== "2026-04-08" && ucpVersion !== "2026-08-25") {
     throw new AgentPassError("InvalidArguments", "--ucp-version must be 2026-04-08 or 2026-08-25", { details: { ucpVersion } });
   }
-  const platformProfile = ucpVersion === "2026-08-25" ? AGENTPEY_PLATFORM_PROFILE_2026_08_25 : AGENTPEY_PLATFORM_PROFILE;
+  if (values.ap2 && ucpVersion !== "2026-08-25") {
+    throw new AgentPassError("InvalidArguments", "--ap2 needs --ucp-version 2026-08-25: UCP's AP2 extension is offered only there (R-15)", { details: {} });
+  }
+  const platformProfile = values.ap2 ? AGENTPEY_PLATFORM_PROFILE_AP2 : ucpVersion === "2026-08-25" ? AGENTPEY_PLATFORM_PROFILE_2026_08_25 : AGENTPEY_PLATFORM_PROFILE;
   const storeUrl = new URL(values.store).origin;
   const productId = values.product;
 
@@ -175,9 +191,24 @@ async function main(): Promise<void> {
   line("intent", intentResult.intent_id);
   line("total", `${intentResult.total_amount} USDC`);
 
+  // AP2 (T134): the platform key signs the open mandate; the agent's own P-256 key, derived from its Stellar seed
+  // (R-16), closes it. The Mandate just anchored is the open mandate's source.
+  const agentDid = stellarAddressToDid(agentKeypair.publicKey(), "testnet");
+  const holder = deriveP256(StrKey.decodeEd25519SecretSeed(agentKeypair.secret()), AGENT_AP2_KEY_LABEL, `${agentDid}#ap2-p256`);
+  const ap2 = values.ap2
+    ? {
+        issuer: "https://agentpey.com",
+        platform: p256FromScalar(Buffer.from(requireEnv(env, "AGENTPEY_PLATFORM_AP2_SECRET"), "base64url"), PLATFORM_AP2_KID).signer,
+        holder: { ...holder.signer, publicJwk: holder.publicJwk },
+        source: { mandate_id: anchoredMandate.mandate.mandateId, hash: anchoredMandate.hash, registry: anchoredMandate.mandate.credentialStatus.registry },
+        closed: new Set<string>(),
+      }
+    : undefined;
+  if (ap2 !== undefined) line("ap2", `perfil ${AGENTPEY_PLATFORM_PROFILE_AP2}`);
+
   step(3, "Checkout UCP, reconciliado contra el Mandato y pagado desde el policy_rail");
   const paid = await executeUcpPayment(
-    { policyRail: createLocalPolicyRail({ ledger }), signerSecret: agentKeypair.secret(), payer: { contractId: railId, ownerSecret: agentKeypair.secret() }, platformProfile },
+    { policyRail: createLocalPolicyRail({ ledger }), signerSecret: agentKeypair.secret(), payer: { contractId: railId, ownerSecret: agentKeypair.secret() }, platformProfile, ...(ap2 === undefined ? {} : { ap2 }) },
     {
       storeUrl,
       productId,
@@ -198,6 +229,18 @@ async function main(): Promise<void> {
   line("pagado", `${(Number(paid.paid.amount) / 1e7).toFixed(7)} USDC a ${paid.paid.payTo}`);
   line("tx", paid.transaction ?? "(sin hash)");
   if (paid.transaction !== undefined) line("explorer", `https://stellar.expert/explorer/testnet/tx/${paid.transaction}`);
+  if (paid.ap2Mandate !== undefined) {
+    // What a third party needs to check the mandate with AP2's own SDK: the chain, the platform key that signed
+    // the open mandate, the store key that signed the checkout, and the aud and nonce it is bound to.
+    const storeProfile = (await (await fetch(`${storeUrl}/.well-known/ucp`)).json()) as { keys?: Array<{ kid?: string }> };
+    const storeKey = storeProfile.keys?.find((key) => key.kid?.endsWith("#ap2-p256") === true);
+    await mkdir(AP2_OUT, { recursive: true });
+    await writeFile(resolve(AP2_OUT, "chain.txt"), paid.ap2Mandate);
+    await writeFile(resolve(AP2_OUT, "platform.jwk.json"), JSON.stringify(p256FromScalar(Buffer.from(requireEnv(env, "AGENTPEY_PLATFORM_AP2_SECRET"), "base64url"), PLATFORM_AP2_KID).publicJwk));
+    await writeFile(resolve(AP2_OUT, "business.jwk.json"), JSON.stringify(storeKey ?? {}));
+    await writeFile(resolve(AP2_OUT, "binding.json"), JSON.stringify({ aud: storeUrl, nonce: paid.checkoutId }));
+    line("mandato ap2", `${paid.ap2Mandate.length} bytes, cadena abierto~~cierre en ${AP2_OUT}`);
+  }
   line("permalink", paid.permalinkUrl);
 
   step(4, "Anclaje del recibo en receipt-registry");

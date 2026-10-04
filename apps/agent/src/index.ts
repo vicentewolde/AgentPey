@@ -297,6 +297,8 @@ export {
 export {
   AGENTPEY_PLATFORM_PROFILE,
   AGENTPEY_PLATFORM_PROFILE_2026_08_25,
+  AGENTPEY_PLATFORM_PROFILE_AP2,
+  UCP_AP2_MANDATE,
   STELLAR_X402_HANDLER,
   executeUcpPayment,
   payUcpQuote,
@@ -307,6 +309,7 @@ export {
   type QuoteUcpCheckoutInput,
   type UcpDestination,
   type UcpPaymentReceipt,
+  type UcpAp2Options,
   type UcpQuote,
 } from "./payment/ucp.js";
 

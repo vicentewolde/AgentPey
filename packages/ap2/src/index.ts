@@ -60,3 +60,4 @@ export {
   type VerifiedCheckoutMandate,
   type VerifyCheckoutMandateOptions,
 } from "./checkout.js";
+export { deriveP256, p256FromScalar, type P256Key } from "./keys.js";

@@ -52,6 +52,7 @@
     "ucp:buy": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-buy.ts",
     "ucp:probe-per-tx": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-probe-per-tx.ts",
     "ucp:conformance": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/ucp-conformance/run.ts",
+    "ap2:platform-key": "tsx --tsconfig tsconfig.scripts.json scripts/ap2-platform-key.ts",
     "ap2:export": "tsx --tsconfig tsconfig.scripts.json scripts/ap2-export.ts",
     "vitrinee:ucp:list": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/ucp-list.ts",
     "vitrinee:shopify:probe": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/shopify-probe.ts",

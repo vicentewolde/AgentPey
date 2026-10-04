@@ -15,7 +15,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeVenueId } from "../../apps/agent/src/catalog/ids.js";
 import { loadVenueRegistry } from "../../apps/agent/src/catalog/registry.js";
 import type { PurchaseIntent } from "../../apps/agent/src/intent/intent.js";
-import { AGENTPEY_PLATFORM_PROFILE, AGENTPEY_PLATFORM_PROFILE_2026_08_25, executeUcpPayment, type ExecuteUcpPaymentDeps } from "../../apps/agent/src/payment/ucp.js";
+import { AGENTPEY_PLATFORM_PROFILE, AGENTPEY_PLATFORM_PROFILE_2026_08_25, AGENTPEY_PLATFORM_PROFILE_AP2, executeUcpPayment, type ExecuteUcpPaymentDeps } from "../../apps/agent/src/payment/ucp.js";
+import { deriveP256 } from "../../packages/ap2/src/keys.js";
 import { mayHaveBeenPaid } from "../../apps/agent/src/payment/x402.js";
 import { createInMemorySpendLedger } from "../../apps/agent/src/ledger/spend-ledger.js";
 import { createLocalPolicyRail } from "../../apps/agent/src/policy/policy-rail.js";
@@ -293,4 +294,53 @@ describe("AgentPey pays a Vitrinee store over UCP 2026-08-25 (T133)", () => {
     expect(paid.receipt).toMatchObject({ format: "jws" });
   });
 
+});
+
+describe("AgentPey pays a Vitrinee store with AP2 mandates (T134, R-15)", () => {
+  it("closes a mandate over the store's signed checkout, the store verifies it and charges once; the same intent never closes a second one", async () => {
+    const platformKey = deriveP256(new Uint8Array(32).fill(1), "test/platform", "agentpey#ap2");
+    const holderKey = deriveP256(new Uint8Array(32).fill(2), "test/holder", "agent#ap2");
+    const registry = fakeRegistry();
+    const own = createApp({
+      platformProfiles: fakePlatformProfiles({
+        [AGENTPEY_PLATFORM_PROFILE_AP2]: { ucp: { version: "2026-08-25", capabilities: ["dev.ucp.shopping.checkout", "dev.ucp.common.payment.ap2_mandate"] }, keys: [platformKey.publicJwk] },
+      }),
+      config: testConfig(),
+      adapter: new MockStoreAdapter(),
+      facilitator: fakeFacilitator({ settle: { payer: RAIL, transaction: "ab12".padEnd(64, "0") } }),
+      anchorer: registry.anchorer,
+      registry: registry.registry,
+    });
+    const ownServer = await listen(own);
+    try {
+      const venueRegistry = loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: ownServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }]);
+      const ownVenue = { venueId: makeVenueId("vitrinee", MERCHANT), registry: venueRegistry };
+      const grant = scope();
+      const closed = new Set<string>();
+      const ap2 = {
+        issuer: "https://agentpey.com",
+        platform: platformKey.signer,
+        holder: { ...holderKey.signer, publicJwk: holderKey.publicJwk },
+        source: { mandate_id: crypto.randomUUID(), hash: "b".repeat(64), registry: REGISTRY },
+        closed,
+      };
+      const theIntent = intent("gorro-andes", 1, "13.6736842", "13.6736842");
+      const pay = () =>
+        executeUcpPayment(
+          { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: fakeScheme(), platformProfile: AGENTPEY_PLATFORM_PROFILE_AP2, ap2 },
+          { storeUrl: ownServer.url, productId: "gorro-andes", quantity: 1, buyer: { email: "ana@example.com" }, destination: DESTINATION, intent: theIntent, scope: grant, mandate: mandate(grant), ...ownVenue },
+        );
+      const paid = await pay();
+      expect(paid.orderId).toMatch(/^ord_/);
+      expect(paid.ap2Mandate?.split("~~")).toHaveLength(2);
+      expect(closed.has(theIntent.intentId)).toBe(true);
+      // Brecha 14: the same intent, a second time, is refused before anything is signed or sent.
+      const again = await attempt(pay);
+      expect(again).toMatchObject({ code: "Ap2MandateInvalid" });
+      expect(mayHaveBeenPaid(again)).toBe(false);
+    } finally {
+      own.anchors.stop();
+      await ownServer.close();
+    }
+  });
 });
