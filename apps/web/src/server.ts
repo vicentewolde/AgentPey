@@ -114,6 +114,7 @@ import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.
 import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
 import { ucpPublicPath } from "./ucp-public.js";
+import { MAX_BODY_BYTES as ORDER_WEBHOOK_MAX_BYTES, createOrderWebhookReceiver } from "./ucp-webhooks.js";
 import {
   createPostgresWalletSessionStore,
   type PendingConsentSessionPayload,
@@ -1103,6 +1104,22 @@ function errorBody(error: unknown): { readonly code: string; readonly message: s
   return { code: "unknown", message: String(error), details: {} };
 }
 
+/** The raw body, or `null` past `maxBytes` (counted as it arrives, never buffered beyond it). */
+async function readRawBody(req: IncomingMessage, maxBytes: number): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size > maxBytes) return null;
+    chunks.push(chunk as Buffer);
+  }
+  return Buffer.concat(chunks);
+}
+
+/** Where Vitrinee stores deliver order events to AgentPey, the platform that bought (T147). */
+const ORDER_WEBHOOK_PATH = "/ucp/webhooks/orders";
+const orderWebhooks = createOrderWebhookReceiver({ log: (msg, fields) => log("info", msg, fields) });
+
 async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(chunk as Buffer);
@@ -1194,6 +1211,24 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   if (req.method === "GET" && pathname === "/discovery/search") {
     const result = await handleDiscoverySearch(publicDiscovery, url.searchParams.get("query"));
     sendJson(res, result.status, result.body);
+    return;
+  }
+
+  // Order webhooks from the stores (T147): verified deliveries in, and what arrived, without bodies, out.
+  if (pathname === ORDER_WEBHOOK_PATH && req.method === "GET") {
+    sendJson(res, 200, { received: orderWebhooks.recent() }, { "cache-control": "no-store" });
+    return;
+  }
+  if (pathname === ORDER_WEBHOOK_PATH && req.method === "POST") {
+    const body = await readRawBody(req, ORDER_WEBHOOK_MAX_BYTES);
+    if (body === null) {
+      sendJson(res, 413, { ok: false, code: "TooLarge", message: "an order webhook is far smaller than this" });
+      return;
+    }
+    const headers = Object.fromEntries(Object.entries(req.headers).map(([name, value]) => [name, Array.isArray(value) ? value.join(", ") : value]));
+    // The URL the store signed: agentpey.com terminates TLS in front, and the gateway forwards Host unchanged.
+    const answer = await orderWebhooks.receive(`https://${req.headers.host ?? "agentpey.com"}${pathname}`, headers, body);
+    sendJson(res, answer.status, answer.body);
     return;
   }
 

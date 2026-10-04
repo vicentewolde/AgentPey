@@ -41,6 +41,16 @@
           "extends": "dev.ucp.shopping.checkout"
         }
       ],
+      "dev.ucp.shopping.order": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/order",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/order.json",
+          "config": {
+            "webhook_url": "https://agentpey.com/ucp/webhooks/orders"
+          }
+        }
+      ],
       "com.agentpey.shopping.receipt": [
         {
           "version": "2026-09-30",

@@ -21,6 +21,7 @@
     "@agentpey/vault": "workspace:*",
     "@agentpey/webhooks": "workspace:*",
     "@stellar/stellar-sdk": "^17.0.1",
+    "@vitrinee/core": "workspace:*",
     "pg": "^8.13.0"
   },
   "devDependencies": {
