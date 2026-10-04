@@ -50,6 +50,7 @@ import { AgentPassError } from "@agentpass/core";
 import { checkOpenCheckoutConstraints, jcsCanonicalize, signMerchantAuthorization, verifyCheckoutJwt, verifyCheckoutMandateChain } from "@agentpey/ap2";
 
 import type { StoreAp2Key } from "./ap2.js";
+import type { OrderEvents } from "./order-events.js";
 import type { PlatformP256Key } from "./platform-profile.js";
 import { IdempotencyCache, requestHash } from "./idempotency.js";
 import { ucpPlatformOf, ucpVersionOf } from "./negotiation.js";
@@ -67,6 +68,8 @@ export interface UcpCheckoutDeps extends CheckoutDeps {
   sessions: CheckoutSessionPersistence;
   /** The storefront's P-256 key for AP2 (VT-43): signs every checkout response when AP2 is negotiated. */
   ap2Key: StoreAp2Key;
+  /** Order events and webhooks (T147): a completed checkout hands its order the platform's webhook URL. */
+  orderEvents: OrderEvents;
   x402: x402ResourceServer;
   /** Resolves once the resource server has read the facilitator's capabilities. */
   ready: () => Promise<void>;
@@ -327,7 +330,7 @@ interface View {
   origin: string;
   version: UcpVersion;
   /** The platform profile this request was negotiated from, when it was read (T134): its URL, whether it declares AP2, its P-256 keys. */
-  platform: { url: string; ap2: boolean; keys: ReadonlyArray<PlatformP256Key> } | null;
+  platform: { url: string; ap2: boolean; keys: ReadonlyArray<PlatformP256Key>; orderWebhookUrl?: string } | null;
 }
 
 /** AP2 is negotiated on this request (T134, R-15): 2026-08-25, and the platform's profile declares the extension. */
@@ -696,7 +699,15 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
     return {
       origin: originOf(req),
       version: ucpVersionOf(res),
-      platform: platform === undefined ? null : { url: platform.url, ap2: platform.profile.ucp.capabilities.includes(UCP_AP2_MANDATE), keys: platform.profile.keys },
+      platform:
+        platform === undefined
+          ? null
+          : {
+              url: platform.url,
+              ap2: platform.profile.ucp.capabilities.includes(UCP_AP2_MANDATE),
+              keys: platform.profile.keys,
+              ...(platform.profile.orderWebhookUrl === undefined ? {} : { orderWebhookUrl: platform.profile.orderWebhookUrl }),
+            },
     };
   };
   const idempotency = new IdempotencyCache(deps.now);
@@ -725,6 +736,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         settlement: null,
         settleAttempt: null,
         ap2: null,
+        webhook: null,
       };
       const view = viewOf(req, res);
       // AP2 is negotiated once, when the checkout is created, and locks it for good (T134, R-15): no later request,
@@ -891,6 +903,9 @@ async function complete(
     session.settleAttempt = null;
     // The mandate this charge is made under, kept with the session as evidence (a dispute, T127, may ask for it).
     if (session.ap2 !== null) session.ap2 = { ...session.ap2, mandate: ap2Mandate };
+    // Where the platform completing this checkout wants the order's events (T147), kept for when the order exists.
+    const webhookUrl = view.platform?.orderWebhookUrl;
+    session.webhook = webhookUrl === undefined || view.platform === null ? null : { url: webhookUrl, platformProfile: view.platform.url, version: view.version, origin: view.origin };
     session.updatedAt = deps.now().toISOString();
     await deps.sessions.save(session);
 
@@ -990,4 +1005,12 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
   session.updatedAt = deps.now().toISOString();
   await deps.sessions.save(session);
   deps.log("ucp checkout completed", { checkoutId: session.id, orderId: record.orderId, amountUSDC: usdcAtomicToDecimal(BigInt(settlement.amountAtomic)) });
+  // The "Order created" webhook (T147). The checkout is already complete and paid: a failure here is logged, never answered.
+  if (session.webhook !== null) {
+    try {
+      await deps.orderEvents.attachWebhook(record.orderId, session.webhook);
+    } catch (error) {
+      deps.log("order webhook not attached", { orderId: record.orderId, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
 }

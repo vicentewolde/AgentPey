@@ -68,6 +68,8 @@ export class StorefrontPool {
     if (cached !== undefined) {
       const current = await cached.catch(() => undefined);
       if (current !== undefined && current.comercioId === comercio.id && current.updatedAt === comercio.updatedAt) return current.app;
+      // The store changed: its old app stops delivering webhooks, so the new one is the only sender (T147).
+      current?.app.orderEvents.stop();
     }
     const building = this.build(comercio);
     this.built.set(slug, building);
@@ -100,7 +102,8 @@ export class StorefrontPool {
       ...this.options.appDeps?.(comercio, config),
     });
     const resumed = app.anchors.resume();
-    this.log("store ready", { comercio: comercio.slug, payTo: comercio.payTo, signing: comercio.signingAccount, orders: orders.list().length, anchorsResumed: resumed });
+    const webhooksResumed = app.orderEvents.resume();
+    this.log("store ready", { comercio: comercio.slug, payTo: comercio.payTo, signing: comercio.signingAccount, orders: orders.list().length, anchorsResumed: resumed, webhooksResumed });
     return { comercioId: comercio.id, updatedAt: comercio.updatedAt, app };
   }
 }

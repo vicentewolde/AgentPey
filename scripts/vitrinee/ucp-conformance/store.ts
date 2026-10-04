@@ -271,9 +271,10 @@ export async function startConformanceStore(options: { port?: number; simulation
     }
   });
 
-  // The suite's shipping simulation, behind its shared secret. Order events and
-  // webhooks arrive with T147; until then this only answers for an order that exists.
-  app.post("/testing/simulate-shipping/:orderId", (req: Request, res: Response) => {
+  // The suite's shipping simulation, behind its shared secret (R-3: only in this local store). It records a
+  // `shipped` event on the order, which tells the platform that bought by webhook (T147). It reaches the
+  // gateway through `orderEvents`, never through a route a deployed store has.
+  app.post("/testing/simulate-shipping/:orderId", async (req: Request, res: Response, next: NextFunction) => {
     if (!secretMatches(req.header("simulation-secret"), options.simulationSecret)) {
       res.status(403).json({ error: "Forbidden", message: "missing or wrong Simulation-Secret" });
       return;
@@ -283,7 +284,12 @@ export async function startConformanceStore(options: { port?: number; simulation
       res.status(404).json({ error: "NotFound", message: `no order with id "${orderId}"` });
       return;
     }
-    res.json({ order_id: orderId, status: "shipped" });
+    try {
+      await inner.orderEvents.recordShipment(orderId, { source: "simulation" });
+      res.json({ order_id: orderId, status: "shipped" });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.use(inner);
@@ -298,6 +304,8 @@ export async function startConformanceStore(options: { port?: number; simulation
     close: async () => {
       await inner.anchors.idle();
       inner.anchors.stop();
+      inner.orderEvents.stop();
+      await inner.orderEvents.idle();
       await new Promise<void>((done) => server.close(() => done()));
       rmSync(dir, { recursive: true, force: true });
     },

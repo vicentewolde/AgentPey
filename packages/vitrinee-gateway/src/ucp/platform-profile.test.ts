@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { PROFILE_MAX_BYTES, createPlatformProfileReader, isBlockedAddress, pinnedGet, type PinnedGetOptions } from "./platform-profile.js";
+import { PROFILE_MAX_BYTES, createPlatformProfileReader, isBlockedAddress, pinnedGet, pinnedPost, type PinnedGetOptions, type PinnedPostOptions } from "./platform-profile.js";
 
 const PROFILE = JSON.stringify({ ucp: { version: "2026-08-25", capabilities: { "dev.ucp.shopping.checkout": [{ version: "2026-08-25" }] } } });
 const PUBLIC_V4 = { address: "93.184.216.34", family: 4 };
@@ -162,15 +162,97 @@ describe("reading a platform's UCP profile (T133, R-14)", () => {
   });
 });
 
+describe("the order webhook URL a platform declares, and delivering to it (T147)", () => {
+  const withWebhook = (webhook: unknown) =>
+    JSON.stringify({ ucp: { version: "2026-08-25", capabilities: { "dev.ucp.shopping.order": [{ version: "2026-08-25", config: { webhook_url: webhook } }] } } });
+
+  it("keeps the webhook URL of the order capability, and nothing for one that is not a bounded string", async () => {
+    for (const [declared, kept] of [["https://platform.example/hooks", "https://platform.example/hooks"], [42, undefined], ["x".repeat(2_049), undefined]] as const) {
+      const reader = createPlatformProfileReader({ resolve: fakes().resolve, get: fakes([PUBLIC_V4], { status: 200, body: withWebhook(declared) }).get });
+      const read = await reader.read("https://platform.example/ucp/profile.json");
+      expect(read.ok ? read.profile.orderWebhookUrl : "unread").toBe(kept);
+    }
+  });
+
+  function senders(addresses: Array<{ address: string; family: number }> = [PUBLIC_V4], status = 200) {
+    const posts: Array<{ url: string; address: string; options: PinnedPostOptions }> = [];
+    return {
+      posts,
+      reader: createPlatformProfileReader({
+        resolve: async () => addresses,
+        get: fakes().get,
+        post: async (url: URL, address: string, _family: number, options: PinnedPostOptions) => {
+          posts.push({ url: url.href, address, options });
+          return { status };
+        },
+      }),
+    };
+  }
+
+  it("POSTs to the address it checked, with the headers and body it was given, and reports the receiver's status", async () => {
+    const f = senders([PUBLIC_V4], 202);
+    expect(await f.reader.send("https://platform.example/hooks", { body: "{}", headers: { "webhook-id": "w1" } })).toEqual({ ok: true, status: 202 });
+    expect(f.posts).toEqual([{ url: "https://platform.example/hooks", address: "93.184.216.34", options: expect.objectContaining({ body: "{}", headers: { "webhook-id": "w1" } }) }]);
+  });
+
+  it.each([
+    ["plain http", "http://platform.example/hooks", "not_https"],
+    ["another port", "https://platform.example:8443/hooks", "not_https"],
+    ["an IP literal", "https://93.184.216.34/hooks", "blocked_address"],
+    ["localhost", "https://localhost/hooks", "blocked_address"],
+    ["credentials in the URL", "https://user:pw@platform.example/hooks", "bad_url"],
+    ["not a URL", "hooks", "bad_url"],
+    ["a URL past the length cap", `https://platform.example/${"x".repeat(2_100)}`, "bad_url"],
+  ])("refuses %s without connecting", async (_label, url, reason) => {
+    const f = senders();
+    expect(await f.reader.send(url, { body: "{}", headers: {} })).toEqual({ ok: false, reason });
+    expect(f.posts).toEqual([]);
+  });
+
+  it.each([
+    ["a private address", [{ address: "10.0.0.5", family: 4 }]],
+    ["a link-local address (cloud metadata)", [{ address: "169.254.169.254", family: 4 }]],
+    ["a public and a private address", [PUBLIC_V4, { address: "192.168.1.1", family: 4 }]],
+  ])("refuses a name that resolves to %s, without connecting", async (_label, addresses) => {
+    const f = senders(addresses);
+    expect(await f.reader.send("https://inside.example/hooks", { body: "{}", headers: {} })).toEqual({ ok: false, reason: "blocked_address" });
+    expect(f.posts).toEqual([]);
+  });
+
+  it("is bounded by the same process-wide limits as the profile reads", async () => {
+    const reader = createPlatformProfileReader({ resolve: async () => [PUBLIC_V4], get: fakes().get, post: async () => ({ status: 200 }), burst: 1, perSecond: 0.0001, now: () => 0 });
+    expect(await reader.send("https://platform.example/hooks", { body: "{}", headers: {} })).toEqual({ ok: true, status: 200 });
+    expect(await reader.send("https://platform.example/hooks", { body: "{}", headers: {} })).toEqual({ ok: false, reason: "busy" });
+  });
+
+  it("gives up on a receiver that does not answer within the delivery deadline", async () => {
+    const reader = createPlatformProfileReader({ resolve: async () => [PUBLIC_V4], get: fakes().get, post: (_u, _a, _f, options) => new Promise((_resolve, reject) => options.signal.addEventListener("abort", () => reject(new Error("aborted")))), sendTimeoutMs: 50 });
+    expect(await reader.send("https://platform.example/hooks", { body: "{}", headers: {} })).toEqual({ ok: false, reason: "unreachable" });
+  });
+});
+
 describe("the real pinned HTTPS read, against a local server (T133 review)", () => {
   const cert = readFileSync(new URL("../test/tls/profile-test.crt", import.meta.url), "utf8");
   const key = readFileSync(new URL("../test/tls/profile-test.key", import.meta.url), "utf8");
   let server: Server;
   let port = 0;
-  let behaviour: "profile" | "trickle" | "huge" = "profile";
+  let behaviour: "profile" | "trickle" | "huge" | "redirect" = "profile";
+  const posted: Array<{ body: string; headers: Record<string, string | string[] | undefined> }> = [];
 
   beforeAll(async () => {
-    server = createServer({ cert, key }, (_req, res) => {
+    server = createServer({ cert, key }, (req, res) => {
+      if (req.method === "POST") {
+        // A redirect, to see that the delivery reports it and never follows it (T147).
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          posted.push({ body: Buffer.concat(chunks).toString("utf8"), headers: req.headers });
+          res.statusCode = behaviour === "redirect" ? 307 : 204;
+          if (behaviour === "redirect") res.setHeader("location", "https://elsewhere.test/hooks");
+          res.end();
+        });
+        return;
+      }
       res.setHeader("content-type", "application/json");
       if (behaviour === "profile") return void res.end(PROFILE);
       if (behaviour === "huge") return void res.end("x".repeat(PROFILE_MAX_BYTES + 1));
@@ -204,6 +286,16 @@ describe("the real pinned HTTPS read, against a local server (T133 review)", () 
     const started = Date.now();
     await expect(pinnedGet(url("profile.test"), "127.0.0.1", 4, { signal: AbortSignal.timeout(300), ca: cert })).rejects.toThrow();
     expect(Date.now() - started).toBeLessThan(1_500);
+  });
+
+  it("POSTs a webhook to the pinned address with its headers and body, and reports a redirect without following it (T147)", async () => {
+    behaviour = "profile";
+    const options = { signal: AbortSignal.timeout(2_000), ca: cert, headers: { "content-type": "application/json", "webhook-id": "w1" }, body: '{"id":"ord_1"}' };
+    expect(await pinnedPost(url("profile.test"), "127.0.0.1", 4, options)).toEqual({ status: 204 });
+    expect(posted.at(-1)).toMatchObject({ body: '{"id":"ord_1"}', headers: { "webhook-id": "w1", "content-length": "14" } });
+    behaviour = "redirect";
+    expect(await pinnedPost(url("profile.test"), "127.0.0.1", 4, { ...options, signal: AbortSignal.timeout(2_000) })).toEqual({ status: 307 });
+    expect(posted).toHaveLength(2);
   });
 
   it("stops reading a body past the size cap", async () => {

@@ -26,9 +26,11 @@ import {
   searchRequestSchema,
 } from "./ucp/catalog.js";
 import { registerUcpCheckout } from "./ucp/checkout.js";
-import { registerUcpOrders } from "./ucp/order.js";
+import { lookupDispute, registerUcpOrders } from "./ucp/order.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
-import { sharedPlatformProfileReader, type PlatformProfileReader } from "./ucp/platform-profile.js";
+import { OrderEvents } from "./ucp/order-events.js";
+import { sharedPlatformProfileReader, type PlatformProfileReader, type PlatformSender } from "./ucp/platform-profile.js";
+import { deriveStoreWebhookKey } from "./ucp/webhook-key.js";
 import { deriveStoreAp2Key } from "./ucp/ap2.js";
 import { buildUcpProfile, ucpLeafProfilePath } from "./ucp/profile.js";
 import { MemoryCheckoutSessions, type CheckoutSessionPersistence } from "./ucp/sessions.js";
@@ -60,6 +62,16 @@ export interface AppDeps {
    * tests inject a fake; `null` answers every platform in the newest version.
    */
   platformProfiles?: PlatformProfileReader | null;
+  /**
+   * Delivers order webhooks to the URLs platforms dictate (T147). Defaults to
+   * `platformProfiles` when it can send (the process's one client does);
+   * `null` delivers nothing.
+   */
+  webhookSender?: PlatformSender | null;
+  /** Tests only: the wait before each webhook retry. */
+  webhookRetryDelaysMs?: readonly number[];
+  /** How often unshipped orders are checked with the store's platform. */
+  shipmentWatchIntervalMs?: number;
   /** Whether the x402 middleware syncs with the facilitator at startup (default true). */
   syncFacilitatorOnStart?: boolean;
   now?: () => Date;
@@ -68,6 +80,8 @@ export interface AppDeps {
 
 export interface VitrineeApp extends Express {
   anchors: AnchorWorker;
+  /** Order events and webhooks (T147). `resume()` it when the app starts serving, `stop()` it when it stops. */
+  orderEvents: OrderEvents;
 }
 
 const verifyBodySchema = z.object({ receiptJws: z.string().min(1).max(20_000) });
@@ -91,6 +105,9 @@ export function createApp({
   anchorRetryDelaysMs,
   syncFacilitatorOnStart = true,
   platformProfiles = sharedPlatformProfileReader(),
+  webhookSender,
+  webhookRetryDelaysMs,
+  shipmentWatchIntervalMs,
   now = () => new Date(),
   log = () => {},
 }: AppDeps): VitrineeApp {
@@ -121,6 +138,8 @@ export function createApp({
   const catalog = createCatalogCache(adapter, config.manifestCacheSeconds * 1000);
   // The storefront's AP2 key (T134, VT-43): derived from the receipt key, published in the 2026-08-25 profile.
   const ap2Key = deriveStoreAp2Key(config.signing.secret, stellarDid(config.signing.account, "testnet"));
+  // And the key it signs its order webhooks with (T147, VT-44), published in both versions' profiles.
+  const webhookKey = deriveStoreWebhookKey(config.signing.secret, stellarDid(config.signing.account, "testnet"));
   const ledger = new SettlementLedger();
   const x402 = createX402Server(facilitator, ledger, now);
   const deps: CheckoutDeps = { config, adapter, orders, ledger, anchors, reservations: new Reservations(), inFlight: new Set(), now, log };
@@ -182,12 +201,12 @@ export function createApp({
   // nothing here shadows the routes above.
   app.get(UCP_PROFILE_PATH, (req, res) => {
     res.set("Cache-Control", cacheHeader);
-    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), ap2Key: ap2Key.publicJwk }));
+    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), ap2Key: ap2Key.publicJwk, webhookKey: webhookKey.publicJwk }));
   });
   // The 2026-04-08 profile, which the current one lists in `supported_versions` (R-6, T133).
   app.get(ucpLeafProfilePath(UCP_LEGACY_VERSION), (req, res) => {
     res.set("Cache-Control", cacheHeader);
-    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), version: UCP_LEGACY_VERSION }));
+    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), version: UCP_LEGACY_VERSION, webhookKey: webhookKey.publicJwk }));
   });
 
   // Every UCP route answers in the version the platform speaks, or says it cannot (T131, T133).
@@ -218,14 +237,27 @@ export function createApp({
     });
     return initializing;
   };
-  registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready, ap2Key }, baseUrlOf);
   const disputeReader =
     disputes !== undefined
       ? disputes
       : config.agentResolveId === undefined
         ? null
         : new AgentResolveReader({ contractId: config.agentResolveId, rpcUrl: config.stellar.rpcUrl });
-  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs);
+  const sender = webhookSender !== undefined ? webhookSender : isSender(platformProfiles) ? platformProfiles : null;
+  const orderEvents = new OrderEvents({
+    orders,
+    adapter,
+    sender,
+    key: webhookKey,
+    disputes: (record) => lookupDispute(record, disputeReader, log, disputeTimeoutMs),
+    now,
+    log,
+    ...(webhookRetryDelaysMs === undefined ? {} : { retryDelaysMs: webhookRetryDelaysMs }),
+    ...(shipmentWatchIntervalMs === undefined ? {} : { watchIntervalMs: shipmentWatchIntervalMs }),
+  });
+  app.orderEvents = orderEvents;
+  registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready, ap2Key, orderEvents }, baseUrlOf);
+  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents);
 
   app.get("/products/:id", async (req, res) => {
     const id = String(req.params.id);
@@ -340,4 +372,8 @@ export function createApp({
   });
 
   return app;
+}
+
+function isSender(client: PlatformProfileReader | null): client is PlatformProfileReader & PlatformSender {
+  return client !== null && typeof (client as Partial<PlatformSender>).send === "function";
 }

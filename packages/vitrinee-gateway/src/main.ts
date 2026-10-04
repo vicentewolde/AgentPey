@@ -85,6 +85,7 @@ function runSingleStore(): void {
   const adapter = createAdapter(config, log);
   const app = createApp({ config, adapter, log });
   const resumed = app.anchors.resume();
+  app.orderEvents.resume();
   app.listen(config.port, () => {
     log("vitrinee gateway listening", {
       mode: "single-store",

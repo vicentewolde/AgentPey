@@ -9,12 +9,17 @@
  * `E-24`): a native UCP `adjustments[]` entry any UCP client understands, and
  * `receipt.dispute` with the hashes a verifier checks against the chain. Only
  * what the contract holds: the verdict's reasoning stays with the arbiter.
+ *
+ * And, since T147, what happened to the parcel: `fulfillment.events[]`, an
+ * append-only log (UCP), with the line marked fulfilled once it shipped. The
+ * same document is the body of every order webhook.
  */
 import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
 import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_LATEST_VERSION, UCP_ORDER, VitrineeError, type UcpVersion, currencyDecimals, formatUnits, parseDecimal, toMinorUnits } from "@vitrinee/core";
 import type { Express, Request, Response } from "express";
 
 import type { OrderRecord, OrderStore } from "../orders.js";
+import type { OrderEvents } from "./order-events.js";
 import { SHIPPING_OPTION_TITLE, receiptExtension } from "./checkout.js";
 import { ucpVersionOf } from "./negotiation.js";
 
@@ -80,6 +85,8 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
   // The total is unit × quantity, so this division is exact; it stays in bigint (VT-7, VT-36).
   const unitMinor = toMinorUnits(formatUnits(parseDecimal(record.totalLocal, decimals) / BigInt(record.quantity), decimals), record.currency);
   const shipping = record.buyer.shipping;
+  const events = record.fulfillmentEvents ?? [];
+  const shipped = events.some((event) => event.type === "shipped");
   const anchored = receiptExtension(record, origin);
   const found = lookup.kind === "found" ? lookup : null;
   const receipt = anchored === undefined || found === null ? anchored : { ...anchored, dispute: disputeExtension(record, found.contractId, found.dispute) };
@@ -105,12 +112,13 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
       {
         id: "li_1",
         item: { id: record.product.id, title: record.product.name, price: unitMinor },
-        quantity: { original: record.quantity, total: record.quantity, fulfilled: 0 },
+        quantity: { original: record.quantity, total: record.quantity, fulfilled: shipped ? record.quantity : 0 },
         totals: [
           { type: "subtotal", amount: totalMinor },
           { type: "total", amount: totalMinor },
         ],
-        status: "processing",
+        // UCP derives it: fulfilled once fulfilled == total.
+        status: shipped ? "fulfilled" : "processing",
       },
     ],
     fulfillment: {
@@ -128,6 +136,15 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
                 destination: { address_country: shipping.country },
               },
             ],
+      events: events.map((event) => ({
+        id: event.id,
+        occurred_at: event.occurredAt,
+        type: event.type,
+        line_items: [{ id: "li_1", quantity: record.quantity }],
+        ...(event.trackingNumber === undefined ? {} : { tracking_number: event.trackingNumber }),
+        ...(event.trackingUrl === undefined ? {} : { tracking_url: event.trackingUrl }),
+        ...(event.carrier === undefined ? {} : { carrier: event.carrier }),
+      })),
     },
     totals: [
       { type: "subtotal", amount: totalMinor },
@@ -177,10 +194,13 @@ export function registerUcpOrders(
   disputes: DisputeReader | null = null,
   log: (message: string, fields?: Record<string, unknown>) => void = () => {},
   disputeTimeoutMs: number = DISPUTE_READ_TIMEOUT_MS,
+  events: OrderEvents | null = null,
 ): void {
   app.get(`${prefix}/orders/:id`, async (req: Request, res: Response) => {
     res.set("Cache-Control", "no-store");
     const id = String(req.params["id"]);
+    // Has it shipped? Asks the store's platform at most once a minute per order, bounded in time (T147).
+    if (events !== null) await events.checkShipment(id);
     const record = orders.get(id);
     // Only orders a UCP checkout created are UCP orders: the others have no checkout to point at.
     if (record === undefined || record.ucpCheckoutId === undefined) {

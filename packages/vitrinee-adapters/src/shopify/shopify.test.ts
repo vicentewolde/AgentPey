@@ -278,6 +278,31 @@ describe("getOrder", () => {
     expect(calls.filter((c) => c.url.includes("graphql"))).toHaveLength(1);
   });
 
+  it("reports each successful fulfillment as a shipment, with its tracking, and none before one exists (T147)", async () => {
+    const { adapter, calls } = adapterWith(() => ({
+      data: {
+        order: {
+          id: "gid://shopify/Order/777",
+          displayFinancialStatus: "PAID",
+          fulfillments: [
+            { id: "gid://shopify/Fulfillment/9", createdAt: "2026-10-05T12:00:00Z", status: "SUCCESS", trackingInfo: [{ number: "CX123", url: "https://track.example/CX123", company: "Chilexpress" }] },
+            { id: "gid://shopify/Fulfillment/10", createdAt: "2026-10-05T13:00:00Z", status: "CANCELLED", trackingInfo: [] },
+            { id: "gid://shopify/Fulfillment/11", createdAt: "2026-10-05T14:00:00Z", status: "SUCCESS", trackingInfo: [] },
+          ],
+        },
+      },
+    }));
+    const order = await adapter.getOrder("777");
+    expect(order?.shipments).toEqual([
+      { id: "9", shippedAt: "2026-10-05T12:00:00Z", trackingNumber: "CX123", trackingUrl: "https://track.example/CX123", carrier: "Chilexpress" },
+      { id: "11", shippedAt: "2026-10-05T14:00:00Z" },
+    ]);
+    expect(calls.find((c) => c.url.includes("graphql"))?.body).toContain("fulfillments(first: 10)");
+    expect(adapter.reportsShipments).toBe(true);
+    const none = adapterWith(() => ({ data: { order: { id: "gid://shopify/Order/778", displayFinancialStatus: "PAID", fulfillments: [] } } }));
+    expect((await none.adapter.getOrder("778"))?.shipments).toEqual([]);
+  });
+
   it("reports a cancelled order as canceled", async () => {
     const { adapter } = adapterWith(() => ({ data: { order: { id: "gid://shopify/Order/1", cancelledAt: "2026-09-27T00:00:00Z", displayFinancialStatus: "REFUNDED" } } }));
     expect((await adapter.getOrder("1"))?.status).toBe("canceled");

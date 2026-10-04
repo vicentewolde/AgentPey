@@ -86,6 +86,46 @@ describe("the UCP conformance store (T131)", () => {
     }
   });
 
+  it("delivers the order webhooks the suite waits for to its loopback receiver: created on complete, shipped on simulate (T147)", async () => {
+    const received: Array<{ headers: Record<string, string | string[] | undefined>; body: Record<string, unknown> & { fulfillment?: { events?: Array<{ type: string }> } } }> = [];
+    const receiver = createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => {
+        received.push({ headers: req.headers, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) as never });
+        res.end('{"status":"ok"}');
+      });
+    });
+    await new Promise<void>((done) => receiver.listen(0, "127.0.0.1", () => done()));
+    const hooks = `http://localhost:${(receiver.address() as AddressInfo).port}/webhooks/partners/test_partner/events/order`;
+    const profileServer = createServer((_req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ ucp: { version: "2026-04-08", capabilities: { "dev.ucp.shopping.order": [{ version: "2026-04-08", config: { webhook_url: hooks } }] } } }));
+    });
+    await new Promise<void>((done) => profileServer.listen(0, "127.0.0.1", () => done()));
+    const agent = { "UCP-Agent": `profile="http://127.0.0.1:${(profileServer.address() as AddressInfo).port}/profiles/shopping-agent.json"` };
+    const sending = await startConformanceStore({ simulationSecret: SECRET, env: {} });
+    const waitFor = async (n: number) => {
+      for (let i = 0; i < 300 && received.length < n; i += 1) await new Promise((r) => setTimeout(r, 10));
+      return received;
+    };
+    try {
+      const created = await call(sending.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions`, readySession(), agent);
+      const done = await call(sending.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions/${created.body.id}/complete`, mockPayment(SUCCESS_TOKEN), agent);
+      const orderId = done.body.order?.id;
+      const [first] = await waitFor(1);
+      expect(first?.body).toMatchObject({ id: orderId, checkout_id: created.body.id });
+      expect(first?.headers).toMatchObject({ "webhook-id": expect.any(String), "webhook-timestamp": expect.stringMatching(/^\d{10}$/), "content-digest": expect.stringMatching(/^sha-256=:/), "ucp-agent": `profile="${sending.url}/.well-known/ucp"` });
+      expect((await call(sending.url, "POST", `/testing/simulate-shipping/${orderId}`, undefined, { "Simulation-Secret": SECRET })).status).toBe(200);
+      const [, second] = await waitFor(2);
+      expect(second?.body.fulfillment?.events).toEqual([expect.objectContaining({ type: "shipped" })]);
+    } finally {
+      await sending.close();
+      await new Promise<void>((done) => receiver.close(() => done()));
+      await new Promise<void>((done) => profileServer.close(() => done()));
+    }
+  });
+
   it("refuses any other token, as the suite's fail_token must be", async () => {
     const created = await call(store.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions`, readySession());
     const done = await call(store.url, "POST", `${UCP_REST_PREFIX}/checkout-sessions/${created.body.id}/complete`, mockPayment("fail_token"));

@@ -72,10 +72,27 @@ export interface PlatformOrder {
   createdAt: string;
   /** Link into the platform's admin panel, when the platform has one. */
   adminUrl?: string;
+  /**
+   * The parcels the platform says left the store (T147), oldest first. Absent
+   * when the adapter cannot tell; empty when nothing shipped yet.
+   */
+  shipments?: PlatformShipment[];
+}
+
+/** One shipment, as the store's platform records it (T147). */
+export interface PlatformShipment {
+  /** The platform's own id for it, so it is recorded once. */
+  id: string;
+  shippedAt: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  carrier?: string;
 }
 
 export interface StoreAdapter {
   readonly name: string;
+  /** Whether `getOrder` reports `shipments` (T147): only then does the store watch its orders for them. */
+  readonly reportsShipments?: boolean;
   listProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | null>;
   /** Creates a *paid* order. Must decrement stock or fail with `OutOfStock`. */

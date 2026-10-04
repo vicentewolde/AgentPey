@@ -52,6 +52,8 @@ export interface BuildUcpProfileInput {
   version?: UcpVersion;
   /** The storefront's AP2 public key (T134, VT-43). With it, the 2026-08-25 profile offers the AP2 extension and publishes the key. */
   ap2Key?: { kty: "EC"; crv: "P-256"; x: string; y: string; kid: string; alg: "ES256"; use: "sig" };
+  /** The key the storefront signs its order webhooks with (T147, VT-44). Published in both versions: a platform finds it by `keyid`. */
+  webhookKey?: { kty: "EC"; crv: "P-256"; x: string; y: string; kid: string; alg: "ES256"; use: "sig" };
 }
 
 /** Where a version's leaf profile lives, next to the current one (R-6). */
@@ -84,7 +86,7 @@ function signingJwk(config: GatewayConfig) {
  * the key in `keys[]` (2026-04-08 in `signing_keys`, mirrored in `keys` as its
  * release branch allows), renamed the fulfillment config and moved the specs.
  */
-export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Key }: BuildUcpProfileInput): UcpBusinessProfile {
+export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Key, webhookKey }: BuildUcpProfileInput): UcpBusinessProfile {
   const origin = baseUrl.replace(/\/+$/, "");
   const urls = ucpSpecUrls(version);
   const legacy = version === "2026-04-08";
@@ -133,6 +135,9 @@ export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Ke
         ],
       },
     },
-    ...(legacy ? { signing_keys: [jwk], keys: [jwk] } : { keys: ap2Key === undefined ? [jwk] : [jwk, ap2Key] }),
+    // 2026-04-08 verifies webhooks against `signing_keys`, ES256 only: the webhook key goes there too.
+    ...(legacy
+      ? { signing_keys: webhookKey === undefined ? [jwk] : [jwk, webhookKey], keys: webhookKey === undefined ? [jwk] : [jwk, webhookKey] }
+      : { keys: [jwk, ...(ap2Key === undefined ? [] : [ap2Key]), ...(webhookKey === undefined ? [] : [webhookKey])] }),
   });
 }

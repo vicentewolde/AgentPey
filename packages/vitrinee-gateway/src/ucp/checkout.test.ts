@@ -190,7 +190,7 @@ describe("UCP checkout sessions (T122)", () => {
     expect(order.body).toMatchObject({ checkout_id: created.id, currency: "CLP", totals: expect.arrayContaining([{ type: "total", amount: 12990 }]) });
     expect(order.body["receipt"]).toMatchObject({ settlement_tx_hash: expect.stringMatching(/^[0-9a-f]{64}$/) });
     // Country only: the order id is in the public receipt, so the address is not served here.
-    expect(order.body["fulfillment"]).toEqual({ expectations: [expect.objectContaining({ method_type: "shipping", destination: { address_country: "CL" } })] });
+    expect(order.body["fulfillment"]).toEqual({ expectations: [expect.objectContaining({ method_type: "shipping", destination: { address_country: "CL" } })], events: [] });
 
     // The receipt anchors after the answer; the order shows it once it has.
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -653,7 +653,7 @@ describe("UCP conformance fixes (T131)", () => {
     const { body: done } = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
     const order = await h.call("GET", `/orders/${done.order?.id}`);
     expect(ucpErrors(ORDER_SCHEMA, order.body)).toEqual([]);
-    expect(order.body["fulfillment"]).toEqual({ expectations: [expect.objectContaining({ description: "Envío coordinado por la tienda" })] });
+    expect(order.body["fulfillment"]).toEqual({ expectations: [expect.objectContaining({ description: "Envío coordinado por la tienda" })], events: [] });
   });
 
   it("create: the same key and body answer the same session; the same key with another body is a 409 and creates nothing", async () => {

@@ -63,6 +63,7 @@ const ORDER_QUERY = `
     order(id: $id) {
       id createdAt cancelledAt displayFinancialStatus
       currencyCode
+      fulfillments(first: 10) { id createdAt status trackingInfo(first: 1) { number url company } }
       totalPriceSet { shopMoney { amount currencyCode } }
       customAttributes { key value }
       lineItems(first: 1) { nodes { quantity sku variant { id } } }
@@ -91,6 +92,7 @@ interface OrderResponse {
     totalPriceSet?: { shopMoney: { amount: string; currencyCode: string } };
     customAttributes?: { key: string; value?: string | null }[];
     lineItems?: { nodes: { quantity?: number; sku?: string | null; variant?: { id: string } | null }[] };
+    fulfillments?: { id: string; createdAt: string; status?: string | null; trackingInfo?: { number?: string | null; url?: string | null; company?: string | null }[] }[];
   } | null;
 }
 
@@ -105,6 +107,7 @@ export interface ShopifyAdapterOptions extends Omit<ShopifyClientOptions, "crede
 
 export class ShopifyStoreAdapter implements StoreAdapter {
   readonly name = "shopify";
+  readonly reportsShipments = true;
 
   private readonly client: ShopifyClient;
   private readonly currency: string;
@@ -252,6 +255,19 @@ export class ShopifyStoreAdapter implements StoreAdapter {
       buyer: { stellarAccount: attrs.get("x402_payer") ?? "" },
       createdAt: order.createdAt ?? "",
       adminUrl: `https://admin.shopify.com/store/${this.client.handle}/orders/${platformOrderId}`,
+      // A fulfillment the merchant created in the admin is a parcel that left (T147); a cancelled or failed one is not.
+      shipments: (order.fulfillments ?? [])
+        .filter((f) => f.status === "SUCCESS")
+        .map((f) => {
+          const tracking = f.trackingInfo?.[0];
+          return {
+            id: numericId(f.id),
+            shippedAt: f.createdAt,
+            ...(tracking?.number ? { trackingNumber: tracking.number } : {}),
+            ...(tracking?.url ? { trackingUrl: tracking.url } : {}),
+            ...(tracking?.company ? { carrier: tracking.company } : {}),
+          };
+        }),
     };
   }
 

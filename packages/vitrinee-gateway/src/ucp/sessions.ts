@@ -111,6 +111,15 @@ export const checkoutSessionSchema = z.object({
     .object({ platformProfile: z.string().max(2_048), mandate: z.string().max(32_000).nullable() })
     .nullable()
     .default(null),
+  /**
+   * Where the platform that completes this checkout wants the order's events
+   * (T147): its profile's `webhook_url`, read at `complete` and handed to the
+   * order once it exists. Unvetted here; every delivery vets it again.
+   */
+  webhook: z
+    .object({ url: z.string().max(2_048), platformProfile: z.string().max(2_048), version: z.enum(["2026-04-08", "2026-08-25"]), origin: z.string().max(2_048) })
+    .nullable()
+    .default(null),
 });
 export type CheckoutSession = z.infer<typeof checkoutSessionSchema>;
 

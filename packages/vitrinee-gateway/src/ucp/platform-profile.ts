@@ -21,7 +21,9 @@
  * - a host that failed waits before it is read again, longer each time;
  * - it keeps only what a store uses (the version), never the whole document.
  *
- * T147 reads the order webhook URL from the same document, through this.
+ * T147 reads the order webhook URL from the same document, and delivers order
+ * webhooks to it through {@link PlatformClient.send}: the same checks, the same
+ * pinned connection, the same process-wide limits, a POST instead of a GET.
  */
 import { Resolver } from "node:dns/promises";
 import { request, type RequestOptions } from "node:https";
@@ -59,6 +61,12 @@ const p256Jwk = z.looseObject({
 });
 const MAX_CAPABILITIES = 64;
 const MAX_KEYS = 10;
+/** A URL longer than this is not kept. */
+const MAX_URL_LENGTH = 2_048;
+/** UCP's order capability, as a platform declares it: `config.webhook_url` is where order events go (T147). */
+const orderCapabilitySchema = z.array(z.looseObject({ config: z.looseObject({ webhook_url: z.string().min(1).max(MAX_URL_LENGTH) }).optional() })).min(1);
+/** A webhook receiver must answer quickly (UCP); a delivery that takes longer is retried. */
+export const SEND_TIMEOUT_MS = 5_000;
 
 /** A platform's public P-256 key, as kept: the members needed to verify ES256 and nothing else. */
 export interface PlatformP256Key {
@@ -71,12 +79,15 @@ export interface PlatformP256Key {
 
 /**
  * What is kept of a platform profile: only what a store uses. Its version, the
- * names of the capabilities it declares (for extension negotiation, T134) and
- * its P-256 keys (to verify AP2 mandates it signs), each bounded.
+ * names of the capabilities it declares (for extension negotiation, T134), its
+ * P-256 keys (to verify AP2 mandates it signs), each bounded, and where it
+ * wants order events (T147), if it says.
  */
 export interface PlatformProfileSummary {
   ucp: { version: string; capabilities: string[] };
   keys: PlatformP256Key[];
+  /** `capabilities["dev.ucp.shopping.order"][0].config.webhook_url`, unvetted: it is vetted again on every delivery. */
+  orderWebhookUrl?: string;
 }
 
 export type ProfileFailure = "not_https" | "bad_url" | "blocked_address" | "unreachable" | "too_large" | "bad_status" | "malformed" | "busy" | "backoff";
@@ -86,6 +97,24 @@ export type ProfileResult = { ok: true; profile: PlatformProfileSummary } | { ok
 export interface PlatformProfileReader {
   read(url: string): Promise<ProfileResult>;
 }
+
+export type SendFailure = "not_https" | "bad_url" | "blocked_address" | "unreachable" | "busy";
+
+/** A delivery's outcome: the receiver's status, whatever it was, or why nothing was sent or answered. */
+export type SendResult = { ok: true; status: number } | { ok: false; reason: SendFailure };
+
+export interface OutboundRequest {
+  body: string;
+  headers: Readonly<Record<string, string>>;
+}
+
+/** POSTs to a URL a platform dictated, under the same rules as reading its profile (T147). */
+export interface PlatformSender {
+  send(url: string, request: OutboundRequest): Promise<SendResult>;
+}
+
+/** The process's one client for URLs that platforms dictate: it reads their profiles and delivers their webhooks. */
+export type PlatformClient = PlatformProfileReader & PlatformSender;
 
 // ---------------------------------------------------------------- addresses
 
@@ -146,16 +175,56 @@ export interface PinnedGetOptions {
   ca?: string;
 }
 
+export interface PinnedPostOptions {
+  /** Aborts the whole delivery: the deadline. */
+  signal: AbortSignal;
+  headers: Readonly<Record<string, string>>;
+  body: string;
+  /** Tests only: the CA that signs a local test server's certificate. */
+  ca?: string;
+}
+
+function pinnedLookup(address: string, family: number): LookupFunction {
+  return (_host, lookupOptions, callback) => {
+    if ((lookupOptions as { all?: boolean }).all === true) callback(null, [{ address, family }]);
+    else callback(null, address, family);
+  };
+}
+
+/**
+ * HTTPS POST to one pinned address, like {@link pinnedGet}. Only the status
+ * matters: it resolves as soon as the status line arrives and drops the
+ * response, so a receiver that answers slowly cannot hold the connection.
+ * A redirect comes back as its status and is never followed.
+ */
+export function pinnedPost(url: URL, address: string, family: number, options: PinnedPostOptions): Promise<{ status: number }> {
+  return new Promise((resolve, reject) => {
+    const body = Buffer.from(options.body, "utf8");
+    const requestOptions: RequestOptions = {
+      method: "POST",
+      headers: { ...options.headers, "content-length": String(body.length) },
+      lookup: pinnedLookup(address, family),
+      servername: url.hostname,
+      signal: options.signal,
+      agent: false,
+      ...(options.ca === undefined ? {} : { ca: options.ca }),
+    };
+    const req = request(url, requestOptions, (res) => {
+      resolve({ status: res.statusCode ?? 0 });
+      res.destroy();
+    });
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
 /**
  * HTTPS GET to one pinned address: TLS and Host use the URL's name, the socket
  * uses `address`. The body is read up to `maxBytes`, counted in bytes; the
  * signal cuts it wherever it is.
  */
 export function pinnedGet(url: URL, address: string, family: number, options: PinnedGetOptions): Promise<{ status: number; body: string }> {
-  const lookup: LookupFunction = (_host, lookupOptions, callback) => {
-    if ((lookupOptions as { all?: boolean }).all === true) callback(null, [{ address, family }]);
-    else callback(null, address, family);
-  };
+  const lookup = pinnedLookup(address, family);
   const maxBytes = options.maxBytes ?? PROFILE_MAX_BYTES;
   return new Promise((resolve, reject) => {
     const requestOptions: RequestOptions = {
@@ -205,6 +274,13 @@ async function loopbackGet(url: URL, signal: AbortSignal): Promise<{ status: num
   return { status: res.status, body: Buffer.concat(chunks).toString("utf8") };
 }
 
+/** Plain HTTP POST to loopback, for the local conformance store only. No redirects; the status is all that is read. */
+async function loopbackPost(url: URL, request: OutboundRequest, signal: AbortSignal): Promise<{ status: number }> {
+  const res = await fetch(url, { method: "POST", redirect: "manual", signal, headers: { ...request.headers }, body: request.body });
+  await res.body?.cancel();
+  return { status: res.status };
+}
+
 /** Both families, from c-ares (its own sockets, its own timeout), never from the libuv threadpool. */
 function aresResolve(timeoutMs: number): (host: string) => Promise<Array<{ address: string; family: number }>> {
   return async (host) => {
@@ -243,7 +319,11 @@ export interface PlatformProfileReaderOptions {
   resolve?: (host: string) => Promise<Array<{ address: string; family: number }>>;
   /** The pinned HTTPS GET; tests inject a fake or a local CA. */
   get?: (url: URL, address: string, family: number, options: PinnedGetOptions) => Promise<{ status: number; body: string }>;
+  /** The pinned HTTPS POST of a webhook delivery (T147); tests inject a fake or a local CA. */
+  post?: (url: URL, address: string, family: number, options: PinnedPostOptions) => Promise<{ status: number }>;
   timeoutMs?: number;
+  /** The deadline of one delivery. Defaults to {@link SEND_TIMEOUT_MS}. */
+  sendTimeoutMs?: number;
   maxConcurrent?: number;
   burst?: number;
   perSecond?: number;
@@ -251,11 +331,13 @@ export interface PlatformProfileReaderOptions {
   allowLoopbackHttp?: boolean;
 }
 
-export function createPlatformProfileReader(options: PlatformProfileReaderOptions = {}): PlatformProfileReader {
+export function createPlatformProfileReader(options: PlatformProfileReaderOptions = {}): PlatformClient {
   const now = options.now ?? (() => Date.now());
   const timeoutMs = options.timeoutMs ?? PROFILE_TIMEOUT_MS;
+  const sendTimeoutMs = options.sendTimeoutMs ?? SEND_TIMEOUT_MS;
   const resolve = options.resolve ?? aresResolve(timeoutMs);
   const get = options.get ?? pinnedGet;
+  const post = options.post ?? pinnedPost;
   const maxConcurrent = options.maxConcurrent ?? MAX_CONCURRENT_READS;
   const burst = options.burst ?? READ_BURST;
   const perSecond = options.perSecond ?? READS_PER_SECOND;
@@ -312,7 +394,9 @@ export function createPlatformProfileReader(options: PlatformProfileReaderOption
       .map((key) => p256Jwk.safeParse(key))
       .flatMap((key) => (key.success ? [{ kty: key.data.kty, crv: key.data.crv, x: key.data.x, y: key.data.y, ...(key.data.kid === undefined ? {} : { kid: key.data.kid }) }] : []))
       .slice(0, MAX_KEYS);
-    return { ok: true, profile: { ucp: { version: parsed.data.ucp.version, capabilities }, keys } };
+    const order = orderCapabilitySchema.safeParse(parsed.data.ucp.capabilities?.["dev.ucp.shopping.order"]);
+    const orderWebhookUrl = order.success ? order.data[0]!.config?.webhook_url : undefined;
+    return { ok: true, profile: { ucp: { version: parsed.data.ucp.version, capabilities }, keys, ...(orderWebhookUrl === undefined ? {} : { orderWebhookUrl }) } };
   }
 
   /** The checks that need no network, in order: a refusal here costs nothing and is not rate-limited. */
@@ -363,7 +447,42 @@ export function createPlatformProfileReader(options: PlatformProfileReaderOption
     return result;
   }
 
+  async function deliver(url: URL, request: OutboundRequest, signal: AbortSignal): Promise<SendResult> {
+    const loopbackName = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    if (options.allowLoopbackHttp === true && url.protocol === "http:" && loopbackName) {
+      return { ok: true, status: (await loopbackPost(url, request, signal)).status };
+    }
+    const addresses = await withDeadline(resolve(url.hostname), signal);
+    if (addresses.length === 0) return { ok: false, reason: "unreachable" };
+    if (addresses.some((a) => isBlockedAddress(a.address))) return { ok: false, reason: "blocked_address" };
+    const first = addresses[0]!;
+    const { status } = await withDeadline(post(url, first.address, first.family, { signal, headers: request.headers, body: request.body }), signal);
+    return { ok: true, status };
+  }
+
   return {
+    /**
+     * Delivers one webhook. Shares the process's limits with the profile reads
+     * (at most a few at once, a steady rate) but not their per-host backoff or
+     * cache: when to try again is the caller's schedule, and every delivery is
+     * vetted, resolved and pinned afresh, so a name that turned private since
+     * the last one is refused.
+     */
+    async send(raw: string, request: OutboundRequest): Promise<SendResult> {
+      if (raw.length > MAX_URL_LENGTH) return { ok: false, reason: "bad_url" };
+      const vetted = vet(raw);
+      if (!vetted.ok) return { ok: false, reason: vetted.reason === "not_https" || vetted.reason === "blocked_address" ? vetted.reason : "bad_url" };
+      if (running >= maxConcurrent || !takeToken()) return { ok: false, reason: "busy" };
+      running += 1;
+      try {
+        return await deliver(vetted.url, request, AbortSignal.timeout(sendTimeoutMs));
+      } catch (error) {
+        return { ok: false, reason: error instanceof ProfileError && error.reason === "blocked_address" ? "blocked_address" : "unreachable" };
+      } finally {
+        running -= 1;
+      }
+    },
+
     async read(raw: string): Promise<ProfileResult> {
       const vetted = vet(raw);
       if (!vetted.ok) return vetted;
@@ -382,10 +501,10 @@ export function createPlatformProfileReader(options: PlatformProfileReaderOption
   };
 }
 
-let shared: PlatformProfileReader | undefined;
+let shared: PlatformClient | undefined;
 
-/** The one reader of this process: every storefront the platform serves shares its limits (T133 review). */
-export function sharedPlatformProfileReader(): PlatformProfileReader {
+/** The one reader of this process: every storefront the platform serves shares its limits (T133 review), for reads and deliveries. */
+export function sharedPlatformProfileReader(): PlatformClient {
   shared ??= createPlatformProfileReader();
   return shared;
 }

@@ -4,7 +4,7 @@ import { USDC_TESTNET } from "@vitrinee/core";
 
 import type { Anchorer } from "../anchoring.js";
 import { loadConfig, type GatewayConfig } from "../config.js";
-import type { PlatformProfileReader, PlatformProfileSummary, ProfileResult } from "../ucp/platform-profile.js";
+import type { OutboundRequest, PlatformClient, PlatformProfileSummary, ProfileResult, SendResult } from "../ucp/platform-profile.js";
 import { FAKE_PAYER, FAKE_TX_HASH } from "./fake-facilitator.js";
 
 export const MERCHANT = USDC_TESTNET.issuer;
@@ -70,19 +70,29 @@ export const AGENTPEY_PLATFORM_PROFILE = "https://agentpey.com/ucp/platform/agen
 /**
  * Platform profiles without a network (T133): each URL answers the version
  * given, anything else does not answer. By default AgentPey's own profile
- * speaks 2026-04-08, as the file in apps/web does.
+ * speaks 2026-04-08, as the file in apps/web does. It also takes order webhook
+ * deliveries (T147): each is recorded in `sent`, and `respond` decides the
+ * receiver's answer (200 unless told otherwise).
  */
 export function fakePlatformProfiles(
   versions: Record<string, string | PlatformProfileSummary> = { [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08" },
-): PlatformProfileReader & { reads: string[] } {
+): PlatformClient & { reads: string[]; sent: Array<{ url: string; headers: Record<string, string>; body: string }>; respond: (url: string, attempt: number) => SendResult } {
   const reads: string[] = [];
-  return {
+  const sent: Array<{ url: string; headers: Record<string, string>; body: string }> = [];
+  const fake = {
     reads,
+    sent,
+    respond: (_url: string, _attempt: number): SendResult => ({ ok: true, status: 200 }),
     async read(url: string): Promise<ProfileResult> {
       reads.push(url);
       const entry = versions[url];
       if (entry === undefined) return { ok: false, reason: "unreachable" };
       return { ok: true, profile: typeof entry === "string" ? { ucp: { version: entry, capabilities: [] }, keys: [] } : entry };
     },
+    async send(url: string, request: OutboundRequest): Promise<SendResult> {
+      sent.push({ url, headers: { ...request.headers }, body: request.body });
+      return fake.respond(url, sent.filter((s) => s.url === url).length);
+    },
   };
+  return fake;
 }

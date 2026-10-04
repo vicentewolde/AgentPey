@@ -30,6 +30,54 @@ export interface OrderAnchor {
   lastError?: string;
 }
 
+/**
+ * One entry of the order's fulfillment log (UCP `fulfillment.events[]`, T147):
+ * append-only, never edited. Today only `shipped`, from the store's platform
+ * (Shopify, Jumpseller) or from the local conformance store's simulation.
+ */
+export interface OrderFulfillmentEvent {
+  id: string;
+  type: "shipped";
+  occurredAt: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  carrier?: string;
+  source: "platform" | "simulation";
+  /** The platform's own id for the shipment, so it is never recorded twice. */
+  platformRef?: string;
+}
+
+/**
+ * One webhook delivery (T147): the event's identity and body are fixed when it
+ * is queued and travel unchanged on every attempt, as UCP's suite requires.
+ */
+export interface OrderWebhookDelivery {
+  /** `Webhook-Id`, a UUID. */
+  id: string;
+  /** `Webhook-Timestamp`, unix seconds: when the event happened. */
+  timestamp: number;
+  event: "created" | "shipped";
+  /** The order as it stood at the event, exactly the bytes sent. */
+  body: string;
+  status: "pending" | "delivered" | "failed";
+  attempts: number;
+  nextAttemptAt: string | null;
+  lastStatus?: number;
+  lastError?: string;
+}
+
+/** Where a platform asked for this order's events (T147), from its profile at `complete`. */
+export interface OrderWebhook {
+  url: string;
+  /** The platform's profile the URL came from. */
+  platformProfile: string;
+  /** The UCP version the platform speaks: every delivery's body is the order in it. */
+  version: "2026-04-08" | "2026-08-25";
+  /** The store's origin at `complete`, for the permalinks in the body and `UCP-Agent`. */
+  origin: string;
+  deliveries: OrderWebhookDelivery[];
+}
+
 /** The gateway's own record of a sale: what was paid, what the platform did with it, how it is proven. */
 export interface OrderRecord {
   orderId: string;
@@ -53,6 +101,12 @@ export interface OrderRecord {
   anchor: OrderAnchor | null;
   /** The UCP checkout session that produced this order (T122). Absent for the x402 checkout. */
   ucpCheckoutId?: string;
+  /** What happened to the parcel (T147). Absent until something did. */
+  fulfillmentEvents?: OrderFulfillmentEvent[];
+  /** When the store last asked its platform about the shipment (T147). */
+  fulfillmentCheckedAt?: string;
+  /** Order webhooks to the platform that bought (T147). Absent when it asked for none. */
+  webhook?: OrderWebhook;
 }
 
 /**
@@ -112,6 +166,42 @@ export const orderRecordSchema = z.object({
     })
     .nullable(),
   ucpCheckoutId: z.string().optional(),
+  fulfillmentEvents: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        type: z.literal("shipped"),
+        occurredAt: z.string().min(1),
+        trackingNumber: z.string().optional(),
+        trackingUrl: z.string().optional(),
+        carrier: z.string().optional(),
+        source: z.enum(["platform", "simulation"]),
+        platformRef: z.string().optional(),
+      }),
+    )
+    .optional(),
+  fulfillmentCheckedAt: z.string().optional(),
+  webhook: z
+    .object({
+      url: z.string().min(1),
+      platformProfile: z.string().min(1),
+      version: z.enum(["2026-04-08", "2026-08-25"]),
+      origin: z.string().min(1),
+      deliveries: z.array(
+        z.object({
+          id: z.string().min(1),
+          timestamp: z.number().int().nonnegative(),
+          event: z.enum(["created", "shipped"]),
+          body: z.string(),
+          status: z.enum(["pending", "delivered", "failed"]),
+          attempts: z.number().int().nonnegative(),
+          nextAttemptAt: z.string().nullable(),
+          lastStatus: z.number().int().optional(),
+          lastError: z.string().optional(),
+        }),
+      ),
+    })
+    .optional(),
 });
 
 interface PersistedOrders {
