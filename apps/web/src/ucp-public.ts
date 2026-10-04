@@ -6,7 +6,8 @@
  */
 export function ucpPublicPath(pathname: string): string | undefined {
   // AgentPey's own platform profile, sent in the UCP-Agent header of every request it makes (T122).
-  if (pathname === "/ucp/platform/agentpey.json") return pathname;
+  // The same platform declaring UCP 2026-08-25 (T133): a store answers in the version this profile says.
+  if (pathname === "/ucp/platform/agentpey.json" || pathname === "/ucp/platform/agentpey-2026-08-25.json") return pathname;
   const match = /^\/ucp\/(handlers\/stellar-x402|extensions\/receipt)\/(spec|schema\.json)$/.exec(pathname);
   if (match === null) return undefined;
   return match[2] === "spec" ? `/ucp/${match[1]}/spec.md` : pathname;

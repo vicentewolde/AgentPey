@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * `pnpm run ucp:buy -- --store <URL> --product <id> [--quantity <n>]` — a real
- * UCP purchase on Stellar testnet, end to end (T122, Fase 7).
+ * `pnpm run ucp:buy -- --store <URL> --product <id> [--quantity <n>] [--ucp-version 2026-08-25]`
+ * — a real UCP purchase on Stellar testnet, end to end (T122, Fase 7). With
+ * `--ucp-version 2026-08-25` the agent sends its 2026-08-25 platform profile
+ * and the store answers in that version (T133); without it, 2026-04-08.
  *
  * The same chain of trust as `pnpm run demo:pay-real`, through UCP instead
  * of a bare HTTP 402:
@@ -32,6 +34,8 @@ import { AGENTPASS_CREDENTIAL_TYPE, AGENTPASS_STATUS_TYPE, AgentPassError, VC_CO
 import { createAgentPass } from "@agentpass/sdk";
 import type { CreatePurchaseIntentResult } from "@agentpey/agent";
 import {
+  AGENTPEY_PLATFORM_PROFILE,
+  AGENTPEY_PLATFORM_PROFILE_2026_08_25,
   DEFAULT_VENUE_REGISTRY,
   createAgent,
   createInMemorySpendLedger,
@@ -64,6 +68,7 @@ const { values } = parseArgs({
     product: { type: "string" },
     quantity: { type: "string", default: "1" },
     email: { type: "string", default: "comprador@agentpey.com" },
+    "ucp-version": { type: "string", default: "2026-04-08" },
   },
 });
 
@@ -95,6 +100,11 @@ async function main(): Promise<void> {
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
     throw new AgentPassError("InvalidArguments", "--quantity must be a whole number from 1 to 100", { details: { quantity: values.quantity } });
   }
+  const ucpVersion = values["ucp-version"];
+  if (ucpVersion !== "2026-04-08" && ucpVersion !== "2026-08-25") {
+    throw new AgentPassError("InvalidArguments", "--ucp-version must be 2026-04-08 or 2026-08-25", { details: { ucpVersion } });
+  }
+  const platformProfile = ucpVersion === "2026-08-25" ? AGENTPEY_PLATFORM_PROFILE_2026_08_25 : AGENTPEY_PLATFORM_PROFILE;
   const storeUrl = new URL(values.store).origin;
   const productId = values.product;
 
@@ -167,7 +177,7 @@ async function main(): Promise<void> {
 
   step(3, "Checkout UCP, reconciliado contra el Mandato y pagado desde el policy_rail");
   const paid = await executeUcpPayment(
-    { policyRail: createLocalPolicyRail({ ledger }), signerSecret: agentKeypair.secret(), payer: { contractId: railId, ownerSecret: agentKeypair.secret() } },
+    { policyRail: createLocalPolicyRail({ ledger }), signerSecret: agentKeypair.secret(), payer: { contractId: railId, ownerSecret: agentKeypair.secret() }, platformProfile },
     {
       storeUrl,
       productId,

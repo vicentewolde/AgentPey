@@ -47,7 +47,8 @@ trusting the business.
 
 * `jws`: compact JWS, `alg` `EdDSA`, signed by the business's signing key. Its
   `kid` is a `did:stellar` whose key is also published in the business
-  profile's `signing_keys`.
+  profile: in `keys` (UCP 2026-08-25), and in `signing_keys`, mirrored in
+  `keys`, in the 2026-04-08 profile.
 * `hash`: sha256 of the compact JWS. This is the value anchored.
 * `anchor.status`: `pending` right after completion (anchoring is
   asynchronous); `anchored` once the registry holds it. Read the order again to

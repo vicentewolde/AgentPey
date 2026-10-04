@@ -40,10 +40,16 @@ import { policyRailError, type PolicyRail } from "../policy/policy-rail.js";
 import { PolicyRailStellarScheme, type PolicyRailPayer } from "./policy-rail-payer.js";
 import { spendControlsFor, toPaymentTerms, withPaymentSent } from "./x402.js";
 
-export const UCP_VERSION = "2026-04-08";
 export const STELLAR_X402_HANDLER = "com.agentpey.stellar_x402";
-/** AgentPey's platform profile, sent with every request as UCP asks. */
+/**
+ * AgentPey's platform profile, sent with every request as UCP asks. The UCP
+ * version the agent speaks is the one this profile declares (2026-04-08): a
+ * store reads it there (T133, R-14), so the agent keeps no version constant of
+ * its own. The store side's is `UCP_VERSIONS` in @vitrinee/core.
+ */
 export const AGENTPEY_PLATFORM_PROFILE = "https://agentpey.com/ucp/platform/agentpey.json";
+/** The same platform, declaring UCP 2026-08-25 (T133). */
+export const AGENTPEY_PLATFORM_PROFILE_2026_08_25 = "https://agentpey.com/ucp/platform/agentpey-2026-08-25.json";
 
 const reverseDomain = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_]*)+$/;
 
@@ -120,6 +126,8 @@ export interface ExecuteUcpPaymentDeps {
   /** When set, the `policy_rail` smart account pays, and the network enforces its limits. */
   readonly payer?: PolicyRailPayer;
   readonly fetchImpl?: typeof fetch;
+  /** The platform profile sent in `UCP-Agent`, which tells the store the UCP version to answer in. Defaults to {@link AGENTPEY_PLATFORM_PROFILE}. */
+  readonly platformProfile?: string;
   /** Tests only: the scheme that builds the payment, in place of the real Stellar one. */
   readonly schemeForTests?: SchemeNetworkClient;
 }
@@ -215,13 +223,13 @@ export interface PayUcpQuoteInput {
 
 type UcpCall = (method: string, url: string, body?: unknown, headers?: Record<string, string>) => Promise<{ status: number; json: unknown }>;
 
-function caller(fetchImpl: typeof fetch): UcpCall {
+function caller(fetchImpl: typeof fetch, platformProfile: string = AGENTPEY_PLATFORM_PROFILE): UcpCall {
   return async (method, url, body, headers = {}) => {
     let res: Response;
     try {
       res = await fetchImpl(url, {
         method,
-        headers: { accept: "application/json", "UCP-Agent": `profile="${AGENTPEY_PLATFORM_PROFILE}"`, ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers },
+        headers: { accept: "application/json", "UCP-Agent": `profile="${platformProfile}"`, ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     } catch (error) {
@@ -305,8 +313,8 @@ function totalOf(checkout: UcpCheckout): { amount: number; currency: string } {
  * @throws AgentPassError `MerchantRejectedRequest`, `InvalidProduct` or
  * `NetworkError`, as {@link executeUcpPayment} does before signing.
  */
-export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch }, input: QuoteUcpCheckoutInput): Promise<UcpQuote> {
-  const call = caller(deps.fetchImpl ?? fetch);
+export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch; readonly platformProfile?: string }, input: QuoteUcpCheckoutInput): Promise<UcpQuote> {
+  const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
   const origin = input.storeUrl.replace(/\/+$/, "");
   const store = await readStoreHandler(call, origin);
   const created = await call("POST", `${store.endpoint}/checkout-sessions`, {
@@ -348,7 +356,7 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
   }
 
   async function payAndMark(): Promise<UcpPaymentReceipt> {
-    const call = caller(deps.fetchImpl ?? fetch);
+    const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
     let requirements = quote.requirements;
     let handlerId = quote.handlerId;
     if (input.recheck === true) {

@@ -15,6 +15,7 @@ describe("the UCP documents agentpey.com publishes (Fase 7, E-1)", () => {
     { url: "https://agentpey.com/ucp/extensions/receipt/spec", file: "/ucp/extensions/receipt/spec.md" },
     { url: "https://agentpey.com/ucp/extensions/receipt/schema.json", file: "/ucp/extensions/receipt/schema.json" },
     { url: "https://agentpey.com/ucp/platform/agentpey.json", file: "/ucp/platform/agentpey.json" },
+    { url: "https://agentpey.com/ucp/platform/agentpey-2026-08-25.json", file: "/ucp/platform/agentpey-2026-08-25.json" },
   ];
 
   for (const { url, file } of published) {

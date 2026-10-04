@@ -296,6 +296,7 @@ export {
 
 export {
   AGENTPEY_PLATFORM_PROFILE,
+  AGENTPEY_PLATFORM_PROFILE_2026_08_25,
   STELLAR_X402_HANDLER,
   executeUcpPayment,
   payUcpQuote,

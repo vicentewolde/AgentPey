@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeVenueId } from "../../apps/agent/src/catalog/ids.js";
 import { loadVenueRegistry } from "../../apps/agent/src/catalog/registry.js";
 import type { PurchaseIntent } from "../../apps/agent/src/intent/intent.js";
-import { executeUcpPayment, type ExecuteUcpPaymentDeps } from "../../apps/agent/src/payment/ucp.js";
+import { AGENTPEY_PLATFORM_PROFILE, AGENTPEY_PLATFORM_PROFILE_2026_08_25, executeUcpPayment, type ExecuteUcpPaymentDeps } from "../../apps/agent/src/payment/ucp.js";
 import { mayHaveBeenPaid } from "../../apps/agent/src/payment/x402.js";
 import { createInMemorySpendLedger } from "../../apps/agent/src/ledger/spend-ledger.js";
 import { createLocalPolicyRail } from "../../apps/agent/src/policy/policy-rail.js";
@@ -24,7 +24,7 @@ import { MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js"
 import { USDC_TESTNET, checkReceiptSignature } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_TX_HASH, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { MERCHANT, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { MERCHANT, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 
 type SchemeNetworkClient = NonNullable<ExecuteUcpPaymentDeps["schemeForTests"]>;
@@ -47,7 +47,14 @@ const adapter = new MockStoreAdapter();
 beforeAll(async () => {
   const registry = fakeRegistry();
   facilitator = fakeFacilitator({ settle: { payer: RAIL } });
-  app = createApp({ config: testConfig(), adapter, facilitator, anchorer: registry.anchorer, registry: registry.registry });
+  app = createApp({
+    platformProfiles: fakePlatformProfiles({ [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08", [AGENTPEY_PLATFORM_PROFILE_2026_08_25]: "2026-08-25" }),
+    config: testConfig(),
+    adapter,
+    facilitator,
+    anchorer: registry.anchorer,
+    registry: registry.registry,
+  });
   server = await listen(app);
 });
 afterAll(async () => {
@@ -234,4 +241,56 @@ describe("AgentPey pays a Vitrinee store over UCP (T122)", () => {
     expect(error).toMatchObject({ code: "MerchantRejectedRequest" });
     expect(scheme.calls).toEqual([]);
   });
+});
+
+describe("AgentPey pays a Vitrinee store over UCP 2026-08-25 (T133)", () => {
+  it("pays the same way speaking UCP 2026-08-25: the store answers in that version and the receipt is the same kind (T133)", async () => {
+    const scheme = fakeScheme();
+    const grant = scope();
+    const seen: string[] = [];
+    const spy: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      const body = (await res.clone().json().catch(() => undefined)) as { ucp?: { version?: string } } | undefined;
+      if (String(input).includes("/ucp/v1/") && body?.ucp?.version !== undefined) seen.push(body.ucp.version);
+      return res;
+    };
+    // A store of its own: the main one already holds a receipt for the fake facilitator's one transaction (VT-40).
+    const registry = fakeRegistry();
+    const own = createApp({
+      platformProfiles: fakePlatformProfiles({ [AGENTPEY_PLATFORM_PROFILE_2026_08_25]: "2026-08-25" }),
+      config: testConfig(),
+      adapter: new MockStoreAdapter(),
+      facilitator: fakeFacilitator({ settle: { payer: RAIL, transaction: "beef".padEnd(64, "0") } }),
+      anchorer: registry.anchorer,
+      registry: registry.registry,
+    });
+    const ownServer = await listen(own);
+    const ownVenue = () => {
+      const base = loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: ownServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }]);
+      return { venueId: makeVenueId("vitrinee", MERCHANT), registry: base };
+    };
+    const paid = await executeUcpPayment(
+      { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme, fetchImpl: spy, platformProfile: AGENTPEY_PLATFORM_PROFILE_2026_08_25 },
+      {
+        storeUrl: ownServer.url,
+        productId: "gorro-andes",
+        quantity: 1,
+        buyer: { email: "ana@example.com" },
+        destination: DESTINATION,
+        intent: intent("gorro-andes", 1, "13.6736842", "13.6736842"),
+        scope: grant,
+        mandate: mandate(grant),
+        ...ownVenue(),
+        idempotencyKey: "ucp-contract-2026-08-25",
+      },
+    ).finally(async () => {
+      own.anchors.stop();
+      await ownServer.close();
+    });
+    expect(seen.length).toBeGreaterThan(0);
+    expect(new Set(seen)).toEqual(new Set(["2026-08-25"]));
+    expect(paid.orderId).toMatch(/^ord_/);
+    expect(paid.receipt).toMatchObject({ format: "jws" });
+  });
+
 });
