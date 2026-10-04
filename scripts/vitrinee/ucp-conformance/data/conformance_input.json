@@ -1,0 +1,8 @@
+{
+  "ucp_version": "2026-04-08",
+  "required_capabilities": ["dev.ucp.shopping.checkout", "dev.ucp.shopping.order", "dev.ucp.shopping.fulfillment"],
+  "currency": "CLP",
+  "items": [{ "id": "stickers-cordillera", "title": "Pack de stickers Cordillera", "price": 990 }],
+  "out_of_stock_item": { "id": "agotado-cordillera", "title": "Taza Cordillera (agotada)" },
+  "non_existent_item": { "id": "producto-inexistente", "title": "Producto inexistente" }
+}

@@ -82,6 +82,11 @@ export interface GatewayConfig {
  * to read it (docs/fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md, VT-8, VT-12).
  */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig {
+  // The UCP conformance store (T131, R-3) pays with a token that charges nothing.
+  // It is a separate local entry point; no deployed store turns it on with a flag.
+  if ((env["UCP_CONFORMANCE"] ?? "") !== "") {
+    throw new VitrineeError("ConfigError", "UCP_CONFORMANCE is set: the conformance store never runs as a deployed store (pnpm run ucp:conformance runs it locally)");
+  }
   const parsed = envSchema.safeParse(env);
   if (!parsed.success) {
     const problems = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`);
