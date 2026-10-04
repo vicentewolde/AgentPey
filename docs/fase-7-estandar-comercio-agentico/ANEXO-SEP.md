@@ -536,8 +536,15 @@ en `complete` una cadena `abierto~~cierre`: el mandato abierto de arriba,
 firmado por la plataforma, y un salto `kb+sd-jwt` del agente con `aud` (el
 origen de la tienda), `nonce` (el id del checkout) y `mandate.checkout.1`
 (`checkout_jwt`, la firma de la tienda con el payload reinsertado, y su hash).
-Códigos nuevos del verificador: `Ap2KeyNotFound`, `Ap2KeyBindingInvalid`,
-`Ap2ScopeMismatch`, `Ap2MerchantAuthorizationInvalid`; la tienda los traduce
+El bloqueo es de la sesión: se negocia al crear el checkout y ninguna
+solicitud posterior lo quita. El `iss` del mandato abierto tiene que ser el
+origen del perfil de plataforma que publica la llave. Lo que el mandato prueba
+ante la tienda es "la plataforma de ese origen lo respaldó"; hoy lo firma el
+mismo proceso del agente al pagar, así que no es una autorización previa e
+independiente del usuario: esa sigue siendo el Mandato de AgentPey, que el
+abierto cita (`R-16`). Códigos nuevos del verificador: `Ap2KeyNotFound`,
+`Ap2KeyBindingInvalid`, `Ap2ScopeMismatch`, `Ap2MerchantAuthorizationInvalid`,
+`Ap2IssuerMismatch`; la tienda los traduce
 a los de UCP (`mandate_invalid_signature`, `mandate_expired`,
 `mandate_scope_mismatch`, `merchant_authorization_invalid`, `agent_missing_key`,
 `mandate_required`). Brecha para el SEP: ninguna de las dos specs dice cómo se

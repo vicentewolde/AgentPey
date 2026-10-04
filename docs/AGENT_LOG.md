@@ -7855,3 +7855,19 @@ Pendiente: `/revisar`; push y merge con OK; compra real con `--ap2` tras el depl
 `AGENTS.md`: sin cambios (llaves y autorización, nada delegable). Secreto nuevo: `AGENTPEY_PLATFORM_AP2_SECRET`, solo
 local.
 
+## 2026-10-04 (24) — cc/t134-ap2-checkout (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T134. Bloqueante: el bloqueo AP2 se calculaba por solicitud, así que un checkout creado con AP2
+se cobraba sin mandato si `complete` llegaba con otro perfil, con `version=` o con el perfil caído. Ahora vive en la
+sesión (`ap2: {platformProfile, mandate}`, en el `jsonb` de siempre, sin migración) y `complete` exige un mandato de
+esa misma plataforma. Corregidos también, a pedido del usuario, los otros 16: `iss`/`kid` atados al origen del perfil
+(`Ap2IssuerMismatch`), términos comparados con destino, comprador y handler, emparejamiento uno a uno, reserva de la
+intención antes de cualquier `await` y cierre antes de `policyRail.authorise`, `--ap2` exige el mandato, zod en los
+bordes, errores tipados, `verify.py` con llaves publicadas, la tienda guarda el mandato, docs (`R-14`, `R-15`, `R-16`,
+§4.4, anexo, `AGENTS.md`). `pnpm check`, `vitrinee:check` y la suite (40/17/20) en verde.
+
+Pendiente: push, PR y merge con OK; compra real con `--ap2` tras el deploy. `AGENTS.md`: una línea (llaves de
+`R-16` y `VT-43` dentro de AP2, no delegable).
+

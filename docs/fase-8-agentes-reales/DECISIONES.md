@@ -300,7 +300,8 @@ autenticación y en el mismo proceso que cobra:
   máximo 6 lecturas a la vez y un ritmo de 5 por segundo (ráfaga de 20);
   pasado eso no lee, y la tienda responde en su versión por defecto;
 - un host que falló espera antes de volver a leerse, más cada vez (1 a 10 min);
-- guarda solo la versión, nunca el documento.
+- guarda solo la versión, nunca el documento (desde T134, también los nombres
+  de las capacidades que declara y sus llaves P-256, acotados: ver `R-15`).
 
 Si un cliente cierra la conexión, la lectura compartida sigue hasta el plazo
 (otra solicitud puede estar esperando el mismo perfil): el costo queda acotado
@@ -356,13 +357,39 @@ cómo se juntan. Se decide:
    declaran `dev.ucp.common.payment.ap2_mandate`. **Sin mandato de pago:** en
    `stellar_x402` la credencial es la transacción firmada y el tope lo aplica la
    red; el mandato de pago abierto de T123 sigue existiendo aparte.
+   **El bloqueo es de la sesión** (corregido en `/revisar`): AP2 se negocia una
+   vez, al crear el checkout, y la sesión guarda la URL del perfil de la
+   plataforma. Desde ahí cada respuesta en `2026-08-25` va firmada y `complete`
+   exige un mandato de esa misma plataforma, negocie lo que negocie la
+   solicitud (otro perfil, `version=` en el header, un perfil que no responde):
+   UCP pide que ninguna de las partes vuelva atrás. Un checkout creado sin AP2
+   no lo gana después. La tienda guarda en la sesión el mandato con que cobró.
 5. **Un cierre por intención (brecha 14):** el agente no cierra un segundo
-   mandato para el mismo `intentId`.
+   mandato para el mismo `intentId`. Toma la intención antes de cualquier
+   espera (dos pagos simultáneos no cierran dos) y antes de que el rail
+   autorice o se firme el pago; no la devuelve aunque la tienda rechace. Un
+   rechazo recuperable deja esa intención gastada: otra compra necesita otra
+   intención. La memoria vive en el proceso que la tiene (`ucp:buy`).
 6. **La tienda se nombra por su origen.** Con AP2 activo, el checkout lleva
    `merchant: {id: <origen>, name, website: <origen>}`: UCP no tiene ese campo,
    pero permite campos extra, y el evaluador de AP2 (`merchant_matches`) compara
    la tienda del checkout con las permitidas por `id`. El mandato abierto la
-   nombra con el mismo origen que usa `aud`.
+   nombra con el mismo origen que usa `aud`. En modo plataforma, ese origen
+   sale del `Host` de la solicitud (cada comercio no tiene un `publicBaseUrl`
+   fijo); no abre un cruce entre tiendas porque cada una firma con su propia
+   llave derivada (`VT-43`), y un `checkout_jwt` de una no verifica en otra.
+7. **La plataforma firma solo en su nombre** (corregido en `/revisar`): la
+   llave sale del perfil que la plataforma presenta, así que el `iss` del
+   mandato abierto tiene que ser el origen de ese perfil, y un `kid` que sea
+   una URL tiene que estar en ese origen. Sin eso, cualquiera publicaba su
+   propia llave con un `kid` de agentpey.com y firmaba "como AgentPey". Lo que
+   AP2 prueba ante la tienda es "la plataforma de este origen lo autorizó"; la
+   tienda no lleva una lista de plataformas confiables.
+8. **Los términos que se comparan** antes de cobrar son todo lo que dice qué se
+   compra, a quién, por cuánto y adónde va: id, tienda, moneda, líneas,
+   comprador, despacho, totales y el handler de pago, contra lo que la sesión
+   cobraría ahora. Las líneas del checkout y las del mandato abierto se
+   emparejan una a una.
 
 Queda como brecha para el SEP: las specs no dicen cómo se mapea el JWS separado
 de UCP al `checkout_jwt` compacto de AP2, ni cómo se acuerdan `aud` y `nonce`.
@@ -383,6 +410,15 @@ AP2. `agentpey.json` y `agentpey-2026-08-25.json` no la declaran, así que las
 compras sin AP2 siguen igual. El MCP no usa AP2 por ahora: no hay nada que
 cargar en Render. La llave del agente para el key binding (`cnf`) es P-256
 derivada de su llave de Stellar (como `VT-43`).
+
+**Qué prueba y qué no.** Hoy el mandato abierto lo firma el mismo proceso del
+agente (`ucp:buy`), en el momento de pagar y a partir de la cotización. Prueba
+qué iba a comprar el agente y que la plataforma AgentPey lo respaldó; **no** es
+una autorización previa e independiente del usuario, y el `cnf` no separa nada
+mientras plataforma y agente vivan en el mismo proceso. La autorización del
+usuario sigue siendo el Mandato de AgentPey (firmado por el emisor, anclado y
+revocable), del que el abierto cita hash y registro. No se presenta como "el
+usuario autorizó en AP2".
 
 **Alternativa descartada.** Declarar AP2 en `agentpey-2026-08-25.json`: toda
 compra en esa versión quedaría obligada a mandar mandato.

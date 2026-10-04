@@ -134,8 +134,9 @@ Dos cambios en código existente, los dos dentro de `P-10`:
 Con la extensión negociada, la tienda firma cada respuesta del checkout
 (`ap2.merchant_authorization`, JWS separado sobre el checkout canonicalizado)
 y el agente envía en `complete` un mandato de checkout cerrado (SD-JWT con
-key binding) más el mandato de pago en la credencial. La tienda verifica
-firma, su propia autorización y que los términos coinciden. Implica una llave
+key binding). Sin mandato de pago: en `stellar_x402` la credencial es la
+transacción firmada (`R-15`, punto 4). La tienda verifica firma, su propia
+autorización y que los términos coinciden. Implica una llave
 P-256 nueva por tienda en Vitrinee (decisión `VT-`, gestión de llaves, no
 delegable) y memoria por `intentId` para "un par por intención" (brecha 14).
 
@@ -446,6 +447,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T133: perfil `2026-08-25` con la hoja `2026-04-08` en `supported_versions`, negociación por el perfil del agente con un lector endurecido (`R-14`, defecto `2026-08-25` por decisión del usuario), respuestas según la versión, perfil de plataforma `agentpey-2026-08-25.json`. Tres criterios marcados; falta la compra real tras el deploy |
 | 2026-10-03 | T133, `/revisar`: dos bloqueantes en el lector de perfiles (sin plazo total, sin límite de lecturas) y 12 hallazgos más, corregidos a pedido del usuario; `R-14` precisada (límites exactos y la desviación de los códigos de error de UCP) |
 | 2026-10-04 | T133 cerrada: mergeada ([PR #50](https://github.com/vicentewolde/AgentPey/pull/50)) y compra real en `2026-08-25` con recibo válido; cuarto criterio marcado |
+| 2026-10-04 | T134, `/revisar`: un bloqueante (el bloqueo AP2 se calculaba por solicitud, así que un `complete` que ya no negociaba AP2 cobraba sin mandato) y 16 hallazgos más, corregidos a pedido del usuario. El bloqueo pasa a ser de la sesión; el `iss` del mandato abierto queda atado al perfil de la plataforma; los términos comparados incluyen destino y comprador. `R-15` y `R-16` precisadas; §4.4 alineada con `R-15` (sin mandato de pago) |
 | 2026-10-04 | T134: la tienda firma cada checkout y verifica el mandato AP2 antes de cobrar; el agente lo cierra (`abierto~~cierre`, `R-15`), con la llave de la plataforma (`R-16`) y la de la tienda derivada (`VT-43`). La librería oficial de AP2 verifica una cadena de muestra. Cuatro criterios marcados; falta la compra real tras el deploy. Se hizo en una rama con los dos lados en vez de dos PR |
 
 ## 11. Fuentes externas

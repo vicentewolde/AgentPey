@@ -5,10 +5,10 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-03
+**Actualizado:** 2026-10-04
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T133 · Vitrinee habla UCP `2026-08-25` y `2026-04-08` a la vez, según el perfil de cada agente (`R-14`); compra real en `2026-08-25` con recibo válido
-**Siguiente paso:** `/revisar` de T134; merge con OK (despliega la tienda con AP2 y `agentpey-ap2.json`); compra real con `--ap2` y cruce con la librería oficial. T130 espera la tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** push, PR y merge de T134 con OK (despliega la tienda con AP2 y `agentpey-ap2.json`); compra real con `--ap2` y cruce con la librería oficial. T130 espera la tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -20,7 +20,7 @@
 | T131 Suite oficial de conformidad UCP | imprescindible | ✅ terminada: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp`, mergeada ([PR #49](https://github.com/vicentewolde/AgentPey/pull/49)) |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
-| T134 AP2 dentro del checkout UCP | si alcanza | 👀 en revisión: tienda firma y verifica, agente cierra (`R-15`, `R-16`, `VT-43`); falta la compra real tras el deploy | `cc/t134-ap2-checkout` (sin push) |
+| T134 AP2 dentro del checkout UCP | si alcanza | 👀 en revisión: tienda firma y verifica, agente cierra (`R-15`, `R-16`, `VT-43`); `/revisar` corregido (bloqueo por sesión); falta la compra real tras el deploy | `cc/t134-ap2-checkout` (sin push) |
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ⏳ pendiente | |
 | T136 SDK publicado en npm | si alcanza | ⏳ pendiente | |
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ⏳ pendiente | |
@@ -111,3 +111,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T133 `/revisar`: dos bloqueantes en el lector de perfiles (sin plazo total: un perfil que gotea sostenía la conexión horas; sin límite de lecturas: el DNS ocupaba los hilos que usa el cobro) y 12 más, todos corregidos a pedido del usuario: plazo total, DNS c-ares, un lector por proceso con límites, IPv6 por lista blanca, idempotencia por versión, tests del GET real.
 - 2026-10-04, T133 cerrada: [PR #50](https://github.com/vicentewolde/AgentPey/pull/50) en `main` y desplegado; en vivo el perfil `2026-08-25` apunta a la hoja `2026-04-08` y la versión sale del perfil del agente. Compra real hablando `2026-08-25`: `ord_muu8xxcdbbc5bc4a54`, tx `2a30d8f0…`, recibo con los tres checks; la orden valida contra el esquema de cada versión.
 - 2026-10-04, T134: `R-15` (cadena `abierto~~cierre`, `checkout_jwt` reinsertado, `aud` = origen, `nonce` = checkout, `merchant` por origen), `R-16` (llave P-256 de plataforma en `.env.local`, `agentpey-ap2.json`), `VT-43` (llave de tienda derivada). Tienda: firma y verifica con los códigos de UCP; agente: cierra, una vez por intención. La librería oficial de AP2 verifica una cadena de muestra sin observaciones. `pnpm check` y la suite (40/17/20) en verde.
+- 2026-10-04, T134 `/revisar`: un bloqueante (el bloqueo AP2 se calculaba por solicitud: un `complete` con otro perfil, con `version=` o con el perfil caído cobraba sin mandato) y 16 hallazgos más, todos corregidos a pedido del usuario. Bloqueo guardado en la sesión, `iss` atado al perfil de la plataforma (`Ap2IssuerMismatch`), términos con destino y comprador, líneas emparejadas una a una, intención tomada antes de cualquier espera y antes de autorizar, `ucp:buy -- --ap2` exige el mandato y `verify.py` lee las llaves publicadas. `R-15` y `R-16` precisadas (qué prueba el mandato y qué no). `pnpm check`, `vitrinee:check` y la suite (40/17/20) en verde.

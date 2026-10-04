@@ -273,18 +273,33 @@ vieja, y las dos respuestas validan contra el esquema oficial de su versión.
 
 **Qué quedó funcionando.** Cuando un agente y una tienda acuerdan usar AP2, la
 compra queda sellada: la tienda firma cada respuesta del checkout, y no cobra
-hasta recibir un mandato que diga "mi usuario autorizó exactamente este
-checkout, que la tienda firmó". El agente de AgentPey arma ese mandato: la
-plataforma firma lo que el usuario permite (este producto, esta cantidad, esta
-tienda) y el agente lo cierra sobre el checkout firmado, para esta tienda y este
-checkout. Si algo no calza, la tienda responde con el código de error de UCP y
-no se mueve un peso. Sin AP2 acordado, todo sigue igual.
+hasta recibir un mandato que diga "la plataforma AgentPey respalda exactamente
+este checkout, que la tienda firmó". El agente de AgentPey arma ese mandato: la
+plataforma firma este producto, esta cantidad y esta tienda, y el agente lo
+cierra sobre el checkout firmado, para esta tienda y este checkout. Si algo no
+calza, la tienda responde con el código de error de UCP y no se mueve un peso.
+Sin AP2 acordado, todo sigue igual.
+
+Ojo con cómo se cuenta: hoy el mandato lo firma el mismo programa que paga, en
+el momento de pagar. Prueba qué se iba a comprar y que AgentPey lo respaldó; no
+es una autorización previa del usuario. La autorización del usuario sigue
+siendo el Mandato de AgentPey, que el mandato AP2 cita (`R-16`).
 
 **Lo que hubo que decidir.** UCP y AP2 no dicen cómo se juntan sus formatos. Se
 eligió la forma que la librería oficial de AP2 entiende, y se comprobó: verifica
 una cadena hecha aquí sin ninguna observación (`R-15`). La tienda usa una llave
 derivada de la que ya tenía (`VT-43`); la plataforma, una llave nueva que solo
 vive en `.env.local` (`R-16`).
+
+**La revisión.** `/revisar` encontró un problema serio: el sello se decidía en
+cada solicitud, así que si el último paso llegaba sin pedir AP2 (otro perfil, o
+el perfil de la plataforma caído en ese momento), la tienda cobraba sin
+mandato. Ahora el sello es del checkout desde que se crea y no se puede quitar.
+También se corrigieron 16 hallazgos más: la plataforma solo puede firmar en su
+propio nombre, la tienda compara además la dirección y el comprador (no solo el
+total), dos pagos simultáneos de una misma intención ya no cierran dos mandatos,
+y el agente se niega antes de autorizar o firmar nada. La tienda guarda el
+mandato con que cobró.
 
 **Lo que falta.** La compra real con AP2, después del merge, y que la librería
 oficial verifique su mandato.

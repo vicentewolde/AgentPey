@@ -90,7 +90,7 @@ sigue siendo `docs/AGENT_LOG.md` y tu rama `codex/<task>`.
 aprobado el mismo día. El
 servidor MCP (`apps/mcp`, T128) guarda una llave que paga y es de Claude Code,
 igual que el modo de conformidad de T131, la verificación del recibo (T132),
-AP2 (T134), MPP (T135) y las wallets (T143). Lo delegable, si te llega, está
+AP2 (T134, con la llave de plataforma de `R-16` y la de cada tienda de `VT-43`), MPP (T135) y las wallets (T143). Lo delegable, si te llega, está
 marcado tarea por tarea en el spec: datos de prueba de T131, mapeo de campos
 de T133, README de T136, tests de perfil de T137 y el HTML de T141.
 
