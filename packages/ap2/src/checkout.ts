@@ -22,7 +22,7 @@ import type { JWK } from "jose";
 import { z } from "zod";
 
 import { jcsCanonicalize } from "./jcs.js";
-import { OPEN_CHECKOUT_MANDATE_VCT, ap2PublicJwkSchema, openCheckoutMandateSchema } from "./schemas.js";
+import { OPEN_CHECKOUT_MANDATE_VCT, ap2PublicJwkSchema, knownConstraintTypes, openCheckoutMandateSchema } from "./schemas.js";
 import type { OpenCheckoutMandate } from "./schemas.js";
 import { AP2_SD_ALG, disclosableArray, sdHash, sha256Base64Url, verifySdJwt } from "./sd-jwt.js";
 import type { Ap2PublicJwk, Ap2Signer } from "./sd-jwt.js";
@@ -36,7 +36,19 @@ export const AP2_CLOCK_SKEW_SECONDS = 300;
 const encoder = new TextEncoder();
 const b64 = (bytes: Uint8Array | string): string => Buffer.from(typeof bytes === "string" ? encoder.encode(bytes) : bytes).toString("base64url");
 
-function fail(code: "Ap2MandateInvalid" | "Ap2SignatureInvalid" | "Ap2KeyNotFound" | "Ap2KeyBindingInvalid" | "Ap2ScopeMismatch" | "Ap2MerchantAuthorizationInvalid" | "Ap2MandateExpired" | "Ap2MandateNotYetValid", message: string, details: Readonly<Record<string, unknown>> = {}, cause?: unknown): AgentPassError {
+type Ap2FailureCode =
+  | "Ap2MandateInvalid"
+  | "Ap2SignatureInvalid"
+  | "Ap2KeyNotFound"
+  | "Ap2KeyBindingInvalid"
+  | "Ap2ScopeMismatch"
+  | "Ap2MerchantAuthorizationInvalid"
+  | "Ap2MandateExpired"
+  | "Ap2MandateNotYetValid"
+  | "Ap2IssuerMismatch"
+  | "Ap2ConstraintUnsupported";
+
+function fail(code: Ap2FailureCode, message: string, details: Readonly<Record<string, unknown>> = {}, cause?: unknown): AgentPassError {
   return new AgentPassError(code, message, { details, cause });
 }
 
@@ -151,6 +163,12 @@ const hopClaimsSchema = z.looseObject({
 export interface VerifyCheckoutMandateOptions {
   /** The platform keys the business trusts, by `kid` (from the platform's profile `keys`). */
   readonly platformKey: (kid: string | undefined) => (Ap2PublicJwk & { kid?: string }) | undefined;
+  /**
+   * The origin of the platform profile those keys came from (R-15). The open
+   * mandate's `iss` must be it, and a `kid` that is a URL must live there: a
+   * platform signs only in its own name, never in another's.
+   */
+  readonly issuer: string;
   /** The business's origin. */
   readonly aud: string;
   /** The checkout's id. */
@@ -171,7 +189,7 @@ export interface VerifiedCheckoutMandate {
  * signature on it, are the caller's next steps (`verifyCheckoutJwt`,
  * {@link checkOpenCheckoutConstraints}).
  *
- * @throws AgentPassError `Ap2KeyNotFound` · `Ap2SignatureInvalid` · `Ap2MandateExpired` · `Ap2MandateNotYetValid` · `Ap2KeyBindingInvalid` · `Ap2MandateInvalid`
+ * @throws AgentPassError `Ap2KeyNotFound` · `Ap2IssuerMismatch` · `Ap2ConstraintUnsupported` · `Ap2SignatureInvalid` · `Ap2MandateExpired` · `Ap2MandateNotYetValid` · `Ap2KeyBindingInvalid` · `Ap2MandateInvalid`
  */
 export async function verifyCheckoutMandateChain(chain: string, options: VerifyCheckoutMandateOptions): Promise<VerifiedCheckoutMandate> {
   const parts = chain.split("~~");
@@ -185,10 +203,22 @@ export async function verifyCheckoutMandateChain(chain: string, options: VerifyC
   } catch (error) {
     throw fail("Ap2MandateInvalid", "the open mandate header is unreadable", {}, error);
   }
-  const platformKey = options.platformKey(typeof rootHeader.kid === "string" ? rootHeader.kid : undefined);
-  if (platformKey === undefined) throw fail("Ap2KeyNotFound", "the platform publishes no key for the open mandate's kid", { kid: rootHeader.kid });
+  const rootKid = typeof rootHeader.kid === "string" ? rootHeader.kid : undefined;
+  // A kid is only a label inside the profile the key was read from; one that is a URL must not name another origin.
+  if (rootKid !== undefined && URL.canParse(rootKid) && new URL(rootKid).origin !== options.issuer) {
+    throw fail("Ap2IssuerMismatch", "the open mandate's kid names another platform than the one whose profile is presented", { kid: rootKid, issuer: options.issuer });
+  }
+  const platformKey = options.platformKey(rootKid);
+  if (platformKey === undefined) throw fail("Ap2KeyNotFound", "the platform publishes no key for the open mandate's kid", { kid: rootKid });
   const { payload } = await verifySdJwt(open, platformKey);
-  const delegated = (payload.delegate_payload as unknown[] | undefined)?.[0];
+  if (payload.iss !== options.issuer) {
+    throw fail("Ap2IssuerMismatch", "the open mandate's iss is not the platform whose profile published its key", { iss: payload.iss, issuer: options.issuer });
+  }
+  const delegated = Array.isArray(payload.delegate_payload) ? (payload.delegate_payload[0] as unknown) : undefined;
+  // AP2: a constraint this verifier does not know fails, and says so rather than reading as a malformed mandate.
+  const types = (delegated as { constraints?: unknown } | undefined)?.constraints;
+  const unknownType = Array.isArray(types) ? types.map((c) => (c as { type?: unknown } | null)?.type).find((t) => typeof t === "string" && !knownConstraintTypes.checkout.has(t)) : undefined;
+  if (unknownType !== undefined) throw fail("Ap2ConstraintUnsupported", "the open mandate carries a constraint type this business does not know", { type: unknownType });
   const opened = openCheckoutMandateSchema.safeParse(delegated);
   if (!opened.success || opened.data.vct !== OPEN_CHECKOUT_MANDATE_VCT) {
     throw fail("Ap2MandateInvalid", "the root of the chain is not an AP2 open checkout mandate", { issues: opened.success ? [] : opened.error.issues });
@@ -198,7 +228,9 @@ export async function verifyCheckoutMandateChain(chain: string, options: VerifyC
   if (now > opened.data.exp) throw fail("Ap2MandateExpired", "the open mandate has expired", { exp: opened.data.exp, now });
 
   // The hop: signed by the key the open mandate's cnf names, and nothing else.
-  const holderKey = ap2PublicJwkSchema.parse(opened.data.cnf.jwk) as Ap2PublicJwk;
+  const holder = ap2PublicJwkSchema.safeParse(opened.data.cnf.jwk);
+  if (!holder.success) throw fail("Ap2KeyBindingInvalid", "the open mandate's cnf is not a public key", { issues: holder.error.issues });
+  const holderKey = holder.data as Ap2PublicJwk;
   if (holderKey.kty !== "EC") throw fail("Ap2KeyBindingInvalid", "the open mandate binds a key AP2 cannot close with (P-256 only)");
   const hopJwt = hop.split("~")[0] ?? "";
   const hopDisclosures = hop.split("~").slice(1).filter((d) => d !== "");
@@ -215,7 +247,13 @@ export async function verifyCheckoutMandateChain(chain: string, options: VerifyC
   } catch (error) {
     throw fail("Ap2KeyBindingInvalid", "the closing hop is not signed by the agent the open mandate names", {}, error);
   }
-  const hopClaims = hopClaimsSchema.safeParse(JSON.parse(new TextDecoder().decode(hopBytes)));
+  let hopJson: unknown;
+  try {
+    hopJson = JSON.parse(new TextDecoder().decode(hopBytes));
+  } catch (error) {
+    throw fail("Ap2KeyBindingInvalid", "the closing hop payload is not JSON", {}, error);
+  }
+  const hopClaims = hopClaimsSchema.safeParse(hopJson);
   if (!hopClaims.success) throw fail("Ap2KeyBindingInvalid", "the closing hop is not an AP2 terminal hop", { issues: hopClaims.error.issues });
   if (hopClaims.data.sd_hash !== sdHash(open)) throw fail("Ap2KeyBindingInvalid", "the closing hop is bound to another open mandate");
   if (hopClaims.data.aud !== options.aud) throw fail("Ap2KeyBindingInvalid", "the closing hop is for another business", { aud: hopClaims.data.aud });
@@ -249,8 +287,9 @@ async function resolveHopDisclosures(claims: z.infer<typeof hopClaimsSchema>, di
 
 /**
  * The open mandate's constraints against the checkout the business signed
- * (AP2: an unknown constraint fails). `checkout.line_items`: every line is an
- * acceptable item in the allowed quantity, and every allowed line is there;
+ * (AP2: an unknown constraint fails). `checkout.line_items`: lines and allowed
+ * entries pair up one to one, each line an acceptable item of its entry in
+ * that entry's quantity (so two lines never spend one allowed entry);
  * `checkout.allowed_merchants`: the signed checkout's `merchant.id` is this
  * business's origin, and an allowed merchant has that id.
  */
@@ -260,8 +299,12 @@ export function checkOpenCheckoutConstraints(open: OpenCheckoutMandate, checkout
   for (const constraint of open.constraints) {
     if (constraint.type === "checkout.line_items") {
       const wanted = constraint.items;
-      const covered = lines.data.every((line) => wanted.some((w) => w.quantity === line.quantity && w.acceptable_items.some((item) => item.id === line.item.id)));
-      if (!covered || lines.data.length !== wanted.length) throw fail("Ap2ScopeMismatch", "the checkout is not the items the open mandate allows", { lines: lines.data.map((l) => [l.item.id, l.quantity]) });
+      const fits = (line: number, entry: number): boolean => {
+        const l = lines.data[line]!;
+        const w = wanted[entry]!;
+        return w.quantity === l.quantity && w.acceptable_items.some((item) => item.id === l.item.id);
+      };
+      if (lines.data.length !== wanted.length || !pairsOneToOne(lines.data.length, fits)) throw fail("Ap2ScopeMismatch", "the checkout is not the items the open mandate allows", { lines: lines.data.map((l) => [l.item.id, l.quantity]) });
     } else if (constraint.type === "checkout.allowed_merchants") {
       // By id, as AP2's own evaluator does (`merchant_matches`): a business's id is its origin (R-15), the same
       // name the hop's `aud` uses; and the checkout it signed says so in `merchant.id`.
@@ -270,4 +313,25 @@ export function checkOpenCheckoutConstraints(open: OpenCheckoutMandate, checkout
       if (!ok) throw fail("Ap2ScopeMismatch", "this business is not among the open mandate's allowed merchants", { origin: businessOrigin });
     }
   }
+}
+
+/**
+ * Whether `n` lines and `n` allowed entries pair up one to one (a perfect
+ * bipartite matching, by augmenting paths). A checkout has a handful of lines.
+ */
+function pairsOneToOne(n: number, fits: (line: number, entry: number) => boolean): boolean {
+  const lineOfEntry = new Array<number>(n).fill(-1);
+  const assign = (line: number, seen: boolean[]): boolean => {
+    for (let entry = 0; entry < n; entry++) {
+      if (seen[entry] || !fits(line, entry)) continue;
+      seen[entry] = true;
+      if (lineOfEntry[entry] === -1 || assign(lineOfEntry[entry]!, seen)) {
+        lineOfEntry[entry] = line;
+        return true;
+      }
+    }
+    return false;
+  };
+  for (let line = 0; line < n; line++) if (!assign(line, new Array<boolean>(n).fill(false))) return false;
+  return true;
 }

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { exportJWK, generateKeyPair } from "jose";
+import { CompactSign, decodeProtectedHeader, exportJWK, generateKeyPair, importJWK, type CompactJWSHeaderParameters } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -72,8 +72,8 @@ describe("AP2 inside a UCP checkout (T134, R-15)", () => {
 
   const close = (overrides: Partial<{ open: string; holder: Ap2Signer; checkoutJwt: string; aud: string; nonce: string; issuedAt: Date }> = {}) =>
     closeCheckoutMandate({ open, holder: agent.signer, checkoutJwt: checkoutJwtFrom(checkout), aud: ORIGIN, nonce: "cs_abc123", issuedAt: NOW, ...overrides });
-  const verify = (chain: string, overrides: Partial<{ aud: string; nonce: string; now: Date; platformKey: (kid: string | undefined) => (Ap2PublicJwk & { kid?: string }) | undefined }> = {}) =>
-    verifyCheckoutMandateChain(chain, { platformKey: (kid) => (kid === platform.public.kid ? platform.public : undefined), aud: ORIGIN, nonce: "cs_abc123", now: NOW, ...overrides });
+  const verify = (chain: string, overrides: Partial<{ aud: string; nonce: string; now: Date; issuer: string; platformKey: (kid: string | undefined) => (Ap2PublicJwk & { kid?: string }) | undefined }> = {}) =>
+    verifyCheckoutMandateChain(chain, { platformKey: (kid) => (kid === platform.public.kid ? platform.public : undefined), issuer: "https://agentpey.com", aud: ORIGIN, nonce: "cs_abc123", now: NOW, ...overrides });
 
   it("signs the checkout detached (header..signature), and an agent checks it against the business key", async () => {
     expect((checkout.ap2 as { merchant_authorization: string }).merchant_authorization).toMatch(/^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$/);
@@ -134,6 +134,44 @@ describe("AP2 inside a UCP checkout (T134, R-15)", () => {
     const verified = await verify(await close({ open: narrowOpen }));
     const signed = await verifyCheckoutJwt(verified.checkoutJwt, business.public);
     expect(() => checkOpenCheckoutConstraints(verified.open, signed, ORIGIN)).toThrow(expect.objectContaining({ code: "Ap2ScopeMismatch" }));
+  });
+
+  it("rejects an open mandate whose iss is not the platform whose profile published the key", async () => {
+    await expect(verify(await close(), { issuer: "https://evil.example" })).rejects.toMatchObject({ code: "Ap2IssuerMismatch" });
+  });
+
+  it("rejects an open mandate whose URL kid names another platform than the profile presented", async () => {
+    const spoofed = await p256("https://agentpey.com/ucp/platform/agentpey-ap2.json#ap2-p256-1");
+    const chain = await close();
+    // The same chain, verified as if a profile at evil.example published a key under AgentPey's kid.
+    await expect(verify(chain.replace(/^[^.]+/, (header) => {
+      const h = JSON.parse(Buffer.from(header, "base64url").toString("utf8")) as Record<string, unknown>;
+      return Buffer.from(JSON.stringify({ ...h, kid: spoofed.public.kid })).toString("base64url");
+    }), { issuer: "https://evil.example", platformKey: () => spoofed.public })).rejects.toMatchObject({ code: "Ap2IssuerMismatch" });
+  });
+
+  it("pairs lines with allowed entries one to one: two lines never spend one allowed entry", () => {
+    const allowed = (ids: string[]) => ({
+      vct: "mandate.checkout.open.1",
+      constraints: [{ type: "checkout.line_items" as const, items: ids.map((id) => ({ acceptable_items: [{ id, title: id }], quantity: 1 })) }],
+      cnf: { jwk: agent.public },
+      iat: 0,
+      exp: 1,
+    });
+    const withLines = (ids: string[]) => ({ ...checkout, line_items: ids.map((id, i) => ({ id: `li_${i}`, item: { id, title: id }, quantity: 1 })) });
+    const open = allowed(["a", "b"]) as unknown as Parameters<typeof checkOpenCheckoutConstraints>[0];
+    expect(() => checkOpenCheckoutConstraints(open, withLines(["a", "a"]), ORIGIN)).toThrow(expect.objectContaining({ code: "Ap2ScopeMismatch" }));
+    expect(() => checkOpenCheckoutConstraints(open, withLines(["b", "a"]), ORIGIN)).not.toThrow();
+  });
+
+  it("refuses an unreadable hop payload with a typed error, never a bare SyntaxError", async () => {
+    const chain = await close();
+    const [first, second] = chain.split("~~");
+    const [hopJwt, ...rest] = second!.split("~");
+    const header = decodeProtectedHeader(hopJwt!);
+    // Signed by the bound agent, so it passes the signature check and reaches the parser.
+    const broken = await new CompactSign(new TextEncoder().encode("not json")).setProtectedHeader(header as CompactJWSHeaderParameters).sign(await importJWK(agent.signer.privateJwk, "ES256"));
+    await expect(verify(`${first}~~${[broken, ...rest].join("~")}`)).rejects.toMatchObject({ code: "Ap2KeyBindingInvalid" });
   });
 
   it("rejects a chain that is not open~~close", async () => {

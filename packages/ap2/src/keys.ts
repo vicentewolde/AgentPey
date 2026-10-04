@@ -19,8 +19,10 @@ export interface P256Key {
 
 /** A P-256 key from its private scalar (32 bytes, 1 ≤ d < n). */
 export function p256FromScalar(d: Uint8Array, kid: string): P256Key {
+  const invalid = () => new AgentPassError("Ap2MandateInvalid", "a P-256 private key is a 32-byte scalar in [1, n)");
+  if (d.length !== 32) throw invalid();
   const scalar = BigInt(`0x${Buffer.from(d).toString("hex")}`);
-  if (d.length !== 32 || scalar === 0n || scalar >= P256_N) throw new AgentPassError("Ap2MandateInvalid", "a P-256 private key is a 32-byte scalar in [1, n)");
+  if (scalar === 0n || scalar >= P256_N) throw invalid();
   const ecdh = createECDH("prime256v1");
   ecdh.setPrivateKey(Buffer.from(d));
   const point = ecdh.getPublicKey(); // 0x04 ‖ x ‖ y

@@ -219,6 +219,8 @@ export type AgentPassErrorCode =
   | "Ap2ScopeMismatch"
   /** The checkout inside a closed AP2 mandate does not carry this business's own authorization (T134, UCP `merchant_authorization_invalid`). */
   | "Ap2MerchantAuthorizationInvalid"
+  /** An AP2 open mandate names another issuer than the platform whose profile published its key (T134, R-15). */
+  | "Ap2IssuerMismatch"
   /** An AgentResolve claim is malformed, off its schema, or not signed by its claimant (T124). */
   | "ResolveClaimInvalid"
   /** The receipt a claim is about did not verify, or is not the receipt the claim embeds. */

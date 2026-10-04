@@ -201,8 +201,8 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
 
   it("names every AP2 error code the verifier can raise (T123)", () => {
     const codes = [...read("../packages/core/src/errors.ts").matchAll(/\| "(Ap2[A-Za-z]+)"/g)].map(([, code]) => code ?? "");
-    // Seven from T123, four from T134 (closed mandates in the UCP checkout).
-    expect(codes).toHaveLength(11);
+    // Seven from T123, five from T134 (closed mandates in the UCP checkout).
+    expect(codes).toHaveLength(12);
     for (const code of codes) expect(annex, code).toContain(`\`${code}\``);
   });
 

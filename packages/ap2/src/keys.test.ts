@@ -18,7 +18,7 @@ describe("P-256 keys for AP2 (T134)", () => {
     await expect(compactVerify(jws, await importJWK(key.publicJwk, "ES256"))).resolves.toBeTruthy();
   });
 
-  it.each([new Uint8Array(31), new Uint8Array(32), new Uint8Array(32).fill(0xff)])("refuses a scalar out of range", (d) => {
-    expect(() => p256FromScalar(d, "k")).toThrow();
+  it.each([new Uint8Array(0), new Uint8Array(31), new Uint8Array(32), new Uint8Array(32).fill(0xff)])("refuses a scalar out of range, with a typed error", (d) => {
+    expect(() => p256FromScalar(d, "k")).toThrow(expect.objectContaining({ code: "Ap2MandateInvalid" }));
   });
 });
