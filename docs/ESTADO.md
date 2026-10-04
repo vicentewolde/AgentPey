@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T129 · Claude y ChatGPT conectados con la guía del README; ChatGPT compra y paga él mismo, Claude cotiza y verifica (`R-11`)
-**Siguiente paso:** `/revisar` de T131 y merge con OK; el usuario decide si el test del tope de 100 unidades queda fallando (`R-13`). Después T130 (la tienda la consigue el usuario) y T133. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** `/revisar` de T131 y merge con OK. Después T130 (la tienda la consigue el usuario) y T133. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 

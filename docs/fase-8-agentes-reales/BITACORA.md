@@ -232,6 +232,6 @@ repositorio (conformance#116).
 
 **Lo que falta.** 9 de las fallas son capacidades ya planificadas (webhooks,
 varios productos, consentimiento: T147 a T149); 7 quedan fuera a propósito
-(`R-12`), y 1 es el tope de 100 unidades por compra, que se deja así salvo que
-el usuario diga otra cosa.
+(`R-12`), y 1 es el tope de 100 unidades por compra, que se deja así por decisión del
+usuario: hacerlo pasar sería decir "sin stock" cuando el motivo es el tope.
 

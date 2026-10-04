@@ -251,7 +251,7 @@ a la tienda: pasaría el test sin significar nada.
 
 
 ### R-13 · La tienda de conformidad envuelve la app real desde afuera; `complete` no se toca · `Vigente` — implementa `R-3`
-**Fecha:** 2026-10-03 · **Tarea:** T131 · Diseño de Claude Code dentro del plan aprobado por el usuario; el último punto, propuesta pendiente de su OK
+**Fecha:** 2026-10-03 · **Tarea:** T131 · Diseño de Claude Code dentro del plan aprobado por el usuario; el último punto, decidido por el usuario
 
 El medio de pago de prueba de la suite no existe en ningún código que se
 despliega. `scripts/vitrinee/ucp-conformance/store.ts` arranca el `createApp`
@@ -273,7 +273,7 @@ apagado: no hay una rama de `complete` que un día se pueda encender por error.
 el pago de prueba: más simple, pero deja en el código desplegado un camino que
 cobra cero si alguien la inyecta.
 
-**Pendiente del usuario.** `test_update_inventory_validation` queda fallando:
+**El test del tope queda fallando, por decisión del usuario.** `test_update_inventory_validation`:
 Vitrinee topa en 100 unidades por compra y responde 400 `invalid_request`
 diciéndolo, y la suite (que pide 10.001) espera la palabra "stock". Hacerlo
 pasar sería decir "sin stock" cuando el motivo es el tope.
