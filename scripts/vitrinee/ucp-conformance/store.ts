@@ -195,7 +195,8 @@ export async function startConformanceStore(options: { port?: number; simulation
   // Parsed here, so the rewrite below sees the body; the inner app's parser then skips it.
   app.use(express.json({ limit: "64kb" }));
 
-  // A bug in the suite, not in the store: its create helper sends a destination's
+  // A bug in the suite, not in the store (reported as
+  // Universal-Commerce-Protocol/conformance#116): its create helper sends a destination's
   // locality and region as `locality` and `region`
   // (integration_test_utils.py, `ShippingDestinationCreateRequest(locality=…,
   // region=…)`), while UCP's postal_address says `address_locality` and

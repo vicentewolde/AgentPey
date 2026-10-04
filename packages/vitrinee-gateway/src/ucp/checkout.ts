@@ -45,6 +45,7 @@ import {
   type StoredRequirements,
   type UcpAddress,
 } from "./sessions.js";
+import { IdempotencyCache, requestHash } from "./idempotency.js";
 import { stellarX402Config } from "./profile.js";
 
 
@@ -52,6 +53,8 @@ const LINE_ITEM_ID = "li_1";
 const METHOD_ID = "fm_1";
 const GROUP_ID = "fg_1";
 const OPTION_ID = "store_shipping";
+/** The one shipping option: the store arranges delivery outside the purchase. The order's expectation carries the same words. */
+export const SHIPPING_OPTION_TITLE = "Envío coordinado por la tienda";
 
 export interface UcpCheckoutDeps extends CheckoutDeps {
   sessions: CheckoutSessionPersistence;
@@ -270,7 +273,7 @@ function totals(subtotal: number) {
   return [
     { type: "subtotal", display_text: "Subtotal", amount: subtotal },
     // Shipping is arranged and charged by the store itself, outside this purchase.
-    { type: "fulfillment", display_text: "Envío coordinado por la tienda", amount: 0 },
+    { type: "fulfillment", display_text: SHIPPING_OPTION_TITLE, amount: 0 },
     { type: "total", display_text: "Total", amount: subtotal },
   ];
 }
@@ -352,13 +355,15 @@ async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession,
             {
               id: GROUP_ID,
               line_item_ids: [LINE_ITEM_ID],
-              options: [{ id: OPTION_ID, title: "Envío coordinado por la tienda", totals: [{ type: "fulfillment", amount: 0 }] }],
+              options: [{ id: OPTION_ID, title: SHIPPING_OPTION_TITLE, totals: [{ type: "fulfillment", amount: 0 }] }],
               selected_option_id: OPTION_ID,
             },
           ],
         },
       ],
     },
+    // Never echoes an instrument back: what a platform pays with stays in the request it came in.
+    payment: { instruments: [] },
     totals: totals(totalMinor),
     messages,
     links: [],
@@ -482,7 +487,7 @@ function ucpRoute(deps: UcpCheckoutDeps, handler: (req: Request, res: Response) 
         return;
       }
       if (isVitrineeError(error)) {
-        if (error.code === "ProductNotFound") return sendError(res, 400, "item_unavailable", error.message, "recoverable");
+        if (error.code === "ProductNotFound") return sendError(res, 400, "item_unavailable", `product not found: ${error.message}`, "recoverable");
         if (error.code === "ValidationError") return sendError(res, 400, "invalid_request", error.message, "recoverable");
         if (error.httpStatus >= 500) deps.log("ucp request failed", { code: error.code, message: error.message });
         return sendError(res, error.httpStatus, error.code === "NetworkError" ? "unavailable" : "internal_error", error.message, "recoverable");
@@ -508,12 +513,38 @@ async function withSessionLock(deps: UcpCheckoutDeps, id: string, res: Response,
   }
 }
 
+/**
+ * Runs a write under its `Idempotency-Key` (T131): a repeat with the same key and
+ * the same request gets the first answer back; the same key with another request
+ * gets 409 and changes nothing. No key, no memory. A 409 or a 5xx is not kept:
+ * running that request again is the right answer to a retry.
+ */
+async function idempotent(cache: IdempotencyCache, req: Request, res: Response, run: () => Promise<void>): Promise<void> {
+  const key = readIdempotencyKey(req);
+  if (key === null) return run();
+  const scope = `${req.method} ${req.originalUrl.split("?")[0]} ${key}`;
+  const hash = requestHash(req.method, req.originalUrl.split("?")[0] ?? "", req.body);
+  const found = cache.lookup(scope, hash);
+  if (found.kind === "replay") {
+    res.status(found.status).json(found.body);
+    return;
+  }
+  if (found.kind === "conflict") return sendError(res, 409, "idempotency_conflict", "this Idempotency-Key was already used with a different request");
+  const send = res.json.bind(res);
+  res.json = ((body: unknown) => {
+    if (res.statusCode < 500 && res.statusCode !== 409) cache.remember(scope, hash, res.statusCode, body);
+    return send(body);
+  }) as Response["json"];
+  await run();
+}
+
 export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheckoutDeps, originOf: (req: Request) => string): void {
+  const idempotency = new IdempotencyCache(deps.now);
   const notFound = (res: Response, id: string) => sendError(res, 404, "not_found", `no checkout session "${id}"`);
 
   app.post(
     `${prefix}/checkout-sessions`,
-    ucpRoute(deps, async (req, res) => {
+    ucpRoute(deps, (req, res) => idempotent(idempotency, req, res, async () => {
       const input = sessionInput.parse(req.body ?? {});
       const now = deps.now();
       const session: CheckoutSession = {
@@ -538,7 +569,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       const messages = await refresh(deps, session);
       await deps.sessions.save(session);
       res.status(201).json(await checkoutResponse(deps, session, originOf(req), messages));
-    }),
+    })),
   );
 
   app.get(
@@ -553,7 +584,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
 
   app.put(
     `${prefix}/checkout-sessions/:id`,
-    ucpRoute(deps, async (req, res) => {
+    ucpRoute(deps, (req, res) => idempotent(idempotency, req, res, async () => {
       const id = String(req.params["id"]);
       const input = sessionInput.parse(req.body ?? {});
       await withSessionLock(deps, id, res, async () => {
@@ -568,12 +599,12 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         await deps.sessions.save(session);
         res.json(await checkoutResponse(deps, session, originOf(req), messages));
       });
-    }),
+    })),
   );
 
   app.post(
     `${prefix}/checkout-sessions/:id/cancel`,
-    ucpRoute(deps, async (req, res) => {
+    ucpRoute(deps, (req, res) => idempotent(idempotency, req, res, async () => {
       const id = String(req.params["id"]);
       await withSessionLock(deps, id, res, async () => {
         const session = await loadSession(deps, id);
@@ -586,17 +617,17 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         await deps.sessions.save(session);
         res.json(await checkoutResponse(deps, session, originOf(req)));
       });
-    }),
+    })),
   );
 
   app.post(
     `${prefix}/checkout-sessions/:id/complete`,
-    ucpRoute(deps, async (req, res) => {
+    ucpRoute(deps, (req, res) => idempotent(idempotency, req, res, async () => {
       const id = String(req.params["id"]);
       const idempotencyKey = readIdempotencyKey(req);
       const input = completeInput.parse(req.body ?? {});
       await withSessionLock(deps, id, res, () => complete(deps, id, idempotencyKey, input, res, originOf(req)));
-    }),
+    })),
   );
 }
 
@@ -610,8 +641,13 @@ async function complete(
 ): Promise<void> {
   const session = await loadSession(deps, id);
   if (session === undefined) return sendError(res, 404, "not_found", `no checkout session "${id}"`);
-  // A completed checkout is never charged twice: any later `complete` reads it back.
+  // A completed checkout is never charged twice. A retry with the key that completed it
+  // was answered above from the idempotency memory, or reads it back here; a request
+  // with any other key is a new attempt on a finished checkout, and is refused (T131).
   if (session.status === "completed") {
+    if (idempotencyKey !== null && session.completeIdempotencyKey !== `ucp:${idempotencyKey}`) {
+      return sendError(res, 409, "invalid_state", "checkout is already completed");
+    }
     res.json(await checkoutResponse(deps, session, origin));
     return;
   }

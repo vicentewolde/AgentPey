@@ -15,7 +15,7 @@ import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_ORDER, UCP_VERSION, V
 import type { Express, Request, Response } from "express";
 
 import type { OrderRecord, OrderStore } from "../orders.js";
-import { receiptExtension } from "./checkout.js";
+import { SHIPPING_OPTION_TITLE, receiptExtension } from "./checkout.js";
 
 /** What the order knows about its receipt's dispute: none, one read from the chain, or a read that failed. */
 export type DisputeLookup = { kind: "none" } | { kind: "found"; contractId: string; dispute: DisputeRecord } | { kind: "unavailable" };
@@ -121,6 +121,7 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
                 id: "exp_1",
                 line_items: [{ id: "li_1", quantity: record.quantity }],
                 method_type: "shipping",
+                description: SHIPPING_OPTION_TITLE,
                 // Country only: the order id travels inside the public receipt, so
                 // anyone holding a receipt can read this. The address stays with the store.
                 destination: { address_country: shipping.country },

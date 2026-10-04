@@ -607,3 +607,97 @@ describe("a UCP order whose receipt is not anchored yet is never looked up (T127
   });
 });
 
+
+describe("UCP conformance fixes (T131)", () => {
+  const h = harness();
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+  const key = (k: string) => ({ "Idempotency-Key": k });
+
+  it("returns a payment object, without echoing any instrument, valid against the official schema", async () => {
+    const { body } = await h.create(ready("gorro-andes"));
+    expect(ucpErrors(CHECKOUT_SCHEMA, body)).toEqual([]);
+    expect(body["payment"]).toEqual({ instruments: [] });
+  });
+
+  it("refuses a UCP version it does not serve with 422 version_unsupported, on checkout and catalog alike", async () => {
+    for (const [method, path, body] of [
+      ["POST", "/checkout-sessions", ready("gorro-andes")],
+      ["POST", "/catalog/search", { query: "gorro" }],
+    ] as const) {
+      const res = await h.call(method, path, body, { "UCP-Agent": 'profile="https://agentpey.com/ucp/platform/agentpey.json"; version="2099-01-01"' });
+      expect(res.status).toBe(422);
+      expect(ucpErrors(ERROR_SCHEMA, res.body)).toEqual([]);
+      expect(res.body.messages).toEqual([expect.objectContaining({ code: "version_unsupported", severity: "unrecoverable" })]);
+    }
+    const served = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), { "UCP-Agent": 'profile="https://agentpey.com/ucp/platform/agentpey.json"; version="2026-04-08"' });
+    expect(served.status).toBe(201);
+  });
+
+  it("says a product does not exist in words a platform can match", async () => {
+    const { status, body } = await h.create(ready("no-such-product"));
+    expect(status).toBe(400);
+    expect(body.messages).toEqual([expect.objectContaining({ code: "item_unavailable", content: expect.stringContaining("not found") })]);
+  });
+
+  it("describes the order's shipping with the option the checkout offered", async () => {
+    const { body: created } = await h.create(ready("gorro-andes"));
+    const { body: done } = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
+    const order = await h.call("GET", `/orders/${done.order?.id}`);
+    expect(ucpErrors(ORDER_SCHEMA, order.body)).toEqual([]);
+    expect(order.body["fulfillment"]).toEqual({ expectations: [expect.objectContaining({ description: "Envío coordinado por la tienda" })] });
+  });
+
+  it("create: the same key and body answer the same session; the same key with another body is a 409 and creates nothing", async () => {
+    const first = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), key("create-1"));
+    const again = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), key("create-1"));
+    expect(again.status).toBe(first.status);
+    expect(again.body).toEqual(first.body);
+    const other = await h.call("POST", "/checkout-sessions", ready("polera-valpo-l"), key("create-1"));
+    expect(other.status).toBe(409);
+    expect(other.body.messages).toEqual([expect.objectContaining({ code: "idempotency_conflict" })]);
+    // Without a key, every create is a new session, as before.
+    const a = await h.create(ready("gorro-andes"));
+    const b = await h.create(ready("gorro-andes"));
+    expect(a.body.id).not.toBe(b.body.id);
+  });
+
+  it("update: the same key and body answer the same; another body under that key is a 409 and changes nothing", async () => {
+    const { body: created } = await h.create(ready("gorro-andes"));
+    const first = await h.call("PUT", `/checkout-sessions/${created.id}`, ready("gorro-andes", 2), key("update-1"));
+    const again = await h.call("PUT", `/checkout-sessions/${created.id}`, ready("gorro-andes", 2), key("update-1"));
+    expect(again.body).toEqual(first.body);
+    const other = await h.call("PUT", `/checkout-sessions/${created.id}`, ready("gorro-andes", 3), key("update-1"));
+    expect(other.status).toBe(409);
+    const read = await h.call("GET", `/checkout-sessions/${created.id}`);
+    expect(read.body.totals.find((t) => t.type === "total")?.amount).toBe(2 * 12990);
+  });
+
+  it("complete: a retry with the same key answers the same and settles once; another body under that key is a 409", async () => {
+    const { body: created } = await h.create(ready("gorro-andes"));
+    const pay = instrument(requirementsOf(created));
+    const before = h.facilitator.settleCalls.length;
+    const first = await h.call("POST", `/checkout-sessions/${created.id}/complete`, pay, key("complete-1"));
+    const again = await h.call("POST", `/checkout-sessions/${created.id}/complete`, pay, key("complete-1"));
+    expect(first.body.status).toBe("completed");
+    expect(again.body).toEqual(first.body);
+    expect(h.facilitator.settleCalls).toHaveLength(before + 1);
+    const other = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)), key("complete-1"));
+    expect(other.status).toBe(409);
+    expect(h.facilitator.settleCalls).toHaveLength(before + 1);
+  });
+
+  it("complete: a completed checkout refuses a new key with 409 and never settles again; without a key it reads back as before", async () => {
+    const { body: created } = await h.create(ready("gorro-andes"));
+    const first = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)), key("complete-2"));
+    expect(first.body.status).toBe("completed");
+    const settled = h.facilitator.settleCalls.length;
+    const fresh = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)), key("complete-3"));
+    expect(fresh.status).toBe(409);
+    expect(fresh.body.messages).toEqual([expect.objectContaining({ code: "invalid_state" })]);
+    const keyless = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
+    expect(keyless.body.status).toBe("completed");
+    expect(keyless.body.order?.id).toBe(first.body.order?.id);
+    expect(h.facilitator.settleCalls).toHaveLength(settled);
+  });
+});

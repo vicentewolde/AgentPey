@@ -27,6 +27,7 @@ import {
 } from "./ucp/catalog.js";
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { registerUcpOrders } from "./ucp/order.js";
+import { ucpVersionGuard } from "./ucp/negotiation.js";
 import { buildUcpProfile } from "./ucp/profile.js";
 import { MemoryCheckoutSessions, type CheckoutSessionPersistence } from "./ucp/sessions.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
@@ -172,6 +173,9 @@ export function createApp({
     res.set("Cache-Control", cacheHeader);
     res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req) }));
   });
+
+  // Every UCP route answers in a version the platform can read, or says it cannot (T131).
+  app.use(UCP_REST_PREFIX, ucpVersionGuard);
 
   app.post(`${UCP_REST_PREFIX}/catalog/search`, async (req, res) => {
     const request = searchRequestSchema.parse(req.body ?? {});
