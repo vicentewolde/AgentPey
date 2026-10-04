@@ -7815,3 +7815,16 @@ del agente se borró. Tests de la Fase 7 y suite (40/17/20) iguales. `pnpm check
 Pendiente: `/revisar`; push y merge con OK; compra real en `2026-08-25` tras el deploy, con OK. `AGENTS.md`: sin
 cambios. Exponential: T133 en `IN_PROGRESS`.
 
+## 2026-10-03 (21) — cc/t133-ucp-2026-08-25 (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T133 con dos bloqueantes en `ucp/platform-profile.ts` (sin plazo total; sin límite de lecturas,
+DNS por el threadpool compartido con el cobro) y 12 hallazgos más; corregidos los 14 a pedido del usuario. Plazo
+total con `AbortSignal`, c-ares, `sharedPlatformProfileReader` (6 a la vez, 5/s, espera por host), IPv6 por lista
+blanca y sin IP literales, solo la versión en caché, idempotencia con la versión en el alcance, log de perfiles
+ilegibles, tests del GET real con un certificado de prueba (`src/test/tls/`, solo tests). `UCP_VERSION` borrada de
+core. `R-14` e INSTRUCCIONES de Vitrinee al día. `pnpm check`, `vitrinee:check` y la suite (40/17/20) en verde.
+
+Pendiente: push y merge con OK; compra real en `2026-08-25` tras el deploy, con OK. `AGENTS.md`: sin cambios.
+

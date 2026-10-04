@@ -162,6 +162,22 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   página en `apps/vitrinee-portal/public/`. Solo existe en modo plataforma. La
   sesión se firma con una llave derivada de `MASTER_KEY`: no hay variable nueva.
 
+## Estado al 2026-10-03 (T133)
+
+- **Dos versiones de UCP** (`R-6`, `R-14`): `/.well-known/ucp` es el perfil
+  `2026-08-25` y `/.well-known/ucp/2026-04-08` la hoja de la versión vieja.
+  Checkout, orden y catálogo responden en la versión que declara el agente.
+- **Las tiendas hacen solicitudes salientes a URLs que dicta el cliente**: para
+  saber la versión, leen el perfil que señala `UCP-Agent: profile="…"`. Pasa
+  solo por `packages/vitrinee-gateway/src/ucp/platform-profile.ts`, el lector
+  único del proceso (https/443, solo direcciones públicas, conexión fijada, plazo
+  total, límites de concurrencia y ritmo). Cualquier otra lectura de una URL de
+  un tercero (los webhooks de T147) pasa por ese mismo lector; no se escribe un
+  `fetch` nuevo a una URL que manda el cliente. Si se restringe el egress del
+  servicio de Render, estas lecturas van a `https` en el 443.
+- Los tests nunca leen perfiles de verdad: `fakePlatformProfiles()` de
+  `src/test/fixtures.ts` en cada `createApp` de test.
+
 ## Estado al 2026-10-02 (T127)
 
 - **La orden UCP muestra la disputa del recibo** (`E-23`, `E-24`, `VT-37`,

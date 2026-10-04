@@ -283,19 +283,42 @@ pasar sería decir "sin stock" cuando el motivo es el tope.
 
 UCP no pone la versión en un header: el agente la declara en el `ucp.version`
 de su perfil, al que apunta `UCP-Agent: profile="…"`. La tienda lee ese perfil
-con un lector que trata la URL como hostil: solo `https` al puerto 443, el
-nombre se resuelve y se rechaza si alguna dirección es privada, de loopback,
-de enlace local o reservada, y la conexión va a esa misma dirección (sin
-segunda resolución), sin redirecciones, con tope de bytes y de tiempo, y con
-caché. El mismo lector lo usa T147 para la URL del webhook. Si el header trae
+con un lector que trata la URL como hostil, porque llega en rutas sin
+autenticación y en el mismo proceso que cobra:
+
+- solo `https` al puerto 443, a un nombre (nunca a una IP literal), sin
+  credenciales en la URL;
+- el nombre se resuelve con un resolvedor propio (c-ares, no los hilos de
+  libuv que comparten las llamadas al facilitador y a Horizon), y se rechaza
+  si alguna dirección no es pública: IPv4 fuera de los rangos especiales, IPv6
+  solo dentro de `2000::/3` y fuera de los que llevan o relevan IPv4;
+- la conexión va a esa misma dirección, con TLS comprobado contra el nombre;
+- **un plazo total de 3 s** cubre resolver, conectar, TLS y cuerpo (un
+  servidor que gotea bytes se corta ahí), con tope de 128 KiB contado en
+  bytes y sin redirecciones;
+- **un solo lector por proceso**, compartido por todas las tiendas: como
+  máximo 6 lecturas a la vez y un ritmo de 5 por segundo (ráfaga de 20);
+  pasado eso no lee, y la tienda responde en su versión por defecto;
+- un host que falló espera antes de volver a leerse, más cada vez (1 a 10 min);
+- guarda solo la versión, nunca el documento.
+
+Si un cliente cierra la conexión, la lectura compartida sigue hasta el plazo
+(otra solicitud puede estar esperando el mismo perfil): el costo queda acotado
+por el plazo y el límite de lecturas. El mismo lector lo usa T147 para la URL
+del webhook. Si el header trae
 un parámetro `version="…"` (no es de la spec, pero la suite oficial lo usa), se
 respeta. Una versión declarada que la tienda no sirve recibe 422
 `version_unsupported`.
 
 **Cuando la versión no se puede saber** (sin `UCP-Agent`, perfil que no
-responde o que no cumple), la tienda responde en **`2026-08-25`**, la más
-nueva. Lo decidió el usuario; la propuesta era `2026-04-08`, para no cambiar
-nada a un cliente actual que no declare versión. Los clientes de AgentPey
+responde, que no cumple o que no se leyó por los límites), la tienda responde
+en **`2026-08-25`**, la más nueva. Lo decidió el usuario; la propuesta era
+`2026-04-08`, para no cambiar nada a un cliente actual que no declare versión.
+**Esto se aparta de UCP:** la spec responde un perfil ilegible con
+`invalid_profile_url` (400), `profile_unreachable` (424) o `profile_malformed`
+(422). Cada vez que pasa, la tienda lo deja en el log (host y motivo, a lo más
+una línea por minuto y host), para que nadie vea derivar en silencio al agente
+de AgentPey si agentpey.com no responde. Los clientes de AgentPey
 declaran su perfil y siguen recibiendo `2026-04-08` mientras ese perfil diga
 `2026-04-08`.
 

@@ -444,6 +444,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T147, T148 y T149 agregadas a pedido del usuario (`R-12`): eventos de despacho y webhooks, varios productos por compra, consentimiento hasta la tienda. Bloque B, después de T133; en la línea de corte van después de T134 |
 | 2026-10-03 | T131: tienda de conformidad local (`R-13`), `pnpm run ucp:conformance`, cinco arreglos en el checkout UCP (`VT-42`). Corrida final: 40 pasan, 17 fallan, 20 se saltan. El 422 `version_unsupported` que pide T133 quedó hecho aquí. Error de la suite reportado (conformance#116). Cuatro criterios marcados. `/revisar` sin bloqueantes, 12 hallazgos corregidos; cerrada |
 | 2026-10-03 | T133: perfil `2026-08-25` con la hoja `2026-04-08` en `supported_versions`, negociación por el perfil del agente con un lector endurecido (`R-14`, defecto `2026-08-25` por decisión del usuario), respuestas según la versión, perfil de plataforma `agentpey-2026-08-25.json`. Tres criterios marcados; falta la compra real tras el deploy |
+| 2026-10-03 | T133, `/revisar`: dos bloqueantes en el lector de perfiles (sin plazo total, sin límite de lecturas) y 12 hallazgos más, corregidos a pedido del usuario; `R-14` precisada (límites exactos y la desviación de los códigos de error de UCP) |
 
 ## 11. Fuentes externas
 
