@@ -8,6 +8,6 @@ Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bi
 [ RUN      ] IdempotencyTest.test_idempotency_update
 [       OK ] IdempotencyTest.test_idempotency_update
 ----------------------------------------------------------------------
-Ran 4 tests in 3.032s
+Ran 4 tests in 1.041s
 
 OK

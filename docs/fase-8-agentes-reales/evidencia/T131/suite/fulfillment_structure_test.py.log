@@ -16,6 +16,6 @@ Traceback (most recent call last):
 AssertionError: 400 not found in [200, 201] : Expected status [200, 201], got 400. Resp: {"ucp":{"version":"2026-04-08","status":"error"},"messages":[{"type":"error","code":"invalid_request","content":"this store sells one product per checkout; send one line item","severity":"recoverable"}]}
 
 ----------------------------------------------------------------------
-Ran 2 tests in 0.836s
+Ran 2 tests in 0.640s
 
 FAILED (failures=1)

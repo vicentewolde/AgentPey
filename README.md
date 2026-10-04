@@ -325,6 +325,12 @@ pnpm run deploy:policy-rail -- --profile ucp --principal G...
 pnpm run ucp:buy -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666
 ```
 
+The official UCP conformance suite, against a local Vitrinee store that pays with the suite's test method (T131; needs [`uv`](https://docs.astral.sh/uv/)). Results, test by test, in [`docs/fase-8-agentes-reales/evidencia/T131.md`](docs/fase-8-agentes-reales/evidencia/T131.md):
+
+```bash
+pnpm run ucp:conformance
+```
+
 To see the network refuse a purchase above the rail's per-transaction limit
 (nothing is sent; the checkout is canceled):
 

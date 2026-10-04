@@ -20,6 +20,6 @@ Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bi
 [ RUN      ] FulfillmentTest.test_unknown_customer_no_address
 [       OK ] FulfillmentTest.test_unknown_customer_no_address
 ----------------------------------------------------------------------
-Ran 10 tests in 3.151s
+Ran 10 tests in 2.482s
 
 OK (skipped=8)

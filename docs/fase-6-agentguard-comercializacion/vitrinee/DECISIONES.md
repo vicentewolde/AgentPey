@@ -1172,8 +1172,19 @@ solicitud recibe 409 `idempotency_conflict` sin efecto. Un checkout completado
 rechaza una clave **nueva** con 409 `invalid_state`; la clave que lo completó,
 o una solicitud sin clave, lo sigue leyendo como antes. En ningún caso se
 liquida dos veces: esa garantía sigue saliendo de la sesión, no de la memoria
-de claves. La memoria de claves vive en el proceso, un día; perderla en un
-reinicio cuesta a lo sumo una sesión `incomplete` repetida.
+de claves. La memoria de claves vive en el proceso, un día, con tope (1.000
+respuestas y 2 MB por tienda, sale la más vieja), y la clave se separa por el
+`profile` de `UCP-Agent`: dos plataformas con la misma clave no se cruzan.
+`complete` solo guarda un checkout `completed` o un error 4xx; una respuesta
+recuperable (sin stock por una reserva, liquidación rechazada, precio cambiado)
+no se guarda, y el reintento con la misma clave corre de verdad.
+
+Lo que no garantiza, y está bien que no: perderla en un reinicio cuesta a lo
+sumo una sesión `incomplete` repetida; dos creaciones **simultáneas** con la
+misma clave pasan las dos como nuevas y crean dos sesiones (en `complete` el
+lock de sesión responde 409 a la segunda); y si un checkout se cerró sin clave,
+o con otra clave tras un reinicio, una solicitud con clave nueva recibe 409.
+Todo eso falla cerrado: ninguna de esas rutas liquida.
 
 Y `UCP-Agent` con un `version` que la tienda no sirve recibe 422
 `version_unsupported` en cualquier ruta UCP, antes de que corra la ruta. Sin

@@ -7776,6 +7776,19 @@ Qué: `R-12` (T147 a T149 al spec, a pedido del usuario; tickets creados). T131:
 40/17/20, tabla test por test en `evidencia/T131.md`. Error de la suite reportado con OK del usuario:
 Universal-Commerce-Protocol/conformance#116. `express` como devDependency de la raíz (misma versión ya instalada).
 
-Pendiente: el usuario decide sobre el test del tope de 100 unidades (`R-13`); `/revisar`; push y merge con OK.
+Pendiente (al escribir esta entrada): el usuario decide sobre el test del tope de 100 unidades (`R-13`; decidió
+dejarlo fallando, 239454b); `/revisar`; push y merge con OK.
 `AGENTS.md`: sin cambios (nada delegable). Exponential: T131 en `IN_PROGRESS`; T147 a T149 creados.
+
+## 2026-10-03 (18) — cc/t131-conformidad-ucp (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T131 sin bloqueantes; corregidos los 12 hallazgos a pedido del usuario. Memoria de
+`Idempotency-Key` con tope (1.000 respuestas, 2 MB por tienda) y separada por `profile`; `complete` solo guarda
+respuestas finales; runner que limpia secreto y rutas antes de leer; test de imports sobre todos los `src`; errores
+tipados; evidencia precisada (tres pases sin significado, cifras con log). `VT-42` ampliada. La suite da lo mismo,
+40/17/20.
+
+Pendiente: push y merge con OK. `AGENTS.md`: sin cambios. Exponential: T131 en `IN_PROGRESS`.
 

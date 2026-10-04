@@ -6,6 +6,6 @@ Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bi
 [ RUN      ] ProtocolTest.test_version_negotiation
 [       OK ] ProtocolTest.test_version_negotiation
 ----------------------------------------------------------------------
-Ran 3 tests in 1.255s
+Ran 3 tests in 0.567s
 
 OK (skipped=1)

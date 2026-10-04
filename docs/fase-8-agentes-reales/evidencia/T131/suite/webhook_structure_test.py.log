@@ -93,6 +93,6 @@ Traceback (most recent call last):
 AssertionError: [] is not true : no order-event webhook delivered for the completed order (order.md: MUST send 'Order created' event)
 
 ----------------------------------------------------------------------
-Ran 6 tests in 33.662s
+Ran 6 tests in 35.492s
 
 FAILED (failures=6)
