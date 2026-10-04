@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T129 · Claude y ChatGPT conectados con la guía del README; ChatGPT compra y paga él mismo, Claude cotiza y verifica (`R-11`)
-**Siguiente paso:** `/revisar` de T131 y merge con OK. Después T130 (la tienda la consigue el usuario) y T133. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T131 · la suite oficial de conformidad UCP corre contra una tienda local: 40 pasan, 17 fallan con motivo escrito, 20 se saltan; cinco arreglos en el checkout real (`VT-42`)
+**Siguiente paso:** `/tarea T133` (UCP `2026-08-25` con `2026-04-08` en paralelo). Después T130 (la tienda la consigue el usuario) y T133. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -17,7 +17,7 @@
 | T128 Servidor MCP de AgentPey | imprescindible | ✅ terminada: en vivo en `mcp.agentpey.com`; orden `ord_muszfkwz2604255e03` cotizada por Claude y pagada por la persona (`R-11`) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; evidencia de cierre en [PR #47](https://github.com/vicentewolde/AgentPey/pull/47), mergeado |
 | T129 Claude y ChatGPT conectados | imprescindible | ✅ terminada: guía en el README; compras desde Claude (`R-11`) y desde ChatGPT, que paga él mismo | `cc/t129-conectar-claude-chatgpt`, mergeada |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
-| T131 Suite oficial de conformidad UCP | imprescindible | 👀 en revisión: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp` (sin push) |
+| T131 Suite oficial de conformidad UCP | imprescindible | ✅ terminada: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp`, mergeada ([PR #49](https://github.com/vicentewolde/AgentPey/pull/49)) |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ⏳ pendiente | |
 | T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |

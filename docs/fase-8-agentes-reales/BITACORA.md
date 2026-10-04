@@ -27,7 +27,7 @@ confirmación.
 | T128 Servidor MCP | cerrada |
 | T129 Claude y ChatGPT conectados | cerrada |
 | T130 Tienda de terceros | pendiente |
-| T131 Suite de conformidad UCP | en revisión |
+| T131 Suite de conformidad UCP | cerrada |
 | T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | pendiente |
 | T134 AP2 en el checkout | pendiente |
@@ -204,7 +204,7 @@ la evidencia mostraba salidas compactadas a mano como si fueran crudas (ya son
 literales, también en T128), y faltaba ver a Claude leyendo la orden, la
 tercera parte de `R-11` (ya hay captura). Se corrigieron los diez hallazgos.
 
-## T131 · La suite oficial de conformidad de UCP (2026-10-03, en revisión)
+## T131 · La suite oficial de conformidad de UCP (2026-10-03, cerrada)
 
 **Qué quedó funcionando.** Con un comando, `pnpm run ucp:conformance`, se corre
 la suite oficial de UCP completa contra una tienda de Vitrinee que solo existe
@@ -234,4 +234,9 @@ repositorio (conformance#116).
 varios productos, consentimiento: T147 a T149); 7 quedan fuera a propósito
 (`R-12`), y 1 es el tope de 100 unidades por compra, que se deja así por decisión del
 usuario: hacerlo pasar sería decir "sin stock" cuando el motivo es el tope.
+**La revisión.** `/revisar` sin bloqueantes: confirmó que el pago de prueba no
+tiene camino a una tienda desplegada y que nada se liquida dos veces. Se
+corrigieron sus 12 hallazgos; lo más importante, que la memoria de claves de
+idempotencia ahora tiene tope (las rutas no piden autenticación) y no congela
+un error pasajero de `complete`. La suite dio lo mismo después.
 

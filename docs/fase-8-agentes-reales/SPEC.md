@@ -442,7 +442,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T128 cerrada: en vivo en `mcp.agentpey.com` y compra real en `agentcommerce` (orden `ord_muszfkwz2604255e03`, recibo con los tres checks en verde). Claude en claude.ai no ejecuta `pay`; con el OK del usuario, `R-11` precisa qué es "una compra desde Claude" en T128, T129, T130 y el criterio 1 de la fase. Criterio 2 de la fase marcado |
 | 2026-10-03 | T129: Claude y ChatGPT conectados y comprando; guía en `apps/mcp/README.md`. ChatGPT sí llama `pay` tras la confirmación de la persona. Tres criterios marcados. `/revisar` sin bloqueantes, diez hallazgos corregidos; cerrada |
 | 2026-10-03 | T147, T148 y T149 agregadas a pedido del usuario (`R-12`): eventos de despacho y webhooks, varios productos por compra, consentimiento hasta la tienda. Bloque B, después de T133; en la línea de corte van después de T134 |
-| 2026-10-03 | T131: tienda de conformidad local (`R-13`), `pnpm run ucp:conformance`, cinco arreglos en el checkout UCP (`VT-42`). Corrida final: 40 pasan, 17 fallan, 20 se saltan. El 422 `version_unsupported` que pide T133 quedó hecho aquí. Error de la suite reportado (conformance#116). Cuatro criterios marcados; falta `/revisar` |
+| 2026-10-03 | T131: tienda de conformidad local (`R-13`), `pnpm run ucp:conformance`, cinco arreglos en el checkout UCP (`VT-42`). Corrida final: 40 pasan, 17 fallan, 20 se saltan. El 422 `version_unsupported` que pide T133 quedó hecho aquí. Error de la suite reportado (conformance#116). Cuatro criterios marcados. `/revisar` sin bloqueantes, 12 hallazgos corregidos; cerrada |
 
 ## 11. Fuentes externas
 
