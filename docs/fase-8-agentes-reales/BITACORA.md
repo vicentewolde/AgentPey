@@ -43,6 +43,9 @@ confirmación.
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | pendiente |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
+| T147 Webhooks de orden | pendiente |
+| T148 Varios productos | pendiente |
+| T149 Consentimiento | pendiente |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.

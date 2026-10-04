@@ -17,7 +17,7 @@
 | T128 Servidor MCP de AgentPey | imprescindible | ✅ terminada: en vivo en `mcp.agentpey.com`; orden `ord_muszfkwz2604255e03` cotizada por Claude y pagada por la persona (`R-11`) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; evidencia de cierre en [PR #47](https://github.com/vicentewolde/AgentPey/pull/47), mergeado |
 | T129 Claude y ChatGPT conectados | imprescindible | ✅ terminada: guía en el README; compras desde Claude (`R-11`) y desde ChatGPT, que paga él mismo | `cc/t129-conectar-claude-chatgpt`, mergeada |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
-| T131 Suite oficial de conformidad UCP | imprescindible | ⏳ pendiente | |
+| T131 Suite oficial de conformidad UCP | imprescindible | 🔨 en curso: plan | `cc/t131-conformidad-ucp` |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ⏳ pendiente | |
 | T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |
@@ -33,8 +33,11 @@
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
+| T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ⏳ pendiente | |
+| T148 Varios productos por compra (`R-12`) | si alcanza | ⏳ pendiente | |
+| T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ⏳ pendiente | |
 
-Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T143.
+Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143.
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
@@ -100,3 +103,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T128 cerrada: el usuario puso dominio, variables y CNAME; `mcp.agentpey.com` responde 401 con sus metadatos y la página de inicio de sesión carga con CSP y Freighter fijado. En claude.ai, Claude cotizó un imán y se negó dos veces a llamar `pay` (mover un activo financiero lo deja a la persona); el usuario pagó esa cotización desde el MCP Inspector. Orden `ord_muszfkwz2604255e03`, Shopify `18990053523762`, tx `ba3abab7…`, `vitrinee:verify` en verde y en rojo manipulado. `R-11` aprobada: "desde Claude" es Claude cotiza y verifica, la persona paga.
 - 2026-10-03, T129: guía para conectar Claude y ChatGPT en `apps/mcp/README.md` (y resumen en el README raíz), con los menús reales. ChatGPT Plus en modo desarrollador (Create custom MCP server, OAuth) conectó a la primera y **llamó `pay` él mismo** tras "confirmo el pago": orden `ord_mut0b5rm04b66bd5de`, Shopify `18990505394482`, tx `d6c2fa8d…`, recibo en verde. La de Claude es la de T128 (`R-11`). Rail: 3,14 de 5,00 gastados hoy.
 - 2026-10-03, T129 `/revisar`: sin bloqueantes; corregidos los diez hallazgos (evidencia literal, también en T128; captura de Claude leyendo la orden; README reproducible). Cerrada y mergeada con OK del usuario.
+- 2026-10-03, T131 plan aprobado: modo de conformidad solo local, primera corrida y parar. `R-12`: el usuario agrega T147 (webhooks de orden), T148 (varios productos) y T149 (consentimiento hasta la tienda), Bloque B después de T133; tickets creados. `uv` instalado.

@@ -50,7 +50,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T128 | `cmusmut0q0005kx04v6b55rxr` | Servidor MCP de AgentPey | SPEC | `DONE` | 2026-10-03 | 2026-10-03 | 2026-10-03 | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md), [R-1 a R-11](../fase-8-agentes-reales/DECISIONES.md) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; evidencia de cierre en [PR #47](https://github.com/vicentewolde/AgentPey/pull/47), mergeado |
 | T129 | `cmusmuu5c0009kx04bxcst1e3` | Claude y ChatGPT conectados | SPEC | `DONE` | 2026-10-03 | 2026-10-03 | 2026-10-03 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-11](../fase-8-agentes-reales/DECISIONES.md) | mergeada ([PR #48](https://github.com/vicentewolde/AgentPey/pull/48)) |
 | T130 | `cmusmuval000dkx04643nofzw` | Tienda de terceros real | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
-| T131 | `cmusmuwdw000hkx04g3g7t8ia` | Suite oficial de conformidad UCP | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T131 | `cmusmuwdw000hkx04g3g7t8ia` | Suite oficial de conformidad UCP | SPEC | `IN_PROGRESS` | 2026-10-03 | 2026-10-03 | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T132 | `cmusmuxhh000lkx04w8xgzx8c` | Coherencia del recibo (brecha 10 del anexo) | SPEC | `DONE` | 2026-10-03 | 2026-10-03 | 2026-10-03 | [SPEC](../fase-8-agentes-reales/SPEC.md), [VT-39 a VT-41](../fase-6-agentguard-comercializacion/vitrinee/DECISIONES.md) | mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 | `cmusmuykm000pkx04knp793iq` | UCP `2026-08-25`, con `2026-04-08` en paralelo | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T134 | `cmusmuzmr000tkx04nyi33mal` | AP2 dentro del checkout UCP | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
@@ -66,6 +66,9 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T144 | `cmusmvarv001xkx045fmtjf76` | dots, Muse y Grok Bot como agentes de AgentPey (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T145 | `cmusmvbuz0021kx04srcpkpxd` | Equipos SCF pagando IA y servicios con Stellar (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T146 | `cmusmvcw70025kx042wrweuku` | Demo: presupuesto de equipo en testnet (pide aprobación) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T147 | `cmut2akui001hku048kdg6eoh` | Eventos de despacho en la orden y webhooks al agente | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-12](../fase-8-agentes-reales/DECISIONES.md) | |
+| T148 | `cmut2alv6001lku04j5hp9jat` | Varios productos por compra | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-12](../fase-8-agentes-reales/DECISIONES.md) | |
+| T149 | `cmut2amyi001pku0481we01jg` | Consentimiento del comprador hasta la tienda | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-12](../fase-8-agentes-reales/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y

@@ -39,6 +39,9 @@ Lo que abre `P-16`, todo en testnet:
   Trustless Work como resolutores, dots, Muse y Grok Bot como clientes, y
   pagos de servicios desde la tesorería de un equipo.
 - La coherencia del recibo (brecha 10 del anexo).
+- Tres capacidades de UCP en el checkout de Vitrinee (`R-12`, agregadas el
+  3-oct): eventos de despacho en la orden con webhooks al agente, varios
+  productos por compra, y el consentimiento del comprador hasta la tienda.
 
 ## 3. Fuera de alcance
 
@@ -229,6 +232,39 @@ más rápido que lo estimado.
   - [ ] sin la extensión negociada, la compra funciona igual que hoy
   - [ ] el diff no toca `checkMandate` ni el enforcement de `scope.limits` o `perDay`
 
+#### T147 · Eventos de despacho en la orden y webhooks al agente (`R-12`)
+- **Prioridad:** si alcanza · **Estimación:** 10 h · **Delegable a Codex:** no (lectura de URL dictadas por terceros, firma con la llave de la tienda)
+- **Depende de:** T131 y T133
+- **Descripción:** la orden UCP gana `fulfillment.events` (despachado, y lo que llegue de la disputa de T127), y la tienda avisa al agente con un webhook de orden. La URL sale del perfil que el agente declara en `UCP-Agent` (`capabilities["dev.ucp.shopping.order"][0].config.webhook_url`), así que se lee como una URL hostil: solo `https` (salvo el modo de conformidad local), nunca una dirección privada o de enlace local, con tope de bytes y de tiempo, y sin seguir redirecciones a otro host. Cada entrega lleva `Webhook-Id` y `Webhook-Timestamp`, va firmada con la llave de la tienda y se reintenta con el mismo id y el mismo cuerpo. En una tienda real el despacho sale de la plataforma (Shopify o Jumpseller); en la tienda de prueba, del endpoint de simulación de T131.
+- **Archivos principales:** `packages/vitrinee-gateway/src/ucp/order.ts`, `packages/vitrinee-gateway/src/ucp/` (webhooks, nuevo), `packages/vitrinee-adapters/src/{shopify,jumpseller}/`
+- **Hecho cuando:**
+  - [ ] la orden muestra el evento de despacho y valida contra el esquema de orden (test sin red)
+  - [ ] la tienda entrega el webhook, firmado, y lo reintenta ante un 500 con el mismo id (test con un receptor local)
+  - [ ] una URL de webhook `http`, privada, de enlace local o que redirige a otro host se rechaza sin pedirla (tests)
+  - [ ] los tests de webhook de la suite de T131 pasan en el modo de conformidad, y la tabla de T131 se actualiza
+  - [ ] un despacho real en una tienda de testnet llega como evento, con OK del usuario
+
+#### T148 · Varios productos por compra (`R-12`)
+- **Prioridad:** si alcanza · **Estimación:** 6 h · **Delegable a Codex:** no (monto cobrado)
+- **Depende de:** T131 y T133
+- **Descripción:** un checkout UCP con más de una línea. El total, la cotización x402, el pedido en la plataforma y los ítems del recibo cuadran entre sí al centavo; la coherencia de T132 se extiende a varias líneas. Hoy más de una línea da 400.
+- **Archivos principales:** `packages/vitrinee-gateway/src/ucp/checkout.ts`, `packages/vitrinee-core/src/receipt.ts`, `packages/vitrinee-adapters/src/`, `apps/agent/src/payment/ucp.ts`
+- **Hecho cuando:**
+  - [ ] un checkout con dos productos cotiza, cobra una vez y crea un pedido con dos líneas (test sin red)
+  - [ ] el verificador rechaza un recibo cuyas líneas no suman el total (test)
+  - [ ] `executeUcpPayment` y `ucp-contract.test.ts` siguen en verde con una línea
+  - [ ] una compra real con dos productos y recibo con los tres checks en verde, con OK del usuario
+
+#### T149 · Consentimiento del comprador hasta la tienda (`R-12`)
+- **Prioridad:** si alcanza · **Estimación:** 2 h · **Delegable a Codex:** no
+- **Depende de:** T131
+- **Descripción:** `dev.ucp.shopping.buyer_consent`: el checkout guarda `buyer.consent` y lo pasa a la plataforma (`buyer_accepts_marketing` en Shopify). Si Jumpseller no tiene un campo equivalente, en Jumpseller no se anuncia la capacidad y queda escrito. No se anuncia en una tienda donde el consentimiento no llega a ningún lado.
+- **Archivos principales:** `packages/vitrinee-gateway/src/ucp/`, `packages/vitrinee-adapters/src/shopify/`
+- **Hecho cuando:**
+  - [ ] el consentimiento llega al pedido de Shopify (test con el adaptador)
+  - [ ] el perfil solo anuncia la capacidad donde llega (test)
+  - [ ] el test de consentimiento de la suite pasa, y la tabla de T131 se actualiza
+
 #### T135 · MPP charge sobre Stellar · empieza como prueba técnica, parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no
 - **Depende de:** spec aprobado
@@ -354,21 +390,21 @@ Es la tarea T142. Se escribe al cerrar el Bloque A.
 | 3–4 oct | `P-16`, spec aprobado, T132 y el primer PR de T128 (herramientas y pago, en local) |
 | 5 oct | Segundo PR de T128 (OAuth y deploy), T129 (Claude) y T131 |
 | 6 oct | T130, T133 y T143 |
-| 7 oct | T134, T135 y T144 |
-| 8 oct | Reembolso real de T124; T136; T138, T139 y T145 (pruebas técnicas) |
+| 7 oct | T134, T135, T144 y T147 |
+| 8 oct | Reembolso real de T124; T136, T148 y T149; T138, T139 y T145 (pruebas técnicas) |
 | 9 oct | T137, T141, T146 si T145 lo permite, y T140 si el usuario la aprobó |
 | 10 oct | Congelar código; T142, grabación |
 | 11 oct | Edición y entrega del video |
 
 **Línea de corte.** Si el 7-oct en la noche el Bloque A no está completo, se
 corta en este orden: T140, T146, T137, T144 (salvo dots), T136, T135, T134,
-T143. T128 a T132 y el reembolso real no se tocan. Las pruebas técnicas T138,
+T149, T148, T147, T143. T128 a T132 y el reembolso real no se tocan. Las pruebas técnicas T138,
 T139 y T145 quedan como documentos aunque no se construya nada. **Esto no se
 renegocia el 10-oct.**
 
 | Riesgo | Mitigación |
 |---|---|
-| Diecinueve tareas y unas 135 h estimadas en siete días | El orden por bloques y la línea de corte. El Bloque A solo son unas 41 h |
+| Veintidós tareas y unas 153 h estimadas en siete días | El orden por bloques y la línea de corte. El Bloque A solo son unas 41 h |
 | OAuth desde el inicio (`R-2`) mueve la primera compra desde Claude del 4 al 5 de octubre | T128 en dos PR: el pago se prueba en local el 4, sin esperar a OAuth. Si OAuth no está el 6-oct en la noche, parar y mostrar |
 | El Bloque A depende del usuario: dominio y DNS, fondear el rail, conseguir la tienda, conectar sus cuentas | Lista de pendientes del usuario en `docs/ESTADO.md` desde el primer día; T128 se prueba primero contra `agentcommerce` |
 | Un servidor en internet que guarda una llave que paga | Rail propio con topes bajos aplicados por la red, solo testnet, OAuth 2.1 con validación de audiencia (`R-2`), y `pay` exige cotización vigente y confirmación |
@@ -405,6 +441,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T128, PR 2, `/revisar`: sin bloqueantes; corregidos los 14 hallazgos a pedido del usuario (renovación de un uso, wallet comprobada contra el rail en la red, desafío sin estado, retorno de loopback sin puerto, errores en JSON, CSP exacta, entre otros). El hallazgo de una URL de retorno en `claude.com` no aplica: la documentación de Claude solo lista `claude.ai` |
 | 2026-10-03 | T128 cerrada: en vivo en `mcp.agentpey.com` y compra real en `agentcommerce` (orden `ord_muszfkwz2604255e03`, recibo con los tres checks en verde). Claude en claude.ai no ejecuta `pay`; con el OK del usuario, `R-11` precisa qué es "una compra desde Claude" en T128, T129, T130 y el criterio 1 de la fase. Criterio 2 de la fase marcado |
 | 2026-10-03 | T129: Claude y ChatGPT conectados y comprando; guía en `apps/mcp/README.md`. ChatGPT sí llama `pay` tras la confirmación de la persona. Tres criterios marcados. `/revisar` sin bloqueantes, diez hallazgos corregidos; cerrada |
+| 2026-10-03 | T147, T148 y T149 agregadas a pedido del usuario (`R-12`): eventos de despacho y webhooks, varios productos por compra, consentimiento hasta la tienda. Bloque B, después de T133; en la línea de corte van después de T134 |
 
 ## 11. Fuentes externas
 

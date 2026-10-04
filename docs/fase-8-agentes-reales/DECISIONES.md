@@ -227,3 +227,25 @@ parezca un pago.** Sería engañar al modelo y le quitaría sentido a la demo.
 **Alternativa descartada: dar el criterio por no cumplido y esperar a ChatGPT.**
 El pedido, el recibo y el pago en la red son los mismos; lo único que cambia es
 quién aprieta el botón.
+
+### R-12 · Tres capacidades de UCP entran a la fase: webhooks de orden, varios productos y consentimiento · `Vigente`
+**Fecha:** 2026-10-03 · **Tarea:** T131 · Propuesta de Claude Code, **decidida por el usuario**
+
+Al planificar T131 se vio que la suite oficial prueba capacidades que Vitrinee
+no tiene. Se eligieron las que sirven a una tienda o a un agente real, no las
+que solo suman tests: eventos de despacho en la orden con webhooks al agente
+(T147; cierra el ciclo compra, recibo y disputa sin que el agente pregunte),
+varios productos por compra (T148; un carrito real), y el consentimiento del
+comprador, solo donde llega a la tienda (T149). Van en el Bloque B, después de
+T133, porque tocan los mismos archivos que la migración a `2026-08-25`.
+
+**Alternativas descartadas, con su motivo, y que la tabla de T131 declara
+fuera:** descuentos (cambian el monto cobrado y cada plataforma valida cupones
+distinto; el riesgo en el cobro no paga el beneficio hoy); que el agente edite
+la orden con `PUT` (el estado de la orden lo maneja la tienda, no el agente);
+tarjeta en claro y token con binding (no se aceptan números de tarjeta; el
+único medio es `stellar_x402`); cliente conocido, envío dinámico y envío
+gratis (Vitrinee no maneja cuentas de cliente ni tarifas; la tienda coordina el
+envío). AP2 en el checkout ya es T134. Y guardar el consentimiento sin pasarlo
+a la tienda: pasaría el test sin significar nada.
+
