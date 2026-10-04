@@ -7764,3 +7764,18 @@ Qué: con OK del usuario, T129 cerrada (ESTADO, BITACORA, SPEC, SYNC) y mergeada
 comentario: CI no corre por filtro de `paths`; `pnpm check` en verde en local.
 
 Pendiente: T131. T130 espera la tienda de terceros. `AGENTS.md`: sin cambios. Exponential: T129 a `DONE`.
+
+## 2026-10-03 (17) — cc/t131-conformidad-ucp (sin push)
+
+Agente: Claude Code.
+
+Qué: `R-12` (T147 a T149 al spec, a pedido del usuario; tickets creados). T131: tienda de conformidad local en
+`scripts/vitrinee/ucp-conformance/` que envuelve `createApp` sin tocar `complete` (`R-13`), `pnpm run ucp:conformance`
+(suite `016ecbc`, SDK `v2026-04-08-6`, `uv` instalado), cinco arreglos en el checkout UCP real (`VT-42`:
+`Idempotency-Key`, 422 `version_unsupported`, `payment`, descripción del despacho, "not found"). Base 28/29/20, final
+40/17/20, tabla test por test en `evidencia/T131.md`. Error de la suite reportado con OK del usuario:
+Universal-Commerce-Protocol/conformance#116. `express` como devDependency de la raíz (misma versión ya instalada).
+
+Pendiente: el usuario decide sobre el test del tope de 100 unidades (`R-13`); `/revisar`; push y merge con OK.
+`AGENTS.md`: sin cambios (nada delegable). Exponential: T131 en `IN_PROGRESS`; T147 a T149 creados.
+

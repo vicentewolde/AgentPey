@@ -1,0 +1,21 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] WebhookTest.test_webhook_event_stream
+[  FAILED  ] WebhookTest.test_webhook_event_stream
+[ RUN      ] WebhookTest.test_webhook_order_address_known_customer
+[  SKIPPED ] WebhookTest.test_webhook_order_address_known_customer - No known customer with stored addresses configured in fixtures.
+[ RUN      ] WebhookTest.test_webhook_order_address_new_address
+[  SKIPPED ] WebhookTest.test_webhook_order_address_new_address - No known customer configured in fixtures.
+======================================================================
+FAIL: test_webhook_event_stream (__main__.WebhookTest.test_webhook_event_stream)
+WebhookTest.test_webhook_event_stream
+Test that completing and then shipping an order each notify.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/webhook_test.py", line 96, in test_webhook_event_stream
+    self.assertTrue(
+AssertionError: [] is not true : no order-event webhook delivered for the completed order
+
+----------------------------------------------------------------------
+Ran 3 tests in 6.658s
+
+FAILED (failures=1, skipped=2)

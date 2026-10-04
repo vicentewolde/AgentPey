@@ -1,0 +1,13 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] IdempotencyTest.test_idempotency_cancel
+[       OK ] IdempotencyTest.test_idempotency_cancel
+[ RUN      ] IdempotencyTest.test_idempotency_complete
+[       OK ] IdempotencyTest.test_idempotency_complete
+[ RUN      ] IdempotencyTest.test_idempotency_create
+[       OK ] IdempotencyTest.test_idempotency_create
+[ RUN      ] IdempotencyTest.test_idempotency_update
+[       OK ] IdempotencyTest.test_idempotency_update
+----------------------------------------------------------------------
+Ran 4 tests in 3.032s
+
+OK

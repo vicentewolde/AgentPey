@@ -1,0 +1,15 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] TotalsTest.test_additive_entries_non_negative
+[       OK ] TotalsTest.test_additive_entries_non_negative
+[ RUN      ] TotalsTest.test_discount_entry_is_negative
+[  SKIPPED ] TotalsTest.test_discount_entry_is_negative - Server emitted no discount entry; sign invariant not applicable.
+[ RUN      ] TotalsTest.test_entries_have_type_and_amount
+[       OK ] TotalsTest.test_entries_have_type_and_amount
+[ RUN      ] TotalsTest.test_single_subtotal_entry
+[       OK ] TotalsTest.test_single_subtotal_entry
+[ RUN      ] TotalsTest.test_single_total_entry
+[       OK ] TotalsTest.test_single_total_entry
+----------------------------------------------------------------------
+Ran 5 tests in 1.306s
+
+OK (skipped=1)

@@ -1,0 +1,11 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] SecurityTest.test_simulation_endpoint_correct_secret
+[       OK ] SecurityTest.test_simulation_endpoint_correct_secret
+[ RUN      ] SecurityTest.test_simulation_endpoint_incorrect_secret
+[       OK ] SecurityTest.test_simulation_endpoint_incorrect_secret
+[ RUN      ] SecurityTest.test_simulation_endpoint_missing_header
+[       OK ] SecurityTest.test_simulation_endpoint_missing_header
+----------------------------------------------------------------------
+Ran 3 tests in 0.885s
+
+OK

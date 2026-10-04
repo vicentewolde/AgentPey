@@ -193,10 +193,10 @@ más rápido que lo estimado.
 - **Descripción:** correr `Universal-Commerce-Protocol/conformance` (Python, `uv`, pytest) contra una tienda de prueba de Vitrinee en `2026-04-08`, con el modo de conformidad de la sección 4.3. Corregir lo que falle en Vitrinee. Lo que no aplica (descuentos, consentimiento, webhooks, si no se implementan) se declara fuera en la configuración de la suite, y queda escrito.
 - **Archivos principales:** `packages/vitrinee-gateway/src/ucp/`, `packages/vitrinee-gateway/src/test/`, `scripts/vitrinee/` (comando nuevo `pnpm run ucp:conformance`)
 - **Hecho cuando:**
-  - [ ] la salida cruda de la suite está en `evidencia/T131.md`, con el commit de la suite
-  - [ ] una tabla dice, test por test, si pasa, si se saltó y por qué, o si falla y por qué
-  - [ ] el modo de conformidad no se puede encender en producción (test: el arranque lo rechaza)
-  - [ ] la frase que se puede decir en el video está escrita con su alcance exacto
+  - [x] la salida cruda de la suite está en `evidencia/T131.md`, con el commit de la suite (`016ecbc`; [evidencia](evidencia/T131.md) §1 y §2, logs en `evidencia/T131/suite/`)
+  - [x] una tabla dice, test por test, si pasa, si se saltó y por qué, o si falla y por qué ([evidencia](evidencia/T131.md) §3: 40 pasan, 17 fallan, 20 se saltan)
+  - [x] el modo de conformidad no se puede encender en producción (test: el arranque lo rechaza; [evidencia](evidencia/T131.md) §6, `R-13`)
+  - [x] la frase que se puede decir en el video está escrita con su alcance exacto ([evidencia](evidencia/T131.md) §7)
 
 #### T132 · Coherencia del recibo (brecha 10 del anexo)
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (verificación de pagos) · **Toca Vitrinee:** sí
@@ -442,6 +442,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T128 cerrada: en vivo en `mcp.agentpey.com` y compra real en `agentcommerce` (orden `ord_muszfkwz2604255e03`, recibo con los tres checks en verde). Claude en claude.ai no ejecuta `pay`; con el OK del usuario, `R-11` precisa qué es "una compra desde Claude" en T128, T129, T130 y el criterio 1 de la fase. Criterio 2 de la fase marcado |
 | 2026-10-03 | T129: Claude y ChatGPT conectados y comprando; guía en `apps/mcp/README.md`. ChatGPT sí llama `pay` tras la confirmación de la persona. Tres criterios marcados. `/revisar` sin bloqueantes, diez hallazgos corregidos; cerrada |
 | 2026-10-03 | T147, T148 y T149 agregadas a pedido del usuario (`R-12`): eventos de despacho y webhooks, varios productos por compra, consentimiento hasta la tienda. Bloque B, después de T133; en la línea de corte van después de T134 |
+| 2026-10-03 | T131: tienda de conformidad local (`R-13`), `pnpm run ucp:conformance`, cinco arreglos en el checkout UCP (`VT-42`). Corrida final: 40 pasan, 17 fallan, 20 se saltan. El 422 `version_unsupported` que pide T133 quedó hecho aquí. Error de la suite reportado (conformance#116). Cuatro criterios marcados; falta `/revisar` |
 
 ## 11. Fuentes externas
 

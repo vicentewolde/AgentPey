@@ -249,3 +249,31 @@ gratis (Vitrinee no maneja cuentas de cliente ni tarifas; la tienda coordina el
 envío). AP2 en el checkout ya es T134. Y guardar el consentimiento sin pasarlo
 a la tienda: pasaría el test sin significar nada.
 
+
+### R-13 · La tienda de conformidad envuelve la app real desde afuera; `complete` no se toca · `Vigente` — implementa `R-3`
+**Fecha:** 2026-10-03 · **Tarea:** T131 · Diseño de Claude Code dentro del plan aprobado por el usuario; el último punto, propuesta pendiente de su OK
+
+El medio de pago de prueba de la suite no existe en ningún código que se
+despliega. `scripts/vitrinee/ucp-conformance/store.ts` arranca el `createApp`
+real con el adaptador `mock` y, delante, traduce el instrumento
+`mock_payment_handler` a una credencial `stellar_x402` para los requisitos que
+la propia sesión guardó; solo el facilitador falso de esa tienda la liquida
+(`success_token` sí, cualquier otro token no). La llave de firma y la cuenta de
+cobro son aleatorias en cada corrida, los anclajes van a memoria, escucha en
+`127.0.0.1` y no arranca con `RENDER`, la base o la llave maestra de la
+plataforma, ni una URL pública que no sea loopback. `loadConfig` rechaza
+`UCP_CONFORMANCE`. La simulación de despacho existe solo ahí. También renombra
+`locality`/`region` a los nombres estándar, por un error de la suite
+(reportado, conformance#116).
+
+**Motivo.** Que el punto de autorización no exista, en vez de que exista
+apagado: no hay una rama de `complete` que un día se pueda encender por error.
+
+**Alternativa descartada.** Una dependencia inyectable en `complete` que acepte
+el pago de prueba: más simple, pero deja en el código desplegado un camino que
+cobra cero si alguien la inyecta.
+
+**Pendiente del usuario.** `test_update_inventory_validation` queda fallando:
+Vitrinee topa en 100 unidades por compra y responde 400 `invalid_request`
+diciéndolo, y la suite (que pide 10.001) espera la palabra "stock". Hacerlo
+pasar sería decir "sin stock" cuando el motivo es el tope.

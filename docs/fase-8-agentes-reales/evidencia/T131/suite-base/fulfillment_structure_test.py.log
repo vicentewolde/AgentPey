@@ -1,0 +1,21 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] FulfillmentStructureTest.test_default_config_single_group_per_method
+[  FAILED  ] FulfillmentStructureTest.test_default_config_single_group_per_method
+[ RUN      ] FulfillmentStructureTest.test_option_titles_distinguish_siblings
+[       OK ] FulfillmentStructureTest.test_option_titles_distinguish_siblings
+======================================================================
+FAIL: test_default_config_single_group_per_method (__main__.FulfillmentStructureTest.test_default_config_single_group_per_method)
+FulfillmentStructureTest.test_default_config_single_group_per_method
+FUL-008: under default config a method has one consolidating group.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/fulfillment_structure_test.py", line 253, in test_default_config_single_group_per_method
+    self.assert_response_status(response, [200, 201])
+  File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
+    self.assertIn(
+AssertionError: 400 not found in [200, 201] : Expected status [200, 201], got 400. Resp: {"ucp":{"version":"2026-04-08","status":"error"},"messages":[{"type":"error","code":"invalid_request","content":"this store sells one product per checkout; send one line item","severity":"recoverable"}]}
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.734s
+
+FAILED (failures=1)

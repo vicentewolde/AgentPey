@@ -1,0 +1,25 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] FulfillmentTest.test_dynamic_fulfillment
+[  SKIPPED ] FulfillmentTest.test_dynamic_fulfillment - No dynamic fulfillment cases configured in fixtures (test_fixtures.dynamic_fulfillment).
+[ RUN      ] FulfillmentTest.test_free_shipping_for_specific_item
+[  SKIPPED ] FulfillmentTest.test_free_shipping_for_specific_item - No free-shipping-eligible item SKU configured in fixtures.
+[ RUN      ] FulfillmentTest.test_free_shipping_on_expensive_order
+[  SKIPPED ] FulfillmentTest.test_free_shipping_on_expensive_order - No free-shipping subtotal threshold configured in fixtures.
+[ RUN      ] FulfillmentTest.test_fulfillment_flow
+[       OK ] FulfillmentTest.test_fulfillment_flow
+[ RUN      ] FulfillmentTest.test_known_customer_multiple_addresses_selection
+[  SKIPPED ] FulfillmentTest.test_known_customer_multiple_addresses_selection - Known customer with at least two stored addresses not configured.
+[ RUN      ] FulfillmentTest.test_known_customer_new_address
+[  SKIPPED ] FulfillmentTest.test_known_customer_new_address - No known customer configured in fixtures.
+[ RUN      ] FulfillmentTest.test_known_customer_no_address
+[  SKIPPED ] FulfillmentTest.test_known_customer_no_address - No known customer without stored addresses configured in fixtures.
+[ RUN      ] FulfillmentTest.test_known_customer_one_address
+[  SKIPPED ] FulfillmentTest.test_known_customer_one_address - No known customer with stored addresses configured in fixtures.
+[ RUN      ] FulfillmentTest.test_known_user_existing_address_reuse
+[  SKIPPED ] FulfillmentTest.test_known_user_existing_address_reuse - No known customer with stored addresses configured in fixtures.
+[ RUN      ] FulfillmentTest.test_unknown_customer_no_address
+[       OK ] FulfillmentTest.test_unknown_customer_no_address
+----------------------------------------------------------------------
+Ran 10 tests in 2.918s
+
+OK (skipped=8)

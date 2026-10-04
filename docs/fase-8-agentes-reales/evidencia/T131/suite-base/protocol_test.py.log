@@ -1,0 +1,23 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] ProtocolTest.test_discovery
+[       OK ] ProtocolTest.test_discovery
+[ RUN      ] ProtocolTest.test_discovery_urls
+[  SKIPPED ] ProtocolTest.test_discovery_urls - Schemas not yet published on remote ucp.dev domain
+[ RUN      ] ProtocolTest.test_version_negotiation
+[  FAILED  ] ProtocolTest.test_version_negotiation
+======================================================================
+FAIL: test_version_negotiation (__main__.ProtocolTest.test_version_negotiation)
+ProtocolTest.test_version_negotiation
+Test protocol version negotiation via headers.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/protocol_test.py", line 339, in test_version_negotiation
+    self.assert_response_status(response, 422)
+  File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
+    self.assertIn(
+AssertionError: 201 not found in [422] : Expected status 422, got 201. Resp: {"ucp":{"version":"2026-04-08","status":"success","capabilities":{"dev.ucp.shopping.checkout":[{"version":"2026-04-08"}],"dev.ucp.shopping.fulfillment":[{"version":"2026-04-08"}],"com.agentpey.shopping.receipt":[{"version":"2026-09-30"}]},"payment_handlers":{"com.agentpey.stellar_x402":[{"id":"stellar_x402","version":"2026-09-30","config":{"x402_version":2,"scheme":"exact","network":"stellar:testnet","asset":{"code":"USDC","contract":"CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA","decimals":7},"pay_to":"GCPOOFIRCEWNAZGYIES73UUYN7S2RTVOMQ4M5PABXR3PL5JBEBMO6BEK","facilitator":"https://channels.openzeppelin.com/x402/testnet","payment_requirements":{"scheme":"exact","network":"stellar:testnet","asset":"CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA","amount":"10421053","payTo":"GCPOOFIRCEWNAZGYIES73UUYN7S2RTVOMQ4M5PABXR3PL5JBEBMO6BEK","maxTimeoutSeconds":300,"extra":{"paymentFlow":"upfront","areFeesSponsored":true}},"fx":{"base":"USD","quote":"CLP","rate":"950","as_of":"2026-10-04T00:24:41.635Z"},"binding":{"checkout_id":"cs_mut2wn8jcf1419464ec50547af14"}}}]}},"id":"cs_mut2wn8jcf1419464ec50547af14","status":"ready_for_complete","currency":"CLP","line_items":[{"id":"li_1","item":{"id":"stickers-cordillera","title":"Pack de stickers Cordillera","price":990,"image_url":"https://static.example.com/vitrinee/stickers-cordillera.jpg"},"quantity":1,"totals":[{"type":"subtotal","amount":990},{"type":"total","amount":990}]}],"fulfillment":{"methods":[{"id":"fm_1","type":"shipping","line_item_ids":["li_1"],"destinations":[{"id":"dest_1","street_address":"Av. Irarrázaval 2401","address_locality":"Ñuñoa","address_region":"Región Metropolitana","address_country":"CL","postal_code":"7750000"}],"selected_destination_id":"dest_1","groups":[{"id":"fg_1","line_item_ids":["li_1"],"options":[{"id":"store_shipping","title":"Envío coordinado por la tienda","totals":[{"type":"fulfillment","amount":0}]}],"selected_option_id":"store_shipping"}]}]},"totals":[{"type":"subtotal","display_text":"Subtotal","amount":990},{"type":"fulfillment","display_text":"Envío coordinado por la tienda","amount":0},{"type":"total","display_text":"Total","amount":990}],"messages":[],"links":[],"expires_at":"2026-10-04T06:24:41.635Z"}
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.554s
+
+FAILED (failures=1, skipped=1)

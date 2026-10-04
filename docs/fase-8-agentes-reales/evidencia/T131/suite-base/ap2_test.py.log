@@ -1,0 +1,7 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] Ap2MandateTest.test_ap2_mandate_completion
+[       OK ] Ap2MandateTest.test_ap2_mandate_completion
+----------------------------------------------------------------------
+Ran 1 test in 0.462s
+
+OK

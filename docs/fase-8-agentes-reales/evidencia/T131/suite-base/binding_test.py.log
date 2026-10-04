@@ -1,0 +1,7 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] TokenBindingTest.test_token_binding_completion
+[       OK ] TokenBindingTest.test_token_binding_completion
+----------------------------------------------------------------------
+Ran 1 test in 0.443s
+
+OK

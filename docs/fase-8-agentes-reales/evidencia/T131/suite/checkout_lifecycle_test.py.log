@@ -1,0 +1,27 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] CheckoutLifecycleTest.test_cancel_checkout
+[       OK ] CheckoutLifecycleTest.test_cancel_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_cancel_completed_checkout
+[       OK ] CheckoutLifecycleTest.test_cannot_cancel_completed_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_complete_canceled_checkout
+[       OK ] CheckoutLifecycleTest.test_cannot_complete_canceled_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_update_canceled_checkout
+[       OK ] CheckoutLifecycleTest.test_cannot_update_canceled_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_update_completed_checkout
+[       OK ] CheckoutLifecycleTest.test_cannot_update_completed_checkout
+[ RUN      ] CheckoutLifecycleTest.test_complete_checkout
+[       OK ] CheckoutLifecycleTest.test_complete_checkout
+[ RUN      ] CheckoutLifecycleTest.test_complete_is_idempotent
+[       OK ] CheckoutLifecycleTest.test_complete_is_idempotent
+[ RUN      ] CheckoutLifecycleTest.test_create_checkout
+[       OK ] CheckoutLifecycleTest.test_create_checkout
+[ RUN      ] CheckoutLifecycleTest.test_get_checkout
+[       OK ] CheckoutLifecycleTest.test_get_checkout
+[ RUN      ] CheckoutLifecycleTest.test_repeated_cancel
+[       OK ] CheckoutLifecycleTest.test_repeated_cancel
+[ RUN      ] CheckoutLifecycleTest.test_update_checkout
+[       OK ] CheckoutLifecycleTest.test_update_checkout
+----------------------------------------------------------------------
+Ran 11 tests in 2.559s
+
+OK

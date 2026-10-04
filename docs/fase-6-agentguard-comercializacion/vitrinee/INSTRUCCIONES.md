@@ -112,6 +112,12 @@ Leer una tienda como un agente UCP (perfil, chequeo de namespace, catálogo; Fas
 pnpm run vitrinee:ucp:list -- https://bazar-cordillera.vitrinee.agentpey.com
 ```
 
+La suite oficial de conformidad de UCP contra una tienda de prueba local (Fase 8, T131; `R-13`). Necesita `uv` (`brew install uv`); clona la suite en `.ucp-conformance/`:
+
+```bash
+pnpm run ucp:conformance
+```
+
 ```bash
 pnpm run vitrinee:console
 ```

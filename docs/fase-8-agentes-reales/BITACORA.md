@@ -27,7 +27,7 @@ confirmación.
 | T128 Servidor MCP | cerrada |
 | T129 Claude y ChatGPT conectados | cerrada |
 | T130 Tienda de terceros | pendiente |
-| T131 Suite de conformidad UCP | pendiente |
+| T131 Suite de conformidad UCP | en revisión |
 | T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | pendiente |
 | T134 AP2 en el checkout | pendiente |
@@ -203,3 +203,35 @@ primera y no se tocó el servidor de autorización.
 la evidencia mostraba salidas compactadas a mano como si fueran crudas (ya son
 literales, también en T128), y faltaba ver a Claude leyendo la orden, la
 tercera parte de `R-11` (ya hay captura). Se corrigieron los diez hallazgos.
+
+## T131 · La suite oficial de conformidad de UCP (2026-10-03, en revisión)
+
+**Qué quedó funcionando.** Con un comando, `pnpm run ucp:conformance`, se corre
+la suite oficial de UCP completa contra una tienda de Vitrinee que solo existe
+en la máquina de quien la corre. De 77 tests, 40 pasan, 20 la suite los salta y
+17 fallan, cada uno con su motivo escrito en la evidencia.
+
+**Cómo se hizo sin abrir un agujero.** La suite paga siempre con un medio de
+pago de prueba que no cobra. Eso no puede existir en una tienda desplegada, así
+que no se tocó el código de cobro: la tienda de prueba envuelve a la tienda real
+desde afuera, traduce ese pago a uno que solo su propio facilitador falso
+acepta, firma con llaves que se tiran al terminar y se niega a arrancar fuera de
+la máquina local (`R-13`). Un test comprueba que una tienda arrancada como en
+producción sigue rechazando el pago de prueba aunque su facilitador acepte todo.
+
+**Lo que encontró la suite, y se corrigió (`VT-42`).** Cinco cosas del checkout
+que usan las tiendas reales: la clave de idempotencia ahora significa lo que UCP
+dice (la misma solicitud recibe la misma respuesta; otra solicitud con esa
+clave, un 409), una versión de UCP que la tienda no sirve recibe 422, y tres
+detalles de forma. Pasaron de 28 a 40 tests.
+
+**Lo que encontramos en la suite.** Manda la dirección con nombres de campo que
+no son los del estándar; sin corregirlo, la mitad de los tests fallaba en
+cascada. Lo arreglamos solo en la tienda de prueba y lo reportamos en su
+repositorio (conformance#116).
+
+**Lo que falta.** 9 de las fallas son capacidades ya planificadas (webhooks,
+varios productos, consentimiento: T147 a T149); 7 quedan fuera a propósito
+(`R-12`), y 1 es el tope de 100 unidades por compra, que se deja así salvo que
+el usuario diga otra cosa.
+

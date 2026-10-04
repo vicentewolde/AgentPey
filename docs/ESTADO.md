@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-03
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T129 · Claude y ChatGPT conectados con la guía del README; ChatGPT compra y paga él mismo, Claude cotiza y verifica (`R-11`)
-**Siguiente paso:** `/tarea T131` (suite oficial de conformidad UCP). T130 espera la tienda de terceros que consigue el usuario. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** `/revisar` de T131 y merge con OK; el usuario decide si el test del tope de 100 unidades queda fallando (`R-13`). Después T130 (la tienda la consigue el usuario) y T133. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -17,7 +17,7 @@
 | T128 Servidor MCP de AgentPey | imprescindible | ✅ terminada: en vivo en `mcp.agentpey.com`; orden `ord_muszfkwz2604255e03` cotizada por Claude y pagada por la persona (`R-11`) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; evidencia de cierre en [PR #47](https://github.com/vicentewolde/AgentPey/pull/47), mergeado |
 | T129 Claude y ChatGPT conectados | imprescindible | ✅ terminada: guía en el README; compras desde Claude (`R-11`) y desde ChatGPT, que paga él mismo | `cc/t129-conectar-claude-chatgpt`, mergeada |
 | T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
-| T131 Suite oficial de conformidad UCP | imprescindible | 🔨 en curso: plan | `cc/t131-conformidad-ucp` |
+| T131 Suite oficial de conformidad UCP | imprescindible | 👀 en revisión: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp` (sin push) |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ⏳ pendiente | |
 | T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |
@@ -61,6 +61,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Es T143 de la Fase 8.
 - Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción (pide un contrato nuevo, fuera de alcance). Brecha 14: es parte de T134.
 - T128 (PR 2): el servidor guarda en memoria qué tokens de renovación ya se usaron; tras un reinicio, uno usado sirve una vez más hasta vencer (una semana). Y el rail `mcp` tiene como principal la misma cuenta que cobra en `agentcommerce` y `mycokit`.
+- T131: la memoria de `Idempotency-Key` vive en el proceso un día (`VT-42`); en la plataforma con varios procesos, o tras un reinicio, una solicitud repetida puede crear otra sesión `incomplete` (nunca un segundo cobro). La simulación de despacho de la tienda de conformidad solo comprueba el secreto; el evento llega con T147. Y conformance#116 abierto en la suite: cuando lo corrijan, se quita el renombre de `locality` de la tienda de prueba.
 - T129 (`/revisar`): la salida de `get_order` no trae `explorer_url` (la de `pay` sí); Claude lo arma a mano. Y el disco local estuvo al 100 % durante `pnpm check` (`ENOSPC`): liberar espacio antes de T131.
 - T128 (`/revisar` del PR 1, sugerencias que quedaron): un pago incierto no se reintenta con la misma clave (la cotización ya se consumió); `recheck` apagado por defecto en `payUcpQuote`; la relectura no compara el id del checkout; una cotización con fecha inválida no vence; la tienda por primera etiqueta no avisa ambigüedad; `open_claim` no comprueba que el rail del MCP pagó el recibo (el árbitro sí); total 0 si la tienda no manda línea `total`; `start` apunta a `main.ts` (llega en el PR 2) y tres dependencias sin usar; tests con `any`.
 - T132: `signReceipt` todavía lanza un error de zod, no un `VitrineeError`, cuando los datos no cumplen el esquema (ya era así). Y "un pago, un recibo" vale dentro de un proceso: `vitrinee.orders` no tiene índice único sobre el hash del pago (`VT-40`); hace falta si un comercio llega a tener más de un proceso.
@@ -104,3 +105,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-03, T129: guía para conectar Claude y ChatGPT en `apps/mcp/README.md` (y resumen en el README raíz), con los menús reales. ChatGPT Plus en modo desarrollador (Create custom MCP server, OAuth) conectó a la primera y **llamó `pay` él mismo** tras "confirmo el pago": orden `ord_mut0b5rm04b66bd5de`, Shopify `18990505394482`, tx `d6c2fa8d…`, recibo en verde. La de Claude es la de T128 (`R-11`). Rail: 3,14 de 5,00 gastados hoy.
 - 2026-10-03, T129 `/revisar`: sin bloqueantes; corregidos los diez hallazgos (evidencia literal, también en T128; captura de Claude leyendo la orden; README reproducible). Cerrada y mergeada con OK del usuario.
 - 2026-10-03, T131 plan aprobado: modo de conformidad solo local, primera corrida y parar. `R-12`: el usuario agrega T147 (webhooks de orden), T148 (varios productos) y T149 (consentimiento hasta la tienda), Bloque B después de T133; tickets creados. `uv` instalado.
+- 2026-10-03, T131: tienda de conformidad local que envuelve `createApp` sin tocar `complete` (`R-13`), `pnpm run ucp:conformance` (suite `016ecbc`, SDK `v2026-04-08-6`). Base 28/29/20; cinco arreglos en el checkout real (`VT-42`: idempotencia, 422 de versión, `payment`, descripción, "not found"); final 40 pasan, 17 fallan, 20 se saltan. Error de la suite reportado: conformance#116. `pnpm check` y `vitrinee:check` en verde.

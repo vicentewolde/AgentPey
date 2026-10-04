@@ -1,0 +1,98 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] WebhookStructureTest.test_delivery_carries_standard_webhook_headers
+[  FAILED  ] WebhookStructureTest.test_delivery_carries_standard_webhook_headers
+[ RUN      ] WebhookStructureTest.test_order_created_event_is_full_order_entity
+[  FAILED  ] WebhookStructureTest.test_order_created_event_is_full_order_entity
+[ RUN      ] WebhookStructureTest.test_signature_covers_ucp_agent
+[  FAILED  ] WebhookStructureTest.test_signature_covers_ucp_agent
+[ RUN      ] WebhookStructureTest.test_signed_delivery_carries_required_headers_and_digest
+[  FAILED  ] WebhookStructureTest.test_signed_delivery_carries_required_headers_and_digest
+[ RUN      ] WebhookStructureTest.test_transient_failure_retries_preserve_event_identity
+[  FAILED  ] WebhookStructureTest.test_transient_failure_retries_preserve_event_identity
+[ RUN      ] WebhookStructureTest.test_update_event_is_full_order_entity
+[  FAILED  ] WebhookStructureTest.test_update_event_is_full_order_entity
+======================================================================
+FAIL: test_delivery_carries_standard_webhook_headers (__main__.WebhookStructureTest.test_delivery_carries_standard_webhook_headers)
+WebhookStructureTest.test_delivery_carries_standard_webhook_headers
+Every delivery carries Webhook-Id and a unix Webhook-Timestamp.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 191, in test_delivery_carries_standard_webhook_headers
+    _, _, event = self._place_order()
+                  ^^^^^^^^^^^^^^^^^^^
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 159, in _place_order
+    self.assertTrue(
+AssertionError: [] is not true : no order-event webhook delivered for the completed order (order.md: MUST send 'Order created' event)
+
+======================================================================
+FAIL: test_order_created_event_is_full_order_entity (__main__.WebhookStructureTest.test_order_created_event_is_full_order_entity)
+WebhookStructureTest.test_order_created_event_is_full_order_entity
+The 'Order created' delivery body is the full order entity.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 264, in test_order_created_event_is_full_order_entity
+    checkout_id, order_id, event = self._place_order()
+                                   ^^^^^^^^^^^^^^^^^^^
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 159, in _place_order
+    self.assertTrue(
+AssertionError: [] is not true : no order-event webhook delivered for the completed order (order.md: MUST send 'Order created' event)
+
+======================================================================
+FAIL: test_signature_covers_ucp_agent (__main__.WebhookStructureTest.test_signature_covers_ucp_agent)
+WebhookStructureTest.test_signature_covers_ucp_agent
+The signed components include ucp-agent (binds signer identity).
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 373, in test_signature_covers_ucp_agent
+    event = self._signed_event()
+            ^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 318, in _signed_event
+    _, _, event = self._place_order()
+                  ^^^^^^^^^^^^^^^^^^^
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 159, in _place_order
+    self.assertTrue(
+AssertionError: [] is not true : no order-event webhook delivered for the completed order (order.md: MUST send 'Order created' event)
+
+======================================================================
+FAIL: test_signed_delivery_carries_required_headers_and_digest (__main__.WebhookStructureTest.test_signed_delivery_carries_required_headers_and_digest)
+WebhookStructureTest.test_signed_delivery_carries_required_headers_and_digest
+A signed delivery carries all four headers; the digest matches.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 329, in test_signed_delivery_carries_required_headers_and_digest
+    event = self._signed_event()
+            ^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 318, in _signed_event
+    _, _, event = self._place_order()
+                  ^^^^^^^^^^^^^^^^^^^
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 159, in _place_order
+    self.assertTrue(
+AssertionError: [] is not true : no order-event webhook delivered for the completed order (order.md: MUST send 'Order created' event)
+
+======================================================================
+FAIL: test_transient_failure_retries_preserve_event_identity (__main__.WebhookStructureTest.test_transient_failure_retries_preserve_event_identity)
+WebhookStructureTest.test_transient_failure_retries_preserve_event_identity
+A failed delivery is retried as the same webhook event.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 221, in test_transient_failure_retries_preserve_event_identity
+    self.assertGreaterEqual(
+AssertionError: 0 not greater than or equal to 2 : failed webhook delivery was not retried (order.md: MUST retry failed webhook deliveries)
+
+======================================================================
+FAIL: test_update_event_is_full_order_entity (__main__.WebhookStructureTest.test_update_event_is_full_order_entity)
+WebhookStructureTest.test_update_event_is_full_order_entity
+An update delivery is the full current-state snapshot, not a delta.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 269, in test_update_event_is_full_order_entity
+    checkout_id, order_id, _ = self._place_order()
+                               ^^^^^^^^^^^^^^^^^^^
+  File "<repo>/.ucp-conformance/conformance/webhook_structure_test.py", line 159, in _place_order
+    self.assertTrue(
+AssertionError: [] is not true : no order-event webhook delivered for the completed order (order.md: MUST send 'Order created' event)
+
+----------------------------------------------------------------------
+Ran 6 tests in 33.662s
+
+FAILED (failures=6)

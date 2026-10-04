@@ -1,0 +1,70 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] CheckoutLifecycleTest.test_cancel_checkout
+[       OK ] CheckoutLifecycleTest.test_cancel_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_cancel_completed_checkout
+[       OK ] CheckoutLifecycleTest.test_cannot_cancel_completed_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_complete_canceled_checkout
+[       OK ] CheckoutLifecycleTest.test_cannot_complete_canceled_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_update_canceled_checkout
+[  FAILED  ] CheckoutLifecycleTest.test_cannot_update_canceled_checkout
+[ RUN      ] CheckoutLifecycleTest.test_cannot_update_completed_checkout
+[  FAILED  ] CheckoutLifecycleTest.test_cannot_update_completed_checkout
+[ RUN      ] CheckoutLifecycleTest.test_complete_checkout
+[       OK ] CheckoutLifecycleTest.test_complete_checkout
+[ RUN      ] CheckoutLifecycleTest.test_complete_is_idempotent
+[  FAILED  ] CheckoutLifecycleTest.test_complete_is_idempotent
+[ RUN      ] CheckoutLifecycleTest.test_create_checkout
+[       OK ] CheckoutLifecycleTest.test_create_checkout
+[ RUN      ] CheckoutLifecycleTest.test_get_checkout
+[       OK ] CheckoutLifecycleTest.test_get_checkout
+[ RUN      ] CheckoutLifecycleTest.test_repeated_cancel
+[       OK ] CheckoutLifecycleTest.test_repeated_cancel
+[ RUN      ] CheckoutLifecycleTest.test_update_checkout
+[  FAILED  ] CheckoutLifecycleTest.test_update_checkout
+======================================================================
+ERROR: test_cannot_update_canceled_checkout (__main__.CheckoutLifecycleTest.test_cannot_update_canceled_checkout)
+CheckoutLifecycleTest.test_cannot_update_canceled_checkout
+Test that a canceled checkout cannot be updated.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/checkout_lifecycle_test.py", line 356, in test_cannot_update_canceled_checkout
+    instruments=checkout_obj.payment.instruments,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'instruments'
+
+======================================================================
+ERROR: test_cannot_update_completed_checkout (__main__.CheckoutLifecycleTest.test_cannot_update_completed_checkout)
+CheckoutLifecycleTest.test_cannot_update_completed_checkout
+Test that a completed checkout cannot be updated.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/checkout_lifecycle_test.py", line 464, in test_cannot_update_completed_checkout
+    instruments=checkout_obj.payment.instruments,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'instruments'
+
+======================================================================
+ERROR: test_update_checkout (__main__.CheckoutLifecycleTest.test_update_checkout)
+CheckoutLifecycleTest.test_update_checkout
+Test successful checkout update.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/checkout_lifecycle_test.py", line 115, in test_update_checkout
+    instruments=checkout_obj.payment.instruments,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'instruments'
+
+======================================================================
+FAIL: test_complete_is_idempotent (__main__.CheckoutLifecycleTest.test_complete_is_idempotent)
+CheckoutLifecycleTest.test_complete_is_idempotent
+Tests that completing an already completed checkout behaves correctly.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/checkout_lifecycle_test.py", line 435, in test_complete_is_idempotent
+    self.assertNotEqual(
+AssertionError: 200 == 200 : Should not be able to complete an already completed checkout.
+
+----------------------------------------------------------------------
+Ran 11 tests in 2.937s
+
+FAILED (failures=1, errors=3)

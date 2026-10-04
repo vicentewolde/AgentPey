@@ -1,0 +1,47 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] OrderTest.test_order_adjustments
+[  FAILED  ] OrderTest.test_order_adjustments
+[ RUN      ] OrderTest.test_order_fulfillment_retrieval
+[  FAILED  ] OrderTest.test_order_fulfillment_retrieval
+[ RUN      ] OrderTest.test_order_retrieval
+[       OK ] OrderTest.test_order_retrieval
+[ RUN      ] OrderTest.test_order_update
+[  FAILED  ] OrderTest.test_order_update
+======================================================================
+FAIL: test_order_adjustments (__main__.OrderTest.test_order_adjustments)
+OrderTest.test_order_adjustments
+Test that order adjustments are persisted.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/order_test.py", line 357, in test_order_adjustments
+    self.assert_response_status(resp, 200)
+  File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
+    self.assertIn(
+AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_mut2wlp1a8ca952905"}
+
+======================================================================
+FAIL: test_order_fulfillment_retrieval (__main__.OrderTest.test_order_fulfillment_retrieval)
+OrderTest.test_order_fulfillment_retrieval
+Test that fulfillment expectations are persisted in the order.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/order_test.py", line 182, in test_order_fulfillment_retrieval
+    self.assertEqual(
+AssertionError: None != 'Envío coordinado por la tienda' : Expectation description mismatch
+
+======================================================================
+FAIL: test_order_update (__main__.OrderTest.test_order_update)
+OrderTest.test_order_update
+Test updating an existing order.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/order_test.py", line 311, in test_order_update
+    self.assert_response_status(resp, 200)
+  File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
+    self.assertIn(
+AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_mut2wm7j55198d698c"}
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.096s
+
+FAILED (failures=3)

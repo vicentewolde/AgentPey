@@ -1157,3 +1157,35 @@ pagar de nuevo.
 camino UCP para el pagador indeterminado. Ahí el cliente lee el estado de la
 sesión, que queda retenida; en x402 el status es todo lo que ve.
 
+
+---
+
+### VT-42 · `Idempotency-Key` con la semántica de UCP, y 422 a una versión que la tienda no sirve · `Vigente`
+**Fecha:** 2026-10-03 · **Hito:** T131 (Fase 8), aprobado por el usuario tras la corrida base de la suite oficial
+
+Hasta T131, `Idempotency-Key` solo se guardaba en `complete` y la protección
+contra cobrar dos veces salía del estado de la sesión: cualquier `complete`
+sobre un checkout completado devolvía el checkout, con cualquier clave. Ahora,
+en crear, actualizar, cancelar y completar, la misma clave con la misma
+solicitud recibe la primera respuesta tal cual, y la misma clave con otra
+solicitud recibe 409 `idempotency_conflict` sin efecto. Un checkout completado
+rechaza una clave **nueva** con 409 `invalid_state`; la clave que lo completó,
+o una solicitud sin clave, lo sigue leyendo como antes. En ningún caso se
+liquida dos veces: esa garantía sigue saliendo de la sesión, no de la memoria
+de claves. La memoria de claves vive en el proceso, un día; perderla en un
+reinicio cuesta a lo sumo una sesión `incomplete` repetida.
+
+Y `UCP-Agent` con un `version` que la tienda no sirve recibe 422
+`version_unsupported` en cualquier ruta UCP, antes de que corra la ruta. Sin
+`version`, la plataforma toma la del perfil.
+
+**Motivo.** Es lo que UCP y su suite oficial esperan, y protege a una
+plataforma que reintenta sin saber si su primera solicitud llegó. El MCP de
+AgentPey manda una clave estable por cotización (`mcp-<id>`): sus reintentos
+reciben la misma respuesta.
+
+**Alternativas descartadas.** Guardar las claves en Postgres: la garantía de
+no cobrar dos veces ya está en la sesión persistida; las claves solo evitan
+respuestas distintas a una misma solicitud. Y seguir devolviendo el checkout
+completado a una clave nueva: la suite lo marca como un segundo `complete`
+aceptado.
