@@ -162,6 +162,21 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   página en `apps/vitrinee-portal/public/`. Solo existe en modo plataforma. La
   sesión se firma con una llave derivada de `MASTER_KEY`: no hay variable nueva.
 
+## Estado al 2026-10-04 (T147)
+
+- **Webhooks de orden** (`R-17`, `VT-44`): la tienda hace POST de la orden a la
+  `webhook_url` del perfil de la plataforma, firmado con RFC 9421 y una llave
+  P-256 propia (`…#ucp-p256`), con la cola de entregas guardada en la orden. Las
+  entregas salen **solo** por `send` del cliente único de
+  `ucp/platform-profile.ts`, igual que las lecturas de perfiles: nada de `fetch`
+  a una URL que dicta un tercero.
+- **Despachos:** `ucp/order-events.ts` registra `fulfillment.events` y pregunta
+  a la plataforma (`StoreAdapter.reportsShipments`, `PlatformOrder.shipments`).
+  Shopify sí; Jumpseller todavía no. `app.orderEvents.resume()` al arrancar una
+  tienda, `stop()` al reemplazarla.
+- **Tests:** `fakePlatformProfiles()` también recibe entregas (`sent`,
+  `respond`); ningún test envía de verdad.
+
 ## Estado al 2026-10-03 (T133)
 
 - **Dos versiones de UCP** (`R-6`, `R-14`): `/.well-known/ucp` es el perfil

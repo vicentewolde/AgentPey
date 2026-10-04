@@ -1219,3 +1219,26 @@ tienda: quien la tenga, ya puede firmar como ella.
 **Alternativa descartada.** Una llave P-256 nueva guardada aparte: una columna
 cifrada más, una migración y un secreto más por comercio, sin ganar separación
 real (el mismo dueño, el mismo proceso).
+
+---
+
+### VT-44 · La tienda firma sus webhooks de orden con una segunda llave P-256, derivada de la de recibos con su propia etiqueta · `Vigente`
+**Fecha:** 2026-10-04 · **Hito:** T147 (Fase 8), decidido por el usuario
+
+UCP pide firmar cada webhook de orden con una llave del perfil de la tienda, y
+la única que toda plataforma está obligada a verificar es ES256 (`2026-04-08`
+no admite Ed25519; en `2026-08-25` es optativa). La llave se deriva de la de
+recibos igual que la de AP2 (`VT-43`), pero con su propia etiqueta
+(`vitrinee/ucp-webhook/p256/v1`) y su propio `kid` (`…#ucp-p256`). Se publica en
+`keys` del perfil `2026-08-25` y en `signing_keys` y `keys` del perfil
+`2026-04-08`, que es donde esa versión busca.
+
+**Motivo.** Sin secreto nuevo ni migración, igual en tienda única y en
+plataforma, y la firma de un webhook no se confunde con la autorización AP2 de
+un checkout.
+
+**Alternativas descartadas.** Reusar la llave de AP2: una llave menos, pero un
+mismo `kid` para dos usos distintos. Firmar con la Ed25519 de recibos: sin llave
+nueva, pero `2026-04-08` no la admite y una plataforma conforme de `2026-08-25`
+podría no verificarla.
+

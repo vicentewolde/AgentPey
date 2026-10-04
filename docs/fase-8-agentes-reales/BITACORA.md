@@ -46,7 +46,7 @@ que la librería oficial de AP2 verifica sobre una compra real.
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | pendiente |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
-| T147 Webhooks de orden | pendiente |
+| T147 Webhooks de orden | en revisión (falta el despacho real) |
 | T148 Varios productos | pendiente |
 | T149 Consentimiento | pendiente |
 
@@ -312,4 +312,35 @@ rompe si trae el campo `use`. Se lo reportamos (AP2#372) y, de nuestro lado, la
 llave va ahora sin ese campo. En la segunda compra la librería oficial verifica
 el mandato con las llaves publicadas, como lo haría cualquier tercero. Recibo
 válido en las dos.
+
+## T147 · Eventos de despacho y webhooks de orden (2026-10-04, en revisión)
+
+**Qué quedó funcionando.** Cuando un agente compra en una tienda Vitrinee, la
+tienda ahora le avisa sola, sin que el agente tenga que preguntar: primero
+"tu pedido está creado" y, cuando el comercio lo despacha, "tu pedido salió",
+con el número de seguimiento si lo hay. Cada aviso es la orden completa,
+firmado por la tienda; si el agente no contesta, la tienda lo reintenta con el
+mismo identificador durante unas dos horas y media, y no lo olvida aunque se
+reinicie. La orden también muestra el despacho cuando alguien la consulta. Del
+otro lado, AgentPey tiene ahora una dirección donde recibe esos avisos
+(`agentpey.com/ucp/webhooks/orders`) y solo acepta los que puede comprobar que
+firmó una tienda de AgentPey, sobre una orden de esa tienda.
+
+**Lo que hubo que decidir** (cuatro elecciones del usuario, `R-17`, `VT-44`).
+La tienda firma con una llave nueva, derivada de la que ya tenía, porque es la
+única clase de firma que toda plataforma UCP sabe verificar. Los avisos
+pendientes se guardan en la orden misma. El despacho real se pregunta a Shopify
+cada diez minutos (y al leer la orden): no hizo falta pedirle permisos nuevos a
+la app. Y el receptor vive en agentpey.com para que el ciclo se cierre de
+verdad, no solo en tests. Jumpseller queda sin avisos de despacho por ahora: no
+hubo cómo comprobar sus campos.
+
+**Cómo se probó.** La firma se comprobó contra los ejemplos del propio estándar
+(RFC 9421). La suite oficial de UCP pasa de 40 a 47 tests: los siete de
+webhooks, incluidos los de firma. Y una prueba de punta a punta sin red hace
+que la tienda real firme y el receptor real de AgentPey verifique.
+
+**Lo que falta.** El despacho real: una compra en `agentcommerce` después del
+deploy, que el comercio la marque como despachada en Shopify y que el aviso
+llegue a agentpey.com.
 

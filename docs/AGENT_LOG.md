@@ -7887,3 +7887,18 @@ válido. T134 cerrada (SPEC, ESTADO, BITACORA, SYNC, evidencia §4, `R-16`).
 Pendiente: push y merge de `cc/t134-evidencia` con OK. Rail UCP en 0,1578945 USDC. Siguiente: T130 o T147.
 `AGENTS.md`: sin cambios. Exponential: T134 a `DONE`, `exp:sync` sin cambios.
 
+## 2026-10-04 (26) — cc/t134-evidencia → main, cc/t147-webhooks-orden (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK, `cc/t134-evidencia` en `main` ([PR #53](https://github.com/vicentewolde/AgentPey/pull/53), sin CI: el workflow solo corre con cambios de Vitrinee).
+T147 con cuatro decisiones del usuario (`R-17`, `VT-44`): `http-signatures.ts` en `@vitrinee/core` (RFC 9421, vectores del
+RFC), `send` en el cliente único de perfiles (POST fijado), `ucp/order-events.ts` (eventos de despacho, cola de
+webhooks en la orden, lectura lenta de Shopify), `ucp/webhook-key.ts`, la llave en los dos perfiles, `fulfillment.events`
+en la orden, `simulate-shipping` de la tienda de conformidad conectado, receptor `apps/web/src/ucp-webhooks.ts` y
+`webhook_url` en los tres perfiles de AgentPey (`agentpey-ap2.json` regenerado con `ap2:platform-key`). Suite 47/10/20.
+`pnpm check` y `vitrinee:check` en verde. Shopify leído en modo solo lectura con un script temporal (borrado).
+
+Pendiente: `/revisar`; push y merge con OK; compra real y despacho marcado en Shopify, con OK. `AGENTS.md`: sin
+cambios (T147 no es delegable y el spec ya lo dice). Exponential: T147 a `IN_PROGRESS`.
+

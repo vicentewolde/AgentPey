@@ -425,3 +425,65 @@ usuario autorizó en AP2".
 
 **Alternativa descartada.** Declarar AP2 en `agentpey-2026-08-25.json`: toda
 compra en esa versión quedaría obligada a mandar mandato.
+
+### R-17 · Cómo avisa la tienda: la orden entera, firmada con RFC 9421, con una cola guardada en la orden; el despacho real se pregunta a la plataforma, y AgentPey recibe en agentpey.com · `Vigente`
+**Fecha:** 2026-10-04 · **Tarea:** T147 · Propuesta de Claude Code; las cuatro elecciones, **decididas por el usuario**
+
+UCP (`2026-04-08` y `2026-08-25`, mismo texto) pide que la tienda haga POST a la
+`webhook_url` que la plataforma declara en su perfil, con la **orden entera**
+como cuerpo (nunca un delta), `Webhook-Id`, `Webhook-Timestamp` y una firma
+**RFC 9421** (`Signature`, `Signature-Input`, `Content-Digest`, `UCP-Agent`). La
+suite oficial además exige que un reintento lleve el mismo id, el mismo
+timestamp y el mismo cuerpo, y que llegue en unos 5 s. Se decide:
+
+1. **Firma.** ES256 con la llave de webhooks de la tienda (`VT-44`). Cubre
+   `@method`, `@authority`, `@path`, `content-digest`, `content-type`,
+   `ucp-agent`, `idempotency-key` (igual al `Webhook-Id`, que `2026-04-08` exige
+   en un POST firmado) y además `webhook-id` y `webhook-timestamp`, para que un
+   reintento no pueda hacerse pasar por otro evento. Está en `@vitrinee/core`
+   (`http-signatures.ts`, sin I/O), comprobada contra los vectores del RFC.
+2. **Cola persistida en la orden** (decisión del usuario). Cada entrega
+   (id, timestamp, cuerpo, intentos, próximo intento) vive en el registro de la
+   orden, en el mismo `jsonb` de siempre: sobrevive a un deploy, sin migración.
+   Reintentos a los 2 s, 10 s, 1 min, 5 min, 30 min y 2 h; después se da por
+   perdida. Un 5xx, 408, 429, un receptor que no responde o el límite del
+   proceso se reintentan; un 3xx (nunca se sigue), otro 4xx o una URL que no
+   pasa el control se dan por perdidos al primer intento.
+3. **URL hostil.** La `webhook_url` sale del perfil que el agente dicta, así que
+   cada entrega pasa por el mismo cliente único del proceso que lee perfiles
+   (`R-14`): `https` al 443, solo direcciones públicas, IP fijada, sin
+   redirecciones, plazo de 5 s, con los mismos límites de concurrencia y ritmo,
+   y vuelta a revisar en cada intento. `http` a localhost solo en la tienda de
+   conformidad local.
+4. **Despacho real** (decisión del usuario): una lectura lenta. Cada 10 min,
+   para las órdenes UCP sin despachar de los últimos 30 días, el adaptador lee
+   los despachos de la plataforma; leer la orden también pregunta, como mucho
+   una vez por minuto. Shopify informa cada `fulfillment` en estado `SUCCESS`
+   con su seguimiento; los permisos actuales de la app alcanzan (comprobado con
+   un pedido real). **Jumpseller no informa despachos todavía**
+   (`reportsShipments` en falso): su documentación no se pudo leer y no hay un
+   pedido Jumpseller de testnet donde comprobar los campos; queda pendiente.
+   Una tienda se arma la primera vez que recibe tráfico tras un deploy, y desde
+   ahí corre su lectura; una tienda sin tráfico no se lee hasta entonces.
+5. **Receptor de AgentPey** (decisión del usuario): `POST
+   https://agentpey.com/ucp/webhooks/orders`, declarado como `webhook_url` en
+   los tres perfiles de plataforma de AgentPey. Verifica como UCP manda (llave
+   del perfil que nombra `UCP-Agent`, firma, cobertura, `Content-Digest`) y que
+   la orden es de esa tienda (su `permalink_url` está en el mismo origen). Solo
+   lee perfiles de tiendas que AgentPey corre (`*.vitrinee.agentpey.com`), para
+   no abrir una lectura a URLs de terceros desde agentpey.com. Un mismo
+   `Webhook-Id` se acepta una vez. Guarda en memoria los últimos 50, sin cuerpo,
+   y los lista en `GET /ucp/webhooks/orders`. Sin ventana de frescura del
+   timestamp: los reintentos de UCP conservan el timestamp original.
+6. **Las disputas no son eventos de despacho.** El vocabulario de
+   `fulfillment_event` de UCP no las tiene; ya se muestran como `adjustments`
+   desde T127. El spec de T147 decía "y lo que llegue de la disputa"; se ajusta.
+   Que un cambio de disputa dispare un webhook queda fuera de T147.
+
+**Alternativas descartadas.** Cola solo en memoria (un deploy perdía avisos que
+UCP obliga a reintentar). Webhooks de Shopify hacia la tienda (inmediato, pero
+una ruta entrante nueva, con su HMAC, y solo para Shopify). Probar la entrega
+real solo leyendo la orden (más barato, pero no prueba que el aviso llega al
+agente). Reusar `@agentpey/webhooks` (firma HMAC y `fetch` sin IP fijada: no es
+lo que UCP pide).
+
