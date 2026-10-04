@@ -216,9 +216,9 @@ más rápido que lo estimado.
 - **Depende de:** T131
 - **Descripción:** perfil, esquemas y extensiones en `2026-08-25`, con `2026-04-08` en paralelo (sección 4.3). `UCP_VERSION` está duplicada en `packages/vitrinee-core/src/ucp.ts:11` y `apps/agent/src/payment/ucp.ts:43`: se unifica.
 - **Hecho cuando:**
-  - [ ] perfil, catálogo, checkout y orden validan contra los esquemas de `2026-08-25` versionados en el repo (test sin red)
-  - [ ] un cliente que pide `2026-04-08` recibe lo mismo que hoy (tests de la Fase 7 en verde) y la suite de T131 sigue dando el mismo resultado
-  - [ ] una versión desconocida recibe 422 `version_unsupported`
+  - [x] perfil, catálogo, checkout y orden validan contra los esquemas de `2026-08-25` versionados en el repo (test sin red; [evidencia](evidencia/T133.md) §3)
+  - [x] un cliente que pide `2026-04-08` recibe lo mismo que hoy (tests de la Fase 7 en verde) y la suite de T131 sigue dando el mismo resultado (40/17/20; [evidencia](evidencia/T133.md) §4)
+  - [x] una versión desconocida recibe 422 `version_unsupported` (hecho en T131 para el header; en T133 también para la versión que declara el perfil, `R-14`)
   - [ ] una compra real en `2026-08-25` con recibo válido, con OK del usuario
 
 #### T134 · AP2 dentro del checkout UCP
@@ -443,6 +443,7 @@ renegocia el 10-oct.**
 | 2026-10-03 | T129: Claude y ChatGPT conectados y comprando; guía en `apps/mcp/README.md`. ChatGPT sí llama `pay` tras la confirmación de la persona. Tres criterios marcados. `/revisar` sin bloqueantes, diez hallazgos corregidos; cerrada |
 | 2026-10-03 | T147, T148 y T149 agregadas a pedido del usuario (`R-12`): eventos de despacho y webhooks, varios productos por compra, consentimiento hasta la tienda. Bloque B, después de T133; en la línea de corte van después de T134 |
 | 2026-10-03 | T131: tienda de conformidad local (`R-13`), `pnpm run ucp:conformance`, cinco arreglos en el checkout UCP (`VT-42`). Corrida final: 40 pasan, 17 fallan, 20 se saltan. El 422 `version_unsupported` que pide T133 quedó hecho aquí. Error de la suite reportado (conformance#116). Cuatro criterios marcados. `/revisar` sin bloqueantes, 12 hallazgos corregidos; cerrada |
+| 2026-10-03 | T133: perfil `2026-08-25` con la hoja `2026-04-08` en `supported_versions`, negociación por el perfil del agente con un lector endurecido (`R-14`, defecto `2026-08-25` por decisión del usuario), respuestas según la versión, perfil de plataforma `agentpey-2026-08-25.json`. Tres criterios marcados; falta la compra real tras el deploy |
 
 ## 11. Fuentes externas
 

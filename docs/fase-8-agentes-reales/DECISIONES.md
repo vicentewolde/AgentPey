@@ -277,3 +277,28 @@ cobra cero si alguien la inyecta.
 Vitrinee topa en 100 unidades por compra y responde 400 `invalid_request`
 diciéndolo, y la suite (que pide 10.001) espera la palabra "stock". Hacerlo
 pasar sería decir "sin stock" cuando el motivo es el tope.
+
+### R-14 · La versión de UCP de cada solicitud sale del perfil del agente; si no se puede saber, `2026-08-25` · `Vigente` — precisa `R-6`
+**Fecha:** 2026-10-03 · **Tarea:** T133 · Propuesta de Claude Code; el defecto, **decidido por el usuario**
+
+UCP no pone la versión en un header: el agente la declara en el `ucp.version`
+de su perfil, al que apunta `UCP-Agent: profile="…"`. La tienda lee ese perfil
+con un lector que trata la URL como hostil: solo `https` al puerto 443, el
+nombre se resuelve y se rechaza si alguna dirección es privada, de loopback,
+de enlace local o reservada, y la conexión va a esa misma dirección (sin
+segunda resolución), sin redirecciones, con tope de bytes y de tiempo, y con
+caché. El mismo lector lo usa T147 para la URL del webhook. Si el header trae
+un parámetro `version="…"` (no es de la spec, pero la suite oficial lo usa), se
+respeta. Una versión declarada que la tienda no sirve recibe 422
+`version_unsupported`.
+
+**Cuando la versión no se puede saber** (sin `UCP-Agent`, perfil que no
+responde o que no cumple), la tienda responde en **`2026-08-25`**, la más
+nueva. Lo decidió el usuario; la propuesta era `2026-04-08`, para no cambiar
+nada a un cliente actual que no declare versión. Los clientes de AgentPey
+declaran su perfil y siguen recibiendo `2026-04-08` mientras ese perfil diga
+`2026-04-08`.
+
+**Alternativa descartada.** Leer solo el parámetro `version=` del header: más
+simple, pero no es la spec, y un agente que declara `2026-08-25` en su perfil
+recibiría respuestas viejas.

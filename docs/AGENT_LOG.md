@@ -7801,3 +7801,17 @@ Qué: con OK del usuario, T131 cerrada (ESTADO, BITACORA, SPEC, SYNC) y mergeada
 Pendiente: T133. T130 espera la tienda de terceros. Tarea aparte sugerida: el test intermitente de RealOps
 ("900" en identificadores al azar). `AGENTS.md`: sin cambios. Exponential: T131 a `DONE`.
 
+## 2026-10-03 (20) — cc/t133-ucp-2026-08-25 (sin push)
+
+Agente: Claude Code.
+
+Qué: T133. Esquemas oficiales `2026-08-25` vendorizados (tag `cd78fb3`) con un validador propio; perfil `2026-08-25`
+en `/.well-known/ucp` con la hoja `2026-04-08` en `supported_versions`; negociación por el perfil del agente con
+`createPlatformProfileReader` (https/443, IPs privadas fuera, conexión fijada a la IP comprobada, sin redirecciones,
+topes, caché; `R-14`, defecto `2026-08-25` decidido por el usuario); checkout, orden y catálogo según la versión;
+`agentpey-2026-08-25.json`, `platformProfile` en el agente, `ucp:buy -- --ucp-version`; la copia de `UCP_VERSION`
+del agente se borró. Tests de la Fase 7 y suite (40/17/20) iguales. `pnpm check` y `vitrinee:check` en verde.
+
+Pendiente: `/revisar`; push y merge con OK; compra real en `2026-08-25` tras el deploy, con OK. `AGENTS.md`: sin
+cambios. Exponential: T133 en `IN_PROGRESS`.
+

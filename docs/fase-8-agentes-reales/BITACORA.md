@@ -29,7 +29,7 @@ confirmación.
 | T130 Tienda de terceros | pendiente |
 | T131 Suite de conformidad UCP | cerrada |
 | T132 Coherencia del recibo | cerrada |
-| T133 UCP `2026-08-25` | pendiente |
+| T133 UCP `2026-08-25` | en revisión (falta la compra real) |
 | T134 AP2 en el checkout | pendiente |
 | T135 MPP charge (prueba técnica) | pendiente |
 | T136 SDK en npm | pendiente |
@@ -239,4 +239,26 @@ tiene camino a una tienda desplegada y que nada se liquida dos veces. Se
 corrigieron sus 12 hallazgos; lo más importante, que la memoria de claves de
 idempotencia ahora tiene tope (las rutas no piden autenticación) y no congela
 un error pasajero de `complete`. La suite dio lo mismo después.
+
+## T133 · UCP `2026-08-25`, con `2026-04-08` al lado (2026-10-03, en revisión)
+
+**Qué quedó funcionando.** Las tiendas de Vitrinee hablan las dos versiones de
+UCP a la vez. Su perfil público es el de la versión nueva y apunta al de la
+vieja; cada agente recibe las respuestas en la versión que declara en su propio
+perfil. El agente de AgentPey y el MCP siguen declarando la vieja y reciben
+exactamente lo mismo que antes; un perfil nuevo de AgentPey declara la nueva,
+para comprar en ella.
+
+**Lo delicado.** Para saber qué versión habla un agente, la tienda tiene que
+leer un documento en una dirección que dicta ese agente. Eso abre la puerta a
+que alguien apunte a la red interna del servidor. El lector solo acepta
+`https`, revisa cada dirección a la que resuelve el nombre y se conecta a esa
+misma, sin redirecciones ni documentos grandes (`R-14`). El mismo lector lo
+usará T147 para los webhooks.
+
+**Lo que decidió el usuario.** Si la versión de un agente no se puede saber, la
+tienda responde en la más nueva, `2026-08-25`.
+
+**Lo que falta.** La compra real en `2026-08-25`, después del merge: el perfil
+nuevo de AgentPey tiene que estar publicado.
 
