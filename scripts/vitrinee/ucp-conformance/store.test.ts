@@ -2,7 +2,7 @@
  * The UCP conformance store (T131, R-3): its test payment works there and
  * nowhere else.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -126,12 +126,22 @@ describe("the conformance test payment never reaches a real store", () => {
     expect(() => assertLocalOnly(env)).toThrow(message);
   });
 
+  it("refuses a PUBLIC_BASE_URL that is not a URL, with a typed error", () => {
+    expect(() => assertLocalOnly({ PUBLIC_BASE_URL: "not a url" })).toThrow(/not a URL/);
+  });
+
   it("starts on loopback with nothing set", () => {
     expect(() => assertLocalOnly({ PUBLIC_BASE_URL: "http://127.0.0.1:4999" })).not.toThrow();
   });
 
   it("no deployed code imports the conformance store", () => {
-    const roots = ["packages/vitrinee-gateway/src", "apps/gateway/src", "packages/vitrinee-core/src", "packages/vitrinee-adapters/src"];
+    const repo = join(import.meta.dirname, "../../..");
+    const roots = ["apps", "packages"].flatMap((group) =>
+      readdirSync(join(repo, group))
+        .map((name) => join(group, name, "src"))
+        .filter((src) => existsSync(join(repo, src))),
+    );
+    expect(roots).toEqual(expect.arrayContaining(["apps/gateway/src", "apps/mcp/src", "packages/vitrinee-gateway/src", "packages/vitrinee-anchor/src"]));
     const offenders: string[] = [];
     const walk = (dir: string): void => {
       for (const name of readdirSync(dir)) {
@@ -140,7 +150,7 @@ describe("the conformance test payment never reaches a real store", () => {
         else if (path.endsWith(".ts") && readFileSync(path, "utf8").includes("ucp-conformance")) offenders.push(path);
       }
     };
-    for (const root of roots) walk(join(import.meta.dirname, "../../..", root));
+    for (const root of roots) walk(join(repo, root));
     expect(offenders).toEqual([]);
   });
 });

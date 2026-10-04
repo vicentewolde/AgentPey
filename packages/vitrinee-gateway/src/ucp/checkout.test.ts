@@ -687,6 +687,32 @@ describe("UCP conformance fixes (T131)", () => {
     expect(h.facilitator.settleCalls).toHaveLength(before + 1);
   });
 
+  it("keeps each platform's keys apart: the same key from another profile is a new request, not a conflict", async () => {
+    const other = { "UCP-Agent": 'profile="https://other.example/ucp/profile.json"' };
+    const first = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), key("shared-key"));
+    const second = await h.call("POST", "/checkout-sessions", ready("polera-valpo-l"), { ...key("shared-key"), ...other });
+    expect(second.status).toBe(201);
+    expect(second.body.id).not.toBe(first.body.id);
+  });
+
+  it("complete: a recoverable answer is not replayed; the same key retried after the cause passed completes for real", async () => {
+    const refusing = harness({ facilitator: fakeFacilitator({ settle: { success: false, errorReason: "insufficient_funds", transaction: "" } }) });
+    await refusing.start();
+    try {
+      const { body: created } = await refusing.create(ready("gorro-andes"));
+      const pay = instrument(requirementsOf(created));
+      const refused = await refusing.call("POST", `/checkout-sessions/${created.id}/complete`, pay, key("complete-retry"));
+      expect(refused.body.status).not.toBe("completed");
+      expect(refused.body.messages).toEqual([expect.objectContaining({ code: "payment_failed" })]);
+      // The cause passes: the facilitator settles now.
+      refusing.facilitator.settle = fakeFacilitator().settle;
+      const again = await refusing.call("POST", `/checkout-sessions/${created.id}/complete`, pay, key("complete-retry"));
+      expect(again.body.status).toBe("completed");
+    } finally {
+      await refusing.stop();
+    }
+  });
+
   it("complete: a completed checkout refuses a new key with 409 and never settles again; without a key it reads back as before", async () => {
     const { body: created } = await h.create(ready("gorro-andes"));
     const first = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)), key("complete-2"));

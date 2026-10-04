@@ -1,6 +1,6 @@
 {
   "test_fixtures": {
-    "valid_item": { "sku": "stickers-cordillera", "expected_price": 9.9, "quantity": 1 }
+    "valid_item": { "sku": "stickers-cordillera", "expected_price": "990", "quantity": 1 }
   },
   "shipping_locations": {
     "domestic_destination": {

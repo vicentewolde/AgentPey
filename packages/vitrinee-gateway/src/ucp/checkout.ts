@@ -513,17 +513,36 @@ async function withSessionLock(deps: UcpCheckoutDeps, id: string, res: Response,
   }
 }
 
+/** The platform's profile URL in `UCP-Agent`, so one platform's key never answers another's request. */
+function agentProfile(req: Request): string {
+  return /(?:^|[;,\s])profile="([^"]*)"/.exec(req.get("ucp-agent") ?? "")?.[1] ?? "";
+}
+
+/** A `complete` answer worth replaying: a finished checkout, or an error that will not change. Anything recoverable is retried for real. */
+export function keepCompleteAnswer(status: number, body: unknown): boolean {
+  if (status >= 400) return true;
+  return (body as { status?: unknown } | null)?.status === "completed";
+}
+
 /**
  * Runs a write under its `Idempotency-Key` (T131): a repeat with the same key and
  * the same request gets the first answer back; the same key with another request
  * gets 409 and changes nothing. No key, no memory. A 409 or a 5xx is not kept:
- * running that request again is the right answer to a retry.
+ * running that request again is the right answer to a retry. Nor is anything
+ * `keep` turns down. The key is scoped to the platform that sent it.
  */
-async function idempotent(cache: IdempotencyCache, req: Request, res: Response, run: () => Promise<void>): Promise<void> {
+async function idempotent(
+  cache: IdempotencyCache,
+  req: Request,
+  res: Response,
+  run: () => Promise<void>,
+  keep: (status: number, body: unknown) => boolean = () => true,
+): Promise<void> {
   const key = readIdempotencyKey(req);
   if (key === null) return run();
-  const scope = `${req.method} ${req.originalUrl.split("?")[0]} ${key}`;
-  const hash = requestHash(req.method, req.originalUrl.split("?")[0] ?? "", req.body);
+  const path = req.originalUrl.split("?")[0] ?? "";
+  const scope = `${agentProfile(req)} ${req.method} ${path} ${key}`;
+  const hash = requestHash(req.method, path, req.body);
   const found = cache.lookup(scope, hash);
   if (found.kind === "replay") {
     res.status(found.status).json(found.body);
@@ -532,7 +551,7 @@ async function idempotent(cache: IdempotencyCache, req: Request, res: Response, 
   if (found.kind === "conflict") return sendError(res, 409, "idempotency_conflict", "this Idempotency-Key was already used with a different request");
   const send = res.json.bind(res);
   res.json = ((body: unknown) => {
-    if (res.statusCode < 500 && res.statusCode !== 409) cache.remember(scope, hash, res.statusCode, body);
+    if (res.statusCode < 500 && res.statusCode !== 409 && keep(res.statusCode, body)) cache.remember(scope, hash, res.statusCode, body);
     return send(body);
   }) as Response["json"];
   await run();
@@ -627,7 +646,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       const idempotencyKey = readIdempotencyKey(req);
       const input = completeInput.parse(req.body ?? {});
       await withSessionLock(deps, id, res, () => complete(deps, id, idempotencyKey, input, res, originOf(req)));
-    })),
+    }, keepCompleteAnswer)),
   );
 }
 

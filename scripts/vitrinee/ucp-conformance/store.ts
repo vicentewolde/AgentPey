@@ -23,7 +23,7 @@
  *   would (`assertLocalOnly`).
  */
 import { timingSafeEqual } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -83,7 +83,12 @@ export function assertLocalOnly(env: NodeJS.ProcessEnv): void {
   }
   const base = env["PUBLIC_BASE_URL"] ?? "";
   if (base !== "") {
-    const host = new URL(base).hostname;
+    let host: string;
+    try {
+      host = new URL(base).hostname;
+    } catch {
+      return refuse("PUBLIC_BASE_URL is not a URL");
+    }
     if (host !== "127.0.0.1" && host !== "localhost" && host !== "[::1]") refuse(`PUBLIC_BASE_URL is not loopback (${host})`);
   }
 }
@@ -282,6 +287,7 @@ export async function startConformanceStore(options: { port?: number; simulation
       await inner.anchors.idle();
       inner.anchors.stop();
       await new Promise<void>((done) => server.close(() => done()));
+      rmSync(dir, { recursive: true, force: true });
     },
   };
 }
