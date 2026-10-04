@@ -20,7 +20,7 @@
 | T131 Suite oficial de conformidad UCP | imprescindible | ✅ terminada: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp`, mergeada ([PR #49](https://github.com/vicentewolde/AgentPey/pull/49)) |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
-| T134 AP2 dentro del checkout UCP | si alcanza | ⏳ pendiente | |
+| T134 AP2 dentro del checkout UCP | si alcanza | 🔨 en curso: plan | `cc/t134-ap2-checkout` |
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ⏳ pendiente | |
 | T136 SDK publicado en npm | si alcanza | ⏳ pendiente | |
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ⏳ pendiente | |

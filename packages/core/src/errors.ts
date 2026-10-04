@@ -211,6 +211,14 @@ export type AgentPassErrorCode =
   | "Ap2ReferenceMismatch"
   /** An AP2 mandate carries a constraint type this verifier does not know — AP2 says that fails evaluation. */
   | "Ap2ConstraintUnsupported"
+  /** No key to check an AP2 signature against: the platform publishes none for that `kid` (T134, UCP `agent_missing_key`). */
+  | "Ap2KeyNotFound"
+  /** An AP2 closing hop does not bind to its open mandate: wrong holder key, `typ`, `aud`, `nonce` or `sd_hash` (T134). */
+  | "Ap2KeyBindingInvalid"
+  /** A closed AP2 mandate is for other terms than the ones it is presented for, or breaks its open mandate's constraints (T134, UCP `mandate_scope_mismatch`). */
+  | "Ap2ScopeMismatch"
+  /** The checkout inside a closed AP2 mandate does not carry this business's own authorization (T134, UCP `merchant_authorization_invalid`). */
+  | "Ap2MerchantAuthorizationInvalid"
   /** An AgentResolve claim is malformed, off its schema, or not signed by its claimant (T124). */
   | "ResolveClaimInvalid"
   /** The receipt a claim is about did not verify, or is not the receipt the claim embeds. */

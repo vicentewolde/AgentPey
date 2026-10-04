@@ -43,3 +43,20 @@ export {
   type VerifiedOpenMandatePair,
   type VerifyOpenMandateOptions,
 } from "./verify.js";
+export { jcsCanonicalize } from "./jcs.js";
+export {
+  AP2_CLOCK_SKEW_SECONDS,
+  AP2_KB_TYP,
+  CLOSED_CHECKOUT_MANDATE_VCT,
+  checkOpenCheckoutConstraints,
+  checkoutJwtFrom,
+  checkoutSigningBytes,
+  closeCheckoutMandate,
+  signMerchantAuthorization,
+  verifyCheckoutJwt,
+  verifyCheckoutMandateChain,
+  verifyMerchantAuthorization,
+  type CloseCheckoutMandateInput,
+  type VerifiedCheckoutMandate,
+  type VerifyCheckoutMandateOptions,
+} from "./checkout.js";

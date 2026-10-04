@@ -325,3 +325,64 @@ declaran su perfil y siguen recibiendo `2026-04-08` mientras ese perfil diga
 **Alternativa descartada.** Leer solo el parámetro `version=` del header: más
 simple, pero no es la spec, y un agente que declara `2026-08-25` en su perfil
 recibiría respuestas viejas.
+
+### R-15 · Cómo encajan UCP y AP2 en el checkout: la cadena `abierto~~cierre`, `aud` y `nonce`, y el alcance · `Vigente`
+**Fecha:** 2026-10-04 · **Tarea:** T134 · Propuesta de Claude Code, **aprobada por el usuario**
+
+UCP `2026-08-25` pide que la tienda firme cada respuesta del checkout
+(`ap2.merchant_authorization`, JWS separado ES256 sobre el checkout
+canonicalizado con JCS, sin el campo `ap2`) y que el agente mande en `complete`
+un `ap2.checkout_mandate` que "contiene el checkout completo con esa firma".
+AP2 v0.2 define el mandato cerrado como el último salto de una cadena
+`abierto~~cierre`: el mandato abierto (firmado por la plataforma, con `cnf` =
+llave del agente) y un salto `kb+sd-jwt` firmado por el agente, con `aud`,
+`nonce`, `sd_hash` del abierto y, adentro, `mandate.checkout.1` con
+`checkout_jwt` (JWS compacto) y `checkout_hash`. Ninguna de las dos specs dice
+cómo se juntan. Se decide:
+
+1. **`checkout_jwt` es la firma de la tienda con el payload reinsertado:**
+   `header.base64url(JCS(checkout sin ap2)).firma`. Es un JWS compacto que la
+   librería oficial de AP2 lee, y la tienda lo verifica con su propia llave.
+   `checkout_hash` es su SHA-256 en base64url.
+2. **`aud` es el origen de la tienda y `nonce` el id del checkout.** El mandato
+   sirve para un solo checkout de una sola tienda, sin un paso extra para
+   acordar el `nonce` (UCP no define cómo). El `complete` de un checkout solo se
+   cobra una vez.
+3. **El mandato abierto** es el `mandate.checkout.open.1` de T123, firmado por
+   la plataforma AgentPey (`R-16`), con sus restricciones de producto, cantidad
+   y tienda; la tienda las evalúa contra el checkout firmado, y una restricción
+   que no conoce cuenta como no cumplida (AP2).
+4. **Alcance:** AP2 solo en UCP `2026-08-25` y solo si los dos perfiles
+   declaran `dev.ucp.common.payment.ap2_mandate`. **Sin mandato de pago:** en
+   `stellar_x402` la credencial es la transacción firmada y el tope lo aplica la
+   red; el mandato de pago abierto de T123 sigue existiendo aparte.
+5. **Un cierre por intención (brecha 14):** el agente no cierra un segundo
+   mandato para el mismo `intentId`.
+6. **La tienda se nombra por su origen.** Con AP2 activo, el checkout lleva
+   `merchant: {id: <origen>, name, website: <origen>}`: UCP no tiene ese campo,
+   pero permite campos extra, y el evaluador de AP2 (`merchant_matches`) compara
+   la tienda del checkout con las permitidas por `id`. El mandato abierto la
+   nombra con el mismo origen que usa `aud`.
+
+Queda como brecha para el SEP: las specs no dicen cómo se mapea el JWS separado
+de UCP al `checkout_jwt` compacto de AP2, ni cómo se acuerdan `aud` y `nonce`.
+
+**Alternativa descartada.** Un mandato cerrado suelto (sin el abierto) firmado
+por la plataforma: más simple, pero no es la forma de AP2 v0.2 y la librería
+oficial no lo verificaría como cadena.
+
+### R-16 · La plataforma AgentPey firma mandatos AP2 con una llave P-256 propia, publicada en un perfil aparte · `Vigente`
+**Fecha:** 2026-10-04 · **Tarea:** T134 · Propuesta de Claude Code, **aprobada por el usuario**
+
+UCP pide que, en el modelo de proveedor de plataforma, la tienda encuentre la
+llave que firmó el mandato en `keys` del perfil de la plataforma. AgentPey
+tiene un secreto nuevo, `AGENTPEY_PLATFORM_AP2_SECRET` (P-256), solo en
+`.env.local`; lo genera un script y la llave pública se publica en
+`agentpey-ap2.json`, un perfil de plataforma aparte que declara la extensión
+AP2. `agentpey.json` y `agentpey-2026-08-25.json` no la declaran, así que las
+compras sin AP2 siguen igual. El MCP no usa AP2 por ahora: no hay nada que
+cargar en Render. La llave del agente para el key binding (`cnf`) es P-256
+derivada de su llave de Stellar (como `VT-43`).
+
+**Alternativa descartada.** Declarar AP2 en `agentpey-2026-08-25.json`: toda
+compra en esa versión quedaría obligada a mandar mandato.

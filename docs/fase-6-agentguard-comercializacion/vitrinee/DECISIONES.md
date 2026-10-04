@@ -1200,3 +1200,22 @@ no cobrar dos veces ya está en la sesión persistida; las claves solo evitan
 respuestas distintas a una misma solicitud. Y seguir devolviendo el checkout
 completado a una clave nueva: la suite lo marca como un segundo `complete`
 aceptado.
+
+---
+
+### VT-43 · La llave P-256 con que una tienda firma su autorización AP2 se deriva de su llave de recibos · `Vigente`
+**Fecha:** 2026-10-04 · **Hito:** T134 (Fase 8), aprobado por el usuario
+
+AP2 en UCP pide ES256 (`R-5`) y la tienda solo tenía su llave Ed25519 de
+recibos (`MERCHANT_SIGNING_SECRET`, cifrada por comercio en la plataforma). La
+llave P-256 se deriva de esa: HKDF-SHA256 sobre la semilla Ed25519, con una
+etiqueta propia (`vitrinee/ucp-ap2/p256/v1`), reducida a un escalar válido de
+P-256. Se publica en `keys` del perfil `2026-08-25` con su propio `kid`.
+
+**Motivo.** Sin migración de la base, sin secreto nuevo en Render, igual en
+modo tienda única y plataforma. La llave de recibos ya es la identidad de la
+tienda: quien la tenga, ya puede firmar como ella.
+
+**Alternativa descartada.** Una llave P-256 nueva guardada aparte: una columna
+cifrada más, una migración y un secreto más por comercio, sin ganar separación
+real (el mismo dueño, el mismo proceso).
