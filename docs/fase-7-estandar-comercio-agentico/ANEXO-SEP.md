@@ -526,8 +526,23 @@ Códigos: `Ap2MandateInvalid`, `Ap2SignatureInvalid`, `Ap2DisclosureMismatch`,
 **Interoperabilidad.** La librería oficial de AP2 en Python (commit `e1ea56d`)
 verifica los dos mandatos del export real en Ed25519 y los del mismo export
 firmado con llaves P-256 de un solo uso (`scripts/ap2-crosscheck/verify.py`).
-Lo que no se hace: negociar `dev.ucp.shopping.ap2_mandate` en el checkout UCP,
-ni mandatos cerrados (`E-8`, brecha 14).
+En la Fase 7 no se negociaba AP2 en el checkout UCP ni se cerraban mandatos
+(`E-8`, brecha 14).
+
+**AP2 en el checkout UCP (Fase 8, T134, `R-15`).** En UCP `2026-08-25`, con
+`dev.ucp.common.payment.ap2_mandate` negociado, la tienda firma cada respuesta
+(`ap2.merchant_authorization`, ES256 sobre JCS del checkout sin `ap2`) y exige
+en `complete` una cadena `abierto~~cierre`: el mandato abierto de arriba,
+firmado por la plataforma, y un salto `kb+sd-jwt` del agente con `aud` (el
+origen de la tienda), `nonce` (el id del checkout) y `mandate.checkout.1`
+(`checkout_jwt`, la firma de la tienda con el payload reinsertado, y su hash).
+Códigos nuevos del verificador: `Ap2KeyNotFound`, `Ap2KeyBindingInvalid`,
+`Ap2ScopeMismatch`, `Ap2MerchantAuthorizationInvalid`; la tienda los traduce
+a los de UCP (`mandate_invalid_signature`, `mandate_expired`,
+`mandate_scope_mismatch`, `merchant_authorization_invalid`, `agent_missing_key`,
+`mandate_required`). Brecha para el SEP: ninguna de las dos specs dice cómo se
+mapea el JWS separado de UCP al `checkout_jwt` compacto de AP2, ni cómo se
+acuerdan `aud` y `nonce`.
 
 ### 4.6 Disputas: AgentResolve (T124)
 

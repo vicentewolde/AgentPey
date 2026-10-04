@@ -129,7 +129,7 @@ describe("AP2 inside a UCP checkout (T134, R-15)", () => {
     [{ item: "another-product" }, "another item"],
     [{ quantity: 2 }, "another quantity"],
     [{ website: "https://elsewhere.example" }, "another merchant"],
-  ])("rejects a checkout outside the open mandate's constraints: %o (%s)", async (overrides) => {
+  ])("rejects a checkout outside the open mandate's constraints: %o (%s)", async (overrides, _label) => {
     const narrowOpen = await openMandate(overrides);
     const verified = await verify(await close({ open: narrowOpen }));
     const signed = await verifyCheckoutJwt(verified.checkoutJwt, business.public);

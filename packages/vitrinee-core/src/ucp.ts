@@ -49,6 +49,15 @@ export const UCP_SPEC_URLS = ucpSpecUrls(UCP_LEGACY_VERSION);
 export const UCP_CHECKOUT = "dev.ucp.shopping.checkout";
 export const UCP_FULFILLMENT = "dev.ucp.shopping.fulfillment";
 export const UCP_ORDER = "dev.ucp.shopping.order";
+/**
+ * UCP's AP2 mandates extension (T134, R-15), offered only in 2026-08-25 and only to a platform that declares it.
+ * Once both sides declare it the checkout is "security locked": signed responses, and no `complete` without a mandate.
+ */
+export const UCP_AP2_MANDATE = "dev.ucp.common.payment.ap2_mandate";
+export const UCP_AP2_MANDATE_URLS = {
+  spec: "https://ucp.dev/2026-08-25/specification/payment/extensions/ap2-mandates",
+  schema: "https://ucp.dev/2026-08-25/schemas/common/payment_ap2_mandate.json",
+} as const;
 
 /** AgentPey's extension: a signed receipt, anchored on Stellar, on the checkout and the order. */
 export const RECEIPT_EXTENSION = "com.agentpey.shopping.receipt";

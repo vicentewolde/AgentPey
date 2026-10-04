@@ -44,12 +44,39 @@ const CACHE_MAX = 1_000;
 
 /** The part of a platform profile a store reads. Loose: the official schemas are the contract. */
 const platformProfileSchema = z.looseObject({
-  ucp: z.looseObject({ version: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+  ucp: z.looseObject({
+    version: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    capabilities: z.record(z.string(), z.unknown()).optional(),
+  }),
+  keys: z.array(z.unknown()).optional(),
 });
+const p256Jwk = z.looseObject({
+  kty: z.literal("EC"),
+  crv: z.literal("P-256"),
+  x: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  y: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  kid: z.string().min(1).max(200).optional(),
+});
+const MAX_CAPABILITIES = 64;
+const MAX_KEYS = 10;
 
-/** What is kept of a platform profile: only what a store uses. */
+/** A platform's public P-256 key, as kept: the members needed to verify ES256 and nothing else. */
+export interface PlatformP256Key {
+  kty: "EC";
+  crv: "P-256";
+  x: string;
+  y: string;
+  kid?: string;
+}
+
+/**
+ * What is kept of a platform profile: only what a store uses. Its version, the
+ * names of the capabilities it declares (for extension negotiation, T134) and
+ * its P-256 keys (to verify AP2 mandates it signs), each bounded.
+ */
 export interface PlatformProfileSummary {
-  ucp: { version: string };
+  ucp: { version: string; capabilities: string[] };
+  keys: PlatformP256Key[];
 }
 
 export type ProfileFailure = "not_https" | "bad_url" | "blocked_address" | "unreachable" | "too_large" | "bad_status" | "malformed" | "busy" | "backoff";
@@ -277,7 +304,15 @@ export function createPlatformProfileReader(options: PlatformProfileReaderOption
       return { ok: false, reason: "malformed" };
     }
     const parsed = platformProfileSchema.safeParse(json);
-    return parsed.success ? { ok: true, profile: { ucp: { version: parsed.data.ucp.version } } } : { ok: false, reason: "malformed" };
+    if (!parsed.success) return { ok: false, reason: "malformed" };
+    const capabilities = Object.keys(parsed.data.ucp.capabilities ?? {})
+      .filter((name) => name.length <= 100)
+      .slice(0, MAX_CAPABILITIES);
+    const keys = (parsed.data.keys ?? [])
+      .map((key) => p256Jwk.safeParse(key))
+      .flatMap((key) => (key.success ? [{ kty: key.data.kty, crv: key.data.crv, x: key.data.x, y: key.data.y, ...(key.data.kid === undefined ? {} : { kid: key.data.kid }) }] : []))
+      .slice(0, MAX_KEYS);
+    return { ok: true, profile: { ucp: { version: parsed.data.ucp.version, capabilities }, keys } };
   }
 
   /** The checks that need no network, in order: a refusal here costs nothing and is not rate-limited. */

@@ -17,6 +17,7 @@ import {
   STELLAR_X402_HANDLER_ID,
   STELLAR_X402_HANDLER_VERSION,
   STELLAR_X402_INSTRUMENT_TYPE,
+  UCP_AP2_MANDATE,
   UCP_CHECKOUT,
   UCP_FULFILLMENT,
   USDC_TESTNET,
@@ -45,8 +46,12 @@ import {
   type StoredRequirements,
   type UcpAddress,
 } from "./sessions.js";
+import { AgentPassError } from "@agentpass/core";
+import { checkOpenCheckoutConstraints, jcsCanonicalize, signMerchantAuthorization, verifyCheckoutJwt, verifyCheckoutMandateChain } from "@agentpey/ap2";
+
+import type { StoreAp2Key } from "./ap2.js";
 import { IdempotencyCache, requestHash } from "./idempotency.js";
-import { ucpVersionOf } from "./negotiation.js";
+import { ucpPlatformOf, ucpVersionOf } from "./negotiation.js";
 import { stellarX402Config } from "./profile.js";
 
 
@@ -59,6 +64,8 @@ export const SHIPPING_OPTION_TITLE = "Envío coordinado por la tienda";
 
 export interface UcpCheckoutDeps extends CheckoutDeps {
   sessions: CheckoutSessionPersistence;
+  /** The storefront's P-256 key for AP2 (VT-43): signs every checkout response when AP2 is negotiated. */
+  ap2Key: StoreAp2Key;
   x402: x402ResourceServer;
   /** Resolves once the resource server has read the facilitator's capabilities. */
   ready: () => Promise<void>;
@@ -316,10 +323,26 @@ function handlerFor(deps: UcpCheckoutDeps, session: CheckoutSession) {
 interface View {
   origin: string;
   version: UcpVersion;
+  /** AP2 negotiated (T134, R-15): 2026-08-25, and the platform's profile declares the extension. */
+  ap2: boolean;
+  /** The platform's P-256 keys, from its profile, when AP2 is negotiated. */
+  platformKeys: ReadonlyArray<{ kty: "EC"; crv: "P-256"; x: string; y: string; kid?: string }>;
 }
 
-async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession, { origin, version }: View, messages: UcpMessage[] = []) {
-  const { product, totalMinor } = await render(deps, session);
+async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession, view: View, messages: UcpMessage[] = []) {
+  const body = checkoutBody(deps, session, view, messages, await render(deps, session));
+  if (!view.ap2) return body;
+  // AP2 negotiated: the business names itself by its origin (R-15) and signs the whole response but `ap2` (UCP, JCS).
+  const named = {
+    ...body,
+    ucp: { ...body.ucp, capabilities: { ...body.ucp.capabilities, [UCP_AP2_MANDATE]: [{ version: view.version }] } },
+    merchant: { id: view.origin, name: deps.config.merchant.name, website: view.origin },
+  };
+  return { ...named, ap2: { merchant_authorization: await signMerchantAuthorization(named, deps.ap2Key.signer) } };
+}
+
+function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin, version }: View, messages: UcpMessage[], rendered: Rendered) {
+  const { product, totalMinor } = rendered;
   const order = session.orderId === null ? undefined : deps.orders.get(session.orderId);
   const receipt = order === undefined ? undefined : receiptExtension(order, origin);
   const d = session.destination;
@@ -472,6 +495,75 @@ async function settle(deps: UcpCheckoutDeps, requirements: StoredRequirements, t
   return response.transaction === "" ? { kind: "refused", reason } : { kind: "unknown", reason, transaction: response.transaction };
 }
 
+// ---------------------------------------------------------------- AP2 (T134)
+
+/** UCP's AP2 error code for each way a mandate can fail (`payment_ap2_mandate.json`). */
+function ap2Code(error: unknown): string {
+  if (!(error instanceof AgentPassError)) return "mandate_invalid_signature";
+  switch (error.code) {
+    // A platform with keys, none of them the one named: the mandate cannot be verified. (A platform with no
+    // key at all is `agent_missing_key`, answered before verification.)
+    case "Ap2MandateExpired":
+    case "Ap2MandateNotYetValid":
+      return "mandate_expired";
+    case "Ap2ScopeMismatch":
+    case "Ap2ConstraintUnsupported":
+      return "mandate_scope_mismatch";
+    case "Ap2MerchantAuthorizationInvalid":
+      return "merchant_authorization_invalid";
+    default:
+      return "mandate_invalid_signature";
+  }
+}
+
+const MAX_MANDATE_LENGTH = 32_000;
+
+/**
+ * The checks UCP's AP2 extension asks of a business before it charges: a
+ * mandate is there; the platform signed the open mandate with a key its
+ * profile publishes; the agent's hop is bound to it, to this business (`aud`)
+ * and to this checkout (`nonce`); the checkout inside carries this business's
+ * own signature; what it signed is what this session would charge now; and
+ * the open mandate's constraints hold. Null when all pass; the refusal
+ * message otherwise.
+ */
+async function checkAp2Mandate(deps: UcpCheckoutDeps, session: CheckoutSession, view: View, input: z.infer<typeof completeInput>): Promise<UcpMessage | null> {
+  const mandate = (input as { ap2?: { checkout_mandate?: unknown } }).ap2?.checkout_mandate;
+  if (typeof mandate !== "string" || mandate === "") {
+    return message("mandate_required", "AP2 was negotiated: complete needs ap2.checkout_mandate", "recoverable", "$.ap2.checkout_mandate");
+  }
+  if (mandate.length > MAX_MANDATE_LENGTH) return message("mandate_invalid_signature", "the checkout mandate is too large", "recoverable", "$.ap2.checkout_mandate");
+  if (view.platformKeys.length === 0) return message("agent_missing_key", "the platform's profile publishes no P-256 key to verify its mandate with", "recoverable", "$.ap2.checkout_mandate");
+  try {
+    const verified = await verifyCheckoutMandateChain(mandate, {
+      platformKey: (kid) => view.platformKeys.find((key) => key.kid === kid) ?? (kid === undefined && view.platformKeys.length === 1 ? view.platformKeys[0] : undefined),
+      aud: view.origin,
+      nonce: session.id,
+      now: deps.now(),
+    });
+    // The checkout it closes over: signed by this business, and the terms this session would charge right now.
+    const signed = await verifyCheckoutJwt(verified.checkoutJwt, deps.ap2Key.publicJwk);
+    const { totalMinor } = await render(deps, session);
+    const lines = signed.line_items as Array<{ item?: { id?: unknown }; quantity?: unknown }> | undefined;
+    const sameTerms =
+      signed.id === session.id &&
+      signed.currency === (session.quote?.currency ?? deps.config.merchant.currency) &&
+      // Canonical on both sides: the signed checkout comes back with JCS's member order.
+      jcsCanonicalize(signed.totals) === jcsCanonicalize(totals(totalMinor)) &&
+      Array.isArray(lines) &&
+      lines.length === 1 &&
+      lines[0]?.item?.id === session.productId &&
+      lines[0]?.quantity === session.quantity;
+    if (!sameTerms) return message("mandate_scope_mismatch", "the checkout mandate is for other terms than this checkout's", "recoverable", "$.ap2.checkout_mandate");
+    checkOpenCheckoutConstraints(verified.open, signed, view.origin);
+    return null;
+  } catch (error) {
+    const code = ap2Code(error);
+    deps.log("ap2 mandate refused", { checkoutId: session.id, code, reason: error instanceof Error ? error.message : String(error) });
+    return message(code, error instanceof AgentPassError ? error.message : "the checkout mandate does not verify", "recoverable", "$.ap2.checkout_mandate");
+  }
+}
+
 // ---------------------------------------------------------------- routes
 
 function readIdempotencyKey(req: Request): string | null {
@@ -567,7 +659,12 @@ async function idempotent(
 }
 
 export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheckoutDeps, originOf: (req: Request) => string): void {
-  const viewOf = (req: Request, res: Response): View => ({ origin: originOf(req), version: ucpVersionOf(res) });
+  const viewOf = (req: Request, res: Response): View => {
+    const version = ucpVersionOf(res);
+    const platform = ucpPlatformOf(res);
+    const ap2 = version === "2026-08-25" && platform !== undefined && platform.ucp.capabilities.includes(UCP_AP2_MANDATE);
+    return { origin: originOf(req), version, ap2, platformKeys: ap2 ? platform.keys : [] };
+  };
   const idempotency = new IdempotencyCache(deps.now);
   const notFound = (res: Response, id: string) => sendError(res, 404, "not_found", `no checkout session "${id}"`);
 
@@ -712,6 +809,16 @@ async function complete(
     res.json(await checkoutResponse(deps, session, view, messages.length > 0 ? messages : [message("invalid_state", "checkout was not ready; review the refreshed terms and complete again", "recoverable")]));
     return;
   }
+  // AP2 negotiated (T134, R-15): the checkout is security locked. No mandate, or one that does not verify, and
+  // nothing is charged; the platform can close a new mandate over the current terms and complete again.
+  if (view.ap2) {
+    const refusal = await checkAp2Mandate(deps, session, view, input);
+    if (refusal !== null) {
+      res.json(await checkoutResponse(deps, session, view, [refusal]));
+      return;
+    }
+  }
+
   const stored = session.requirements;
   if (stored === null || session.quote === null) throw new VitrineeError("StorageError", "a ready checkout has no payment requirements", { details: { checkoutId: session.id } });
 

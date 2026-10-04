@@ -561,6 +561,9 @@ importers:
       '@agentpass/core':
         specifier: workspace:*
         version: link:../core
+      '@agentpey/ap2':
+        specifier: workspace:*
+        version: link:../ap2
       '@stellar/stellar-sdk':
         specifier: ^17.1.0
         version: 17.1.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
@@ -601,6 +604,9 @@ importers:
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
+      jose:
+        specifier: ^6.2.10
+        version: 6.2.10
       tsx:
         specifier: ^4.20.0
         version: 4.23.13

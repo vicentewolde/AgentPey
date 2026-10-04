@@ -104,6 +104,7 @@ describe("UCP surface of a storefront", () => {
       const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
       expect(Object.keys(profile.ucp.capabilities ?? {}).sort()).toEqual([
         "com.agentpey.shopping.receipt",
+        "dev.ucp.common.payment.ap2_mandate",
         "dev.ucp.shopping.catalog.lookup",
         "dev.ucp.shopping.catalog.search",
         "dev.ucp.shopping.checkout",

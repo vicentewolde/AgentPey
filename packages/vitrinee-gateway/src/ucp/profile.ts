@@ -17,6 +17,8 @@ import {
   UCP_ORDER,
   UCP_REST_PREFIX,
   UCP_SHOPPING_SERVICE,
+  UCP_AP2_MANDATE,
+  UCP_AP2_MANDATE_URLS,
   UCP_LEGACY_VERSION,
   UCP_PROFILE_PATH,
   USDC_TESTNET,
@@ -48,6 +50,8 @@ export interface BuildUcpProfileInput {
   baseUrl: string;
   /** Which profile: the current one at `/.well-known/ucp`, or an older version's leaf profile. Defaults to the current one. */
   version?: UcpVersion;
+  /** The storefront's AP2 public key (T134, VT-43). With it, the 2026-08-25 profile offers the AP2 extension and publishes the key. */
+  ap2Key?: { kty: "EC"; crv: "P-256"; x: string; y: string; kid: string; alg: "ES256"; use: "sig" };
 }
 
 /** Where a version's leaf profile lives, next to the current one (R-6). */
@@ -80,7 +84,7 @@ function signingJwk(config: GatewayConfig) {
  * the key in `keys[]` (2026-04-08 in `signing_keys`, mirrored in `keys` as its
  * release branch allows), renamed the fulfillment config and moved the specs.
  */
-export function buildUcpProfile({ config, baseUrl, version = "2026-08-25" }: BuildUcpProfileInput): UcpBusinessProfile {
+export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Key }: BuildUcpProfileInput): UcpBusinessProfile {
   const origin = baseUrl.replace(/\/+$/, "");
   const urls = ucpSpecUrls(version);
   const legacy = version === "2026-04-08";
@@ -108,6 +112,10 @@ export function buildUcpProfile({ config, baseUrl, version = "2026-08-25" }: Bui
           },
         ],
         [UCP_ORDER]: [{ version, ...urls.order }],
+        // AP2 mandates (T134, R-15): 2026-08-25 only, and only negotiated with a platform that declares it too.
+        ...(legacy || ap2Key === undefined
+          ? {}
+          : { [UCP_AP2_MANDATE]: [{ version, ...UCP_AP2_MANDATE_URLS, extends: UCP_CHECKOUT, config: { vp_formats_supported: { "dc+sd-jwt": {} } } }] }),
         [RECEIPT_EXTENSION]: [
           { version: RECEIPT_EXTENSION_VERSION, spec: RECEIPT_EXTENSION_SPEC_URL, schema: RECEIPT_EXTENSION_SCHEMA_URL, extends: [UCP_CHECKOUT, UCP_ORDER] },
         ],
@@ -125,6 +133,6 @@ export function buildUcpProfile({ config, baseUrl, version = "2026-08-25" }: Bui
         ],
       },
     },
-    ...(legacy ? { signing_keys: [jwk], keys: [jwk] } : { keys: [jwk] }),
+    ...(legacy ? { signing_keys: [jwk], keys: [jwk] } : { keys: ap2Key === undefined ? [jwk] : [jwk, ap2Key] }),
   });
 }

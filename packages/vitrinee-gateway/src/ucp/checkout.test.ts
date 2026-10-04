@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
 
+import { checkoutJwtFrom, closeCheckoutMandate, issueOpenMandatePair, verifyMerchantAuthorization, type Ap2Signer } from "@agentpey/ap2";
+import { exportJWK, generateKeyPair } from "jose";
+
 import { MockStoreAdapter, type MOCK_CATALOG } from "@vitrinee/adapters";
 import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
 import { STELLAR_X402_HANDLER, UCP_REST_PREFIX, USDC_TESTNET } from "@vitrinee/core";
@@ -806,3 +809,146 @@ describe("UCP 2026-08-25 next to 2026-04-08 (T133, R-6, R-14)", () => {
   });
 });
 
+
+describe("AP2 in the UCP checkout, the store's side (T134, R-15)", () => {
+  type P256 = { signer: Ap2Signer; public: { kty: "EC"; crv: "P-256"; x: string; y: string; kid: string } };
+  const p256 = async (kid: string): Promise<P256> => {
+    const { privateKey, publicKey } = await generateKeyPair("ES256", { extractable: true });
+    const pub = (await exportJWK(publicKey)) as { x: string; y: string };
+    return { signer: { alg: "ES256", privateJwk: await exportJWK(privateKey), kid }, public: { kty: "EC", crv: "P-256", x: pub.x, y: pub.y, kid } };
+  };
+  const AP2_PLATFORM = "https://platform.example/ucp/agentpey-ap2.json";
+  const NO_KEYS = "https://platform.example/ucp/ap2-without-keys.json";
+  const PLAIN_0825 = "https://platform.example/ucp/plain-2026-08-25.json";
+  let platform: P256;
+  let agent: P256;
+  let stranger: P256;
+  const profiles = { read: async () => ({ ok: false as const, reason: "unreachable" as const }) } as PlatformProfileReader;
+  const h = harness({ profiles });
+  const as = (profile: string) => ({ "UCP-Agent": `profile="${profile}"` });
+
+  beforeAll(async () => {
+    [platform, agent, stranger] = await Promise.all([p256("agentpey#ap2"), p256("agent#ap2"), p256("stranger#ap2")]);
+    const table = fakePlatformProfiles({
+      [AP2_PLATFORM]: { ucp: { version: "2026-08-25", capabilities: ["dev.ucp.shopping.checkout", "dev.ucp.common.payment.ap2_mandate"] }, keys: [platform.public] },
+      [NO_KEYS]: { ucp: { version: "2026-08-25", capabilities: ["dev.ucp.shopping.checkout", "dev.ucp.common.payment.ap2_mandate"] }, keys: [] },
+      [PLAIN_0825]: "2026-08-25",
+    });
+    profiles.read = table.read;
+    await h.start();
+  });
+  afterAll(() => h.stop());
+
+  const storeKey = async () => {
+    const profile = (await (await fetch(`${h.url()}/.well-known/ucp`)).json()) as { keys: Array<{ kid: string; kty: string; crv?: string; x: string; y?: string }> };
+    const key = profile.keys.find((k) => k.kid.endsWith("#ap2-p256"));
+    if (key === undefined || key.y === undefined) throw new TypeError("the profile publishes no AP2 key");
+    return { kty: "EC" as const, crv: "P-256" as const, x: key.x, y: key.y, kid: key.kid };
+  };
+
+  /** What AgentPey's agent will do (PR 2): an open mandate the platform signs, closed over the signed checkout. */
+  const mandateFor = async (checkout: Record<string, unknown>, o: { issuer?: P256; holder?: P256; nonce?: string; quantity?: number; expiresAt?: Date; checkoutJwt?: string } = {}) => {
+    const origin = new URL(h.url()).origin;
+    const open = (
+      await issueOpenMandatePair(
+        {
+          issuer: "https://agentpey.com",
+          source: { mandate_id: crypto.randomUUID(), hash: "a".repeat(64), registry: "CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F" },
+          agentKey: agent.public,
+          merchant: { id: origin, name: "Bazar Cordillera", website: origin },
+          item: { id: "gorro-andes", title: "Gorro Andes" },
+          quantity: o.quantity ?? 1,
+          maxAmount: 300n,
+          currency: "USD",
+          paymentInstrument: { id: "stellar_x402", type: "stellar_x402" },
+          issuedAt: new Date(h.clock.now.getTime() - 60_000),
+          expiresAt: o.expiresAt ?? new Date(h.clock.now.getTime() + 15 * 60_000),
+        },
+        (o.issuer ?? platform).signer,
+      )
+    ).checkout;
+    return closeCheckoutMandate({ open, holder: (o.holder ?? agent).signer, checkoutJwt: o.checkoutJwt ?? checkoutJwtFrom(checkout), aud: origin, nonce: o.nonce ?? String(checkout.id), issuedAt: h.clock.now });
+  };
+  const completeWith = (created: Checkout, mandate: string | undefined, profile = AP2_PLATFORM) =>
+    h.call("POST", `/checkout-sessions/${created.id}/complete`, { ...instrument(requirementsOf(created)), ...(mandate === undefined ? {} : { ap2: { checkout_mandate: mandate } }) }, as(profile));
+
+  it("with AP2 negotiated, signs every checkout response, names itself by its origin, and the signature checks against its published key", async () => {
+    const created = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AP2_PLATFORM));
+    const body = created.body as unknown as Record<string, unknown> & { ucp: { capabilities: Record<string, unknown> } };
+    expect(body.ucp.capabilities["dev.ucp.common.payment.ap2_mandate"]).toEqual([{ version: "2026-08-25" }]);
+    expect(body["merchant"]).toEqual({ id: new URL(h.url()).origin, name: expect.any(String), website: new URL(h.url()).origin });
+    expect(ucpErrors("https://ucp.dev/schemas/common/payment_ap2_mandate.json#/$defs/dev.ucp.shopping.checkout", body, "2026-08-25")).toEqual([]);
+    await expect(verifyMerchantAuthorization(body, await storeKey())).resolves.toBeUndefined();
+    const read = await h.call("GET", `/checkout-sessions/${created.body.id}`, undefined, as(AP2_PLATFORM));
+    await expect(verifyMerchantAuthorization(read.body as unknown as Record<string, unknown>, await storeKey())).resolves.toBeUndefined();
+  });
+
+  it("refuses to complete without a mandate (mandate_required), and charges nothing", async () => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AP2_PLATFORM));
+    const before = h.facilitator.settleCalls.length;
+    const done = await completeWith(created, undefined);
+    expect(done.body.status).not.toBe("completed");
+    expect(done.body.messages).toEqual([expect.objectContaining({ code: "mandate_required" })]);
+    expect(h.facilitator.settleCalls).toHaveLength(before);
+  });
+
+  it("completes with a valid closed mandate, settling once", async () => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AP2_PLATFORM));
+    const before = h.facilitator.settleCalls.length;
+    const done = await completeWith(created, await mandateFor(created as unknown as Record<string, unknown>));
+    expect(done.body.messages).toEqual([]);
+    expect(done.body.status).toBe("completed");
+    expect(h.facilitator.settleCalls).toHaveLength(before + 1);
+    await expect(verifyMerchantAuthorization(done.body as unknown as Record<string, unknown>, await storeKey())).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ["an open mandate the platform did not sign", { issuer: "stranger" }, "mandate_invalid_signature"],
+    ["a hop the bound agent did not sign", { holder: "stranger" }, "mandate_invalid_signature"],
+    ["an expired open mandate", { expired: true }, "mandate_expired"],
+    ["a mandate closed for another checkout", { nonce: "cs_other" }, "mandate_scope_mismatch"],
+    ["an open mandate for another quantity", { quantity: 2 }, "mandate_scope_mismatch"],
+    ["a checkout this store never signed", { forged: true }, "merchant_authorization_invalid"],
+  ] as const)("refuses %s (%s → %s), and charges nothing", async (_label, o, code) => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AP2_PLATFORM));
+    const checkout = created as unknown as Record<string, unknown>;
+    const before = h.facilitator.settleCalls.length;
+    const forged = "forged" in o ? checkoutJwtFrom({ ...checkout, totals: [{ type: "total", amount: 1 }] }) : undefined;
+    const mandate = await mandateFor(checkout, {
+      ...("issuer" in o ? { issuer: stranger } : {}),
+      ...("holder" in o ? { holder: stranger } : {}),
+      ...("expired" in o ? { expiresAt: new Date(h.clock.now.getTime() - 1_000) } : {}),
+      ...("nonce" in o ? { nonce: o.nonce } : {}),
+      ...("quantity" in o ? { quantity: o.quantity } : {}),
+      ...(forged === undefined ? {} : { checkoutJwt: forged }),
+    });
+    const done = await completeWith(created, mandate);
+    expect(done.body.status).not.toBe("completed");
+    expect(done.body.messages).toEqual([expect.objectContaining({ code })]);
+    expect(h.facilitator.settleCalls).toHaveLength(before);
+  });
+
+  it("refuses a mandate from a platform whose profile publishes no key (agent_missing_key)", async () => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(NO_KEYS));
+    const done = await completeWith(created, await mandateFor(created as unknown as Record<string, unknown>), NO_KEYS);
+    expect(done.body.messages).toEqual([expect.objectContaining({ code: "agent_missing_key" })]);
+  });
+
+  it("refuses a mandate over terms that changed since (mandate_scope_mismatch)", async () => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AP2_PLATFORM));
+    const mandate = await mandateFor(created as unknown as Record<string, unknown>);
+    const { body: updated } = await h.call("PUT", `/checkout-sessions/${created.id}`, ready("gorro-andes", 2), as(AP2_PLATFORM));
+    const done = await completeWith(updated, mandate);
+    expect(done.body.messages).toEqual([expect.objectContaining({ code: "mandate_scope_mismatch" })]);
+  });
+
+  it("without AP2 negotiated, nothing changes: no ap2 field, no merchant, and complete needs no mandate", async () => {
+    for (const profile of [PLAIN_0825, AGENTPEY_PLATFORM_PROFILE]) {
+      const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(profile));
+      expect(created).not.toHaveProperty("ap2");
+      expect(created).not.toHaveProperty("merchant");
+      const done = await completeWith(created, undefined, profile);
+      expect(done.body.status).toBe("completed");
+    }
+  });
+});

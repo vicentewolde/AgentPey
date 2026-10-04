@@ -4,7 +4,7 @@ import { USDC_TESTNET } from "@vitrinee/core";
 
 import type { Anchorer } from "../anchoring.js";
 import { loadConfig, type GatewayConfig } from "../config.js";
-import type { PlatformProfileReader, ProfileResult } from "../ucp/platform-profile.js";
+import type { PlatformProfileReader, PlatformProfileSummary, ProfileResult } from "../ucp/platform-profile.js";
 import { FAKE_PAYER, FAKE_TX_HASH } from "./fake-facilitator.js";
 
 export const MERCHANT = USDC_TESTNET.issuer;
@@ -72,14 +72,17 @@ export const AGENTPEY_PLATFORM_PROFILE = "https://agentpey.com/ucp/platform/agen
  * given, anything else does not answer. By default AgentPey's own profile
  * speaks 2026-04-08, as the file in apps/web does.
  */
-export function fakePlatformProfiles(versions: Record<string, string> = { [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08" }): PlatformProfileReader & { reads: string[] } {
+export function fakePlatformProfiles(
+  versions: Record<string, string | PlatformProfileSummary> = { [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08" },
+): PlatformProfileReader & { reads: string[] } {
   const reads: string[] = [];
   return {
     reads,
     async read(url: string): Promise<ProfileResult> {
       reads.push(url);
-      const version = versions[url];
-      return version === undefined ? { ok: false, reason: "unreachable" } : { ok: true, profile: { ucp: { version } } };
+      const entry = versions[url];
+      if (entry === undefined) return { ok: false, reason: "unreachable" };
+      return { ok: true, profile: typeof entry === "string" ? { ucp: { version: entry, capabilities: [] }, keys: [] } : entry };
     },
   };
 }

@@ -60,7 +60,7 @@ describe("reading a platform's UCP profile (T133, R-14)", () => {
   it("reads a public HTTPS profile, connecting to the address it checked, and keeps only the version", async () => {
     const f = fakes();
     const reader = createPlatformProfileReader({ resolve: f.resolve, get: f.get });
-    expect(await reader.read("https://platform.example/ucp/profile.json")).toEqual({ ok: true, profile: { ucp: { version: "2026-08-25" } } });
+    expect(await reader.read("https://platform.example/ucp/profile.json")).toEqual({ ok: true, profile: { ucp: { version: "2026-08-25", capabilities: ["dev.ucp.shopping.checkout"] }, keys: [] } });
     expect(f.gets).toEqual([{ url: "https://platform.example/ucp/profile.json", address: "93.184.216.34" }]);
   });
 

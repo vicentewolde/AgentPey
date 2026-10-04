@@ -1,6 +1,6 @@
 import type { StoreAdapter } from "@vitrinee/adapters";
 import { AgentResolveReader, ReceiptRegistryClient, verifyReceipt, type DisputeReader, type RegistryReader } from "@vitrinee/anchor";
-import { MANIFEST_PATH, UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError } from "@vitrinee/core";
+import { MANIFEST_PATH, UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError, stellarDid } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddlewareFromHTTPServer } from "@x402/express";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
@@ -29,6 +29,7 @@ import { registerUcpCheckout } from "./ucp/checkout.js";
 import { registerUcpOrders } from "./ucp/order.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
 import { sharedPlatformProfileReader, type PlatformProfileReader } from "./ucp/platform-profile.js";
+import { deriveStoreAp2Key } from "./ucp/ap2.js";
 import { buildUcpProfile, ucpLeafProfilePath } from "./ucp/profile.js";
 import { MemoryCheckoutSessions, type CheckoutSessionPersistence } from "./ucp/sessions.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
@@ -118,6 +119,8 @@ export function createApp({
   app.anchors = anchors;
 
   const catalog = createCatalogCache(adapter, config.manifestCacheSeconds * 1000);
+  // The storefront's AP2 key (T134, VT-43): derived from the receipt key, published in the 2026-08-25 profile.
+  const ap2Key = deriveStoreAp2Key(config.signing.secret, stellarDid(config.signing.account, "testnet"));
   const ledger = new SettlementLedger();
   const x402 = createX402Server(facilitator, ledger, now);
   const deps: CheckoutDeps = { config, adapter, orders, ledger, anchors, reservations: new Reservations(), inFlight: new Set(), now, log };
@@ -179,7 +182,7 @@ export function createApp({
   // nothing here shadows the routes above.
   app.get(UCP_PROFILE_PATH, (req, res) => {
     res.set("Cache-Control", cacheHeader);
-    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req) }));
+    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), ap2Key: ap2Key.publicJwk }));
   });
   // The 2026-04-08 profile, which the current one lists in `supported_versions` (R-6, T133).
   app.get(ucpLeafProfilePath(UCP_LEGACY_VERSION), (req, res) => {
@@ -215,7 +218,7 @@ export function createApp({
     });
     return initializing;
   };
-  registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready }, baseUrlOf);
+  registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready, ap2Key }, baseUrlOf);
   const disputeReader =
     disputes !== undefined
       ? disputes

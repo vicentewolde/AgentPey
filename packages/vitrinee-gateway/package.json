@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@agentpass/core": "workspace:*",
+    "@agentpey/ap2": "workspace:*",
     "@stellar/stellar-sdk": "^17.1.0",
     "@vitrinee/adapters": "workspace:*",
     "@vitrinee/anchor": "workspace:*",
@@ -34,6 +35,7 @@
     "@types/express": "^5.0.6",
     "@types/pg": "^8.11.0",
     "ajv": "^8.20.0",
+    "jose": "^6.2.10",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "vitest": "^3.2.0"
