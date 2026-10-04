@@ -100,6 +100,17 @@ export const checkoutSessionSchema = z.object({
    * `complete_in_progress` and is never settled again until someone reconciles it.
    */
   settleAttempt: z.object({ transaction: z.string().nullable(), error: z.string(), at: z.string() }).nullable().default(null),
+  /**
+   * AP2 (T134, R-15): set when the session is created with the extension
+   * negotiated, and never cleared. From then on the checkout is security
+   * locked: every 2026-08-25 response is signed, and `complete` needs a mandate
+   * from this same platform profile, whatever a later request negotiates.
+   * `mandate` is the closed mandate the charge was made under, kept as evidence.
+   */
+  ap2: z
+    .object({ platformProfile: z.string().max(2_048), mandate: z.string().max(32_000).nullable() })
+    .nullable()
+    .default(null),
 });
 export type CheckoutSession = z.infer<typeof checkoutSessionSchema>;
 

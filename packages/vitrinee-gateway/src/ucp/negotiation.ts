@@ -39,7 +39,7 @@ export async function negotiateUcpVersion(
   header: string | undefined,
   profiles: PlatformProfileReader | null,
 ): Promise<
-  | { ok: true; version: UcpVersion; source: "header" | "profile" | "default"; platform?: PlatformProfileSummary; unread?: { host: string; reason: string } }
+  | { ok: true; version: UcpVersion; source: "header" | "profile" | "default"; platform?: NegotiatedPlatform; unread?: { host: string; reason: string } }
   | { ok: false; asked: string }
 > {
   const asked = requestedUcpVersion(header);
@@ -49,7 +49,7 @@ export async function negotiateUcpVersion(
     const read = await profiles.read(url);
     if (read.ok) {
       const declared = read.profile.ucp.version;
-      return isUcpVersion(declared) ? { ok: true, version: declared, source: "profile", platform: read.profile } : { ok: false, asked: declared };
+      return isUcpVersion(declared) ? { ok: true, version: declared, source: "profile", platform: { url, profile: read.profile } } : { ok: false, asked: declared };
     }
     // R-14 departs from UCP here, by the user's decision: the spec answers an unreadable profile with
     // profile_unreachable (424) or profile_malformed (422); this store answers in its newest version.
@@ -67,9 +67,15 @@ function hostOf(url: string): string {
   }
 }
 
-/** The platform profile this request was negotiated from, when it was read (T134: its capabilities and keys). */
-export function ucpPlatformOf(res: Response): PlatformProfileSummary | undefined {
-  return (res.locals as { ucpPlatform?: PlatformProfileSummary }).ucpPlatform;
+/** A platform profile a request was negotiated from: where it was read, and what was kept of it (T134). */
+export interface NegotiatedPlatform {
+  url: string;
+  profile: PlatformProfileSummary;
+}
+
+/** The platform profile this request was negotiated from, when it was read (T134: its URL, capabilities and keys). */
+export function ucpPlatformOf(res: Response): NegotiatedPlatform | undefined {
+  return (res.locals as { ucpPlatform?: NegotiatedPlatform }).ucpPlatform;
 }
 
 /** The version this request was answered in; set by {@link ucpVersionGuard}. */
@@ -96,7 +102,7 @@ export function ucpVersionGuard(profiles: PlatformProfileReader | null, log: (me
           // AgentPey's own agent could drift to it unseen while agentpey.com is down.
           if (outcome.unread !== undefined) logUnread({ ...outcome.unread, version: outcome.version });
           (res.locals as { ucpVersion?: UcpVersion }).ucpVersion = outcome.version;
-          if (outcome.platform !== undefined) (res.locals as { ucpPlatform?: PlatformProfileSummary }).ucpPlatform = outcome.platform;
+          if (outcome.platform !== undefined) (res.locals as { ucpPlatform?: NegotiatedPlatform }).ucpPlatform = outcome.platform;
           return next();
         }
         log("ucp version unsupported", { asked: outcome.asked });
