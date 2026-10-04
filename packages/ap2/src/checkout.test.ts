@@ -13,6 +13,7 @@ import {
   verifyMerchantAuthorization,
 } from "./checkout.js";
 import { issueOpenMandatePair } from "./issue.js";
+import { deriveP256 } from "./keys.js";
 import type { Ap2PublicJwk, Ap2Signer } from "./sd-jwt.js";
 
 type Key = { signer: Ap2Signer; public: Ap2PublicJwk & { kid: string } };
@@ -172,6 +173,31 @@ describe("AP2 inside a UCP checkout (T134, R-15)", () => {
     // Signed by the bound agent, so it passes the signature check and reaches the parser.
     const broken = await new CompactSign(new TextEncoder().encode("not json")).setProtectedHeader(header as CompactJWSHeaderParameters).sign(await importJWK(agent.signer.privateJwk, "ES256"));
     await expect(verify(`${first}~~${[broken, ...rest].join("~")}`)).rejects.toMatchObject({ code: "Ap2KeyBindingInvalid" });
+  });
+
+  it("binds cnf to the agent's public members only: no alg or use, which AP2's reference SDK cannot read back", async () => {
+    const derived = deriveP256(new Uint8Array(32).fill(9), "test/holder", "agent#derived");
+    expect(derived.publicJwk).toMatchObject({ alg: "ES256", use: "sig" });
+    const pair = await issueOpenMandatePair(
+      {
+        issuer: "https://agentpey.com",
+        source: { mandate_id: randomUUID(), hash: "a".repeat(64), registry: "CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F" },
+        agentKey: derived.publicJwk,
+        merchant: { id: ORIGIN, name: "agentcommerce", website: ORIGIN },
+        item: { id: "67624104591666", title: "Imán de cobre Atacama" },
+        quantity: 1,
+        maxAmount: 300n,
+        currency: "USD",
+        paymentInstrument: { id: "stellar_x402", type: "stellar_x402" },
+        issuedAt: new Date(NOW.getTime() - 60_000),
+        expiresAt: new Date(NOW.getTime() + 15 * 60_000),
+      },
+      platform.signer,
+    );
+    const chain = await close({ open: pair.checkout, holder: derived.signer });
+    const verified = await verify(chain);
+    const { x, y } = derived.publicJwk;
+    expect(verified.open.cnf.jwk).toStrictEqual({ kty: "EC", crv: "P-256", x, y, kid: "agent#derived" });
   });
 
   it("rejects a chain that is not open~~close", async () => {

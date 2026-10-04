@@ -90,6 +90,20 @@ async function issueOpenMandate(
 }
 
 /**
+ * The agent's key as `cnf.jwk` carries it: the public members and, if the key
+ * has one, its `kid`; never `alg`, `use` or `key_ops` (RFC 7800 needs none).
+ * AP2's reference SDK re-reads `cnf.jwk` through its pydantic model and hands
+ * `use` to jwcrypto as a Python enum, which jwcrypto then refuses for
+ * verification (seen on T134's first real purchase): a key without `use`
+ * verifies the same everywhere.
+ */
+function cnfJwk(key: Ap2PublicJwk): Ap2PublicJwk & { kid?: string } {
+  const kid = (key as { kid?: unknown }).kid;
+  const named = typeof kid === "string" ? { kid } : {};
+  return key.kty === "OKP" ? { kty: key.kty, crv: key.crv, x: key.x, ...named } : { kty: key.kty, crv: key.crv, x: key.x, y: key.y, ...named };
+}
+
+/**
  * Signs the open checkout mandate, then the open payment mandate that points
  * at it. Both carry the same `cnf`, `iat` and `exp`, and the same source
  * Mandate, so the verifier can insist the pair agrees.
@@ -106,7 +120,7 @@ export async function issueOpenMandatePair(task: OpenMandateTask, signer: Ap2Sig
     throw invalid("payment.amount_range.max must be a positive JSON-safe integer", { maxAmount: task.maxAmount.toString() });
   }
 
-  const window = { cnf: { jwk: task.agentKey }, iat: seconds(task.issuedAt), exp: seconds(task.expiresAt) };
+  const window = { cnf: { jwk: cnfJwk(task.agentKey) }, iat: seconds(task.issuedAt), exp: seconds(task.expiresAt) };
 
   const checkout = await issueOpenMandate(
     task,
