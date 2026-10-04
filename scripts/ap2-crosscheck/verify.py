@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import sys
+import urllib.request
 from pathlib import Path
 
 from ap2.sdk.generated.open_checkout_mandate import OpenCheckoutMandate
@@ -36,21 +37,31 @@ def verify_closed(folder: Path) -> int:
     """T134: a closed checkout mandate from a UCP checkout (open~~close, R-15).
 
     Reads what `pnpm run ucp:buy -- --ucp-version 2026-08-25 --ap2` writes:
-    chain.txt, platform.jwk.json (the key that signed the open mandate),
-    business.jwk.json (the store's AP2 key from its profile) and binding.json
-    (aud, nonce). Verifies the chain as AP2's own code does, evaluates the open
-    mandate's constraints against the checkout the store signed, and checks
-    that signature with the store's key.
+    chain.txt and binding.json (aud, nonce, and the two profiles the keys are
+    published in). With profile URLs in binding.json, the keys are fetched
+    from there, as any third party would: the platform's from its profile,
+    the store's from its `/.well-known/ucp`, each by its `kid`. Without them
+    (the offline sample), platform.jwk.json and business.jwk.json are read.
+    Verifies the chain as AP2's own code does, evaluates the open mandate's
+    constraints against the checkout the store signed, and checks that
+    signature with the store's key.
     """
     from ap2.sdk.checkout_mandate_chain import CheckoutMandateChain
     from ap2.sdk.jwt_helper import verify_jwt
 
     chain = (folder / "chain.txt").read_text().strip()
-    platform = JWK(**json.loads((folder / "platform.jwk.json").read_text()))
-    business = JWK(**json.loads((folder / "business.jwk.json").read_text()))
     binding = json.loads((folder / "binding.json").read_text())
+    if "platform_profile" in binding and "store_profile" in binding:
+        platform = JWK(**published_key(binding["platform_profile"], binding["platform_kid"]))
+        business = JWK(**published_key(binding["store_profile"], binding["store_kid"]))
+        source = "published profiles"
+    else:
+        platform = JWK(**json.loads((folder / "platform.jwk.json").read_text()))
+        business = JWK(**json.loads((folder / "business.jwk.json").read_text()))
+        source = "local files (sample)"
 
     print(f"AP2 reference SDK · closed checkout mandate · {folder}")
+    print(f"  keys from      {source}")
     print(f"  aud            {binding['aud']}")
     print(f"  nonce          {binding['nonce']}")
     try:
@@ -71,6 +82,18 @@ def verify_closed(folder: Path) -> int:
     print(f"  checkout_jwt   signed by the store key {business.get('kid')}")
     print("\nOK: the AP2 reference SDK verifies the closed mandate.")
     return 0
+
+
+def published_key(profile_url: str, kid: str) -> dict:
+    """The public key `kid` from the `keys` of a UCP profile, fetched over HTTPS."""
+    if not profile_url.startswith("https://"):
+        raise SystemExit(f"refusing a non-https profile URL: {profile_url}")
+    with urllib.request.urlopen(profile_url, timeout=10) as response:  # noqa: S310 — https only, checked above
+        profile = json.loads(response.read(256 * 1024))
+    for key in profile.get("keys", []):
+        if key.get("kid") == kid:
+            return {name: key[name] for name in ("kty", "crv", "x", "y", "kid") if name in key}
+    raise SystemExit(f"{profile_url} publishes no key {kid}")
 
 
 def main() -> int:

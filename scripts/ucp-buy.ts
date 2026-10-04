@@ -55,6 +55,7 @@ import {
 } from "@agentpey/agent";
 import { anchorMandate, createMandate } from "@agentpey/mandate";
 import { Keypair, StrKey } from "@stellar/stellar-sdk";
+import { z } from "zod";
 
 import { deriveP256, p256FromScalar } from "../packages/ap2/src/keys.js";
 import { PLATFORM_AP2_KID } from "./lib/ap2-platform.js";
@@ -70,6 +71,20 @@ const RECEIPT_OUT = resolve(REPO_ROOT, ".vitrinee/last-ucp-receipt.jws");
 const AP2_OUT = resolve(REPO_ROOT, ".vitrinee/ap2-t134");
 /** The label the agent's AP2 key is derived under, from its Stellar seed (R-16). */
 const AGENT_AP2_KEY_LABEL = "agentpey/ap2-holder/p256/v1";
+/** A public P-256 key as a UCP profile publishes it (T134). */
+const publishedP256Schema = z.looseObject({ kty: z.literal("EC"), crv: z.literal("P-256"), x: z.string().min(1), y: z.string().min(1), kid: z.string().min(1) });
+const profileKeysSchema = z.looseObject({ keys: z.array(z.unknown()) });
+
+/** The P-256 key a profile publishes under `kid` (or whose kid ends with `kidSuffix`), read and validated. */
+async function publishedP256(profileUrl: string, match: (kid: string) => boolean): Promise<z.infer<typeof publishedP256Schema>> {
+  const response = await fetch(profileUrl, { headers: { accept: "application/json" } });
+  const profile = profileKeysSchema.safeParse(response.ok ? await response.json() : null);
+  if (!profile.success) throw new AgentPassError("NetworkError", "a UCP profile could not be read", { details: { profileUrl, status: response.status } });
+  const key = profile.data.keys.map((k) => publishedP256Schema.safeParse(k)).find((k) => k.success && match(k.data.kid));
+  if (key === undefined || !key.success) throw new AgentPassError("ConfigError", "the profile publishes no matching P-256 key", { details: { profileUrl } });
+  return key.data;
+}
+
 const USDC_CONTRACT = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
 const HORIZON = "https://horizon-testnet.stellar.org";
 
@@ -195,10 +210,18 @@ async function main(): Promise<void> {
   // (R-16), closes it. The Mandate just anchored is the open mandate's source.
   const agentDid = stellarAddressToDid(agentKeypair.publicKey(), "testnet");
   const holder = deriveP256(StrKey.decodeEd25519SecretSeed(agentKeypair.secret()), AGENT_AP2_KEY_LABEL, `${agentDid}#ap2-p256`);
-  const ap2 = values.ap2
+  const platformKey = values.ap2 ? p256FromScalar(Buffer.from(requireEnv(env, "AGENTPEY_PLATFORM_AP2_SECRET"), "base64url"), PLATFORM_AP2_KID) : undefined;
+  if (platformKey !== undefined) {
+    // Before paying: the key the store will check is the one agentpey.com publishes, and it is this secret's.
+    const published = await publishedP256(AGENTPEY_PLATFORM_PROFILE_AP2, (kid) => kid === PLATFORM_AP2_KID);
+    if (published.x !== platformKey.publicJwk.x || published.y !== platformKey.publicJwk.y) {
+      throw new AgentPassError("ConfigError", "agentpey-ap2.json publishes another key than AGENTPEY_PLATFORM_AP2_SECRET's; deploy apps/web first", { details: { profile: AGENTPEY_PLATFORM_PROFILE_AP2 } });
+    }
+  }
+  const ap2 = platformKey !== undefined
     ? {
-        issuer: "https://agentpey.com",
-        platform: p256FromScalar(Buffer.from(requireEnv(env, "AGENTPEY_PLATFORM_AP2_SECRET"), "base64url"), PLATFORM_AP2_KID).signer,
+        issuer: new URL(AGENTPEY_PLATFORM_PROFILE_AP2).origin,
+        platform: platformKey.signer,
         holder: { ...holder.signer, publicJwk: holder.publicJwk },
         source: { mandate_id: anchoredMandate.mandate.mandateId, hash: anchoredMandate.hash, registry: anchoredMandate.mandate.credentialStatus.registry },
         closed: new Set<string>(),
@@ -229,16 +252,21 @@ async function main(): Promise<void> {
   line("pagado", `${(Number(paid.paid.amount) / 1e7).toFixed(7)} USDC a ${paid.paid.payTo}`);
   line("tx", paid.transaction ?? "(sin hash)");
   if (paid.transaction !== undefined) line("explorer", `https://stellar.expert/explorer/testnet/tx/${paid.transaction}`);
-  if (paid.ap2Mandate !== undefined) {
-    // What a third party needs to check the mandate with AP2's own SDK: the chain, the platform key that signed
-    // the open mandate, the store key that signed the checkout, and the aud and nonce it is bound to.
-    const storeProfile = (await (await fetch(`${storeUrl}/.well-known/ucp`)).json()) as { keys?: Array<{ kid?: string }> };
-    const storeKey = storeProfile.keys?.find((key) => key.kid?.endsWith("#ap2-p256") === true);
+  if (ap2 !== undefined) {
+    // With --ap2 the agent refuses to pay without closing a mandate; a paid purchase without one is a bug.
+    if (paid.ap2Mandate === undefined) throw new AgentPassError("Ap2MandateInvalid", "the purchase was paid without an AP2 mandate", { details: { orderId: paid.orderId } });
+    // What a third party needs to check the mandate with AP2's own SDK: the chain, where the two keys are
+    // published (verify.py fetches them from there), and the aud and nonce it is bound to.
+    const storeProfile = `${storeUrl}/.well-known/ucp`;
+    const storeKey = await publishedP256(storeProfile, (kid) => kid.endsWith("#ap2-p256"));
     await mkdir(AP2_OUT, { recursive: true });
     await writeFile(resolve(AP2_OUT, "chain.txt"), paid.ap2Mandate);
-    await writeFile(resolve(AP2_OUT, "platform.jwk.json"), JSON.stringify(p256FromScalar(Buffer.from(requireEnv(env, "AGENTPEY_PLATFORM_AP2_SECRET"), "base64url"), PLATFORM_AP2_KID).publicJwk));
-    await writeFile(resolve(AP2_OUT, "business.jwk.json"), JSON.stringify(storeKey ?? {}));
-    await writeFile(resolve(AP2_OUT, "binding.json"), JSON.stringify({ aud: storeUrl, nonce: paid.checkoutId }));
+    await writeFile(resolve(AP2_OUT, "platform.jwk.json"), JSON.stringify(platformKey?.publicJwk));
+    await writeFile(resolve(AP2_OUT, "business.jwk.json"), JSON.stringify(storeKey));
+    await writeFile(
+      resolve(AP2_OUT, "binding.json"),
+      JSON.stringify({ aud: storeUrl, nonce: paid.checkoutId, platform_profile: AGENTPEY_PLATFORM_PROFILE_AP2, platform_kid: PLATFORM_AP2_KID, store_profile: storeProfile, store_kid: storeKey.kid }),
+    );
     line("mandato ap2", `${paid.ap2Mandate.length} bytes, cadena abierto~~cierre en ${AP2_OUT}`);
   }
   line("permalink", paid.permalinkUrl);
