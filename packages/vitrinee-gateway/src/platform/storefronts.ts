@@ -68,8 +68,12 @@ export class StorefrontPool {
     if (cached !== undefined) {
       const current = await cached.catch(() => undefined);
       if (current !== undefined && current.comercioId === comercio.id && current.updatedAt === comercio.updatedAt) return current.app;
-      // The store changed: its old app stops delivering webhooks, so the new one is the only sender (T147).
-      current?.app.orderEvents.stop();
+      // The store changed: its old app stops delivering webhooks, and the one in flight finishes before the new
+      // app loads the orders, so it never writes over them nor sends the same delivery twice (T147).
+      if (current !== undefined) {
+        current.app.orderEvents.stop();
+        await current.app.orderEvents.idle();
+      }
     }
     const building = this.build(comercio);
     this.built.set(slug, building);

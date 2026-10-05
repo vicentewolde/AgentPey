@@ -50,7 +50,7 @@ import { AgentPassError } from "@agentpass/core";
 import { checkOpenCheckoutConstraints, jcsCanonicalize, signMerchantAuthorization, verifyCheckoutJwt, verifyCheckoutMandateChain } from "@agentpey/ap2";
 
 import type { StoreAp2Key } from "./ap2.js";
-import type { OrderEvents } from "./order-events.js";
+import { isDeliverableUrl, type OrderEvents } from "./order-events.js";
 import type { PlatformP256Key } from "./platform-profile.js";
 import { IdempotencyCache, requestHash } from "./idempotency.js";
 import { ucpPlatformOf, ucpVersionOf } from "./negotiation.js";
@@ -904,8 +904,10 @@ async function complete(
     // The mandate this charge is made under, kept with the session as evidence (a dispute, T127, may ask for it).
     if (session.ap2 !== null) session.ap2 = { ...session.ap2, mandate: ap2Mandate };
     // Where the platform completing this checkout wants the order's events (T147), kept for when the order exists.
+    // Only what fits the session and is a usable URL: anything else means no webhook, never a failed complete.
     const webhookUrl = view.platform?.orderWebhookUrl;
-    session.webhook = webhookUrl === undefined || view.platform === null ? null : { url: webhookUrl, platformProfile: view.platform.url, version: view.version, origin: view.origin };
+    const keepable = webhookUrl !== undefined && view.platform !== null && isDeliverableUrl(webhookUrl) && view.platform.url.length <= 2_048 && view.origin.length <= 2_048;
+    session.webhook = keepable ? { url: webhookUrl, platformProfile: view.platform!.url, version: view.version, origin: view.origin } : null;
     session.updatedAt = deps.now().toISOString();
     await deps.sessions.save(session);
 

@@ -14,6 +14,7 @@ import { MemoryCheckoutSessions } from "./sessions.js";
 const ORDER_SCHEMA = "https://ucp.dev/schemas/shopping/order.json";
 const PLATFORM = "https://platform.example/ucp/profile.json";
 const QUIET_PLATFORM = "https://quiet.example/ucp/profile.json";
+const LONG_PLATFORM = `https://long.example/${"x".repeat(2_100)}.json`;
 const WEBHOOK = "https://platform.example/webhooks/orders";
 const DESTINATION = { first_name: "Ana", last_name: "Rojas", street_address: "Av. Providencia 1234", address_locality: "Santiago", address_region: "RM", address_country: "CL" };
 const ready = { line_items: [{ item: { id: "gorro-andes" }, quantity: 1 }], buyer: { email: "ana@example.com" }, fulfillment: { methods: [{ type: "shipping", destinations: [DESTINATION] }] } };
@@ -67,6 +68,7 @@ async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter;
     [PLATFORM]: platformProfile("2026-08-25", WEBHOOK),
     [QUIET_PLATFORM]: platformProfile("2026-08-25"),
     "https://legacy.example/profile.json": platformProfile("2026-04-08", "https://legacy.example/hooks"),
+    [LONG_PLATFORM]: platformProfile("2026-08-25", "https://long.example/hooks"),
   });
   const registry = fakeRegistry();
   const adapter = options.adapter ?? new MockStoreAdapter();
@@ -174,6 +176,50 @@ describe("order webhooks (T147)", () => {
     expect(s.orders.get(orderId)?.webhook?.deliveries[0]).toMatchObject({ attempts: 3, lastStatus: 503, lastError: "HTTP 503", nextAttemptAt: null });
   });
 
+  it("waits for the process's delivery budget without counting it as an attempt", async () => {
+    const s = await store({ retryDelaysMs: [20] });
+    s.profiles.respond = (_url, attempt) => (attempt === 1 ? { ok: false, reason: "busy" } : { ok: true, status: 200 });
+    // The deferral is 5 s; the test moves the delivery's due time forward instead of waiting.
+    const { orderId } = await s.buy();
+    await waitFor(() => s.orders.get(orderId)?.webhook?.deliveries[0]?.lastError === "busy");
+    expect(s.orders.get(orderId)?.webhook?.deliveries[0]).toMatchObject({ status: "pending", attempts: 0 });
+    await s.orders.update(orderId, (o) => {
+      o.webhook!.deliveries[0]!.nextAttemptAt = new Date().toISOString();
+    });
+    s.app.orderEvents.resume();
+    await waitFor(() => s.orders.get(orderId)?.webhook?.deliveries[0]?.status === "delivered");
+    expect(s.orders.get(orderId)?.webhook?.deliveries[0]).toMatchObject({ attempts: 1 });
+  });
+
+  it("keeps no URL that is not one, and gives up, never hangs, on one it cannot sign for", async () => {
+    const s = await store();
+    const { orderId } = await s.buy(QUIET_PLATFORM);
+    await s.app.orderEvents.attachWebhook(orderId, { url: "hooks", platformProfile: QUIET_PLATFORM, version: "2026-08-25", origin: s.url });
+    expect(s.orders.get(orderId)?.webhook).toBeUndefined();
+    // An order that already holds one (written before this check existed): the delivery is given up, and the queue moves on.
+    await s.orders.update(orderId, (o) => {
+      o.webhook = { url: "hooks", platformProfile: QUIET_PLATFORM, version: "2026-08-25", origin: s.url, deliveries: [] };
+    });
+    await s.app.orderEvents.recordShipment(orderId, { source: "simulation" });
+    await waitFor(() => s.orders.get(orderId)?.webhook?.deliveries[0]?.status === "failed");
+    expect(s.orders.get(orderId)?.webhook?.deliveries[0]).toMatchObject({ attempts: 1, lastError: expect.stringContaining("not a URL") });
+    expect(s.profiles.sent).toEqual([]);
+  });
+
+  it("keeps a finished delivery's record but not its body", async () => {
+    const s = await store();
+    const { orderId } = await s.buy();
+    await waitFor(() => s.orders.get(orderId)?.webhook?.deliveries[0]?.status === "delivered");
+    expect(s.orders.get(orderId)?.webhook?.deliveries[0]?.body).toBe("");
+  });
+
+  it("completes, and keeps no webhook, for a platform whose profile URL is longer than a session holds", async () => {
+    const s = await store();
+    const { orderId } = await s.buy(LONG_PLATFORM);
+    expect(orderId).toMatch(/^ord_/);
+    expect(s.orders.get(orderId)?.webhook).toBeUndefined();
+  });
+
   it("sends nothing to a platform that names no webhook URL", async () => {
     const s = await store();
     const { orderId } = await s.buy(QUIET_PLATFORM);
@@ -208,9 +254,8 @@ describe("shipping events (T147)", () => {
 
     // Reading the order asks the platform.
     const { body: order } = await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`);
-    expect(order["fulfillment"]).toMatchObject({
-      events: [{ id: "ful_1", type: "shipped", occurred_at: "2026-10-05T12:00:00.000Z", line_items: [{ id: "li_1", quantity: 1 }], tracking_number: "CX123", tracking_url: "https://track.example/CX123", carrier: "Chilexpress" }],
-    });
+    // The public order says it shipped, and by whom; the tracking, which leads to the buyer, it does not.
+    expect((order["fulfillment"] as { events: unknown[] }).events).toEqual([{ id: "ful_1", type: "shipped", occurred_at: "2026-10-05T12:00:00.000Z", line_items: [{ id: "li_1", quantity: 1 }], carrier: "Chilexpress" }]);
     expect(order["line_items"]).toEqual([expect.objectContaining({ quantity: { original: 1, total: 1, fulfilled: 1 }, status: "fulfilled" })]);
     expect(ucpErrors(ORDER_SCHEMA, order, "2026-08-25")).toEqual([]);
     const { body: legacy } = await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`, undefined, "https://legacy.example/profile.json");
@@ -218,10 +263,63 @@ describe("shipping events (T147)", () => {
 
     const shipped = await waitFor(() => s.profiles.sent[1]);
     expect(shipped.headers["webhook-id"]).not.toBe(s.profiles.sent[0]!.headers["webhook-id"]);
-    expect(JSON.parse(shipped.body)).toMatchObject({ id: orderId, fulfillment: { events: [expect.objectContaining({ type: "shipped" })] } });
+    // The platform that bought gets the tracking.
+    expect(JSON.parse(shipped.body)).toMatchObject({ id: orderId, fulfillment: { events: [expect.objectContaining({ type: "shipped", tracking_number: "CX123", tracking_url: "https://track.example/CX123" })] } });
     // Asked again, the same shipment is not recorded twice.
     await s.app.orderEvents.checkShipment(orderId, { force: true });
     expect(s.orders.get(orderId)?.fulfillmentEvents).toHaveLength(1);
+  });
+
+  it("keeps asking after a partial shipment, and marks the line fulfilled only when everything left", async () => {
+    const adapter = new MockStoreAdapter();
+    const s = await store({ adapter });
+    const { orderId } = await s.buy();
+    const platformOrderId = s.orders.get(orderId)!.platformOrderId!;
+    await adapter.markShipped(platformOrderId, { shippedAt: "2026-10-05T12:00:00.000Z" }, { partial: true });
+    await s.app.orderEvents.checkShipment(orderId, { force: true });
+    const partial = (await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`)).body;
+    expect(partial["line_items"]).toEqual([expect.objectContaining({ quantity: { original: 1, total: 1, fulfilled: 0 }, status: "processing" })]);
+    expect(s.orders.get(orderId)).toMatchObject({ fulfillmentState: "partial", fulfillmentEvents: [expect.any(Object)] });
+
+    await adapter.markShipped(platformOrderId, { shippedAt: "2026-10-05T13:00:00.000Z" });
+    // Within the minute the watcher does not ask again; later, it does.
+    await s.app.orderEvents.watchOnce();
+    expect(s.orders.get(orderId)?.fulfillmentEvents).toHaveLength(1);
+    await s.app.orderEvents.checkShipment(orderId, { force: true });
+    expect(s.orders.get(orderId)).toMatchObject({ fulfillmentState: "fulfilled", fulfillmentEvents: [expect.any(Object), expect.any(Object)] });
+  });
+
+  it("stops asking about an order the platform cancelled, or one that all left", async () => {
+    const adapter = new MockStoreAdapter();
+    let asked = 0;
+    const getOrder = adapter.getOrder.bind(adapter);
+    adapter.getOrder = async (id) => {
+      asked += 1;
+      const order = await getOrder(id);
+      return order === null ? null : { ...order, status: "canceled" };
+    };
+    const s = await store({ adapter });
+    const { orderId } = await s.buy();
+    await s.app.orderEvents.checkShipment(orderId, { force: true });
+    expect(s.orders.get(orderId)?.fulfillmentState).toBe("canceled");
+    await s.app.orderEvents.checkShipment(orderId, { force: true });
+    await s.app.orderEvents.watchOnce();
+    expect(asked).toBe(1);
+  });
+
+  it("asks the platform once for two reads of the same order at the same moment", async () => {
+    const adapter = new MockStoreAdapter();
+    let asked = 0;
+    const getOrder = adapter.getOrder.bind(adapter);
+    adapter.getOrder = async (id) => {
+      asked += 1;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return getOrder(id);
+    };
+    const s = await store({ adapter });
+    const { orderId } = await s.buy();
+    await Promise.all([s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`), s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`)]);
+    expect(asked).toBe(1);
   });
 
   it("finds a shipment with the watcher, without anyone reading the order", async () => {

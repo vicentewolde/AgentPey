@@ -284,6 +284,7 @@ describe("getOrder", () => {
         order: {
           id: "gid://shopify/Order/777",
           displayFinancialStatus: "PAID",
+          displayFulfillmentStatus: "PARTIALLY_FULFILLED",
           fulfillments: [
             { id: "gid://shopify/Fulfillment/9", createdAt: "2026-10-05T12:00:00Z", status: "SUCCESS", trackingInfo: [{ number: "CX123", url: "https://track.example/CX123", company: "Chilexpress" }] },
             { id: "gid://shopify/Fulfillment/10", createdAt: "2026-10-05T13:00:00Z", status: "CANCELLED", trackingInfo: [] },
@@ -297,10 +298,11 @@ describe("getOrder", () => {
       { id: "9", shippedAt: "2026-10-05T12:00:00Z", trackingNumber: "CX123", trackingUrl: "https://track.example/CX123", carrier: "Chilexpress" },
       { id: "11", shippedAt: "2026-10-05T14:00:00Z" },
     ]);
+    expect(order?.fulfillmentStatus).toBe("partial");
     expect(calls.find((c) => c.url.includes("graphql"))?.body).toContain("fulfillments(first: 10)");
     expect(adapter.reportsShipments).toBe(true);
     const none = adapterWith(() => ({ data: { order: { id: "gid://shopify/Order/778", displayFinancialStatus: "PAID", fulfillments: [] } } }));
-    expect((await none.adapter.getOrder("778"))?.shipments).toEqual([]);
+    expect(await none.adapter.getOrder("778")).toMatchObject({ shipments: [], fulfillmentStatus: "unfulfilled" });
   });
 
   it("reports a cancelled order as canceled", async () => {

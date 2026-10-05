@@ -199,3 +199,35 @@ describe("the multi-merchant platform (T103, C-142)", () => {
     }
   });
 });
+
+describe("a storefront rebuilt after its comercio changes (T147)", () => {
+  it("stops the old app's order webhooks and lets its delivery in flight finish before the new app loads the orders", async () => {
+    const box = createSecretBox(generateMasterKey());
+    const signer = Keypair.random();
+    let current = sealComercio({ slug: "tienda-c", name: "Tienda C", payTo: Keypair.random().publicKey(), signingSecret: signer.secret(), credentials: { kind: "mock" } }, box, new Date("2026-10-05T10:00:00.000Z"));
+    const comercios = { create: async () => {}, list: async () => [current], getBySlug: async (slug: string) => (slug === current.slug ? current : undefined) };
+    const table = new Table();
+    const pool = new StorefrontPool({ comercios, box, env: ENV, ordersFor: (c) => table.for(c), lookupTtlMs: 0, appDeps: () => ({ facilitator: fakeFacilitator(), ...fakeRegistry() }) });
+
+    const first = await pool.get("tienda-c");
+    const calls: string[] = [];
+    const stop = first!.orderEvents.stop.bind(first!.orderEvents);
+    const idle = first!.orderEvents.idle.bind(first!.orderEvents);
+    first!.orderEvents.stop = () => {
+      calls.push("stop");
+      stop();
+    };
+    first!.orderEvents.idle = async () => {
+      calls.push("idle");
+      await idle();
+    };
+    current = { ...current, updatedAt: "2026-10-05T11:00:00.000Z" };
+    const second = await pool.get("tienda-c");
+    expect(second).not.toBe(first);
+    expect(calls).toEqual(["stop", "idle"]);
+    second!.orderEvents.stop();
+    second!.anchors.stop();
+    first!.anchors.stop();
+  });
+});
+

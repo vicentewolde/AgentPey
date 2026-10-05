@@ -4,6 +4,8 @@
  * delivery with its webhook key, and AgentPey's real receiver (apps/web)
  * verifies it against the key the store publishes in its own profile.
  */
+import { createHash } from "node:crypto";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createOrderWebhookReceiver } from "../../apps/web/src/ucp-webhooks.js";
@@ -82,12 +84,13 @@ describe("a Vitrinee store's order webhooks, verified by AgentPey's receiver (T1
     });
     const orderId = done.order!.id;
     await until(() => receiver.recent().length === 1);
-    expect(receiver.recent()).toEqual([expect.objectContaining({ store: STORE, orderId, event: "created" })]);
+    const orderRef = createHash("sha256").update(orderId).digest("hex").slice(0, 16);
+    expect(receiver.recent()).toEqual([expect.objectContaining({ store: STORE, orderRef, event: "created" })]);
 
     await adapter.markShipped(orders.get(orderId)!.platformOrderId!, { shippedAt: "2026-10-05T12:00:00.000Z", trackingNumber: "CX123" });
     await app.orderEvents.checkShipment(orderId, { force: true });
     await until(() => receiver.recent().length === 2);
-    expect(receiver.recent()[0]).toMatchObject({ orderId, event: "shipped" });
+    expect(receiver.recent()[0]).toMatchObject({ orderRef, event: "shipped" });
     expect(answers).toEqual([200, 200]);
     expect(orders.get(orderId)?.webhook?.deliveries.map((d) => d.status)).toEqual(["delivered", "delivered"]);
   });

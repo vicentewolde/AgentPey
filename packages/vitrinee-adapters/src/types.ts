@@ -77,6 +77,8 @@ export interface PlatformOrder {
    * when the adapter cannot tell; empty when nothing shipped yet.
    */
   shipments?: PlatformShipment[];
+  /** Whether everything left (T147): the store stops asking once it is `fulfilled`. Absent when the adapter cannot tell. */
+  fulfillmentStatus?: "unfulfilled" | "partial" | "fulfilled";
 }
 
 /** One shipment, as the store's platform records it (T147). */

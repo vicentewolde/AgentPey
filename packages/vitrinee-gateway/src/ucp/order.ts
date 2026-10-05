@@ -11,8 +11,10 @@
  * what the contract holds: the verdict's reasoning stays with the arbiter.
  *
  * And, since T147, what happened to the parcel: `fulfillment.events[]`, an
- * append-only log (UCP), with the line marked fulfilled once it shipped. The
- * same document is the body of every order webhook.
+ * append-only log (UCP), with the line marked fulfilled once the platform
+ * says it all left. The same document is the body of every order webhook,
+ * which alone carries the tracking: anyone holding a receipt can read this
+ * order, and a tracking link leads to the courier's page about the buyer.
  */
 import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
 import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_LATEST_VERSION, UCP_ORDER, VitrineeError, type UcpVersion, currencyDecimals, formatUnits, parseDecimal, toMinorUnits } from "@vitrinee/core";
@@ -79,14 +81,21 @@ function disputeExtension(record: OrderRecord, contractId: string, dispute: Disp
   };
 }
 
-export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin: string, lookup: DisputeLookup = { kind: "none" }, version: UcpVersion = UCP_LATEST_VERSION) {
+export function ucpOrder(
+  record: OrderRecord & { ucpCheckoutId: string },
+  origin: string,
+  lookup: DisputeLookup = { kind: "none" },
+  version: UcpVersion = UCP_LATEST_VERSION,
+  options: { tracking?: boolean } = {},
+) {
   const decimals = currencyDecimals(record.currency);
   const totalMinor = toMinorUnits(record.totalLocal, record.currency);
   // The total is unit × quantity, so this division is exact; it stays in bigint (VT-7, VT-36).
   const unitMinor = toMinorUnits(formatUnits(parseDecimal(record.totalLocal, decimals) / BigInt(record.quantity), decimals), record.currency);
   const shipping = record.buyer.shipping;
   const events = record.fulfillmentEvents ?? [];
-  const shipped = events.some((event) => event.type === "shipped");
+  const shipped = record.fulfillmentState === "fulfilled";
+  const tracking = options.tracking === true;
   const anchored = receiptExtension(record, origin);
   const found = lookup.kind === "found" ? lookup : null;
   const receipt = anchored === undefined || found === null ? anchored : { ...anchored, dispute: disputeExtension(record, found.contractId, found.dispute) };
@@ -141,9 +150,9 @@ export function ucpOrder(record: OrderRecord & { ucpCheckoutId: string }, origin
         occurred_at: event.occurredAt,
         type: event.type,
         line_items: [{ id: "li_1", quantity: record.quantity }],
-        ...(event.trackingNumber === undefined ? {} : { tracking_number: event.trackingNumber }),
-        ...(event.trackingUrl === undefined ? {} : { tracking_url: event.trackingUrl }),
         ...(event.carrier === undefined ? {} : { carrier: event.carrier }),
+        ...(!tracking || event.trackingNumber === undefined ? {} : { tracking_number: event.trackingNumber }),
+        ...(!tracking || event.trackingUrl === undefined ? {} : { tracking_url: event.trackingUrl }),
       })),
     },
     totals: [

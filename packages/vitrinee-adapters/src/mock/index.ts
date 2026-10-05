@@ -98,6 +98,7 @@ export class MockStoreAdapter implements StoreAdapter {
       buyer: clone(input.buyer),
       createdAt: this.now().toISOString(),
       shipments: [],
+      fulfillmentStatus: "unfulfilled",
     };
     this.orders.set(order.platformOrderId, order);
     await this.persist();
@@ -109,13 +110,14 @@ export class MockStoreAdapter implements StoreAdapter {
     return order === undefined ? null : clone(order);
   }
 
-  /** Marks an order shipped, as a merchant would in a real platform's admin (T147, tests and demos). */
-  async markShipped(platformOrderId: string, shipment: Omit<PlatformShipment, "id"> & { id?: string }): Promise<PlatformOrder> {
+  /** Marks an order shipped, as a merchant would in a real platform's admin (T147, tests and demos). `partial` leaves some of it behind. */
+  async markShipped(platformOrderId: string, shipment: Omit<PlatformShipment, "id"> & { id?: string }, options: { partial?: boolean } = {}): Promise<PlatformOrder> {
     const order = this.orders.get(platformOrderId);
     if (order === undefined) throw new VitrineeError("OrderNotFound", `no mock order "${platformOrderId}"`, { details: { platformOrderId } });
     const shipments = order.shipments ?? [];
     shipments.push({ ...shipment, id: shipment.id ?? `ship_${platformOrderId}_${shipments.length + 1}` });
     order.shipments = shipments;
+    order.fulfillmentStatus = options.partial === true ? "partial" : "fulfilled";
     await this.persist();
     return clone(order);
   }

@@ -61,7 +61,7 @@ const CREATE_ORDER = `
 const ORDER_QUERY = `
   query Order($id: ID!) {
     order(id: $id) {
-      id createdAt cancelledAt displayFinancialStatus
+      id createdAt cancelledAt displayFinancialStatus displayFulfillmentStatus
       currencyCode
       fulfillments(first: 10) { id createdAt status trackingInfo(first: 1) { number url company } }
       totalPriceSet { shopMoney { amount currencyCode } }
@@ -88,6 +88,7 @@ interface OrderResponse {
     createdAt?: string;
     cancelledAt?: string | null;
     displayFinancialStatus?: string | null;
+    displayFulfillmentStatus?: string | null;
     currencyCode?: string;
     totalPriceSet?: { shopMoney: { amount: string; currencyCode: string } };
     customAttributes?: { key: string; value?: string | null }[];
@@ -255,6 +256,7 @@ export class ShopifyStoreAdapter implements StoreAdapter {
       buyer: { stellarAccount: attrs.get("x402_payer") ?? "" },
       createdAt: order.createdAt ?? "",
       adminUrl: `https://admin.shopify.com/store/${this.client.handle}/orders/${platformOrderId}`,
+      fulfillmentStatus: order.displayFulfillmentStatus === "FULFILLED" ? "fulfilled" : order.displayFulfillmentStatus === "PARTIALLY_FULFILLED" ? "partial" : "unfulfilled",
       // A fulfillment the merchant created in the admin is a parcel that left (T147); a cancelled or failed one is not.
       shipments: (order.fulfillments ?? [])
         .filter((f) => f.status === "SUCCESS")

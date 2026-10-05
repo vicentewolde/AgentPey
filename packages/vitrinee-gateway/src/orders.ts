@@ -105,6 +105,8 @@ export interface OrderRecord {
   fulfillmentEvents?: OrderFulfillmentEvent[];
   /** When the store last asked its platform about the shipment (T147). */
   fulfillmentCheckedAt?: string;
+  /** Where the platform says the parcel stands; `fulfilled` or `canceled` ends the watching (T147). */
+  fulfillmentState?: "partial" | "fulfilled" | "canceled";
   /** Order webhooks to the platform that bought (T147). Absent when it asked for none. */
   webhook?: OrderWebhook;
 }
@@ -181,6 +183,7 @@ export const orderRecordSchema = z.object({
     )
     .optional(),
   fulfillmentCheckedAt: z.string().optional(),
+  fulfillmentState: z.enum(["partial", "fulfilled", "canceled"]).optional(),
   webhook: z
     .object({
       url: z.string().min(1),

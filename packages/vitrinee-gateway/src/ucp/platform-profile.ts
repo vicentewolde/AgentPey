@@ -67,6 +67,14 @@ const MAX_URL_LENGTH = 2_048;
 const orderCapabilitySchema = z.array(z.looseObject({ config: z.looseObject({ webhook_url: z.string().min(1).max(MAX_URL_LENGTH) }).optional() })).min(1);
 /** A webhook receiver must answer quickly (UCP); a delivery that takes longer is retried. */
 export const SEND_TIMEOUT_MS = 5_000;
+/**
+ * Deliveries have limits of their own, apart from the profile reads: anyone can
+ * spend the read budget by naming random profiles in `UCP-Agent`, and that
+ * must never starve the webhooks a store owes (T147 review).
+ */
+export const MAX_CONCURRENT_SENDS = 6;
+export const SEND_BURST = 20;
+export const SENDS_PER_SECOND = 5;
 
 /** A platform's public P-256 key, as kept: the members needed to verify ES256 and nothing else. */
 export interface PlatformP256Key {
@@ -324,6 +332,9 @@ export interface PlatformProfileReaderOptions {
   timeoutMs?: number;
   /** The deadline of one delivery. Defaults to {@link SEND_TIMEOUT_MS}. */
   sendTimeoutMs?: number;
+  maxConcurrentSends?: number;
+  sendBurst?: number;
+  sendsPerSecond?: number;
   maxConcurrent?: number;
   burst?: number;
   perSecond?: number;
@@ -346,16 +357,26 @@ export function createPlatformProfileReader(options: PlatformProfileReaderOption
   const inFlight = new Map<string, Promise<ProfileResult>>();
   const hostBackoff = new Map<string, { until: number; wait: number }>();
   let running = 0;
-  let tokens = burst;
-  let refilledAt = now();
+  const readBucket = tokenBucket(burst, perSecond);
+  const takeToken = (): boolean => readBucket.take();
+  // The deliveries' own budget: a flood of profile reads never reaches it.
+  const maxConcurrentSends = options.maxConcurrentSends ?? MAX_CONCURRENT_SENDS;
+  const sendBucket = tokenBucket(options.sendBurst ?? SEND_BURST, options.sendsPerSecond ?? SENDS_PER_SECOND);
+  let sending = 0;
 
-  function takeToken(): boolean {
-    const t = now();
-    tokens = Math.min(burst, tokens + ((t - refilledAt) / 1000) * perSecond);
-    refilledAt = t;
-    if (tokens < 1) return false;
-    tokens -= 1;
-    return true;
+  function tokenBucket(size: number, rate: number): { take(): boolean } {
+    let tokens = size;
+    let refilledAt = now();
+    return {
+      take(): boolean {
+        const t = now();
+        tokens = Math.min(size, tokens + ((t - refilledAt) / 1000) * rate);
+        refilledAt = t;
+        if (tokens < 1) return false;
+        tokens -= 1;
+        return true;
+      },
+    };
   }
 
   function remember(key: string, result: ProfileResult): void {
@@ -462,24 +483,24 @@ export function createPlatformProfileReader(options: PlatformProfileReaderOption
 
   return {
     /**
-     * Delivers one webhook. Shares the process's limits with the profile reads
-     * (at most a few at once, a steady rate) but not their per-host backoff or
-     * cache: when to try again is the caller's schedule, and every delivery is
-     * vetted, resolved and pinned afresh, so a name that turned private since
-     * the last one is refused.
+     * Delivers one webhook, within limits of its own (at most a few at once, a
+     * steady rate), apart from the profile reads, and without their per-host
+     * backoff or cache: when to try again is the caller's schedule, and every
+     * delivery is vetted, resolved and pinned afresh, so a name that turned
+     * private since the last one is refused.
      */
     async send(raw: string, request: OutboundRequest): Promise<SendResult> {
       if (raw.length > MAX_URL_LENGTH) return { ok: false, reason: "bad_url" };
       const vetted = vet(raw);
       if (!vetted.ok) return { ok: false, reason: vetted.reason === "not_https" || vetted.reason === "blocked_address" ? vetted.reason : "bad_url" };
-      if (running >= maxConcurrent || !takeToken()) return { ok: false, reason: "busy" };
-      running += 1;
+      if (sending >= maxConcurrentSends || !sendBucket.take()) return { ok: false, reason: "busy" };
+      sending += 1;
       try {
         return await deliver(vetted.url, request, AbortSignal.timeout(sendTimeoutMs));
       } catch (error) {
         return { ok: false, reason: error instanceof ProfileError && error.reason === "blocked_address" ? "blocked_address" : "unreachable" };
       } finally {
-        running -= 1;
+        sending -= 1;
       }
     },
 

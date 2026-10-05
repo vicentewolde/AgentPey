@@ -219,8 +219,12 @@ describe("the order webhook URL a platform declares, and delivering to it (T147)
     expect(f.posts).toEqual([]);
   });
 
-  it("is bounded by the same process-wide limits as the profile reads", async () => {
-    const reader = createPlatformProfileReader({ resolve: async () => [PUBLIC_V4], get: fakes().get, post: async () => ({ status: 200 }), burst: 1, perSecond: 0.0001, now: () => 0 });
+  it("has limits of its own, which a flood of profile reads cannot spend", async () => {
+    const reader = createPlatformProfileReader({ resolve: async () => [PUBLIC_V4], get: fakes().get, post: async () => ({ status: 200 }), burst: 1, perSecond: 0.0001, sendBurst: 1, sendsPerSecond: 0.0001, now: () => 0 });
+    // The read budget is gone after one read of a random profile…
+    await reader.read("https://random-1.example/p.json");
+    expect(await reader.read("https://random-2.example/p.json")).toEqual({ ok: false, reason: "busy" });
+    // …and a delivery still goes out, within its own budget.
     expect(await reader.send("https://platform.example/hooks", { body: "{}", headers: {} })).toEqual({ ok: true, status: 200 });
     expect(await reader.send("https://platform.example/hooks", { body: "{}", headers: {} })).toEqual({ ok: false, reason: "busy" });
   });

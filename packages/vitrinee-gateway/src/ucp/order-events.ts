@@ -21,6 +21,7 @@ import { randomUUID } from "node:crypto";
 
 import type { StoreAdapter } from "@vitrinee/adapters";
 import { VitrineeError, signedWebhookHeaders, type EcPrivateJwk } from "@vitrinee/core";
+import { z } from "zod";
 
 import type { OrderFulfillmentEvent, OrderRecord, OrderStore, OrderWebhook, OrderWebhookDelivery } from "../orders.js";
 import { ucpOrder, type DisputeLookup } from "./order.js";
@@ -38,6 +39,14 @@ const SHIPMENT_WATCH_WINDOW_MS = 30 * 24 * 60 * 60_000;
 /** Reading an order asks the platform at most this often. */
 const SHIPMENT_CHECK_MIN_INTERVAL_MS = 60_000;
 const SHIPMENT_CHECK_TIMEOUT_MS = 3_000;
+/** When the process's delivery budget is spent, the wait before trying again; it does not count as an attempt. */
+export const WEBHOOK_BUSY_RETRY_MS = 5_000;
+
+/** The webhook key, checked once: a key that cannot sign is a configuration error, never a stuck queue. */
+const webhookSigningKeySchema = z.object({
+  kid: z.string().min(1),
+  privateJwk: z.looseObject({ kty: z.literal("EC"), crv: z.literal("P-256"), x: z.string().min(1), y: z.string().min(1), d: z.string().min(1) }),
+});
 
 export interface WebhookTarget {
   url: string;
@@ -48,6 +57,8 @@ export interface WebhookTarget {
 
 export interface ShipmentInput {
   source: OrderFulfillmentEvent["source"];
+  /** Where the order stands after this shipment; a simulation ships everything. Defaults to `fulfilled`. */
+  state?: "partial" | "fulfilled";
   occurredAt?: string;
   trackingNumber?: string;
   trackingUrl?: string;
@@ -69,9 +80,11 @@ export interface OrderEventsDeps {
   watchIntervalMs?: number;
 }
 
-/** What a delivery's outcome means for it: done, try again later, or never again. */
-function classify(result: SendResult): "delivered" | "retry" | "give_up" {
-  if (!result.ok) return result.reason === "busy" || result.reason === "unreachable" ? "retry" : "give_up";
+/** What a delivery's outcome means for it: done, try again later, wait for the budget, or never again. */
+function classify(result: SendResult): "delivered" | "retry" | "defer" | "give_up" {
+  // Our own budget was spent: nothing reached the receiver, so it is not an attempt (T147 review).
+  if (!result.ok && result.reason === "busy") return "defer";
+  if (!result.ok) return result.reason === "unreachable" ? "retry" : "give_up";
   if (result.status >= 200 && result.status < 300) return "delivered";
   // A server error, a timeout or a rate limit can pass; a redirect is never followed, and any other answer is final.
   if (result.status >= 500 || result.status === 408 || result.status === 429) return "retry";
@@ -82,11 +95,19 @@ export class OrderEvents {
   private readonly timers = new Map<string, NodeJS.Timeout>();
   private readonly running = new Map<string, Promise<void>>();
   private readonly retryDelaysMs: readonly number[];
+  private readonly checking = new Map<string, Promise<void>>();
+  private readonly signingKey: { kid: string; privateJwk: EcPrivateJwk };
   private watcher: NodeJS.Timeout | undefined;
+  private watching = false;
   private stopped = false;
 
+  /** @throws VitrineeError `ConfigError` for a webhook key that cannot sign */
   constructor(private readonly deps: OrderEventsDeps) {
     this.retryDelaysMs = deps.retryDelaysMs ?? WEBHOOK_RETRY_DELAYS_MS;
+    const key = webhookSigningKeySchema.safeParse({ kid: deps.key.signer.kid, privateJwk: deps.key.signer.privateJwk });
+    if (!key.success) throw new VitrineeError("ConfigError", "the store's webhook key is not a P-256 key with a kid", { details: {} });
+    const { kty, crv, x, y, d } = key.data.privateJwk;
+    this.signingKey = { kid: key.data.kid, privateJwk: { kty, crv, x, y, d } };
   }
 
   /**
@@ -95,6 +116,10 @@ export class OrderEvents {
    * a replayed `complete` finds it already set.
    */
   async attachWebhook(orderId: string, target: WebhookTarget): Promise<void> {
+    if (!isDeliverableUrl(target.url)) {
+      this.deps.log("order webhook not attached: not a usable URL", { orderId });
+      return;
+    }
     let attached = false;
     const order = await this.deps.orders.update(orderId, (o) => {
       if (o.webhook !== undefined || o.ucpCheckoutId === undefined) return;
@@ -116,6 +141,7 @@ export class OrderEvents {
     const order = await this.deps.orders.update(orderId, (o) => {
       const events = o.fulfillmentEvents ?? [];
       const seen = events.some((e) => e.type === "shipped" && (shipment.platformRef === undefined ? e.source === shipment.source : e.platformRef === shipment.platformRef));
+      if (o.fulfillmentState !== "fulfilled" || shipment.state !== "partial") o.fulfillmentState = shipment.state ?? "fulfilled";
       if (seen) return;
       events.push({
         id: `ful_${events.length + 1}`,
@@ -139,31 +165,50 @@ export class OrderEvents {
   }
 
   /**
-   * Asks the store's platform whether an unshipped order left, and records
-   * each new shipment. At most once a minute per order unless `force`; a
-   * platform that does not answer in time is asked again later.
+   * Asks the store's platform whether an order left, and records each new
+   * shipment, until the platform says it all left or was cancelled. At most
+   * once a minute per order unless `force`, one question at a time per order,
+   * and a platform that does not answer in time is asked again later. Never
+   * throws: reading an order must not depend on it.
    */
   async checkShipment(orderId: string, options: { force?: boolean } = {}): Promise<void> {
+    const running = this.checking.get(orderId);
+    if (running !== undefined) return running;
+    const work = this.askPlatform(orderId, options.force === true).finally(() => this.checking.delete(orderId));
+    this.checking.set(orderId, work);
+    return work;
+  }
+
+  private async askPlatform(orderId: string, force: boolean): Promise<void> {
     if (this.deps.adapter.reportsShipments !== true) return;
     const order = this.deps.orders.get(orderId);
     if (order === undefined || order.platformOrderId === null || order.ucpCheckoutId === undefined) return;
-    if ((order.fulfillmentEvents ?? []).some((e) => e.type === "shipped")) return;
+    if (order.fulfillmentState === "fulfilled" || order.fulfillmentState === "canceled") return;
     const now = this.deps.now();
-    if (options.force !== true && order.fulfillmentCheckedAt !== undefined && now.getTime() - Date.parse(order.fulfillmentCheckedAt) < SHIPMENT_CHECK_MIN_INTERVAL_MS) return;
-    await this.deps.orders.update(orderId, (o) => {
-      o.fulfillmentCheckedAt = now.toISOString();
-    });
+    if (!force && order.fulfillmentCheckedAt !== undefined && now.getTime() - Date.parse(order.fulfillmentCheckedAt) < SHIPMENT_CHECK_MIN_INTERVAL_MS) return;
     let timer: NodeJS.Timeout | undefined;
     try {
+      await this.deps.orders.update(orderId, (o) => {
+        o.fulfillmentCheckedAt = now.toISOString();
+      });
       const platformOrder = await Promise.race([
         this.deps.adapter.getOrder(order.platformOrderId),
         new Promise<never>((_resolve, reject) => {
           timer = setTimeout(() => reject(new VitrineeError("NetworkError", `the store's platform gave no answer in ${SHIPMENT_CHECK_TIMEOUT_MS} ms`)), SHIPMENT_CHECK_TIMEOUT_MS);
         }),
       ]);
-      for (const shipment of platformOrder?.shipments ?? []) {
+      if (platformOrder === null) return;
+      if (platformOrder.status === "canceled") {
+        await this.deps.orders.update(orderId, (o) => {
+          o.fulfillmentState = "canceled";
+        });
+        return;
+      }
+      const state = platformOrder.fulfillmentStatus === "fulfilled" ? "fulfilled" : "partial";
+      for (const shipment of platformOrder.shipments ?? []) {
         await this.recordShipment(orderId, {
           source: "platform",
+          state,
           platformRef: shipment.id,
           occurredAt: shipment.shippedAt,
           ...(shipment.trackingNumber === undefined ? {} : { trackingNumber: shipment.trackingNumber }),
@@ -211,7 +256,8 @@ export class OrderEvents {
     if (current?.webhook === undefined || current.ucpCheckoutId === undefined) return;
     const lookup: DisputeLookup = event === "created" ? { kind: "none" } : await this.deps.disputes(current);
     const now = this.deps.now();
-    const body = JSON.stringify(ucpOrder({ ...current, ucpCheckoutId: current.ucpCheckoutId }, current.webhook.origin, lookup, current.webhook.version));
+    // The tracking goes to the platform that bought, and only there: the public order shows the country alone (T127, T147 review).
+    const body = JSON.stringify(ucpOrder({ ...current, ucpCheckoutId: current.ucpCheckoutId }, current.webhook.origin, lookup, current.webhook.version, { tracking: true }));
     const delivery: OrderWebhookDelivery = { id: randomUUID(), timestamp: Math.floor(now.getTime() / 1000), event, body, status: "pending", attempts: 0, nextAttemptAt: now.toISOString() };
     await this.deps.orders.update(orderId, (o) => {
       if (o.webhook === undefined) return;
@@ -268,26 +314,32 @@ export class OrderEvents {
 
   private async attempt(orderId: string, webhook: OrderWebhook, delivery: OrderWebhookDelivery): Promise<void> {
     const now = this.deps.now();
-    const attempt = delivery.attempts + 1;
     let result: SendResult;
+    let unsignable: string | undefined;
     if (this.deps.sender === null) {
       result = { ok: false, reason: "unreachable" };
     } else {
-      const { kty, crv, x, y, d } = this.deps.key.signer.privateJwk as Partial<EcPrivateJwk>;
-      const headers = signedWebhookHeaders({
-        url: webhook.url,
-        body: delivery.body,
-        profileUrl: `${webhook.origin}/.well-known/ucp`,
-        webhookId: delivery.id,
-        webhookTimestamp: delivery.timestamp,
-        created: Math.floor(now.getTime() / 1000),
-        key: { privateJwk: { kty: kty!, crv: crv!, x: x!, y: y!, d: d! }, kid: this.deps.key.signer.kid ?? "" },
-      });
-      result = await this.deps.sender.send(webhook.url, { body: delivery.body, headers });
+      let headers: Record<string, string> | undefined;
+      try {
+        headers = signedWebhookHeaders({
+          url: webhook.url,
+          body: delivery.body,
+          profileUrl: `${webhook.origin}/.well-known/ucp`,
+          webhookId: delivery.id,
+          webhookTimestamp: delivery.timestamp,
+          created: Math.floor(now.getTime() / 1000),
+          key: this.signingKey,
+        });
+      } catch (error) {
+        // A URL or a value that cannot be signed will not become signable: given up, never a stuck queue.
+        unsignable = error instanceof Error ? error.message : String(error);
+      }
+      result = headers === undefined ? { ok: false, reason: "bad_url" } : await this.deps.sender.send(webhook.url, { body: delivery.body, headers });
     }
     const outcome = classify(result);
-    const delay = this.retryDelaysMs[attempt - 1];
-    const status = outcome === "delivered" ? "delivered" : outcome === "retry" && delay !== undefined ? "pending" : "failed";
+    const attempt = outcome === "defer" ? delivery.attempts : delivery.attempts + 1;
+    const delay = outcome === "defer" ? WEBHOOK_BUSY_RETRY_MS : this.retryDelaysMs[attempt - 1];
+    const status = outcome === "delivered" ? "delivered" : (outcome === "retry" || outcome === "defer") && delay !== undefined ? "pending" : "failed";
     await this.deps.orders.update(orderId, (o) => {
       const target = o.webhook?.deliveries.find((d) => d.id === delivery.id);
       if (target === undefined) return;
@@ -296,14 +348,16 @@ export class OrderEvents {
       target.nextAttemptAt = status === "pending" ? new Date(now.getTime() + delay!).toISOString() : null;
       if (result.ok) target.lastStatus = result.status;
       if (status === "delivered") delete target.lastError;
-      else target.lastError = result.ok ? `HTTP ${result.status}` : result.reason;
+      else target.lastError = unsignable ?? (result.ok ? `HTTP ${result.status}` : result.reason);
+      // A finished delivery's body is never sent again: keep the record, drop the bytes.
+      if (status !== "pending") target.body = "";
     });
     this.deps.log(status === "delivered" ? "order webhook delivered" : status === "pending" ? "order webhook failed, will retry" : "order webhook given up", {
       orderId,
       webhookId: delivery.id,
       event: delivery.event,
       attempt,
-      ...(result.ok ? { status: result.status } : { reason: result.reason }),
+      ...(result.ok ? { status: result.status } : { reason: unsignable ?? result.reason }),
       ...(status === "pending" ? { retryInMs: delay } : {}),
     });
   }
@@ -312,19 +366,33 @@ export class OrderEvents {
 
   private startWatcher(): void {
     if (this.stopped || this.watcher !== undefined) return;
-    this.watcher = setInterval(() => void this.watchOnce(), this.deps.watchIntervalMs ?? SHIPMENT_WATCH_INTERVAL_MS);
+    this.watcher = setInterval(() => {
+      // One pass at a time: a slow platform never stacks a second one on top.
+      if (this.watching) return;
+      this.watching = true;
+      void this.watchOnce().finally(() => {
+        this.watching = false;
+      });
+    }, this.deps.watchIntervalMs ?? SHIPMENT_WATCH_INTERVAL_MS);
     this.watcher.unref();
   }
 
-  /** Asks the platform about every unshipped UCP order of the last 30 days, one at a time. */
+  /** Asks the platform about every UCP order of the last 30 days that has not all left nor been cancelled, one at a time. */
   async watchOnce(): Promise<void> {
     if (this.deps.adapter.reportsShipments !== true) return;
     const cutoff = this.deps.now().getTime() - SHIPMENT_WATCH_WINDOW_MS;
     for (const order of this.deps.orders.list()) {
       if (this.stopped) return;
       if (order.ucpCheckoutId === undefined || order.platformOrderId === null || Date.parse(order.createdAt) < cutoff) continue;
-      if ((order.fulfillmentEvents ?? []).some((e) => e.type === "shipped")) continue;
+      if (order.fulfillmentState === "fulfilled" || order.fulfillmentState === "canceled") continue;
       await this.checkShipment(order.orderId);
     }
   }
+}
+
+/** What may be kept as a webhook URL: a parsable http(s) URL within the length a session and an order store (T147 review). The sender vets it again on every delivery. */
+export function isDeliverableUrl(url: string): boolean {
+  if (url.length > 2_048 || !URL.canParse(url)) return false;
+  const protocol = new URL(url).protocol;
+  return protocol === "https:" || protocol === "http:";
 }
