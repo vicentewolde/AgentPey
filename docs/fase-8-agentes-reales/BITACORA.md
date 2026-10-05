@@ -391,6 +391,16 @@ repo. AP2 tampoco entra, porque el mandato lo firma la llave de la plataforma y
 un tercero no la tiene; una tienda solo lo exige si el perfil de la plataforma
 lo declara, y el del paquete no. Solo testnet. Todo en `R-21`.
 
+**La revisión.** `/revisar` encontró un problema serio en el paquete, que no
+afecta al agente: el tope de gasto en decimales ("2.00") se convertía con los
+decimales que declara la propia tienda, así que una tienda maliciosa podía
+hacer que "2.00" valiera millones. Ahora se lee siempre con los 7 decimales de
+Stellar, una tienda que declara otro número se rechaza, y quien paga puede
+nombrar el activo que acepta. A pedido del usuario se corrigieron los once
+hallazgos, entre ellos que el agente lleve su propia cuenta de si el pago ya
+salió (para no devolver presupuesto de un pago que pudo cobrarse) y tests de
+ese caso.
+
 **Tropiezos.** El primer tarball salió sin el código compilado (un archivo de
 compilación viejo engañó a `tsc`); ahora el empaquetado limpia y compila
 siempre. Y el ejemplo mostraba "14.9 CLP" porque dividía por 100 un total en

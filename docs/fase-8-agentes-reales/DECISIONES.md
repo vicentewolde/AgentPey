@@ -665,9 +665,15 @@ dependencias privadas. Se decide:
    códigos de error son los mismos: los del paquete son un subconjunto de
    `AgentPassErrorCode`, al que se agregan dos (`UnsupportedNetwork`,
    `AmountAboveLimit`). Cambia, para el agente: una tienda cuyo handler no está
-   en testnet se rechaza al cotizar; la relectura también compara el id del
-   checkout (deuda de T128); y lo que el cliente x402 lanza al armar el pago
-   llega tipado como `PaymentNotCreated`.
+   en testnet, o cuyo activo no tiene 7 decimales, se rechaza al cotizar; la
+   tienda se nombra por su origen (un path en la URL se descarta); el comprador
+   y el destino se validan (email, país ISO de dos letras, campos no vacíos);
+   la relectura también compara el id del checkout (deuda de T128); y lo que el
+   cliente x402 lanza al armar el pago llega tipado como `PaymentNotCreated`.
+   El requisito se firma tal como lo mandó la tienda, sin agregarle miembros.
+   **Precisado tras `/revisar`:** el agente lleva su propia puerta: si el
+   pagador ya firmó, un error que no sea del paquete cuenta como posiblemente
+   enviado (`C-113`, `M-15`), sin depender de cómo esté escrito el paquete.
 3. **La firma sin llaves en el paquete.** Los pagadores reciben funciones que
    firman: un signer SEP-43, o `signAuthPayload(payload) → { publicKey,
    signature }` para el dueño del rail. `keypairSigner` y `railOwnerSigner` las
@@ -684,13 +690,21 @@ dependencias privadas. Se decide:
    sin AP2), reemplazable; `recheck` encendido; `maxAmount` obligatorio
    (decimal o `bigint` atómico). El agente pasa como `maxAmount` el monto
    cotizado y `recheck` como antes (apagado salvo en el MCP): su tope es
-   `authorise()`, que concilia contra la intención.
+   `authorise()`, que concilia contra la intención. **Precisado tras
+   `/revisar`:** el decimal se lee siempre con los 7 decimales de Stellar, nunca
+   con los que declara la tienda (si no, una tienda que declara 14 convertía
+   "2.00" en 2e14 unidades), y una opción `asset` deja nombrar el contrato que
+   se acepta (`USDC_TESTNET`). El hook recibe una copia congelada del requisito
+   y de las líneas, y sin relectura ve los bytes del checkout tal como llegaron.
+   Una cotización guardada solo paga en el origen de su tienda.
 6. **Dependencias:** `@x402/core` y `@x402/stellar` `~2.24.0`,
-   `@stellar/stellar-sdk` `~17.0.1` y `zod` `^4.5.4`, las versiones que el
+   `@stellar/stellar-sdk` `~17.0.1` y `zod` `~4.5.4`, las versiones que el
    agente ya usa y que ya pagaron en testnet (con `^17.0.1` pnpm resolvía la
-   17.1.0 para el paquete y los tipos chocaban con los del agente). Todas
+   17.1.0 para el paquete y los tipos chocaban con los del agente; con `^4.5.4`
+   resolvía zod 4.6.5 y el agente cargaba dos copias, corregido en `/revisar`). Todas
    publicadas hace más de un día (`minimumReleaseAge`, 1440 min). Un test lee
-   el `package.json` y falla con un `workspace:` o un scope interno.
+   el `package.json` y falla con un `workspace:` o un scope interno, y otro
+   busca en el código fuente imports de `@agentpass/`, `@agentpey/` o `@vitrinee/`.
 7. **Nombre:** `@agentpey/ucp-stellar`, confirmado por el usuario. El scope
    `@agentpey` no existía en npm el 5-oct ("Scope not found"): la organización
    la crea el usuario antes de publicar.

@@ -8097,3 +8097,19 @@ Por qué: el spec pide un SDK del lado del agente publicable; el usuario eligió
 Pendiente: `/revisar`, push, PR y merge con OK. Publicar en npm solo con permiso explícito: antes el usuario crea la
 organización `agentpey` (el scope no existe). `AGENTS.md`: sí, una línea sobre el paquete en el perímetro de `P-10`.
 Exponential: T136 a `IN_PROGRESS`.
+
+## 2026-10-05 (41) — cc/t136-sdk-npm (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T136. Un bloqueante: el `maxAmount` decimal del paquete se convertía con los `decimals` de la
+tienda (con 14, "2.00" valía 2e14). Corregidos los 11 hallazgos a pedido del usuario: 7 decimales siempre y tienda con
+otro número rechazada, opción `asset` (`USDC_TESTNET`, el ejemplo la usa), puerta propia del agente
+(`reportingSigned`) para que un error desconocido tras firmar falle cerrado, tests del lado posterior a la puerta en
+`ucp-contract` y `mcp-contract` (el MCP no devuelve el gasto), `*.localhost` aceptado, requisito firmado sin `extra`
+agregado, zod `~4.5.4`, esquema zod de la config, bytes originales del checkout al hook, mismo origen para una
+cotización guardada, copia congelada al hook, más tests y escaneo de imports. `pnpm check` en verde (86 del paquete).
+Tarball nuevo: el ejemplo cotiza; no se repitió la compra. `R-21`, evidencia §8, BITACORA y ESTADO precisados.
+
+Pendiente: push, PR y merge con OK; publicar en npm solo con permiso explícito (la organización `agentpey` la crea el
+usuario). `AGENTS.md`: sin cambios en esta entrada. Exponential: sin cambios.
