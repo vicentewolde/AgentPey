@@ -7963,3 +7963,16 @@ en verde.
 
 Pendiente: push, PR, merge y deploy con OK; compra real con dos productos (imán + taza) con OK. El rail viejo
 `CA6P4KKV…` conserva unos 1,59 USDC que solo su principal puede retirar. `AGENTS.md`: sin cambios.
+
+## 2026-10-05 (31) — cc/t148-varios-productos → main, cc/t148-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI 4/4, T148 en `main` por fast-forward ([PR #57](https://github.com/vicentewolde/AgentPey/pull/57)) y desplegada. Con OK, compra
+real de un imán y una taza en agentcommerce desde el rail UCP nuevo, UCP `2026-08-25` con AP2: `ord_muvewqqmddbf40c81d`
+(Shopify `19011113025842`, tx `ece0aaff…`), recibo con dos ítems que suman lo cobrado y los tres checks; la librería
+oficial de AP2 verifica el mandato de dos líneas. El primer intento cayó en la instancia vieja durante el deploy y se
+rechazó sin cobrar. T148 cerrada (SPEC, ESTADO, BITACORA, SYNC, evidencia §9, ticket `DONE`).
+
+Pendiente: push y merge de `cc/t148-evidencia` con OK. Siguiente: T130 si hay tienda de terceros; si no, T149.
+`AGENTS.md`: sin cambios. Exponential: T148 a `DONE`.

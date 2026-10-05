@@ -24,8 +24,8 @@ confirmación.
 **T131, T133 y T134 cerradas**: la suite oficial de UCP corre contra la tienda,
 la tienda habla las dos versiones de UCP, y con AP2 no cobra sin un mandato
 que la librería oficial de AP2 verifica sobre una compra real. **T147 cerrada**:
-la tienda avisa al agente. **T148 en revisión**: un carrito de varios productos,
-en código y tests; falta `/revisar` y la compra real.
+la tienda avisa al agente. **T148 cerrada**: un agente compra un carrito de
+varios productos, con un solo cobro y un recibo de un ítem por línea.
 
 | Tarea | Estado |
 |---|---|
@@ -49,7 +49,7 @@ en código y tests; falta `/revisar` y la compra real.
 | T145 Tesorería de equipos (prueba técnica) | pendiente |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
 | T147 Webhooks de orden | cerrada |
-| T148 Varios productos | en revisión (falta la compra real) |
+| T148 Varios productos | cerrada |
 | T149 Consentimiento | pendiente |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
@@ -359,7 +359,7 @@ admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
 
-## T148 · Varios productos por compra (2026-10-05, en revisión)
+## T148 · Varios productos por compra (2026-10-05, cerrada)
 
 **Qué quedó funcionando.** Hasta ahora un agente podía comprar un solo producto
 por vez. Con T148 arma un carrito: por ejemplo, un gorro y dos packs de
@@ -402,6 +402,10 @@ bajo 3,00 USDC por compra. Como el contrato fija sus topes al nacer, con OK del
 usuario se desplegó otro rail UCP de 5,00 por compra y 10,00 por día, con 5
 USDC de la reserva. El del MCP no cambió.
 
-**Lo que falta.** Push, PR, merge y deploy, y después la compra real con dos
-productos.
+**La compra real.** Con la tienda desplegada, un imán y una taza en
+`agentcommerce`, pagados desde el rail nuevo con AP2: un solo cobro de 3,66
+USDC, un pedido en Shopify con las dos líneas, y un recibo con dos ítems que
+suman lo cobrado y los tres checks en verde. La librería oficial de AP2
+verificó el mandato, que nombraba las dos líneas. El primer intento cayó en la
+instancia vieja mientras terminaba el deploy y se rechazó antes de cobrar nada.
 

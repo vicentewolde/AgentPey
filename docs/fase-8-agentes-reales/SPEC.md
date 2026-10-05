@@ -254,7 +254,7 @@ más rápido que lo estimado.
   - [x] un checkout con dos productos cotiza, cobra una vez y crea un pedido con dos líneas (test sin red) ([evidencia](evidencia/T148.md) §3)
   - [x] el verificador rechaza un recibo cuyas líneas no suman el total (test) ([evidencia](evidencia/T148.md) §3 y §4, `VT-45`)
   - [x] `executeUcpPayment` y `ucp-contract.test.ts` siguen en verde con una línea ([evidencia](evidencia/T148.md) §3)
-  - [ ] una compra real con dos productos y recibo con los tres checks en verde, con OK del usuario
+  - [x] una compra real con dos productos y recibo con los tres checks en verde, con OK del usuario (`ord_muvewqqmddbf40c81d`, [evidencia](evidencia/T148.md) §9)
 
 #### T149 · Consentimiento del comprador hasta la tienda (`R-12`)
 - **Prioridad:** si alcanza · **Estimación:** 2 h · **Delegable a Codex:** no

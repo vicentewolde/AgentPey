@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-05
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T147 · La tienda avisa al agente: la orden muestra el despacho y los avisos firmados ("creada", "despachada") llegan verificados a agentpey.com, probado con un despacho real en Shopify
-**Siguiente paso:** push, PR y merge de T148 (`cc/t148-varios-productos`, `/revisar` hecho y corregido) con OK; después la compra real con dos productos desde el rail UCP nuevo (`R-19`), con OK. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T148 · Varios productos por compra: un carrito, un solo cobro, un pedido de varias líneas y un recibo que suma el total; compra real de un imán y una taza con AP2
+**Siguiente paso:** push y merge de `cc/t148-evidencia` con OK. Después, T130 si ya hay tienda de terceros; si no, T149 (consentimiento hasta la tienda). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -34,7 +34,7 @@
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
-| T148 Varios productos por compra (`R-12`) | si alcanza | 👀 en revisión: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`); suite 48/9/20; falta la compra real | `cc/t148-varios-productos` |
+| T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ⏳ pendiente | |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143.
@@ -43,7 +43,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Para la compra real de T148: el OK de la compra (rail UCP nuevo `CBDRI5B7…D3YA` ya desplegado, 5,00/10,00, con 5 USDC, `R-19`). El rail viejo `CA6P4KKV…` conserva unos 1,59 USDC que solo su principal puede retirar
+- [ ] Opcional: retirar los ~1,59 USDC del rail UCP viejo `CA6P4KKV…` desde su principal `GD2MCESI…` (solo esa wallet puede). El reembolso de T124 vuelve a ese rail
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
@@ -122,3 +122,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-05, T147 cerrada: [PR #55](https://github.com/vicentewolde/AgentPey/pull/55) en `main` y desplegado. Rail UCP recargado con 3 USDC (tx `f53ea2d5…`). Compra `ord_muv8xjmi1a53efae61` (Shopify `19009954578738`, tx `ee330134…`, recibo válido): el aviso "creada" llegó a agentpey.com en 1 s; el usuario marcó el pedido como despachado en Shopify, la orden mostró `shipped` con la línea `fulfilled` (valida contra el esquema `2026-08-25`) y el aviso "despachada" llegó verificado. Rail UCP en unos 1,59 USDC.
 - 2026-10-05, T148: plan aprobado con la opción A (la intención lleva las líneas, `R-18`). Tienda: checkout de hasta 10 líneas, precio y redondeo por línea, reserva todo o nada, pedido de varias líneas en los tres adaptadores, `items[]` en el pedido con las filas viejas convertidas al leer, despacho parcial por línea (`VT-46`); recibo cuyos ítems suman el total (`VT-45`, nueve recibos reales releídos, todos cumplen). Agente: `checkMandate` y `reconcileTerms` sobre las líneas, `checkScope` y `create_purchase_intent` sin cambios, `agent.signCart`, líneas comparadas antes de autorizar, mandato AP2 con una entrada por línea, `ucp:buy -- --product id:n` repetido. Suite 48/9/20. `pnpm check` y `vitrinee:check` en verde. El `perTx` del rail no se puede cambiar en el contrato: subirlo es desplegar otro.
 - 2026-10-05, T148 `/revisar`: un bloqueante (el agente comparaba la intención con las líneas que pidió y no con las de la tienda; con `recheck` solo el monto), dos importantes y seis sugerencias, todos corregidos a pedido del usuario. Con OK del usuario, rail UCP nuevo `CBDRI5B7…D3YA` (5,00/10,00, 5 USDC, `R-19`). Suite igual (48/9/20).
+- 2026-10-05, T148 cerrada: [PR #57](https://github.com/vicentewolde/AgentPey/pull/57) en `main` y desplegado. Compra real `ord_muvewqqmddbf40c81d` (Shopify `19011113025842`, tx `ece0aaff…`): imán + taza, 3,6631579 USDC desde el rail nuevo con AP2; recibo con dos ítems que suman lo cobrado y los tres checks; la librería oficial de AP2 verifica el mandato de dos líneas. El primer intento cayó en la instancia vieja durante el deploy y se rechazó sin cobrar. Rail UCP nuevo en 1,3368421 USDC.
