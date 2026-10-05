@@ -166,5 +166,5 @@ por separado.
 > desde una cuenta-contrato con topes que aplica la red. Por eso no lo usamos todavía: propusimos el cambio al SDK."
 
 Evidencia: §3 (la red acepta la firma del rail, los cuatro rechazos, el rail sin moverse) y §4 (el control que sí
-cobra). "Propusimos el cambio" vale
-solo cuando el issue esté publicado, con el OK del usuario; hasta entonces, "lo documentamos para el SEP".
+cobra). "Propusimos el cambio" vale desde el 2026-10-05: el issue está publicado, con el OK del usuario, como
+[stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90).

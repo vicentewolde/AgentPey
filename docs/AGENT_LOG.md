@@ -8075,5 +8075,6 @@ Agente: Claude Code.
 Qué: con OK del usuario, T135 en `main` por fast-forward ([PR #61](https://github.com/vicentewolde/AgentPey/pull/61); sin CI: solo existe el de Vitrinee, filtrado por rutas que
 T135 no toca; `pnpm check` en verde en local). Rama borrada. T135 cerrada (ESTADO, BITACORA, SYNC, ticket `DONE`).
 
-Pendiente: el usuario lee el borrador del issue y decide si se publica; push y merge de `cc/t135-cierre` con OK.
+Con OK del usuario, el issue se publicó tal cual: [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin plantilla en el repo y sin
+issues iguales; líneas de cada párrafo unidas, mismas palabras). Pendiente: seguir el issue por si responden.
 Siguiente: T136, o T130 si llega la tienda. `AGENTS.md`: sin cambios. Exponential: T135 a `DONE`.

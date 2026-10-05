@@ -1,6 +1,8 @@
 # Texto del issue para `stellar/stellar-mpp-sdk` (T135)
 
-**Estado:** borrador, **sin publicar**. Se publica solo con el OK del usuario (`R-4`). Evidencia:
+**Estado:** **publicado** el 2026-10-05, con el OK del usuario, como
+[stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90). El texto es el de abajo, palabra por palabra; al publicarlo se unieron las
+líneas de cada párrafo, porque GitHub muestra los saltos de línea de un párrafo como tales. Evidencia:
 [T135-mpp-charge.md](T135-mpp-charge.md).
 
 ---

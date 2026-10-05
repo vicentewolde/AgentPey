@@ -374,7 +374,8 @@ decisión que ya existía (`R-4`) no se construye el pago por MPP: en el video s
 dirá "evaluamos MPP", no "soportamos MPP". Quedaron escritos la brecha para el
 SEP, el texto de un issue que propone el cambio al SDK (se publica con OK del
 usuario) y la respuesta a la pregunta del SEP: MPP sería un medio de pago
-aparte, no una variante del de x402 (`R-20`).
+aparte, no una variante del de x402 (`R-20`). Con OK del usuario, el issue se
+publicó: [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90).
 
 **Cómo se probó.** Un paquete aislado (`scripts/mpp-probe/`) con el SDK oficial,
 fuera del workspace de AgentPey porque pide otra versión del SDK de Stellar. La
