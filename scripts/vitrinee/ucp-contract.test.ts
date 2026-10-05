@@ -101,6 +101,15 @@ function intent(productId: string, quantity: number, unit: string, total: string
   };
 }
 
+/** A verified intent for a cart (T148), as the agent's cart signer would sign it. */
+function cartIntent(lines: Array<[string, number, string]>, total: string): PurchaseIntent {
+  return { ...intent("unused", 1, "0", "0"), purchase: { lines: lines.map(([productId, quantity, unitAmount]) => ({ productId, quantity, unitAmount })), totalAmount: total, asset: USDC as PurchaseIntent["purchase"]["asset"] } };
+}
+
+// gorro-andes 12990 CLP and stickers-cordillera 990 CLP, at the test store's 950 CLP per USD.
+const HAT = "13.6736842";
+const STICKERS = "1.0421053";
+
 /** Stands in for PolicyRailStellarScheme: records what it was asked to sign. */
 function fakeScheme(): SchemeNetworkClient & { calls: PaymentRequirements[] } {
   const calls: PaymentRequirements[] = [];
@@ -165,7 +174,8 @@ describe("AgentPey pays a Vitrinee store over UCP (T122)", () => {
         { storeUrl: server.url, productId: "gorro-andes", quantity: 2, destination: DESTINATION, intent: intent("gorro-andes", 1, "13.6736842", "13.6736842"), scope: grant, mandate: mandate(grant), ...venue() },
       ),
     );
-    expect(error).toMatchObject({ code: "TermsAmountMismatch" });
+    // Since T148 the lines are compared before the amount: the checkout is not the purchase the intent signed.
+    expect(error).toMatchObject({ code: "InvalidProduct" });
     expect(mayHaveBeenPaid(error)).toBe(false);
     expect(scheme.calls).toEqual([]);
     expect(facilitator.settleCalls).toHaveLength(settled);
@@ -240,6 +250,107 @@ describe("AgentPey pays a Vitrinee store over UCP (T122)", () => {
       ),
     );
     expect(error).toMatchObject({ code: "MerchantRejectedRequest" });
+    expect(scheme.calls).toEqual([]);
+  });
+});
+
+describe("AgentPey pays a cart at a Vitrinee store over UCP (T148)", () => {
+  it("opens a checkout of two lines, pays their sum once and gets an order and a receipt of two items", async () => {
+    // A store of its own: the shared one already holds an order for the fake facilitator's one transaction hash (T132).
+    const registry = fakeRegistry();
+    const ownAdapter = new MockStoreAdapter();
+    const ownFacilitator = fakeFacilitator({ settle: { payer: RAIL, transaction: "cd34".padEnd(64, "0") } });
+    const own = createApp({ platformProfiles: fakePlatformProfiles({ [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08" }), config: testConfig(), adapter: ownAdapter, facilitator: ownFacilitator, anchorer: registry.anchorer, registry: registry.registry });
+    const ownServer = await listen(own);
+    const ownVenue = loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: ownServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }]);
+    try {
+      const scheme = fakeScheme();
+      const grant = scope();
+      const settled = ownFacilitator.settleCalls.length;
+      const paid = await executeUcpPayment(
+        { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme },
+        {
+          storeUrl: ownServer.url,
+          lines: [
+            { productId: "gorro-andes", quantity: 1 },
+            { productId: "stickers-cordillera", quantity: 2 },
+          ],
+          destination: DESTINATION,
+          intent: cartIntent([["gorro-andes", 1, HAT], ["stickers-cordillera", 2, STICKERS]], "15.7578948"),
+          scope: grant,
+          mandate: mandate(grant),
+          venueId: makeVenueId("vitrinee", MERCHANT),
+          registry: ownVenue,
+        },
+      );
+      expect(scheme.calls).toEqual([expect.objectContaining({ amount: "157578948", payTo: MERCHANT })]);
+      expect(ownFacilitator.settleCalls).toHaveLength(settled + 1);
+      expect(paid.total).toEqual({ amount: 14970, currency: "CLP" });
+      const claims = checkReceiptSignature(paid.receipt?.jws ?? "").claims;
+      expect(claims?.items.map((item) => [item.productId, item.quantity, item.unitPriceUSDCAtomic])).toEqual([
+        ["gorro-andes", 1, "136736842"],
+        ["stickers-cordillera", 2, "10421053"],
+      ]);
+      expect(claims?.amountUSDCAtomic).toBe("157578948");
+      expect((await ownAdapter.getOrder(claims?.platformOrderId ?? ""))?.lines.map((line) => [line.productId, line.quantity])).toEqual([
+        ["gorro-andes", 1],
+        ["stickers-cordillera", 2],
+      ]);
+    } finally {
+      own.anchors.stop();
+      await ownServer.close();
+    }
+  });
+
+  it("refuses before signing a checkout for other lines than the intent, even at the same total", async () => {
+    const scheme = fakeScheme();
+    const grant = scope();
+    const error = await attempt(() =>
+      executeUcpPayment(
+        { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme },
+        {
+          storeUrl: server.url,
+          // Two packs of stickers in two lines of one each: the same total as the intent's one line of two.
+          lines: [
+            { productId: "gorro-andes", quantity: 1 },
+            { productId: "stickers-cordillera", quantity: 1 },
+            { productId: "stickers-cordillera", quantity: 1 },
+          ],
+          destination: DESTINATION,
+          intent: cartIntent([["gorro-andes", 1, HAT], ["stickers-cordillera", 2, STICKERS]], "15.7578948"),
+          scope: grant,
+          mandate: mandate(grant),
+          ...venue(),
+        },
+      ),
+    );
+    expect(error).toMatchObject({ code: "InvalidProduct" });
+    expect(mayHaveBeenPaid(error)).toBe(false);
+    expect(scheme.calls).toEqual([]);
+  });
+
+  it("refuses before signing a cart above the per-transaction limit, though each line is under it", async () => {
+    const scheme = fakeScheme();
+    const grant = scope("15.00");
+    const error = await attempt(() =>
+      executeUcpPayment(
+        { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme },
+        {
+          storeUrl: server.url,
+          lines: [
+            { productId: "gorro-andes", quantity: 1 },
+            { productId: "stickers-cordillera", quantity: 2 },
+          ],
+          destination: DESTINATION,
+          intent: cartIntent([["gorro-andes", 1, HAT], ["stickers-cordillera", 2, STICKERS]], "15.7578948"),
+          scope: grant,
+          mandate: mandate(grant),
+          ...venue(),
+        },
+      ),
+    );
+    expect((error as { code: string }).code).toBe("ScopeAmountExceeded");
+    expect(mayHaveBeenPaid(error)).toBe(false);
     expect(scheme.calls).toEqual([]);
   });
 });
@@ -323,10 +434,10 @@ describe("AgentPey pays a Vitrinee store with AP2 mandates (T134, R-15)", () => 
       source: { mandate_id: crypto.randomUUID(), hash: "b".repeat(64), registry: REGISTRY },
       closed,
     };
-    const pay = (theIntent: PurchaseIntent, scheme = fakeScheme()) =>
+    const pay = (theIntent: PurchaseIntent, scheme = fakeScheme(), lines?: Array<{ productId: string; quantity: number }>) =>
       executeUcpPayment(
         { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme, platformProfile: AGENTPEY_PLATFORM_PROFILE_AP2, ap2 },
-        { storeUrl: server.url, productId: "gorro-andes", quantity: 1, buyer: { email: "ana@example.com" }, destination: DESTINATION, intent: theIntent, scope: grant, mandate: mandate(grant), venueId: makeVenueId("vitrinee", MERCHANT), registry: venueRegistry },
+        { storeUrl: server.url, ...(lines === undefined ? { productId: "gorro-andes", quantity: 1 } : { lines }), buyer: { email: "ana@example.com" }, destination: DESTINATION, intent: theIntent, scope: grant, mandate: mandate(grant), venueId: makeVenueId("vitrinee", MERCHANT), registry: venueRegistry },
       );
     return {
       closed,
@@ -352,6 +463,28 @@ describe("AgentPey pays a Vitrinee store with AP2 mandates (T134, R-15)", () => 
       expect(again).toMatchObject({ code: "Ap2MandateInvalid" });
       expect(mayHaveBeenPaid(again)).toBe(false);
       expect(scheme.calls).toEqual([]);
+    } finally {
+      await stop();
+    }
+  });
+
+  it("closes one mandate over a cart: the open mandate names every line, and the store verifies it and charges once (T148)", async () => {
+    const { pay, stop } = await setup({ [AGENTPEY_PLATFORM_PROFILE_AP2]: AP2_PROFILE_ENTRY });
+    try {
+      const lines = [
+        { productId: "gorro-andes", quantity: 1 },
+        { productId: "stickers-cordillera", quantity: 2 },
+      ];
+      const paid = await pay(cartIntent([["gorro-andes", 1, HAT], ["stickers-cordillera", 2, STICKERS]], "15.7578948"), fakeScheme(), lines);
+      expect(paid.orderId).toMatch(/^ord_/);
+      // The open mandate (before `~~`) allows exactly the two lines, in the checkout's order.
+      const open = paid.ap2Mandate!.split("~~")[0]!;
+      const disclosed = open.split("~").slice(1).filter((d) => d !== "").map((d) => JSON.parse(Buffer.from(d, "base64url").toString("utf8")) as [string, unknown]);
+      const mandateClaims = disclosed.map(([, value]) => value).find((value): value is { constraints: Array<{ type: string; items?: Array<{ id: string; quantity: number }> }> } => typeof value === "object" && value !== null && "constraints" in value);
+      expect(mandateClaims?.constraints.find((c) => c.type === "checkout.line_items")?.items?.map((item) => [item.id, item.quantity])).toEqual([
+        ["line_1", 1],
+        ["line_2", 2],
+      ]);
     } finally {
       await stop();
     }

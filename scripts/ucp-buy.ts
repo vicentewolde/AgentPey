@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
- * `pnpm run ucp:buy -- --store <URL> --product <id> [--quantity <n>] [--ucp-version 2026-08-25] [--ap2]`
+ * `pnpm run ucp:buy -- --store <URL> --product <id>[:<n>] [--product <id>[:<n>] …] [--quantity <n>] [--ucp-version 2026-08-25] [--ap2]`
  * — a real UCP purchase on Stellar testnet, end to end (T122, Fase 7). With
  * `--ucp-version 2026-08-25` the agent sends its 2026-08-25 platform profile
  * and the store answers in that version (T133); without it, 2026-04-08.
+ * `--product` repeated is a cart (T148): one checkout, one intent with every
+ * line, one payment of their sum; `id:n` gives that line a quantity (else
+ * `--quantity`, which only a single product may use).
  * With `--ap2` (T134, R-15) the agent sends its AP2 platform profile: the
  * store signs its checkout, and the agent closes an AP2 mandate over it with
  * the platform key (`AGENTPEY_PLATFORM_AP2_SECRET`, `pnpm run ap2:platform-key`).
@@ -50,6 +53,7 @@ import {
   createX402Catalog,
   executeUcpPayment,
   expandPlatformVenues,
+  MAX_UCP_LINES,
   mayHaveBeenPaid,
   verifyIntent,
 } from "@agentpey/agent";
@@ -92,7 +96,7 @@ const { values } = parseArgs({
   args: process.argv.slice(2).filter((arg) => arg !== "--"),
   options: {
     store: { type: "string" },
-    product: { type: "string" },
+    product: { type: "string", multiple: true },
     quantity: { type: "string", default: "1" },
     email: { type: "string", default: "comprador@agentpey.com" },
     "ucp-version": { type: "string", default: "2026-04-08" },
@@ -121,13 +125,28 @@ function requireEnv(env: ReadonlyMap<string, string>, key: string): string {
 }
 
 async function main(): Promise<void> {
-  if (values.store === undefined || !URL.canParse(values.store) || values.product === undefined) {
-    throw new AgentPassError("InvalidArguments", "usage: pnpm run ucp:buy -- --store <URL> --product <id> [--quantity <n>]", { details: {} });
+  if (values.store === undefined || !URL.canParse(values.store) || values.product === undefined || values.product.length === 0) {
+    throw new AgentPassError("InvalidArguments", "usage: pnpm run ucp:buy -- --store <URL> --product <id>[:<n>] [--product <id>[:<n>] …] [--quantity <n>]", { details: {} });
   }
-  const quantity = Number(values.quantity);
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
-    throw new AgentPassError("InvalidArguments", "--quantity must be a whole number from 1 to 100", { details: { quantity: values.quantity } });
+  const wholeQuantity = (raw: string): number => {
+    const n = Number(raw);
+    if (!/^\d+$/.test(raw) || !Number.isInteger(n) || n < 1 || n > 100) {
+      throw new AgentPassError("InvalidArguments", "a quantity must be a whole number from 1 to 100", { details: { quantity: raw } });
+    }
+    return n;
+  };
+  if (values.product.length > 1 && process.argv.includes("--quantity")) {
+    throw new AgentPassError("InvalidArguments", "a cart gives each line its quantity as --product <id>:<n>, not --quantity", { details: {} });
   }
+  if (values.product.length > MAX_UCP_LINES) {
+    throw new AgentPassError("InvalidArguments", `a cart has at most ${MAX_UCP_LINES} lines`, { details: { lines: values.product.length } });
+  }
+  // `id:n` or `id` (then --quantity). Product ids are digits or slugs, never with a colon.
+  const lines = values.product.map((spec) => {
+    const [id = "", count] = spec.split(":");
+    if (id === "") throw new AgentPassError("InvalidArguments", "--product needs an id", { details: { product: spec } });
+    return { productId: id, quantity: wholeQuantity(count ?? values.quantity) };
+  });
   const ucpVersion = values["ucp-version"];
   if (ucpVersion !== "2026-04-08" && ucpVersion !== "2026-08-25") {
     throw new AgentPassError("InvalidArguments", "--ucp-version must be 2026-04-08 or 2026-08-25", { details: { ucpVersion } });
@@ -137,7 +156,6 @@ async function main(): Promise<void> {
   }
   const platformProfile = values.ap2 ? AGENTPEY_PLATFORM_PROFILE_AP2 : ucpVersion === "2026-08-25" ? AGENTPEY_PLATFORM_PROFILE_2026_08_25 : AGENTPEY_PLATFORM_PROFILE;
   const storeUrl = new URL(values.store).origin;
-  const productId = values.product;
 
   const env = await readEnvFile(ENV_PATH);
   const issuer = Keypair.fromSecret(requireEnv(env, "ISSUER_SECRET_KEY"));
@@ -147,7 +165,7 @@ async function main(): Promise<void> {
 
   out("\nAgentPey · compra UCP pagada sobre Stellar · Fase 7 (T122) · testnet");
   line("tienda", storeUrl);
-  line("producto", `${productId} × ${quantity}`);
+  for (const [i, l] of lines.entries()) line(lines.length === 1 ? "producto" : `línea ${i + 1}`, `${l.productId} × ${l.quantity}`);
   line("pagador", `${railId} (policy_rail UCP: 3.00 por compra, 5.00 por día)`);
 
   // The store's venue, from the Vitrinee platform's public directory (C-141).
@@ -201,7 +219,15 @@ async function main(): Promise<void> {
     signer: agentKeypair,
     ledger,
   });
-  const intentResult = (await agent.tools.invoke("create_purchase_intent", { product_id: productId, quantity })) as CreatePurchaseIntentResult;
+  // One product through the model's own tool, as before; a cart through the agent's cart signer, same checks (T148).
+  const [single] = lines;
+  let intentResult: CreatePurchaseIntentResult;
+  if (lines.length === 1 && single !== undefined) {
+    intentResult = (await agent.tools.invoke("create_purchase_intent", { product_id: single.productId, quantity: single.quantity })) as CreatePurchaseIntentResult;
+  } else {
+    if (agent.signCart === undefined) throw new AgentPassError("ConfigError", "the agent cannot sign intents: its credential or Mandate did not verify", { details: {} });
+    intentResult = await agent.signCart(lines);
+  }
   const verified = await verifyIntent(intentResult.jws);
   line("intent", intentResult.intent_id);
   line("total", `${intentResult.total_amount} USDC`);
@@ -234,8 +260,7 @@ async function main(): Promise<void> {
     { policyRail: createLocalPolicyRail({ ledger }), signerSecret: agentKeypair.secret(), payer: { contractId: railId, ownerSecret: agentKeypair.secret() }, platformProfile, ...(ap2 === undefined ? {} : { ap2 }) },
     {
       storeUrl,
-      productId,
-      quantity,
+      ...(lines.length === 1 && single !== undefined ? { productId: single.productId, quantity: single.quantity } : { lines }),
       buyer: { email: values.email, first_name: "Comprador", last_name: "AgentPey" },
       destination: { first_name: "Comprador", last_name: "AgentPey", street_address: "Av. Providencia 1234", address_locality: "Providencia", address_region: "RM", address_country: "CL" },
       intent: verified.intent,

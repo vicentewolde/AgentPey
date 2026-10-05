@@ -23,6 +23,7 @@ import { z } from "zod";
 
 import { assetIdSchema, venueIdSchema } from "../catalog/ids.js";
 import { productIdSchema } from "../catalog/catalog.js";
+import { fromScaledAmount, multiplyAmount } from "../scope/amount.js";
 
 export const AGENTPAY_INTENT_TYPE = "PurchaseIntent";
 export const AGENTPAY_INTENT_FAMILY = "AgentPayIntent";
@@ -44,7 +45,8 @@ export const intentCredentialRefSchema = z.strictObject({
   registry: stellarContractIdSchema,
 });
 
-export const intentPurchaseSchema = z.strictObject({
+/** One product: what every intent was before T148, and what a one-line purchase still is, byte for byte. */
+export const intentSingleSchema = z.strictObject({
   productId: productIdSchema,
   quantity: z.int().min(1),
   /** Price of one unit, exactly as the venue quoted it. */
@@ -53,6 +55,31 @@ export const intentPurchaseSchema = z.strictObject({
   totalAmount: decimalAmountSchema,
   asset: assetIdSchema,
 });
+
+/** The most lines one intent may carry: a store's checkout carries at most ten (T148). */
+export const MAX_INTENT_LINES = 10;
+
+/** One line of a cart: a product, how many, and the price of one unit as the venue quoted it. */
+export const intentLineSchema = z.strictObject({
+  productId: productIdSchema,
+  quantity: z.int().min(1),
+  unitAmount: decimalAmountSchema,
+});
+
+/**
+ * A cart (T148): two to ten lines at the one venue the intent names, all
+ * priced in one asset. `totalAmount` is Σ `unitAmount x quantity`, and like
+ * the single form's it is never what a decision reads: every check derives
+ * the total from the lines again. The same product may appear in two lines.
+ */
+export const intentCartSchema = z.strictObject({
+  lines: z.array(intentLineSchema).min(2).max(MAX_INTENT_LINES),
+  totalAmount: decimalAmountSchema,
+  asset: assetIdSchema,
+});
+
+/** What the intent buys: one product, or a cart. */
+export const intentPurchaseSchema = z.union([intentSingleSchema, intentCartSchema]);
 
 /**
  * The limit the total was checked against, copied from the signed credential.
@@ -86,4 +113,27 @@ export const purchaseIntentSchema = z.strictObject({
 export type PurchaseIntent = z.infer<typeof purchaseIntentSchema>;
 export type IntentCredentialRef = z.infer<typeof intentCredentialRefSchema>;
 export type IntentPurchase = z.infer<typeof intentPurchaseSchema>;
+export type IntentLine = z.infer<typeof intentLineSchema>;
+
+/** The lines a purchase is for, in order: one for the single form. */
+export function intentLines(purchase: IntentPurchase): readonly IntentLine[] {
+  return "lines" in purchase ? purchase.lines : [{ productId: purchase.productId, quantity: purchase.quantity, unitAmount: purchase.unitAmount }];
+}
+
+/** Σ `unitAmount x quantity` over the lines, exact, in scaled integers: the total every check compares. */
+export function intentTotal(purchase: IntentPurchase): bigint {
+  return intentLines(purchase).reduce((sum, line) => sum + multiplyAmount(line.unitAmount, line.quantity), 0n);
+}
+
+/**
+ * The four facts `checkScope` takes, for either form. A cart is presented as
+ * one unit priced at its total, so `perTx` is compared against the whole cart
+ * and `checkScope` itself stays exactly as it was (it is never given a
+ * product, one or many).
+ */
+export function scopeRequestOf(intent: Pick<PurchaseIntent, "venue" | "purchase">): { venue: string; asset: string; unitAmount: string; quantity: number } {
+  const { purchase } = intent;
+  if ("lines" in purchase) return { venue: intent.venue, asset: purchase.asset, unitAmount: fromScaledAmount(intentTotal(purchase)), quantity: 1 };
+  return { venue: intent.venue, asset: purchase.asset, unitAmount: purchase.unitAmount, quantity: purchase.quantity };
+}
 export type IntentAuthorisation = z.infer<typeof intentAuthorisationSchema>;

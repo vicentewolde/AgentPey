@@ -26,7 +26,7 @@ import type { Scope } from "@agentpass/core";
 import { AgentPassError } from "@agentpass/core";
 import type { AgentPayMandate } from "@agentpey/mandate";
 
-import type { PurchaseIntent } from "../intent/intent.js";
+import { scopeRequestOf, type PurchaseIntent } from "../intent/intent.js";
 import { checkDailyLimit, type DailyLimitRejectionCode } from "../ledger/check-daily-limit.js";
 import type { LockedSpendLedger, ReleaseSpendInput, SpendLedger } from "../ledger/spend-ledger.js";
 import { checkMandate, type MandateRejectionCode } from "../mandate/check-mandate.js";
@@ -251,12 +251,7 @@ export function createLocalPolicyRail(deps: LocalPolicyRailDeps): PolicyRail {
 
       // 2. What the issuer signed. Never handed the product (T12): the four
       //    facts come off the intent, which has no field for a venue's prose.
-      const scoped = checkScope(scope, {
-        venue: intent.venue,
-        asset: intent.purchase.asset,
-        unitAmount: intent.purchase.unitAmount,
-        quantity: intent.purchase.quantity,
-      });
+      const scoped = checkScope(scope, scopeRequestOf(intent));
       if (!scoped.allowed) return refuse(scoped.code, scoped.reason, scoped.details);
 
       // 3. What the principal consented to. Both authorities must allow, and

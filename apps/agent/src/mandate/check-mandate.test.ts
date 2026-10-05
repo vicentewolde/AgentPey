@@ -432,3 +432,28 @@ describe("no field here can carry a venue's prose", () => {
     expect(Object.keys(intent.purchase)).toEqual(["productId", "quantity", "unitAmount", "totalAmount", "asset"]);
   });
 });
+
+describe("a cart (T148)", () => {
+  const cart = (lines: Array<[string, number, string]>, totalAmount = "0") => ({
+    purchase: { lines: lines.map(([productId, quantity, unitAmount]) => ({ productId, quantity, unitAmount })), totalAmount, asset: USDC_TESTNET },
+  });
+  const withProducts = (products: string[]) => ({
+    grant: { actions: ["catalog:read", "intent:create"], venues: [MOCK_VENUE_ID], assets: [USDC_TESTNET], limits: { perTx: "50.00", perDay: "200.00", currency: "USDC" }, products },
+  });
+
+  it("is allowed with the total worked out over every line, whatever totalAmount says", () => {
+    const decision = decide({}, cart([["mate-calabaza", 1, "18.50"], ["poncho-andino", 2, "12.25"]], "1.00"));
+    expect(decision).toMatchObject({ allowed: true, total: "43.0000000" });
+  });
+
+  it("is refused when the lines together exceed perTx, though each one is under it", () => {
+    const decision = decide({}, cart([["mate-calabaza", 1, "30.00"], ["poncho-andino", 1, "30.00"]]));
+    expect(decision).toMatchObject({ allowed: false, code: "MandateAmountExceeded", details: { lines: 2, total: "60.0000000" } });
+  });
+
+  it("is refused whole when any one line's product was not consented to", () => {
+    const decision = decide(withProducts(["mate-calabaza"]), cart([["mate-calabaza", 1, "1.00"], ["poncho-andino", 1, "1.00"]]));
+    expect(decision).toMatchObject({ allowed: false, code: "MandateProductNotAllowed", details: { productId: "poncho-andino", line: 1 } });
+    expect(decide(withProducts(["mate-calabaza", "poncho-andino"]), cart([["mate-calabaza", 1, "1.00"], ["poncho-andino", 1, "1.00"]])).allowed).toBe(true);
+  });
+});

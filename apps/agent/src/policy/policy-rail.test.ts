@@ -707,3 +707,41 @@ describe("LocalPolicyRail.preview — T93", () => {
     );
   });
 });
+
+describe("a cart, one purchase of several lines (T148)", () => {
+  const cart = (lines: Array<[string, number, string]>) =>
+    intentFor({
+      purchase: { lines: lines.map(([productId, quantity, unitAmount]) => ({ productId, quantity, unitAmount })), totalAmount: "0", asset: USDC_TESTNET },
+    });
+
+  it("is authorised for the sum of its lines, reconciled against one payment of that sum, and recorded once", async () => {
+    const { rail, ledger } = harness();
+    const decision = await rail.authorise({
+      intent: cart([["mate-calabaza", 1, "18.50"], ["poncho-andino", 2, "9.25"]]),
+      scope: scopeFor(),
+      mandate: mandateFor(),
+      terms: { venue: MOCK_VENUE_ID, asset: USDC_TESTNET, amount: "37.00" },
+    });
+    expect(decision).toMatchObject({ authorised: true, total: "37.0000000", reconciled: true });
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("37.0000000");
+  });
+
+  it("is refused by the credential's perTx when the lines together exceed it, each one under it", async () => {
+    const { rail, ledger } = harness();
+    const decision = await rail.authorise({
+      intent: cart([["mate-calabaza", 1, "6.00"], ["poncho-andino", 1, "6.00"]]),
+      scope: scopeFor({ limits: { perTx: "10.00", perDay: "200.00", currency: "USDC" } }),
+      mandate: mandateFor(),
+    });
+    expect(decision).toMatchObject({ authorised: false, code: "ScopeAmountExceeded" });
+    expect(await ledger.spentOn(AGENT_DID, "USDC", NOON)).toBe("0.0000000");
+  });
+
+  it("counts its whole total against the daily limit", async () => {
+    const { rail } = harness();
+    const scope = scopeFor({ limits: { perTx: "50.00", perDay: "50.00", currency: "USDC" } });
+    await rail.authorise({ intent: cart([["mate-calabaza", 1, "20.00"], ["poncho-andino", 1, "20.00"]]), scope, mandate: mandateFor() });
+    const second = await rail.authorise({ intent: cart([["mate-calabaza", 1, "5.00"], ["poncho-andino", 1, "6.00"]]), scope, mandate: mandateFor() });
+    expect(second).toMatchObject({ authorised: false, code: "ScopeDailyLimitExceeded" });
+  });
+});

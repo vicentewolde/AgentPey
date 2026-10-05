@@ -164,9 +164,15 @@ export async function exportPair(verifiers: Ap2ExportVerifiers, input: ExportMan
     throw intentMismatch("the intent's principal is not the credential's principal", { principal: intent.principal });
   }
 
+  // The export names one item and one display title (T123); a cart (T148) closes its own mandate in the UCP checkout.
+  const purchase = intent.purchase;
+  if ("lines" in purchase) {
+    throw new AgentPassError("Ap2MandateInvalid", "ap2:export exports one product; a cart's AP2 mandate is closed in the UCP checkout (T134, T148)", { details: { lines: purchase.lines.length } });
+  }
+
   // Both authorities must allow (M-4); neither function is changed here.
   const { scope } = credential.credential.credentialSubject;
-  const scoped = checkScope(scope, { venue: intent.venue, asset: intent.purchase.asset, unitAmount: intent.purchase.unitAmount, quantity: intent.purchase.quantity });
+  const scoped = checkScope(scope, { venue: intent.venue, asset: intent.purchase.asset, unitAmount: purchase.unitAmount, quantity: purchase.quantity });
   if (!scoped.allowed) throw new AgentPassError(scoped.code, scoped.reason, { details: scoped.details });
   const decision = checkMandate(mandate.mandate, intent);
   if (!decision.allowed) throw mandateCheckError(decision);
@@ -191,8 +197,8 @@ export async function exportPair(verifiers: Ap2ExportVerifiers, input: ExportMan
       source: { mandate_id: mandate.mandate.mandateId, hash: mandate.hash, registry: mandate.mandate.credentialStatus.registry },
       agentKey: agentKeyOverride ?? didToPublicJWK(intent.agent),
       merchant: { ...display.data.merchant, id: intent.venue },
-      item: { id: intent.purchase.productId, title: display.data.itemTitle },
-      quantity: intent.purchase.quantity,
+      item: { id: purchase.productId, title: display.data.itemTitle },
+      quantity: purchase.quantity,
       maxAmount: maxCents,
       currency: grant.limits.currency,
       paymentInstrument: { id: intent.purchase.asset, type: AP2_STELLAR_X402_INSTRUMENT, description: `${asset.code} on Stellar, paid with x402 (exact)` },

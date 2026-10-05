@@ -20,7 +20,9 @@ import { createInMemorySpendLedger, type SpendLedger } from "./ledger/spend-ledg
 import type { PolicyRail } from "./policy/policy-rail.js";
 import {
   createAgentTools,
+  createCartIntentSigner,
   createPurchasePreviewer,
+  type CartIntentSigner,
   type PaymentDeps,
   type PurchasePreviewer,
 } from "./tools/agent-tools.js";
@@ -93,6 +95,12 @@ export interface Agent {
    * to answer questions about what it would be allowed to buy.
    */
   readonly preview: PurchasePreviewer | undefined;
+  /**
+   * Signs one intent for several products at once (T148), with every check
+   * `create_purchase_intent` makes. Withheld exactly as that tool is. Not a
+   * tool: the model's tool keeps its one-product schema.
+   */
+  readonly signCart: CartIntentSigner | undefined;
 }
 
 /**
@@ -185,6 +193,7 @@ export async function createAgent(config: AgentConfig): Promise<Agent> {
     credential,
     mandate,
     preview: createPurchasePreviewer(toolDeps),
+    signCart: createCartIntentSigner(toolDeps),
     // The same deps the previewer got: one description of what this agent is
     // allowed to do, not two that could disagree.
     tools: createAgentTools(toolDeps),

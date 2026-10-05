@@ -31,9 +31,9 @@ import type { AgentPayMandate } from "@agentpey/mandate";
 import { AgentPassError } from "@agentpass/core";
 
 import { parseAssetId } from "../catalog/ids.js";
-import type { PurchaseIntent } from "../intent/intent.js";
+import { intentLines, intentTotal, type PurchaseIntent } from "../intent/intent.js";
 import { INTENT_CREATE_ACTION } from "../scope/scope.js";
-import { fromScaledAmount, multiplyAmount, toScaledAmount } from "../scope/amount.js";
+import { fromScaledAmount, toScaledAmount } from "../scope/amount.js";
 
 export type MandateRejectionCode =
   | "MandateAgentMismatch"
@@ -48,7 +48,7 @@ export type MandateRejectionCode =
 
 export interface MandateAllowed {
   readonly allowed: true;
-  /** `purchase.unitAmount x purchase.quantity`, exact, to seven decimals. */
+  /** `purchase.unitAmount x purchase.quantity`, or the sum over a cart's lines (T148), exact, to seven decimals. */
   readonly total: string;
   /** The `perTx` limit it was compared against, copied from the mandate. */
   readonly limit: string;
@@ -130,16 +130,22 @@ export function checkMandate(mandate: AgentPayMandate, intent: PurchaseIntent): 
   //    the field is present it obeys `B-1` like `venues`/`assets` do: an
   //    empty array permits nothing.
   //
-  //    `intent.purchase.productId` is the venue's own product identifier,
-  //    carried in a signed intent — not a `Product` and not the venue's
-  //    prose, so `B-19`'s rule still holds: no third-party text reaches this
-  //    decision.
-  if (grant.products !== undefined && !grant.products.includes(intent.purchase.productId)) {
-    return deny("MandateProductNotAllowed", "this mandate does not permit this product", {
-      productId: intent.purchase.productId,
-      permitted: grant.products,
-      permitsNothing: grant.products.length === 0,
-    });
+  //    The product ids are the venue's own identifiers, carried in a signed
+  //    intent — not a `Product` and not the venue's prose, so `B-19`'s rule
+  //    still holds: no third-party text reaches this decision. A cart (T148)
+  //    is permitted only if every one of its lines is: one product the
+  //    principal did not consent to refuses the whole purchase.
+  if (grant.products !== undefined) {
+    const lines = intentLines(intent.purchase);
+    const refused = lines.find((line) => !grant.products!.includes(line.productId));
+    if (refused !== undefined) {
+      return deny("MandateProductNotAllowed", "this mandate does not permit this product", {
+        productId: refused.productId,
+        ...(lines.length > 1 ? { line: lines.indexOf(refused) } : {}),
+        permitted: grant.products,
+        permitsNothing: grant.products.length === 0,
+      });
+    }
   }
 
   // 6. Was this asset consented to?
@@ -176,14 +182,16 @@ export function checkMandate(mandate: AgentPayMandate, intent: PurchaseIntent): 
     });
   }
 
-  // 9. Is the total within the mandate's perTx? Exact integer arithmetic.
-  const total = multiplyAmount(intent.purchase.unitAmount, intent.purchase.quantity);
+  // 9. Is the total within the mandate's perTx? Exact integer arithmetic. A
+  //    cart's total is the sum of its lines (T148): one purchase, one limit.
+  const total = intentTotal(intent.purchase);
   const limit = toScaledAmount(grant.limits.perTx);
 
   if (total > limit) {
     return deny("MandateAmountExceeded", "the total exceeds this mandate's per-transaction limit", {
-      unitAmount: intent.purchase.unitAmount,
-      quantity: intent.purchase.quantity,
+      ...("lines" in intent.purchase
+        ? { lines: intent.purchase.lines.length }
+        : { unitAmount: intent.purchase.unitAmount, quantity: intent.purchase.quantity }),
       total: fromScaledAmount(total),
       limit: grant.limits.perTx,
       currency: grant.limits.currency,

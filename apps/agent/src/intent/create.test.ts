@@ -386,3 +386,53 @@ describe("the signing key", () => {
     ).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "UnknownTool"));
   });
 });
+
+describe("a cart intent (T148)", () => {
+  it("signs every line, with the total derived from the catalogue, and verifies", async () => {
+    const { agent } = await startAgent();
+    const result = await agent.signCart!([
+      { productId: "mate-calabaza", quantity: 1 },
+      { productId: "bombilla-alpaca", quantity: 2 },
+    ]);
+    const verified = await verifyIntent(result.jws);
+    expect(verified.intent.purchase).toEqual({
+      lines: [
+        { productId: "mate-calabaza", quantity: 1, unitAmount: "18.50" },
+        { productId: "bombilla-alpaca", quantity: 2, unitAmount: "12.00" },
+      ],
+      totalAmount: "42.5000000",
+      asset: USDC_TESTNET,
+    });
+    expect(result.lines).toHaveLength(2);
+  });
+
+  it("signs one line in the single form, byte for byte what create_purchase_intent signs", async () => {
+    const { agent } = await startAgent();
+    const verified = await verifyIntent((await agent.signCart!([{ productId: "mate-calabaza", quantity: 2 }])).jws);
+    expect(verified.intent.purchase).toEqual({ productId: "mate-calabaza", quantity: 2, unitAmount: "18.50", totalAmount: "37.0000000", asset: USDC_TESTNET });
+  });
+
+  it("is refused before signing when the cart is over the limit, though each line is under it", async () => {
+    const { agent } = await startAgent();
+    // The test credential's perTx is 50.00: 18.50 + 45.00 = 63.50 is over it, each line under it.
+    const refused = await agent.signCart!([
+      { productId: "mate-calabaza", quantity: 1 },
+      { productId: "colgante-lapislazuli", quantity: 1 },
+    ]).catch((error: unknown) => error);
+    expect(hasErrorCode(refused, "ScopeAmountExceeded")).toBe(true);
+  });
+
+  it("refuses no lines, or more than ten", async () => {
+    const { agent } = await startAgent();
+    for (const lines of [[], Array.from({ length: 11 }, () => ({ productId: "mate-calabaza", quantity: 1 }))]) {
+      expect(hasErrorCode(await agent.signCart!(lines).catch((error: unknown) => error), "InvalidIntent")).toBe(true);
+    }
+  });
+
+  it("is withheld from an agent that could not buy, as create_purchase_intent is", async () => {
+    const credential = await makeTestCredential();
+    const agent = await createAgent({ credential: credential.jws, catalog: createMockCatalog(), verifier: createStubVerifier() });
+    expect(agent.signCart).toBeUndefined();
+    expect(agent.tools.list().map((tool) => tool.name)).not.toContain("create_purchase_intent");
+  });
+});

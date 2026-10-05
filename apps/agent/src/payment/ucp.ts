@@ -38,7 +38,7 @@ import { z } from "zod";
 import { DEFAULT_VENUE_REGISTRY } from "../catalog/default-registry.js";
 import type { VenueId } from "../catalog/ids.js";
 import type { VenueRegistry } from "../catalog/registry.js";
-import type { PurchaseIntent } from "../intent/intent.js";
+import { intentLines, type PurchaseIntent } from "../intent/intent.js";
 import { policyRailError, type PolicyRail } from "../policy/policy-rail.js";
 import { PolicyRailStellarScheme, type PolicyRailPayer } from "./policy-rail-payer.js";
 import { spendControlsFor, toPaymentTerms, withPaymentSent } from "./x402.js";
@@ -178,11 +178,42 @@ export interface ExecuteUcpPaymentDeps {
   readonly schemeForTests?: SchemeNetworkClient;
 }
 
-export interface ExecuteUcpPaymentInput {
-  /** The store's origin: where its `/.well-known/ucp` is. */
-  readonly storeUrl: string;
+/** One line of a UCP checkout: a product and how many (T148). */
+export interface UcpLine {
   readonly productId: string;
   readonly quantity: number;
+}
+
+/**
+ * What a checkout is for: one product (`productId`, `quantity`), or a cart
+ * (`lines`, T148), never both. A one-line checkout is sent exactly as before.
+ */
+export interface UcpPurchaseLines {
+  readonly productId?: string;
+  readonly quantity?: number;
+  readonly lines?: readonly UcpLine[];
+}
+
+/** The most lines one checkout carries, as the stores take them. */
+export const MAX_UCP_LINES = 10;
+
+/** @throws AgentPassError `InvalidArguments` unless the input names exactly one of the two forms, with 1 to 10 lines */
+export function ucpLinesOf(input: UcpPurchaseLines): readonly UcpLine[] {
+  if (input.lines !== undefined) {
+    if (input.productId !== undefined || input.quantity !== undefined || input.lines.length === 0 || input.lines.length > MAX_UCP_LINES) {
+      throw new AgentPassError("InvalidArguments", `a UCP checkout is one product, or 1 to ${MAX_UCP_LINES} lines`, { details: { lines: input.lines.length } });
+    }
+    return input.lines;
+  }
+  if (input.productId === undefined || input.quantity === undefined) {
+    throw new AgentPassError("InvalidArguments", "a UCP checkout needs a product and its quantity, or lines", { details: {} });
+  }
+  return [{ productId: input.productId, quantity: input.quantity }];
+}
+
+export interface ExecuteUcpPaymentInput extends UcpPurchaseLines {
+  /** The store's origin: where its `/.well-known/ucp` is. */
+  readonly storeUrl: string;
   readonly buyer?: { readonly email?: string; readonly first_name?: string; readonly last_name?: string };
   readonly destination: UcpDestination;
   /** The already-signed intent this payment is for. */
@@ -234,8 +265,11 @@ export interface UcpQuote {
   /** The id the store gave the Stellar x402 handler in its profile. */
   readonly handlerId: string;
   readonly checkoutId: string;
+  /** The first line's product and quantity: the whole checkout unless it is a cart. */
   readonly productId: string;
   readonly quantity: number;
+  /** Every line, in the order the checkout has them (T148). */
+  readonly lines: readonly UcpLine[];
   /** The x402 requirement for this checkout, already checked against the store's profile. */
   readonly requirements: PaymentRequirements;
   /** The store's total, in its own currency's minor units. */
@@ -246,11 +280,9 @@ export interface UcpQuote {
   readonly ap2: { readonly offered: boolean; readonly keys: ReadonlyArray<z.infer<typeof storeP256KeySchema>> };
 }
 
-export interface QuoteUcpCheckoutInput {
+export interface QuoteUcpCheckoutInput extends UcpPurchaseLines {
   /** The store's origin: where its `/.well-known/ucp` is. */
   readonly storeUrl: string;
-  readonly productId: string;
-  readonly quantity: number;
   readonly buyer?: { readonly email?: string; readonly first_name?: string; readonly last_name?: string };
   readonly destination: UcpDestination;
 }
@@ -373,7 +405,7 @@ function totalOf(checkout: UcpCheckout): { amount: number; currency: string } {
 }
 
 /**
- * Opens a UCP checkout for one product and reads back what it would cost,
+ * Opens a UCP checkout for one product, or a cart (T148), and reads back what it would cost,
  * checked against the store's public profile. Signs nothing and moves no
  * money: the first half of {@link executeUcpPayment} (T128).
  *
@@ -381,11 +413,12 @@ function totalOf(checkout: UcpCheckout): { amount: number; currency: string } {
  * `NetworkError`, as {@link executeUcpPayment} does before signing.
  */
 export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch; readonly platformProfile?: string }, input: QuoteUcpCheckoutInput): Promise<UcpQuote> {
+  const lines = ucpLinesOf(input);
   const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
   const origin = input.storeUrl.replace(/\/+$/, "");
   const store = await readStoreHandler(call, origin);
   const created = await call("POST", `${store.endpoint}/checkout-sessions`, {
-    line_items: [{ item: { id: input.productId }, quantity: input.quantity }],
+    line_items: lines.map((line) => ({ item: { id: line.productId }, quantity: line.quantity })),
     ...(input.buyer === undefined ? {} : { buyer: input.buyer }),
     fulfillment: { methods: [{ type: "shipping", destinations: [input.destination] }] },
   });
@@ -395,8 +428,9 @@ export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch
     endpoint: store.endpoint,
     handlerId: store.handlerId,
     checkoutId: checkout.id,
-    productId: input.productId,
-    quantity: input.quantity,
+    productId: lines[0]!.productId,
+    quantity: lines[0]!.quantity,
+    lines,
     requirements,
     total: totalOf(checkout),
     checkout: raw,
@@ -425,6 +459,14 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
   }
 
   async function payAndMark(): Promise<UcpPaymentReceipt> {
+    // The checkout is for what the signed intent says, line by line (T148): the amount alone is reconciled below,
+    // and two carts can cost the same.
+    const intended = intentLines(input.intent.purchase);
+    if (intended.length !== quote.lines.length || intended.some((line, i) => line.productId !== quote.lines[i]!.productId || line.quantity !== quote.lines[i]!.quantity)) {
+      throw new AgentPassError("InvalidProduct", "the checkout is for other lines than the signed intent", {
+        details: { checkoutId: quote.checkoutId, intent: intended.map((l) => [l.productId, l.quantity]), checkout: quote.lines.map((l) => [l.productId, l.quantity]) },
+      });
+    }
     const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
     let requirements = quote.requirements;
     let handlerId = quote.handlerId;
@@ -531,7 +573,7 @@ const signedCheckoutSchema = z.looseObject({
   id: z.string().min(1),
   ap2: z.looseObject({ merchant_authorization: z.string().regex(/^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$/) }).optional(),
   merchant: z.looseObject({ name: z.string().min(1).optional() }).optional(),
-  line_items: z.array(z.looseObject({ item: z.looseObject({ title: z.string().min(1).optional() }) })).min(1),
+  line_items: z.array(z.looseObject({ item: z.looseObject({ id: z.string().min(1), title: z.string().min(1).optional() }), quantity: z.int().positive() })).min(1),
 });
 
 /**
@@ -539,7 +581,7 @@ const signedCheckoutSchema = z.looseObject({
  * (one closed mandate per intent, brecha 14, decided before any await so two
  * payments at once cannot both pass), check the store's signature on the
  * checkout against its published key, then have the platform sign an open
- * checkout mandate for exactly this item, quantity and store, and close it
+ * checkout mandate for exactly these lines (items and quantities) and this store, and close it
  * over the signed checkout for this store (`aud`) and this checkout (`nonce`).
  */
 async function closeMandate(ap2: UcpAp2Options, store: UcpQuote["ap2"], checkout: Readonly<Record<string, unknown>>, quote: UcpQuote, input: PayUcpQuoteInput): Promise<string> {
@@ -570,8 +612,12 @@ async function closeMandate(ap2: UcpAp2Options, store: UcpQuote["ap2"], checkout
   if (key === undefined) throw new AgentPassError("Ap2MerchantAuthorizationInvalid", "the store's profile publishes no key for its checkout signature", { details: { kid } });
   await verifyMerchantAuthorization(checkout, key);
 
+  // The store's lines must be the quoted ones, in order: the open mandate allows exactly those (T148).
+  const signedLines = signed.data.line_items;
+  if (signedLines.length !== quote.lines.length || signedLines.some((line, i) => line.item.id !== quote.lines[i]!.productId || line.quantity !== quote.lines[i]!.quantity)) {
+    throw new AgentPassError("Ap2MerchantAuthorizationInvalid", "the store's signed checkout is not for the quoted lines", { details: { checkoutId: quote.checkoutId } });
+  }
   const now = new Date();
-  const title = signed.data.line_items[0]?.item.title;
   const maxCents = BigInt(quote.requirements.amount) / STELLAR_UNITS_PER_CENT;
   const open = (
     await issueOpenMandatePair(
@@ -580,8 +626,10 @@ async function closeMandate(ap2: UcpAp2Options, store: UcpQuote["ap2"], checkout
         source: ap2.source,
         agentKey: ap2.holder.publicJwk,
         merchant: { id: quote.storeUrl, name: signed.data.merchant?.name ?? new URL(quote.storeUrl).host, website: quote.storeUrl },
-        item: { id: quote.productId, title: title ?? quote.productId },
-        quantity: quote.quantity,
+        // One line keeps the one-item form, exactly as before T148; a cart names each of its lines.
+        ...(signedLines.length === 1
+          ? { item: { id: quote.productId, title: signedLines[0]!.item.title ?? quote.productId }, quantity: quote.quantity }
+          : { lines: signedLines.map((line) => ({ item: { id: line.item.id, title: line.item.title ?? line.item.id }, quantity: line.quantity })) }),
         // Only the checkout half is sent (R-15, point 4: no payment mandate in stellar_x402); its amount is a ceiling.
         maxAmount: maxCents + 1n,
         currency: "USDC",
@@ -596,7 +644,7 @@ async function closeMandate(ap2: UcpAp2Options, store: UcpQuote["ap2"], checkout
 }
 
 /**
- * Pays one product at a UCP store with the Stellar x402 handler:
+ * Pays one product, or a cart (T148), at a UCP store with the Stellar x402 handler:
  * {@link quoteUcpCheckout} then {@link payUcpQuote}, with nothing kept in
  * between, so the quote is not read again.
  *

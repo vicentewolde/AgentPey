@@ -24,8 +24,8 @@
  */
 import { AgentPassError } from "@agentpass/core";
 
-import type { PurchaseIntent } from "../intent/intent.js";
-import { fromScaledAmount, multiplyAmount, toScaledAmount } from "../scope/amount.js";
+import { intentTotal, type PurchaseIntent } from "../intent/intent.js";
+import { fromScaledAmount, toScaledAmount } from "../scope/amount.js";
 
 /**
  * What a venue is asking to be paid, reduced to the facts a signed document
@@ -126,7 +126,8 @@ export function reconcileTerms(
   //    its own price and quantity cannot influence any decision, because no
   //    decision ever reads that field.
   const asked = toScaledAmount(terms.amount);
-  const authorised = multiplyAmount(intent.purchase.unitAmount, intent.purchase.quantity);
+  //    A cart's (T148) is the sum over its lines: one payment for all of them.
+  const authorised = intentTotal(intent.purchase);
 
   // Not `asked > authorised`: a venue asking for *less* is also not the
   // purchase that was authorised, and quietly accepting it would mean the

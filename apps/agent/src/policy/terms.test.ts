@@ -201,3 +201,23 @@ describe("the refusal becomes a typed error at the tool boundary", () => {
     expect(error.details).toMatchObject({ termsAmount: "99.00" });
   });
 });
+
+describe("terms for a cart (T148)", () => {
+  const cart = intentFor({
+    purchase: {
+      lines: [
+        { productId: "mate-calabaza", quantity: 1, unitAmount: "18.50" },
+        { productId: "poncho-andino", quantity: 2, unitAmount: "1.25" },
+      ],
+      // Never read: the total is derived from the lines.
+      totalAmount: "99.00",
+      asset: USDC_TESTNET,
+    },
+  });
+
+  it("are allowed for the sum of the lines, and only for it", () => {
+    expect(reconcileTerms(cart, { ...MATCHING, amount: "21.00" }).allowed).toBe(true);
+    expect(reconcileTerms(cart, { ...MATCHING, amount: "99.00" })).toMatchObject({ allowed: false, code: "TermsAmountMismatch", details: { intentTotal: "21.0000000" } });
+    expect(reconcileTerms(cart, { ...MATCHING, amount: "18.50" })).toMatchObject({ allowed: false, code: "TermsAmountMismatch" });
+  });
+});

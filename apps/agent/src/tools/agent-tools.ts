@@ -34,6 +34,10 @@ import {
   AGENTPAY_INTENT_FAMILY,
   AGENTPAY_INTENT_TYPE,
   DEFAULT_INTENT_TTL_SECONDS,
+  MAX_INTENT_LINES,
+  intentLines,
+  scopeRequestOf,
+  type IntentPurchase,
   type PurchaseIntent,
 } from "../intent/intent.js";
 import { signIntent } from "../intent/sign.js";
@@ -272,6 +276,12 @@ interface SignedPurchaseIntent {
   readonly freshMandate: AgentPayMandate;
 }
 
+/** One line a purchase asks for, before the catalogue prices it. */
+interface PurchaseLine {
+  readonly productId: string;
+  readonly quantity: number;
+}
+
 /** Everything that exists before the rail is asked anything — see {@link prepareIntent}. */
 interface PreparedIntent {
   readonly intent: PurchaseIntent;
@@ -296,19 +306,32 @@ interface PreparedIntent {
  */
 async function prepareIntent(
   deps: PurchaseIntentDeps,
-  productId: string,
-  quantity: number,
+  lines: readonly PurchaseLine[],
 ): Promise<PreparedIntent> {
   const { catalog, credential, mandate, signer, verifier, mandateVerifier, policyRail } = deps;
   const ttlSeconds = deps.intentTtlSeconds ?? DEFAULT_INTENT_TTL_SECONDS;
   const { scope, principal, id: subject } = credential.verified.credential.credentialSubject;
   const { registry } = credential.verified.credential.credentialStatus;
 
-  const product = await catalog.getProduct(productId);
+  if (lines.length === 0 || lines.length > MAX_INTENT_LINES) {
+    throw new AgentPassError("InvalidIntent", `a purchase has 1 to ${MAX_INTENT_LINES} lines`, { details: { lines: lines.length } });
+  }
+  // Every line from this venue's own catalogue, at the price it quotes now.
+  const products: Product[] = [];
+  for (const line of lines) products.push(await catalog.getProduct(line.productId));
+  const asset = products[0]!.price.asset;
+  if (products.some((product) => product.price.asset !== asset)) {
+    throw new AgentPassError("InvalidIntent", "every line of one purchase must be priced in the same asset", { details: { assets: [...new Set(products.map((p) => p.price.asset))] } });
+  }
   const now = deps.now ?? new Date();
   // Derived, not read from anywhere a caller could have shaped: the same
   // arithmetic PolicyRail's own checks use (M-14's rule, applied here too).
-  const total = fromScaledAmount(multiplyAmount(product.price.amount, quantity));
+  const total = fromScaledAmount(products.reduce((sum, product, i) => sum + multiplyAmount(product.price.amount, lines[i]!.quantity), 0n));
+  // One product keeps the single form, byte for byte as before T148; more are a cart.
+  const purchase: IntentPurchase =
+    lines.length === 1
+      ? { productId: products[0]!.id, quantity: lines[0]!.quantity, unitAmount: products[0]!.price.amount, totalAmount: total, asset }
+      : { lines: products.map((product, i) => ({ productId: product.id, quantity: lines[i]!.quantity, unitAmount: product.price.amount })), totalAmount: total, asset };
 
   // `credential.hash` — not a fresh re-verification's hash — because it is
   // the same value either way: sha256 of the exact JWS being re-checked
@@ -323,13 +346,7 @@ async function prepareIntent(
     principal,
     credential: { hash: credential.hash, registry },
     venue: catalog.venueId,
-    purchase: {
-      productId: product.id,
-      quantity,
-      unitAmount: product.price.amount,
-      totalAmount: total,
-      asset: product.price.asset,
-    },
+    purchase,
     authorisation: { perTx: scope.limits.perTx, currency: scope.limits.currency },
   };
 
@@ -340,12 +357,7 @@ async function prepareIntent(
   // obviously wrong should not cost the two round trips below before
   // saying so. Not the authoritative decision — a fast path to the exact
   // same rejection PolicyRail would reach anyway.
-  const scopeCheck = checkScope(scope, {
-    venue: intent.venue,
-    asset: intent.purchase.asset,
-    unitAmount: intent.purchase.unitAmount,
-    quantity: intent.purchase.quantity,
-  });
+  const scopeCheck = checkScope(scope, scopeRequestOf(intent));
   if (!scopeCheck.allowed) throw scopeError(scopeCheck);
 
   const mandateCheck = checkMandate(mandate.verified.mandate, intent);
@@ -378,10 +390,9 @@ async function prepareIntent(
  */
 async function buildSignedIntent(
   deps: PurchaseIntentDeps,
-  productId: string,
-  quantity: number,
+  lines: readonly PurchaseLine[],
 ): Promise<SignedPurchaseIntent> {
-  const prepared = await prepareIntent(deps, productId, quantity);
+  const prepared = await prepareIntent(deps, lines);
 
   // One point, all four checks, no partial credit (T19). No payment
   // terms yet: the mock catalogue has no 402 to reconcile against
@@ -435,7 +446,7 @@ export async function previewPurchase(
   productId: string,
   quantity: number,
 ): Promise<PurchasePreview> {
-  const prepared = await prepareIntent(deps, productId, quantity);
+  const prepared = await prepareIntent(deps, [{ productId, quantity }]);
   const decision = await deps.policyRail.preview({
     intent: prepared.intent,
     scope: prepared.scope,
@@ -467,21 +478,35 @@ function createPurchaseIntentTool(deps: PurchaseIntentDeps): ErasedTool {
       quantity: z.int().min(1).max(10_000),
     }),
     async run({ product_id, quantity }): Promise<CreatePurchaseIntentResult> {
-      const signed = await buildSignedIntent(deps, product_id, quantity);
-      return {
-        intent_id: signed.intent.intentId,
-        jws: signed.jws,
-        intent_hash: signed.hash,
-        expires_at: signed.intent.expiresAt,
-        venue_id: signed.intent.venue,
-        product_id: signed.intent.purchase.productId,
-        quantity: signed.intent.purchase.quantity,
-        total_amount: signed.intent.purchase.totalAmount,
-        asset: signed.intent.purchase.asset,
-        credential_hash: signed.intent.credential.hash,
-      };
+      const signed = await buildSignedIntent(deps, [{ productId: product_id, quantity }]);
+      // The tool's answer is what it has always been: the cart's extra field is not the model's.
+      const { lines: _lines, ...result } = intentResult(signed);
+      return result;
     },
   });
+}
+
+/** A cart signer's answer (T148): what `create_purchase_intent` answers, and every line. `product_id` and `quantity` are the first line's. */
+export interface CartIntentResult extends CreatePurchaseIntentResult {
+  readonly lines: ReadonlyArray<{ readonly product_id: string; readonly quantity: number; readonly unit_amount: string }>;
+}
+
+/** What `create_purchase_intent` and a cart signer answer: the signed intent and its facts, wire-named. */
+function intentResult(signed: SignedPurchaseIntent): CartIntentResult {
+  const all = intentLines(signed.intent.purchase);
+  return {
+    intent_id: signed.intent.intentId,
+    jws: signed.jws,
+    intent_hash: signed.hash,
+    expires_at: signed.intent.expiresAt,
+    venue_id: signed.intent.venue,
+    product_id: all[0]!.productId,
+    quantity: all[0]!.quantity,
+    lines: all.map((line) => ({ product_id: line.productId, quantity: line.quantity, unit_amount: line.unitAmount })),
+    total_amount: signed.intent.purchase.totalAmount,
+    asset: signed.intent.purchase.asset,
+    credential_hash: signed.intent.credential.hash,
+  };
 }
 
 export interface ExecutePaymentResult {
@@ -537,7 +562,7 @@ function executePaymentTool(deps: ExecutePaymentDeps): ErasedTool {
       params: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
     }),
     async run({ product_id, quantity, params }): Promise<ExecutePaymentResult> {
-      const signed = await buildSignedIntent(deps, product_id, quantity);
+      const signed = await buildSignedIntent(deps, [{ productId: product_id, quantity }]);
 
       const route = await getBazaarServiceRoute(
         { baseUrl: deps.payment.baseUrl, fetchImpl: deps.payment.fetchImpl },
@@ -709,6 +734,25 @@ export function createPurchasePreviewer(deps: AgentToolsDeps): PurchasePreviewer
   const purchaseIntentDeps = purchaseIntentDepsOf(deps);
   if (purchaseIntentDeps === undefined) return undefined;
   return (productId, quantity) => previewPurchase(purchaseIntentDeps, productId, quantity);
+}
+
+/** Signs one intent for a cart (T148): every check `create_purchase_intent` makes, over all of its lines. */
+export type CartIntentSigner = (lines: ReadonlyArray<{ readonly productId: string; readonly quantity: number }>) => Promise<CartIntentResult>;
+
+/**
+ * A cart signer, when this agent could buy at all, and `undefined` when it
+ * could not: withheld exactly as `create_purchase_intent` is (T148).
+ *
+ * Not a tool, and on purpose: the tool set is what a model may call, and the
+ * one tool that signs an intent keeps the one-product schema it has always
+ * had. A cart is assembled by the caller that opens the UCP checkout (`ucp:buy`),
+ * which then hands the agent the lines to sign, through the same
+ * `buildSignedIntent` (both authorities, both still live, the rail).
+ */
+export function createCartIntentSigner(deps: AgentToolsDeps): CartIntentSigner | undefined {
+  const purchaseIntentDeps = purchaseIntentDepsOf(deps);
+  if (purchaseIntentDeps === undefined) return undefined;
+  return async (lines) => intentResult(await buildSignedIntent(purchaseIntentDeps, lines));
 }
 
 /**
