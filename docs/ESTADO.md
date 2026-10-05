@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-05
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T148 · Varios productos por compra: un carrito, un solo cobro, un pedido de varias líneas y un recibo que suma el total; compra real de un imán y una taza con AP2
-**Siguiente paso:** push, PR y merge de `cc/t149-consentimiento` con OK (`/revisar` hecho, los 10 hallazgos corregidos); el deploy lleva también los perfiles de plataforma de agentpey.com. Después, una compra real con `--marketing yes` (con OK; antes, `rail:topup` del rail UCP). T130 cuando haya tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T149 · El consentimiento del comprador llega al pedido de la tienda (Shopify sí, Jumpseller no lo ofrece), `VT-47`
+**Siguiente paso:** confirmar que el deploy de T149 está en vivo (tienda y perfiles de agentpey.com) y, con OK, una compra real con `--marketing yes` (antes, `rail:topup` del rail UCP); su evidencia va en `cc/t149-evidencia`. T130 cuando haya tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -35,7 +35,7 @@
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
 | T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
-| T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | 👀 revisada, por mergear: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20 | `cc/t149-consentimiento` |
+| T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20 | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143.
 
@@ -124,3 +124,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-05, T148 cerrada: [PR #57](https://github.com/vicentewolde/AgentPey/pull/57) en `main` y desplegado. Compra real `ord_muvewqqmddbf40c81d` (Shopify `19011113025842`, tx `ece0aaff…`): imán + taza, 3,6631579 USDC desde el rail nuevo con AP2; recibo con dos ítems que suman lo cobrado y los tres checks; la librería oficial de AP2 verifica el mandato de dos líneas. El primer intento cayó en la instancia vieja durante el deploy y se rechazó sin cobrar. Rail UCP nuevo en 1,3368421 USDC.
 - 2026-10-05, T149: al leer la spec `2026-08-25` del consentimiento apareció un DEBE que contradecía el plan (la tienda anuncia sus opciones con valor por defecto); el usuario eligió anunciarlas solo en checkouts nuevos (no rompe mandatos AP2 abiertos) y aceptar el consentimiento en `complete` exigiendo el email para un "sí" al marketing. Shopify: `buyerAcceptsMarketing` y atributos `ucp_consent_*`; Jumpseller no tiene campo (leído en su OpenAPI) y no lo ofrece (`VT-47`). Nunca en la orden pública ni el webhook. `ucp:buy -- --marketing yes|no`. Suite 49/8/20; `pnpm check` y `vitrinee:check` en verde.
 - 2026-10-05, T149 `/revisar`: sin bloqueantes; corregidos los 10 hallazgos a pedido del usuario. El principal: en `2026-08-25` la tienda aceptaba el consentimiento antes de anunciar sus opciones (UCP le pide ignorarlo); el usuario eligió cumplir la spec, así que se ignora en el create con un aviso y el agente lo confirma en un `PUT` antes del mandato. También: un `complete` mal formado ya no cambia el consentimiento, Shopify no recibe un "no" que el comprador no dijo, el nombre de la tienda salió de lo firmado, cinco tests de rechazo más, un test de contrato agente-tienda, `buyer_consent` en los perfiles de plataforma y el comando en el README.
+- 2026-10-05, T149 cerrada: con OK del usuario y CI 4/4, [PR #59](https://github.com/vicentewolde/AgentPey/pull/59) en `main` por fast-forward. Queda la compra real con `--marketing yes` (con OK), tras confirmar el deploy.

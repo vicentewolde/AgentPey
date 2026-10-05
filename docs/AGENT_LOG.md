@@ -8010,3 +8010,14 @@ del rail UCP corregidos a 5,00/10,00). `VT-47` precisada.
 
 Pendiente: push, PR y merge con OK (el deploy publica también los perfiles de plataforma); compra real con
 `--marketing yes` con OK (antes, `rail:topup`). `AGENTS.md`: sin cambios. Exponential: T149 en `IN_PROGRESS`.
+
+## 2026-10-05 (34) — cc/t149-consentimiento → main, cc/t149-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI 4/4, T149 en `main` por fast-forward ([PR #59](https://github.com/vicentewolde/AgentPey/pull/59)); rama borrada. T149 cerrada (ESTADO,
+BITACORA, SYNC, ticket `DONE`).
+
+Pendiente: confirmar el deploy en vivo (tienda y perfiles de agentpey.com); `rail:topup` y compra real con
+`--marketing yes`, con OK; push y merge de `cc/t149-evidencia` con OK. `AGENTS.md`: sin cambios. Exponential: T149 a
+`DONE`.

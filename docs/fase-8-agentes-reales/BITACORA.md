@@ -26,8 +26,8 @@ la tienda habla las dos versiones de UCP, y con AP2 no cobra sin un mandato
 que la librería oficial de AP2 verifica sobre una compra real. **T147 cerrada**:
 la tienda avisa al agente. **T148 cerrada**: un agente compra un carrito de
 varios productos, con un solo cobro y un recibo de un ítem por línea.
-**T149 en revisión**: el consentimiento del comprador llega al pedido de la
-tienda; falta `/revisar`, el merge y la compra real.
+**T149 cerrada**: el consentimiento del comprador llega al pedido de la
+tienda; queda la compra real de comprobación.
 
 | Tarea | Estado |
 |---|---|
@@ -52,7 +52,7 @@ tienda; falta `/revisar`, el merge y la compra real.
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
-| T149 Consentimiento | en revisión |
+| T149 Consentimiento | cerrada |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -361,7 +361,7 @@ admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
 
-## T149 · El consentimiento del comprador llega a la tienda (2026-10-05, en revisión)
+## T149 · El consentimiento del comprador llega a la tienda (2026-10-05, cerrada)
 
 **Qué quedó funcionando.** Cuando un agente le dice a la tienda qué aceptó el
 comprador (recibir marketing, analítica, guardar preferencias, vender o
