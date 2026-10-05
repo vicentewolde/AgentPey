@@ -36,6 +36,6 @@ Traceback (most recent call last):
 AssertionError: None is not true
 
 ----------------------------------------------------------------------
-Ran 8 tests in 2.024s
+Ran 8 tests in 1.885s
 
 FAILED (failures=2, skipped=2)

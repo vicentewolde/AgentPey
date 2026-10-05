@@ -170,8 +170,12 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   el adaptador tiene `recordsBuyerConsent` (Shopify y mock sí, Jumpseller no:
   su API no tiene dónde recibirlo). Al adaptador llegan solo las decisiones del
   comprador (`Buyer.consent`), nunca los valores por defecto.
-- **Shopify:** `marketing` en `buyerAcceptsMarketing` (un "sí" solo con email
-  real); el resto como atributos `ucp_consent_*` del pedido.
+- **En `2026-08-25` solo cuenta lo ya anunciado:** el consentimiento del create
+  (y el de una sesión sin `consent`) se ignora con un `warning`
+  `consent_not_advertised`; el agente lo manda en un `PUT`. En `2026-04-08` se
+  acepta en el create (lo hace la suite oficial).
+- **Shopify:** `marketing` en `buyerAcceptsMarketing` (solo con email real; sin
+  él, el campo no va); el resto como atributos `ucp_consent_*` del pedido.
 - **No va en la orden pública, el webhook ni el recibo.** Una sesión de antes de
   T149 no tiene `consent` y se muestra como antes (AP2 firma `buyer`).
 

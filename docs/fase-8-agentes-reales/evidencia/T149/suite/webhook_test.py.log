@@ -6,6 +6,6 @@ Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bi
 [ RUN      ] WebhookTest.test_webhook_order_address_new_address
 [  SKIPPED ] WebhookTest.test_webhook_order_address_new_address - No known customer configured in fixtures.
 ----------------------------------------------------------------------
-Ran 3 tests in 1.695s
+Ran 3 tests in 1.625s
 
 OK (skipped=2)

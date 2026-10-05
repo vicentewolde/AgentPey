@@ -26,6 +26,6 @@ Traceback (most recent call last):
 AssertionError: False is not true : Expected 'stock' in error messages
 
 ----------------------------------------------------------------------
-Ran 6 tests in 1.442s
+Ran 6 tests in 1.935s
 
 FAILED (failures=1)

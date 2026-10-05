@@ -10,6 +10,6 @@ Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bi
 [ RUN      ] TotalsTest.test_single_total_entry
 [       OK ] TotalsTest.test_single_total_entry
 ----------------------------------------------------------------------
-Ran 5 tests in 1.219s
+Ran 5 tests in 2.273s
 
 OK (skipped=1)

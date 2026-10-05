@@ -17,7 +17,7 @@ Traceback (most recent call last):
     self.assert_response_status(resp, 200)
   File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
     self.assertIn(
-AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3z6479937f7fa7"}
+AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7hnv0cded14a06"}
 
 ======================================================================
 FAIL: test_order_update (__main__.OrderTest.test_order_update)
@@ -29,9 +29,9 @@ Traceback (most recent call last):
     self.assert_response_status(resp, 200)
   File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
     self.assertIn(
-AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3zoy2d118f7117"}
+AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7igkae54a743c3"}
 
 ----------------------------------------------------------------------
-Ran 4 tests in 1.098s
+Ran 4 tests in 2.250s
 
 FAILED (failures=2)

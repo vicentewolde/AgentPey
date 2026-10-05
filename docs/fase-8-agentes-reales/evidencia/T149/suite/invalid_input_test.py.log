@@ -15,7 +15,7 @@ Traceback (most recent call last):
     self.assert_response_status(resp, 422)
   File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
     self.assertIn(
-AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3xwt3d0fb9fe46"}
+AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7dtj419f348079"}
 
 ======================================================================
 FAIL: test_malformed_adjustment_payload (__main__.InvalidInputTest.test_malformed_adjustment_payload)
@@ -27,9 +27,9 @@ Traceback (most recent call last):
     self.assert_response_status(resp, 422)
   File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
     self.assertIn(
-AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3y38de46668321"}
+AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7e1ff9073ba9e9"}
 
 ----------------------------------------------------------------------
-Ran 3 tests in 0.871s
+Ran 3 tests in 1.286s
 
 FAILED (failures=2)

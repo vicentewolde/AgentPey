@@ -1346,15 +1346,18 @@ tienda **DEBE ignorar** lo que no anunció. Se decide:
    `2026-04-08`, que no tiene valores por defecto, devuelve solo lo que decidió
    el comprador. Un propósito que la plataforma devuelve como `business` vuelve
    al valor por defecto de la tienda, venga con el valor que venga: solo una
-   decisión del comprador lo mueve. Un `PUT` sin consentimiento no lo cambia.
-   Propósitos ajenos a los cuatro se ignoran; más de 32, o uno mal formado,
-   responden 400.
+   decisión del comprador lo mueve. Un `PUT` sin consentimiento no lo cambia,
+   en las dos versiones (en `2026-04-08` un `PUT` reemplaza `buyer`, pero el
+   consentimiento se conserva igual). Propósitos ajenos a los cuatro se
+   ignoran, aunque vengan mal formados; uno de los cuatro mal formado, más de
+   32 propósitos o una clave de más de 200 caracteres responden 400.
 2. **Qué llega a Shopify** (los permisos actuales, `write_orders`, alcanzan).
    `marketing` va a `buyerAcceptsMarketing` de `orderCreate` ("Whether the
    customer consented to receive email updates from the shop"), que el pedido
    expone como `customerAcceptsMarketing`. Solo se manda si el comprador
    decidió, y un "sí" solo con el email real del comprador, nunca con el
-   `@agent.vitrinee.test` que el adaptador inventa. `analytics`, `preferences` y
+   `@agent.vitrinee.test` que el adaptador inventa: sin email, el campo no se
+   manda (no se registra un "no" que el comprador no dijo). `analytics`, `preferences` y
    `sale_or_sharing` no tienen campo en Shopify (`customer.toUpsert` tampoco
    los tiene, ni el SMS): **van como atributos del pedido** (`ucp_consent_*`:
    `granted` o `denied`), que el comercio ve en "Detalles adicionales" (decisión
@@ -1373,15 +1376,30 @@ tienda **DEBE ignorar** lo que no anunció. Se decide:
    defecto; una abierta antes no tiene consentimiento y se muestra igual que
    antes, así que un mandato firmado sobre ella sigue calzando. Un cambio de
    consentimiento después del mandato (por `PUT` o en `complete`) se rechaza sin
-   cobrar (`mandate_scope_mismatch`). Las `description` también quedan firmadas:
-   cambiar su texto rechaza, sin cobrar, un checkout AP2 abierto en ese momento.
+   cobrar (`mandate_scope_mismatch`). Las `description` también quedan firmadas,
+   y por eso no nombran la tienda (renombrarla en el portal no invalida los
+   mandatos abiertos); cambiar su texto rechaza, sin cobrar, un checkout AP2
+   abierto en ese momento.
 5. **`complete` y los datos que faltan** (decisión del usuario). En
-   `2026-08-25`, `complete` acepta `buyer.consent` y lo aplica antes de revisar
-   nada más. Un "sí" a marketing sin email da un `warning`
+   `2026-08-25`, `complete` acepta `buyer.consent` y lo aplica una vez que la
+   credencial de pago es válida (un `complete` mal formado no cambia nada) y
+   antes de revisar los datos que faltan y el mandato AP2. En `2026-04-08`,
+   que lo omite en `complete`, se ignora. Un "sí" a marketing sin email da un `warning`
    `missing_consent_data` mientras el checkout puede cambiar, y en `complete` un
    error del mismo código, sin cobrar: UCP no deja completar con una
    dependencia de datos sin cumplir. SMS no se anuncia.
-6. **Dónde vive.** En la sesión (la lee quien tiene el id del checkout, como el
+6. **Solo cuenta lo anunciado** (corregido en `/revisar`, opción (a) del
+   usuario). UCP `2026-08-25`: "Businesses MUST ignore purposes and segments in a
+   request that were not advertised in a prior response". El create es la
+   respuesta que anuncia, así que en `2026-08-25` el consentimiento del create
+   se ignora, igual que el de una sesión de antes de T149 (no anunció nada), con
+   un `warning` `consent_not_advertised` para que no se pierda sin aviso. El
+   agente de AgentPey lo manda en un `PUT` después del create y antes de abrir
+   el mandato AP2. En `2026-04-08` no hay anuncio y la suite oficial lo manda en
+   el create: se acepta. Los perfiles de plataforma de AgentPey
+   (`agentpey*.json`) declaran la extensión; la tienda la ofrece igual a quien
+   no la declare, como el despacho, porque no traba un cobro como AP2.
+7. **Dónde vive.** En la sesión (la lee quien tiene el id del checkout, como el
    email), en el registro privado del pedido (para que un reintento de
    `createOrder` lo vuelva a mandar) y en la plataforma. **Nunca** en la orden
    pública ni en el webhook: el esquema de la orden UCP no tiene `buyer`, y la
@@ -1393,7 +1411,10 @@ pasaría el test sin significar nada. Con esto cada decisión del comprador lleg
 al pedido que el comercio administra, y la tienda cumple lo que cada versión
 exige.
 
-**Alternativas descartadas.** No aceptar los propósitos que Shopify no tiene,
+**Alternativas descartadas.** Aceptar el consentimiento del create en
+`2026-08-25` porque la tienda anuncia siempre los mismos cuatro (lo primero que
+se hizo; `/revisar` mostró que un agente podía mandar un "sí" que el comprador
+no vio descrito por la tienda, y el usuario eligió cumplir la spec). No aceptar los propósitos que Shopify no tiene,
 con un aviso (más estricto, pero el comercio pierde una decisión que le toca
 respetar). No anunciar valores por defecto en `2026-08-25` (lo propuesto en el
 plan; incumple el DEBE de la spec, y una plataforma que la siga nunca mandaría

@@ -7994,3 +7994,19 @@ la orden pública, el webhook ni el recibo. `ucp:buy -- --marketing yes|no`. Sui
 Pendiente: `/revisar`; push, PR y merge con OK; compra real con `--marketing yes` con OK (antes, `rail:topup` del rail
 UCP `CBDRI5B7…D3YA`, que tiene unos 1,34 USDC). `AGENTS.md`: sin cambios (T149 no es delegable). Exponential: T149
 a `IN_PROGRESS`.
+
+## 2026-10-05 (33) — cc/t149-consentimiento (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T149 sin bloqueantes; corregidos los 10 hallazgos a pedido del usuario. En `2026-08-25` el
+consentimiento solo cuenta después de anunciado (opción (a) del usuario): el del create y el de sesiones sin
+`consent` se ignoran con `warning` `consent_not_advertised`; `quoteUcpCheckout` lo manda en un `PUT` tras el create y
+antes del mandato AP2. En `complete` se aplica después de validar la credencial. Shopify omite `buyerAcceptsMarketing`
+sin email real. Las descripciones no nombran la tienda (van firmadas con AP2). Tests: cinco de rechazo en `complete`,
+`PUT` tras el mandato, `complete` mal formado con AP2, reintento de `fulfilOrder`, y un test de contrato agente-tienda.
+`buyer_consent` declarado en `apps/web/public/ucp/platform/agentpey*.json`. README con el comando exacto (y los topes
+del rail UCP corregidos a 5,00/10,00). `VT-47` precisada.
+
+Pendiente: push, PR y merge con OK (el deploy publica también los perfiles de plataforma); compra real con
+`--marketing yes` con OK (antes, `rail:topup`). `AGENTS.md`: sin cambios. Exponential: T149 en `IN_PROGRESS`.

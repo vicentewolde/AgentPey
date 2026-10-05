@@ -48,13 +48,13 @@ ok 49 · failed 8 · skipped 20 · total 77
 | idempotency_test.py | test_idempotency_complete | ok |  |
 | idempotency_test.py | test_idempotency_create | ok |  |
 | idempotency_test.py | test_idempotency_update | ok |  |
-| invalid_input_test.py | test_invalid_adjustment_status | failed | AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3xwt3d0fb9fe46"} |
-| invalid_input_test.py | test_malformed_adjustment_payload | failed | AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3y38de46668321"} |
+| invalid_input_test.py | test_invalid_adjustment_status | failed | AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7dtj419f348079"} |
+| invalid_input_test.py | test_malformed_adjustment_payload | failed | AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7e1ff9073ba9e9"} |
 | invalid_input_test.py | test_unknown_discount_code | ok |  |
-| order_test.py | test_order_adjustments | failed | AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3z6479937f7fa7"} |
+| order_test.py | test_order_adjustments | failed | AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7hnv0cded14a06"} |
 | order_test.py | test_order_fulfillment_retrieval | ok |  |
 | order_test.py | test_order_retrieval | ok |  |
-| order_test.py | test_order_update | failed | AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3zoy2d118f7117"} |
+| order_test.py | test_order_update | failed | AssertionError: 404 not found in [200] : Expected status 200, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvj7igkae54a743c3"} |
 | protocol_test.py | test_discovery | ok |  |
 | protocol_test.py | test_discovery_urls | skipped | Schemas not yet published on remote ucp.dev domain |
 | protocol_test.py | test_version_negotiation | ok |  |

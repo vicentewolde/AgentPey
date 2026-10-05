@@ -12,6 +12,6 @@ Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bi
 [ RUN      ] WebhookStructureTest.test_update_event_is_full_order_entity
 [       OK ] WebhookStructureTest.test_update_event_is_full_order_entity
 ----------------------------------------------------------------------
-Ran 6 tests in 5.419s
+Ran 6 tests in 5.213s
 
 OK

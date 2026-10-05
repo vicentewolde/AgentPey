@@ -6,6 +6,6 @@ Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bi
 [ RUN      ] SecurityTest.test_simulation_endpoint_missing_header
 [       OK ] SecurityTest.test_simulation_endpoint_missing_header
 ----------------------------------------------------------------------
-Ran 3 tests in 0.861s
+Ran 3 tests in 1.729s
 
 OK

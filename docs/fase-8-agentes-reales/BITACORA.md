@@ -396,6 +396,19 @@ mandato se rechaza sin cobrar y una sesión de antes de T149 completa igual. La
 suite oficial de UCP pasa de 48 a 49: `test_buyer_consent` pasa, y es la única
 diferencia.
 
+**La revisión.** `/revisar` no encontró bloqueantes: ningún camino cobra sin
+mandato ni dos veces. Sí encontró que la tienda aceptaba el consentimiento en
+la primera llamada, antes de haber mostrado qué significa cada opción, cuando
+UCP `2026-08-25` le pide ignorarlo hasta haberlo anunciado. El usuario eligió
+cumplir la spec: ahora ese consentimiento se ignora con un aviso, y el agente de
+AgentPey lo confirma en una segunda llamada, antes de firmar el mandato.
+También se corrigió que un pago mal formado dejara el consentimiento cambiado
+(y con AP2, el mandato inservible), que Shopify recibiera un "no" que el
+comprador no dijo, y que el nombre de la tienda estuviera dentro de lo firmado
+(renombrarla rechazaba los checkouts AP2 abiertos). Se agregaron los tests que
+faltaban, un test del agente real contra la tienda real, la extensión en los
+perfiles de plataforma de AgentPey y el comando en el README.
+
 ## T148 · Varios productos por compra (2026-10-05, cerrada)
 
 **Qué quedó funcionando.** Hasta ahora un agente podía comprar un solo producto
