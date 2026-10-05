@@ -379,6 +379,29 @@ describe("pay refuses what changed or what the limits do not allow (T128)", () =
     }
   });
 
+  it("keeps the day's budget spent when completing fails after the rail signed: the payment may have settled (T136 review)", async () => {
+    // 13.67 USDC a hat and 20.00 a day: released, the reservation would leave room for a second hat.
+    let completeFails = true;
+    const failing: typeof fetch = async (input, init) => {
+      if (completeFails && String(input).endsWith("/complete")) throw new TypeError("socket hang up");
+      return fetch(input, init);
+    };
+    const mcp = await startMcp({ perDay: "20.00", fetchImpl: failing });
+    try {
+      const first = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+      const failed = await mcp.call("pay", { quote_id: first.structuredContent!["quote_id"], confirm: true });
+      expect(errorOf(failed)).toMatchObject({ error: "NetworkError", payment_may_have_been_sent: true });
+      expect(mcp.scheme.calls).toHaveLength(1);
+      completeFails = false;
+      const second = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+      const refused = await mcp.call("pay", { quote_id: second.structuredContent!["quote_id"], confirm: true });
+      expect(errorOf(refused)).toMatchObject({ error: expect.stringMatching(/DailyLimitExceeded$/), payment_may_have_been_sent: false });
+      expect(mcp.scheme.calls).toHaveLength(1);
+    } finally {
+      await mcp.close();
+    }
+  });
+
   it("leaves the quote payable when the directory cannot be read at payment time", async () => {
     let directoryUp = true;
     const mcp = await startMcp({ venues: () => (directoryUp ? Promise.resolve(venues()) : Promise.reject(new TypeError("directory unreachable"))) });

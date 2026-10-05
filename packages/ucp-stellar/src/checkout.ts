@@ -22,14 +22,16 @@ import type { z } from "zod";
 import { toAtomic } from "./amount.js";
 import { UcpStellarError, isUcpStellarError } from "./errors.js";
 import {
+  STELLAR_DECIMALS,
   STELLAR_TESTNET,
   STELLAR_X402_HANDLER,
+  checkoutHandlerConfigSchema,
   checkoutLinesSchema,
   checkoutSchema,
   handlerConfigSchema,
   payableQuoteSchema,
   quoteInputSchema,
-  requirementsSchema,
+  storeUrlSchema,
   ucpBusinessProfileSchema,
   type StellarX402HandlerConfig,
   type UcpBusinessProfile,
@@ -85,7 +87,7 @@ export interface UcpStellarQuote {
   readonly lines: readonly UcpLine[];
   /** The x402 requirement for this checkout, already checked against the store's profile. */
   readonly requirements: PaymentRequirements;
-  /** The asset the handler declares. */
+  /** The asset the handler declares (always seven decimals: a store that declares another number is refused). */
   readonly asset: { readonly code: string; readonly contract: string; readonly decimals: number };
   /** The store's total, in its own currency's minor units. */
   readonly total: { readonly amount: number; readonly currency: string };
@@ -101,12 +103,12 @@ export type PayableQuote = Pick<UcpStellarQuote, "storeUrl" | "endpoint" | "hand
 
 /** What the `beforeSign` hook sees: what is about to be signed. */
 export interface BeforeSignContext {
-  /** The requirement that will be signed. */
-  readonly requirements: PaymentRequirements;
+  /** The requirement that will be signed: a frozen copy, so the hook cannot change what is signed. */
+  readonly requirements: Readonly<PaymentRequirements>;
   /** The checkout as the store last answered it. */
   readonly checkout: Readonly<Record<string, unknown>>;
-  /** The lines that checkout is for. */
-  readonly lines: readonly UcpLine[];
+  /** The lines that checkout is for (frozen). */
+  readonly lines: readonly Readonly<UcpLine>[];
   /** The store's profile, when `recheck` read it again. */
   readonly profile?: UcpBusinessProfile;
 }
@@ -120,13 +122,21 @@ export interface PayOptions extends UcpClientOptions {
   /** Builds and signs the payment. The key stays wherever this payer keeps it. */
   readonly payer: UcpStellarPayer;
   /**
-   * The most this payment may cost: a decimal amount of the asset (`"5.00"`), or atomic units as a `bigint`.
-   * Refused with `AmountAboveLimit` before anything is signed.
+   * The most this payment may cost: a decimal amount of the asset (`"5.00"`, seven decimals at most), or atomic
+   * units as a `bigint`. Refused with `AmountAboveLimit` before anything is signed. The decimal is read with
+   * Stellar's seven places, never with a number the store declares.
    */
   readonly maxAmount: string | bigint;
   /**
+   * The asset contract you accept to pay in, such as `USDC_TESTNET`. When set, a checkout priced in any other
+   * asset is refused with `InvalidProduct` before anything is signed. Without it, any asset the store declares is
+   * paid, up to `maxAmount` of that asset.
+   */
+  readonly asset?: string;
+  /**
    * Read the store's profile and the checkout again before signing, and refuse with `QuoteChanged` unless they
-   * still say what the quote said. Defaults to `true`.
+   * still say what the quote said. Defaults to `true`. With `false`, the quote is trusted as given: keep it where
+   * nobody else can write it.
    */
   readonly recheck?: boolean;
   /** Sent on Complete Checkout, so a retried request cannot pay twice. */
@@ -216,6 +226,11 @@ async function readProfile(call: UcpCall, origin: string): Promise<UcpStoreProfi
   if (!declared.success) {
     throw new UcpStellarError("MerchantRejectedRequest", "the store's Stellar x402 handler config is malformed", { details: { storeUrl: origin } });
   }
+  if (declared.data.asset.decimals !== STELLAR_DECIMALS) {
+    throw new UcpStellarError("MerchantRejectedRequest", `the store's handler declares an asset with ${declared.data.asset.decimals} decimals; Stellar assets have ${STELLAR_DECIMALS}`, {
+      details: { storeUrl: origin, asset: declared.data.asset.contract, decimals: declared.data.asset.decimals },
+    });
+  }
   if (declared.data.network !== STELLAR_TESTNET) {
     throw new UcpStellarError("UnsupportedNetwork", `the store's handler is on ${declared.data.network}; this package pays on ${STELLAR_TESTNET} only`, { details: { storeUrl: origin, network: declared.data.network } });
   }
@@ -233,7 +248,7 @@ async function readProfile(call: UcpCall, origin: string): Promise<UcpStoreProfi
  * @throws UcpStellarError `InvalidArguments`, `MerchantRejectedRequest`, `UnsupportedNetwork` or `NetworkError`
  */
 export async function readStoreProfile(storeUrl: string, options: UcpClientOptions = {}): Promise<UcpStoreProfile> {
-  const url = payableQuoteSchema.shape.storeUrl.safeParse(storeUrl);
+  const url = storeUrlSchema.safeParse(storeUrl);
   if (!url.success) throw invalidArguments("the store URL is not an https URL", url.error);
   return readProfile(caller(options), originOf(url.data));
 }
@@ -263,12 +278,11 @@ function readCheckout(json: unknown, status: number, store: UcpStoreProfile): Re
       details: { checkoutId: checkout.data.id, status: checkout.data.status, messages: checkout.data.messages ?? [] },
     });
   }
-  const config = checkout.data.ucp.payment_handlers?.[STELLAR_X402_HANDLER]?.[0]?.config as { payment_requirements?: unknown; binding?: { checkout_id?: unknown } } | undefined;
-  const requirements = requirementsSchema.safeParse(config?.payment_requirements);
-  if (!requirements.success || config?.binding?.checkout_id !== checkout.data.id) {
+  const config = checkoutHandlerConfigSchema.safeParse(checkout.data.ucp.payment_handlers?.[STELLAR_X402_HANDLER]?.[0]?.config);
+  if (!config.success || config.data.binding.checkout_id !== checkout.data.id) {
     throw new UcpStellarError("MerchantRejectedRequest", "the checkout carries no payment requirements for this session", { details: { checkoutId: checkout.data.id } });
   }
-  const req = requirements.data;
+  const req = config.data.payment_requirements;
   if (req.payTo !== store.handler.pay_to || req.asset !== store.handler.asset.contract || req.network !== store.handler.network) {
     throw new UcpStellarError("InvalidProduct", "the checkout asks to pay someone or something other than the store's declared handler", {
       details: { checkoutId: checkout.data.id, payTo: req.payTo, declaredPayTo: store.handler.pay_to, asset: req.asset, network: req.network },
@@ -280,8 +294,9 @@ function readCheckout(json: unknown, status: number, store: UcpStoreProfile): Re
   }
   return {
     checkout: checkout.data,
-    // The parsed requirement, with `extra` always present as x402 types it.
-    requirements: { ...req, network: req.network as PaymentRequirements["network"], extra: req.extra ?? {} },
+    // The store's requirement as it sent it (a loose object keeps every member, and adds none): x402 echoes it back
+    // as `accepted`. The cast is only x402's typing, which wants a CAIP-2 template and an `extra` UCP lets a store omit.
+    requirements: req as PaymentRequirements,
     // The store's bytes as parsed: what an extension closes over must be exactly what the store sent.
     raw: json as Readonly<Record<string, unknown>>,
     lines: lines.data.map((line) => ({ productId: line.item.id, quantity: line.quantity })),
@@ -390,16 +405,21 @@ export async function pay(quoteToPay: PayableQuote, options: PayOptions): Promis
   const parsedQuote = payableQuoteSchema.safeParse(quoteToPay);
   if (!parsedQuote.success) throw invalidArguments("this is not a quote from quote()", parsedQuote.error);
   const q = parsedQuote.data;
-  const quoted: PaymentRequirements = { ...q.requirements, network: q.requirements.network as PaymentRequirements["network"], extra: q.requirements.extra ?? {} };
+  // Validated above; the cast is only x402's typing (see `readCheckout`).
+  const quoted = q.requirements as PaymentRequirements;
   if (quoted.network !== STELLAR_TESTNET) {
     throw new UcpStellarError("UnsupportedNetwork", `the quote is on ${quoted.network}; this package pays on ${STELLAR_TESTNET} only`, { details: { network: quoted.network } });
   }
-  const maxAtomic = maxAmountOf(options.maxAmount, q.asset?.decimals);
+  const maxAtomic = maxAmountOf(options.maxAmount);
+  if (options.asset !== undefined && typeof options.asset !== "string") {
+    throw new UcpStellarError("InvalidArguments", "asset is the contract address (C…) of the asset you accept", { details: {} });
+  }
   const call = caller(options);
 
   let requirements = quoted;
   let handlerId = q.handlerId;
-  let latest: Readonly<Record<string, unknown>> = q.checkout;
+  // The store's own bytes, not zod's copy: what an extension closes over must be exactly what the store sent.
+  let latest: Readonly<Record<string, unknown>> = quoteToPay.checkout;
   let lines: readonly UcpLine[] = q.lines;
   let profile: UcpBusinessProfile | undefined;
   if (options.recheck ?? true) {
@@ -444,8 +464,14 @@ export async function pay(quoteToPay: PayableQuote, options: PayOptions): Promis
   if (BigInt(requirements.amount) > maxAtomic) {
     throw new UcpStellarError("AmountAboveLimit", "the checkout costs more than the maxAmount allowed", { details: { checkoutId: q.checkoutId, amount: requirements.amount, maxAmount: maxAtomic.toString() } });
   }
+  if (options.asset !== undefined && requirements.asset !== options.asset) {
+    throw new UcpStellarError("InvalidProduct", "the checkout is priced in another asset than the one accepted", { details: { checkoutId: q.checkoutId, asset: requirements.asset, accepted: options.asset } });
+  }
 
-  const extensions = (await options.beforeSign?.({ requirements, checkout: latest, lines, ...(profile === undefined ? {} : { profile }) }))?.completeExtensions ?? {};
+  // The hook sees frozen copies: whatever it does, the requirement signed below is the one checked above.
+  const seen = Object.freeze({ ...requirements, ...(requirements.extra === undefined ? {} : { extra: Object.freeze({ ...requirements.extra }) }) });
+  const seenLines = Object.freeze(lines.map((line) => Object.freeze({ ...line })));
+  const extensions = (await options.beforeSign?.({ requirements: seen, checkout: latest, lines: seenLines, ...(profile === undefined ? {} : { profile }) }))?.completeExtensions ?? {};
   if ("payment" in extensions) {
     throw new UcpStellarError("InvalidArguments", "beforeSign may add extensions, not replace the payment", { details: { checkoutId: q.checkoutId } });
   }
@@ -515,15 +541,12 @@ export async function pay(quoteToPay: PayableQuote, options: PayOptions): Promis
   }
 }
 
-/** @throws UcpStellarError `InvalidArguments` for a negative bigint, a malformed decimal, or a decimal without the asset's decimals */
-function maxAmountOf(maxAmount: string | bigint, decimals: number | undefined): bigint {
+/** @throws UcpStellarError `InvalidArguments` unless `maxAmount` is a non-negative bigint or a decimal with at most seven places */
+function maxAmountOf(maxAmount: string | bigint): bigint {
   if (typeof maxAmount === "bigint") {
     if (maxAmount < 0n) throw new UcpStellarError("InvalidArguments", "maxAmount cannot be negative", { details: { maxAmount: maxAmount.toString() } });
     return maxAmount;
   }
   if (typeof maxAmount !== "string") throw new UcpStellarError("InvalidArguments", "maxAmount is required: a decimal string or a bigint of atomic units", { details: {} });
-  if (decimals === undefined) {
-    throw new UcpStellarError("InvalidArguments", "a decimal maxAmount needs the quote's asset; pass atomic units as a bigint instead", { details: {} });
-  }
-  return toAtomic(maxAmount, decimals);
+  return toAtomic(maxAmount, STELLAR_DECIMALS);
 }

@@ -20,7 +20,7 @@ A magnet from AgentPey's Shopify test store. The first run only quotes (it opens
 with `PAY=yes` it pays from an AgentPey `policy_rail` on testnet.
 
 ```js
-import { fromAtomic, pay, policyRailPayer, quote, railOwnerSigner } from "@agentpey/ucp-stellar";
+import { USDC_TESTNET, fromAtomic, pay, policyRailPayer, quote, railOwnerSigner } from "@agentpey/ucp-stellar";
 
 const storeUrl = "https://agentcommerce.vitrinee.agentpey.com";
 const buyer = { email: "buyer@example.com", first_name: "Ada", last_name: "Lovelace" };
@@ -33,7 +33,7 @@ if (process.env.PAY !== "yes") process.exit(0);
 
 // 2. Pay from a policy_rail. The owner's key signs; the network enforces the rail's limits.
 const payer = policyRailPayer({ contractId: process.env.RAIL_CONTRACT_ID, signAuthPayload: railOwnerSigner(process.env.RAIL_OWNER_SECRET) });
-const receipt = await pay(q, { payer, maxAmount: "2.00" });
+const receipt = await pay(q, { payer, maxAmount: "2.00", asset: USDC_TESTNET });
 console.log(`order ${receipt.orderId}, tx https://stellar.expert/explorer/testnet/tx/${receipt.transaction}`);
 ```
 
@@ -54,6 +54,7 @@ The same file is [`example/buy.mjs`](example/buy.mjs).
 - does not publish `/.well-known/ucp`, or declares the handler without its spec and schema on `agentpey.com`;
 - declares a REST endpoint outside its own origin;
 - is on a network other than `stellar:testnet`;
+- declares an asset with other than Stellar's seven decimals;
 - asks, in the checkout, to pay another account, asset or network than its profile declares;
 - opens the checkout for other lines than the ones asked for, or not `ready_for_complete`.
 
@@ -61,9 +62,11 @@ The same file is [`example/buy.mjs`](example/buy.mjs).
 
 - reads the profile and the checkout again (`recheck`, on by default) and refuses with `QuoteChanged` if the
   recipient, asset, network, amount or endpoint changed, and with `InvalidProduct` if the lines did;
-- refuses an amount above your `maxAmount` (`AmountAboveLimit`);
-- calls your `beforeSign` hook, if any: throw there to stop the payment, or return extension members for the
-  Complete Checkout body.
+- refuses an amount above your `maxAmount` (`AmountAboveLimit`), read with Stellar's seven decimals, never with a
+  number the store declares;
+- refuses, when you name it with `asset`, a checkout priced in another asset (`InvalidProduct`);
+- calls your `beforeSign` hook, if any, with a frozen copy of what will be signed: throw there to stop the payment,
+  or return extension members for the Complete Checkout body.
 
 It signs exactly the checked requirement, capped at its own amount, and completes the checkout.
 
@@ -73,10 +76,16 @@ It signs exactly the checked requirement, capped at its own amount, and complete
 |---|---|
 | `readStoreProfile(storeUrl, options?)` | Reads and checks the store's profile and handler |
 | `quote(input, options?)` | Opens a checkout for `productId` and `quantity`, or `lines` (1 to 10), with a `destination` and an optional `buyer` (with `consent`, sent in an update after the create) |
-| `pay(quote, options)` | Pays a quote. `payer` and `maxAmount` (a decimal string like `"2.00"`, or atomic units as a `bigint`) are required. Optional: `recheck`, `idempotencyKey`, `beforeSign` |
+| `pay(quote, options)` | Pays a quote. `payer` and `maxAmount` (a decimal string like `"2.00"`, or atomic units as a `bigint`) are required. Optional: `asset` (the contract you accept, such as `USDC_TESTNET`), `recheck`, `idempotencyKey`, `beforeSign` |
 | `classicPayer(signer)` | Pays from a classic account (`G...`), with a SEP-43 signer such as a wallet's |
 | `policyRailPayer({ contractId, signAuthPayload })` | Pays from an AgentPey `policy_rail` (`C...`); `signAuthPayload` signs the 32-byte authorization payload as the rail's owner |
 | `keypairSigner(secret)`, `railOwnerSigner(secret)` | Build those signing functions from a secret you already hold. The secret stays in your process; the package never reads the environment or writes to disk |
+
+With `recheck: false`, `pay()` trusts the quote as given (it still refuses one whose endpoint is off the store's
+origin): keep a quote where nobody else can write it, or leave `recheck` on.
+
+Store URLs are `https`; plain `http` only on a loopback host (`localhost`, `*.localhost`, `127.0.0.1`, `[::1]`).
+The store is addressed by its origin: a path in the URL is dropped.
 
 `options` takes `fetch` and `platformProfile`: the profile sent in the `UCP-Agent` header, which tells the store
 which UCP version to answer in. It defaults to AgentPey's public platform profile

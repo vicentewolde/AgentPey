@@ -2,6 +2,7 @@ import type { PaymentRequirements, SchemeNetworkClient } from "@x402/core/types"
 import { describe, expect, it } from "vitest";
 
 import { UcpStellarError } from "./errors.js";
+import { USDC_TESTNET } from "./wire.js";
 import { DEFAULT_PLATFORM_PROFILE, pay, quote, readStoreProfile, type UcpStellarQuote } from "./checkout.js";
 
 const STORE = "https://store.example";
@@ -24,13 +25,17 @@ interface StoreState {
   failComplete: boolean;
   /** Open every checkout for these lines, whatever was asked. */
   openAs?: Array<{ id: string; quantity: number }>;
+  decimals: number;
+  endpoint: string;
+  /** The id the checkout answers with when read again. */
+  answerId: string;
 }
 
 function profileOf(state: StoreState) {
   return {
     ucp: {
       version: "2026-04-08",
-      services: { "dev.ucp.shopping": [{ version: "2026-04-08", transport: "rest", endpoint: ENDPOINT }] },
+      services: { "dev.ucp.shopping": [{ version: "2026-04-08", transport: "rest", endpoint: state.endpoint }] },
       payment_handlers: {
         "com.agentpey.stellar_x402": [
           {
@@ -38,7 +43,7 @@ function profileOf(state: StoreState) {
             version: "2026-04-08",
             spec: state.spec,
             schema: "https://agentpey.com/ucp/handlers/stellar_x402/schema.json",
-            config: { x402_version: 2, scheme: "exact", network: state.network, asset: { code: "USDC", contract: USDC, decimals: 7 }, pay_to: PAY_TO },
+            config: { x402_version: 2, scheme: "exact", network: state.network, asset: { code: "USDC", contract: USDC, decimals: state.decimals }, pay_to: PAY_TO },
           },
         ],
       },
@@ -82,6 +87,9 @@ function fakeStore(overrides: Partial<StoreState> = {}) {
     completeBodies: [],
     requests: [],
     failComplete: false,
+    decimals: 7,
+    endpoint: ENDPOINT,
+    answerId: "chk_1",
     ...overrides,
   };
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -95,7 +103,8 @@ function fakeStore(overrides: Partial<StoreState> = {}) {
       state.lines = state.openAs ?? asked.map((line) => ({ id: line.item.id, quantity: line.quantity }));
       return json(201, checkoutOf(state));
     }
-    if (url === `${ENDPOINT}/checkout-sessions/chk_1` && (init?.method ?? "GET") !== "POST") return json(200, checkoutOf(state));
+    if (url === `${ENDPOINT}/checkout-sessions/chk_1` && (init?.method ?? "GET") === "GET") return json(200, checkoutOf(state, state.answerId));
+    if (url === `${ENDPOINT}/checkout-sessions/chk_1` && init?.method === "PUT") return json(200, checkoutOf(state));
     if (url === `${ENDPOINT}/checkout-sessions/chk_1/complete`) {
       if (state.failComplete) throw new TypeError("socket hang up");
       state.completed += 1;
@@ -155,6 +164,18 @@ describe("readStoreProfile", () => {
 
   it("refuses plain http outside localhost", async () => {
     expect((await codeOf(readStoreProfile("http://store.example"))).code).toBe("InvalidArguments");
+  });
+
+  it.each(["http://localhost:8080", "http://shop.localhost", "http://127.0.0.1:3000"])("takes plain http on a loopback host: %s", async (url) => {
+    const down: typeof fetch = async () => {
+      throw new TypeError("fetch failed");
+    };
+    expect((await codeOf(readStoreProfile(url, { fetch: down }))).code).toBe("NetworkError");
+  });
+
+  it("refuses a handler whose asset does not have Stellar's seven decimals: the store would set what maxAmount means", async () => {
+    const { fetchImpl } = fakeStore({ decimals: 14 });
+    expect(await codeOf(readStoreProfile(STORE, { fetch: fetchImpl }))).toMatchObject({ code: "MerchantRejectedRequest", details: { decimals: 14 } });
   });
 
   it("sends AgentPey's public platform profile unless told otherwise", async () => {
@@ -292,6 +313,81 @@ describe("pay", () => {
     const payer = fakePayer();
     expect(await codeOf(pay(q, { payer, maxAmount, fetch: store.fetchImpl }))).toMatchObject({ code: "AmountAboveLimit", paymentSent: false });
     expect(payer.calls).toEqual([]);
+  });
+
+  it("reads a decimal maxAmount with seven places, whatever decimals a kept quote says", async () => {
+    const { store, q } = await quoted();
+    store.state.amount = "100000000000000";
+    const tampered = { ...q, asset: { ...q.asset, decimals: 14 }, requirements: { ...q.requirements, amount: "100000000000000" } };
+    const payer = fakePayer();
+    expect((await codeOf(pay(tampered, { payer, maxAmount: "2.00", recheck: false, fetch: store.fetchImpl }))).code).toBe("AmountAboveLimit");
+    expect(payer.calls).toEqual([]);
+  });
+
+  it("refuses a checkout in another asset than the one accepted, and pays the accepted one", async () => {
+    const { store, q } = await quoted();
+    const payer = fakePayer();
+    expect((await codeOf(pay(q, { payer, maxAmount: "2.00", asset: "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5", fetch: store.fetchImpl }))).code).toBe("InvalidProduct");
+    expect(payer.calls).toEqual([]);
+    await expect(pay(q, { payer, maxAmount: "2.00", asset: USDC_TESTNET, fetch: store.fetchImpl })).resolves.toMatchObject({ orderId: "ord_1" });
+  });
+
+  it("refuses without a maxAmount, called from plain JavaScript", async () => {
+    const { store, q } = await quoted();
+    expect((await codeOf(pay(q, { payer: fakePayer(), fetch: store.fetchImpl } as never))).code).toBe("InvalidArguments");
+  });
+
+  it("without recheck, pays the quote as given: no read of the store, only the completion", async () => {
+    const { store, q } = await quoted();
+    const before = store.state.requests.length;
+    let checkout: unknown;
+    await pay(q, { payer: fakePayer(), maxAmount: "2.00", recheck: false, fetch: store.fetchImpl, beforeSign: (context) => void (checkout = context.checkout) });
+    expect(store.state.requests.slice(before).map((request) => `${request.method} ${request.url}`)).toEqual([`POST ${ENDPOINT}/checkout-sessions/chk_1/complete`]);
+    // The hook sees the store's own bytes, not a copy.
+    expect(checkout).toBe(q.checkout);
+  });
+
+  it("refuses a kept quote whose endpoint is not on the store's origin, sending nothing there", async () => {
+    const { store, q } = await quoted();
+    const tampered = { ...q, endpoint: "https://evil.example/ucp/v1" };
+    expect((await codeOf(pay(tampered, { payer: fakePayer(), maxAmount: "2.00", recheck: false, fetch: store.fetchImpl }))).code).toBe("InvalidArguments");
+    expect(store.state.requests.some((request) => request.url.startsWith("https://evil.example"))).toBe(false);
+  });
+
+  it("refuses a checkout that answers with another id when read again", async () => {
+    const { store, q } = await quoted();
+    store.state.answerId = "chk_2";
+    expect((await codeOf(pay(q, { payer: fakePayer(), maxAmount: "2.00", fetch: store.fetchImpl }))).code).toBe("QuoteChanged");
+  });
+
+  it("refuses a store whose endpoint moved since the quote", async () => {
+    const { store, q } = await quoted();
+    store.state.endpoint = `${STORE}/ucp/v2`;
+    const payer = fakePayer();
+    expect((await codeOf(pay(q, { payer, maxAmount: "2.00", fetch: store.fetchImpl }))).code).toBe("QuoteChanged");
+    expect(payer.calls).toEqual([]);
+  });
+
+  it("gives beforeSign a frozen copy: changing it does not change what is signed", async () => {
+    const { store, q } = await quoted();
+    const payer = fakePayer();
+    await pay(q, {
+      payer,
+      maxAmount: "2.00",
+      fetch: store.fetchImpl,
+      beforeSign: (context) => {
+        expect(() => ((context.requirements as { amount: string }).amount = "1")).toThrow(TypeError);
+        expect(() => ((context.lines[0] as { quantity: number }).quantity = 9)).toThrow(TypeError);
+      },
+    });
+    expect(payer.calls[0]).toMatchObject({ amount: "15684211" });
+  });
+
+  it("names a failure of the x402 client itself, not the payer's, as PaymentNotCreated", async () => {
+    const { store, q } = await quoted();
+    const otherScheme: SchemeNetworkClient = { scheme: "upto", createPaymentPayload: async (x402Version) => ({ x402Version, payload: { transaction: "AAAA" } }) };
+    expect(await codeOf(pay(q, { payer: otherScheme, maxAmount: "2.00", fetch: store.fetchImpl }))).toMatchObject({ code: "PaymentNotCreated", paymentSent: false });
+    expect(store.state.completed).toBe(0);
   });
 
   it("pays at exactly maxAmount", async () => {

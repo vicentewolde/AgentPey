@@ -14,6 +14,10 @@ export const STELLAR_X402_HANDLER = "com.agentpey.stellar_x402";
 export const STELLAR_TESTNET = "stellar:testnet";
 /** The most lines one checkout carries, as the stores take them. */
 export const MAX_UCP_LINES = 10;
+/** Stellar assets move in seven decimal places; a handler that declares another number is refused. */
+export const STELLAR_DECIMALS = 7;
+/** Circle's USDC on Stellar testnet, as a Stellar Asset Contract: the asset AgentPey's stores charge in. */
+export const USDC_TESTNET = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
 
 export const reverseDomain = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_]*)+$/;
 
@@ -79,11 +83,11 @@ export const checkoutLinesSchema = z.array(z.looseObject({ item: z.looseObject({
 
 // ---------------------------------------------------------------- caller input
 
-/** HTTPS, or plain HTTP on a loopback host (a store running on this machine, for tests). */
+/** HTTPS, or plain HTTP on a loopback host (a store running on this machine: `localhost`, `*.localhost` per RFC 6761, `127.0.0.1`, `[::1]`). */
 export const storeUrlSchema = z.string().refine((value) => {
   if (!URL.canParse(value)) return false;
   const url = new URL(value);
-  const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  const loopback = url.hostname === "localhost" || url.hostname.endsWith(".localhost") || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
   return url.protocol === "https:" || (url.protocol === "http:" && loopback);
 }, "an https URL (http only on localhost)");
 
@@ -119,14 +123,23 @@ export const quoteInputSchema = z.intersection(
   z.object({ storeUrl: storeUrlSchema, buyer: buyerSchema.optional(), destination: destinationSchema }),
 );
 
-/** What {@link pay} needs of a quote: enough to read it again and pay exactly it. */
-export const payableQuoteSchema = z.looseObject({
-  storeUrl: storeUrlSchema,
-  endpoint: storeUrlSchema,
-  handlerId: z.string().min(1),
-  checkoutId: z.string().min(1),
-  lines: z.array(lineSchema).min(1).max(MAX_UCP_LINES),
-  requirements: requirementsSchema,
-  checkout: z.record(z.string(), z.unknown()),
-  asset: z.looseObject({ code: z.string(), contract: z.string(), decimals: z.number().int().min(0).max(38) }).optional(),
-});
+/** What {@link pay} needs of a quote: enough to read it again and pay exactly it, on the store's own origin. */
+export const payableQuoteSchema = z
+  .looseObject({
+    storeUrl: storeUrlSchema,
+    endpoint: storeUrlSchema,
+    handlerId: z.string().min(1),
+    checkoutId: z.string().min(1),
+    lines: z.array(lineSchema).min(1).max(MAX_UCP_LINES),
+    requirements: requirementsSchema,
+    checkout: z.record(z.string(), z.unknown()),
+    asset: z.looseObject({ code: z.string(), contract: z.string(), decimals: z.number().int() }).optional(),
+  })
+  // A kept quote is read back from storage: its signed payment may only go to the store it was quoted at.
+  .refine((quote) => URL.canParse(quote.endpoint) && URL.canParse(quote.storeUrl) && new URL(quote.endpoint).origin === new URL(quote.storeUrl).origin, {
+    message: "the endpoint is not on the store's origin",
+    path: ["endpoint"],
+  });
+
+/** A store's checkout handler config: the requirement for this session, bound to it. */
+export const checkoutHandlerConfigSchema = z.looseObject({ payment_requirements: requirementsSchema, binding: z.looseObject({ checkout_id: z.string() }) });

@@ -252,6 +252,33 @@ describe("AgentPey pays a Vitrinee store over UCP (T122)", () => {
     expect(error).toMatchObject({ code: "MerchantRejectedRequest" });
     expect(scheme.calls).toEqual([]);
   });
+
+  // After the door (T136 review): the package says the payment may have been sent, and the agent keeps saying it.
+  const afterTheDoor: Array<[string, (input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]) => Promise<Response>]> = [
+    [
+      "the connection drops while completing",
+      async () => {
+        throw new TypeError("socket hang up");
+      },
+    ],
+    ["the store answers the completion without confirming it", async () => Response.json({ messages: [{ type: "error", code: "payment_failed" }] }, { status: 402 })],
+  ];
+  for (const [what, complete] of afterTheDoor) {
+    it(`says the payment may have been sent when ${what}, once the rail signed`, async () => {
+      const scheme = fakeScheme();
+      const grant = scope();
+      const failing: typeof fetch = async (input, init) => (String(input).endsWith("/complete") ? complete(input, init) : fetch(input, init));
+      const error = await attempt(() =>
+        executeUcpPayment(
+          { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme, fetchImpl: failing },
+          { storeUrl: server.url, productId: "gorro-andes", quantity: 1, destination: DESTINATION, intent: intent("gorro-andes", 1, "13.6736842", "13.6736842"), scope: grant, mandate: mandate(grant), ...venue() },
+        ),
+      );
+      expect(error).toMatchObject({ name: "AgentPassError", code: "NetworkError", details: { paymentSent: true } });
+      expect(mayHaveBeenPaid(error)).toBe(true);
+      expect(scheme.calls).toHaveLength(1);
+    });
+  }
 });
 
 describe("AgentPey pays a cart at a Vitrinee store over UCP (T148)", () => {

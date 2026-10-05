@@ -26,11 +26,8 @@ import {
 
 import { fromAtomic } from "./amount.js";
 import { UcpStellarError, isUcpStellarError } from "./errors.js";
-import { STELLAR_TESTNET } from "./wire.js";
+import { STELLAR_DECIMALS, STELLAR_TESTNET } from "./wire.js";
 import type { UcpStellarPayer } from "./checkout.js";
-
-/** Stellar assets move in seven decimal places. */
-const STELLAR_DECIMALS = 7;
 
 export type { ClientStellarSigner };
 

@@ -9,8 +9,10 @@ export { UCP_STELLAR_ERROR_CODES, UcpStellarError, isUcpStellarError, type UcpSt
 export { fromAtomic, toAtomic } from "./amount.js";
 export {
   MAX_UCP_LINES,
+  STELLAR_DECIMALS,
   STELLAR_TESTNET,
   STELLAR_X402_HANDLER,
+  USDC_TESTNET,
   type StellarX402HandlerConfig,
   type UcpBusinessProfile,
   type UcpBuyer,

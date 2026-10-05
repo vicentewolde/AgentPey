@@ -1,4 +1,4 @@
-import { fromAtomic, pay, policyRailPayer, quote, railOwnerSigner } from "@agentpey/ucp-stellar";
+import { USDC_TESTNET, fromAtomic, pay, policyRailPayer, quote, railOwnerSigner } from "@agentpey/ucp-stellar";
 
 const storeUrl = "https://agentcommerce.vitrinee.agentpey.com";
 const buyer = { email: "buyer@example.com", first_name: "Ada", last_name: "Lovelace" };
@@ -11,5 +11,5 @@ if (process.env.PAY !== "yes") process.exit(0);
 
 // 2. Pay from a policy_rail. The owner's key signs; the network enforces the rail's limits.
 const payer = policyRailPayer({ contractId: process.env.RAIL_CONTRACT_ID, signAuthPayload: railOwnerSigner(process.env.RAIL_OWNER_SECRET) });
-const receipt = await pay(q, { payer, maxAmount: "2.00" });
+const receipt = await pay(q, { payer, maxAmount: "2.00", asset: USDC_TESTNET });
 console.log(`order ${receipt.orderId}, tx https://stellar.expert/explorer/testnet/tx/${receipt.transaction}`);

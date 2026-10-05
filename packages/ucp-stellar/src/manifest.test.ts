@@ -2,7 +2,7 @@
  * T136's second criterion: the published package drags in nothing private from the monorepo. Read from the
  * manifest npm publishes, so a `workspace:` range or an internal scope cannot slip in.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -37,6 +37,20 @@ describe("the published manifest", () => {
 
   it("depends on exactly what it imports", () => {
     expect(Object.keys(shipped).sort()).toEqual(["@stellar/stellar-sdk", "@x402/core", "@x402/stellar", "zod"]);
+  });
+
+  it("imports nothing from the monorepo in its source", () => {
+    const dir = new URL("./", import.meta.url);
+    const sources = readdirSync(dir).filter((file) => file.endsWith(".ts") && !file.endsWith(".test.ts"));
+    expect(sources.length).toBeGreaterThan(0);
+    for (const file of sources) {
+      const source = readFileSync(new URL(file, dir), "utf8");
+      const specifiers = [...source.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)].map((match) => match[1]!);
+      for (const specifier of specifiers) {
+        expect(specifier, `${file}: ${specifier}`).not.toMatch(/^@(agentpass|agentpey|vitrinee)\//);
+        expect(specifier, `${file}: ${specifier}`).not.toMatch(/^\.\.\//);
+      }
+    }
   });
 
   it("ships the build, not the tests", () => {

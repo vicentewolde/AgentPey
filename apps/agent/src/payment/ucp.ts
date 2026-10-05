@@ -133,11 +133,27 @@ function fromPackage(error: UcpStellarError): AgentPassError {
 
 /**
  * Any error out of the package, as an `AgentPassError` stamped with `paymentSent`. The package's own errors say
- * whether the payment was sent; anything else came out of this module's hook or payer, which run before the door.
+ * whether the payment was sent. Anything else is judged by this module's own door, `signed`: before the payer
+ * signed, it came out of the hook or the payer and nothing was sent; after, it fails closed (`C-113`, `M-15`), so a
+ * future version of the package that let a raw error escape after sending could not release a spend that settled.
  */
-function settled(error: unknown): unknown {
+function settled(error: unknown, signed: boolean): unknown {
   if (isUcpStellarError(error)) return withPaymentSent(fromPackage(error), error.paymentSent);
-  return withPaymentSent(error, false);
+  return withPaymentSent(error, signed);
+}
+
+/** The payer, reporting when it has produced a signed payment: the agent's own door, kept apart from the package's. */
+function reportingSigned(payer: SchemeNetworkClient, onSigned: () => void): SchemeNetworkClient {
+  return {
+    scheme: payer.scheme,
+    ...(payer.schemeHooks === undefined ? {} : { schemeHooks: payer.schemeHooks }),
+    ...(payer.findDefaultAsset === undefined ? {} : { findDefaultAsset: payer.findDefaultAsset.bind(payer) }),
+    createPaymentPayload: async (...args) => {
+      const payload = await payer.createPaymentPayload(...args);
+      onSigned();
+      return payload;
+    },
+  };
 }
 
 // ---------------------------------------------------------------- public API
@@ -333,6 +349,7 @@ export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch
  * `paymentSent` (`C-113`).
  */
 export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, input: PayUcpQuoteInput): Promise<UcpPaymentReceipt> {
+  let signed = false;
   try {
     // The checkout is for what the signed intent says, line by line (T148): the amount alone is reconciled below,
     // and two carts can cost the same. `quote.lines` are the store's own, read from its answer; with `recheck`, the
@@ -352,7 +369,7 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
       deps.schemeForTests ??
       (deps.payer === undefined ? new ExactStellarScheme(createEd25519Signer(deps.signerSecret, STELLAR_TESTNET_CAIP2)) : new PolicyRailStellarScheme(deps.payer));
     const paid = await pay(quote, {
-      payer: scheme,
+      payer: reportingSigned(scheme, () => (signed = true)),
       // The ceiling here is `authorise()`, which reconciles the amount with the signed intent: the package's own
       // cap is the quoted amount, which `recheck` already holds the store to.
       maxAmount: BigInt(quote.requirements.amount),
@@ -377,7 +394,7 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
     });
     return { ...paid, ...(ap2Mandate === undefined ? {} : { ap2Mandate }) };
   } catch (error) {
-    throw settled(error);
+    throw settled(error, signed);
   }
 }
 
