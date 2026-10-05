@@ -68,10 +68,14 @@ A receipt is valid when all three hold:
      `unitPriceUSDCAtomic`;
    * `asset` **MUST** be the asset contract the verifier trusts for the
      receipt's `network`. Today that is one contract, Circle's USDC on Stellar
-     testnet, the same one the Stellar x402 handler declares in its `config`.
+     testnet, the same one the Stellar x402 handler declares in its `config`;
+   * the items **MUST** add up to the total: the sum, over `items`, of
+     `unitPriceUSDCAtomic` times `quantity` is `amountUSDCAtomic`. A checkout
+     of several line items has one item per line, and nothing else (no
+     shipping, no fee) is in the total.
 
    A business **MUST NOT** sign a receipt that fails this, and a verifier
-   **MUST** reject one. Not checked: that the items add up to the total.
+   **MUST** reject one.
 2. **Anchor:** the registry contract holds `hash`, recorded by that same key,
    for the receipt's amount and order reference.
 3. **Settlement:** `settlement_tx_hash` is a successful Stellar transaction

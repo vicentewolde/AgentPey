@@ -245,8 +245,9 @@ más de 64 bytes, y no acepta anclar dos veces el mismo hash
    recibo no se contradice (`receiptIncoherence`,
    `packages/vitrinee-core/src/receipt.ts`, desde T132): `amountUSDC` es el
    mismo monto que `amountUSDCAtomic`, cada `unitPriceUSDC` es el mismo que su
-   `unitPriceUSDCAtomic`, y `asset` es el contrato de USDC que el verificador
-   tiene fijo. Sin red. `signReceipt` se niega a firmar un recibo que no lo
+   `unitPriceUSDCAtomic`, `asset` es el contrato de USDC que el verificador
+   tiene fijo, y (desde T148, `VT-45`) los ítems suman el total: Σ
+   `unitPriceUSDCAtomic` × `quantity` = `amountUSDCAtomic`. Sin red. `signReceipt` se niega a firmar un recibo que no lo
    cumple (`ReceiptInvalid`).
 2. **Anclaje:** `get(sha256(jws))` existe en `receipt-registry`, con
    `merchant` igual a la cuenta del DID, `amount` igual a `amountUSDCAtomic` y

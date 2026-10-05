@@ -84,8 +84,10 @@ function sameAmount(decimal: string, atomic: string): boolean {
  * the registry and the settlement check, and only the atomic one is compared
  * against the chain. A receipt whose two amounts differ, or that names an
  * asset other than the USDC the settlement check looks for, would pass those
- * checks while showing a reader something else. Returns the reason, or `null`
- * when the claims are coherent.
+ * checks while showing a reader something else. And since T148 (VT-45) the
+ * items must add up to the total that was paid: each line is its unit price
+ * times its quantity, in atomic units, and nothing else is in the total.
+ * Returns the reason, or `null` when the claims are coherent.
  */
 export function receiptIncoherence(claims: ReceiptClaims): string | null {
   if (claims.asset !== USDC_TESTNET.contractId) {
@@ -94,10 +96,15 @@ export function receiptIncoherence(claims: ReceiptClaims): string | null {
   if (!sameAmount(claims.amountUSDC, claims.amountUSDCAtomic)) {
     return `amountUSDC ${claims.amountUSDC} is not amountUSDCAtomic ${claims.amountUSDCAtomic}`;
   }
+  let sum = 0n;
   for (const item of claims.items) {
     if (!sameAmount(item.unitPriceUSDC, item.unitPriceUSDCAtomic)) {
       return `unitPriceUSDC ${item.unitPriceUSDC} is not unitPriceUSDCAtomic ${item.unitPriceUSDCAtomic} for item ${item.productId}`;
     }
+    sum += BigInt(item.unitPriceUSDCAtomic) * BigInt(item.quantity);
+  }
+  if (sum !== BigInt(claims.amountUSDCAtomic)) {
+    return `the items add up to ${sum} atomic units, not amountUSDCAtomic ${claims.amountUSDCAtomic}`;
   }
   return null;
 }

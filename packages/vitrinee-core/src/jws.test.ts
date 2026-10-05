@@ -110,6 +110,14 @@ describe("receipt coherence (T132)", () => {
     ["the decimal total has more precision than USDC", { amountUSDC: "9.46315790001" }, /amountUSDC/],
     ["the asset is not the trusted USDC", { asset: "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5" }, /not the trusted USDC contract/],
     ["an item's two prices disagree", { items: [{ ...item, unitPriceUSDC: "1" }] }, /unitPriceUSDC 1 is not unitPriceUSDCAtomic 94631579/],
+    // T148 (VT-45): the lines must add up to what was paid.
+    ["the items add up to less than the total", { items: [{ ...item, unitPriceUSDC: "4.7315789", unitPriceUSDCAtomic: "47315789" }] }, /the items add up to 47315789 atomic units, not amountUSDCAtomic 94631579/],
+    ["a quantity makes the items more than the total", { items: [{ ...item, quantity: 2 }] }, /add up to 189263158/],
+    [
+      "two lines that do not add up",
+      { items: [item, { ...item, productId: "stickers", sku: "STK", name: "Stickers", unitPriceUSDC: "1.0421053", unitPriceUSDCAtomic: "10421053" }] },
+      /add up to 105052632 atomic units/,
+    ],
   ];
 
   it.each(incoherent)("refuses to sign when %s, with a typed error", (_name, change, reason) => {
@@ -133,8 +141,20 @@ describe("receipt coherence (T132)", () => {
   });
 
   it("takes the same amount written with fewer decimals or trailing zeros", () => {
-    expect(receiptIncoherence(claims({ amountUSDC: "1.5", amountUSDCAtomic: "15000000" }))).toBeNull();
-    expect(receiptIncoherence(claims({ amountUSDC: "1.5000000", amountUSDCAtomic: "15000000" }))).toBeNull();
+    const at = (total: string) => claims({ amountUSDC: total, amountUSDCAtomic: "15000000", items: [{ ...item, unitPriceUSDC: "1.5", unitPriceUSDCAtomic: "15000000" }] });
+    expect(receiptIncoherence(at("1.5"))).toBeNull();
+    expect(receiptIncoherence(at("1.5000000"))).toBeNull();
     expect(receiptIncoherence(claims())).toBeNull();
+  });
+
+  it("signs and verifies a receipt whose several lines add up to the total (T148)", () => {
+    const two = claims({
+      amountUSDC: "11.5473685",
+      amountUSDCAtomic: "115473685",
+      items: [item, { ...item, productId: "stickers", sku: "STK", name: "Stickers", quantity: 2, unitPriceUSDC: "1.0421053", unitPriceUSDCAtomic: "10421053" }],
+    });
+    expect(receiptIncoherence(two)).toBeNull();
+    const { jws } = signReceipt(two, signer.secret());
+    expect(checkReceiptSignature(jws).ok).toBe(true);
   });
 });
