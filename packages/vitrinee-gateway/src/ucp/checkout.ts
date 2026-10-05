@@ -423,7 +423,7 @@ function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin,
   const receipt = order === undefined ? undefined : receiptExtension(order, origin);
   const d = session.destination;
   const offered = offersConsent(deps);
-  const consent = offered ? renderConsent(session.consent, version, deps.config.merchant.name) : undefined;
+  const consent = offered ? renderConsent(session.consent, version) : undefined;
   const buyer = {
     ...Object.fromEntries(Object.entries(session.buyer).filter(([, value]) => value !== undefined)),
     ...(consent === undefined ? {} : { consent }),
@@ -499,23 +499,37 @@ function offersConsent(deps: Pick<UcpCheckoutDeps, "adapter">): boolean {
   return deps.adapter.recordsBuyerConsent === true;
 }
 
+/** What became of a request's `buyer.consent`: nothing to take, taken, or ignored because the store had not advertised its options yet. */
+type ConsentOutcome = "none" | "applied" | "unadvertised";
+
 /**
  * Takes a request's `buyer.consent` into the session, in the request's version
- * (T149). Ignored where the store does not offer the extension. A session
- * opened before T149 gets the store's defaults the first time a platform sends
- * consent. A request without `consent` changes nothing (UCP: the business keeps
- * its prior position). Returns whether anything changed.
+ * (T149). Ignored where the store does not offer the extension. In 2026-08-25
+ * it counts only once this store has advertised its options in an earlier
+ * response (UCP: a business MUST ignore purposes it did not advertise): never
+ * on the create, nor on a session opened before T149, which advertised none.
+ * 2026-04-08 has no advertisement, and its official suite sends consent on the
+ * create. A request without `consent` changes nothing (UCP: the business keeps
+ * its prior position).
  */
-function applyConsentInput(deps: UcpCheckoutDeps, session: CheckoutSession, raw: unknown, version: UcpVersion): boolean {
-  if (raw === undefined || !offersConsent(deps)) return false;
+function applyConsentInput(deps: UcpCheckoutDeps, session: CheckoutSession, raw: unknown, version: UcpVersion, advertised: boolean): ConsentOutcome {
+  if (raw === undefined || !offersConsent(deps)) return "none";
+  if (version === "2026-08-25" && !advertised) return "unadvertised";
   const current = session.consent ?? defaultConsent();
   const next = applyConsent(current, parseConsent(raw, version));
-  if (session.consent !== undefined && sameConsent(session.consent, next)) return false;
+  if (session.consent !== undefined && sameConsent(session.consent, next)) return "none";
   session.consent = next;
-  return true;
+  return "applied";
 }
 
-function applyInput(deps: UcpCheckoutDeps, session: CheckoutSession, input: SessionInput, version: UcpVersion): void {
+/** Said when a platform's consent was ignored for coming before the store's options: so it is not lost unseen. */
+function consentNotice(outcome: ConsentOutcome): UcpMessage[] {
+  return outcome === "unadvertised"
+    ? [warning("consent_not_advertised", "buyer.consent counts once this store has advertised its consent options; confirm it in an update to this checkout", "$.buyer.consent")]
+    : [];
+}
+
+function applyInput(deps: UcpCheckoutDeps, session: CheckoutSession, input: SessionInput, version: UcpVersion, consentAdvertised: boolean): ConsentOutcome {
   // Every line, in the platform's order (T148); the same product in two lines stays two lines.
   session.lines = input.line_items.map((line) => ({ productId: line.item.id, quantity: line.quantity }));
   session.buyer = {
@@ -524,7 +538,7 @@ function applyInput(deps: UcpCheckoutDeps, session: CheckoutSession, input: Sess
     ...(input.buyer?.email === undefined ? {} : { email: input.buyer.email }),
     ...(input.buyer?.phone_number === undefined ? {} : { phone_number: input.buyer.phone_number }),
   };
-  applyConsentInput(deps, session, input.buyer?.consent, version);
+  const consent = applyConsentInput(deps, session, input.buyer?.consent, version, consentAdvertised);
   const method = input.fulfillment?.methods?.[0];
   if (method?.type === "pickup") {
     throw new VitrineeError("ValidationError", "this store only ships; pickup is not offered", { details: {} });
@@ -536,6 +550,7 @@ function applyInput(deps: UcpCheckoutDeps, session: CheckoutSession, input: Sess
   } else if (input.fulfillment !== undefined) {
     session.destination = null;
   }
+  return consent;
 }
 
 async function loadSession(deps: UcpCheckoutDeps, id: string): Promise<CheckoutSession | undefined> {
@@ -824,9 +839,10 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       // whatever profile or version it presents, completes it without a mandate from this platform.
       if (ap2Negotiated(view)) session.ap2 = { platformProfile: view.platform.url, mandate: null };
       // Every session opened from T149 on carries the store's consent options, advertised in 2026-08-25 (VT-47).
+      // Its consent options are advertised in this very answer, so a 2026-08-25 create's consent does not count yet.
       if (offersConsent(deps)) session.consent = defaultConsent();
-      applyInput(deps, session, input, view.version);
-      const messages = await refresh(deps, session);
+      const consent = applyInput(deps, session, input, view.version, false);
+      const messages = [...(await refresh(deps, session)), ...consentNotice(consent)];
       await deps.sessions.save(session);
       res.status(201).json(await checkoutResponse(deps, session, view, messages));
     })),
@@ -853,8 +869,9 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         if (session.status !== "incomplete" && session.status !== "ready_for_complete") {
           return sendError(res, 409, "invalid_state", `checkout is ${session.status} and can no longer change`);
         }
-        applyInput(deps, session, input, ucpVersionOf(res));
-        const messages = await refresh(deps, session);
+        // A session opened before T149 never advertised consent options; one opened since did, on its create.
+        const consent = applyInput(deps, session, input, ucpVersionOf(res), session.consent !== undefined);
+        const messages = [...(await refresh(deps, session)), ...consentNotice(consent)];
         session.updatedAt = deps.now().toISOString();
         await deps.sessions.save(session);
         res.json(await checkoutResponse(deps, session, viewOf(req, res), messages));
@@ -924,13 +941,6 @@ async function complete(
     return;
   }
 
-  // 2026-08-25 lets the platform confirm the buyer's consent with the payment (T149). It is taken before anything
-  // else is checked: a mandate signed over other consent no longer matches the checkout, and nothing is charged.
-  if (view.version === "2026-08-25" && applyConsentInput(deps, session, input.buyer?.consent, view.version)) {
-    session.updatedAt = deps.now().toISOString();
-    await deps.sessions.save(session);
-  }
-
   const selected = input.payment.instruments.filter((instrument) => instrument.selected !== false);
   const instrument = selected.length === 1 ? selected[0] : undefined;
   if (instrument === undefined || instrument.handler_id !== STELLAR_X402_HANDLER_ID || instrument.type !== STELLAR_X402_INSTRUMENT_TYPE) {
@@ -943,6 +953,14 @@ async function complete(
     return;
   }
   const transaction = credential.data.payload.transaction;
+
+  // 2026-08-25 lets the platform confirm the buyer's consent with the payment (T149). Taken once the request is a
+  // well-formed payment, so a malformed one changes nothing; and before the consent's data and the AP2 mandate are
+  // checked, so a mandate signed over other consent no longer matches the checkout, and nothing is charged.
+  if (view.version === "2026-08-25" && applyConsentInput(deps, session, input.buyer?.consent, view.version, session.consent !== undefined) === "applied") {
+    session.updatedAt = deps.now().toISOString();
+    await deps.sessions.save(session);
+  }
 
   if (session.status === "incomplete") {
     const messages = await refresh(deps, session);

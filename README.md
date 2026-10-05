@@ -314,8 +314,8 @@ Phase 7 makes the same purchase through the
 [Universal Commerce Protocol](https://ucp.dev): every Vitrinee store publishes
 `/.well-known/ucp`, and AgentPey pays its UCP checkout with the
 [`com.agentpey.stellar_x402`](https://agentpey.com/ucp/handlers/stellar-x402/spec)
-payment handler, from a `policy_rail` of its own (3.00 USDC per purchase, 5.00
-per day). Deploy that rail once, then buy:
+payment handler, from a `policy_rail` of its own (5.00 USDC per purchase, 10.00
+per day since T148). Deploy that rail once, then buy:
 
 ```bash
 pnpm run deploy:policy-rail -- --profile ucp --principal G...
@@ -323,6 +323,13 @@ pnpm run deploy:policy-rail -- --profile ucp --principal G...
 
 ```bash
 pnpm run ucp:buy -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666
+```
+
+With the buyer's marketing consent (T149): the agent confirms it once the store has advertised its consent options,
+and the store takes it to the Shopify order (`buyerAcceptsMarketing`):
+
+```bash
+pnpm run ucp:buy -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --ucp-version 2026-08-25 --marketing yes
 ```
 
 The official UCP conformance suite, against a local Vitrinee store that pays with the suite's test method (T131; needs [`uv`](https://docs.astral.sh/uv/)). Results, test by test, in [`docs/fase-8-agentes-reales/evidencia/T131.md`](docs/fase-8-agentes-reales/evidencia/T131.md):

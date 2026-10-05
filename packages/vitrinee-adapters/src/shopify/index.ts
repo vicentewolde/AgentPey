@@ -292,12 +292,13 @@ export class ShopifyStoreAdapter implements StoreAdapter {
 
   /**
    * Shopify's own consent field (T149): "Whether the customer consented to receive email updates from the shop". Sent
-   * only when the buyer decided; and a "yes" only with the buyer's own email, never the placeholder `email` makes up.
+   * only when the buyer decided. A "yes" needs the buyer's own email, never the placeholder `email` makes up; without
+   * one the field is left out rather than recording a "no" the buyer never said (the UCP checkout stops that case first).
    */
   private acceptsMarketing(input: CreateOrderInput): { buyerAcceptsMarketing?: boolean } {
     const marketing = input.buyer.consent?.marketing;
-    if (marketing === undefined) return {};
-    return { buyerAcceptsMarketing: marketing && input.buyer.email !== undefined };
+    if (marketing === undefined || (marketing && input.buyer.email === undefined)) return {};
+    return { buyerAcceptsMarketing: marketing };
   }
 
   private email(input: CreateOrderInput): string {

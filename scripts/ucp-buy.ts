@@ -12,8 +12,9 @@
  * the platform key (`AGENTPEY_PLATFORM_AP2_SECRET`, `pnpm run ap2:platform-key`).
  * The mandate and the keys a third party needs to check it are written to
  * `.vitrinee/ap2-t134/` for `scripts/ap2-crosscheck/verify.py --closed`.
- * `--marketing yes|no` (T149) sends the buyer's marketing consent with the
- * checkout, in the version's shape; the store passes it to its platform order.
+ * `--marketing yes|no` (T149) sends the buyer's marketing consent, in the
+ * version's shape, in an update once the store has advertised its consent
+ * options; the store passes it to its platform order.
  *
  * The same chain of trust as `pnpm run demo:pay-real`, through UCP instead
  * of a bare HTTP 402:

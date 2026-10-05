@@ -438,12 +438,24 @@ export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch
   const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
   const origin = input.storeUrl.replace(/\/+$/, "");
   const store = await readStoreHandler(call, origin);
-  const created = await call("POST", `${store.endpoint}/checkout-sessions`, {
+  const { consent, ...buyer } = input.buyer ?? {};
+  const session = (withConsent: boolean) => ({
     line_items: lines.map((line) => ({ item: { id: line.productId }, quantity: line.quantity })),
-    ...(input.buyer === undefined ? {} : { buyer: input.buyer }),
+    ...(input.buyer === undefined ? {} : { buyer: withConsent && consent !== undefined ? { ...buyer, consent } : buyer }),
     fulfillment: { methods: [{ type: "shipping", destinations: [input.destination] }] },
   });
-  const { checkout, requirements, raw, lines: opened } = requirementsOf(created.json, created.status, store, origin);
+  let reply = await call("POST", `${store.endpoint}/checkout-sessions`, session(false));
+  // The buyer's consent (T149) goes in an update: UCP 2026-08-25 has a store count only the consent options it
+  // advertised in an earlier answer, and the create's answer is where it advertises them. Before any mandate is opened.
+  if (consent !== undefined) {
+    const opened = requirementsOf(reply.json, reply.status, store, origin).checkout;
+    reply = await call("PUT", `${store.endpoint}/checkout-sessions/${encodeURIComponent(opened.id)}`, session(true));
+    const updated = checkoutSchema.safeParse(reply.json);
+    if (updated.success && updated.data.id !== opened.id) {
+      throw new AgentPassError("MerchantRejectedRequest", "the store answered the consent update with another checkout", { details: { checkoutId: opened.id, answered: updated.data.id } });
+    }
+  }
+  const { checkout, requirements, raw, lines: opened } = requirementsOf(reply.json, reply.status, store, origin);
   // The store's own answer says what it will charge for: it must be the lines asked for (T148 review).
   if (!sameLines(lines, opened)) {
     throw new AgentPassError("InvalidProduct", "the store opened a checkout for other lines than the ones asked for", {

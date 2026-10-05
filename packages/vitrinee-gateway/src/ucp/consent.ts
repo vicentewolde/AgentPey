@@ -74,11 +74,16 @@ const currentInput = z
 /** A purpose as a 2026-08-25 request carries it. `description` and `links` are the business's, and ignored if sent. */
 const choiceInput = z.looseObject({ granted: z.boolean(), source: z.enum(["business", "platform"]) });
 
+const businessDefault = (purpose: ConsentPurpose): ConsentChoice => ({ granted: BUSINESS_DEFAULT[purpose], source: "business" });
+
 /** A new session's consent: the store's default for every purpose. */
 export function defaultConsent(): SessionConsent {
-  const consent = {} as SessionConsent;
-  for (const purpose of CONSENT_PURPOSES) consent[purpose] = { granted: BUSINESS_DEFAULT[purpose], source: "business" };
-  return consent;
+  return {
+    marketing: businessDefault("marketing"),
+    analytics: businessDefault("analytics"),
+    preferences: businessDefault("preferences"),
+    sale_or_sharing: businessDefault("sale_or_sharing"),
+  };
 }
 
 /**
@@ -92,9 +97,15 @@ export function parseConsent(raw: unknown, version: UcpVersion): ConsentUpdate {
   try {
     const update: ConsentUpdate = {};
     if (version === "2026-04-08") {
-      const legacy = legacyInput.parse(raw) as Record<string, boolean | undefined>;
+      const legacy = legacyInput.parse(raw);
+      const given: Record<ConsentPurpose, boolean | undefined> = {
+        marketing: legacy.marketing,
+        analytics: legacy.analytics,
+        preferences: legacy.preferences,
+        sale_or_sharing: legacy.sale_of_data,
+      };
       for (const purpose of CONSENT_PURPOSES) {
-        const granted = legacy[LEGACY_NAME[purpose]];
+        const granted = given[purpose];
         if (granted !== undefined) update[purpose] = { granted, source: "platform" };
       }
       return update;
@@ -127,7 +138,7 @@ export function applyConsent(current: SessionConsent, update: ConsentUpdate): Se
   for (const purpose of CONSENT_PURPOSES) {
     const choice = update[purpose];
     if (choice === undefined) continue;
-    next[purpose] = choice.source === "platform" ? { granted: choice.granted, source: "platform" } : { granted: BUSINESS_DEFAULT[purpose], source: "business" };
+    next[purpose] = choice.source === "platform" ? { granted: choice.granted, source: "platform" } : businessDefault(purpose);
   }
   return next;
 }
@@ -136,26 +147,24 @@ export function sameConsent(a: SessionConsent, b: SessionConsent): boolean {
   return CONSENT_PURPOSES.every((purpose) => a[purpose].granted === b[purpose].granted && a[purpose].source === b[purpose].source);
 }
 
-/** What the store tells the buyer each purpose means. Part of what an AP2 mandate signs (`buyer` is in its terms): change with care. */
-function descriptionOf(purpose: ConsentPurpose, merchant: string): string {
-  switch (purpose) {
-    case "marketing":
-      return `Email updates and offers from ${merchant}. Needs the buyer's email.`;
-    case "analytics":
-      return `Analytics and performance tracking by ${merchant}. The buyer's choice is passed to the store with the order.`;
-    case "preferences":
-      return `Storing the buyer's preferences at ${merchant}. The buyer's choice is passed to the store with the order.`;
-    case "sale_or_sharing":
-      return `Selling or sharing the buyer's data with third parties. The buyer's choice is passed to the store with the order.`;
-  }
-}
+/**
+ * What the store tells the buyer each purpose means. Part of what an AP2
+ * mandate signs (`buyer` is in its terms), so it names no store: renaming a
+ * shop must not void the mandates open on it. Change the text with care.
+ */
+const DESCRIPTION: Readonly<Record<ConsentPurpose, string>> = {
+  marketing: "Email updates and offers from this store. Needs the buyer's email.",
+  analytics: "Analytics and performance tracking by this store. The buyer's choice is passed to the store with the order.",
+  preferences: "Storing the buyer's preferences at this store. The buyer's choice is passed to the store with the order.",
+  sale_or_sharing: "Selling or sharing the buyer's data with third parties. The buyer's choice is passed to the store with the order.",
+};
 
 /**
  * `buyer.consent` as a response in `version` shows it, or undefined for none.
  * 2026-08-25 advertises every purpose; 2026-04-08 has no defaults to show, so
  * it echoes only what the buyer decided.
  */
-export function renderConsent(consent: SessionConsent | undefined, version: UcpVersion, merchant: string): Record<string, unknown> | undefined {
+export function renderConsent(consent: SessionConsent | undefined, version: UcpVersion): Record<string, unknown> | undefined {
   if (consent === undefined) return undefined;
   if (version === "2026-04-08") {
     const legacy: Record<string, boolean> = {};
@@ -165,7 +174,7 @@ export function renderConsent(consent: SessionConsent | undefined, version: UcpV
     return Object.keys(legacy).length === 0 ? undefined : legacy;
   }
   return Object.fromEntries(
-    CONSENT_PURPOSES.map((purpose) => [PURPOSE_ID[purpose], { granted: consent[purpose].granted, source: consent[purpose].source, description: descriptionOf(purpose, merchant) }]),
+    CONSENT_PURPOSES.map((purpose) => [PURPOSE_ID[purpose], { granted: consent[purpose].granted, source: consent[purpose].source, description: DESCRIPTION[purpose] }]),
   );
 }
 

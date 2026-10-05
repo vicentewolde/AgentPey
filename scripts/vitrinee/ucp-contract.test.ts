@@ -461,10 +461,11 @@ describe("AgentPey pays a Vitrinee store with AP2 mandates (T134, R-15)", () => 
   /** A store of its own, reading the platform profiles it is given; and an agent's AP2 options with a fresh intent memory. */
   async function setup(profiles: Parameters<typeof fakePlatformProfiles>[0]) {
     const registry = fakeRegistry();
+    const store = new MockStoreAdapter();
     const own = createApp({
       platformProfiles: fakePlatformProfiles(profiles),
       config: testConfig(),
-      adapter: new MockStoreAdapter(),
+      adapter: store,
       facilitator: fakeFacilitator({ settle: { payer: RAIL, transaction: "ab12".padEnd(64, "0") } }),
       anchorer: registry.anchorer,
       registry: registry.registry,
@@ -480,14 +481,15 @@ describe("AgentPey pays a Vitrinee store with AP2 mandates (T134, R-15)", () => 
       source: { mandate_id: crypto.randomUUID(), hash: "b".repeat(64), registry: REGISTRY },
       closed,
     };
-    const pay = (theIntent: PurchaseIntent, scheme = fakeScheme(), lines?: Array<{ productId: string; quantity: number }>) =>
+    const pay = (theIntent: PurchaseIntent, scheme = fakeScheme(), lines?: Array<{ productId: string; quantity: number }>, consent?: Record<string, unknown>) =>
       executeUcpPayment(
         { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme, platformProfile: AGENTPEY_PLATFORM_PROFILE_AP2, ap2 },
-        { storeUrl: server.url, ...(lines === undefined ? { productId: "gorro-andes", quantity: 1 } : { lines }), buyer: { email: "ana@example.com" }, destination: DESTINATION, intent: theIntent, scope: grant, mandate: mandate(grant), venueId: makeVenueId("vitrinee", MERCHANT), registry: venueRegistry },
+        { storeUrl: server.url, ...(lines === undefined ? { productId: "gorro-andes", quantity: 1 } : { lines }), buyer: { email: "ana@example.com", ...(consent === undefined ? {} : { consent }) }, destination: DESTINATION, intent: theIntent, scope: grant, mandate: mandate(grant), venueId: makeVenueId("vitrinee", MERCHANT), registry: venueRegistry },
       );
     return {
       closed,
       pay,
+      store,
       stop: async () => {
         own.anchors.stop();
         await server.close();
@@ -509,6 +511,26 @@ describe("AgentPey pays a Vitrinee store with AP2 mandates (T134, R-15)", () => 
       expect(again).toMatchObject({ code: "Ap2MandateInvalid" });
       expect(mayHaveBeenPaid(again)).toBe(false);
       expect(scheme.calls).toEqual([]);
+    } finally {
+      await stop();
+    }
+  });
+
+  it("confirms the buyer's consent once the store advertised it, closes the mandate over it, and the store takes it to its order (T149)", async () => {
+    const { pay, store, stop } = await setup({ [AGENTPEY_PLATFORM_PROFILE_AP2]: AP2_PROFILE_ENTRY });
+    try {
+      const consent = {
+        "dev.ucp.consent.marketing": { granted: true, source: "platform" },
+        "dev.ucp.consent.analytics": { granted: false, source: "business" },
+        "dev.ucp.consent.preferences": { granted: false, source: "business" },
+        "dev.ucp.consent.sale_or_sharing": { granted: false, source: "business" },
+      };
+      const paid = await pay(intent("gorro-andes", 1, "13.6736842", "13.6736842"), fakeScheme(), undefined, consent);
+      expect(paid.orderId).toMatch(/^ord_/);
+      expect(paid.ap2Mandate?.split("~~")).toHaveLength(2);
+      const order = await store.getOrder("mock-0001");
+      expect(order?.buyer).toMatchObject({ email: "ana@example.com", consent: { marketing: true } });
+      expect(order?.buyer.consent).toEqual({ marketing: true });
     } finally {
       await stop();
     }

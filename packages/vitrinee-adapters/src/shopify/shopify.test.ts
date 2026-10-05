@@ -304,10 +304,10 @@ describe("createOrder", () => {
       expect((await sentOrder({ stellarAccount: "GAGENT", email: "ana@example.com", consent: { marketing: false } }))["buyerAcceptsMarketing"]).toBe(false);
     });
 
-    it("never says yes for the placeholder email it makes up", async () => {
+    it("never says yes for the placeholder email it makes up, nor a no the buyer did not say", async () => {
       const order = await sentOrder({ stellarAccount: "GAGENT", consent: { marketing: true } });
       expect(order["email"]).toMatch(/@agent\.vitrinee\.test$/);
-      expect(order["buyerAcceptsMarketing"]).toBe(false);
+      expect(order).not.toHaveProperty("buyerAcceptsMarketing");
     });
 
     it("leaves the field out when the buyer did not decide", async () => {

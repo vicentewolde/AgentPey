@@ -41,6 +41,14 @@
           "extends": "dev.ucp.shopping.checkout"
         }
       ],
+      "dev.ucp.shopping.buyer_consent": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/extensions/buyer-consent",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/buyer_consent.json",
+          "extends": "dev.ucp.shopping.checkout"
+        }
+      ],
       "dev.ucp.shopping.order": [
         {
           "version": "2026-08-25",
