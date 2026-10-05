@@ -273,7 +273,7 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] `T135-mpp-charge.md` con la evidencia del intento desde un `policy_rail` en testnet ([evidencia](evidencia/T135-mpp-charge.md), `R-20`)
   - [ ] la brecha está en el anexo del SEP y el texto del issue, listo; publicado con el OK del usuario (brecha 21 en el anexo y [texto del issue](evidencia/T135-issue-mpp.md) listos; falta publicarlo, con OK)
-  - [x] la frase que se puede decir en el video ("evaluamos MPP", no "soportamos MPP") está escrita con su evidencia ([evidencia](evidencia/T135-mpp-charge.md) §6)
+  - [x] la frase que se puede decir en el video ("evaluamos MPP", no "soportamos MPP") está escrita con su evidencia ([evidencia](evidencia/T135-mpp-charge.md) §7)
 
 #### T136 · SDK publicado en npm
 - **Prioridad:** si alcanza · **Estimación:** 8 h · **Delegable a Codex:** el README y el ejemplo; el paquete y la publicación no

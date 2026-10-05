@@ -613,7 +613,8 @@ fuente (sección 4.1 del spec): `@stellar/mpp` 0.7.1 solo acepta un pagador
 `did:pkh:stellar:…:G…`. Desde el `policy_rail`, el servidor oficial rechazó los
 cuatro intentos (pull y patrocinado, con el contrato o su dueño como pagador)
 antes de enviar nada a la red, y cobró un control hecho con una llave clásica.
-Se decide, aplicando `R-4`:
+La firma del rail no es el problema: simulada en modo estricto, la red acepta
+esa transferencia (precisado en `/revisar`). Se decide, aplicando `R-4`:
 
 1. **No se construye el pago por MPP.** En el video: "evaluamos MPP", no
    "soportamos MPP". La brecha va al anexo del SEP (brecha 21) y el texto del

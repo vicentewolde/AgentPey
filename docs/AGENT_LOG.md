@@ -8055,3 +8055,15 @@ ESTADO al día (Grok sí, dots y Muse no; "Siguiente paso" corregido).
 
 Pendiente: `/revisar`; push, PR y merge con OK; publicar el issue solo con OK. `AGENTS.md`: sin cambios (T135 no es
 delegable). Exponential: T135 a `IN_PROGRESS`.
+
+## 2026-10-05 (38) — cc/t135-mpp-charge (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T135 sin bloqueantes; corregidos los 9 hallazgos a pedido del usuario, sin mover plata. El script
+exige el motivo esperado del SDK en cada intento, no cuenta una excepción como rechazo, compara el saldo del rail
+(legible e igual) y simula en modo `enforce` la transferencia firmada por el rail (la red la acepta). Saldos leídos con
+zod, `.env.local` ausente como `ProbeError`, `--skip-control` remite a la tx del control. Evidencia (§3 con la corrida
+nueva, §5 de la revisión), brecha 21, issue (cita las líneas del SDK), README, `R-20` y BITACORA precisados.
+
+Pendiente: push, PR y merge con OK; publicar el issue solo con OK. `AGENTS.md`: sin cambios. Exponential: sin cambios.

@@ -751,9 +751,11 @@ construir, más quince que aparecieron después:
     debería definir el canal y cómo se notifica a cada parte.
 21. **MPP charge no admite una cuenta-contrato como pagador** (T135, `R-4`,
     `R-20`). El SDK oficial (`@stellar/mpp` 0.7.1) solo acepta un pagador
-    `did:pkh:stellar:…:G…`: un pago desde el `policy_rail` se rechaza en los
-    cuatro modos probados en testnet, antes de enviarse a la red, y el mismo
-    servidor cobra con una llave clásica. Con MPP, un agente pierde los topes
+    `did:pkh:stellar:…:G…`: en testnet, un pago desde el `policy_rail` se
+    rechaza en los cuatro intentos (pull y patrocinado; push no se probó), por
+    el tipo de pagador y antes de enviarse a la red, aunque la red sí acepta la
+    transferencia firmada por el rail (simulación estricta); y el servidor sin
+    patrocinio cobra con una llave clásica (el patrocinado no tuvo control). Con MPP, un agente pierde los topes
     que aplica la red, que son la tesis de este anexo. Un SEP debería admitir
     pagadores contrato en los medios de pago de Stellar, verificando su
     `__check_auth` con una simulación estricta y no con una firma fuera de la

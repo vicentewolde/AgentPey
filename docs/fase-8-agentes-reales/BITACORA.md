@@ -385,6 +385,15 @@ que el rechazo sea por el pagador), y un error de lectura que pareció un
 hallazgo se descartó con un diagnóstico aparte. El modo push no se probó, por
 decisión del usuario: movería plata para un cobro que se rechaza igual.
 
+**La revisión.** `/revisar` no encontró bloqueantes, pero sí que el veredicto
+del script podía decir "rechazado" ante un rechazo por otra causa (una falla de
+la red, por ejemplo). Se corrigió, a pedido del usuario y sin mover plata: cada
+intento exige el motivo exacto del SDK, se compara el saldo del rail antes y
+después, y un paso nuevo simula la transferencia firmada por el rail en modo
+estricto, que la red acepta. Eso deja probado que la firma es buena y que el
+único obstáculo es que MPP no acepta un contrato como pagador. También se
+aclaró que el servidor patrocinado no tuvo control, y se precisó el issue.
+
 ## T149 · El consentimiento del comprador llega a la tienda (2026-10-05, cerrada)
 
 **Qué quedó funcionando.** Cuando un agente le dice a la tienda qué aceptó el

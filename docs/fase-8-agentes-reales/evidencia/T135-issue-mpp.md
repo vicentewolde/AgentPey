@@ -23,7 +23,8 @@ agent's classic key.
 
 The SDK's own charge server (`Mppx.create` + `stellar.charge`, unsponsored and sponsored) charging 0.01 USDC, and a
 `transfer(from = <contract>, to, amount)` whose authorization entry is signed for the contract (address credentials,
-signature `Vec<{ public_key, signature }>`, the shape `__check_auth` decodes):
+signature `Vec<{ public_key, signature }>`, the shape `__check_auth` decodes). Simulated in enforcing mode, that
+signed transfer succeeds: the contract's `__check_auth` accepts it. Then:
 
 | Attempt | Credential source | Result |
 |---|---|---|
@@ -31,9 +32,11 @@ signature `Vec<{ public_key, signature }>`, the shape `__check_auth` decodes):
 | pull, contract's signer as declared payer | `did:pkh:stellar:testnet:G…` | `Transfer "from" does not match credential source.` |
 | sponsored, signer as source | `did:pkh:stellar:testnet:G…` | `Transfer "from" does not match credential source.` |
 | sponsored, contract as payer | `did:pkh:stellar:testnet:C…` | `Credential source contains an invalid Stellar public key.` |
-| control: the SDK client with a classic key | `did:pkh:stellar:testnet:G…` | paid (tx `9e9836644e434df99a5b359a94a145bbe36cd1a3219ecebd6f32a6fb8efd9be9`) |
+| control: the SDK client with a classic key, unsponsored server | `did:pkh:stellar:testnet:G…` | paid (tx `9e9836644e434df99a5b359a94a145bbe36cd1a3219ecebd6f32a6fb8efd9be9`) |
 
-Nothing was broadcast in the four refused attempts. We did not try push mode: there the client broadcasts before the
+Nothing was broadcast in the four refused attempts, and the contract's balance did not change. The sponsored server's
+fee payer was an unfunded account, so there is no sponsored control; those two refusals stand on the reason the SDK
+gives before it uses the network. We did not try push mode: there the client broadcasts before the
 server verifies, so a contract payer would move funds and still be refused.
 
 **Where it happens**
@@ -48,9 +51,11 @@ server verifies, so a contract payer would move funds and still be refused.
 
 1. Accept `did:pkh:stellar:<network>:C…` as a charge source, and require the transfer's `from` to equal it (the same
    rule as today, with a contract address).
-2. For a contract authorizer, do not verify the signature off-chain: verify the transaction by simulating it in
-   enforcing mode before broadcasting (the sponsored path already simulates), and treat a failed `__check_auth` as a
-   verification failure. The on-chain result then settles it, as for any payment.
+2. Sponsored path: for a contract authorizer, skip the off-chain signature check (`verifyAuthEntrySignature`,
+   `dist/shared/verify-auth.js` line 34 in 0.7.1) and rely on the enforcing-mode simulation that path already runs
+   before broadcasting (`dist/charge/server/Charge.js` line 391), treating a failed `__check_auth` as a verification
+   failure. The unsponsored path does no off-chain signature check at all: there, point 1 alone is enough, since the
+   network evaluates `__check_auth` and the source account pays the fee.
 3. Client: let the caller give the payer address and an authorization-entry signer (a callback like
    `authorizeEntry`'s), instead of a `Keypair` only. Contract payers would use pull mode; `signedHash` push mode binds
    the credential with a classic-key signature, which a contract cannot produce.
