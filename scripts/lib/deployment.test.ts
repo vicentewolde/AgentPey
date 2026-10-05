@@ -122,6 +122,25 @@ describe("readDeployment", () => {
     );
   });
 
+  it("rejects a rail limit that is not a decimal amount, since ucp:buy reads it as one (T148 review, R-19)", async () => {
+    const rail = {
+      contractId: "CCGAGRLVERK2A6PVQNU6YY62ANWNSFO32DM6OMFLRNLVHYJBLLON4G3I",
+      wasmHash: "854b19f7bc472cb5ed8ada127ab12afde7857b7810a11e19a0490978cc7d7b88",
+      owner: "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K",
+      principal: "GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN",
+      asset: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      perTx: "5.0000000",
+      perDay: "10.0000000",
+      validUntil: "2027-10-05T14:19:20.000Z",
+      deployedAt: "2026-10-05T14:19:25.000Z",
+      protocolVersion: 29,
+    };
+    await expect(readDeployment(await tempFile(JSON.stringify({ ...VALID, policyRailUcp: rail })))).resolves.toMatchObject({ policyRailUcp: { perTx: "5.0000000" } });
+    for (const perTx of ["lots", "-1", "5.00000001", "1e3"]) {
+      await expect(readDeployment(await tempFile(JSON.stringify({ ...VALID, policyRailUcp: { ...rail, perTx } })))).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "ConfigError"));
+    }
+  });
+
   it("rejects unknown fields, so a typo cannot silently survive a round trip", async () => {
     const path = await tempFile(JSON.stringify({ ...VALID, contractID: "typo" }));
 

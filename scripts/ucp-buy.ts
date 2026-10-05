@@ -100,7 +100,8 @@ const { values } = parseArgs({
   options: {
     store: { type: "string" },
     product: { type: "string", multiple: true },
-    quantity: { type: "string", default: "1" },
+    // No default: whether it was given at all is what a cart refuses, in either spelling (`--quantity 2`, `--quantity=2`).
+    quantity: { type: "string" },
     email: { type: "string", default: "comprador@agentpey.com" },
     "ucp-version": { type: "string", default: "2026-04-08" },
     ap2: { type: "boolean", default: false },
@@ -138,17 +139,18 @@ async function main(): Promise<void> {
     }
     return n;
   };
-  if (values.product.length > 1 && process.argv.includes("--quantity")) {
+  if (values.product.length > 1 && values.quantity !== undefined) {
     throw new AgentPassError("InvalidArguments", "a cart gives each line its quantity as --product <id>:<n>, not --quantity", { details: {} });
   }
   if (values.product.length > MAX_UCP_LINES) {
     throw new AgentPassError("InvalidArguments", `a cart has at most ${MAX_UCP_LINES} lines`, { details: { lines: values.product.length } });
   }
-  // `id:n` or `id` (then --quantity). Product ids are digits or slugs, never with a colon.
+  // `id:n` or `id` (then --quantity, else 1). Product ids are digits or slugs, never with a colon.
   const lines = values.product.map((spec) => {
-    const [id = "", count] = spec.split(":");
-    if (id === "") throw new AgentPassError("InvalidArguments", "--product needs an id", { details: { product: spec } });
-    return { productId: id, quantity: wholeQuantity(count ?? values.quantity) };
+    const parts = spec.split(":");
+    const [id = "", count] = parts;
+    if (id === "" || parts.length > 2) throw new AgentPassError("InvalidArguments", "--product is <id> or <id>:<n>", { details: { product: spec } });
+    return { productId: id, quantity: wholeQuantity(count ?? values.quantity ?? "1") };
   });
   const ucpVersion = values["ucp-version"];
   if (ucpVersion !== "2026-04-08" && ucpVersion !== "2026-08-25") {

@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 
-import { AgentPassError, stellarAddressSchema, stellarContractIdSchema } from "@agentpass/core";
+import { AgentPassError, decimalAmountSchema, stellarAddressSchema, stellarContractIdSchema } from "@agentpass/core";
 import { z } from "zod";
 
 import { TESTNET } from "./network.js";
@@ -36,8 +36,9 @@ export const policyRailDeploymentSchema = z.strictObject({
   principal: stellarAddressSchema.nullable().default(null),
   /** The one SEP-41 token this rail can move. */
   asset: stellarContractIdSchema,
-  perTx: z.string().min(1),
-  perDay: z.string().min(1),
+  /** Read back as an authorisation limit (`ucp:buy` builds its Mandate from them, `R-19`): a decimal, or the file is refused. */
+  perTx: decimalAmountSchema,
+  perDay: decimalAmountSchema,
   validUntil: z.iso.datetime(),
   deployedAt: z.iso.datetime(),
   protocolVersion: z.number().int().positive(),
