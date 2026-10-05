@@ -26,6 +26,17 @@ import {
 } from "./schemas.js";
 import type { AgentPeyMandateRef, Ap2Item, Ap2Merchant, Ap2PaymentInstrument } from "./schemas.js";
 
+/** One line of the purchase an open checkout mandate allows (T148): an item and how many. */
+export interface OpenMandateLine {
+  readonly item: Ap2Item;
+  readonly quantity: number;
+}
+
+/**
+ * The purchase an open mandate pair is for: one item (`item`, `quantity`), or
+ * a cart (`lines`, T148), each line its own `checkout.line_items` entry, and
+ * never both. A one-item task signs exactly what it signed before T148.
+ */
 export interface OpenMandateTask {
   /** `iss`: the Trusted Agent Provider signing on the principal's behalf. */
   readonly issuer: string;
@@ -34,8 +45,11 @@ export interface OpenMandateTask {
   /** `cnf.jwk`: the only agent that may close these mandates. */
   readonly agentKey: Ap2PublicJwk;
   readonly merchant: Ap2Merchant;
-  readonly item: Ap2Item;
-  readonly quantity: number;
+  /** One item: the shorthand for a single line. */
+  readonly item?: Ap2Item;
+  readonly quantity?: number;
+  /** Several lines, in the checkout's order (T148). */
+  readonly lines?: readonly OpenMandateLine[];
   /**
    * `payment.amount_range.max`, in AP2's minor unit: cents (`E-12`). AP2 reads
    * it as "minor (cents) unit of currency", so a Stellar amount (7 decimals)
@@ -50,12 +64,32 @@ export interface OpenMandateTask {
   readonly expiresAt: Date;
 }
 
+/**
+ * The lines a task allows, in order.
+ *
+ * @throws AgentPassError `Ap2MandateInvalid` unless the task names exactly one of `item`/`quantity` and `lines`
+ */
+function linesOf(task: OpenMandateTask): readonly OpenMandateLine[] {
+  if (task.lines !== undefined) {
+    if (task.item !== undefined || task.quantity !== undefined) throw invalid("an open mandate task names either one item or lines, not both", {});
+    if (task.lines.length === 0 || task.lines.length > MAX_OPEN_MANDATE_LINES) {
+      throw invalid(`an open checkout mandate allows 1 to ${MAX_OPEN_MANDATE_LINES} lines`, { lines: task.lines.length });
+    }
+    return task.lines;
+  }
+  if (task.item === undefined || task.quantity === undefined) throw invalid("an open mandate task needs an item and its quantity, or lines", {});
+  return [{ item: task.item, quantity: task.quantity }];
+}
+
 export interface OpenMandatePair {
   /** `mandate.checkout.open.1`, compact SD-JWT. */
   readonly checkout: string;
   /** `mandate.payment.open.1`, compact SD-JWT, bound to `checkout` by `payment.reference`. */
   readonly payment: string;
 }
+
+/** The most lines one open checkout mandate allows: a store's checkout carries at most ten. */
+export const MAX_OPEN_MANDATE_LINES = 10;
 
 const seconds = (date: Date): number => Math.floor(date.getTime() / 1000);
 
@@ -116,6 +150,7 @@ export async function issueOpenMandatePair(task: OpenMandateTask, signer: Ap2Sig
   if (task.expiresAt.getTime() <= task.issuedAt.getTime()) {
     throw invalid("an AP2 open mandate must expire after it is issued", { iat: task.issuedAt.toISOString(), exp: task.expiresAt.toISOString() });
   }
+  const lines = linesOf(task);
   if (task.maxAmount <= 0n || task.maxAmount > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw invalid("payment.amount_range.max must be a positive JSON-safe integer", { maxAmount: task.maxAmount.toString() });
   }
@@ -129,7 +164,7 @@ export async function issueOpenMandatePair(task: OpenMandateTask, signer: Ap2Sig
       constraints: [
         {
           type: "checkout.line_items",
-          items: [{ id: "line_1", acceptable_items: disclose([task.item]), quantity: task.quantity }],
+          items: lines.map((line, index) => ({ id: `line_${index + 1}`, acceptable_items: disclose([line.item]), quantity: line.quantity })),
         },
         { type: "checkout.allowed_merchants", allowed: disclose([task.merchant]) },
       ],

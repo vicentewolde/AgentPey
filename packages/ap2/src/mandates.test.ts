@@ -94,6 +94,41 @@ describe("issueOpenMandatePair → verifyOpenMandatePair", () => {
   });
 });
 
+describe("an open checkout mandate for a cart (T148)", () => {
+  const cart = [
+    { item: { id: "67624104591666", title: "Imán de cobre Atacama" }, quantity: 1 },
+    { item: { id: "67624245068082", title: "Taza de greda Chiloé" }, quantity: 2 },
+  ];
+  const oneItemOnly = { item: undefined, quantity: undefined };
+
+  it("carries one checkout.line_items entry per line, in order, and passes the official schema", async () => {
+    const issuer = ed25519TestKey();
+    const agent = ed25519TestKey();
+    const pair = await issueOpenMandatePair(testTask(agent.publicJwk, { ...oneItemOnly, lines: cart }), issuer.signer);
+    const verified = await verifyOpenMandatePair(pair, { issuerKey: issuer.publicJwk, now: DURING });
+    expect(verified.checkout.constraints[0]).toEqual({
+      type: "checkout.line_items",
+      items: [
+        { id: "line_1", acceptable_items: [cart[0]!.item], quantity: 1 },
+        { id: "line_2", acceptable_items: [cart[1]!.item], quantity: 2 },
+      ],
+    });
+    expect(ap2Errors(AP2_SCHEMA.openCheckoutMandate, await mandateOf(pair.checkout, issuer))).toEqual([]);
+    // Each line's item is its own disclosure, as the single item was.
+    expect(decodedDisclosures(pair.checkout)).toHaveLength(4);
+  });
+
+  it("refuses a task that names both forms, neither, no lines or more than ten", async () => {
+    const agent = ed25519TestKey();
+    const issuer = ed25519TestKey();
+    const tooMany = Array.from({ length: 11 }, () => cart[0]!);
+    for (const overrides of [{ lines: cart }, { ...oneItemOnly }, { ...oneItemOnly, lines: [] }, { ...oneItemOnly, lines: tooMany }]) {
+      const error = await rejection(issueOpenMandatePair(testTask(agent.publicJwk, overrides), issuer.signer));
+      expect(hasErrorCode(error, "Ap2MandateInvalid")).toBe(true);
+    }
+  });
+});
+
 describe("verifyOpenMandatePair rejects an altered pair, with a typed error", () => {
   it("a payment mandate from another export", async () => {
     const issuer = ed25519TestKey();

@@ -33,7 +33,7 @@ export {
   type OpenPaymentMandate,
 } from "./schemas.js";
 
-export { issueOpenMandatePair, type OpenMandatePair, type OpenMandateTask } from "./issue.js";
+export { MAX_OPEN_MANDATE_LINES, issueOpenMandatePair, type OpenMandateLine, type OpenMandatePair, type OpenMandateTask } from "./issue.js";
 
 export {
   verifyOpenCheckoutMandate,
