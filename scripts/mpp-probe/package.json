@@ -1,0 +1,22 @@
+{
+  "name": "agentpey-mpp-probe",
+  "private": true,
+  "description": "T135 technical probe: can an MPP charge be paid from a policy_rail? Outside the pnpm workspace on purpose: @stellar/mpp wants @stellar/stellar-sdk 15 and mppx/viem, the workspace uses 17.",
+  "type": "module",
+  "scripts": {
+    "probe": "tsx charge-probe.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stellar/mpp": "0.7.1",
+    "@stellar/stellar-sdk": "15.1.0",
+    "mppx": "0.6.31",
+    "viem": "2.57.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
+  }
+}

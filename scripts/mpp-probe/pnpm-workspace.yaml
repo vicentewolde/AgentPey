@@ -1,0 +1,6 @@
+# Its own workspace on purpose (T135): @stellar/mpp needs @stellar/stellar-sdk 15, mppx and viem,
+# which the AgentPey workspace does not carry. Same esbuild allowance as the root.
+packages: []
+
+allowBuilds:
+  esbuild: true

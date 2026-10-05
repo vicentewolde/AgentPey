@@ -19,5 +19,6 @@
       "@vitrinee/core": ["./packages/vitrinee-core/src/index.ts"]
     }
   },
-  "include": ["scripts/**/*"]
+  "include": ["scripts/**/*"],
+  "exclude": ["**/node_modules", "scripts/mpp-probe"]
 }
