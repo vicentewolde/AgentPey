@@ -11,8 +11,9 @@
  * - Only the store's own currency is accepted: the adapter asks Shopify for
  *   it once and refuses to sell if it is not the one the gateway prices in.
  */
-import { VitrineeError, currencyDecimals, formatUnits, parseDecimal } from "@vitrinee/core";
+import { VitrineeError, currencyDecimals } from "@vitrinee/core";
 
+import { MAX_ORDER_LINES, orderTotalLocal, platformLines, resolveOrderLines } from "../lines.js";
 import type { CreateOrderInput, PlatformOrder, Product, StoreAdapter } from "../types.js";
 import { ShopifyClient, ShopifyGraphqlError, ShopifyHttpError } from "./client.js";
 import type { ShopifyClientOptions, ShopifyCredentials } from "./client.js";
@@ -63,10 +64,13 @@ const ORDER_QUERY = `
     order(id: $id) {
       id createdAt cancelledAt displayFinancialStatus displayFulfillmentStatus
       currencyCode
-      fulfillments(first: 10) { id createdAt status trackingInfo(first: 1) { number url company } }
+      fulfillments(first: 10) {
+        id createdAt status trackingInfo(first: 1) { number url company }
+        fulfillmentLineItems(first: ${MAX_ORDER_LINES}) { nodes { quantity lineItem { variant { id } } } }
+      }
       totalPriceSet { shopMoney { amount currencyCode } }
       customAttributes { key value }
-      lineItems(first: 1) { nodes { quantity sku variant { id } } }
+      lineItems(first: ${MAX_ORDER_LINES}) { nodes { quantity sku variant { id } } }
     }
   }
 `;
@@ -93,7 +97,13 @@ interface OrderResponse {
     totalPriceSet?: { shopMoney: { amount: string; currencyCode: string } };
     customAttributes?: { key: string; value?: string | null }[];
     lineItems?: { nodes: { quantity?: number; sku?: string | null; variant?: { id: string } | null }[] };
-    fulfillments?: { id: string; createdAt: string; status?: string | null; trackingInfo?: { number?: string | null; url?: string | null; company?: string | null }[] }[];
+    fulfillments?: {
+      id: string;
+      createdAt: string;
+      status?: string | null;
+      trackingInfo?: { number?: string | null; url?: string | null; company?: string | null }[];
+      fulfillmentLineItems?: { nodes: { quantity?: number; lineItem?: { variant?: { id: string } | null } | null }[] };
+    }[];
   } | null;
 }
 
@@ -156,22 +166,8 @@ export class ShopifyStoreAdapter implements StoreAdapter {
   }
 
   async createOrder(input: CreateOrderInput): Promise<PlatformOrder> {
-    if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
-      throw new VitrineeError("ValidationError", "quantity must be a positive integer", { details: { quantity: input.quantity } });
-    }
-    const product = await this.getProduct(input.productId);
-    if (product === null) {
-      throw new VitrineeError("ProductNotFound", `no product with id "${input.productId}"`, { details: { productId: input.productId } });
-    }
-    if (product.stock !== null && product.stock < input.quantity) {
-      throw new VitrineeError("OutOfStock", `only ${product.stock} left of "${product.name}"`, {
-        details: { productId: product.id, available: product.stock, requested: input.quantity },
-      });
-    }
-
-    const decimals = currencyDecimals(this.currency);
-    const unit = parseDecimal(product.priceLocal, decimals);
-    const totalLocal = formatUnits(unit * BigInt(input.quantity), decimals);
+    const products = await resolveOrderLines(input.lines, (id) => this.getProduct(id));
+    const totalLocal = orderTotalLocal(input.lines, products, this.currency);
     const money = (amount: string) => ({ shopMoney: { amount, currencyCode: this.currency } });
     const pay = input.paymentRef;
     const note = [`Vitrinee ${input.reference}`, `x402 ${pay.network}`, `tx ${pay.txHash}`, `payer ${pay.payerAccount}`].join(" · ");
@@ -192,7 +188,7 @@ export class ShopifyStoreAdapter implements StoreAdapter {
           { key: "x402_amount_atomic", value: pay.amountUSDCAtomic },
           { key: "x402_payer", value: pay.payerAccount },
         ],
-        lineItems: [{ variantId: variantGid(product.id), quantity: input.quantity, priceSet: money(product.priceLocal) }],
+        lineItems: input.lines.map((line) => ({ variantId: variantGid(line.productId), quantity: line.quantity, priceSet: money(products.get(line.productId)!.priceLocal) })),
         transactions: [{ kind: "SALE", status: "SUCCESS", gateway: "Vitrinee x402", amountSet: money(totalLocal) }],
         shippingLines: [{ title: this.shippingMethodName, priceSet: money("0") }],
         shippingAddress: shipping,
@@ -216,9 +212,7 @@ export class ShopifyStoreAdapter implements StoreAdapter {
       platform: this.name,
       status: "paid",
       reference: input.reference,
-      productId: product.id,
-      sku: product.sku,
-      quantity: input.quantity,
+      lines: platformLines(input.lines, products),
       totalLocal,
       currency: this.currency,
       paymentRef: structuredClone(input.paymentRef),
@@ -233,7 +227,6 @@ export class ShopifyStoreAdapter implements StoreAdapter {
     const { order } = await this.call<OrderResponse>(ORDER_QUERY, { id: orderGid(platformOrderId) });
     if (order === null) return null;
     const attrs = new Map((order.customAttributes ?? []).map((a) => [a.key, a.value ?? ""]));
-    const line = order.lineItems?.nodes[0];
     const money = order.totalPriceSet?.shopMoney;
     const currency = money?.currencyCode ?? order.currencyCode ?? this.currency;
     return {
@@ -241,9 +234,11 @@ export class ShopifyStoreAdapter implements StoreAdapter {
       platform: this.name,
       status: order.cancelledAt ? "canceled" : order.displayFinancialStatus === "PAID" ? "paid" : "pending",
       reference: attrs.get("vitrinee_reference") ?? "",
-      productId: line?.variant?.id === undefined ? "" : numericId(line.variant.id),
-      sku: line?.sku ?? "",
-      quantity: line?.quantity ?? 0,
+      lines: (order.lineItems?.nodes ?? []).map((line) => ({
+        productId: line.variant?.id === undefined ? "" : numericId(line.variant.id),
+        sku: line.sku ?? "",
+        quantity: line.quantity ?? 0,
+      })),
       totalLocal: money === undefined ? "0" : exactDecimal(money.amount, currencyDecimals(currency), "total"),
       currency,
       paymentRef: {
@@ -262,8 +257,13 @@ export class ShopifyStoreAdapter implements StoreAdapter {
         .filter((f) => f.status === "SUCCESS")
         .map((f) => {
           const tracking = f.trackingInfo?.[0];
+          // Which lines went in this parcel (T148); a fulfillment that names none says nothing about them.
+          const lines = (f.fulfillmentLineItems?.nodes ?? []).flatMap((node) =>
+            node.lineItem?.variant?.id === undefined || node.quantity === undefined || node.quantity <= 0 ? [] : [{ productId: numericId(node.lineItem.variant.id), quantity: node.quantity }],
+          );
           return {
             id: numericId(f.id),
+            ...(lines.length === 0 ? {} : { lines }),
             shippedAt: f.createdAt,
             ...(tracking?.number ? { trackingNumber: tracking.number } : {}),
             ...(tracking?.url ? { trackingUrl: tracking.url } : {}),

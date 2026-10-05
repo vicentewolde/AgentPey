@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AnchorWorker } from "./anchoring.js";
 import { createApp, type AppDeps, type VitrineeApp } from "./app.js";
-import { fulfilPaidPurchase, type CheckoutDeps } from "./checkout.js";
+import { fulfilPaidPurchase, purchaseQuote, type CheckoutDeps } from "./checkout.js";
 import { OrderStore, type OrderPersistence } from "./orders.js";
 import { Reservations } from "./reservations.js";
 import { SettlementLedger } from "./settlements.js";
@@ -491,7 +491,7 @@ describe("POST /checkout/:productId — failures after the money moved", () => {
       log: () => {},
     };
     const purchase = fulfilPaidPurchase(deps, {
-      quote: { product, quantity: 1, unitAtomic: 10_000_000n, totalAtomic: 10_000_000n, totalLocal: product.priceLocal },
+      quote: purchaseQuote([{ product, quantity: 1, unitAtomic: 10_000_000n, totalAtomic: 10_000_000n, totalLocal: product.priceLocal }]),
       body: { quantity: 1, buyer: {} },
       idempotencyKey: null,
       // Not the USDC contract: the registry's id stands in for "some other asset".
@@ -646,7 +646,7 @@ describe("GET /checkout/:productId — the door x402 clients use (VT-23)", () =>
       // The platform order got the shipping address from the query, and the rail as the payer.
       const platformOrder = await adapter.getOrder(order["platformOrderId"] as string);
       expect(platformOrder).toMatchObject({
-        quantity: 1,
+        lines: [{ quantity: 1 }],
         buyer: { stellarAccount: RAIL, shipping: { name: "Ana Pérez", address: "Av. Irarrázaval 1234", city: "Ñuñoa", region: "Metropolitana", country: "CL" } },
         paymentRef: { payerAccount: RAIL },
       });

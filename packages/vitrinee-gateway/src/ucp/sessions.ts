@@ -10,11 +10,14 @@
  */
 import { randomBytes } from "node:crypto";
 
-import { VitrineeError } from "@vitrinee/core";
+import { VitrineeError, currencyDecimals, formatUnits, parseDecimal } from "@vitrinee/core";
 import { z } from "zod";
 
 export const CHECKOUT_SESSION_STATUSES = ["incomplete", "ready_for_complete", "complete_in_progress", "completed", "canceled"] as const;
 export type CheckoutSessionStatus = (typeof CHECKOUT_SESSION_STATUSES)[number];
+
+/** The most line items one checkout may carry (T148). The same as the adapters' order limit. */
+export const MAX_CHECKOUT_LINES = 10;
 
 /** Six hours, UCP's default session lifetime. */
 export const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
@@ -44,14 +47,28 @@ export const storedRequirementsSchema = z.looseObject({
 });
 export type StoredRequirements = z.infer<typeof storedRequirementsSchema>;
 
-export const checkoutSessionSchema = z.object({
+/** One line the platform asked for: a product and how many (T148). */
+const sessionLineSchema = z.object({ productId: z.string().min(1).max(200), quantity: z.number().int().positive().max(100) });
+
+/** The price of one line as quoted: what the order and the receipt are made from once paid, without asking the store again. */
+const quotedLineSchema = z.object({
+  unitAtomic: z.string().regex(/^\d+$/),
+  totalAtomic: z.string().regex(/^\d+$/),
+  /** Unit and line total in the store's currency, decimal strings. */
+  unitLocal: z.string(),
+  totalLocal: z.string(),
+  productSku: z.string(),
+  productName: z.string(),
+});
+
+const sessionShape = z.object({
   id: z.string().regex(/^cs_[0-9a-z]+$/),
   status: z.enum(CHECKOUT_SESSION_STATUSES),
   createdAt: z.string(),
   updatedAt: z.string(),
   expiresAt: z.string(),
-  productId: z.string().min(1),
-  quantity: z.number().int().positive(),
+  /** What the platform asked for, in its order (T148). The same product may appear in two lines. */
+  lines: z.array(sessionLineSchema).min(1).max(MAX_CHECKOUT_LINES),
   buyer: z.object({
     first_name: z.string().max(100).optional(),
     last_name: z.string().max(100).optional(),
@@ -62,14 +79,13 @@ export const checkoutSessionSchema = z.object({
   /** The quote the requirements were built from, so a price change is noticed before charging. */
   quote: z
     .object({
-      unitAtomic: z.string().regex(/^\d+$/),
+      /** One per session line, in the same order. */
+      lines: z.array(quotedLineSchema).min(1).max(MAX_CHECKOUT_LINES),
+      /** Σ line totals: what the requirements charge. */
       totalAtomic: z.string().regex(/^\d+$/),
       totalLocal: z.string(),
       currency: z.string(),
       fx: z.object({ base: z.literal("USD"), quote: z.string(), rate: z.string(), asOf: z.string() }),
-      /** What the order is created from once paid, without asking the store again. */
-      productSku: z.string(),
-      productName: z.string(),
     })
     .nullable(),
   requirements: storedRequirementsSchema.nullable(),
@@ -121,7 +137,43 @@ export const checkoutSessionSchema = z.object({
     .nullable()
     .default(null),
 });
-export type CheckoutSession = z.infer<typeof checkoutSessionSchema>;
+
+/**
+ * A session saved before T148 had one product at the top level (`productId`,
+ * `quantity`) and a one-line quote. Sessions live six hours, so a deploy finds
+ * some: they read back as one line, the same checkout.
+ */
+export function upgradeLegacySession(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || "lines" in raw) return raw;
+  const { productId, quantity, quote, ...rest } = raw as Record<string, unknown>;
+  if (typeof productId !== "string" || typeof quantity !== "number") return raw;
+  const old = quote as { unitAtomic?: unknown; totalAtomic?: unknown; totalLocal?: unknown; currency?: unknown; fx?: unknown; productSku?: unknown; productName?: unknown } | null | undefined;
+  const upgradedQuote =
+    old === null || old === undefined
+      ? null
+      : {
+          lines: [{ unitAtomic: old.unitAtomic, totalAtomic: old.totalAtomic, unitLocal: unitOf(old.totalLocal, quantity, old.currency), totalLocal: old.totalLocal, productSku: old.productSku, productName: old.productName }],
+          totalAtomic: old.totalAtomic,
+          totalLocal: old.totalLocal,
+          currency: old.currency,
+          fx: old.fx,
+        };
+  return { ...rest, lines: [{ productId, quantity }], quote: upgradedQuote };
+}
+
+/** The unit price of a legacy one-line quote: its total over the quantity, exact because the total was unit × quantity. */
+function unitOf(totalLocal: unknown, quantity: number, currency: unknown): unknown {
+  if (typeof totalLocal !== "string" || typeof currency !== "string" || !Number.isInteger(quantity) || quantity <= 0) return totalLocal;
+  try {
+    const decimals = currencyDecimals(currency);
+    return formatUnits(parseDecimal(totalLocal, decimals) / BigInt(quantity), decimals);
+  } catch {
+    return totalLocal;
+  }
+}
+
+export const checkoutSessionSchema = z.preprocess(upgradeLegacySession, sessionShape);
+export type CheckoutSession = z.infer<typeof sessionShape>;
 
 export interface CheckoutSessionPersistence {
   get(id: string): Promise<CheckoutSession | undefined>;

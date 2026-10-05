@@ -34,10 +34,11 @@ import { z, ZodError } from "zod";
 
 import type { Product } from "@vitrinee/adapters";
 
-import { fulfilPaidPurchase, quoteCheckout, type CheckoutBody, type CheckoutDeps, type CheckoutQuote } from "../checkout.js";
+import { fulfilPaidPurchase, purchaseQuote, quoteCheckout, type CheckoutBody, type CheckoutDeps, type CheckoutQuote, type PurchaseQuote } from "../checkout.js";
 import type { OrderRecord } from "../orders.js";
 import { payerFromTransactionXdr } from "../payer.js";
 import {
+  MAX_CHECKOUT_LINES,
   SESSION_TTL_MS,
   newSessionId,
   storedRequirementsSchema,
@@ -57,7 +58,8 @@ import { ucpPlatformOf, ucpVersionOf } from "./negotiation.js";
 import { stellarX402Config } from "./profile.js";
 
 
-const LINE_ITEM_ID = "li_1";
+/** The business names each line by its position (T148): `li_1`, `li_2`, … */
+const lineItemId = (index: number): string => `li_${index + 1}`;
 const METHOD_ID = "fm_1";
 const GROUP_ID = "fg_1";
 const OPTION_ID = "store_shipping";
@@ -95,7 +97,8 @@ const addressInput = z.object({
 const sessionInput = z.looseObject({
   line_items: z
     .array(z.looseObject({ id: z.string().optional(), item: z.looseObject({ id: z.string().min(1).max(200) }), quantity: z.int().min(1).max(100) }))
-    .min(1),
+    .min(1)
+    .max(MAX_CHECKOUT_LINES, `this store takes at most ${MAX_CHECKOUT_LINES} line items per checkout`),
   buyer: z
     .looseObject({
       first_name: z.string().max(100).optional(),
@@ -171,7 +174,7 @@ function sendError(res: Response, status: number, code: string, content: string,
 // ---------------------------------------------------------------- quoting
 
 interface Evaluation {
-  quote: CheckoutQuote | null;
+  quote: PurchaseQuote | null;
   messages: UcpMessage[];
 }
 
@@ -180,7 +183,8 @@ function bodyFor(session: CheckoutSession): CheckoutBody {
   const name = [session.buyer.first_name ?? d?.first_name, session.buyer.last_name ?? d?.last_name].filter((part) => part !== undefined && part !== "").join(" ");
   const address = [d?.street_address, d?.extended_address].filter((part) => part !== undefined && part !== "").join(", ");
   return {
-    quantity: session.quantity,
+    // Each line is quoted with its own quantity; the body carries only who buys and where it goes.
+    quantity: 1,
     buyer: {
       ...(session.buyer.email === undefined ? {} : { email: session.buyer.email }),
       ...(d === null
@@ -201,15 +205,24 @@ function bodyFor(session: CheckoutSession): CheckoutBody {
 
 /** Quotes the session and says what, if anything, stands between it and `complete`. Never charges. */
 async function evaluate(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<Evaluation> {
-  let quote: CheckoutQuote;
-  try {
-    quote = await quoteCheckout(deps, session.productId, bodyFor(session), deps.reservations.reserved(session.productId));
-  } catch (error) {
-    if (isVitrineeError(error) && error.code === "OutOfStock") {
-      return { quote: null, messages: [message("out_of_stock", error.message, "recoverable", "$.line_items[0]")] };
+  // Each line is priced on its own (one rounding per unit, VT-7). A product in two lines is checked
+  // against its stock for both: the earlier lines' units count as held when the later one is quoted.
+  const body = bodyFor(session);
+  const lines: CheckoutQuote[] = [];
+  const unavailable: UcpMessage[] = [];
+  const asked = new Map<string, number>();
+  for (const [index, line] of session.lines.entries()) {
+    const earlier = asked.get(line.productId) ?? 0;
+    asked.set(line.productId, earlier + line.quantity);
+    try {
+      lines.push(await quoteCheckout(deps, line.productId, { ...body, quantity: line.quantity }, deps.reservations.reserved(line.productId) + earlier));
+    } catch (error) {
+      if (!(isVitrineeError(error) && error.code === "OutOfStock")) throw error;
+      unavailable.push(message("out_of_stock", error.message, "recoverable", `$.line_items[${index}]`));
     }
-    throw error;
   }
+  if (unavailable.length > 0) return { quote: null, messages: unavailable };
+  const quote = purchaseQuote(lines);
   const messages: UcpMessage[] = [];
   const d = session.destination;
   if (d === null || d.street_address === undefined || d.address_locality === undefined || d.address_country === undefined) {
@@ -220,7 +233,7 @@ async function evaluate(deps: UcpCheckoutDeps, session: CheckoutSession): Promis
   return { quote, messages };
 }
 
-async function requirementsFor(deps: UcpCheckoutDeps, quote: CheckoutQuote): Promise<StoredRequirements> {
+async function requirementsFor(deps: UcpCheckoutDeps, quote: PurchaseQuote): Promise<StoredRequirements> {
   await deps.ready();
   const [requirements] = await deps.x402.buildPaymentRequirements({
     scheme: "exact",
@@ -245,41 +258,77 @@ async function refresh(deps: UcpCheckoutDeps, session: CheckoutSession): Promise
     return messages;
   }
   const current = session.quote;
-  const unchanged = current !== null && session.requirements !== null && current.totalAtomic === quote.totalAtomic.toString();
-  session.quote = unchanged ? current : snapshot(deps, quote);
+  const fresh = snapshot(deps, quote);
+  const sameTotal = current !== null && session.requirements !== null && current.totalAtomic === fresh.totalAtomic;
+  // Same lines at the same prices: the snapshot stays as it was (its fx `as_of` too). Other lines, even at the same
+  // total, are another purchase: the order is made from this snapshot once paid, so it must say what is bought now.
+  session.quote = sameTotal && sameQuotedLines(current, fresh) ? current : fresh;
   // Same total, same requirements: a platform that already signed keeps a valid credential.
-  if (!unchanged) session.requirements = await requirementsFor(deps, quote);
+  if (!sameTotal) session.requirements = await requirementsFor(deps, quote);
   session.status = "ready_for_complete";
   return [];
 }
 
-function snapshot(deps: UcpCheckoutDeps, quote: CheckoutQuote): NonNullable<CheckoutSession["quote"]> {
+function snapshot(deps: UcpCheckoutDeps, quote: PurchaseQuote): NonNullable<CheckoutSession["quote"]> {
   return {
-    unitAtomic: quote.unitAtomic.toString(),
+    lines: quote.lines.map((line) => ({
+      unitAtomic: line.unitAtomic.toString(),
+      totalAtomic: line.totalAtomic.toString(),
+      unitLocal: line.product.priceLocal,
+      totalLocal: line.totalLocal,
+      productSku: line.product.sku,
+      productName: line.product.name,
+    })),
     totalAtomic: quote.totalAtomic.toString(),
     totalLocal: quote.totalLocal,
-    currency: quote.product.currency,
+    currency: quote.currency,
     fx: { base: "USD", quote: deps.config.fx.quote, rate: deps.config.fx.rate, asOf: deps.now().toISOString() },
-    productSku: quote.product.sku,
-    productName: quote.product.name,
   };
+}
+
+/** Whether two snapshots quote the same lines, line by line, at the same prices. */
+function sameQuotedLines(a: CheckoutSession["quote"], b: NonNullable<CheckoutSession["quote"]>): boolean {
+  if (a === null || a.lines.length !== b.lines.length || a.currency !== b.currency) return false;
+  return a.lines.every((line, i) => {
+    const other = b.lines[i]!;
+    return line.unitAtomic === other.unitAtomic && line.totalAtomic === other.totalAtomic && line.totalLocal === other.totalLocal && line.productSku === other.productSku && line.productName === other.productName;
+  });
 }
 
 // ---------------------------------------------------------------- responses
 
-interface Rendered {
+interface RenderedLine {
+  id: string;
   product: { id: string; title: string; unitMinor: number; image?: string };
+  quantity: number;
+  totalMinor: number;
+}
+
+interface Rendered {
+  lines: RenderedLine[];
   totalMinor: number;
 }
 
 async function render(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<Rendered> {
-  const product = await deps.adapter.getProduct(session.productId);
-  const currency = product?.currency ?? deps.config.merchant.currency;
-  const unitMinor = product === null ? 0 : toMinorUnits(product.priceLocal, currency);
-  const image = product?.images.find((url) => URL.canParse(url));
+  const quoted = session.quote;
+  const lines: RenderedLine[] = [];
+  for (const [index, line] of session.lines.entries()) {
+    const product = await deps.adapter.getProduct(line.productId);
+    const currency = product?.currency ?? deps.config.merchant.currency;
+    const unitMinor = product === null ? 0 : toMinorUnits(product.priceLocal, currency);
+    const image = product?.images.find((url) => URL.canParse(url));
+    // A quoted line shows what it will charge; an unquoted one (out of stock, say) the catalogue's price.
+    const atQuote = quoted?.lines[index];
+    lines.push({
+      id: lineItemId(index),
+      product: { id: line.productId, title: product?.name ?? line.productId, unitMinor, ...(image === undefined ? {} : { image }) },
+      quantity: line.quantity,
+      totalMinor: atQuote === undefined || quoted === null ? unitMinor * line.quantity : toMinorUnits(atQuote.totalLocal, quoted.currency),
+    });
+  }
   return {
-    product: { id: session.productId, title: product?.name ?? session.productId, unitMinor, ...(image === undefined ? {} : { image }) },
-    totalMinor: session.quote === null ? unitMinor * session.quantity : toMinorUnits(session.quote.totalLocal, session.quote.currency),
+    lines,
+    totalMinor: quoted === null ? lines.reduce((sum, line) => sum + line.totalMinor, 0) : toMinorUnits(quoted.totalLocal, quoted.currency),
   };
 }
 
@@ -361,7 +410,8 @@ async function checkoutResponse(deps: UcpCheckoutDeps, session: CheckoutSession,
 }
 
 function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin, version }: View, messages: UcpMessage[], rendered: Rendered) {
-  const { product, totalMinor } = rendered;
+  const { lines, totalMinor } = rendered;
+  const lineIds = lines.map((line) => line.id);
   const order = session.orderId === null ? undefined : deps.orders.get(session.orderId);
   const receipt = order === undefined ? undefined : receiptExtension(order, origin);
   const d = session.destination;
@@ -380,31 +430,30 @@ function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin,
     id: session.id,
     status: session.status,
     currency: session.quote?.currency ?? deps.config.merchant.currency,
-    line_items: [
-      {
-        id: LINE_ITEM_ID,
-        item: { id: product.id, title: product.title, price: product.unitMinor, ...(product.image === undefined ? {} : { image_url: product.image }) },
-        quantity: session.quantity,
-        totals: [
-          { type: "subtotal", amount: totalMinor },
-          { type: "total", amount: totalMinor },
-        ],
-      },
-    ],
+    line_items: lines.map(({ id, product, quantity, totalMinor: lineMinor }) => ({
+      id,
+      item: { id: product.id, title: product.title, price: product.unitMinor, ...(product.image === undefined ? {} : { image_url: product.image }) },
+      quantity,
+      totals: [
+        { type: "subtotal", amount: lineMinor },
+        { type: "total", amount: lineMinor },
+      ],
+    })),
     ...(Object.keys(buyer).length === 0 ? {} : { buyer }),
     fulfillment: {
       methods: [
         {
           id: METHOD_ID,
           type: "shipping",
-          line_item_ids: [LINE_ITEM_ID],
+          line_item_ids: lineIds,
           // 2026-08-25 names each destination's kind (T133); 2026-04-08 has no such field.
           destinations: d === null ? [] : [version === "2026-04-08" ? d : { type: "shipping_address", ...d }],
           selected_destination_id: d?.id ?? null,
           groups: [
             {
               id: GROUP_ID,
-              line_item_ids: [LINE_ITEM_ID],
+              // One group for every line (UCP: a business consolidates all items into a single group per method).
+              line_item_ids: lineIds,
               options: [{ id: OPTION_ID, title: SHIPPING_OPTION_TITLE, totals: [{ type: "fulfillment", amount: 0 }] }],
               selected_option_id: OPTION_ID,
             },
@@ -430,13 +479,8 @@ function permalinkFor(record: OrderRecord, origin: string): string {
 // ---------------------------------------------------------------- session state
 
 function applyInput(session: CheckoutSession, input: SessionInput): void {
-  if (input.line_items.length > 1) {
-    throw new VitrineeError("ValidationError", "this store sells one product per checkout; send one line item", { details: { lineItems: input.line_items.length } });
-  }
-  const [line] = input.line_items;
-  if (line === undefined) throw new VitrineeError("ValidationError", "line_items is empty", { details: {} });
-  session.productId = line.item.id;
-  session.quantity = line.quantity;
+  // Every line, in the platform's order (T148); the same product in two lines stays two lines.
+  session.lines = input.line_items.map((line) => ({ productId: line.item.id, quantity: line.quantity }));
   session.buyer = {
     ...(input.buyer?.first_name === undefined ? {} : { first_name: input.buyer.first_name }),
     ...(input.buyer?.last_name === undefined ? {} : { last_name: input.buyer.last_name }),
@@ -724,8 +768,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
         expiresAt: new Date(now.getTime() + SESSION_TTL_MS).toISOString(),
-        productId: "",
-        quantity: 1,
+        lines: [],
         buyer: {},
         destination: null,
         quote: null,
@@ -890,8 +933,13 @@ async function complete(
     return;
   }
 
-  if (!deps.reservations.tryReserve(session.productId, session.quantity, quote.product.stock)) {
-    res.json(await checkoutResponse(deps, session, view, [message("out_of_stock", `the last units of "${quote.product.name}" are being bought right now`, "recoverable", "$.line_items[0]")]));
+  // Every line's units, or none of them (T148): summed per product, against the stock just quoted.
+  const holds = heldUnits(session, quote);
+  const short = deps.reservations.tryReserveAll(holds);
+  if (short !== null) {
+    const index = session.lines.findIndex((line) => line.productId === short);
+    const name = quote.lines[index]?.product.name ?? short;
+    res.json(await checkoutResponse(deps, session, view, [message("out_of_stock", `the last units of "${name}" are being bought right now`, "recoverable", `$.line_items[${index}]`)]));
     return;
   }
   try {
@@ -947,9 +995,20 @@ async function complete(
     deps.ledger.take(transaction);
     await finish(deps, session);
   } finally {
-    deps.reservations.release(session.productId, session.quantity);
+    deps.reservations.releaseAll(holds);
   }
   res.json(await checkoutResponse(deps, session, view));
+}
+
+/** What a `complete` holds while it settles: each product once, with the units of every line naming it. */
+function heldUnits(session: CheckoutSession, quote: PurchaseQuote): { productId: string; quantity: number; stock: number | null }[] {
+  const units = new Map<string, { productId: string; quantity: number; stock: number | null }>();
+  for (const [index, line] of session.lines.entries()) {
+    const entry = units.get(line.productId);
+    if (entry === undefined) units.set(line.productId, { productId: line.productId, quantity: line.quantity, stock: quote.lines[index]?.product.stock ?? null });
+    else entry.quantity += line.quantity;
+  }
+  return [...units.values()];
 }
 
 function held(): UcpMessage {
@@ -971,23 +1030,28 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
   if (payer === undefined) {
     throw new VitrineeError("PaymentError", "payment settled but the payer account could not be determined", { details: { checkoutId: session.id, txHash: settlement.txHash } });
   }
-  const product: Product = {
-    id: session.productId,
-    sku: snapshot.productSku,
-    name: snapshot.productName,
-    description: "",
-    priceLocal: "0",
-    currency: snapshot.currency,
-    stock: null,
-    images: [],
-  };
-  const quote: CheckoutQuote = {
-    product,
-    quantity: session.quantity,
-    unitAtomic: BigInt(snapshot.unitAtomic),
-    totalAtomic: BigInt(snapshot.totalAtomic),
-    totalLocal: snapshot.totalLocal,
-  };
+  if (snapshot.lines.length !== session.lines.length) {
+    throw new VitrineeError("StorageError", "a paid checkout's quote does not cover its lines", { details: { checkoutId: session.id } });
+  }
+  const lines = session.lines.map((line, index): CheckoutQuote => {
+    const quoted = snapshot.lines[index]!;
+    const product: Product = {
+      id: line.productId,
+      sku: quoted.productSku,
+      name: quoted.productName,
+      description: "",
+      priceLocal: quoted.unitLocal,
+      currency: snapshot.currency,
+      stock: null,
+      images: [],
+    };
+    return { product, quantity: line.quantity, unitAtomic: BigInt(quoted.unitAtomic), totalAtomic: BigInt(quoted.totalAtomic), totalLocal: quoted.totalLocal };
+  });
+  const quote = purchaseQuote(lines);
+  // What was charged is the snapshot's total; a snapshot whose lines say otherwise is not turned into an order.
+  if (quote.totalAtomic.toString() !== snapshot.totalAtomic || quote.totalAtomic.toString() !== settlement.amountAtomic) {
+    throw new VitrineeError("SettlementUnaccounted", "payment settled but the checkout's lines do not add up to it", { details: { checkoutId: session.id, txHash: settlement.txHash } });
+  }
   const { record } = await fulfilPaidPurchase(deps, {
     quote,
     body: bodyFor(session),

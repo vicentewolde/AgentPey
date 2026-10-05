@@ -104,10 +104,12 @@ function render() {
     const row = el("tr", { tabIndex: 0 });
     row.append(
       el("td", { className: "mono" }, short(order.orderId, 10, 4)),
-      el("td", {}, [
-        el("div", {}, text(order.product?.name)),
-        el("div", { className: "muted small mono" }, `${text(order.product?.sku)} × ${text(order.quantity)}`),
-      ]),
+      el("td", {}, itemsOf(order).map((item) =>
+        el("div", {}, [
+          el("div", {}, text(item.name)),
+          el("div", { className: "muted small mono" }, `${text(item.sku)} × ${text(item.quantity)}`),
+        ]),
+      )),
       el("td", { className: "num" }, [
         el("div", {}, money(order.amountUSDC)),
         el("div", { className: "muted small" }, `${Number(order.totalLocal).toLocaleString("es-CL")} ${text(order.currency)}`),
@@ -128,6 +130,12 @@ function render() {
   }
 }
 
+/** Every line of an order (T148); an order from before T148 named one product at the top level. */
+function itemsOf(order) {
+  if (Array.isArray(order.items)) return order.items;
+  return [{ name: order.product?.name, sku: order.product?.sku, quantity: order.quantity }];
+}
+
 function showDetail(orderId) {
   const order = orders.find((o) => o.orderId === orderId);
   if (!order) return;
@@ -135,7 +143,7 @@ function showDetail(orderId) {
   const dialog = $("detail");
   const body = $("detail-body");
 
-  $("detail-title").textContent = `${text(order.product?.name)} · ${text(order.quantity)} u.`;
+  $("detail-title").textContent = itemsOf(order).map((item) => `${text(item.name)} · ${text(item.quantity)} u.`).join(" + ");
 
   const kv = el("dl", { className: "kv" });
   const add = (key, value) => kv.append(el("dt", {}, key), el("dd", {}, [value]));

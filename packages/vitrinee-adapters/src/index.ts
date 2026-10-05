@@ -5,3 +5,4 @@ export { JumpsellerStoreAdapter, JumpsellerClient, JumpsellerHttpError } from ".
 export type { JumpsellerAdapterOptions, JumpsellerCredentials } from "./jumpseller/index.js";
 export { ShopifyStoreAdapter, ShopifyClient, ShopifyHttpError, isShopifyShopHost } from "./shopify/index.js";
 export type { ShopifyAdapterOptions, ShopifyCredentials } from "./shopify/index.js";
+export { MAX_ORDER_LINES } from "./lines.js";

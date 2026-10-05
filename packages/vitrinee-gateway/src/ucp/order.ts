@@ -17,10 +17,11 @@
  * order, and a tracking link leads to the courier's page about the buyer.
  */
 import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
-import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_LATEST_VERSION, UCP_ORDER, VitrineeError, type UcpVersion, currencyDecimals, formatUnits, parseDecimal, toMinorUnits } from "@vitrinee/core";
+import { RECEIPT_EXTENSION, RECEIPT_EXTENSION_VERSION, UCP_LATEST_VERSION, UCP_ORDER, VitrineeError, type UcpVersion, currencyDecimals, parseDecimal, toMinorUnits } from "@vitrinee/core";
 import type { Express, Request, Response } from "express";
 
 import type { OrderRecord, OrderStore } from "../orders.js";
+import { orderLineId, shippedUnits } from "./lines.js";
 import type { OrderEvents } from "./order-events.js";
 import { SHIPPING_OPTION_TITLE, receiptExtension } from "./checkout.js";
 import { ucpVersionOf } from "./negotiation.js";
@@ -88,13 +89,13 @@ export function ucpOrder(
   version: UcpVersion = UCP_LATEST_VERSION,
   options: { tracking?: boolean } = {},
 ) {
-  const decimals = currencyDecimals(record.currency);
   const totalMinor = toMinorUnits(record.totalLocal, record.currency);
-  // The total is unit × quantity, so this division is exact; it stays in bigint (VT-7, VT-36).
-  const unitMinor = toMinorUnits(formatUnits(parseDecimal(record.totalLocal, decimals) / BigInt(record.quantity), decimals), record.currency);
   const shipping = record.buyer.shipping;
   const events = record.fulfillmentEvents ?? [];
-  const shipped = record.fulfillmentState === "fulfilled";
+  // The platform saying it all left is final; until then each line counts what its events carried (T148).
+  const everything = record.fulfillmentState === "fulfilled";
+  const shippedPerLine = shippedUnits(record);
+  const allLines = record.items.map((item, index) => ({ id: orderLineId(index), quantity: item.quantity }));
   const tracking = options.tracking === true;
   const anchored = receiptExtension(record, origin);
   const found = lookup.kind === "found" ? lookup : null;
@@ -117,19 +118,22 @@ export function ucpOrder(
     checkout_id: record.ucpCheckoutId,
     permalink_url: record.receipt === null ? `${origin}/orders/${record.orderId}` : `${origin}/receipts/${record.receipt.hash}`,
     currency: record.currency,
-    line_items: [
-      {
-        id: "li_1",
-        item: { id: record.product.id, title: record.product.name, price: unitMinor },
-        quantity: { original: record.quantity, total: record.quantity, fulfilled: shipped ? record.quantity : 0 },
+    line_items: record.items.map((item, index) => {
+      const unitMinor = toMinorUnits(item.unitPriceLocal, record.currency);
+      const lineMinor = unitMinor * item.quantity;
+      const fulfilled = everything ? item.quantity : shippedPerLine[index]!;
+      return {
+        id: orderLineId(index),
+        item: { id: item.productId, title: item.name, price: unitMinor },
+        quantity: { original: item.quantity, total: item.quantity, fulfilled },
         totals: [
-          { type: "subtotal", amount: totalMinor },
-          { type: "total", amount: totalMinor },
+          { type: "subtotal", amount: lineMinor },
+          { type: "total", amount: lineMinor },
         ],
-        // UCP derives it: fulfilled once fulfilled == total.
-        status: shipped ? "fulfilled" : "processing",
-      },
-    ],
+        // UCP derives it: fulfilled once fulfilled == total, partial once some left.
+        status: fulfilled === item.quantity ? "fulfilled" : fulfilled > 0 ? "partial" : "processing",
+      };
+    }),
     fulfillment: {
       expectations:
         shipping === undefined
@@ -137,7 +141,7 @@ export function ucpOrder(
           : [
               {
                 id: "exp_1",
-                line_items: [{ id: "li_1", quantity: record.quantity }],
+                line_items: allLines,
                 method_type: "shipping",
                 description: SHIPPING_OPTION_TITLE,
                 // Country only: the order id travels inside the public receipt, so
@@ -149,7 +153,8 @@ export function ucpOrder(
         id: event.id,
         occurred_at: event.occurredAt,
         type: event.type,
-        line_items: [{ id: "li_1", quantity: record.quantity }],
+        // An event from before T148 names no lines: its order had one, and it stood for all of it.
+        line_items: event.lines ?? allLines,
         ...(event.carrier === undefined ? {} : { carrier: event.carrier }),
         ...(!tracking || event.trackingNumber === undefined ? {} : { tracking_number: event.trackingNumber }),
         ...(!tracking || event.trackingUrl === undefined ? {} : { tracking_url: event.trackingUrl }),

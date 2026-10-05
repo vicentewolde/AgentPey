@@ -2,8 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import { VitrineeError, currencyDecimals, formatUnits, parseDecimal } from "@vitrinee/core";
+import { VitrineeError } from "@vitrinee/core";
 
+import { orderTotalLocal, platformLines, resolveOrderLines, unitsByProduct } from "../lines.js";
 import type { CreateOrderInput, PlatformOrder, PlatformShipment, Product, StoreAdapter } from "../types.js";
 import { MOCK_CATALOG } from "./catalog.js";
 
@@ -27,6 +28,14 @@ interface PersistedState {
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
+
+/** An order persisted before T148 named one product at the top level; it is one line now. */
+function withLines(order: PlatformOrder): PlatformOrder {
+  if (Array.isArray(order.lines)) return order;
+  const legacy = order as PlatformOrder & { productId?: string; sku?: string; quantity?: number };
+  const { productId = "", sku = "", quantity = 0, ...rest } = legacy;
+  return { ...rest, lines: [{ productId, sku, quantity }] };
+}
 
 /**
  * In-memory store platform. Orders are created already paid, stock is
@@ -62,38 +71,23 @@ export class MockStoreAdapter implements StoreAdapter {
   }
 
   async createOrder(input: CreateOrderInput): Promise<PlatformOrder> {
-    if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
-      throw new VitrineeError("ValidationError", "quantity must be a positive integer", {
-        details: { quantity: input.quantity },
-      });
+    // Every line is checked before any stock moves: a refused order changes nothing.
+    const products = await resolveOrderLines(input.lines, async (id) => this.products.get(id) ?? null);
+    for (const [productId, units] of unitsByProduct(input.lines)) {
+      const product = this.products.get(productId)!;
+      if (product.stock !== null) product.stock -= units;
     }
-    const product = this.products.get(input.productId);
-    if (product === undefined) {
-      throw new VitrineeError("ProductNotFound", `no product with id "${input.productId}"`, {
-        details: { productId: input.productId },
-      });
-    }
-    if (product.stock !== null && product.stock < input.quantity) {
-      throw new VitrineeError("OutOfStock", `only ${product.stock} left of "${product.name}"`, {
-        details: { productId: product.id, available: product.stock, requested: input.quantity },
-      });
-    }
-
-    if (product.stock !== null) product.stock -= input.quantity;
     this.seq += 1;
-    const decimals = currencyDecimals(product.currency);
-    const total = parseDecimal(product.priceLocal, decimals) * BigInt(input.quantity);
+    const currency = products.get(input.lines[0]!.productId)!.currency;
 
     const order: PlatformOrder = {
       platformOrderId: `mock-${String(this.seq).padStart(4, "0")}`,
       platform: this.name,
       status: "paid",
       reference: input.reference,
-      productId: product.id,
-      sku: product.sku,
-      quantity: input.quantity,
-      totalLocal: formatUnits(total, decimals),
-      currency: product.currency,
+      lines: platformLines(input.lines, products),
+      totalLocal: orderTotalLocal(input.lines, products, currency),
+      currency,
       paymentRef: clone(input.paymentRef),
       buyer: clone(input.buyer),
       createdAt: this.now().toISOString(),
@@ -134,7 +128,7 @@ export class MockStoreAdapter implements StoreAdapter {
       });
     }
     this.seq = state.seq;
-    for (const order of state.orders) this.orders.set(order.platformOrderId, order);
+    for (const order of state.orders) this.orders.set(order.platformOrderId, withLines(order));
     for (const [id, stock] of Object.entries(state.stock)) {
       const product = this.products.get(id);
       if (product !== undefined) product.stock = stock;

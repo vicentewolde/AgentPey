@@ -37,7 +37,10 @@ describe("rebuildOrder (T101's pending order, T103)", () => {
       stellarAccount: backup.settlement.payer,
       shipping: { name: "Test Buyer", address: "Calle 1", city: "Santiago", region: "RM", country: "CL" },
     });
-    expect(BigInt(order.unitPriceUSDCAtomic) * BigInt(order.quantity)).toBe(BigInt(order.amountUSDCAtomic));
+    // The backup's one product reads back as the order's one item (T148).
+    const [item] = order.items;
+    expect(order.items).toHaveLength(1);
+    expect(BigInt(item!.unitPriceUSDCAtomic) * BigInt(item!.quantity)).toBe(BigInt(order.amountUSDCAtomic));
   });
 
   it("refuses a checkout URL for another product", () => {

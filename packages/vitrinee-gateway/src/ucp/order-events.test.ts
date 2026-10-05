@@ -97,8 +97,8 @@ async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter;
     return { status: res.status, body: (await res.json()) as Body };
   };
   /** A checkout created and completed by `profile`: the order it produced. */
-  const buy = async (profile = PLATFORM) => {
-    const { body: created } = await call("POST", `${UCP_REST_PREFIX}/checkout-sessions`, ready, profile);
+  const buy = async (profile = PLATFORM, body: unknown = ready) => {
+    const { body: created } = await call("POST", `${UCP_REST_PREFIX}/checkout-sessions`, body, profile);
     const accepted = created.ucp.payment_handlers[STELLAR_X402_HANDLER]![0]!.config.payment_requirements!;
     const credential = { type: "x402_payment_payload", x402_version: 2, accepted, payload: { transaction: Buffer.from(`tx-${Math.random()}`).toString("base64") } };
     const { body: done } = await call("POST", `${UCP_REST_PREFIX}/checkout-sessions/${created.id}/complete`, { payment: { instruments: [{ id: "i1", handler_id: "stellar_x402", type: "stellar_x402", credential }] } }, profile);
@@ -270,7 +270,7 @@ describe("shipping events (T147)", () => {
     expect(s.orders.get(orderId)?.fulfillmentEvents).toHaveLength(1);
   });
 
-  it("keeps asking after a partial shipment, and marks the line fulfilled only when everything left", async () => {
+  it("keeps asking after a partial shipment, records no event for a parcel it cannot name, and marks the line fulfilled only when everything left", async () => {
     const adapter = new MockStoreAdapter();
     const s = await store({ adapter });
     const { orderId } = await s.buy();
@@ -279,14 +279,55 @@ describe("shipping events (T147)", () => {
     await s.app.orderEvents.checkShipment(orderId, { force: true });
     const partial = (await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`)).body;
     expect(partial["line_items"]).toEqual([expect.objectContaining({ quantity: { original: 1, total: 1, fulfilled: 0 }, status: "processing" })]);
-    expect(s.orders.get(orderId)).toMatchObject({ fulfillmentState: "partial", fulfillmentEvents: [expect.any(Object)] });
+    // The platform did not say what that parcel carried (T148): no event claims a line left.
+    expect(s.orders.get(orderId)?.fulfillmentState).toBe("partial");
+    expect(s.orders.get(orderId)?.fulfillmentEvents ?? []).toHaveLength(0);
 
     await adapter.markShipped(platformOrderId, { shippedAt: "2026-10-05T13:00:00.000Z" });
     // Within the minute the watcher does not ask again; later, it does.
     await s.app.orderEvents.watchOnce();
-    expect(s.orders.get(orderId)?.fulfillmentEvents).toHaveLength(1);
+    expect(s.orders.get(orderId)?.fulfillmentEvents ?? []).toHaveLength(0);
     await s.app.orderEvents.checkShipment(orderId, { force: true });
-    expect(s.orders.get(orderId)).toMatchObject({ fulfillmentState: "fulfilled", fulfillmentEvents: [expect.any(Object), expect.any(Object)] });
+    // Once it all left, what was pending is attributed to a parcel; one event, for the whole line.
+    expect(s.orders.get(orderId)).toMatchObject({ fulfillmentState: "fulfilled", fulfillmentEvents: [expect.objectContaining({ lines: [{ id: "li_1", quantity: 1 }] })] });
+  });
+
+  it("with several lines, records which lines each parcel carried, and marks each line as it leaves (T148)", async () => {
+    const adapter = new MockStoreAdapter();
+    const s = await store({ adapter });
+    const cart = { ...ready, line_items: [{ item: { id: "gorro-andes" }, quantity: 1 }, { item: { id: "stickers-cordillera" }, quantity: 3 }] };
+    const { orderId } = await s.buy(PLATFORM, cart);
+    await waitFor(() => s.profiles.sent[0]);
+    const platformOrderId = s.orders.get(orderId)!.platformOrderId!;
+
+    // The first parcel: the cap, and one of the three sticker packs.
+    await adapter.markShipped(platformOrderId, { id: "p1", shippedAt: "2026-10-06T12:00:00.000Z", lines: [{ productId: "gorro-andes", quantity: 1 }, { productId: "stickers-cordillera", quantity: 1 }] }, { partial: true });
+    const { body: partial } = await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`);
+    expect(ucpErrors(ORDER_SCHEMA, partial, "2026-08-25")).toEqual([]);
+    expect(partial["line_items"]).toEqual([
+      expect.objectContaining({ id: "li_1", quantity: { original: 1, total: 1, fulfilled: 1 }, status: "fulfilled" }),
+      expect.objectContaining({ id: "li_2", quantity: { original: 3, total: 3, fulfilled: 1 }, status: "partial" }),
+    ]);
+    expect((partial["fulfillment"] as { events: unknown[] }).events).toEqual([
+      expect.objectContaining({ type: "shipped", line_items: [{ id: "li_1", quantity: 1 }, { id: "li_2", quantity: 1 }] }),
+    ]);
+    // The platform that bought hears of that parcel, with both lines in the order it gets.
+    const first = await waitFor(() => s.profiles.sent[1]);
+    expect((JSON.parse(first.body) as { line_items: unknown[] }).line_items).toHaveLength(2);
+
+    // The rest: the platform says it all left, and names the two packs.
+    await adapter.markShipped(platformOrderId, { id: "p2", shippedAt: "2026-10-06T15:00:00.000Z", lines: [{ productId: "stickers-cordillera", quantity: 2 }] });
+    await s.app.orderEvents.checkShipment(orderId, { force: true });
+    const { body: done } = await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`);
+    expect(done["line_items"]).toEqual([
+      expect.objectContaining({ id: "li_1", status: "fulfilled" }),
+      expect.objectContaining({ id: "li_2", quantity: { original: 3, total: 3, fulfilled: 3 }, status: "fulfilled" }),
+    ]);
+    expect((done["fulfillment"] as { events: unknown[] }).events).toEqual([
+      expect.objectContaining({ id: "ful_1" }),
+      expect.objectContaining({ id: "ful_2", line_items: [{ id: "li_2", quantity: 2 }] }),
+    ]);
+    await waitFor(() => s.profiles.sent[2]);
   });
 
   it("stops asking about an order the platform cancelled, or one that all left", async () => {

@@ -45,9 +45,18 @@ export interface PaymentRef {
   payerAccount: string;
 }
 
-export interface CreateOrderInput {
+/** One line of a purchase: a product and how many of it (T148). */
+export interface OrderLineInput {
   productId: string;
   quantity: number;
+}
+
+export interface CreateOrderInput {
+  /**
+   * What was paid for, one entry per line and in the buyer's order (T148). The
+   * same product may appear in two lines; its stock is checked for their sum.
+   */
+  lines: OrderLineInput[];
   buyer: Buyer;
   paymentRef: PaymentRef;
   /** Vitrinee's own order id, stored on the platform order so both sides link. */
@@ -61,9 +70,8 @@ export interface PlatformOrder {
   platform: string;
   status: PlatformOrderStatus;
   reference: string;
-  productId: string;
-  sku: string;
-  quantity: number;
+  /** The order's lines as the platform holds them (T148). */
+  lines: PlatformOrderLine[];
   /** Order total in the store's currency, decimal string. */
   totalLocal: string;
   currency: string;
@@ -81,6 +89,13 @@ export interface PlatformOrder {
   fulfillmentStatus?: "unfulfilled" | "partial" | "fulfilled";
 }
 
+/** One line of an order on the platform (T148). */
+export interface PlatformOrderLine {
+  productId: string;
+  sku: string;
+  quantity: number;
+}
+
 /** One shipment, as the store's platform records it (T147). */
 export interface PlatformShipment {
   /** The platform's own id for it, so it is recorded once. */
@@ -89,6 +104,12 @@ export interface PlatformShipment {
   trackingNumber?: string;
   trackingUrl?: string;
   carrier?: string;
+  /**
+   * Which products, and how many of each, went in this parcel (T148). Absent
+   * when the platform does not say: the store then never guesses which lines
+   * a partial shipment carried.
+   */
+  lines?: { productId: string; quantity: number }[];
 }
 
 export interface StoreAdapter {

@@ -177,7 +177,7 @@ function renderStores() {
         var paid = o.status === "paid";
         return el("tr", {}, [
           el("td", { text: new Date(o.createdAt).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" }) }),
-          el("td", { text: o.product + (o.quantity > 1 ? " × " + o.quantity : "") }),
+          el("td", { text: (o.items || []).map(function (i) { return i.name + (i.quantity > 1 ? " × " + i.quantity : ""); }).join(", ") }),
           el("td", { className: "num", text: o.amountUSDC }),
           el("td", {}, [el("span", { className: "pill" + (paid ? "" : " warn"), text: t(paid ? "statusPaid" : "statusUnfulfilled") })]),
           proof,

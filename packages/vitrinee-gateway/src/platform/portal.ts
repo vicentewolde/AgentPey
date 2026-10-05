@@ -74,8 +74,8 @@ function panelOrder(base: string, o: OrderRecord) {
     orderId: o.orderId,
     status: o.status,
     createdAt: o.createdAt,
-    product: o.product.name,
-    quantity: o.quantity,
+    // One entry per line (T148): the page writes "Imán, Taza × 2".
+    items: o.items.map((item) => ({ name: item.name, quantity: item.quantity })),
     amountUSDC: o.amountUSDC,
     paymentUrl: o.settlement.explorerUrl,
     // The readable page, not the JSON (T108); the page links to the JSON.

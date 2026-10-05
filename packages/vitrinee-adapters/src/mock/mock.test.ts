@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -12,8 +12,7 @@ const PAYER = "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K";
 
 function orderInput(productId: string, quantity = 1): CreateOrderInput {
   return {
-    productId,
-    quantity,
+    lines: [{ productId, quantity }],
     reference: `ord_${productId}_${quantity}`,
     buyer: { stellarAccount: PAYER, shipping: { country: "CL", city: "Ñuñoa" } },
     paymentRef: {
@@ -61,8 +60,7 @@ describe("MockStoreAdapter", () => {
       platformOrderId: "mock-0001",
       platform: "mock",
       status: "paid",
-      productId: "hoodie-cordillera-m",
-      quantity: 2,
+      lines: [{ productId: "hoodie-cordillera-m", sku: expect.any(String), quantity: 2 }],
       totalLocal: "69980",
       currency: "CLP",
       createdAt: "2026-09-22T15:00:00.000Z",
@@ -88,6 +86,33 @@ describe("MockStoreAdapter", () => {
     );
   });
 
+  it("creates one order with several lines, and moves no stock when any line cannot be sold (T148)", async () => {
+    const adapter = new MockStoreAdapter();
+    const before = (await adapter.getProduct("hoodie-cordillera-m"))!.stock;
+    const order = await adapter.createOrder({ ...orderInput("hoodie-cordillera-m"), lines: [{ productId: "hoodie-cordillera-m", quantity: 1 }, { productId: "cafe-nunoa-250", quantity: 2 }] });
+    expect(order.lines.map((line) => [line.productId, line.quantity])).toEqual([
+      ["hoodie-cordillera-m", 1],
+      ["cafe-nunoa-250", 2],
+    ]);
+    expect(order.totalLocal).toBe("52970");
+    expect((await adapter.getProduct("hoodie-cordillera-m"))!.stock).toBe(before! - 1);
+
+    const hoodies = (await adapter.getProduct("hoodie-cordillera-m"))!.stock!;
+    await expect(
+      adapter.createOrder({ ...orderInput("hoodie-cordillera-m"), lines: [{ productId: "hoodie-cordillera-m", quantity: 1 }, { productId: "botella-patagonia-500", quantity: 99 }] }),
+    ).rejects.toMatchObject({ code: "OutOfStock" });
+    expect((await adapter.getProduct("hoodie-cordillera-m"))!.stock).toBe(hoodies);
+  });
+
+  it("reads back an orders file written before T148, with the product at the top level", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "vitrinee-mock-"));
+    tempDirs.push(dir);
+    const ordersFile = join(dir, "orders.json");
+    const legacy = { ...(await new MockStoreAdapter().createOrder(orderInput("gorro-andes", 2))), lines: undefined, productId: "gorro-andes", sku: "GOR-AND", quantity: 2 };
+    await writeFile(ordersFile, JSON.stringify({ seq: 1, stock: {}, orders: [legacy] }));
+    expect((await new MockStoreAdapter({ ordersFile }).getOrder("mock-0001"))?.lines).toEqual([{ productId: "gorro-andes", sku: "GOR-AND", quantity: 2 }]);
+  });
+
   it("treats null stock as unlimited", async () => {
     const adapter = new MockStoreAdapter({
       catalog: [{ ...MOCK_CATALOG[0]!, id: "digital", stock: null }],
@@ -108,7 +133,7 @@ describe("MockStoreAdapter", () => {
 
     const second = new MockStoreAdapter({ ordersFile });
     expect((await second.getProduct("cafe-nunoa-250"))!.stock).toBe(27);
-    expect(await second.getOrder("mock-0001")).toMatchObject({ quantity: 3 });
+    expect(await second.getOrder("mock-0001")).toMatchObject({ lines: [{ productId: "cafe-nunoa-250", quantity: 3 }] });
     const next = await second.createOrder(orderInput("cafe-nunoa-250", 1));
     expect(next.platformOrderId).toBe("mock-0002");
   });

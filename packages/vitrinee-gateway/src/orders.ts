@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { Buyer } from "@vitrinee/adapters";
-import { VitrineeError } from "@vitrinee/core";
+import { VitrineeError, currencyDecimals, formatUnits, parseDecimal } from "@vitrinee/core";
 import { z } from "zod";
 
 export type OrderStatus = "paid" | "paid_unfulfilled";
@@ -45,6 +45,12 @@ export interface OrderFulfillmentEvent {
   source: "platform" | "simulation";
   /** The platform's own id for the shipment, so it is never recorded twice. */
   platformRef?: string;
+  /**
+   * Which lines (`li_1`, `li_2`, … by position in `items`) and how many units
+   * went in this parcel (T148). Absent on an event recorded before T148: that
+   * order had one line, and the event stands for all of it.
+   */
+  lines?: { id: string; quantity: number }[];
 }
 
 /**
@@ -78,15 +84,29 @@ export interface OrderWebhook {
   deliveries: OrderWebhookDelivery[];
 }
 
+/**
+ * One line of a sale (T148): a product, how many, and its unit price both in
+ * USDC and in the store's currency. The x402 checkout always has one; a UCP
+ * checkout may have several, and the same product may appear in two lines.
+ */
+export interface OrderItem {
+  productId: string;
+  sku: string;
+  name: string;
+  quantity: number;
+  unitPriceUSDCAtomic: string;
+  /** Decimal string in the order's currency. */
+  unitPriceLocal: string;
+}
+
 /** The gateway's own record of a sale: what was paid, what the platform did with it, how it is proven. */
 export interface OrderRecord {
   orderId: string;
   status: OrderStatus;
   createdAt: string;
   idempotencyKey: string | null;
-  product: { id: string; sku: string; name: string };
-  quantity: number;
-  unitPriceUSDCAtomic: string;
+  /** What was sold, in the buyer's order. Never empty; the receipt has one item per entry (T148). */
+  items: OrderItem[];
   amountUSDCAtomic: string;
   amountUSDC: string;
   totalLocal: string;
@@ -115,14 +135,23 @@ export interface OrderRecord {
  * An {@link OrderRecord} read back from storage. The database is a boundary
  * like any other: a row that does not have this shape is refused, not cast.
  */
-export const orderRecordSchema = z.object({
+export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
   orderId: z.string().min(1),
   status: z.enum(["paid", "paid_unfulfilled"]),
   createdAt: z.string().min(1),
   idempotencyKey: z.string().nullable(),
-  product: z.object({ id: z.string(), sku: z.string(), name: z.string() }),
-  quantity: z.number().int().positive(),
-  unitPriceUSDCAtomic: z.string().regex(/^\d+$/),
+  items: z
+    .array(
+      z.object({
+        productId: z.string(),
+        sku: z.string(),
+        name: z.string(),
+        quantity: z.number().int().positive(),
+        unitPriceUSDCAtomic: z.string().regex(/^\d+$/),
+        unitPriceLocal: z.string(),
+      }),
+    )
+    .min(1),
   amountUSDCAtomic: z.string().regex(/^\d+$/),
   amountUSDC: z.string(),
   totalLocal: z.string(),
@@ -179,6 +208,7 @@ export const orderRecordSchema = z.object({
         carrier: z.string().optional(),
         source: z.enum(["platform", "simulation"]),
         platformRef: z.string().optional(),
+        lines: z.array(z.object({ id: z.string().min(1), quantity: z.number().int().positive() })).min(1).optional(),
       }),
     )
     .optional(),
@@ -205,7 +235,37 @@ export const orderRecordSchema = z.object({
       ),
     })
     .optional(),
-});
+}));
+
+/**
+ * A record written before T148 sold one product, named at the top level
+ * (`product`, `quantity`, `unitPriceUSDCAtomic`). It is the same sale as one
+ * item; its unit price in the store's currency is the total over the quantity,
+ * exact because the total was unit × quantity. Anything else passes through
+ * untouched, for the schema to judge.
+ */
+export function upgradeLegacyOrder(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || "items" in raw) return raw;
+  const legacy = raw as Record<string, unknown>;
+  const product = legacy["product"] as { id?: unknown; sku?: unknown; name?: unknown } | undefined;
+  const quantity = legacy["quantity"];
+  const totalLocal = legacy["totalLocal"];
+  const currency = legacy["currency"];
+  if (product === undefined || typeof quantity !== "number" || !Number.isInteger(quantity) || quantity <= 0 || typeof totalLocal !== "string" || typeof currency !== "string") return raw;
+  let unitPriceLocal: string;
+  try {
+    const decimals = currencyDecimals(currency);
+    unitPriceLocal = formatUnits(parseDecimal(totalLocal, decimals) / BigInt(quantity), decimals);
+  } catch {
+    return raw;
+  }
+  const rest = Object.fromEntries(Object.entries(legacy).filter(([key]) => key !== "product" && key !== "quantity" && key !== "unitPriceUSDCAtomic"));
+  const unitPriceUSDCAtomic = legacy["unitPriceUSDCAtomic"];
+  return {
+    ...rest,
+    items: [{ productId: product.id, sku: product.sku, name: product.name, quantity, unitPriceUSDCAtomic, unitPriceLocal }],
+  };
+}
 
 interface PersistedOrders {
   orders: OrderRecord[];
@@ -229,7 +289,7 @@ export class FileOrderPersistence implements OrderPersistence {
   loadSync(): OrderRecord[] {
     if (!existsSync(this.file)) return [];
     try {
-      return (JSON.parse(readFileSync(this.file, "utf8")) as PersistedOrders).orders;
+      return (JSON.parse(readFileSync(this.file, "utf8")) as PersistedOrders).orders.map((order) => upgradeLegacyOrder(order) as OrderRecord);
     } catch (error) {
       throw new VitrineeError("ConfigError", `orders file is not valid JSON: ${this.file}`, { cause: error, details: { file: this.file } });
     }

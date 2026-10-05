@@ -53,8 +53,7 @@ try {
     const target = products.find((p) => p.stock === null || p.stock > 0);
     if (target === undefined) die("every product is out of stock");
     const order = await adapter.createOrder({
-      productId: target.id,
-      quantity: 1,
+      lines: [{ productId: target.id, quantity: 1 }],
       buyer: {
         stellarAccount: "GPROBE",
         shipping: { name: "Probe Vitrinee", address: "Calle de Prueba 1", city: "Santiago", country: "CL" },
@@ -65,7 +64,7 @@ try {
     process.stdout.write(`✓ order created: #${order.platformOrderId}  ${order.totalLocal} ${order.currency}  ${order.adminUrl ?? ""}\n`);
     const back = await adapter.getOrder(order.platformOrderId);
     if (back === null) die("the order was created but reading it back returned nothing");
-    process.stdout.write(`✓ read back: status ${back.status}, sku ${back.sku}, qty ${back.quantity}, reference ${back.reference}\n`);
+    process.stdout.write(`✓ read back: status ${back.status}, lines ${back.lines.map((l) => `${l.sku} × ${l.quantity}`).join(", ")}, reference ${back.reference}\n`);
     process.stdout.write("  Cancel the probe order in the Shopify admin (restock) when you are done.\n");
   }
 } catch (error) {

@@ -8,7 +8,9 @@
  * it succeeds the buyer has already paid, so a failed annotation degrades to
  * a warning rather than throwing money away.
  */
-import { VitrineeError, currencyDecimals, formatUnits, parseDecimal } from "@vitrinee/core";
+import { VitrineeError, currencyDecimals } from "@vitrinee/core";
+
+import { orderTotalLocal, platformLines, resolveOrderLines } from "../lines.js";
 
 import type { CreateOrderInput, PlatformOrder, Product, StoreAdapter } from "../types.js";
 import { JumpsellerClient, JumpsellerHttpError } from "./client.js";
@@ -87,26 +89,9 @@ export class JumpsellerStoreAdapter implements StoreAdapter {
   }
 
   async createOrder(input: CreateOrderInput): Promise<PlatformOrder> {
-    if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
-      throw new VitrineeError("ValidationError", "quantity must be a positive integer", {
-        details: { quantity: input.quantity },
-      });
-    }
-    const product = await this.getProduct(input.productId);
-    if (product === null) {
-      throw new VitrineeError("ProductNotFound", `no product with id "${input.productId}"`, {
-        details: { productId: input.productId },
-      });
-    }
-    if (product.stock !== null && product.stock < input.quantity) {
-      throw new VitrineeError("OutOfStock", `only ${product.stock} left of "${product.name}"`, {
-        details: { productId: product.id, available: product.stock, requested: input.quantity },
-      });
-    }
-
+    const products = await resolveOrderLines(input.lines, (id) => this.getProduct(id));
     const decimals = currencyDecimals(this.currency);
-    const unit = parseDecimal(product.priceLocal, decimals);
-    const totalLocal = formatUnits(unit * BigInt(input.quantity), decimals);
+    const totalLocal = orderTotalLocal(input.lines, products, this.currency);
 
     const created = await this.call<JumpsellerOrderEnvelope>("/orders.json", {
       method: "POST",
@@ -117,13 +102,10 @@ export class JumpsellerStoreAdapter implements StoreAdapter {
           shipping_price: 0,
           shipping_required: true,
           customer: this.toCustomer(input),
-          products: [
-            {
-              id: Number(product.id),
-              qty: input.quantity,
-              price: apiNumberFromDecimal(product.priceLocal, decimals, "price"),
-            },
-          ],
+          products: input.lines.map((line) => {
+            const product = products.get(line.productId)!;
+            return { id: Number(product.id), qty: line.quantity, price: apiNumberFromDecimal(product.priceLocal, decimals, "price") };
+          }),
         },
       },
     });
@@ -136,9 +118,7 @@ export class JumpsellerStoreAdapter implements StoreAdapter {
       platform: this.name,
       status: "paid",
       reference: input.reference,
-      productId: product.id,
-      sku: product.sku,
-      quantity: input.quantity,
+      lines: platformLines(input.lines, products),
       totalLocal,
       currency: this.currency,
       paymentRef: structuredClone(input.paymentRef),
@@ -213,16 +193,13 @@ export class JumpsellerStoreAdapter implements StoreAdapter {
   }
 
   private toPlatformOrder(order: JumpsellerOrder): PlatformOrder {
-    const line = order.products?.[0];
     const decimals = currencyDecimals(order.currency ?? this.currency);
     return {
       platformOrderId: String(order.id),
       platform: this.name,
       status: order.status === "Paid" ? "paid" : order.status === "Canceled" ? "canceled" : "pending",
       reference: referenceFrom(order.additional_information ?? ""),
-      productId: String(line?.product_id ?? line?.id ?? ""),
-      sku: line?.sku ?? "",
-      quantity: line?.qty ?? 0,
+      lines: (order.products ?? []).map((line) => ({ productId: String(line.product_id ?? line.id ?? ""), sku: line.sku ?? "", quantity: line.qty ?? 0 })),
       totalLocal: order.total === undefined ? "0" : decimalFromApiNumber(order.total, decimals, "total"),
       currency: order.currency ?? this.currency,
       paymentRef: paymentRefFrom(order.additional_information ?? ""),

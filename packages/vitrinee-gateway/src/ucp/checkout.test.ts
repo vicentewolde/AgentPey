@@ -5,7 +5,7 @@ import { exportJWK, generateKeyPair } from "jose";
 
 import { MockStoreAdapter, type MOCK_CATALOG } from "@vitrinee/adapters";
 import type { DisputeReader, DisputeRecord } from "@vitrinee/anchor";
-import { STELLAR_X402_HANDLER, UCP_REST_PREFIX, USDC_TESTNET } from "@vitrinee/core";
+import { STELLAR_X402_HANDLER, UCP_REST_PREFIX, USDC_TESTNET, checkReceiptSignature } from "@vitrinee/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Anchorer } from "../anchoring.js";
@@ -263,7 +263,7 @@ describe("UCP checkout sessions (T122)", () => {
     expect((await h.call("PUT", `/checkout-sessions/${created.id}`, ready("gorro-andes"))).status).toBe(409);
   });
 
-  it("answers unknown sessions, unknown products and unsupported carts as UCP errors", async () => {
+  it("answers unknown sessions, unknown products and carts it cannot take as UCP errors", async () => {
     const missing = await h.call("GET", "/checkout-sessions/cs_doesnotexist");
     expect(missing.status).toBe(404);
     expect(ucpErrors(ERROR_SCHEMA, missing.body)).toEqual([]);
@@ -273,8 +273,10 @@ describe("UCP checkout sessions (T122)", () => {
     expect(product.status).toBe(400);
     expect(ucpErrors(ERROR_SCHEMA, product.body)).toEqual([]);
 
-    const two = await h.create({ ...ready(), line_items: [{ item: { id: "gorro-andes" }, quantity: 1 }, { item: { id: "polera-valpo-l" }, quantity: 1 }] });
-    expect(two.status).toBe(400);
+    // Several lines are a cart (T148); more than ten are refused before anything is quoted.
+    const eleven = await h.create({ ...ready(), line_items: Array.from({ length: 11 }, () => ({ item: { id: "gorro-andes" }, quantity: 1 })) });
+    expect(eleven.status).toBe(400);
+    expect(ucpErrors(ERROR_SCHEMA, eleven.body)).toEqual([]);
     const pickup = await h.create({ ...ready(), fulfillment: { methods: [{ type: "pickup" }] } });
     expect(pickup.status).toBe(400);
     const bad = await h.create({ line_items: [{ item: { id: "gorro-andes" }, quantity: 0 }] });
@@ -303,6 +305,89 @@ describe("UCP checkout sessions (T122)", () => {
     const missing = await h.call("GET", "/orders/ord_nope");
     expect(missing.status).toBe(404);
     expect(ucpErrors(ERROR_SCHEMA, missing.body)).toEqual([]);
+  });
+});
+
+describe("several products in one checkout (T148)", () => {
+  const h = harness();
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+
+  const cart = (lines: Array<[string, number]>) => ({ ...ready(), line_items: lines.map(([id, quantity]) => ({ item: { id }, quantity })) });
+  // hoodie 34990 CLP → 368315789; stickers 990 CLP → 10421053 (950 CLP per USD, one rounding per unit, VT-7).
+  const HOODIE = 368_315_789n;
+  const STICKERS = 10_421_053n;
+
+  it("quotes each line on its own and charges their sum, with one group for every line", async () => {
+    const { status, body } = await h.create(cart([["hoodie-cordillera-m", 1], ["stickers-cordillera", 2]]));
+    expect(status).toBe(201);
+    expect(ucpErrors(CHECKOUT_SCHEMA, body)).toEqual([]);
+    expect(body.status).toBe("ready_for_complete");
+    const lines = body["line_items"] as Array<{ id: string; item: { id: string; price: number }; quantity: number; totals: Array<{ type: string; amount: number }> }>;
+    expect(lines.map((line) => [line.id, line.item.id, line.item.price, line.quantity, line.totals.find((t) => t.type === "total")?.amount])).toEqual([
+      ["li_1", "hoodie-cordillera-m", 34990, 1, 34990],
+      ["li_2", "stickers-cordillera", 990, 2, 1980],
+    ]);
+    expect(body.totals.find((t) => t.type === "total")?.amount).toBe(36970);
+    expect(requirementsOf(body).amount).toBe((HOODIE + 2n * STICKERS).toString());
+    const method = (body["fulfillment"] as { methods: Array<{ line_item_ids: string[]; groups: Array<{ line_item_ids: string[] }> }> }).methods[0]!;
+    expect(method.line_item_ids).toEqual(["li_1", "li_2"]);
+    expect(method.groups).toEqual([expect.objectContaining({ line_item_ids: ["li_1", "li_2"] })]);
+  });
+
+  it("completes with one settlement, one platform order of two lines and a receipt whose two items add up to what was paid", async () => {
+    const { body: created } = await h.create(cart([["gorro-andes", 1], ["stickers-cordillera", 3]]));
+    const settled = h.facilitator.settleCalls.length;
+    const platformOrders = h.platformOrders.created;
+    const { body } = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
+    expect(body.status).toBe("completed");
+    expect(h.facilitator.settleCalls).toHaveLength(settled + 1);
+    expect(h.platformOrders.created).toBe(platformOrders + 1);
+
+    const order = await h.call("GET", `/orders/${body.order?.id}`);
+    expect(ucpErrors(ORDER_SCHEMA, order.body)).toEqual([]);
+    expect((order.body["line_items"] as Array<{ id: string; item: { id: string }; quantity: { total: number }; totals: Array<{ type: string; amount: number }> }>).map((l) => [l.id, l.item.id, l.quantity.total, l.totals.find((t) => t.type === "total")?.amount])).toEqual([
+      ["li_1", "gorro-andes", 1, 12990],
+      ["li_2", "stickers-cordillera", 3, 2970],
+    ]);
+    expect(order.body["totals"]).toEqual(expect.arrayContaining([{ type: "total", amount: 15960 }]));
+    expect(order.body["fulfillment"]).toMatchObject({ expectations: [expect.objectContaining({ line_items: [{ id: "li_1", quantity: 1 }, { id: "li_2", quantity: 3 }] })] });
+
+    const jws = (body as unknown as { receipt: { jws: string } }).receipt.jws;
+    const check = checkReceiptSignature(jws);
+    expect(check.ok).toBe(true);
+    expect(check.claims?.items.map((item) => [item.productId, item.quantity, item.unitPriceUSDCAtomic])).toEqual([
+      ["gorro-andes", 1, "136736842"],
+      ["stickers-cordillera", 3, STICKERS.toString()],
+    ]);
+    expect(check.claims?.amountUSDCAtomic).toBe(requirementsOf(created).amount);
+    expect(check.claims?.platformOrderId).not.toBeNull();
+    const platformOrder = await h.adapter.getOrder(check.claims!.platformOrderId!);
+    expect(platformOrder?.lines.map((line) => [line.productId, line.quantity])).toEqual([
+      ["gorro-andes", 1],
+      ["stickers-cordillera", 3],
+    ]);
+  });
+
+  it("takes the same product in two lines, and checks its stock for their sum", async () => {
+    // botella-patagonia-500 has 2 in stock.
+    const fits = await h.create(cart([["botella-patagonia-500", 1], ["botella-patagonia-500", 1]]));
+    expect(fits.body.status).toBe("ready_for_complete");
+    const short = await h.create(cart([["botella-patagonia-500", 2], ["botella-patagonia-500", 1]]));
+    expect(short.body.status).toBe("incomplete");
+    expect(short.body.messages).toEqual([expect.objectContaining({ code: "out_of_stock", path: "$.line_items[1]" })]);
+  });
+
+  it("re-quotes a cart changed with PUT, and refuses the credential signed for the old one", async () => {
+    const { body: created } = await h.create(cart([["stickers-cordillera", 1]]));
+    const old = requirementsOf(created);
+    const updated = await h.call("PUT", `/checkout-sessions/${created.id}`, cart([["stickers-cordillera", 1], ["gorro-andes", 1]]));
+    expect(updated.body["line_items"]).toHaveLength(2);
+    expect(BigInt(requirementsOf(updated.body).amount)).toBe(STICKERS + 136_736_842n);
+    const settled = h.facilitator.settleCalls.length;
+    const { body } = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(old));
+    expect(body.messages).toEqual([expect.objectContaining({ code: "payment_failed" })]);
+    expect(h.facilitator.settleCalls).toHaveLength(settled);
   });
 });
 
@@ -851,7 +936,7 @@ describe("AP2 in the UCP checkout, the store's side (T134, R-15)", () => {
   /** What AgentPey's agent does: an open mandate the platform signs in its own name, closed over the signed checkout. */
   const mandateFor = async (
     checkout: Record<string, unknown>,
-    o: { issuer?: P256; iss?: string; holder?: P256; nonce?: string; aud?: string; quantity?: number; expiresAt?: Date; hopIssuedAt?: Date; checkoutJwt?: string; open?: string } = {},
+    o: { issuer?: P256; iss?: string; holder?: P256; nonce?: string; aud?: string; quantity?: number; lines?: Array<{ item: { id: string; title: string }; quantity: number }>; expiresAt?: Date; hopIssuedAt?: Date; checkoutJwt?: string; open?: string } = {},
   ) => {
     const origin = new URL(h.url()).origin;
     const open = o.open ?? (
@@ -861,8 +946,7 @@ describe("AP2 in the UCP checkout, the store's side (T134, R-15)", () => {
           source: { mandate_id: crypto.randomUUID(), hash: "a".repeat(64), registry: "CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F" },
           agentKey: agent.public,
           merchant: { id: origin, name: "Bazar Cordillera", website: origin },
-          item: { id: "gorro-andes", title: "Gorro Andes" },
-          quantity: o.quantity ?? 1,
+          ...(o.lines === undefined ? { item: { id: "gorro-andes", title: "Gorro Andes" }, quantity: o.quantity ?? 1 } : { lines: o.lines }),
           maxAmount: 300n,
           currency: "USD",
           paymentInstrument: { id: "stellar_x402", type: "stellar_x402" },
@@ -957,6 +1041,28 @@ describe("AP2 in the UCP checkout, the store's side (T134, R-15)", () => {
     expect(done.body.status).not.toBe("completed");
     expect(done.body.messages).toEqual([expect.objectContaining({ code })]);
     expect(h.facilitator.settleCalls).toHaveLength(before);
+  });
+
+  it("completes a two-line checkout under an open mandate naming both lines, and refuses one that leaves a line out (T148)", async () => {
+    const twoLines = { ...ready("gorro-andes"), line_items: [{ item: { id: "gorro-andes" }, quantity: 1 }, { item: { id: "stickers-cordillera" }, quantity: 2 }] };
+    const both = [
+      { item: { id: "gorro-andes", title: "Gorro Andes" }, quantity: 1 },
+      { item: { id: "stickers-cordillera", title: "Stickers" }, quantity: 2 },
+    ];
+
+    const { body: missing } = await h.call("POST", "/checkout-sessions", twoLines, as(AP2_PLATFORM));
+    const before = h.facilitator.settleCalls.length;
+    const refused = await completeWith(missing, await mandateFor(missing as unknown as Record<string, unknown>, { lines: [both[0]!] }));
+    expect(refused.body.messages).toEqual([expect.objectContaining({ code: "mandate_scope_mismatch" })]);
+    const swapped = await completeWith(missing, await mandateFor(missing as unknown as Record<string, unknown>, { lines: [both[0]!, { ...both[1]!, quantity: 1 }] }));
+    expect(swapped.body.messages).toEqual([expect.objectContaining({ code: "mandate_scope_mismatch" })]);
+    expect(h.facilitator.settleCalls).toHaveLength(before);
+
+    const { body: created } = await h.call("POST", "/checkout-sessions", twoLines, as(AP2_PLATFORM));
+    const done = await completeWith(created, await mandateFor(created as unknown as Record<string, unknown>, { lines: [both[1]!, both[0]!] }));
+    expect(done.body.messages).toEqual([]);
+    expect(done.body.status).toBe("completed");
+    expect(h.facilitator.settleCalls).toHaveLength(before + 1);
   });
 
   it("refuses a mandate from a platform whose profile publishes no key (agent_missing_key)", async () => {

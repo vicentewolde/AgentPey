@@ -24,6 +24,7 @@ import { VitrineeError, signedWebhookHeaders, type EcPrivateJwk } from "@vitrine
 import { z } from "zod";
 
 import type { OrderFulfillmentEvent, OrderRecord, OrderStore, OrderWebhook, OrderWebhookDelivery } from "../orders.js";
+import { parcelLines } from "./lines.js";
 import { ucpOrder, type DisputeLookup } from "./order.js";
 import type { PlatformSender, SendResult } from "./platform-profile.js";
 import type { StoreWebhookKey } from "./webhook-key.js";
@@ -64,6 +65,8 @@ export interface ShipmentInput {
   trackingUrl?: string;
   carrier?: string;
   platformRef?: string;
+  /** Which products, and how many, the parcel carried, when the platform says (T148). */
+  lines?: { productId: string; quantity: number }[];
 }
 
 export interface OrderEventsDeps {
@@ -143,6 +146,9 @@ export class OrderEvents {
       const seen = events.some((e) => e.type === "shipped" && (shipment.platformRef === undefined ? e.source === shipment.source : e.platformRef === shipment.platformRef));
       if (o.fulfillmentState !== "fulfilled" || shipment.state !== "partial") o.fulfillmentState = shipment.state ?? "fulfilled";
       if (seen) return;
+      // Which lines this parcel carried (T148). None that can be named: not an event yet; it is asked about again.
+      const lines = parcelLines(o, shipment);
+      if (lines.length === 0) return;
       events.push({
         id: `ful_${events.length + 1}`,
         type: "shipped",
@@ -152,6 +158,7 @@ export class OrderEvents {
         ...(shipment.trackingUrl === undefined ? {} : { trackingUrl: shipment.trackingUrl }),
         ...(shipment.carrier === undefined ? {} : { carrier: shipment.carrier }),
         ...(shipment.platformRef === undefined ? {} : { platformRef: shipment.platformRef }),
+        lines,
       });
       o.fulfillmentEvents = events;
       appended = true;
@@ -214,6 +221,7 @@ export class OrderEvents {
           ...(shipment.trackingNumber === undefined ? {} : { trackingNumber: shipment.trackingNumber }),
           ...(shipment.trackingUrl === undefined ? {} : { trackingUrl: shipment.trackingUrl }),
           ...(shipment.carrier === undefined ? {} : { carrier: shipment.carrier }),
+          ...(shipment.lines === undefined ? {} : { lines: shipment.lines }),
         });
       }
     } catch (error) {

@@ -128,6 +128,37 @@ export interface CheckoutQuote {
   totalLocal: string;
 }
 
+/**
+ * What a whole purchase costs (T148): its lines, each priced by
+ * {@link quoteCheckout} with its own single rounding (VT-7), and their sum.
+ * The total is Σ line totals, never a conversion of the summed local price,
+ * so the receipt's items add up to what is charged by construction.
+ */
+export interface PurchaseQuote {
+  lines: readonly CheckoutQuote[];
+  totalAtomic: bigint;
+  totalLocal: string;
+  currency: string;
+}
+
+/** @throws VitrineeError `ValidationError` for no lines, or lines priced in different currencies. */
+export function purchaseQuote(lines: readonly CheckoutQuote[]): PurchaseQuote {
+  const [first] = lines;
+  if (first === undefined) throw new VitrineeError("ValidationError", "a purchase needs at least one line", { details: {} });
+  const currency = first.product.currency;
+  const decimals = currencyDecimals(currency);
+  let totalAtomic = 0n;
+  let totalLocal = 0n;
+  for (const line of lines) {
+    if (line.product.currency !== currency) {
+      throw new VitrineeError("ValidationError", "every line of a purchase must be priced in the same currency", { details: { currencies: [currency, line.product.currency] } });
+    }
+    totalAtomic += line.totalAtomic;
+    totalLocal += parseDecimal(line.totalLocal, decimals);
+  }
+  return { lines, totalAtomic, totalLocal: formatUnits(totalLocal, decimals), currency };
+}
+
 export interface CheckoutDeps {
   config: GatewayConfig;
   adapter: StoreAdapter;
@@ -212,7 +243,8 @@ export function preflightCheckout(deps: CheckoutDeps): RequestHandler {
     if (idempotencyKey !== null) {
       const existing = deps.orders.findByIdempotencyKey(idempotencyKey);
       if (existing !== undefined) {
-        if (existing.product.id !== productId || existing.quantity !== body.quantity) {
+        const [only] = existing.items;
+        if (existing.items.length !== 1 || only?.productId !== productId || only.quantity !== body.quantity) {
           throw new VitrineeError("IdempotencyConflict", "this Idempotency-Key was already used for a different purchase", {
             details: { orderId: existing.orderId },
           });
@@ -335,16 +367,14 @@ export function buildReceiptClaims(record: OrderRecord, config: GatewayConfig, i
     amountUSDC: record.amountUSDC,
     amountUSDCAtomic: record.amountUSDCAtomic,
     settlementTxHash: record.settlement.txHash,
-    items: [
-      {
-        productId: record.product.id,
-        sku: record.product.sku,
-        name: record.product.name,
-        quantity: record.quantity,
-        unitPriceUSDC: usdcAtomicToDecimal(BigInt(record.unitPriceUSDCAtomic)),
-        unitPriceUSDCAtomic: record.unitPriceUSDCAtomic,
-      },
-    ],
+    items: record.items.map((item) => ({
+      productId: item.productId,
+      sku: item.sku,
+      name: item.name,
+      quantity: item.quantity,
+      unitPriceUSDC: usdcAtomicToDecimal(BigInt(item.unitPriceUSDCAtomic)),
+      unitPriceUSDCAtomic: item.unitPriceUSDCAtomic,
+    })),
     issuedAt: issuedAt.toISOString(),
     refundWindowEndsAt: new Date(issuedAt.getTime() + config.policies.refundWindowSeconds * 1000).toISOString(),
   };
@@ -352,7 +382,7 @@ export function buildReceiptClaims(record: OrderRecord, config: GatewayConfig, i
 
 /** A purchase whose money already moved: what either checkout door hands over to become an order. */
 export interface PaidPurchase {
-  quote: CheckoutQuote;
+  quote: PurchaseQuote;
   body: CheckoutBody;
   idempotencyKey: string | null;
   settlement: SettlementRecord;
@@ -437,13 +467,18 @@ async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Prom
     status: "paid",
     createdAt: now.toISOString(),
     idempotencyKey,
-    product: { id: quote.product.id, sku: quote.product.sku, name: quote.product.name },
-    quantity: quote.quantity,
-    unitPriceUSDCAtomic: quote.unitAtomic.toString(),
+    items: quote.lines.map((line) => ({
+      productId: line.product.id,
+      sku: line.product.sku,
+      name: line.product.name,
+      quantity: line.quantity,
+      unitPriceUSDCAtomic: line.unitAtomic.toString(),
+      unitPriceLocal: line.product.priceLocal,
+    })),
     amountUSDCAtomic: settlement.amountAtomic,
     amountUSDC: usdcAtomicToDecimal(BigInt(settlement.amountAtomic)),
     totalLocal: quote.totalLocal,
-    currency: quote.product.currency,
+    currency: quote.currency,
     buyer,
     settlement: {
       txHash: settlement.txHash,
@@ -475,8 +510,7 @@ async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Prom
 
   try {
     const platformOrder = await deps.adapter.createOrder({
-      productId: quote.product.id,
-      quantity: quote.quantity,
+      lines: quote.lines.map((line) => ({ productId: line.product.id, quantity: line.quantity })),
       buyer,
       reference: orderId,
       paymentRef: {
@@ -537,7 +571,7 @@ export function completeCheckout(deps: CheckoutDeps): RequestHandler {
       throw new VitrineeError("SettlementUnaccounted", "payment settled but the payer account could not be determined", { details: { txHash: settlement.txHash } });
     }
 
-    const { record, replayed } = await fulfilPaidPurchase(deps, { quote, body, idempotencyKey, settlement, payer });
+    const { record, replayed } = await fulfilPaidPurchase(deps, { quote: purchaseQuote([quote]), body, idempotencyKey, settlement, payer });
     if (replayed) res.set("Idempotent-Replayed", "true");
     res.status(200).json(orderResponse(record));
   };
@@ -577,8 +611,7 @@ export async function fulfilOrder(deps: CheckoutDeps, orderId: string): Promise<
     let failure: string | undefined;
     try {
       const platformOrder = await deps.adapter.createOrder({
-        productId: record.product.id,
-        quantity: record.quantity,
+        lines: record.items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
         buyer: record.buyer,
         reference: record.orderId,
         paymentRef: {
@@ -613,14 +646,19 @@ export async function fulfilOrder(deps: CheckoutDeps, orderId: string): Promise<
   }
 }
 
-/** What `/orders/:id` and the checkout answer with. One shape, so the agent needs one parser. */
+/**
+ * What `/orders/:id` and the checkout answer with. One shape, so the agent
+ * needs one parser. `items` lists every line (T148); an order of one line
+ * also keeps the `product` and `quantity` x402 clients read since day 1.
+ */
 export function orderResponse(record: OrderRecord): Record<string, unknown> {
+  const [only] = record.items;
   return {
     orderId: record.orderId,
     status: record.status,
     createdAt: record.createdAt,
-    product: record.product,
-    quantity: record.quantity,
+    ...(record.items.length === 1 && only !== undefined ? { product: { id: only.productId, sku: only.sku, name: only.name }, quantity: only.quantity } : {}),
+    items: record.items.map((item) => ({ productId: item.productId, sku: item.sku, name: item.name, quantity: item.quantity, unitPriceUSDCAtomic: item.unitPriceUSDCAtomic })),
     amountUSDC: record.amountUSDC,
     amountUSDCAtomic: record.amountUSDCAtomic,
     totalLocal: record.totalLocal,

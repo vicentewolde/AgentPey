@@ -58,9 +58,9 @@ const catalogue = (nodes: unknown[], currency = "CLP") => ({
 });
 
 const paymentRef = { txHash: "abc123", network: "stellar:testnet", asset: "USDC", amountUSDCAtomic: "3000000", payerAccount: "GAGENT" };
-const orderInput = (overrides: Partial<CreateOrderInput> = {}): CreateOrderInput => ({
-  productId: "11",
-  quantity: 2,
+/** One line by default; `productId`/`quantity` shorten a one-line order, `lines` gives several (T148). */
+const orderInput = ({ productId = "11", quantity = 2, ...overrides }: Partial<CreateOrderInput> & { productId?: string; quantity?: number } = {}): CreateOrderInput => ({
+  lines: [{ productId, quantity }],
   buyer: { stellarAccount: "GAGENT", shipping: { name: "Vinny Wolde", address: "Av. Siempre Viva 1", city: "Ñuñoa", country: "CL" } },
   paymentRef,
   reference: "vtr_001",
@@ -196,9 +196,7 @@ describe("createOrder", () => {
       platformOrderId: "555",
       platform: "shopify",
       status: "paid",
-      productId: "11",
-      sku: "STK-5",
-      quantity: 2,
+      lines: [{ productId: "11", sku: "STK-5", quantity: 2 }],
       totalLocal: "5700",
       currency: "CLP",
       adminUrl: "https://admin.shopify.com/store/mi-tienda/orders/555",
@@ -244,6 +242,41 @@ describe("createOrder", () => {
     expect(error.message).toContain("write_orders");
     expect(error.details["credentialsRejected"]).toBe(true);
   });
+  it("creates one order with a line item per line and one sale for their sum (T148)", async () => {
+    const seen: { order?: Record<string, unknown> }[] = [];
+    const { adapter } = adapterWith((body) => {
+      if (body.query.includes("orderCreate")) {
+        seen.push(body.variables as never);
+        return created;
+      }
+      const shirtVariant = { ...shirt.variants.nodes[0]!, product: shirt };
+      return body.variables["id"] === "gid://shopify/ProductVariant/21"
+        ? { data: { shop: { currencyCode: "CLP" }, productVariant: shirtVariant } }
+        : variantResponse();
+    });
+    const order = await adapter.createOrder(orderInput({ lines: [{ productId: "11", quantity: 2 }, { productId: "21", quantity: 1 }] }));
+    expect(order.lines).toEqual([
+      { productId: "11", sku: "STK-5", quantity: 2 },
+      { productId: "21", sku: "POL-M", quantity: 1 },
+    ]);
+    expect(order.totalLocal).toBe("15690");
+    const sent = seen[0]?.order as Record<string, unknown>;
+    expect(sent["lineItems"]).toEqual([
+      { variantId: "gid://shopify/ProductVariant/11", quantity: 2, priceSet: { shopMoney: { amount: "2850", currencyCode: "CLP" } } },
+      { variantId: "gid://shopify/ProductVariant/21", quantity: 1, priceSet: { shopMoney: { amount: "9990", currencyCode: "CLP" } } },
+    ]);
+    expect(sent["transactions"]).toEqual([{ kind: "SALE", status: "SUCCESS", gateway: "Vitrinee x402", amountSet: { shopMoney: { amount: "15690", currencyCode: "CLP" } } }]);
+  });
+
+  it("checks every line's stock before creating anything (T148)", async () => {
+    const { adapter, calls } = adapterWith(handler);
+    await expect(adapter.createOrder(orderInput({ lines: [{ productId: "11", quantity: 5 }, { productId: "11", quantity: 5 }] }))).rejects.toMatchObject({
+      code: "OutOfStock",
+      details: { requested: 10 },
+    });
+    expect(calls.some((c) => c.body.includes("orderCreate"))).toBe(false);
+  });
+
 });
 
 describe("getOrder", () => {
@@ -267,8 +300,42 @@ describe("getOrder", () => {
       },
     }));
     const order = await adapter.getOrder("555");
-    expect(order).toMatchObject({ status: "paid", reference: "vtr_001", productId: "11", sku: "STK-5", quantity: 2, totalLocal: "5700" });
+    expect(order).toMatchObject({ status: "paid", reference: "vtr_001", lines: [{ productId: "11", sku: "STK-5", quantity: 2 }], totalLocal: "5700" });
     expect(order?.paymentRef).toMatchObject({ txHash: "abc123", network: "stellar:testnet", payerAccount: "GAGENT" });
+  });
+
+  it("reads every line of an order, and which lines each parcel carried (T148)", async () => {
+    const { adapter, calls } = adapterWith(() => ({
+      data: {
+        order: {
+          id: "gid://shopify/Order/556",
+          displayFinancialStatus: "PAID",
+          displayFulfillmentStatus: "PARTIALLY_FULFILLED",
+          lineItems: {
+            nodes: [
+              { quantity: 2, sku: "STK-5", variant: { id: "gid://shopify/ProductVariant/11" } },
+              { quantity: 1, sku: "POL-M", variant: { id: "gid://shopify/ProductVariant/21" } },
+            ],
+          },
+          fulfillments: [
+            {
+              id: "gid://shopify/Fulfillment/12",
+              createdAt: "2026-10-06T12:00:00Z",
+              status: "SUCCESS",
+              trackingInfo: [],
+              fulfillmentLineItems: { nodes: [{ quantity: 2, lineItem: { variant: { id: "gid://shopify/ProductVariant/11" } } }] },
+            },
+          ],
+        },
+      },
+    }));
+    const order = await adapter.getOrder("556");
+    expect(order?.lines).toEqual([
+      { productId: "11", sku: "STK-5", quantity: 2 },
+      { productId: "21", sku: "POL-M", quantity: 1 },
+    ]);
+    expect(order?.shipments).toEqual([{ id: "12", shippedAt: "2026-10-06T12:00:00Z", lines: [{ productId: "11", quantity: 2 }] }]);
+    expect(calls.find((c) => c.url.includes("graphql"))?.body).toContain("fulfillmentLineItems(first: 10)");
   });
 
   it("answers null for a missing order and for an id that is not numeric", async () => {

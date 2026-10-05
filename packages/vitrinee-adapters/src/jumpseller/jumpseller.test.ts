@@ -62,9 +62,9 @@ const paymentRef = {
   payerAccount: "GAGENT",
 };
 
-const orderInput = (overrides: Partial<CreateOrderInput> = {}): CreateOrderInput => ({
-  productId: "37282902",
-  quantity: 1,
+/** One line by default; `productId`/`quantity` shorten a one-line order, `lines` gives several (T148). */
+const orderInput = ({ productId = "37282902", quantity = 1, ...overrides }: Partial<CreateOrderInput> & { productId?: string; quantity?: number } = {}): CreateOrderInput => ({
+  lines: [{ productId, quantity }],
   buyer: { stellarAccount: "GAGENT", shipping: { name: "Vinny Wolde", city: "Ñuñoa", country: "CL" } },
   paymentRef,
   reference: "vtr_001",
@@ -185,7 +185,7 @@ describe("createOrder", () => {
       platformOrderId: "5001",
       platform: "jumpseller",
       status: "paid",
-      sku: "HOOD-CORD-M",
+      lines: [{ productId: "37282902", sku: "HOOD-CORD-M", quantity: 1 }],
       totalLocal: "34990",
       currency: "CLP",
       reference: "vtr_001",
@@ -213,6 +213,40 @@ describe("createOrder", () => {
       "GET /products/37282902.json": { body: { product: { ...hoodie, stock: 2 } } },
     });
     await expect(adapter.createOrder(orderInput({ quantity: 3 }))).rejects.toMatchObject({ code: "OutOfStock" });
+  });
+
+  it("creates one order with every line, and a total that is their sum (T148)", async () => {
+    const stickers = { ...hoodie, id: 37283001, name: "Pack de stickers", sku: "STK-CORD", price: 990.0 };
+    const { adapter, calls } = adapterWith({ ...happyRoutes, "GET /products/37283001.json": { body: { product: stickers } } });
+    const order = await adapter.createOrder(
+      orderInput({ lines: [{ productId: "37282902", quantity: 1 }, { productId: "37283001", quantity: 2 }] }),
+    );
+    expect(order.lines).toEqual([
+      { productId: "37282902", sku: "HOOD-CORD-M", quantity: 1 },
+      { productId: "37283001", sku: "STK-CORD", quantity: 2 },
+    ]);
+    expect(order.totalLocal).toBe("36970");
+    const create = calls.find((c) => c.path === "/orders.json")?.body as { order: Record<string, unknown> };
+    expect(create.order.products).toEqual([
+      { id: 37282902, qty: 1, price: 34990 },
+      { id: 37283001, qty: 2, price: 990 },
+    ]);
+  });
+
+  it("counts the stock of a product named in two lines as their sum, before creating anything (T148)", async () => {
+    const { adapter, calls } = adapterWith({ "GET /products/37282902.json": { body: { product: { ...hoodie, stock: 2 } } } });
+    await expect(
+      adapter.createOrder(orderInput({ lines: [{ productId: "37282902", quantity: 1 }, { productId: "37282902", quantity: 2 }] })),
+    ).rejects.toMatchObject({ code: "OutOfStock", details: { requested: 3 } });
+    expect(calls.some((c) => c.path === "/orders.json")).toBe(false);
+  });
+
+  it("refuses an order with no lines or more than ten (T148)", async () => {
+    const { adapter, calls } = adapterWith({});
+    await expect(adapter.createOrder(orderInput({ lines: [] }))).rejects.toMatchObject({ code: "ValidationError" });
+    const eleven = Array.from({ length: 11 }, () => ({ productId: "37282902", quantity: 1 }));
+    await expect(adapter.createOrder(orderInput({ lines: eleven }))).rejects.toMatchObject({ code: "ValidationError" });
+    expect(calls).toHaveLength(0);
   });
 
   it("rejects a non-positive quantity before touching the network", async () => {
