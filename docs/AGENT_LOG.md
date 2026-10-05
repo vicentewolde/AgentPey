@@ -7918,3 +7918,15 @@ tipos de `partner-routes`). R-17 precisada. Suite igual (47/10/20).
 Pendiente: push, PR y merge con OK; compra real y despacho marcado en Shopify, con OK. `AGENTS.md`: sin cambios.
 Exponential: T147 en `IN_PROGRESS`.
 
+## 2026-10-05 (28) — cc/t147-webhooks-orden → main, cc/t147-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI 4/4, T147 en `main` por fast-forward ([PR #55](https://github.com/vicentewolde/AgentPey/pull/55)) y desplegada. Con OK, rail UCP
+recargado con 3 USDC y compra `ord_muv8xjmi1a53efae61` (Shopify `19009954578738`): aviso "creada" en agentpey.com; el
+usuario marcó el pedido como despachado en Shopify; la orden mostró `shipped` y el aviso "despachada" llegó
+verificado. T147 cerrada (SPEC, ESTADO, BITACORA, SYNC, evidencia §5, ticket `DONE`).
+
+Pendiente: push y merge de `cc/t147-evidencia` con OK. Siguiente: T130 si hay tienda de terceros; si no, T148 o T149.
+`AGENTS.md`: sin cambios. Exponential: T147 a `DONE`.
+

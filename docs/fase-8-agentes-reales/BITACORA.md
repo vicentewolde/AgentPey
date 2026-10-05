@@ -46,7 +46,7 @@ que la librería oficial de AP2 verifica sobre una compra real.
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | pendiente |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
-| T147 Webhooks de orden | en revisión (falta el despacho real) |
+| T147 Webhooks de orden | cerrada |
 | T148 Varios productos | pendiente |
 | T149 Consentimiento | pendiente |
 
@@ -313,7 +313,7 @@ llave va ahora sin ese campo. En la segunda compra la librería oficial verifica
 el mandato con las llaves publicadas, como lo haría cualquier tercero. Recibo
 válido en las dos.
 
-## T147 · Eventos de despacho y webhooks de orden (2026-10-04, en revisión)
+## T147 · Eventos de despacho y webhooks de orden (2026-10-04 y 05, cerrada)
 
 **Qué quedó funcionando.** Cuando un agente compra en una tienda Vitrinee, la
 tienda ahora le avisa sola, sin que el agente tenga que preguntar: primero
@@ -350,7 +350,10 @@ que compró). El receptor de agentpey.com también quedó más estricto: solo
 acepta avisos firmados hace menos de cinco minutos, con la llave de webhooks
 de la tienda.
 
-**Lo que falta.** El despacho real: una compra en `agentcommerce` después del
-deploy, que el comercio la marque como despachada en Shopify y que el aviso
-llegue a agentpey.com.
+**El despacho real.** Con la tienda desplegada, una compra de un imán en
+`agentcommerce`: el aviso "tu pedido está creado" llegó a agentpey.com un
+segundo después del pago. El usuario marcó el pedido como despachado en el
+admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
+registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
+verificó y aceptó. Nadie tuvo que preguntar nada.
 

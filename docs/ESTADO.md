@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-04
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T134 · AP2 dentro del checkout UCP: la tienda firma y no cobra sin mandato, el agente lo cierra; compra real con AP2 que la librería oficial de AP2 verifica
-**Siguiente paso:** push, PR y merge de T147 con OK (despliega la tienda y el receptor de agentpey.com); compra real y despacho marcado en Shopify, con OK. T130 espera la tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T147 · La tienda avisa al agente: la orden muestra el despacho y los avisos firmados ("creada", "despachada") llegan verificados a agentpey.com, probado con un despacho real en Shopify
+**Siguiente paso:** push y merge de `cc/t147-evidencia` con OK. Después, T130 si ya hay tienda de terceros; si no, la siguiente del Bloque B (T148, varios productos por compra, o T149, consentimiento). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -33,7 +33,7 @@
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
-| T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | 👀 en revisión: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; falta el despacho real tras el deploy | `cc/t147-webhooks-orden` (sin push) |
+| T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
 | T148 Varios productos por compra (`R-12`) | si alcanza | ⏳ pendiente | |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ⏳ pendiente | |
 
@@ -117,4 +117,5 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-04: T134 cerrada en `main` ([PR #53](https://github.com/vicentewolde/AgentPey/pull/53)).
 - 2026-10-04, T147: plan con cuatro decisiones del usuario (`R-17`, `VT-44`). Firma RFC 9421 en `@vitrinee/core`, comprobada contra los vectores del RFC; el cliente único de perfiles también entrega webhooks (POST fijado, mismas reglas); la orden guarda eventos y la cola de entregas; Shopify informa despachos con los permisos actuales (comprobado leyendo un pedido real); receptor en `agentpey.com/ucp/webhooks/orders`, declarado en los tres perfiles de AgentPey. Suite oficial 47/10/20 (los 7 de webhooks pasan). `pnpm check` y `vitrinee:check` en verde.
 - 2026-10-05, T147 `/revisar`: sin bloqueantes; corregidos los 16 hallazgos a pedido del usuario. Los más serios: los envíos tienen un cupo propio y el "ocupado" no cuenta como intento (alguien de afuera podía hacer perder avisos); una URL que no es URL ya no traba la cola; se firma `@query`; el seguimiento va solo en el webhook, no en la orden pública; el receptor de agentpey.com acota sus lecturas de perfiles, exige firma de menos de 5 minutos que cubra el id del evento, solo acepta la llave `#ucp-p256` y no publica el id de la orden. Suite igual (47/10/20).
+- 2026-10-05, T147 cerrada: [PR #55](https://github.com/vicentewolde/AgentPey/pull/55) en `main` y desplegado. Rail UCP recargado con 3 USDC (tx `f53ea2d5…`). Compra `ord_muv8xjmi1a53efae61` (Shopify `19009954578738`, tx `ee330134…`, recibo válido): el aviso "creada" llegó a agentpey.com en 1 s; el usuario marcó el pedido como despachado en Shopify, la orden mostró `shipped` con la línea `fulfilled` (valida contra el esquema `2026-08-25`) y el aviso "despachada" llegó verificado. Rail UCP en unos 1,59 USDC.
 
