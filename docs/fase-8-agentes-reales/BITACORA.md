@@ -29,6 +29,9 @@ varios productos, con un solo cobro y un recibo de un ítem por línea.
 **T149 cerrada**: el consentimiento del comprador llega al pedido de la
 tienda, comprobado con una compra real. **T135 cerrada**: MPP charge no
 admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
+**T136 en revisión**: el paquete `@agentpey/ucp-stellar` compra desde un
+proyecto vacío, y el agente de AgentPey paga a través de él (`R-21`); falta
+`/revisar` y la publicación en npm, que espera el permiso del usuario.
 
 | Tarea | Estado |
 |---|---|
@@ -40,7 +43,7 @@ admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
 | T133 UCP `2026-08-25` | cerrada |
 | T134 AP2 en el checkout | cerrada |
 | T135 MPP charge (prueba técnica) | cerrada |
-| T136 SDK en npm | pendiente |
+| T136 SDK en npm | en revisión (falta publicar) |
 | T137 Kit de conformidad de Stellar | pendiente |
 | T138 Prueba técnica: GenLayer | pendiente |
 | T139 Prueba técnica: Trustless Work | pendiente |
@@ -361,6 +364,37 @@ segundo después del pago. El usuario marcó el pedido como despachado en el
 admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
+
+## T136 · El SDK `@agentpey/ucp-stellar` (2026-10-05, en revisión)
+
+**Qué quedó.** Cualquier programador puede ahora hacer que su propio agente
+compre en una tienda UCP que acepta Stellar, con un paquete:
+`@agentpey/ucp-stellar`. El paquete lee el perfil de la tienda, comprueba que
+el medio de pago sea legítimo, cotiza y paga, desde una cuenta común o desde un
+`policy_rail` cuyos topes aplica la red. Nunca guarda una llave: quien lo usa le
+pasa una función que firma. Se probó como lo probaría un desconocido: el
+paquete empaquetado, instalado en una carpeta vacía fuera del repo, y el ejemplo
+del README (15 líneas) compró un imán real en `agentcommerce`, con su pedido en
+Shopify y un recibo con los tres checks en verde. Falta publicarlo en npm, que
+se hace solo con permiso del usuario.
+
+**El agente usa el paquete.** El usuario eligió que no hubiera dos copias del
+código que comprueba y firma un pago (opción A): el agente de AgentPey, el MCP y
+`ucp:buy` pagan ahora a través del paquete, y conservan lo propio (la
+intención firmada, el Mandato, AP2 y el rail), que corre en un paso justo antes
+de firmar. Los tests de contrato del agente pasaron sin cambiarlos. Dos de
+ellos fallaron en la primera corrida porque el paquete nombraba dos errores
+distinto; se corrigió el paquete, no el test.
+
+**Qué no entra.** El Mandato y la autorización de AgentPey se quedan en el
+repo. AP2 tampoco entra, porque el mandato lo firma la llave de la plataforma y
+un tercero no la tiene; una tienda solo lo exige si el perfil de la plataforma
+lo declara, y el del paquete no. Solo testnet. Todo en `R-21`.
+
+**Tropiezos.** El primer tarball salió sin el código compilado (un archivo de
+compilación viejo engañó a `tsc`); ahora el empaquetado limpia y compila
+siempre. Y el ejemplo mostraba "14.9 CLP" porque dividía por 100 un total en
+pesos, que no tienen decimales; ahora muestra el monto en USDC.
 
 ## T135 · MPP charge sobre Stellar, prueba técnica (2026-10-05, cerrada)
 

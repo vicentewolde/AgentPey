@@ -8078,3 +8078,22 @@ T135 no toca; `pnpm check` en verde en local). Rama borrada. T135 cerrada (ESTAD
 Con OK del usuario, el issue se publicó tal cual: [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin plantilla en el repo y sin
 issues iguales; líneas de cada párrafo unidas, mismas palabras). Pendiente: seguir el issue por si responden.
 Siguiente: T136, o T130 si llega la tienda. `AGENTS.md`: sin cambios. Exponential: T135 a `DONE`.
+
+## 2026-10-05 (40) — cc/t136-sdk-npm (sin push)
+
+Agente: Claude Code.
+
+Qué: T136 con el plan aprobado (opción A del usuario, `R-21`). Paquete público `packages/ucp-stellar`
+(`@agentpey/ucp-stellar` 0.1.0): perfil, `quote()`, `pay()` con relectura, `maxAmount` obligatorio y hook
+`beforeSign`, pagadores `classicPayer` y `policyRailPayer` que reciben funciones que firman, errores `UcpStellarError`
+con `paymentSent`. El agente (`apps/agent/src/payment/ucp.ts`, `policy-rail-payer.ts`) paga a través del paquete con la
+misma API; intención, AP2 y `authorise` en `beforeSign`. Dos códigos nuevos en `AgentPassErrorCode`. `pnpm check` en
+verde (72 tests del paquete, contratos UCP y MCP sin cambios). Tarball instalado en un proyecto vacío sin dependencias
+privadas; con OK del usuario, el ejemplo compró un imán: `ord_muvqqsth2fb48d4110` (Shopify `19021144457522`, tx
+`1c2e815c…b127`, recibo con los tres checks). Rail UCP en 1,1999999 USDC. README raíz con la sección del paquete.
+
+Por qué: el spec pide un SDK del lado del agente publicable; el usuario eligió una sola copia del código que firma.
+
+Pendiente: `/revisar`, push, PR y merge con OK. Publicar en npm solo con permiso explícito: antes el usuario crea la
+organización `agentpey` (el scope no existe). `AGENTS.md`: sí, una línea sobre el paquete en el perímetro de `P-10`.
+Exponential: T136 a `IN_PROGRESS`.

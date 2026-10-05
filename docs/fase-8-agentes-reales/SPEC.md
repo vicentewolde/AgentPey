@@ -280,8 +280,8 @@ más rápido que lo estimado.
 - **Depende de:** T128 (reusa la separación cotizar y pagar)
 - **Descripción:** paquete del lado del agente (nombre provisional `@agentpey/ucp-stellar`): leer un perfil UCP, validar el medio de pago de Stellar, cotizar y pagar. Hoy todos los paquetes son `private` en `0.1.0` y no hay configuración de publicación.
 - **Hecho cuando:**
-  - [ ] el paquete se instala desde un tarball en un proyecto vacío y el ejemplo del README, de menos de 30 líneas, corre contra una tienda real
-  - [ ] no arrastra dependencias privadas del monorepo
+  - [x] el paquete se instala desde un tarball en un proyecto vacío y el ejemplo del README, de menos de 30 líneas, corre contra una tienda real (15 líneas; compra real `ord_muvqqsth2fb48d4110` en `agentcommerce`, `evidencia/T136.md`)
+  - [x] no arrastra dependencias privadas del monorepo (`R-21`; lo exige `manifest.test.ts`)
   - [ ] publicado en npm, **con permiso explícito del usuario para esa publicación**
 
 #### T137 · Kit de conformidad del medio de pago de Stellar
@@ -453,6 +453,7 @@ renegocia el 10-oct.**
 | 2026-10-04 | T134 cerrada: mergeada ([PR #52](https://github.com/vicentewolde/AgentPey/pull/52)) y en vivo. Dos compras reales con AP2 en `agentcommerce`: la primera la aceptó la tienda pero el SDK de AP2 la rechazó por un bug suyo (`use` como enum al releer `cnf.jwk`, reportado como AP2#372); con `cnf.jwk` reducido a sus miembros públicos, la segunda la verifica la librería oficial. Quinto criterio marcado |
 | 2026-10-04 | T134, `/revisar`: un bloqueante (el bloqueo AP2 se calculaba por solicitud, así que un `complete` que ya no negociaba AP2 cobraba sin mandato) y 16 hallazgos más, corregidos a pedido del usuario. El bloqueo pasa a ser de la sesión; el `iss` del mandato abierto queda atado al perfil de la plataforma; los términos comparados incluyen destino y comprador. `R-15` y `R-16` precisadas; §4.4 alineada con `R-15` (sin mandato de pago) |
 | 2026-10-04 | T134: la tienda firma cada checkout y verifica el mandato AP2 antes de cobrar; el agente lo cierra (`abierto~~cierre`, `R-15`), con la llave de la plataforma (`R-16`) y la de la tienda derivada (`VT-43`). La librería oficial de AP2 verifica una cadena de muestra. Cuatro criterios marcados; falta la compra real tras el deploy. Se hizo en una rama con los dos lados en vez de dos PR |
+| 2026-10-05 | T136: `@agentpey/ucp-stellar` en `packages/ucp-stellar`, con la opción A del usuario (el agente lo usa, `R-21`). Dos criterios marcados; la publicación en npm espera el permiso del usuario |
 
 ## 11. Fuentes externas
 

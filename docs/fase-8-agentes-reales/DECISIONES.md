@@ -637,3 +637,70 @@ se rechace por su cuenta.
 movería y el cobro se rechazaría igual). MPP como segunda credencial del handler
 x402 (un id, dos protocolos). Instalar `@stellar/mpp` en el workspace (dos
 versiones del SDK de Stellar y `viem` en el lockfile de AgentPey por una prueba).
+
+---
+
+### R-21 · El SDK público `@agentpey/ucp-stellar` tiene el protocolo y los pagadores; el agente lo usa y conserva su autorización · `Vigente`
+**Fecha:** 2026-10-05 · **Tarea:** T136 · Propuesta de Claude Code; la opción A y los valores por defecto, **decididos por el usuario**
+
+T136 pide un paquete del lado del agente, publicable en npm, que no arrastre
+dependencias privadas. Se decide:
+
+1. **Qué entra:** leer `/.well-known/ucp` y comprobar el handler
+   `com.agentpey.stellar_x402` (spec y esquema en agentpey.com, endpoint en el
+   mismo origen, red `stellar:testnet`); `quote()` con un producto o un carrito
+   de 1 a 10 líneas y el consentimiento en un `PUT` tras el create (T148,
+   T149); `pay()` con relectura, tope, firma y `complete`; dos pagadores,
+   `classicPayer` (cuenta `G…`, signer SEP-43) y `policyRailPayer` (contrato
+   `C…`, el dueño firma). **Qué queda fuera:** la intención firmada, el
+   Mandato, `policyRail.authorise`, AP2 (el mandato abierto lo firma la llave de
+   la plataforma, `R-16`) y la verificación del recibo (depende de
+   `@vitrinee/*`). Mainnet se rechaza con `UnsupportedNetwork`.
+2. **El agente usa el paquete (opción A, del usuario).** `quoteUcpCheckout`,
+   `payUcpQuote` y `executeUcpPayment` mantienen su API; por dentro llaman a
+   `quote()` y `pay()`, y lo propio de AgentPey (las líneas de la intención,
+   AP2, `toPaymentTerms` y `authorise`) corre en el hook `beforeSign`, después
+   de los chequeos del paquete y antes de firmar, en el mismo orden que antes.
+   `PolicyRailStellarScheme` pasa a ser un adaptador de `policyRailPayer`. Los
+   códigos de error son los mismos: los del paquete son un subconjunto de
+   `AgentPassErrorCode`, al que se agregan dos (`UnsupportedNetwork`,
+   `AmountAboveLimit`). Cambia, para el agente: una tienda cuyo handler no está
+   en testnet se rechaza al cotizar; la relectura también compara el id del
+   checkout (deuda de T128); y lo que el cliente x402 lanza al armar el pago
+   llega tipado como `PaymentNotCreated`.
+3. **La firma sin llaves en el paquete.** Los pagadores reciben funciones que
+   firman: un signer SEP-43, o `signAuthPayload(payload) → { publicKey,
+   signature }` para el dueño del rail. `keypairSigner` y `railOwnerSigner` las
+   arman desde un secreto que el llamador ya tiene; el paquete no lee el
+   entorno ni escribe en disco.
+4. **Errores propios: `UcpStellarError`** con `code`, `details` y
+   `paymentSent` (`C-113`). `AgentPassError` vive en `@agentpass/core`, y el
+   scope `@agentpass` de npm es de otra persona (`@agentpass/cli`, de OwnID):
+   no se puede publicar. Lo que lanzan el pagador o el `beforeSign` del
+   llamador le llega tal cual (nada se envió); después de la puerta, todo error
+   lleva `paymentSent: true`.
+5. **Valores por defecto (del usuario):** el perfil de plataforma en
+   `UCP-Agent` es el público de AgentPey (`agentpey.json`, UCP `2026-04-08`,
+   sin AP2), reemplazable; `recheck` encendido; `maxAmount` obligatorio
+   (decimal o `bigint` atómico). El agente pasa como `maxAmount` el monto
+   cotizado y `recheck` como antes (apagado salvo en el MCP): su tope es
+   `authorise()`, que concilia contra la intención.
+6. **Dependencias:** `@x402/core` y `@x402/stellar` `~2.24.0`,
+   `@stellar/stellar-sdk` `~17.0.1` y `zod` `^4.5.4`, las versiones que el
+   agente ya usa y que ya pagaron en testnet (con `^17.0.1` pnpm resolvía la
+   17.1.0 para el paquete y los tipos chocaban con los del agente). Todas
+   publicadas hace más de un día (`minimumReleaseAge`, 1440 min). Un test lee
+   el `package.json` y falla con un `workspace:` o un scope interno.
+7. **Nombre:** `@agentpey/ucp-stellar`, confirmado por el usuario. El scope
+   `@agentpey` no existía en npm el 5-oct ("Scope not found"): la organización
+   la crea el usuario antes de publicar.
+
+**Motivo.** Una sola copia de los chequeos antes de firmar: los tests de
+contrato del agente (UCP y MCP) pasan sin cambios sobre el paquete, y los de
+la tienda vigilan a los dos. La autorización de AgentPey no sale del repo.
+
+**Alternativas descartadas.** Paquete aparte con el agente igual y un test de
+paridad (opción B, la que recomendé por el riesgo cerca del congelamiento;
+deja dos copias del código que firma). Publicar `AgentPassError` (scope
+ajeno, y arrastra el resto de `@agentpass/core`). AP2 en el paquete (pide la
+llave de una plataforma). `maxAmount` opcional (un pago sin tope del llamador).
