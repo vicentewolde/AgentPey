@@ -65,7 +65,7 @@ describe("a checkout session saved before T148", () => {
       orderId: null,
     });
     expect(parsed.lines).toEqual([{ productId: "67624104591666", quantity: 2 }]);
-    expect(parsed.quote).toMatchObject({ totalAtomic: "31368422", lines: [{ unitAtomic: "15684211", totalAtomic: "31368422", unitLocal: "1490", totalLocal: "2980", productSku: "IMAN-COBRE" }] });
+    expect(parsed.quote).toMatchObject({ totalAtomic: "31368422", lines: [{ productId: "67624104591666", unitAtomic: "15684211", totalAtomic: "31368422", unitLocal: "1490", totalLocal: "2980", productSku: "IMAN-COBRE" }] });
   });
 });
 

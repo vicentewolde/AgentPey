@@ -391,6 +391,68 @@ describe("several products in one checkout (T148)", () => {
   });
 });
 
+describe("several products in one checkout, after review (T148)", () => {
+  // The first write of an order fails, so a paid checkout is left held with its settlement.
+  let failures = 1;
+  const persistence: OrderPersistence = {
+    load: async () => [],
+    save: async () => {
+      if (failures > 0) {
+        failures -= 1;
+        throw new Error("database unavailable");
+      }
+    },
+  };
+  const h = harness({ orders: new OrderStore(persistence, []) });
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+  const cart = (lines: Array<[string, number]>) => ({ ...ready(), line_items: lines.map(([id, quantity]) => ({ item: { id }, quantity })) });
+
+  it("drops the earlier cart's quote when the changed one cannot be quoted, so the answer shows no stale totals", async () => {
+    const { body: created } = await h.create(cart([["stickers-cordillera", 1], ["gorro-andes", 1]]));
+    expect(created.status).toBe("ready_for_complete");
+    // botella-patagonia-500 has 2 in stock: 5 cannot be quoted.
+    const { body } = await h.call("PUT", `/checkout-sessions/${created.id}`, cart([["botella-patagonia-500", 5]]));
+    expect(body.status).toBe("incomplete");
+    expect(ucpErrors(CHECKOUT_SCHEMA, body)).toEqual([]);
+    expect(body.totals.find((t) => t.type === "total")?.amount).toBe(5 * 19990);
+    expect((body["line_items"] as Array<{ totals: Array<{ type: string; amount: number }> }>)[0]?.totals.find((t) => t.type === "total")?.amount).toBe(5 * 19990);
+    expect((await h.sessions.get(created.id))?.quote).toBeNull();
+  });
+
+  it("never turns a settlement into an order from a quote that does not add up to it: the checkout stays held and is not charged again", async () => {
+    const { body: created } = await h.create(cart([["gorro-andes", 1], ["stickers-cordillera", 2]]));
+    const settled = h.facilitator.settleCalls.length;
+    const first = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
+    expect(first.status).toBe(500);
+    expect(h.facilitator.settleCalls).toHaveLength(settled + 1);
+    // The stored quote is damaged between the payment and its order: its lines no longer add up to what was paid.
+    const held = (await h.sessions.get(created.id))!;
+    expect(held.status).toBe("complete_in_progress");
+    held.quote!.lines[1]!.totalAtomic = "1";
+    await h.sessions.save(held);
+    const retry = await h.call("POST", `/checkout-sessions/${created.id}/complete`, instrument(requirementsOf(created)));
+    expect(retry.status).toBe(500);
+    expect(retry.body.messages).toEqual([expect.objectContaining({ code: "internal_error" })]);
+    expect(h.facilitator.settleCalls).toHaveLength(settled + 1);
+    expect((await h.sessions.get(created.id))).toMatchObject({ status: "complete_in_progress", orderId: null, settlement: { amountAtomic: requirementsOf(created).amount } });
+  });
+});
+
+describe("a cart changed to a twin product (T148 review)", () => {
+  // Two products with the same name, SKU and price, as a Jumpseller store without SKUs can have.
+  const twin = { sku: "", name: "Taza", description: "", priceLocal: "1990", currency: "CLP", stock: 10, images: [] };
+  const h = harness({ catalog: [{ id: "taza-a", ...twin }, { id: "taza-b", ...twin }] });
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+
+  it("re-quotes the line for the product now named, so the order would be made for that one", async () => {
+    const { body: created } = await h.create(ready("taza-a"));
+    await h.call("PUT", `/checkout-sessions/${created.id}`, ready("taza-b"));
+    expect((await h.sessions.get(created.id))?.quote?.lines.map((line) => line.productId)).toEqual(["taza-b"]);
+  });
+});
+
 describe("one settlement backs one receipt (T132)", () => {
   // The plain fake facilitator answers every settlement with the same hash:
   // two checkouts that claim the same transaction.

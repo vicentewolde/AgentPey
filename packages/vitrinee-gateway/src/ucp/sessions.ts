@@ -52,6 +52,8 @@ const sessionLineSchema = z.object({ productId: z.string().min(1).max(200), quan
 
 /** The price of one line as quoted: what the order and the receipt are made from once paid, without asking the store again. */
 const quotedLineSchema = z.object({
+  /** The product this price is for: the line it was quoted for, checked again before the order is made. */
+  productId: z.string().min(1).max(200),
   unitAtomic: z.string().regex(/^\d+$/),
   totalAtomic: z.string().regex(/^\d+$/),
   /** Unit and line total in the store's currency, decimal strings. */
@@ -152,7 +154,7 @@ export function upgradeLegacySession(raw: unknown): unknown {
     old === null || old === undefined
       ? null
       : {
-          lines: [{ unitAtomic: old.unitAtomic, totalAtomic: old.totalAtomic, unitLocal: unitOf(old.totalLocal, quantity, old.currency), totalLocal: old.totalLocal, productSku: old.productSku, productName: old.productName }],
+          lines: [{ productId, unitAtomic: old.unitAtomic, totalAtomic: old.totalAtomic, unitLocal: unitOf(old.totalLocal, quantity, old.currency), totalLocal: old.totalLocal, productSku: old.productSku, productName: old.productName }],
           totalAtomic: old.totalAtomic,
           totalLocal: old.totalLocal,
           currency: old.currency,

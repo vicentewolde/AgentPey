@@ -254,7 +254,8 @@ async function refresh(deps: UcpCheckoutDeps, session: CheckoutSession): Promise
   if (quote === null || messages.length > 0) {
     session.status = "incomplete";
     session.requirements = null;
-    if (quote !== null) session.quote = snapshot(deps, quote);
+    // No quote (a line is out of stock): no snapshot either, or the answer would show an earlier cart's totals (T148 review).
+    session.quote = quote === null ? null : snapshot(deps, quote);
     return messages;
   }
   const current = session.quote;
@@ -272,6 +273,7 @@ async function refresh(deps: UcpCheckoutDeps, session: CheckoutSession): Promise
 function snapshot(deps: UcpCheckoutDeps, quote: PurchaseQuote): NonNullable<CheckoutSession["quote"]> {
   return {
     lines: quote.lines.map((line) => ({
+      productId: line.product.id,
       unitAtomic: line.unitAtomic.toString(),
       totalAtomic: line.totalAtomic.toString(),
       unitLocal: line.product.priceLocal,
@@ -291,7 +293,7 @@ function sameQuotedLines(a: CheckoutSession["quote"], b: NonNullable<CheckoutSes
   if (a === null || a.lines.length !== b.lines.length || a.currency !== b.currency) return false;
   return a.lines.every((line, i) => {
     const other = b.lines[i]!;
-    return line.unitAtomic === other.unitAtomic && line.totalAtomic === other.totalAtomic && line.totalLocal === other.totalLocal && line.productSku === other.productSku && line.productName === other.productName;
+    return line.productId === other.productId && line.unitAtomic === other.unitAtomic && line.totalAtomic === other.totalAtomic && line.totalLocal === other.totalLocal && line.productSku === other.productSku && line.productName === other.productName;
   });
 }
 
@@ -1030,8 +1032,14 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
   if (payer === undefined) {
     throw new VitrineeError("PaymentError", "payment settled but the payer account could not be determined", { details: { checkoutId: session.id, txHash: settlement.txHash } });
   }
-  if (snapshot.lines.length !== session.lines.length) {
-    throw new VitrineeError("StorageError", "a paid checkout's quote does not cover its lines", { details: { checkoutId: session.id } });
+  // Money moved: a snapshot that is not this checkout's lines, or that does not add up to the payment, cannot back a
+  // receipt (VT-45), so no order is created and the session stays held with its settlement for reconciliation (VT-41).
+  const unaccounted = (reason: string): VitrineeError => {
+    deps.log("ucp settlement cannot become an order; checkout held for reconciliation", { checkoutId: session.id, txHash: settlement.txHash, amountAtomic: settlement.amountAtomic, reason });
+    return new VitrineeError("SettlementUnaccounted", `payment settled but ${reason}`, { details: { checkoutId: session.id, txHash: settlement.txHash } });
+  };
+  if (snapshot.lines.length !== session.lines.length || snapshot.lines.some((quoted, i) => quoted.productId !== session.lines[i]!.productId)) {
+    throw unaccounted("the checkout's quote is not for its lines");
   }
   const lines = session.lines.map((line, index): CheckoutQuote => {
     const quoted = snapshot.lines[index]!;
@@ -1050,7 +1058,7 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
   const quote = purchaseQuote(lines);
   // What was charged is the snapshot's total; a snapshot whose lines say otherwise is not turned into an order.
   if (quote.totalAtomic.toString() !== snapshot.totalAtomic || quote.totalAtomic.toString() !== settlement.amountAtomic) {
-    throw new VitrineeError("SettlementUnaccounted", "payment settled but the checkout's lines do not add up to it", { details: { checkoutId: session.id, txHash: settlement.txHash } });
+    throw unaccounted("the checkout's lines do not add up to it");
   }
   const { record } = await fulfilPaidPurchase(deps, {
     quote,
