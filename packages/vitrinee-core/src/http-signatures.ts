@@ -102,14 +102,19 @@ export interface WebhookSigningInput {
  * 2026-04-08 requires on a signed POST), `Webhook-Id`, `Webhook-Timestamp`,
  * `Signature-Input` and `Signature`.
  *
- * @throws VitrineeError `ConfigError` for a key or a value that cannot be signed
+ * The query, when the URL has one, is covered too (`@query`): a platform may
+ * put a token there, and a UCP verifier requires it covered.
+ *
+ * @throws VitrineeError `ConfigError` for a key, a URL or a value that cannot be signed
  */
 export function signedWebhookHeaders(input: WebhookSigningInput): Record<string, string> {
   for (const [what, value] of [["kid", input.key.kid], ["profile URL", input.profileUrl], ["webhook id", input.webhookId]] as const) {
     if (value === "" || !sfString.test(value)) throw new VitrineeError("ConfigError", `the ${what} cannot go in a signed header`, { details: { what } });
   }
   if (input.key.privateJwk.kty !== "EC" || input.key.privateJwk.crv !== "P-256") throw new VitrineeError("ConfigError", "webhooks are signed with a P-256 key (ES256)");
+  if (!URL.canParse(input.url)) throw new VitrineeError("ConfigError", "the webhook URL is not a URL", { details: {} });
   const url = new URL(input.url);
+  const components: readonly string[] = url.search === "" ? WEBHOOK_COMPONENTS : [...WEBHOOK_COMPONENTS.slice(0, 3), "@query", ...WEBHOOK_COMPONENTS.slice(3)];
   const headers: Record<string, string> = {
     "content-type": "application/json",
     "content-digest": contentDigest(input.body),
@@ -118,15 +123,18 @@ export function signedWebhookHeaders(input: WebhookSigningInput): Record<string,
     "webhook-id": input.webhookId,
     "webhook-timestamp": String(input.webhookTimestamp),
   };
-  const params = `(${WEBHOOK_COMPONENTS.map((c) => `"${c}"`).join(" ")});created=${input.created};keyid="${input.key.kid}"`;
-  const base = signatureBase(WEBHOOK_COMPONENTS, params, (name) => componentValue(name, "POST", url, headers));
+  const params = `(${components.map((c) => `"${c}"`).join(" ")});created=${input.created};keyid="${input.key.kid}"`;
+  const base = signatureBase(components, params, (name) => componentValue(name, "POST", url, headers));
   if (base === null) throw new VitrineeError("ConfigError", "a covered component has no value");
   const { kty, crv, x, y, d } = input.key.privateJwk;
   const signature = cryptoSign("sha256", Buffer.from(base, "utf8"), { key: createPrivateKey({ key: { kty, crv, x, y, d }, format: "jwk" }), dsaEncoding: "ieee-p1363" });
   return { ...headers, "signature-input": `${SIGNATURE_LABEL}=${params}`, signature: `${SIGNATURE_LABEL}=:${signature.toString("base64")}:` };
 }
 
-export type SignatureFailure = "missing_signature" | "digest_mismatch" | "bad_signature_input" | "missing_component" | "key_not_found" | "bad_signature";
+export type SignatureFailure = "missing_signature" | "digest_mismatch" | "bad_signature_input" | "missing_component" | "key_not_found" | "bad_signature" | "expired";
+
+/** The only RFC 9421 algorithm this module verifies; a signature naming another is refused. */
+export const ES256_ALGORITHM = "ecdsa-p256-sha256";
 
 export type SignatureCheck = { ok: true; keyid: string; created: number | null; components: readonly string[] } | { ok: false; reason: SignatureFailure };
 
@@ -139,6 +147,10 @@ export interface VerifySignatureInput {
   body: string | Uint8Array;
   /** The signer's key for a `keyid`, from its profile; `undefined` if it publishes none by that id. */
   keyFor: (keyid: string) => EcPublicJwk | undefined;
+  /** Components the verifier needs covered beyond UCP's minimum (a receiver that dedupes by `webhook-id` needs it signed). */
+  requiredComponents?: readonly string[];
+  /** Unix seconds, to refuse a signature whose `expires` has passed. */
+  now?: number;
 }
 
 /** `label=(…);param=value;…`: one member of a `Signature-Input` dictionary. */
@@ -171,6 +183,11 @@ export function verifyHttpMessageSignature(input: VerifySignatureInput): Signatu
   const parameters = new Map([...params.matchAll(/;([a-z][a-z0-9_-]*)=("[^"\\]*"|-?\d+)/g)].map((m) => [m[1]!, m[2]!.startsWith('"') ? m[2]!.slice(1, -1) : m[2]!]));
   const keyid = parameters.get("keyid");
   if (keyid === undefined || new Set(components).size !== components.length) return fail("bad_signature_input");
+  // RFC 9421 §3.2: an `alg` that does not match the key is refused; `expires` in the past is refused.
+  const alg = parameters.get("alg");
+  if (alg !== undefined && alg !== ES256_ALGORITHM) return fail("bad_signature_input");
+  const expires = parameters.get("expires");
+  if (expires !== undefined && input.now !== undefined && input.now > Number(expires)) return fail("expired");
 
   const url = new URL(input.url);
   const required = ["@method", "@authority", "@path"];
@@ -178,6 +195,7 @@ export function verifyHttpMessageSignature(input: VerifySignatureInput): Signatu
   if (bodyLength > 0) required.push("content-digest", "content-type");
   if (input.headers["idempotency-key"] !== undefined) required.push("idempotency-key");
   if (input.headers["ucp-agent"] !== undefined) required.push("ucp-agent");
+  required.push(...(input.requiredComponents ?? []));
   if (required.some((name) => !components.includes(name))) return fail("missing_component");
 
   const signed = new RegExp(`^${label.replace(/[.*]/g, "\\$&")}=:([A-Za-z0-9+/]+={0,2}):$`).exec(signatureHeader);

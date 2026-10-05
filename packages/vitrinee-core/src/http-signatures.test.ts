@@ -118,6 +118,28 @@ describe("signed UCP order webhooks (T147)", () => {
     expect(check({ ...headers, "signature-input": headers["signature-input"]!.replace(' "content-digest"', "") })).toEqual({ ok: false, reason: "missing_component" });
   });
 
+  it("covers the query of a webhook URL that has one, and the verifier requires it", () => {
+    const withToken = "https://agentpey.com/ucp/webhooks/orders?token=abc";
+    const headers = sign({ url: withToken });
+    expect(headers["signature-input"]).toContain('"@path" "@query" "content-digest"');
+    expect(check(headers, { url: withToken })).toMatchObject({ ok: true });
+    expect(check(headers, { url: "https://agentpey.com/ucp/webhooks/orders?token=other" })).toEqual({ ok: false, reason: "bad_signature" });
+    expect(check(sign(), { url: withToken })).toEqual({ ok: false, reason: "missing_component" });
+  });
+
+  it("refuses a URL that is not one, with a typed error", () => {
+    expect(() => sign({ url: "hooks" })).toThrow(expect.objectContaining({ code: "ConfigError" }));
+  });
+
+  it("refuses another algorithm, a signature past its expires, and a missing component the verifier requires", () => {
+    const headers = sign();
+    const withParam = (param: string) => ({ ...headers, "signature-input": `${headers["signature-input"]};${param}` });
+    expect(check(withParam('alg="ed25519"'))).toEqual({ ok: false, reason: "bad_signature_input" });
+    expect(verifyHttpMessageSignature({ method: "POST", url, headers: withParam("expires=1759600010"), body, keyFor: () => store.publicJwk, now: 1_759_600_011 })).toEqual({ ok: false, reason: "expired" });
+    const partial = { ...headers, "signature-input": headers["signature-input"]!.replace(' "webhook-id"', "") };
+    expect(verifyHttpMessageSignature({ method: "POST", url, headers: partial, body, keyFor: () => store.publicJwk, requiredComponents: ["webhook-id"] })).toEqual({ ok: false, reason: "missing_component" });
+  });
+
   it("refuses to sign with a value that would break the header", () => {
     expect(() => sign({ webhookId: 'a"b' })).toThrow(expect.objectContaining({ code: "ConfigError" }));
   });
