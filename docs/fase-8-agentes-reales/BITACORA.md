@@ -27,7 +27,7 @@ que la librería oficial de AP2 verifica sobre una compra real. **T147 cerrada**
 la tienda avisa al agente. **T148 cerrada**: un agente compra un carrito de
 varios productos, con un solo cobro y un recibo de un ítem por línea.
 **T149 cerrada**: el consentimiento del comprador llega al pedido de la
-tienda; queda la compra real de comprobación.
+tienda, comprobado con una compra real.
 
 | Tarea | Estado |
 |---|---|
@@ -408,6 +408,13 @@ comprador no dijo, y que el nombre de la tienda estuviera dentro de lo firmado
 (renombrarla rechazaba los checkouts AP2 abiertos). Se agregaron los tests que
 faltaban, un test del agente real contra la tienda real, la extensión en los
 perfiles de plataforma de AgentPey y el comando en el README.
+
+**La compra real.** Con el deploy en vivo, el agente compró un imán en
+`agentcommerce` con AP2 y diciendo que el comprador acepta recibir correos de la
+tienda. El pedido quedó en Shopify marcado como "acepta marketing", con los
+permisos que la app ya tenía; la orden pública no lo muestra; y la librería
+oficial de AP2 verificó el mandato, que cubre ese consentimiento. Se pagó con
+1,57 USDC del rail UCP, recargado antes con 3 USDC de la reserva.
 
 ## T148 · Varios productos por compra (2026-10-05, cerrada)
 

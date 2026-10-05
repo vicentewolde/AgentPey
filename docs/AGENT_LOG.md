@@ -8021,3 +8021,15 @@ BITACORA, SYNC, ticket `DONE`).
 Pendiente: confirmar el deploy en vivo (tienda y perfiles de agentpey.com); `rail:topup` y compra real con
 `--marketing yes`, con OK; push y merge de `cc/t149-evidencia` con OK. `AGENTS.md`: sin cambios. Exponential: T149 a
 `DONE`.
+
+## 2026-10-05 (35) — cc/t149-evidencia (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, rail UCP recargado con 3 USDC (tx `629dd7d8…`) y, con el deploy confirmado en vivo (seis
+lecturas del perfil nuevo), compra real `ord_muvlkwxp66c0327a66` (Shopify `19016845787442`, tx `bcfad848…`): imán, UCP
+`2026-08-25`, AP2, `--marketing yes`. Shopify tiene `customerAcceptsMarketing: true`; la orden pública no muestra el
+consentimiento; la librería oficial de AP2 verifica el mandato, que cubre el consentimiento. Evidencia §7.
+
+Pendiente: push y merge de `cc/t149-evidencia` con OK. Rail UCP en 2,7684210 USDC. `AGENTS.md`: sin cambios.
+Exponential: sin cambios (T149 ya en `DONE`).
