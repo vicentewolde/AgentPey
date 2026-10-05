@@ -271,9 +271,9 @@ más rápido que lo estimado.
 - **Depende de:** spec aprobado
 - **Descripción:** comprobar con código, en testnet, si un pago MPP charge puede salir de un `policy_rail`. La lectura del fuente dice que no (sección 4.1). Si se confirma, no se construye el pago (`R-4`): la evidencia va al anexo del SEP y se redacta un issue para `stellar/stellar-mpp-sdk`, que se publica solo cuando el usuario haya visto el texto. Si resulta que sí se puede, parar y mostrar. También responder la pregunta del SEP: segunda credencial del mismo medio de pago, o medio de pago aparte.
 - **Hecho cuando:**
-  - [ ] `T135-mpp-charge.md` con la evidencia del intento desde un `policy_rail` en testnet
-  - [ ] la brecha está en el anexo del SEP y el texto del issue, listo; publicado con el OK del usuario
-  - [ ] la frase que se puede decir en el video ("evaluamos MPP", no "soportamos MPP") está escrita con su evidencia
+  - [x] `T135-mpp-charge.md` con la evidencia del intento desde un `policy_rail` en testnet ([evidencia](evidencia/T135-mpp-charge.md), `R-20`)
+  - [ ] la brecha está en el anexo del SEP y el texto del issue, listo; publicado con el OK del usuario (brecha 21 en el anexo y [texto del issue](evidencia/T135-issue-mpp.md) listos; falta publicarlo, con OK)
+  - [x] la frase que se puede decir en el video ("evaluamos MPP", no "soportamos MPP") está escrita con su evidencia ([evidencia](evidencia/T135-mpp-charge.md) §6)
 
 #### T136 · SDK publicado en npm
 - **Prioridad:** si alcanza · **Estimación:** 8 h · **Delegable a Codex:** el README y el ejemplo; el paquete y la publicación no
@@ -373,8 +373,8 @@ No son tareas: no hay nada que construir. Su evidencia va a la carpeta de la Fas
 
 - [ ] Una compra hecha desde un chat de Claude (`R-11`), en una tienda que no es del usuario, pagada en USDC testnet desde un `policy_rail`, con pedido real y recibo con los tres checks en verde (T128, T129, T130)
 - [x] La red rechaza un pago del servidor MCP que excede su tope (T128, [evidencia](evidencia/T128.md) §4)
-- [ ] La salida de la suite oficial de conformidad de UCP está en el repo, con su alcance escrito (T131)
-- [ ] El verificador rechaza un recibo incoherente (T132)
+- [x] La salida de la suite oficial de conformidad de UCP está en el repo, con su alcance escrito (T131, [evidencia](evidencia/T131.md); hoy 49/8/20)
+- [x] El verificador rechaza un recibo incoherente (T132, [evidencia](evidencia/T132.md))
 - [ ] El video está grabado y entregado (T142; lo hace el usuario)
 
 Lo del Bloque B, C y E no es criterio de cierre: lo que no alcance queda

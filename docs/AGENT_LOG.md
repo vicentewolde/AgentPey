@@ -8033,3 +8033,25 @@ consentimiento; la librería oficial de AP2 verifica el mandato, que cubre el co
 
 Pendiente: push y merge de `cc/t149-evidencia` con OK. Rail UCP en 2,7684210 USDC. `AGENTS.md`: sin cambios.
 Exponential: sin cambios (T149 ya en `DONE`).
+
+## 2026-10-05 (36) — cc/t149-evidencia → main
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, `cc/t149-evidencia` en `main` por fast-forward ([PR #60](https://github.com/vicentewolde/AgentPey/pull/60), solo documentación: sin CI) y
+borrada. Esta entrada faltaba: se agrega en la sesión siguiente. `AGENTS.md`: sin cambios. Exponential: sin cambios.
+
+## 2026-10-05 (37) — cc/t135-mpp-charge (sin push)
+
+Agente: Claude Code.
+
+Qué: T135, prueba técnica de MPP charge (`R-4`, `R-20`). Paquete aislado `scripts/mpp-probe/` (su propio workspace de
+pnpm: `@stellar/mpp` 0.7.1, `mppx` 0.6.31, `@stellar/stellar-sdk` 15.1.0, `viem`; `tsconfig.scripts.json` lo excluye).
+Desde el rail UCP `CBDRI5B7…D3YA`, firmando como AgentPey, el servidor oficial rechazó pull y patrocinado, con el
+contrato o su dueño como pagador, sin mover nada; el control con la llave clásica del agente cobró 0,01 USDC (tx
+`9e983664…`, con OK del usuario). Modo push no probado (decisión del usuario). Evidencia `T135-mpp-charge.md`, texto
+del issue `T135-issue-mpp.md` (sin publicar), brecha 21 del anexo. Además: criterios 3 y 4 de la fase marcados,
+ESTADO al día (Grok sí, dots y Muse no; "Siguiente paso" corregido).
+
+Pendiente: `/revisar`; push, PR y merge con OK; publicar el issue solo con OK. `AGENTS.md`: sin cambios (T135 no es
+delegable). Exponential: T135 a `IN_PROGRESS`.

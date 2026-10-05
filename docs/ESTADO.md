@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-05
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T149 · El consentimiento del comprador llega al pedido de la tienda (Shopify sí, Jumpseller no lo ofrece), `VT-47`
-**Siguiente paso:** push y merge de `cc/t149-evidencia` con OK. Después, T130 si ya hay tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`) T130 cuando haya tienda de terceros. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** `/revisar` de T135 en `cc/t135-mpp-charge`; después push, PR y merge con OK, y publicar el issue de `stellar/stellar-mpp-sdk` solo con OK. T130 cuando haya tienda de terceros (el usuario la está consiguiendo). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -21,7 +21,7 @@
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
 | T134 AP2 dentro del checkout UCP | si alcanza | ✅ terminada: tienda firma y no cobra sin mandato, agente cierra (`R-15`, `R-16`, `VT-43`); compra real `ord_muudx8kyda00e05b33` verificada por la librería oficial de AP2 | [PR #52](https://github.com/vicentewolde/AgentPey/pull/52), mergeado; evidencia en `cc/t134-evidencia` |
-| T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ⏳ pendiente | |
+| T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | 👀 en revisión: el SDK oficial no acepta pagar desde el `policy_rail` (cuatro rechazos en testnet, control con llave clásica cobra); no se construye (`R-20`); brecha 21 e issue listo | `cc/t135-mpp-charge` |
 | T136 SDK publicado en npm | si alcanza | ⏳ pendiente | |
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ⏳ pendiente | |
 | T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente | |
@@ -30,7 +30,7 @@
 | T141 Página "Tiendas comprables por agentes" | para el video | ⏳ pendiente | |
 | T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ⏳ pendiente | |
-| T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente | |
+| T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); con el corte del 7-oct se cortaría entera, porque solo dots sobrevivía | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
@@ -43,7 +43,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
+- [ ] Para T130: conseguir la tienda de terceros (en proceso, 5-oct). T144: el usuario confirmó que tiene Grok, no dots ni Muse
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
 - [ ] 8 o 9 de octubre: confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página; después, comprobar que `ord_muq1gqhycf4961492c` muestra la disputa abierta y luego resuelta (cierra T127)
@@ -126,3 +126,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-05, T149 `/revisar`: sin bloqueantes; corregidos los 10 hallazgos a pedido del usuario. El principal: en `2026-08-25` la tienda aceptaba el consentimiento antes de anunciar sus opciones (UCP le pide ignorarlo); el usuario eligió cumplir la spec, así que se ignora en el create con un aviso y el agente lo confirma en un `PUT` antes del mandato. También: un `complete` mal formado ya no cambia el consentimiento, Shopify no recibe un "no" que el comprador no dijo, el nombre de la tienda salió de lo firmado, cinco tests de rechazo más, un test de contrato agente-tienda, `buyer_consent` en los perfiles de plataforma y el comando en el README.
 - 2026-10-05, T149 cerrada: con OK del usuario y CI 4/4, [PR #59](https://github.com/vicentewolde/AgentPey/pull/59) en `main` por fast-forward. Queda la compra real con `--marketing yes` (con OK), tras confirmar el deploy.
 - 2026-10-05, T149 en vivo: con OK del usuario, rail UCP recargado con 3 USDC (tx `629dd7d8…`) y compra real de un imán con AP2 y `--marketing yes`: `ord_muvlkwxp66c0327a66` (Shopify `19016845787442`, tx `bcfad848…`), recibo con los tres checks. El pedido de Shopify tiene `customerAcceptsMarketing: true` (los permisos actuales alcanzan); la orden pública no muestra el consentimiento; la librería oficial de AP2 verifica el mandato, cuyo checkout firmado lleva el consentimiento. Rail UCP en 2,7684210 USDC.
+- 2026-10-05, T135: prueba técnica de MPP charge con el SDK oficial (`@stellar/mpp` 0.7.1) en un paquete aislado, `scripts/mpp-probe/`. Desde el rail UCP, el servidor oficial rechazó los cuatro intentos (pull y patrocinado; "invalid Stellar public key" para `did:pkh:…:C…` y "Transfer from does not match credential source" con el dueño como pagador) sin mover nada; el control con la llave clásica del agente cobró 0,01 USDC (tx `9e983664…`). No se construye (`R-4`, `R-20`); MPP en UCP sería un medio de pago aparte. Brecha 21 en el anexo, texto del issue listo y sin publicar, criterios 3 y 4 de la fase marcados.

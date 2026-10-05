@@ -27,7 +27,8 @@ que la librería oficial de AP2 verifica sobre una compra real. **T147 cerrada**
 la tienda avisa al agente. **T148 cerrada**: un agente compra un carrito de
 varios productos, con un solo cobro y un recibo de un ítem por línea.
 **T149 cerrada**: el consentimiento del comprador llega al pedido de la
-tienda, comprobado con una compra real.
+tienda, comprobado con una compra real. **T135 en revisión**: MPP charge no
+admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
 
 | Tarea | Estado |
 |---|---|
@@ -38,7 +39,7 @@ tienda, comprobado con una compra real.
 | T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | cerrada |
 | T134 AP2 en el checkout | cerrada |
-| T135 MPP charge (prueba técnica) | pendiente |
+| T135 MPP charge (prueba técnica) | en revisión |
 | T136 SDK en npm | pendiente |
 | T137 Kit de conformidad de Stellar | pendiente |
 | T138 Prueba técnica: GenLayer | pendiente |
@@ -360,6 +361,29 @@ segundo después del pago. El usuario marcó el pedido como despachado en el
 admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
+
+## T135 · MPP charge sobre Stellar, prueba técnica (2026-10-05, en revisión)
+
+**Qué quedó.** MPP es otra forma de cobrar por internet que Stellar ofrece con
+un SDK oficial. La pregunta era si nuestro agente puede pagar con MPP desde su
+`policy_rail`, la cuenta con topes que aplica la red. La respuesta es no: se
+intentó en testnet de cuatro maneras y el servidor oficial de MPP rechazó las
+cuatro antes de mover nada, porque solo acepta pagos desde una cuenta común. El
+mismo servidor sí cobró 0,01 USDC desde una cuenta común, como control. Por la
+decisión que ya existía (`R-4`) no se construye el pago por MPP: en el video se
+dirá "evaluamos MPP", no "soportamos MPP". Quedaron escritos la brecha para el
+SEP, el texto de un issue que propone el cambio al SDK (se publica con OK del
+usuario) y la respuesta a la pregunta del SEP: MPP sería un medio de pago
+aparte, no una variante del de x402 (`R-20`).
+
+**Cómo se probó.** Un paquete aislado (`scripts/mpp-probe/`) con el SDK oficial,
+fuera del workspace de AgentPey porque pide otra versión del SDK de Stellar. La
+firma del rail es la misma que usa AgentPey para pagar con x402. Dos tropiezos,
+contados en la evidencia: la primera corrida armaba mal la cabecera y el
+servidor rechazó los intentos sin leerlos (el veredicto del script ahora exige
+que el rechazo sea por el pagador), y un error de lectura que pareció un
+hallazgo se descartó con un diagnóstico aparte. El modo push no se probó, por
+decisión del usuario: movería plata para un cobro que se rechaza igual.
 
 ## T149 · El consentimiento del comprador llega a la tienda (2026-10-05, cerrada)
 

@@ -604,3 +604,35 @@ del UCP.
 `set_limits` (cambiar los topes sin redesplegar, pero es un contrato nuevo y un
 punto más que proteger).
 
+
+### R-20 · MPP charge no se construye: el SDK oficial no admite un pagador contrato; en UCP sería un medio de pago aparte · `Vigente` — aplica `R-4`
+**Fecha:** 2026-10-05 · **Tarea:** T135 · Propuesta de Claude Code dentro del plan aprobado por el usuario (paquete aislado, control con llave clásica, sin modo push)
+
+La prueba técnica de T135 confirmó en testnet lo que decía la lectura del
+fuente (sección 4.1 del spec): `@stellar/mpp` 0.7.1 solo acepta un pagador
+`did:pkh:stellar:…:G…`. Desde el `policy_rail`, el servidor oficial rechazó los
+cuatro intentos (pull y patrocinado, con el contrato o su dueño como pagador)
+antes de enviar nada a la red, y cobró un control hecho con una llave clásica.
+Se decide, aplicando `R-4`:
+
+1. **No se construye el pago por MPP.** En el video: "evaluamos MPP", no
+   "soportamos MPP". La brecha va al anexo del SEP (brecha 21) y el texto del
+   issue para `stellar/stellar-mpp-sdk` queda listo; se publica solo con el OK
+   del usuario.
+2. **Respuesta a la pregunta del SEP: medio de pago aparte.** MPP trae su propio
+   desafío, credencial (`did:pkh`), recibo y verificación. Como segunda
+   credencial de `com.agentpey.stellar_x402`, un mismo id de handler significaría
+   dos protocolos, y un comercio no sabría cuál acepta el otro lado.
+3. **La prueba vive aparte**, en `scripts/mpp-probe/`, su propio workspace de
+   pnpm (pide `@stellar/stellar-sdk` 15, `mppx` y `viem`; AgentPey usa la 17), y
+   `tsconfig.scripts.json` la excluye.
+
+**Motivo.** Pagar con MPP desde una llave clásica quitaría los topes que aplica
+la red (`R-4`); y separar los handlers deja que cada uno se declare, se negocie y
+se rechace por su cuenta.
+
+**Alternativas descartadas.** Pagar MPP con una llave clásica marcada como tal
+(`R-4`). Probar el modo push desde el rail (decisión del usuario: la plata se
+movería y el cobro se rechazaría igual). MPP como segunda credencial del handler
+x402 (un id, dos protocolos). Instalar `@stellar/mpp` en el workspace (dos
+versiones del SDK de Stellar y `viem` en el lockfile de AgentPey por una prueba).

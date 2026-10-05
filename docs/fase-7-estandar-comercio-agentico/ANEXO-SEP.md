@@ -647,7 +647,7 @@ Fuente de los ids: `deployments/testnet.json` y
 
 Las seis de T120 (sección 8 de
 [T120-handler-stellar-ucp.md](T120-handler-stellar-ucp.md)), confirmadas al
-construir, más trece que aparecieron después:
+construir, más quince que aparecieron después:
 
 1. **No hay handlers de stablecoins ni de pagos en cadena** en UCP. Este es de
    los primeros.
@@ -749,6 +749,16 @@ construir, más trece que aparecieron después:
     intentar empujar el reembolso hacia abajo, y ningún tope del código ni del
     contrato lo impide; la defensa es la confirmación humana (`E-18`). Un SEP
     debería definir el canal y cómo se notifica a cada parte.
+21. **MPP charge no admite una cuenta-contrato como pagador** (T135, `R-4`,
+    `R-20`). El SDK oficial (`@stellar/mpp` 0.7.1) solo acepta un pagador
+    `did:pkh:stellar:…:G…`: un pago desde el `policy_rail` se rechaza en los
+    cuatro modos probados en testnet, antes de enviarse a la red, y el mismo
+    servidor cobra con una llave clásica. Con MPP, un agente pierde los topes
+    que aplica la red, que son la tesis de este anexo. Un SEP debería admitir
+    pagadores contrato en los medios de pago de Stellar, verificando su
+    `__check_auth` con una simulación estricta y no con una firma fuera de la
+    red. Y MPP, en UCP, es un medio de pago aparte, no una segunda credencial
+    de `com.agentpey.stellar_x402` ([evidencia](../fase-8-agentes-reales/evidencia/T135-mpp-charge.md)).
 
 ## 7. Reproducir
 
