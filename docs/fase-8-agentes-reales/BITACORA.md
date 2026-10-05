@@ -26,6 +26,8 @@ la tienda habla las dos versiones de UCP, y con AP2 no cobra sin un mandato
 que la librería oficial de AP2 verifica sobre una compra real. **T147 cerrada**:
 la tienda avisa al agente. **T148 cerrada**: un agente compra un carrito de
 varios productos, con un solo cobro y un recibo de un ítem por línea.
+**T149 en revisión**: el consentimiento del comprador llega al pedido de la
+tienda; falta `/revisar`, el merge y la compra real.
 
 | Tarea | Estado |
 |---|---|
@@ -50,7 +52,7 @@ varios productos, con un solo cobro y un recibo de un ítem por línea.
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
-| T149 Consentimiento | pendiente |
+| T149 Consentimiento | en revisión |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -358,6 +360,41 @@ segundo después del pago. El usuario marcó el pedido como despachado en el
 admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
+
+## T149 · El consentimiento del comprador llega a la tienda (2026-10-05, en revisión)
+
+**Qué quedó funcionando.** Cuando un agente le dice a la tienda qué aceptó el
+comprador (recibir marketing, analítica, guardar preferencias, vender o
+compartir sus datos), la tienda lo guarda, se lo muestra al agente y lo pasa al
+pedido real. En Shopify, el "sí" o "no" a recibir correos de la tienda va al
+campo propio de Shopify para eso; lo demás, que Shopify no tiene dónde guardar,
+queda escrito en el pedido, a la vista del comercio. Jumpseller no tiene dónde
+recibirlo, así que una tienda Jumpseller no ofrece esta función. Un "sí" al
+marketing sin el email del comprador no se cobra: la tienda pide el email
+primero. Y nada de esto aparece en la orden pública que cualquiera puede leer
+con el recibo.
+
+**Lo que hubo que decidir** (`VT-47`). Al leer la spec de UCP `2026-08-25` se
+vio que el modelo es distinto al de `2026-04-08`: la tienda **debe** anunciar
+qué consentimientos admite, con su valor por defecto, y el agente confirma. El
+plan aprobado decía no anunciar valores por defecto; se paró a mostrar la
+evidencia y el usuario eligió anunciarlos solo en los checkouts nuevos, para no
+romper los mandatos AP2 abiertos durante el deploy (el consentimiento queda
+dentro de lo que la tienda firma). También eligió que la tienda acepte el
+consentimiento al pagar y exija el email para un "sí" al marketing, y que los
+consentimientos sin campo en Shopify vayan como atributos del pedido.
+
+**Cómo se probó.** Tests sin red en los adaptadores (qué manda Shopify, que el
+mock lo guarda, que Jumpseller no lo ofrece), en el perfil (lo anuncia en las
+dos versiones solo donde llega) y en el checkout: las dos formas de la
+extensión validadas contra los esquemas oficiales de cada versión (con control
+negativo), una sesión leída en las dos versiones, propósitos ajenos ignorados,
+el "sí" sin email que no se cobra, el consentimiento que llega al pedido de la
+plataforma (también el confirmado al pagar, nunca un valor por defecto), que no
+aparece en la orden pública ni en el webhook, y con AP2: un cambio después del
+mandato se rechaza sin cobrar y una sesión de antes de T149 completa igual. La
+suite oficial de UCP pasa de 48 a 49: `test_buyer_consent` pasa, y es la única
+diferencia.
 
 ## T148 · Varios productos por compra (2026-10-05, cerrada)
 

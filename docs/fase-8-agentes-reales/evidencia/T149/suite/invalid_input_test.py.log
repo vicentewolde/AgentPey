@@ -1,0 +1,35 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] InvalidInputTest.test_invalid_adjustment_status
+[  FAILED  ] InvalidInputTest.test_invalid_adjustment_status
+[ RUN      ] InvalidInputTest.test_malformed_adjustment_payload
+[  FAILED  ] InvalidInputTest.test_malformed_adjustment_payload
+[ RUN      ] InvalidInputTest.test_unknown_discount_code
+[       OK ] InvalidInputTest.test_unknown_discount_code
+======================================================================
+FAIL: test_invalid_adjustment_status (__main__.InvalidInputTest.test_invalid_adjustment_status)
+InvalidInputTest.test_invalid_adjustment_status
+Test that an invalid adjustment status is rejected.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/invalid_input_test.py", line 79, in test_invalid_adjustment_status
+    self.assert_response_status(resp, 422)
+  File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
+    self.assertIn(
+AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3xwt3d0fb9fe46"}
+
+======================================================================
+FAIL: test_malformed_adjustment_payload (__main__.InvalidInputTest.test_malformed_adjustment_payload)
+InvalidInputTest.test_malformed_adjustment_payload
+Test that malformed adjustment payloads are rejected.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/invalid_input_test.py", line 136, in test_malformed_adjustment_payload
+    self.assert_response_status(resp, 422)
+  File "<repo>/.ucp-conformance/conformance/integration_test_utils.py", line 983, in assert_response_status
+    self.assertIn(
+AssertionError: 404 not found in [422] : Expected status 422, got 404. Resp: {"error":"NotFound","message":"no route for PUT /ucp/v1/orders/ord_muvi3y38de46668321"}
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.871s
+
+FAILED (failures=2)

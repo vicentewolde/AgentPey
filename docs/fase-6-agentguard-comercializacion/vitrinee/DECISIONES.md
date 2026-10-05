@@ -1323,3 +1323,82 @@ el agente. Atribuir un parcial sin detalle a la primera línea pendiente: daría
 un evento, pero inventado. Una migración de las filas guardadas: no hace falta
 si se convierten al leer.
 
+
+---
+
+### VT-47 · El consentimiento del comprador llega a la tienda: marketing en el campo de Shopify, el resto como atributos del pedido; se ofrece solo donde llega · `Vigente`
+**Fecha:** 2026-10-05 · **Hito:** T149 (Fase 8) · Propuesta de Claude Code; los cinco puntos marcados, **decididos por el usuario**
+
+UCP tiene la extensión `dev.ucp.shopping.buyer_consent`: `checkout.buyer.consent`
+lleva lo que el comprador decidió sobre el uso de sus datos. Cada versión la
+define distinto. En `2026-04-08` son cuatro valores sí/no (`marketing`,
+`analytics`, `preferences`, `sale_of_data`) que la tienda devuelve. En
+`2026-08-25` es un mapa por propósito (`dev.ucp.consent.*`, con `granted`,
+`source` y una `description` que escribe la tienda), y la tienda **DEBE anunciar**
+todo lo que admite, con su valor por defecto y `source: "business"`; la
+plataforma confirma, con `source: "platform"` solo lo que dijo el comprador, y la
+tienda **DEBE ignorar** lo que no anunció. Se decide:
+
+1. **Una forma interna para las dos versiones.** La sesión guarda los cuatro
+   propósitos de UCP, cada uno con su estado y quién lo puso. Por defecto, la
+   tienda no supone ningún consentimiento (los cuatro en falso). Cada respuesta
+   lo muestra en la versión de la solicitud: `2026-08-25` anuncia los cuatro;
+   `2026-04-08`, que no tiene valores por defecto, devuelve solo lo que decidió
+   el comprador. Un propósito que la plataforma devuelve como `business` vuelve
+   al valor por defecto de la tienda, venga con el valor que venga: solo una
+   decisión del comprador lo mueve. Un `PUT` sin consentimiento no lo cambia.
+   Propósitos ajenos a los cuatro se ignoran; más de 32, o uno mal formado,
+   responden 400.
+2. **Qué llega a Shopify** (los permisos actuales, `write_orders`, alcanzan).
+   `marketing` va a `buyerAcceptsMarketing` de `orderCreate` ("Whether the
+   customer consented to receive email updates from the shop"), que el pedido
+   expone como `customerAcceptsMarketing`. Solo se manda si el comprador
+   decidió, y un "sí" solo con el email real del comprador, nunca con el
+   `@agent.vitrinee.test` que el adaptador inventa. `analytics`, `preferences` y
+   `sale_or_sharing` no tienen campo en Shopify (`customer.toUpsert` tampoco
+   los tiene, ni el SMS): **van como atributos del pedido** (`ucp_consent_*`:
+   `granted` o `denied`), que el comercio ve en "Detalles adicionales" (decisión
+   del usuario). Los valores por defecto no se escriben: son la política de la
+   tienda, no algo que decidió el comprador.
+3. **Jumpseller no lo ofrece.** Su OpenAPI (`api.jumpseller.com/swagger.json`)
+   tiene `accepts_marketing` en el cliente solo para leer: la creación de pedido
+   (`OrderCreateFields.customer`: `id` y direcciones) y la de cliente
+   (`CustomerWithPasswordNoID`) no lo aceptan. `recordsBuyerConsent` en falso:
+   ni el perfil ni el checkout anuncian la extensión, y lo que mande una
+   plataforma se ignora. El mock sí lo ofrece (su pedido es la tienda), y por
+   eso la tienda de conformidad también.
+4. **Anunciar solo en sesiones nuevas** (decisión del usuario). El
+   consentimiento entra en `buyer`, y `buyer` está en lo que la tienda firma con
+   AP2 (`termsOf`). Una sesión creada desde T149 nace con los cuatro valores por
+   defecto; una abierta antes no tiene consentimiento y se muestra igual que
+   antes, así que un mandato firmado sobre ella sigue calzando. Un cambio de
+   consentimiento después del mandato (por `PUT` o en `complete`) se rechaza sin
+   cobrar (`mandate_scope_mismatch`). Las `description` también quedan firmadas:
+   cambiar su texto rechaza, sin cobrar, un checkout AP2 abierto en ese momento.
+5. **`complete` y los datos que faltan** (decisión del usuario). En
+   `2026-08-25`, `complete` acepta `buyer.consent` y lo aplica antes de revisar
+   nada más. Un "sí" a marketing sin email da un `warning`
+   `missing_consent_data` mientras el checkout puede cambiar, y en `complete` un
+   error del mismo código, sin cobrar: UCP no deja completar con una
+   dependencia de datos sin cumplir. SMS no se anuncia.
+6. **Dónde vive.** En la sesión (la lee quien tiene el id del checkout, como el
+   email), en el registro privado del pedido (para que un reintento de
+   `createOrder` lo vuelva a mandar) y en la plataforma. **Nunca** en la orden
+   pública ni en el webhook: el esquema de la orden UCP no tiene `buyer`, y la
+   regla de T127 y T147 es que la orden la lee cualquiera con el recibo. Tampoco
+   en el recibo. El checkout x402 directo no lo recibe.
+
+**Motivo.** `R-12` descartó guardar el consentimiento sin pasarlo a la tienda:
+pasaría el test sin significar nada. Con esto cada decisión del comprador llega
+al pedido que el comercio administra, y la tienda cumple lo que cada versión
+exige.
+
+**Alternativas descartadas.** No aceptar los propósitos que Shopify no tiene,
+con un aviso (más estricto, pero el comercio pierde una decisión que le toca
+respetar). No anunciar valores por defecto en `2026-08-25` (lo propuesto en el
+plan; incumple el DEBE de la spec, y una plataforma que la siga nunca mandaría
+consentimiento). Anunciar también en las sesiones abiertas antes del deploy
+(rompía los mandatos AP2 en curso). Ignorar el consentimiento en `complete`
+(se perdía sin aviso, y no cumple el "no completar" de UCP). Mandar el
+consentimiento a Shopify con `customer.toUpsert` (no tiene esos campos y
+pediría `write_customers`).

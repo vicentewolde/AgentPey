@@ -68,7 +68,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T146 | `cmusmvcw70025kx042wrweuku` | Demo: presupuesto de equipo en testnet (pide aprobación) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T147 | `cmut2akui001hku048kdg6eoh` | Eventos de despacho en la orden y webhooks al agente | SPEC | `DONE` | 2026-10-03 | 2026-10-04 | 2026-10-05 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-12, R-17](../fase-8-agentes-reales/DECISIONES.md) | mergeada ([PR #55](https://github.com/vicentewolde/AgentPey/pull/55)) |
 | T148 | `cmut2alv6001lku04j5hp9jat` | Varios productos por compra | SPEC | `DONE` | 2026-10-03 | 2026-10-05 | 2026-10-05 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-12, R-18, R-19](../fase-8-agentes-reales/DECISIONES.md) | mergeada ([PR #57](https://github.com/vicentewolde/AgentPey/pull/57)) |
-| T149 | `cmut2amyi001pku0481we01jg` | Consentimiento del comprador hasta la tienda | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-12](../fase-8-agentes-reales/DECISIONES.md) | |
+| T149 | `cmut2amyi001pku0481we01jg` | Consentimiento del comprador hasta la tienda | SPEC | `IN_PROGRESS` | 2026-10-03 | 2026-10-05 | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-12](../fase-8-agentes-reales/DECISIONES.md) | |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y

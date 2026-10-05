@@ -1,0 +1,17 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] WebhookStructureTest.test_delivery_carries_standard_webhook_headers
+[       OK ] WebhookStructureTest.test_delivery_carries_standard_webhook_headers
+[ RUN      ] WebhookStructureTest.test_order_created_event_is_full_order_entity
+[       OK ] WebhookStructureTest.test_order_created_event_is_full_order_entity
+[ RUN      ] WebhookStructureTest.test_signature_covers_ucp_agent
+[       OK ] WebhookStructureTest.test_signature_covers_ucp_agent
+[ RUN      ] WebhookStructureTest.test_signed_delivery_carries_required_headers_and_digest
+[       OK ] WebhookStructureTest.test_signed_delivery_carries_required_headers_and_digest
+[ RUN      ] WebhookStructureTest.test_transient_failure_retries_preserve_event_identity
+[       OK ] WebhookStructureTest.test_transient_failure_retries_preserve_event_identity
+[ RUN      ] WebhookStructureTest.test_update_event_is_full_order_entity
+[       OK ] WebhookStructureTest.test_update_event_is_full_order_entity
+----------------------------------------------------------------------
+Ran 6 tests in 5.419s
+
+OK

@@ -262,9 +262,9 @@ más rápido que lo estimado.
 - **Descripción:** `dev.ucp.shopping.buyer_consent`: el checkout guarda `buyer.consent` y lo pasa a la plataforma (`buyer_accepts_marketing` en Shopify). Si Jumpseller no tiene un campo equivalente, en Jumpseller no se anuncia la capacidad y queda escrito. No se anuncia en una tienda donde el consentimiento no llega a ningún lado.
 - **Archivos principales:** `packages/vitrinee-gateway/src/ucp/`, `packages/vitrinee-adapters/src/shopify/`
 - **Hecho cuando:**
-  - [ ] el consentimiento llega al pedido de Shopify (test con el adaptador)
-  - [ ] el perfil solo anuncia la capacidad donde llega (test)
-  - [ ] el test de consentimiento de la suite pasa, y la tabla de T131 se actualiza
+  - [x] el consentimiento llega al pedido de Shopify (test con el adaptador) ([evidencia](evidencia/T149.md) §3, `VT-47`)
+  - [x] el perfil solo anuncia la capacidad donde llega (test) ([evidencia](evidencia/T149.md) §3)
+  - [x] el test de consentimiento de la suite pasa, y la tabla de T131 se actualiza (49/8/20, [evidencia](evidencia/T149.md) §4)
 
 #### T135 · MPP charge sobre Stellar · empieza como prueba técnica, parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no

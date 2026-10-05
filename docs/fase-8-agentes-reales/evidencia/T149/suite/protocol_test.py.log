@@ -1,0 +1,11 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] ProtocolTest.test_discovery
+[       OK ] ProtocolTest.test_discovery
+[ RUN      ] ProtocolTest.test_discovery_urls
+[  SKIPPED ] ProtocolTest.test_discovery_urls - Schemas not yet published on remote ucp.dev domain
+[ RUN      ] ProtocolTest.test_version_negotiation
+[       OK ] ProtocolTest.test_version_negotiation
+----------------------------------------------------------------------
+Ran 3 tests in 0.561s
+
+OK (skipped=1)

@@ -7976,3 +7976,21 @@ rechazó sin cobrar. T148 cerrada (SPEC, ESTADO, BITACORA, SYNC, evidencia §9, 
 
 Pendiente: push y merge de `cc/t148-evidencia` con OK. Siguiente: T130 si hay tienda de terceros; si no, T149.
 `AGENTS.md`: sin cambios. Exponential: T148 a `DONE`.
+
+## 2026-10-05 (32) — cc/t149-consentimiento (sin push)
+
+Agente: Claude Code.
+
+Qué: T149 (`VT-47`). La tienda lee `buyer.consent` en la forma de cada versión de UCP (`ucp/consent.ts`), lo guarda
+en `session.consent` y lo muestra por versión: en `2026-08-25` anuncia los cuatro propósitos con su valor por
+defecto (DEBE de la spec), solo en sesiones nuevas para no romper mandatos AP2 abiertos (decisión del usuario, tras
+parar a mostrar la evidencia); en `2026-04-08` devuelve los booleanos. `complete` acepta consentimiento en
+`2026-08-25`; un "sí" al marketing sin email da `warning` y no se completa. Solo se ofrece donde el adaptador lo
+lleva (`StoreAdapter.recordsBuyerConsent`): Shopify (`buyerAcceptsMarketing` y atributos `ucp_consent_*`) y mock;
+Jumpseller no (su OpenAPI no tiene campo que lo reciba). Al pedido llegan solo las decisiones del comprador; nunca en
+la orden pública, el webhook ni el recibo. `ucp:buy -- --marketing yes|no`. Suite 49/8/20, tabla de T131 al día.
+`pnpm check` y `vitrinee:check` en verde.
+
+Pendiente: `/revisar`; push, PR y merge con OK; compra real con `--marketing yes` con OK (antes, `rail:topup` del rail
+UCP `CBDRI5B7…D3YA`, que tiene unos 1,34 USDC). `AGENTS.md`: sin cambios (T149 no es delegable). Exponential: T149
+a `IN_PROGRESS`.

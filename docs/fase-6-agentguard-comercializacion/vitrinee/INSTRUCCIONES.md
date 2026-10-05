@@ -162,6 +162,19 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   página en `apps/vitrinee-portal/public/`. Solo existe en modo plataforma. La
   sesión se firma con una llave derivada de `MASTER_KEY`: no hay variable nueva.
 
+## Estado al 2026-10-05 (T149)
+
+- **Consentimiento del comprador** (`VT-47`): `ucp/consent.ts` lee
+  `buyer.consent` en la forma de cada versión y lo guarda en `session.consent`
+  (los cuatro propósitos de UCP con su estado y quién lo puso). Se ofrece solo si
+  el adaptador tiene `recordsBuyerConsent` (Shopify y mock sí, Jumpseller no:
+  su API no tiene dónde recibirlo). Al adaptador llegan solo las decisiones del
+  comprador (`Buyer.consent`), nunca los valores por defecto.
+- **Shopify:** `marketing` en `buyerAcceptsMarketing` (un "sí" solo con email
+  real); el resto como atributos `ucp_consent_*` del pedido.
+- **No va en la orden pública, el webhook ni el recibo.** Una sesión de antes de
+  T149 no tiene `consent` y se muestra como antes (AP2 firma `buyer`).
+
 ## Estado al 2026-10-05 (T148)
 
 - **Varios productos por compra** (`VT-45`, `VT-46`, `R-18`): un checkout UCP
