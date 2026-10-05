@@ -7930,3 +7930,22 @@ verificado. T147 cerrada (SPEC, ESTADO, BITACORA, SYNC, evidencia §5, ticket `D
 Pendiente: push y merge de `cc/t147-evidencia` con OK. Siguiente: T130 si hay tienda de terceros; si no, T148 o T149.
 `AGENTS.md`: sin cambios. Exponential: T147 a `DONE`.
 
+## 2026-10-05 (29) — cc/t148-varios-productos (sin push)
+
+Agente: Claude Code.
+
+Qué: T148 con la opción A del usuario (`R-18`). Tienda (`VT-45`, `VT-46`): checkout UCP de hasta 10 líneas, precio y
+redondeo por línea, total como suma, reserva todo o nada, `items[]` en el pedido (filas viejas de pedido y sesión
+convertidas al leer, sin migración), `createOrder` con `lines` en mock, Jumpseller y Shopify, despacho por línea
+(`fulfillmentLineItems` de Shopify; un parcial sin detalle no deja evento), recibo cuyos ítems suman el total
+(spec pública y anexo al día). Agente: `PurchaseIntent.purchase` con forma de carrito, `checkMandate` y
+`reconcileTerms` sobre las líneas, `checkScope` y `create_purchase_intent` sin cambios, `agent.signCart`, líneas
+comparadas antes de autorizar (`InvalidProduct`), mandato AP2 abierto con una entrada por línea, `ucp:buy --
+--product id:n` repetido. Suite 48/9/20 y tabla de T131 al día. `pnpm check` y `vitrinee:check` en verde. Nueve
+recibos reales releídos sin escribir: todos cumplen la regla nueva.
+
+Pendiente: `/revisar`; push, PR y merge con OK; compra real con dos productos. Para esa compra el usuario eligió
+subir el `perTx`, y el contrato `policy_rail` lo fija al nacer: hace falta desplegar otro rail UCP (OK y valores
+del usuario). `AGENTS.md`: sin cambios (T148 no es delegable; toca `checkMandate`). Exponential: T148 a
+`IN_PROGRESS`.
+

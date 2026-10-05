@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-04 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-05 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -23,7 +23,9 @@ Claude y ChatGPT conectados, y ChatGPT compró pagando él mismo tras la
 confirmación.
 **T131, T133 y T134 cerradas**: la suite oficial de UCP corre contra la tienda,
 la tienda habla las dos versiones de UCP, y con AP2 no cobra sin un mandato
-que la librería oficial de AP2 verifica sobre una compra real.
+que la librería oficial de AP2 verifica sobre una compra real. **T147 cerrada**:
+la tienda avisa al agente. **T148 en revisión**: un carrito de varios productos,
+en código y tests; falta `/revisar` y la compra real.
 
 | Tarea | Estado |
 |---|---|
@@ -47,7 +49,7 @@ que la librería oficial de AP2 verifica sobre una compra real.
 | T145 Tesorería de equipos (prueba técnica) | pendiente |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
 | T147 Webhooks de orden | cerrada |
-| T148 Varios productos | pendiente |
+| T148 Varios productos | en revisión (falta la compra real) |
 | T149 Consentimiento | pendiente |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
@@ -356,4 +358,38 @@ segundo después del pago. El usuario marcó el pedido como despachado en el
 admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
+
+## T148 · Varios productos por compra (2026-10-05, en revisión)
+
+**Qué quedó funcionando.** Hasta ahora un agente podía comprar un solo producto
+por vez. Con T148 arma un carrito: por ejemplo, un gorro y dos packs de
+stickers. La tienda calcula el precio de cada línea, cobra una sola vez por la
+suma, crea en Shopify un pedido con todas las líneas y firma un recibo con un
+ítem por línea. Un recibo cuyos ítems no suman lo cobrado ahora sale en rojo al
+verificarlo. Del lado de AgentPey, la intención firmada del agente dice qué
+productos lleva el carrito, y las reglas del principal valen para cada uno: si
+un producto no está permitido, no se compra nada, y el tope por compra se
+aplica al carrito entero. Con un solo producto todo funciona igual que antes.
+
+**Lo que hubo que decidir.** El usuario eligió que la intención lleve las
+líneas (`R-18`, opción A). Para tocar lo menos posible del perímetro de
+autorización, la revisión del scope de la credencial no cambia (ve el carrito
+como una sola unidad al precio total), y la herramienta que usa el modelo
+tampoco: el carrito se firma por un camino aparte, con las mismas
+comprobaciones. En la tienda (`VT-45`, `VT-46`): cada línea con su propio
+redondeo y el total como su suma, para que todo cuadre al centavo; el mismo
+producto puede ir en dos líneas; y un despacho parcial del que la plataforma
+no dice qué llevaba no se anota como evento, para no afirmar algo que no se
+sabe.
+
+**Cómo se probó.** Tests sin red en la tienda, los adaptadores, el agente, AP2
+y el contrato entre los dos (el código real del agente contra la app real de la
+tienda), más un control negativo: con la regla de suma apagada, seis tests
+fallan. Se volvieron a leer los nueve recibos reales emitidos hasta hoy y todos
+cumplen la regla nueva. La suite oficial de UCP pasa de 47 a 48.
+
+**Lo que falta.** `/revisar` y la compra real. Ningún par de productos de
+`agentcommerce` cabe bajo el tope de 3,00 USDC por compra del rail UCP; el
+usuario eligió subirlo, y como el contrato fija sus topes al nacer, es
+desplegar otra instancia del rail (con su OK y sus valores).
 

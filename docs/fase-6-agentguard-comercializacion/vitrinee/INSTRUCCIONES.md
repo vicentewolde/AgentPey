@@ -162,6 +162,22 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   página en `apps/vitrinee-portal/public/`. Solo existe en modo plataforma. La
   sesión se firma con una llave derivada de `MASTER_KEY`: no hay variable nueva.
 
+## Estado al 2026-10-05 (T148)
+
+- **Varios productos por compra** (`VT-45`, `VT-46`, `R-18`): un checkout UCP
+  lleva hasta 10 líneas (`li_1…li_n` por posición; el mismo producto puede ir
+  en dos). Cada línea se cotiza sola y el total es su suma, en `bigint`.
+- **El pedido guarda `items[]`**, no `product`/`quantity`. Las filas viejas se
+  convierten al leerlas (`upgradeLegacyOrder`, `upgradeLegacySession`); no
+  escribas la forma vieja. `StoreAdapter.createOrder` recibe `lines` y
+  `PlatformOrder` devuelve `lines`; los helpers comunes están en
+  `packages/vitrinee-adapters/src/lines.ts`.
+- **El recibo suma:** `receiptIncoherence` exige Σ unitario × cantidad =
+  `amountUSDCAtomic`. Un recibo que no suma no se firma.
+- **Despachos por línea:** `PlatformShipment.lines` (Shopify lo informa con
+  `fulfillmentLineItems`); un parcial sin ese detalle no deja evento
+  (`ucp/lines.ts`).
+
 ## Estado al 2026-10-04 (T147)
 
 - **Webhooks de orden** (`R-17`, `VT-44`): la tienda hace POST de la orden a la

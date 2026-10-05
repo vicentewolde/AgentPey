@@ -1092,7 +1092,9 @@ versión de la extensión de recibo sigue en `2026-09-30`: todos los recibos
 emitidos hasta hoy ya cumplen la regla.
 
 No se comprueba que la suma de los ítems sea igual al total: el spec no lo
-pide, y hoy una compra tiene un solo ítem.
+pide, y hoy una compra tiene un solo ítem. *(Esta frase la reemplaza
+[VT-45](#vt-45) desde T148, cuando una compra puede tener varios ítems; el
+resto de VT-39 sigue vigente.)*
 
 **Motivo.** La página del recibo, el CLI, la orden UCP y el video hablan de
 "tres checks". Un recibo incoherente es un problema de contenido, que es lo que
@@ -1241,4 +1243,74 @@ un checkout.
 mismo `kid` para dos usos distintos. Firmar con la Ed25519 de recibos: sin llave
 nueva, pero `2026-04-08` no la admite y una plataforma conforme de `2026-08-25`
 podría no verificarla.
+
+---
+
+### VT-45 · Los ítems del recibo suman el total; sigue dentro del check 1 · `Vigente` — reemplaza una frase de `VT-39`
+**Fecha:** 2026-10-05 · **Hito:** T148 (Fase 8) · Propuesta de Claude Code, **aprobada por el usuario** con el plan de T148
+
+Desde T148 una compra UCP puede tener varias líneas, y el recibo un ítem por
+línea. `receiptIncoherence` agrega una regla: Σ `unitPriceUSDCAtomic` ×
+`quantity` sobre `items` es exactamente `amountUSDCAtomic`, en `bigint`. Nada
+más entra al total: el despacho lo coordina la tienda fuera de la compra.
+`signReceipt` se niega a firmar un recibo que no suma (`ReceiptInvalid`) y el
+check 1 lo da por malo, como las otras reglas de `VT-39`. La spec pública de la
+extensión de recibo lo dice con DEBE; su versión sigue en `2026-09-30`.
+
+**Por qué no cambia la versión.** Todo recibo emitido hasta hoy ya cumple la
+regla: las dos puertas calculaban el total como unitario × cantidad
+(`timesQuantity`), y un solo ítem. Se comprobó leyendo, sin escribir nada, los
+nueve recibos reales que se pudieron leer (las siete órdenes UCP de T122 a T147
+en agentcommerce y los dos últimos recibos guardados en local): los nueve pasan.
+
+**Cómo se cumple por construcción.** Cada línea se cotiza sola, con un redondeo
+por unidad (`VT-7`), y el total es la suma de las líneas, nunca la conversión
+del total en pesos. Así el cobro x402, el pedido y el recibo dicen lo mismo.
+
+**Alternativa descartada: convertir el total en pesos una vez.** Un solo
+redondeo para toda la compra, pero los ítems ya no sumarían el total por uno o
+dos átomos, y el recibo se contradiría.
+
+---
+
+### VT-46 · Un checkout con varias líneas: precio por línea, `li_n` por posición, reserva todo o nada, y ningún evento de despacho sin saber qué líneas salieron · `Vigente` — precisa `R-17`
+**Fecha:** 2026-10-05 · **Hito:** T148 (Fase 8) · Propuesta de Claude Code, **aprobada por el usuario** con el plan de T148
+
+- **Líneas.** Hasta 10 por checkout (400 si son más). La tienda las nombra
+  `li_1…li_n` por posición, en el checkout y en la orden. El mismo producto en
+  dos líneas son dos líneas (la suite oficial lo hace); su stock se revisa por la
+  suma, y un faltante se informa en la línea que lo provoca
+  (`$.line_items[i]`). Un grupo de despacho cubre todas las líneas (UCP: un grupo
+  por método cuando la plataforma no pide varios).
+- **Cotización.** La sesión guarda una cotización por línea (unitario y total en
+  USDC y en pesos, SKU y nombre) y la suma. Un `PUT` que cambia las líneas toma
+  una cotización nueva aunque el total sea el mismo: el pedido se hace de esa
+  foto una vez pagado.
+- **Reserva.** `complete` reserva las unidades de todas las líneas, sumadas por
+  producto, o ninguna (`tryReserveAll`), y las suelta todas al terminar.
+- **Pedido.** `OrderRecord` guarda `items[]` en vez de `product` y `quantity`.
+  Las filas viejas de Postgres (y del archivo de la tienda única, y del mock) se
+  leen con la forma vieja y se convierten al leerlas: un ítem, con el unitario en
+  pesos igual al total sobre la cantidad. Sin migración. Igual las sesiones
+  guardadas antes del deploy (viven seis horas). `StoreAdapter.createOrder`
+  recibe `lines`, y los tres adaptadores revisan el stock de todas antes de crear
+  nada.
+- **Despacho parcial.** Shopify dice qué líneas lleva cada paquete
+  (`fulfillmentLineItems`). Cada paquete es un evento con solo sus líneas; cada
+  línea cuenta lo que ya salió (`partial`, `fulfilled`). Un paquete sin ese
+  detalle que completa la orden se atribuye a todo lo pendiente; uno parcial sin
+  detalle **no** se registra como evento (no se puede decir qué salió) y se
+  sigue preguntando. Esto precisa el punto de `R-17` que decía "un despacho
+  parcial se registra como evento". Un evento de antes de T148 no nombra líneas:
+  su orden tenía una, y vale por toda ella.
+
+**Motivo.** El total, la cotización x402, el pedido y el recibo tienen que
+cuadrar al centavo (spec de T148), y una orden pública no debe afirmar que salió
+algo que la plataforma no dijo.
+
+**Alternativas descartadas.** Juntar en una línea el mismo producto repetido:
+más simple para la plataforma, pero la orden ya no tendría las líneas que pidió
+el agente. Atribuir un parcial sin detalle a la primera línea pendiente: daría
+un evento, pero inventado. Una migración de las filas guardadas: no hace falta
+si se convierten al leer.
 

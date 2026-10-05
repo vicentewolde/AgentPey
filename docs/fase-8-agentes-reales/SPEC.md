@@ -251,9 +251,9 @@ más rápido que lo estimado.
 - **Descripción:** un checkout UCP con más de una línea. El total, la cotización x402, el pedido en la plataforma y los ítems del recibo cuadran entre sí al centavo; la coherencia de T132 se extiende a varias líneas. Hoy más de una línea da 400.
 - **Archivos principales:** `packages/vitrinee-gateway/src/ucp/checkout.ts`, `packages/vitrinee-core/src/receipt.ts`, `packages/vitrinee-adapters/src/`, `apps/agent/src/payment/ucp.ts`
 - **Hecho cuando:**
-  - [ ] un checkout con dos productos cotiza, cobra una vez y crea un pedido con dos líneas (test sin red)
-  - [ ] el verificador rechaza un recibo cuyas líneas no suman el total (test)
-  - [ ] `executeUcpPayment` y `ucp-contract.test.ts` siguen en verde con una línea
+  - [x] un checkout con dos productos cotiza, cobra una vez y crea un pedido con dos líneas (test sin red) ([evidencia](evidencia/T148.md) §3)
+  - [x] el verificador rechaza un recibo cuyas líneas no suman el total (test) ([evidencia](evidencia/T148.md) §3 y §4, `VT-45`)
+  - [x] `executeUcpPayment` y `ucp-contract.test.ts` siguen en verde con una línea ([evidencia](evidencia/T148.md) §3)
   - [ ] una compra real con dos productos y recibo con los tres checks en verde, con OK del usuario
 
 #### T149 · Consentimiento del comprador hasta la tienda (`R-12`)

@@ -1,0 +1,22 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] DiscountTest.test_allocations_sum_to_applied_amount
+[  SKIPPED ] DiscountTest.test_allocations_sum_to_applied_amount - business does not advertise dev.ucp.shopping.discount; skipping
+[ RUN      ] DiscountTest.test_client_applied_does_not_change_price
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8285): address already in use
+[  SKIPPED ] DiscountTest.test_client_applied_does_not_change_price - business does not advertise dev.ucp.shopping.discount; skipping
+[ RUN      ] DiscountTest.test_code_matches_case_insensitively
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8285): address already in use
+[  SKIPPED ] DiscountTest.test_code_matches_case_insensitively - business does not advertise dev.ucp.shopping.discount; skipping
+[ RUN      ] DiscountTest.test_codes_replace_previous_set
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8285): address already in use
+[  SKIPPED ] DiscountTest.test_codes_replace_previous_set - business does not advertise dev.ucp.shopping.discount; skipping
+[ RUN      ] DiscountTest.test_discount_total_is_negative
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8285): address already in use
+[  SKIPPED ] DiscountTest.test_discount_total_is_negative - business does not advertise dev.ucp.shopping.discount; skipping
+[ RUN      ] DiscountTest.test_empty_codes_removes_discount
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8285): address already in use
+[  SKIPPED ] DiscountTest.test_empty_codes_removes_discount - business does not advertise dev.ucp.shopping.discount; skipping
+----------------------------------------------------------------------
+Ran 6 tests in 0.299s
+
+OK (skipped=6)

@@ -1,0 +1,31 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] ValidationTest.test_complete_without_fulfillment
+[       OK ] ValidationTest.test_complete_without_fulfillment
+[ RUN      ] ValidationTest.test_out_of_stock
+[       OK ] ValidationTest.test_out_of_stock
+[ RUN      ] ValidationTest.test_payment_failure
+[       OK ] ValidationTest.test_payment_failure
+[ RUN      ] ValidationTest.test_product_not_found
+[       OK ] ValidationTest.test_product_not_found
+[ RUN      ] ValidationTest.test_structured_error_messages
+[       OK ] ValidationTest.test_structured_error_messages
+[ RUN      ] ValidationTest.test_update_inventory_validation
+[  FAILED  ] ValidationTest.test_update_inventory_validation
+======================================================================
+FAIL: test_update_inventory_validation (__main__.ValidationTest.test_update_inventory_validation)
+ValidationTest.test_update_inventory_validation
+Test that inventory validation is enforced on update.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/validation_test.py", line 300, in test_update_inventory_validation
+    self.assert_business_error(
+  File "<repo>/.ucp-conformance/conformance/validation_test.py", line 84, in assert_business_error
+    self._assert_structured_4xx_error(response, error_4xx_substring)
+  File "<repo>/.ucp-conformance/conformance/validation_test.py", line 164, in _assert_structured_4xx_error
+    self.assertTrue(
+AssertionError: False is not true : Expected 'stock' in error messages
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.443s
+
+FAILED (failures=1)

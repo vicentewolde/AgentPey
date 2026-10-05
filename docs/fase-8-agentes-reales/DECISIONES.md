@@ -504,7 +504,9 @@ lo que UCP pide).
   transportista, no el seguimiento, que lleva a la página del courier sobre el
   comprador (misma regla que el destino de T127: solo el país).
 - La línea queda `fulfilled` cuando la plataforma dice que salió todo; un
-  despacho parcial se registra como evento y se sigue preguntando. Un pedido
+  despacho parcial se registra como evento y se sigue preguntando. *(Precisado
+  por `VT-46` en T148: con varias líneas, un parcial sin el detalle de qué líneas
+  salieron no se registra como evento.)* Un pedido
   cancelado deja de preguntarse. Una sola pregunta a la vez por orden, y una sola
   pasada del vigilante a la vez.
 - **El receptor de agentpey.com** acota sus lecturas de perfiles (4 a la vez, 2
@@ -519,4 +521,52 @@ lo que UCP pide).
   responder: la entrega se envía una vez, la redirección nunca se sigue y la
   entrega se da por perdida. Así queda el tercer criterio de T147, aceptado por el
   usuario al pedir corregir los 16 hallazgos de `/revisar`.
+
+### R-18 · Un carrito es una intención con líneas; `checkScope` no cambia y la herramienta del modelo tampoco · `Vigente`
+**Fecha:** 2026-10-05 · **Tarea:** T148 · Propuesta de Claude Code; la forma (opción A), **decidida por el usuario**
+
+Para que AgentPey pague un checkout con varias líneas, la intención que firma el
+agente tiene que decir qué compra. Se decide:
+
+1. **`PurchaseIntent.purchase` tiene dos formas.** La de siempre (un producto,
+   byte por byte igual) y un carrito: `lines` (2 a 10, cada una con `productId`,
+   `quantity` y `unitAmount`), `totalAmount` y `asset`. Las intenciones ya
+   firmadas siguen verificando. Como en la forma simple, ninguna decisión lee
+   `totalAmount`: el total se deriva de las líneas (`intentTotal`).
+2. **`checkMandate`** revisa el producto de **cada** línea contra
+   `grant.products` (uno no consentido rechaza todo el carrito) y compara la suma
+   con `perTx`. **`reconcileTerms`** compara el pago con la suma.
+3. **`checkScope` no se toca.** Un carrito se le presenta como una unidad cuyo
+   precio es el total (`scopeRequestOf`), así que `perTx` del scope se aplica a
+   la compra entera. Sigue sin recibir un producto. `perDay` (rail y ledger)
+   suma el total una vez.
+4. **La herramienta `create_purchase_intent` no cambia** (mismo esquema, misma
+   respuesta): es lo que el modelo puede llamar. El carrito se firma con
+   `agent.signCart`, que no es una herramienta y existe solo si el agente puede
+   comprar; corre el mismo `buildSignedIntent` (las dos autoridades, las dos
+   vivas, el rail). Una línea por `signCart` da la forma simple.
+5. **Antes de autorizar**, `payUcpQuote` compara las líneas del checkout con las
+   de la intención, en orden (`InvalidProduct`): dos carritos pueden costar lo
+   mismo. Por eso un checkout de dos gorros contra una intención de uno ahora se
+   rechaza con `InvalidProduct` y no con `TermsAmountMismatch`; sigue siendo
+   antes de firmar nada.
+6. **AP2:** el mandato abierto lleva una entrada `checkout.line_items` por línea
+   (`line_1…line_n`); con una línea queda igual que en T134. El agente exige que
+   las líneas firmadas por la tienda sean las cotizadas. Un mandato por
+   intención, como siempre (brecha 14). `ap2:export` (T123) sigue con un
+   producto y rechaza un carrito con un error tipado.
+7. **Fuera de T148:** el `quote` del MCP sigue con un producto (no está en el
+   spec); `ucp:buy` acepta `--product id:n` repetido.
+
+**Motivo.** El total solo no dice qué se compra, y el producto consentido
+(`grant.products`) tiene que valer para cada línea. Dejar `checkScope` y la
+herramienta del modelo como estaban reduce lo que cambia en el perímetro de
+autorización a dos funciones (`checkMandate`, `reconcileTerms`).
+
+**Alternativas descartadas.** Una intención por línea y un solo pago (no toca
+`checkMandate`, pero obliga a sumar N intenciones contra `perTx` en código nuevo
+y deja sin sentido "un mandato AP2 por intención"). Solo la tienda (la suite
+pasa, pero AgentPey no podría comprar un carrito). Agregar `lines` a la
+herramienta del modelo (su esquema JSON quedaba con `product_id` y `quantity`
+opcionales).
 

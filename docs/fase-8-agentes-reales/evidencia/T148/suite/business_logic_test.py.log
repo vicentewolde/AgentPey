@@ -1,0 +1,51 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] BusinessLogicTest.test_buyer_consent
+[  FAILED  ] BusinessLogicTest.test_buyer_consent
+[ RUN      ] BusinessLogicTest.test_buyer_info_persistence
+[       OK ] BusinessLogicTest.test_buyer_info_persistence
+[ RUN      ] BusinessLogicTest.test_discount_flow
+[  FAILED  ] BusinessLogicTest.test_discount_flow
+[ RUN      ] BusinessLogicTest.test_fixed_amount_discount
+[  SKIPPED ] BusinessLogicTest.test_fixed_amount_discount - Fixed discount code not configured in fixtures.
+[ RUN      ] BusinessLogicTest.test_multiple_discounts_accepted
+[  SKIPPED ] BusinessLogicTest.test_multiple_discounts_accepted - Second valid discount code not configured in fixtures.
+[ RUN      ] BusinessLogicTest.test_multiple_discounts_one_rejected
+[  FAILED  ] BusinessLogicTest.test_multiple_discounts_one_rejected
+[ RUN      ] BusinessLogicTest.test_totals_calculation_on_create
+[       OK ] BusinessLogicTest.test_totals_calculation_on_create
+[ RUN      ] BusinessLogicTest.test_totals_recalculation_on_update
+[       OK ] BusinessLogicTest.test_totals_recalculation_on_update
+======================================================================
+FAIL: test_buyer_consent (__main__.BusinessLogicTest.test_buyer_consent)
+BusinessLogicTest.test_buyer_consent
+Test that buyer consent preferences are persisted on creation.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/business_logic_test.py", line 467, in test_buyer_consent
+    self.assertTrue(consent_data, "Consent info missing")
+AssertionError: None is not true : Consent info missing
+
+======================================================================
+FAIL: test_discount_flow (__main__.BusinessLogicTest.test_discount_flow)
+BusinessLogicTest.test_discount_flow
+Test that valid discount codes decrease the total amount.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/business_logic_test.py", line 262, in test_discount_flow
+    self.assertTrue(
+AssertionError: None is not true : Applied discounts field missing
+
+======================================================================
+FAIL: test_multiple_discounts_one_rejected (__main__.BusinessLogicTest.test_multiple_discounts_one_rejected)
+BusinessLogicTest.test_multiple_discounts_one_rejected
+Test requesting multiple discounts where one is valid and one is not.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/.ucp-conformance/conformance/business_logic_test.py", line 366, in test_multiple_discounts_one_rejected
+    self.assertTrue(discounts_obj and discounts_obj.applied)
+AssertionError: None is not true
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.989s
+
+FAILED (failures=3, skipped=2)

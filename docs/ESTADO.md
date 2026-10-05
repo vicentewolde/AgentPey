@@ -5,10 +5,10 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-04
+**Actualizado:** 2026-10-05
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T147 · La tienda avisa al agente: la orden muestra el despacho y los avisos firmados ("creada", "despachada") llegan verificados a agentpey.com, probado con un despacho real en Shopify
-**Siguiente paso:** push y merge de `cc/t147-evidencia` con OK. Después, T130 si ya hay tienda de terceros; si no, la siguiente del Bloque B (T148, varios productos por compra, o T149, consentimiento). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** `/revisar` de T148 (`cc/t148-varios-productos`); push, PR y merge con OK; después la compra real con dos productos, que pide antes un rail UCP nuevo con un `perTx` mayor (redeploy, con OK y valores del usuario). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -34,7 +34,7 @@
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
-| T148 Varios productos por compra (`R-12`) | si alcanza | ⏳ pendiente | |
+| T148 Varios productos por compra (`R-12`) | si alcanza | 👀 en revisión: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`); suite 48/9/20; falta la compra real | `cc/t148-varios-productos` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ⏳ pendiente | |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143.
@@ -43,6 +43,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
+- [ ] Para la compra real de T148: dar el OK y los valores de un rail UCP nuevo (`perTx` y `perDay`; el contrato los fija al nacer). Ningún par de productos de agentcommerce cabe bajo 3,00 USDC
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
@@ -58,6 +59,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - T127 (`/revisar`, sugerencias que quedaron): la orden no cruza `dispute.merchant` con la cuenta firmante de la tienda; el esquema de la extensión no exige `verdict_hash`, `refund_atomic` y `resolved_at` cuando `status` es `resolved`; cada GET de una orden anclada lee la red sin caché (una disputa resuelta es inmutable y se podría cachear); `zod` de `vitrinee-anchor` en `^4.5.4` frente a `^4.6.0` del resto.
 
 - T147 (`R-17`): Jumpseller no informa despachos (`reportsShipments` en falso) hasta comprobar sus campos con un pedido real. Una tienda de la plataforma se arma con su primer tráfico tras un deploy: hasta entonces no lee despachos ni retoma webhooks pendientes. El receptor de agentpey.com guarda lo recibido en memoria (se pierde en un deploy; la firma de menos de 5 minutos evita que un aviso viejo se cuele después). Un cambio de disputa no dispara un webhook.
+- T148 (`R-18`): el `quote` del MCP sigue con un producto (no estaba en el spec), y `ap2:export` (T123) también; los dos rechazan o no ofrecen un carrito.
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Es T143 de la Fase 8.
 - Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción (pide un contrato nuevo, fuera de alcance). Brecha 14: es parte de T134.
@@ -118,4 +120,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-04, T147: plan con cuatro decisiones del usuario (`R-17`, `VT-44`). Firma RFC 9421 en `@vitrinee/core`, comprobada contra los vectores del RFC; el cliente único de perfiles también entrega webhooks (POST fijado, mismas reglas); la orden guarda eventos y la cola de entregas; Shopify informa despachos con los permisos actuales (comprobado leyendo un pedido real); receptor en `agentpey.com/ucp/webhooks/orders`, declarado en los tres perfiles de AgentPey. Suite oficial 47/10/20 (los 7 de webhooks pasan). `pnpm check` y `vitrinee:check` en verde.
 - 2026-10-05, T147 `/revisar`: sin bloqueantes; corregidos los 16 hallazgos a pedido del usuario. Los más serios: los envíos tienen un cupo propio y el "ocupado" no cuenta como intento (alguien de afuera podía hacer perder avisos); una URL que no es URL ya no traba la cola; se firma `@query`; el seguimiento va solo en el webhook, no en la orden pública; el receptor de agentpey.com acota sus lecturas de perfiles, exige firma de menos de 5 minutos que cubra el id del evento, solo acepta la llave `#ucp-p256` y no publica el id de la orden. Suite igual (47/10/20).
 - 2026-10-05, T147 cerrada: [PR #55](https://github.com/vicentewolde/AgentPey/pull/55) en `main` y desplegado. Rail UCP recargado con 3 USDC (tx `f53ea2d5…`). Compra `ord_muv8xjmi1a53efae61` (Shopify `19009954578738`, tx `ee330134…`, recibo válido): el aviso "creada" llegó a agentpey.com en 1 s; el usuario marcó el pedido como despachado en Shopify, la orden mostró `shipped` con la línea `fulfilled` (valida contra el esquema `2026-08-25`) y el aviso "despachada" llegó verificado. Rail UCP en unos 1,59 USDC.
-
+- 2026-10-05, T148: plan aprobado con la opción A (la intención lleva las líneas, `R-18`). Tienda: checkout de hasta 10 líneas, precio y redondeo por línea, reserva todo o nada, pedido de varias líneas en los tres adaptadores, `items[]` en el pedido con las filas viejas convertidas al leer, despacho parcial por línea (`VT-46`); recibo cuyos ítems suman el total (`VT-45`, nueve recibos reales releídos, todos cumplen). Agente: `checkMandate` y `reconcileTerms` sobre las líneas, `checkScope` y `create_purchase_intent` sin cambios, `agent.signCart`, líneas comparadas antes de autorizar, mandato AP2 con una entrada por línea, `ucp:buy -- --product id:n` repetido. Suite 48/9/20. `pnpm check` y `vitrinee:check` en verde. El `perTx` del rail no se puede cambiar en el contrato: subirlo es desplegar otro.

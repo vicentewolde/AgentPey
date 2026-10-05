@@ -1,0 +1,9 @@
+Running tests under Python 3.12.13: <repo>/.ucp-conformance/conformance/.venv/bin/python
+[ RUN      ] FulfillmentStructureTest.test_default_config_single_group_per_method
+[       OK ] FulfillmentStructureTest.test_default_config_single_group_per_method
+[ RUN      ] FulfillmentStructureTest.test_option_titles_distinguish_siblings
+[       OK ] FulfillmentStructureTest.test_option_titles_distinguish_siblings
+----------------------------------------------------------------------
+Ran 2 tests in 0.551s
+
+OK
