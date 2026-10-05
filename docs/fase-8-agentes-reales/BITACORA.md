@@ -340,6 +340,16 @@ hubo cómo comprobar sus campos.
 webhooks, incluidos los de firma. Y una prueba de punta a punta sin red hace
 que la tienda real firme y el receptor real de AgentPey verifique.
 
+**La revisión.** `/revisar` no encontró nada que pudiera cobrar mal, pero sí
+16 cosas para corregir, todas corregidas. Las más serias: alguien de afuera
+podía hacer que se perdieran avisos llenando el cupo de conexiones de la
+tienda (ahora los avisos tienen su propio cupo); una dirección mal escrita
+podía trabar los avisos de una orden; y el número de seguimiento quedaba a la
+vista de cualquiera que tuviera el recibo (ahora solo lo recibe la plataforma
+que compró). El receptor de agentpey.com también quedó más estricto: solo
+acepta avisos firmados hace menos de cinco minutos, con la llave de webhooks
+de la tienda.
+
 **Lo que falta.** El despacho real: una compra en `agentcommerce` después del
 deploy, que el comercio la marque como despachada en Shopify y que el aviso
 llegue a agentpey.com.

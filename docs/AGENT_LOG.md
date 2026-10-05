@@ -7902,3 +7902,19 @@ en la orden, `simulate-shipping` de la tienda de conformidad conectado, receptor
 Pendiente: `/revisar`; push y merge con OK; compra real y despacho marcado en Shopify, con OK. `AGENTS.md`: sin
 cambios (T147 no es delegable y el spec ya lo dice). Exponential: T147 a `IN_PROGRESS`.
 
+## 2026-10-05 (27) — cc/t147-webhooks-orden (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T147, sin bloqueantes; corregidos los 16 hallazgos a pedido del usuario. Cupo propio de envíos y
+"busy" sin contar intento; URL de webhook validada al guardarla y entrega no firmable dada por perdida; `@query`
+firmado; `alg`/`expires` y componentes exigidos en el verificador; seguimiento solo en el webhook; estado de despacho
+(`fulfillmentState`: parcial, completo, cancelado) con una pregunta a la vez; tienda reemplazada espera su entrega en
+curso; llave de webhooks validada al construir; cuerpos vaciados al terminar; receptor de agentpey.com con lecturas
+acotadas, firma de menos de 5 min que cubre el id, solo `#ucp-p256`, zod y `AgentPassError`, y listado sin el id de
+la orden. `apps/web` declara `zod` `~4.5.4` (la misma copia que `partner-api`; con `^` pnpm tomaba 4.6.5 y rompía
+tipos de `partner-routes`). R-17 precisada. Suite igual (47/10/20).
+
+Pendiente: push, PR y merge con OK; compra real y despacho marcado en Shopify, con OK. `AGENTS.md`: sin cambios.
+Exponential: T147 en `IN_PROGRESS`.
+

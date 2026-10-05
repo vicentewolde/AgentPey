@@ -174,6 +174,9 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
   a la plataforma (`StoreAdapter.reportsShipments`, `PlatformOrder.shipments`).
   Shopify sí; Jumpseller todavía no. `app.orderEvents.resume()` al arrancar una
   tienda, `stop()` al reemplazarla.
+- **El seguimiento no va en la orden pública:** `ucpOrder(…, { tracking: true })`
+  solo para el cuerpo del webhook. El `GET` de la orden lo lee cualquiera con el
+  recibo.
 - **Tests:** `fakePlatformProfiles()` también recibe entregas (`sent`,
   `respond`); ningún test envía de verdad.
 

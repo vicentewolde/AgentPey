@@ -487,3 +487,36 @@ real solo leyendo la orden (más barato, pero no prueba que el aviso llega al
 agente). Reusar `@agentpey/webhooks` (firma HMAC y `fetch` sin IP fijada: no es
 lo que UCP pide).
 
+**Precisado tras `/revisar` (2026-10-05, a pedido del usuario).**
+
+- Las entregas tienen **un cupo propio** (6 a la vez, 5 por segundo, ráfaga de
+  20), aparte de las lecturas de perfiles: cualquiera puede gastar el cupo de
+  lecturas nombrando perfiles al azar en `UCP-Agent`, y eso no puede dejar sin
+  avisos a las órdenes. Si el cupo de entregas está lleno, la entrega espera 5 s
+  y no cuenta como intento.
+- Solo se guarda una `webhook_url` que es una URL `http(s)` de hasta 2048
+  caracteres (con el perfil y el origen dentro de esos límites); si no, la orden
+  queda sin webhook y `complete` responde igual. Una entrega que no se puede
+  firmar se da por perdida al primer intento, nunca traba la cola.
+- La firma cubre `@query` cuando la URL lo trae.
+- **El número y el enlace de seguimiento van solo en el webhook**, a la
+  plataforma que compró. La orden pública (`GET`) muestra que salió y con qué
+  transportista, no el seguimiento, que lleva a la página del courier sobre el
+  comprador (misma regla que el destino de T127: solo el país).
+- La línea queda `fulfilled` cuando la plataforma dice que salió todo; un
+  despacho parcial se registra como evento y se sigue preguntando. Un pedido
+  cancelado deja de preguntarse. Una sola pregunta a la vez por orden, y una sola
+  pasada del vigilante a la vez.
+- **El receptor de agentpey.com** acota sus lecturas de perfiles (4 a la vez, 2
+  por segundo, una por perfil en curso, fallas recordadas 1 minuto), exige que la
+  firma cubra `webhook-id`, `webhook-timestamp`, `content-digest`, `content-type`
+  y `ucp-agent` y que tenga menos de 5 minutos (cada reintento se firma de nuevo,
+  así que es compatible con los reintentos de UCP), solo acepta la llave
+  `…#ucp-p256` (nunca la de AP2), responde 503 a una copia que llega mientras se
+  revisa la primera, y lista lo recibido con un resumen del id de la orden, no el
+  id.
+- **El criterio de las redirecciones.** Una redirección solo se sabe al
+  responder: la entrega se envía una vez, la redirección nunca se sigue y la
+  entrega se da por perdida. Así queda el tercer criterio de T147, aceptado por el
+  usuario al pedir corregir los 16 hallazgos de `/revisar`.
+
