@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import type { Buyer, Product, StoreAdapter } from "@vitrinee/adapters";
+import type { Buyer, BuyerConsent, Product, StoreAdapter } from "@vitrinee/adapters";
 import {
   STELLAR_TESTNET_CAIP2,
   USDC_TESTNET,
@@ -390,6 +390,8 @@ export interface PaidPurchase {
   payer: string;
   /** Set by the UCP checkout: the session the order belongs to. */
   ucpCheckoutId?: string;
+  /** Set by the UCP checkout (T149): the buyer's own consent decisions, for a store whose adapter records them. */
+  consent?: BuyerConsent;
 }
 
 /**
@@ -460,6 +462,8 @@ async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Prom
     stellarAccount: payer,
     ...(body.buyer.email === undefined ? {} : { email: body.buyer.email }),
     ...(body.buyer.shipping === undefined ? {} : { shipping: body.buyer.shipping }),
+    // Kept on the record so a retried platform order carries it too. Never in the receipt or the public order.
+    ...(purchase.consent === undefined || Object.keys(purchase.consent).length === 0 ? {} : { consent: purchase.consent }),
   };
 
   const record: OrderRecord = {

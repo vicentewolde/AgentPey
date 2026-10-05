@@ -105,6 +105,7 @@ describe("UCP surface of a storefront", () => {
       expect(Object.keys(profile.ucp.capabilities ?? {}).sort()).toEqual([
         "com.agentpey.shopping.receipt",
         "dev.ucp.common.payment.ap2_mandate",
+        "dev.ucp.shopping.buyer_consent",
         "dev.ucp.shopping.catalog.lookup",
         "dev.ucp.shopping.catalog.search",
         "dev.ucp.shopping.checkout",
@@ -112,6 +113,41 @@ describe("UCP surface of a storefront", () => {
         "dev.ucp.shopping.order",
       ]);
       expect(profile.ucp.capabilities?.["com.agentpey.shopping.receipt"]?.[0]).toMatchObject({ extends: ["dev.ucp.shopping.checkout", "dev.ucp.shopping.order"] });
+    });
+
+    it("offers buyer consent on the checkout, in each version's own spec and schema, where the adapter takes it to the store (T149)", async () => {
+      const current = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}`)).json());
+      expect(current.ucp.capabilities?.["dev.ucp.shopping.buyer_consent"]).toEqual([
+        {
+          version: "2026-08-25",
+          spec: "https://ucp.dev/2026-08-25/specification/shopping/extensions/buyer-consent",
+          schema: "https://ucp.dev/2026-08-25/schemas/shopping/buyer_consent.json",
+          extends: "dev.ucp.shopping.checkout",
+        },
+      ]);
+      const leaf = ucpBusinessProfileSchema.parse(await (await fetch(`${url}${UCP_PROFILE_PATH}/2026-04-08`)).json());
+      expect(leaf.ucp.capabilities?.["dev.ucp.shopping.buyer_consent"]).toEqual([
+        {
+          version: "2026-04-08",
+          spec: "https://ucp.dev/2026-04-08/specification/buyer-consent",
+          schema: "https://ucp.dev/2026-04-08/schemas/shopping/buyer_consent.json",
+          extends: "dev.ucp.shopping.checkout",
+        },
+      ]);
+    });
+
+    it("does not offer buyer consent at a store whose platform has nowhere to take it, like Jumpseller (T149)", async () => {
+      const jumpsellerLike = createApp({
+        platformProfiles: fakePlatformProfiles(), config, adapter: new MockStoreAdapter({ recordsBuyerConsent: false }), facilitator: fakeFacilitator(), anchorer, registry });
+      const other = await listen(jumpsellerLike);
+      try {
+        for (const path of [UCP_PROFILE_PATH, `${UCP_PROFILE_PATH}/2026-04-08`]) {
+          const profile = ucpBusinessProfileSchema.parse(await (await fetch(`${other.url}${path}`)).json());
+          expect(profile.ucp.capabilities, path).not.toHaveProperty(["dev.ucp.shopping.buyer_consent"]);
+        }
+      } finally {
+        await other.close();
+      }
     });
 
     it("declares the Stellar x402 handler with a config that validates against the handler's own schema", async () => {

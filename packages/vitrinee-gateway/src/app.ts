@@ -201,12 +201,12 @@ export function createApp({
   // nothing here shadows the routes above.
   app.get(UCP_PROFILE_PATH, (req, res) => {
     res.set("Cache-Control", cacheHeader);
-    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), ap2Key: ap2Key.publicJwk, webhookKey: webhookKey.publicJwk }));
+    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), ap2Key: ap2Key.publicJwk, webhookKey: webhookKey.publicJwk, buyerConsent: adapter.recordsBuyerConsent === true }));
   });
   // The 2026-04-08 profile, which the current one lists in `supported_versions` (R-6, T133).
   app.get(ucpLeafProfilePath(UCP_LEGACY_VERSION), (req, res) => {
     res.set("Cache-Control", cacheHeader);
-    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), version: UCP_LEGACY_VERSION, webhookKey: webhookKey.publicJwk }));
+    res.json(buildUcpProfile({ config, baseUrl: baseUrlOf(req), version: UCP_LEGACY_VERSION, webhookKey: webhookKey.publicJwk, buyerConsent: adapter.recordsBuyerConsent === true }));
   });
 
   // Every UCP route answers in the version the platform speaks, or says it cannot (T131, T133).

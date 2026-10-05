@@ -13,6 +13,8 @@ import { randomBytes } from "node:crypto";
 import { VitrineeError, currencyDecimals, formatUnits, parseDecimal } from "@vitrinee/core";
 import { z } from "zod";
 
+import { sessionConsentSchema } from "./consent.js";
+
 export const CHECKOUT_SESSION_STATUSES = ["incomplete", "ready_for_complete", "complete_in_progress", "completed", "canceled"] as const;
 export type CheckoutSessionStatus = (typeof CHECKOUT_SESSION_STATUSES)[number];
 
@@ -77,6 +79,13 @@ const sessionShape = z.object({
     email: z.string().max(200).optional(),
     phone_number: z.string().max(40).optional(),
   }),
+  /**
+   * The buyer's consent, purpose by purpose (T149, VT-47). Set when the session
+   * is created at a store whose adapter takes consent to its platform; absent
+   * on a session opened before T149 or at a store that does not offer it, which
+   * then answers without consent, as it did.
+   */
+  consent: sessionConsentSchema.optional(),
   destination: addressSchema.extend({ id: z.string().max(100) }).nullable(),
   /** The quote the requirements were built from, so a price change is noticed before charging. */
   quote: z

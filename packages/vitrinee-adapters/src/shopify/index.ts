@@ -116,9 +116,24 @@ export interface ShopifyAdapterOptions extends Omit<ShopifyClientOptions, "crede
   onWarning?: (message: string, details: Record<string, unknown>) => void;
 }
 
+/**
+ * The buyer's decisions Shopify has no field for (T149, VT-47): analytics, preferences and the sale or sharing of
+ * their data. They go on the order as attributes, which the merchant sees under "Additional details", so the store
+ * that has to honour them knows them. Marketing has its own field.
+ */
+function consentAttributes(input: CreateOrderInput): { key: string; value: string }[] {
+  const consent = input.buyer.consent ?? {};
+  return (["analytics", "preferences", "sale_or_sharing"] as const).flatMap((purpose) => {
+    const granted = consent[purpose];
+    return granted === undefined ? [] : [{ key: `ucp_consent_${purpose}`, value: granted ? "granted" : "denied" }];
+  });
+}
+
 export class ShopifyStoreAdapter implements StoreAdapter {
   readonly name = "shopify";
   readonly reportsShipments = true;
+  /** Marketing in the order's own field, the other purposes as attributes the merchant reads on the order (T149, VT-47). */
+  readonly recordsBuyerConsent = true;
 
   private readonly client: ShopifyClient;
   private readonly currency: string;
@@ -178,6 +193,7 @@ export class ShopifyStoreAdapter implements StoreAdapter {
         currency: this.currency,
         financialStatus: "PAID",
         email: this.email(input),
+        ...this.acceptsMarketing(input),
         note,
         tags: ["vitrinee", "x402"],
         customAttributes: [
@@ -187,6 +203,7 @@ export class ShopifyStoreAdapter implements StoreAdapter {
           { key: "x402_asset", value: pay.asset },
           { key: "x402_amount_atomic", value: pay.amountUSDCAtomic },
           { key: "x402_payer", value: pay.payerAccount },
+          ...consentAttributes(input),
         ],
         lineItems: input.lines.map((line) => ({ variantId: variantGid(line.productId), quantity: line.quantity, priceSet: money(products.get(line.productId)!.priceLocal) })),
         transactions: [{ kind: "SALE", status: "SUCCESS", gateway: "Vitrinee x402", amountSet: money(totalLocal) }],
@@ -271,6 +288,16 @@ export class ShopifyStoreAdapter implements StoreAdapter {
           };
         }),
     };
+  }
+
+  /**
+   * Shopify's own consent field (T149): "Whether the customer consented to receive email updates from the shop". Sent
+   * only when the buyer decided; and a "yes" only with the buyer's own email, never the placeholder `email` makes up.
+   */
+  private acceptsMarketing(input: CreateOrderInput): { buyerAcceptsMarketing?: boolean } {
+    const marketing = input.buyer.consent?.marketing;
+    if (marketing === undefined) return {};
+    return { buyerAcceptsMarketing: marketing && input.buyer.email !== undefined };
   }
 
   private email(input: CreateOrderInput): string {

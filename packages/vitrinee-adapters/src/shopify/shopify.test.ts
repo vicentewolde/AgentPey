@@ -277,6 +277,59 @@ describe("createOrder", () => {
     expect(calls.some((c) => c.body.includes("orderCreate"))).toBe(false);
   });
 
+  describe("the buyer's consent (T149, VT-47)", () => {
+    const sentOrder = async (buyer: CreateOrderInput["buyer"]) => {
+      const seen: { order?: Record<string, unknown> }[] = [];
+      const { adapter } = adapterWith((body) => {
+        if (body.query.includes("orderCreate")) seen.push(body.variables as never);
+        return handler(body);
+      });
+      await adapter.createOrder(orderInput({ buyer }));
+      return seen[0]?.order as Record<string, unknown>;
+    };
+    const consentAttributes = (order: Record<string, unknown>) =>
+      (order["customAttributes"] as { key: string; value: string }[]).filter((attribute) => attribute.key.startsWith("ucp_consent_"));
+
+    it("is offered", () => {
+      expect(new ShopifyStoreAdapter({ credentials: CREDENTIALS }).recordsBuyerConsent).toBe(true);
+    });
+
+    it("takes a yes to marketing to the order's own field, with the buyer's email", async () => {
+      const order = await sentOrder({ stellarAccount: "GAGENT", email: "ana@example.com", consent: { marketing: true } });
+      expect(order["buyerAcceptsMarketing"]).toBe(true);
+      expect(order["email"]).toBe("ana@example.com");
+    });
+
+    it("takes a no to marketing too", async () => {
+      expect((await sentOrder({ stellarAccount: "GAGENT", email: "ana@example.com", consent: { marketing: false } }))["buyerAcceptsMarketing"]).toBe(false);
+    });
+
+    it("never says yes for the placeholder email it makes up", async () => {
+      const order = await sentOrder({ stellarAccount: "GAGENT", consent: { marketing: true } });
+      expect(order["email"]).toMatch(/@agent\.vitrinee\.test$/);
+      expect(order["buyerAcceptsMarketing"]).toBe(false);
+    });
+
+    it("leaves the field out when the buyer did not decide", async () => {
+      expect(await sentOrder({ stellarAccount: "GAGENT", email: "ana@example.com" })).not.toHaveProperty("buyerAcceptsMarketing");
+      expect(await sentOrder({ stellarAccount: "GAGENT", email: "ana@example.com", consent: { analytics: true } })).not.toHaveProperty("buyerAcceptsMarketing");
+    });
+
+    it("writes the decisions Shopify has no field for as attributes the merchant reads on the order", async () => {
+      const order = await sentOrder({ stellarAccount: "GAGENT", email: "ana@example.com", consent: { marketing: true, analytics: false, preferences: true, sale_or_sharing: false } });
+      expect(consentAttributes(order)).toEqual([
+        { key: "ucp_consent_analytics", value: "denied" },
+        { key: "ucp_consent_preferences", value: "granted" },
+        { key: "ucp_consent_sale_or_sharing", value: "denied" },
+      ]);
+      // The settlement's attributes are still all there.
+      expect(JSON.stringify(order["customAttributes"])).toContain("abc123");
+    });
+
+    it("writes none when the buyer decided nothing", async () => {
+      expect(consentAttributes(await sentOrder({ stellarAccount: "GAGENT" }))).toEqual([]);
+    });
+  });
 });
 
 describe("getOrder", () => {

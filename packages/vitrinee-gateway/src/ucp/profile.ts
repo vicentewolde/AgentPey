@@ -19,6 +19,7 @@ import {
   UCP_SHOPPING_SERVICE,
   UCP_AP2_MANDATE,
   UCP_AP2_MANDATE_URLS,
+  UCP_BUYER_CONSENT,
   UCP_LEGACY_VERSION,
   UCP_PROFILE_PATH,
   USDC_TESTNET,
@@ -54,6 +55,11 @@ export interface BuildUcpProfileInput {
   ap2Key?: { kty: "EC"; crv: "P-256"; x: string; y: string; kid: string; alg: "ES256"; use: "sig" };
   /** The key the storefront signs its order webhooks with (T147, VT-44). Published in both versions: a platform finds it by `keyid`. */
   webhookKey?: { kty: "EC"; crv: "P-256"; x: string; y: string; kid: string; alg: "ES256"; use: "sig" };
+  /**
+   * Whether the store's adapter takes the buyer's consent to its platform (T149, `StoreAdapter.recordsBuyerConsent`).
+   * Only then is UCP's buyer consent extension offered: never where the consent would reach nothing.
+   */
+  buyerConsent?: boolean;
 }
 
 /** Where a version's leaf profile lives, next to the current one (R-6). */
@@ -86,7 +92,7 @@ function signingJwk(config: GatewayConfig) {
  * the key in `keys[]` (2026-04-08 in `signing_keys`, mirrored in `keys` as its
  * release branch allows), renamed the fulfillment config and moved the specs.
  */
-export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Key, webhookKey }: BuildUcpProfileInput): UcpBusinessProfile {
+export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Key, webhookKey, buyerConsent = false }: BuildUcpProfileInput): UcpBusinessProfile {
   const origin = baseUrl.replace(/\/+$/, "");
   const urls = ucpSpecUrls(version);
   const legacy = version === "2026-04-08";
@@ -114,6 +120,8 @@ export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Ke
           },
         ],
         [UCP_ORDER]: [{ version, ...urls.order }],
+        // Buyer consent (T149, VT-47), on the checkout only: this store has no cart.
+        ...(buyerConsent ? { [UCP_BUYER_CONSENT]: [{ version, ...urls.buyerConsent, extends: UCP_CHECKOUT }] } : {}),
         // AP2 mandates (T134, R-15): 2026-08-25 only, and only negotiated with a platform that declares it too.
         ...(legacy || ap2Key === undefined
           ? {}

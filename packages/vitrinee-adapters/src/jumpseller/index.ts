@@ -40,6 +40,14 @@ export interface JumpsellerAdapterOptions extends Omit<JumpsellerClientOptions, 
 
 export class JumpsellerStoreAdapter implements StoreAdapter {
   readonly name = "jumpseller";
+  /**
+   * Jumpseller has nowhere to take the buyer's consent (T149, VT-47). Its OpenAPI
+   * (api.jumpseller.com/swagger.json) has `accepts_marketing` on a customer only
+   * as something to read: neither the order's `customer` (`id` and addresses) nor
+   * a customer's create or update body takes it. So the store does not offer UCP's
+   * buyer consent extension.
+   */
+  readonly recordsBuyerConsent = false;
 
   private readonly client: JumpsellerClient;
   private readonly currency: string;

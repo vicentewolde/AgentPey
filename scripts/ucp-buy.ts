@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `pnpm run ucp:buy -- --store <URL> --product <id>[:<n>] [--product <id>[:<n>] …] [--quantity <n>] [--ucp-version 2026-08-25] [--ap2]`
+ * `pnpm run ucp:buy -- --store <URL> --product <id>[:<n>] [--product <id>[:<n>] …] [--quantity <n>] [--ucp-version 2026-08-25] [--ap2] [--marketing yes|no]`
  * — a real UCP purchase on Stellar testnet, end to end (T122, Fase 7). With
  * `--ucp-version 2026-08-25` the agent sends its 2026-08-25 platform profile
  * and the store answers in that version (T133); without it, 2026-04-08.
@@ -12,6 +12,8 @@
  * the platform key (`AGENTPEY_PLATFORM_AP2_SECRET`, `pnpm run ap2:platform-key`).
  * The mandate and the keys a third party needs to check it are written to
  * `.vitrinee/ap2-t134/` for `scripts/ap2-crosscheck/verify.py --closed`.
+ * `--marketing yes|no` (T149) sends the buyer's marketing consent with the
+ * checkout, in the version's shape; the store passes it to its platform order.
  *
  * The same chain of trust as `pnpm run demo:pay-real`, through UCP instead
  * of a bare HTTP 402:
@@ -105,6 +107,7 @@ const { values } = parseArgs({
     email: { type: "string", default: "comprador@agentpey.com" },
     "ucp-version": { type: "string", default: "2026-04-08" },
     ap2: { type: "boolean", default: false },
+    marketing: { type: "string" },
   },
 });
 
@@ -159,6 +162,24 @@ async function main(): Promise<void> {
   if (values.ap2 && ucpVersion !== "2026-08-25") {
     throw new AgentPassError("InvalidArguments", "--ap2 needs --ucp-version 2026-08-25: UCP's AP2 extension is offered only there (R-15)", { details: {} });
   }
+  if (values.marketing !== undefined && values.marketing !== "yes" && values.marketing !== "no") {
+    throw new AgentPassError("InvalidArguments", "--marketing is yes or no", { details: { marketing: values.marketing } });
+  }
+  // The buyer's marketing decision (T149), in the version's shape. 2026-08-25 asks a platform that submits consent to
+  // include every purpose the store advertises: the other three are echoed as the store's (`source: "business"`),
+  // which says the buyer stated nothing about them. AgentPey's stores advertise these four.
+  const marketing = values.marketing === undefined ? undefined : values.marketing === "yes";
+  const consent =
+    marketing === undefined
+      ? undefined
+      : ucpVersion === "2026-04-08"
+        ? { marketing }
+        : {
+            "dev.ucp.consent.marketing": { granted: marketing, source: "platform" },
+            "dev.ucp.consent.analytics": { granted: false, source: "business" },
+            "dev.ucp.consent.preferences": { granted: false, source: "business" },
+            "dev.ucp.consent.sale_or_sharing": { granted: false, source: "business" },
+          };
   const platformProfile = values.ap2 ? AGENTPEY_PLATFORM_PROFILE_AP2 : ucpVersion === "2026-08-25" ? AGENTPEY_PLATFORM_PROFILE_2026_08_25 : AGENTPEY_PLATFORM_PROFILE;
   const storeUrl = new URL(values.store).origin;
 
@@ -272,7 +293,7 @@ async function main(): Promise<void> {
     {
       storeUrl,
       ...(lines.length === 1 && single !== undefined ? { productId: single.productId, quantity: single.quantity } : { lines }),
-      buyer: { email: values.email, first_name: "Comprador", last_name: "AgentPey" },
+      buyer: { email: values.email, first_name: "Comprador", last_name: "AgentPey", ...(consent === undefined ? {} : { consent }) },
       destination: { first_name: "Comprador", last_name: "AgentPey", street_address: "Av. Providencia 1234", address_locality: "Providencia", address_region: "RM", address_country: "CL" },
       intent: verified.intent,
       scope,
@@ -284,6 +305,7 @@ async function main(): Promise<void> {
   );
   line("checkout", paid.checkoutId);
   line("orden", paid.orderId);
+  if (marketing !== undefined) line("marketing", marketing ? "sí, enviado a la tienda" : "no, enviado a la tienda");
   line("total", `${paid.total.amount} ${paid.total.currency}`);
   line("pagado", `${(Number(paid.paid.amount) / 1e7).toFixed(7)} USDC a ${paid.paid.payTo}`);
   line("tx", paid.transaction ?? "(sin hash)");

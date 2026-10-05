@@ -70,6 +70,14 @@ describe("MockStoreAdapter", () => {
     expect(await adapter.getOrder("mock-9999")).toBeNull();
   });
 
+  it("keeps the buyer's consent on its order, which is the store (T149)", async () => {
+    const adapter = new MockStoreAdapter();
+    expect(adapter.recordsBuyerConsent).toBe(true);
+    const input = orderInput("gorro-andes");
+    const order = await adapter.createOrder({ ...input, buyer: { ...input.buyer, email: "ana@example.com", consent: { marketing: true, analytics: false } } });
+    expect((await adapter.getOrder(order.platformOrderId))!.buyer.consent).toEqual({ marketing: true, analytics: false });
+  });
+
   it("refuses to sell what it does not have, before touching stock", async () => {
     const adapter = new MockStoreAdapter();
     await expect(adapter.createOrder(orderInput("botella-patagonia-500", 3))).rejects.toMatchObject({

@@ -18,6 +18,7 @@ import {
   STELLAR_X402_HANDLER_VERSION,
   STELLAR_X402_INSTRUMENT_TYPE,
   UCP_AP2_MANDATE,
+  UCP_BUYER_CONSENT,
   UCP_CHECKOUT,
   UCP_FULFILLMENT,
   USDC_TESTNET,
@@ -51,6 +52,7 @@ import { AgentPassError } from "@agentpass/core";
 import { checkOpenCheckoutConstraints, jcsCanonicalize, signMerchantAuthorization, verifyCheckoutJwt, verifyCheckoutMandateChain } from "@agentpey/ap2";
 
 import type { StoreAp2Key } from "./ap2.js";
+import { applyConsent, buyerConsentOf, consentGaps, defaultConsent, parseConsent, renderConsent, sameConsent } from "./consent.js";
 import { isDeliverableUrl, type OrderEvents } from "./order-events.js";
 import type { PlatformP256Key } from "./platform-profile.js";
 import { IdempotencyCache, requestHash } from "./idempotency.js";
@@ -105,6 +107,8 @@ const sessionInput = z.looseObject({
       last_name: z.string().max(100).optional(),
       email: z.email().max(200).optional(),
       phone_number: z.string().max(40).optional(),
+      /** UCP's buyer consent extension (T149): read in the request's version by `parseConsent`, only where the store offers it. */
+      consent: z.unknown().optional(),
     })
     .optional(),
   fulfillment: z
@@ -142,6 +146,8 @@ const completeInput = z.looseObject({
   }),
   /** UCP's AP2 extension (T134): the closed checkout mandate. Its size is checked where it is verified, to answer with UCP's code. */
   ap2: z.looseObject({ checkout_mandate: z.string().optional() }).optional(),
+  /** 2026-08-25 lets a platform confirm the buyer's consent with the payment (T149); 2026-04-08 omits it there. */
+  buyer: z.looseObject({ consent: z.unknown().optional() }).optional(),
   ...passthrough,
 });
 
@@ -150,13 +156,10 @@ const idempotencyKeySchema = z.string().min(1).max(255).regex(/^[\x21-\x7e]+$/);
 // ---------------------------------------------------------------- messages
 
 type Severity = "recoverable" | "requires_buyer_input" | "requires_buyer_review" | "unrecoverable";
-interface UcpMessage {
-  type: "error";
-  code: string;
-  content: string;
-  severity: Severity;
-  path?: string;
-}
+type UcpMessage =
+  | { type: "error"; code: string; content: string; severity: Severity; path?: string }
+  /** Informational: the checkout can still complete as far as this message goes (UCP has no severity for it). */
+  | { type: "warning"; code: string; content: string; path?: string };
 
 const message = (code: string, content: string, severity: Severity, path?: string): UcpMessage => ({
   type: "error",
@@ -165,6 +168,8 @@ const message = (code: string, content: string, severity: Severity, path?: strin
   severity,
   ...(path === undefined ? {} : { path }),
 });
+
+const warning = (code: string, content: string, path?: string): UcpMessage => ({ type: "warning", code, content, ...(path === undefined ? {} : { path }) });
 
 /** A UCP error response: the request had no resource to act on. */
 function sendError(res: Response, status: number, code: string, content: string, severity: Severity = "unrecoverable"): void {
@@ -417,7 +422,15 @@ function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin,
   const order = session.orderId === null ? undefined : deps.orders.get(session.orderId);
   const receipt = order === undefined ? undefined : receiptExtension(order, origin);
   const d = session.destination;
-  const buyer = Object.fromEntries(Object.entries(session.buyer).filter(([, value]) => value !== undefined));
+  const offered = offersConsent(deps);
+  const consent = offered ? renderConsent(session.consent, version, deps.config.merchant.name) : undefined;
+  const buyer = {
+    ...Object.fromEntries(Object.entries(session.buyer).filter(([, value]) => value !== undefined)),
+    ...(consent === undefined ? {} : { consent }),
+  };
+  // A consent the store cannot act on yet is said while the checkout can still change (UCP: a warning, informational).
+  const live = session.status === "incomplete" || session.status === "ready_for_complete";
+  const gaps = !offered || !live ? [] : consentGaps(session.consent, session.buyer).filter((gap) => !messages.some((m) => m.code === "missing_consent_data" && m.path === gap.path));
   return {
     ucp: {
       version,
@@ -425,6 +438,7 @@ function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin,
       capabilities: {
         [UCP_CHECKOUT]: [{ version }],
         [UCP_FULFILLMENT]: [{ version }],
+        ...(offered ? { [UCP_BUYER_CONSENT]: [{ version }] } : {}),
         [RECEIPT_EXTENSION]: [{ version: RECEIPT_EXTENSION_VERSION }],
       },
       payment_handlers: { [STELLAR_X402_HANDLER]: [handlerFor(deps, session)] },
@@ -466,7 +480,7 @@ function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin,
     // Never echoes an instrument back: what a platform pays with stays in the request it came in.
     payment: { instruments: [] },
     totals: totals(totalMinor),
-    messages,
+    messages: [...messages, ...gaps.map((gap) => warning("missing_consent_data", gap.content, gap.path))],
     links: [],
     expires_at: session.expiresAt,
     ...(order === undefined ? {} : { order: { id: order.orderId, label: order.platformOrderId ?? order.orderId, permalink_url: permalinkFor(order, origin) } }),
@@ -480,7 +494,28 @@ function permalinkFor(record: OrderRecord, origin: string): string {
 
 // ---------------------------------------------------------------- session state
 
-function applyInput(session: CheckoutSession, input: SessionInput): void {
+/** Whether this store offers UCP's buyer consent extension: only where its adapter takes the consent to the store (T149). */
+function offersConsent(deps: Pick<UcpCheckoutDeps, "adapter">): boolean {
+  return deps.adapter.recordsBuyerConsent === true;
+}
+
+/**
+ * Takes a request's `buyer.consent` into the session, in the request's version
+ * (T149). Ignored where the store does not offer the extension. A session
+ * opened before T149 gets the store's defaults the first time a platform sends
+ * consent. A request without `consent` changes nothing (UCP: the business keeps
+ * its prior position). Returns whether anything changed.
+ */
+function applyConsentInput(deps: UcpCheckoutDeps, session: CheckoutSession, raw: unknown, version: UcpVersion): boolean {
+  if (raw === undefined || !offersConsent(deps)) return false;
+  const current = session.consent ?? defaultConsent();
+  const next = applyConsent(current, parseConsent(raw, version));
+  if (session.consent !== undefined && sameConsent(session.consent, next)) return false;
+  session.consent = next;
+  return true;
+}
+
+function applyInput(deps: UcpCheckoutDeps, session: CheckoutSession, input: SessionInput, version: UcpVersion): void {
   // Every line, in the platform's order (T148); the same product in two lines stays two lines.
   session.lines = input.line_items.map((line) => ({ productId: line.item.id, quantity: line.quantity }));
   session.buyer = {
@@ -489,6 +524,7 @@ function applyInput(session: CheckoutSession, input: SessionInput): void {
     ...(input.buyer?.email === undefined ? {} : { email: input.buyer.email }),
     ...(input.buyer?.phone_number === undefined ? {} : { phone_number: input.buyer.phone_number }),
   };
+  applyConsentInput(deps, session, input.buyer?.consent, version);
   const method = input.fulfillment?.methods?.[0];
   if (method?.type === "pickup") {
     throw new VitrineeError("ValidationError", "this store only ships; pickup is not offered", { details: {} });
@@ -787,7 +823,9 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       // AP2 is negotiated once, when the checkout is created, and locks it for good (T134, R-15): no later request,
       // whatever profile or version it presents, completes it without a mandate from this platform.
       if (ap2Negotiated(view)) session.ap2 = { platformProfile: view.platform.url, mandate: null };
-      applyInput(session, input);
+      // Every session opened from T149 on carries the store's consent options, advertised in 2026-08-25 (VT-47).
+      if (offersConsent(deps)) session.consent = defaultConsent();
+      applyInput(deps, session, input, view.version);
       const messages = await refresh(deps, session);
       await deps.sessions.save(session);
       res.status(201).json(await checkoutResponse(deps, session, view, messages));
@@ -815,7 +853,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         if (session.status !== "incomplete" && session.status !== "ready_for_complete") {
           return sendError(res, 409, "invalid_state", `checkout is ${session.status} and can no longer change`);
         }
-        applyInput(session, input);
+        applyInput(deps, session, input, ucpVersionOf(res));
         const messages = await refresh(deps, session);
         session.updatedAt = deps.now().toISOString();
         await deps.sessions.save(session);
@@ -886,6 +924,13 @@ async function complete(
     return;
   }
 
+  // 2026-08-25 lets the platform confirm the buyer's consent with the payment (T149). It is taken before anything
+  // else is checked: a mandate signed over other consent no longer matches the checkout, and nothing is charged.
+  if (view.version === "2026-08-25" && applyConsentInput(deps, session, input.buyer?.consent, view.version)) {
+    session.updatedAt = deps.now().toISOString();
+    await deps.sessions.save(session);
+  }
+
   const selected = input.payment.instruments.filter((instrument) => instrument.selected !== false);
   const instrument = selected.length === 1 ? selected[0] : undefined;
   if (instrument === undefined || instrument.handler_id !== STELLAR_X402_HANDLER_ID || instrument.type !== STELLAR_X402_INSTRUMENT_TYPE) {
@@ -903,6 +948,13 @@ async function complete(
     const messages = await refresh(deps, session);
     await deps.sessions.save(session);
     res.json(await checkoutResponse(deps, session, view, messages.length > 0 ? messages : [message("invalid_state", "checkout was not ready; review the refreshed terms and complete again", "recoverable")]));
+    return;
+  }
+  // A consent the store cannot act on is not completed (UCP: no completion while a confirmed consent misses its data).
+  // Nothing is charged; the platform adds the data with an update and completes again (T149).
+  const gaps = offersConsent(deps) ? consentGaps(session.consent, session.buyer) : [];
+  if (gaps.length > 0) {
+    res.json(await checkoutResponse(deps, session, view, gaps.map((gap) => message("missing_consent_data", gap.content, "recoverable", gap.path))));
     return;
   }
   // AP2-locked (T134, R-15): the lock is the session's, set when it was created, never this request's. No mandate,
@@ -1063,6 +1115,8 @@ async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<
   const { record } = await fulfilPaidPurchase(deps, {
     quote,
     body: bodyFor(session),
+    // Only the buyer's own decisions, and only where the store takes them to its platform (T149).
+    ...(offersConsent(deps) ? { consent: buyerConsentOf(session.consent) } : {}),
     idempotencyKey: session.completeIdempotencyKey,
     settlement: { ...settlement, payer },
     payer,

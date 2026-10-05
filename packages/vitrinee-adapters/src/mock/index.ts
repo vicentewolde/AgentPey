@@ -19,6 +19,8 @@ export interface MockStoreAdapterOptions {
    */
   ordersFile?: string;
   now?: () => Date;
+  /** Defaults to true. False plays a store whose platform has nowhere for the buyer's consent, like Jumpseller (T149). */
+  recordsBuyerConsent?: boolean;
 }
 
 interface PersistedState {
@@ -45,6 +47,8 @@ function withLines(order: PlatformOrder): PlatformOrder {
 export class MockStoreAdapter implements StoreAdapter {
   readonly name = "mock";
   readonly reportsShipments = true;
+  /** The mock's order is the store: the buyer's consent is kept on it, with the rest of the buyer (T149). */
+  readonly recordsBuyerConsent: boolean;
 
   private readonly products = new Map<string, Product>();
   private readonly orders = new Map<string, PlatformOrder>();
@@ -58,6 +62,7 @@ export class MockStoreAdapter implements StoreAdapter {
     }
     this.ordersFile = options.ordersFile;
     this.now = options.now ?? (() => new Date());
+    this.recordsBuyerConsent = options.recordsBuyerConsent ?? true;
     if (this.ordersFile !== undefined) this.restore(this.ordersFile);
   }
 

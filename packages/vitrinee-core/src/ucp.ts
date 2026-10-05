@@ -28,7 +28,7 @@ export const UCP_SHOPPING_SERVICE = "dev.ucp.shopping";
 export const UCP_CATALOG_SEARCH = "dev.ucp.shopping.catalog.search";
 export const UCP_CATALOG_LOOKUP = "dev.ucp.shopping.catalog.lookup";
 
-type SpecUrls = Readonly<Record<"service" | "catalogSearch" | "catalogLookup" | "checkout" | "fulfillment" | "order", { spec: string; schema: string }>>;
+type SpecUrls = Readonly<Record<"service" | "catalogSearch" | "catalogLookup" | "checkout" | "fulfillment" | "order" | "buyerConsent", { spec: string; schema: string }>>;
 
 /** Where each version documents its capabilities. 2026-08-25 moved the shopping specs under `/specification/shopping/`. */
 export function ucpSpecUrls(version: UcpVersion): SpecUrls {
@@ -41,6 +41,7 @@ export function ucpSpecUrls(version: UcpVersion): SpecUrls {
     checkout: { spec: `${shop}/checkout`, schema: `${docs}/schemas/shopping/checkout.json` },
     fulfillment: { spec: version === "2026-04-08" ? `${shop}/fulfillment` : `${shop}/extensions/fulfillment`, schema: `${docs}/schemas/shopping/fulfillment.json` },
     order: { spec: `${shop}/order`, schema: `${docs}/schemas/shopping/order.json` },
+    buyerConsent: { spec: version === "2026-04-08" ? `${shop}/buyer-consent` : `${shop}/extensions/buyer-consent`, schema: `${docs}/schemas/shopping/buyer_consent.json` },
   };
 }
 /** The 2026-04-08 URLs, as Phase 7 published them. */
@@ -49,6 +50,12 @@ export const UCP_SPEC_URLS = ucpSpecUrls(UCP_LEGACY_VERSION);
 export const UCP_CHECKOUT = "dev.ucp.shopping.checkout";
 export const UCP_FULFILLMENT = "dev.ucp.shopping.fulfillment";
 export const UCP_ORDER = "dev.ucp.shopping.order";
+/**
+ * UCP's buyer consent extension (T149): the checkout's buyer carries the buyer's consent decisions. A store offers it
+ * only when its platform adapter takes them to the store (`StoreAdapter.recordsBuyerConsent`); the two versions shape
+ * it differently (2026-04-08: four booleans; 2026-08-25: per-purpose decisions the business advertises).
+ */
+export const UCP_BUYER_CONSENT = "dev.ucp.shopping.buyer_consent";
 /**
  * UCP's AP2 mandates extension (T134, R-15), offered only in 2026-08-25 and only to a platform that declares it.
  * Once both sides declare it the checkout is "security locked": signed responses, and no `complete` without a mandate.

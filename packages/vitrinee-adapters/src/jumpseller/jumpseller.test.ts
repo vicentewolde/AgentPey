@@ -169,6 +169,12 @@ describe("getProduct", () => {
   });
 });
 
+describe("the buyer's consent (T149, VT-47)", () => {
+  it("is not offered: Jumpseller has no field that takes it", () => {
+    expect(adapterWith({}).adapter.recordsBuyerConsent).toBe(false);
+  });
+});
+
 describe("createOrder", () => {
   const happyRoutes = {
     "GET /products/37282902.json": { body: { product: hoodie } },

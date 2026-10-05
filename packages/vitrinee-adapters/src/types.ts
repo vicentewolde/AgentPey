@@ -28,11 +28,24 @@ export interface ShippingAddress {
   notes?: string;
 }
 
+/** The consent purposes a store can take to its platform (T149): UCP's four well-known ones. */
+export const CONSENT_PURPOSES = ["marketing", "analytics", "preferences", "sale_or_sharing"] as const;
+export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number];
+
+/**
+ * The buyer's own consent decisions (T149), as the agent's platform captured
+ * them: `true` granted, `false` refused, absent when the buyer did not say. A
+ * store's default is not the buyer's decision and never appears here.
+ */
+export type BuyerConsent = Partial<Record<ConsentPurpose, boolean>>;
+
 export interface Buyer {
   /** The Stellar account that paid: the only identity an x402 client must have. */
   stellarAccount: string;
   email?: string;
   shipping?: ShippingAddress;
+  /** Only from a UCP checkout, and only to an adapter that `recordsBuyerConsent`. */
+  consent?: BuyerConsent;
 }
 
 export interface PaymentRef {
@@ -116,6 +129,11 @@ export interface StoreAdapter {
   readonly name: string;
   /** Whether `getOrder` reports `shipments` (T147): only then does the store watch its orders for them. */
   readonly reportsShipments?: boolean;
+  /**
+   * Whether `createOrder` takes `buyer.consent` to the store's own order (T149): only then does the store offer
+   * UCP's buyer consent extension. A store where the consent would reach nothing does not offer it.
+   */
+  readonly recordsBuyerConsent?: boolean;
   listProducts(): Promise<Product[]>;
   getProduct(id: string): Promise<Product | null>;
   /** Creates a *paid* order. Must decrement stock or fail with `OutOfStock`. */

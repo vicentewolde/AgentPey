@@ -169,6 +169,10 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
         notes: z.string().optional(),
       })
       .optional(),
+    /** The buyer's own consent decisions (T149), for a retried platform order. Private: never in the receipt or the public order. */
+    consent: z
+      .object({ marketing: z.boolean().optional(), analytics: z.boolean().optional(), preferences: z.boolean().optional(), sale_or_sharing: z.boolean().optional() })
+      .optional(),
   }),
   settlement: z.object({
     txHash: z.string(),

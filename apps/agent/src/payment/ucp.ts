@@ -224,7 +224,8 @@ export function ucpLinesOf(input: UcpPurchaseLines): readonly UcpLine[] {
 export interface ExecuteUcpPaymentInput extends UcpPurchaseLines {
   /** The store's origin: where its `/.well-known/ucp` is. */
   readonly storeUrl: string;
-  readonly buyer?: { readonly email?: string; readonly first_name?: string; readonly last_name?: string };
+  /** `consent` (T149) is UCP's buyer consent extension, in the shape of the version the store answers in; sent as given. */
+  readonly buyer?: { readonly email?: string; readonly first_name?: string; readonly last_name?: string; readonly consent?: Readonly<Record<string, unknown>> };
   readonly destination: UcpDestination;
   /** The already-signed intent this payment is for. */
   readonly intent: PurchaseIntent;
@@ -293,7 +294,8 @@ export interface UcpQuote {
 export interface QuoteUcpCheckoutInput extends UcpPurchaseLines {
   /** The store's origin: where its `/.well-known/ucp` is. */
   readonly storeUrl: string;
-  readonly buyer?: { readonly email?: string; readonly first_name?: string; readonly last_name?: string };
+  /** `consent` (T149) is UCP's buyer consent extension, in the shape of the version the store answers in; sent as given. */
+  readonly buyer?: { readonly email?: string; readonly first_name?: string; readonly last_name?: string; readonly consent?: Readonly<Record<string, unknown>> };
   readonly destination: UcpDestination;
 }
 

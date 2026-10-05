@@ -16,6 +16,7 @@ import { AGENTPEY_PLATFORM_PROFILE, MERCHANT, fakePlatformProfiles, fakeRegistry
 import { listen } from "../test/listen.js";
 import { UCP_SCHEMA_2026_08_25, addSchema, ucpErrors } from "../test/ucp-schemas.js";
 import type { PlatformProfileReader } from "./platform-profile.js";
+import { ucpOrder } from "./order.js";
 import { MemoryCheckoutSessions } from "./sessions.js";
 
 const read = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8")) as { $id: string };
@@ -83,11 +84,14 @@ function uniqueFacilitator(): FakeFacilitator {
   };
 }
 
-function harness(options: { profiles?: PlatformProfileReader; createOrderDelayMs?: number; facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; disputeTimeoutMs?: number; anchorer?: Anchorer } = {}) {
+function harness(options: { profiles?: PlatformProfileReader; createOrderDelayMs?: number; facilitator?: FakeFacilitator; catalog?: typeof MOCK_CATALOG; orders?: OrderStore; disputes?: DisputeReader | null; disputeTimeoutMs?: number; anchorer?: Anchorer; recordsBuyerConsent?: boolean } = {}) {
   const clock = { now: new Date("2026-09-30T12:00:00.000Z") };
   const facilitator = options.facilitator ?? uniqueFacilitator();
   const registry = fakeRegistry();
-  const adapter = new MockStoreAdapter(options.catalog === undefined ? {} : { catalog: options.catalog });
+  const adapter = new MockStoreAdapter({
+    ...(options.catalog === undefined ? {} : { catalog: options.catalog }),
+    ...(options.recordsBuyerConsent === undefined ? {} : { recordsBuyerConsent: options.recordsBuyerConsent }),
+  });
   const platformOrders = { created: 0 };
   const sessions = new MemoryCheckoutSessions();
   const createOrder = adapter.createOrder.bind(adapter);
@@ -1199,5 +1203,240 @@ describe("AP2 in the UCP checkout, the store's side (T134, R-15)", () => {
       const done = await completeWith(created, undefined, profile);
       expect(done.body.status).toBe("completed");
     }
+  });
+
+  describe("the buyer's consent is part of what the store signs (T149, VT-47)", () => {
+    const MARKETING_YES = { "dev.ucp.consent.marketing": { granted: true, source: "platform" } };
+
+    it("signs the consent it advertises, and completes when the platform confirms the same consent with the payment", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { email: "ana@example.com", consent: MARKETING_YES } }, as(AP2_PLATFORM));
+      const checkout = created as unknown as Record<string, unknown> & { buyer: { consent: Record<string, { granted: boolean; source: string }> } };
+      expect(checkout.buyer.consent["dev.ucp.consent.marketing"]).toMatchObject({ granted: true, source: "platform" });
+      await expect(verifyMerchantAuthorization(checkout, await storeKey())).resolves.toBeUndefined();
+      const done = await h.call(
+        "POST",
+        `/checkout-sessions/${created.id}/complete`,
+        { ...instrument(requirementsOf(created)), ap2: { checkout_mandate: await mandateFor(checkout) }, buyer: { consent: MARKETING_YES } },
+        as(AP2_PLATFORM),
+      );
+      expect(done.body.messages).toEqual([]);
+      expect(done.body.status).toBe("completed");
+    });
+
+    it("refuses a complete that changes the consent the mandate was signed over, and charges nothing", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AP2_PLATFORM));
+      const mandate = await mandateFor(created as unknown as Record<string, unknown>);
+      const before = h.facilitator.settleCalls.length;
+      const done = await h.call("POST", `/checkout-sessions/${created.id}/complete`, { ...instrument(requirementsOf(created)), ap2: { checkout_mandate: mandate }, buyer: { consent: MARKETING_YES } }, as(AP2_PLATFORM));
+      expect(done.body.status).not.toBe("completed");
+      expect(done.body.messages).toEqual([expect.objectContaining({ code: "mandate_scope_mismatch" })]);
+      expect(h.facilitator.settleCalls).toHaveLength(before);
+    });
+
+    it("answers a checkout opened before T149 as it did, so a mandate signed over it still completes", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AP2_PLATFORM));
+      // A session saved before the deploy has no consent at all.
+      const stored = await h.sessions.get(created.id);
+      delete stored!.consent;
+      await h.sessions.save(stored!);
+      const { body: read } = await h.call("GET", `/checkout-sessions/${created.id}`, undefined, as(AP2_PLATFORM));
+      expect(read).toMatchObject({ buyer: { email: "ana@example.com" } });
+      expect((read as unknown as { buyer: Record<string, unknown> }).buyer).not.toHaveProperty("consent");
+      const done = await completeWith(read, await mandateFor(read as unknown as Record<string, unknown>));
+      expect(done.body.status).toBe("completed");
+    });
+  });
+});
+
+describe("the buyer's consent, as far as the store (T149, VT-47)", () => {
+  const V0825 = "https://platform.example/ucp/profile-2026-08-25.json";
+  const profiles = fakePlatformProfiles({ [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08", [V0825]: "2026-08-25" });
+  const orders = new OrderStore(undefined, []);
+  const h = harness({ profiles, orders });
+  beforeAll(() => h.start());
+  afterAll(() => h.stop());
+  const as = (profile: string) => ({ "UCP-Agent": `profile="${profile}"` });
+  const CONSENT_0408 = "https://ucp.dev/schemas/shopping/buyer_consent.json#/$defs/dev.ucp.shopping.checkout";
+  const merchant = testConfig().merchant.name;
+  type WithBuyer = { buyer?: { consent?: Record<string, unknown> }; ucp: { capabilities: Record<string, unknown> }; messages: Array<Record<string, unknown>> };
+  const consentOf = (body: unknown) => (body as WithBuyer).buyer?.consent;
+  const defaults = {
+    "dev.ucp.consent.marketing": { granted: false, source: "business", description: `Email updates and offers from ${merchant}. Needs the buyer's email.` },
+    "dev.ucp.consent.analytics": { granted: false, source: "business", description: expect.stringContaining("Analytics") },
+    "dev.ucp.consent.preferences": { granted: false, source: "business", description: expect.stringContaining("preferences") },
+    "dev.ucp.consent.sale_or_sharing": { granted: false, source: "business", description: expect.stringContaining("Selling or sharing") },
+  };
+  const complete = (created: Checkout, profile: string, extra: Record<string, unknown> = {}) =>
+    h.call("POST", `/checkout-sessions/${created.id}/complete`, { ...instrument(requirementsOf(created)), ...extra }, as(profile));
+  const recordOf = (orderId: string | undefined) => orders.get(orderId!)!;
+
+  describe("in 2026-04-08, the version of the official suite", () => {
+    it("keeps the four booleans it was sent and echoes them, also when read again, valid against the extension's schema", async () => {
+      const consent = { marketing: true, analytics: false, sale_of_data: false };
+      const { status, body } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { first_name: "Consent", email: "consent@example.com", consent } }, as(AGENTPEY_PLATFORM_PROFILE));
+      expect(status).toBe(201);
+      expect(consentOf(body)).toEqual(consent);
+      expect((body as unknown as WithBuyer).ucp.capabilities["dev.ucp.shopping.buyer_consent"]).toEqual([{ version: "2026-04-08" }]);
+      expect(ucpErrors(CONSENT_0408, body)).toEqual([]);
+      const read = await h.call("GET", `/checkout-sessions/${body.id}`, undefined, as(AGENTPEY_PLATFORM_PROFILE));
+      expect(consentOf(read.body)).toEqual(consent);
+    });
+
+    it("shows no consent when the platform sent none: 2026-04-08 has no defaults to advertise", async () => {
+      const { body } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(AGENTPEY_PLATFORM_PROFILE));
+      expect(consentOf(body)).toBeUndefined();
+    });
+
+    it("is checked for real: the extension's schema rejects a consent that is not a boolean (negative control)", async () => {
+      const { body } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { email: "a@example.com", consent: { marketing: true } } }, as(AGENTPEY_PLATFORM_PROFILE));
+      const broken = { ...body, buyer: { ...(body as unknown as { buyer: object }).buyer, consent: { marketing: "yes" } } };
+      expect(ucpErrors(CONSENT_0408, broken)).not.toEqual([]);
+    });
+  });
+
+  describe("in 2026-08-25", () => {
+    it("advertises every purpose with the store's default (no consent assumed) and a description, valid against that version's schema", async () => {
+      const { body } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(V0825));
+      expect(consentOf(body)).toEqual(defaults);
+      expect((body as unknown as WithBuyer).ucp.capabilities["dev.ucp.shopping.buyer_consent"]).toEqual([{ version: "2026-08-25" }]);
+      expect(ucpErrors(CONSENT_0408, body, "2026-08-25")).toEqual([]);
+    });
+
+    it("is checked for real: a purpose without the business's description fails that version's schema (negative control)", async () => {
+      const { body } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(V0825));
+      const broken = { ...body, buyer: { consent: { "dev.ucp.consent.marketing": { granted: false, source: "business" } } } };
+      expect(ucpErrors(CONSENT_0408, broken, "2026-08-25")).not.toEqual([]);
+    });
+
+    it("takes the buyer's decisions, ignores purposes it did not advertise, and keeps them when an update says nothing about consent", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(V0825));
+      const updated = await h.call(
+        "PUT",
+        `/checkout-sessions/${created.id}`,
+        {
+          ...ready("gorro-andes"),
+          buyer: {
+            email: "ana@example.com",
+            consent: {
+              "dev.ucp.consent.marketing": { granted: true, source: "platform" },
+              "dev.ucp.consent.sale_or_sharing": { granted: false, source: "platform" },
+              "com.example.loyalty": { granted: true, source: "platform" },
+            },
+          },
+        },
+        as(V0825),
+      );
+      expect(updated.status).toBe(200);
+      expect(consentOf(updated.body)).toEqual({
+        ...defaults,
+        "dev.ucp.consent.marketing": { ...defaults["dev.ucp.consent.marketing"], granted: true, source: "platform" },
+        "dev.ucp.consent.sale_or_sharing": { ...defaults["dev.ucp.consent.sale_or_sharing"], source: "platform" },
+      });
+      const again = await h.call("PUT", `/checkout-sessions/${created.id}`, ready("gorro-andes"), as(V0825));
+      expect(consentOf(again.body)).toEqual(consentOf(updated.body));
+    });
+
+    it("puts a purpose the platform echoes as the business's back to the store's default, whatever value came with it", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { email: "a@example.com", consent: { "dev.ucp.consent.analytics": { granted: true, source: "platform" } } } }, as(V0825));
+      expect(consentOf(created)).toMatchObject({ "dev.ucp.consent.analytics": { granted: true, source: "platform" } });
+      const echoed = await h.call("PUT", `/checkout-sessions/${created.id}`, { ...ready("gorro-andes"), buyer: { email: "a@example.com", consent: { "dev.ucp.consent.analytics": { granted: true, source: "business" } } } }, as(V0825));
+      expect(consentOf(echoed.body)).toMatchObject({ "dev.ucp.consent.analytics": { granted: false, source: "business" } });
+    });
+
+    it("refuses a malformed purpose it reads, and more purposes than it will read, with 400", async () => {
+      const bad = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { consent: { "dev.ucp.consent.marketing": { granted: "yes", source: "platform" } } } }, as(V0825));
+      expect(bad.status).toBe(400);
+      expect(bad.body.messages).toEqual([expect.objectContaining({ code: "invalid_request", content: expect.stringContaining("buyer.consent.dev.ucp.consent.marketing.granted") })]);
+      const many = Object.fromEntries(Array.from({ length: 33 }, (_, i) => [`com.example.p${i}`, { granted: true, source: "platform" }]));
+      expect((await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { consent: many } }, as(V0825))).status).toBe(400);
+    });
+  });
+
+  it("reads one session in either version: what the buyer said in 2026-04-08 shows as theirs in 2026-08-25", async () => {
+    const { body: created } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { email: "a@example.com", consent: { marketing: true } } }, as(AGENTPEY_PLATFORM_PROFILE));
+    const read = await h.call("GET", `/checkout-sessions/${created.id}`, undefined, as(V0825));
+    expect(consentOf(read.body)).toEqual({ ...defaults, "dev.ucp.consent.marketing": { ...defaults["dev.ucp.consent.marketing"], granted: true, source: "platform" } });
+  });
+
+  describe("a yes to marketing needs the buyer's email", () => {
+    it("warns while the checkout can change, does not complete without it, and charges nothing; with the email it completes", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { consent: { marketing: true } } }, as(AGENTPEY_PLATFORM_PROFILE));
+      expect(created.status).toBe("ready_for_complete");
+      expect(created.messages).toEqual([{ type: "warning", code: "missing_consent_data", content: expect.any(String), path: "$.buyer.email" }]);
+      const before = h.facilitator.settleCalls.length;
+      const refused = await complete(created, AGENTPEY_PLATFORM_PROFILE);
+      expect(refused.body.status).toBe("ready_for_complete");
+      expect(refused.body.messages).toEqual([expect.objectContaining({ type: "error", code: "missing_consent_data", severity: "recoverable", path: "$.buyer.email" })]);
+      expect(h.facilitator.settleCalls).toHaveLength(before);
+
+      const fixed = await h.call("PUT", `/checkout-sessions/${created.id}`, { ...ready("gorro-andes"), buyer: { email: "ana@example.com" } }, as(AGENTPEY_PLATFORM_PROFILE));
+      expect(fixed.body.messages).toEqual([]);
+      expect(consentOf(fixed.body)).toEqual({ marketing: true });
+      expect((await complete(fixed.body, AGENTPEY_PLATFORM_PROFILE)).body.status).toBe("completed");
+    });
+
+    it("a no needs nothing", async () => {
+      const { body } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { consent: { marketing: false } } }, as(AGENTPEY_PLATFORM_PROFILE));
+      expect(body.messages).toEqual([]);
+    });
+  });
+
+  describe("reaching the store", () => {
+    it("hands the store's order only the buyer's own decisions, also those confirmed with the payment, never a default", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { email: "ana@example.com" } }, as(V0825));
+      const done = await complete(created, V0825, {
+        buyer: { consent: { "dev.ucp.consent.marketing": { granted: true, source: "platform" }, "dev.ucp.consent.analytics": { granted: false, source: "platform" }, "dev.ucp.consent.preferences": { granted: false, source: "business" } } },
+      });
+      expect(done.body.status).toBe("completed");
+      const record = recordOf(done.body.order?.id);
+      expect(record.buyer.consent).toEqual({ marketing: true, analytics: false });
+      const platformOrder = await h.adapter.getOrder(record.platformOrderId!);
+      expect(platformOrder?.buyer.consent).toEqual({ marketing: true, analytics: false });
+    });
+
+    it("hands nothing when the buyer decided nothing", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", ready("gorro-andes"), as(V0825));
+      const done = await complete(created, V0825);
+      const record = recordOf(done.body.order?.id);
+      expect(record.buyer).not.toHaveProperty("consent");
+      expect((await h.adapter.getOrder(record.platformOrderId!))?.buyer).not.toHaveProperty("consent");
+    });
+
+    it("never shows it in the public order, which anyone with the receipt reads, nor in the order webhook", async () => {
+      const { body: created } = await h.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { email: "ana@example.com", consent: { marketing: true, sale_of_data: false } } }, as(AGENTPEY_PLATFORM_PROFILE));
+      const done = await complete(created, AGENTPEY_PLATFORM_PROFILE);
+      const record = recordOf(done.body.order?.id);
+      expect(record.buyer.consent).toEqual({ marketing: true, sale_or_sharing: false });
+      for (const profile of [AGENTPEY_PLATFORM_PROFILE, V0825]) {
+        const order = await h.call("GET", `/orders/${record.orderId}`, undefined, as(profile));
+        expect(order.status).toBe(200);
+        expect(JSON.stringify(order.body)).not.toMatch(/consent|marketing/);
+      }
+      // The webhook's body is the whole order, with what only the buying platform sees (T147): still no consent.
+      const webhookBody = ucpOrder(record as typeof record & { ucpCheckoutId: string }, h.url(), { kind: "none" }, "2026-08-25", { tracking: true });
+      expect(JSON.stringify(webhookBody)).not.toMatch(/consent|marketing/);
+    });
+  });
+
+  describe("at a store whose platform has nowhere to take it, like Jumpseller", () => {
+    const other = harness({ profiles, recordsBuyerConsent: false });
+    beforeAll(() => other.start());
+    afterAll(() => other.stop());
+
+    it("does not offer it, ignores what a platform sends, and hands the store nothing", async () => {
+      for (const [n, profile, consent] of [
+        [1, AGENTPEY_PLATFORM_PROFILE, { marketing: true }],
+        [2, V0825, { "dev.ucp.consent.marketing": { granted: true, source: "platform" } }],
+      ] as const) {
+        const { body: created } = await other.call("POST", "/checkout-sessions", { ...ready("gorro-andes"), buyer: { email: "ana@example.com", consent } }, as(profile));
+        expect(consentOf(created)).toBeUndefined();
+        expect((created as unknown as WithBuyer).ucp.capabilities).not.toHaveProperty(["dev.ucp.shopping.buyer_consent"]);
+        const done = await other.call("POST", `/checkout-sessions/${created.id}/complete`, { ...instrument(requirementsOf(created)), buyer: { consent } }, as(profile));
+        expect(done.body.status).toBe("completed");
+        const order = await other.adapter.getOrder(`mock-000${n}`);
+        expect(order?.reference).toBeDefined();
+        expect(order?.buyer).not.toHaveProperty("consent");
+      }
+    });
   });
 });
