@@ -27,7 +27,7 @@ que la librería oficial de AP2 verifica sobre una compra real. **T147 cerrada**
 la tienda avisa al agente. **T148 cerrada**: un agente compra un carrito de
 varios productos, con un solo cobro y un recibo de un ítem por línea.
 **T149 cerrada**: el consentimiento del comprador llega al pedido de la
-tienda, comprobado con una compra real. **T135 en revisión**: MPP charge no
+tienda, comprobado con una compra real. **T135 cerrada**: MPP charge no
 admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
 
 | Tarea | Estado |
@@ -39,7 +39,7 @@ admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
 | T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | cerrada |
 | T134 AP2 en el checkout | cerrada |
-| T135 MPP charge (prueba técnica) | en revisión |
+| T135 MPP charge (prueba técnica) | cerrada |
 | T136 SDK en npm | pendiente |
 | T137 Kit de conformidad de Stellar | pendiente |
 | T138 Prueba técnica: GenLayer | pendiente |
@@ -362,7 +362,7 @@ admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
 
-## T135 · MPP charge sobre Stellar, prueba técnica (2026-10-05, en revisión)
+## T135 · MPP charge sobre Stellar, prueba técnica (2026-10-05, cerrada)
 
 **Qué quedó.** MPP es otra forma de cobrar por internet que Stellar ofrece con
 un SDK oficial. La pregunta era si nuestro agente puede pagar con MPP desde su

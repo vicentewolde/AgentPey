@@ -8067,3 +8067,13 @@ zod, `.env.local` ausente como `ProbeError`, `--skip-control` remite a la tx del
 nueva, §5 de la revisión), brecha 21, issue (cita las líneas del SDK), README, `R-20` y BITACORA precisados.
 
 Pendiente: push, PR y merge con OK; publicar el issue solo con OK. `AGENTS.md`: sin cambios. Exponential: sin cambios.
+
+## 2026-10-05 (39) — cc/t135-mpp-charge → main, cc/t135-cierre (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, T135 en `main` por fast-forward ([PR #61](https://github.com/vicentewolde/AgentPey/pull/61); sin CI: solo existe el de Vitrinee, filtrado por rutas que
+T135 no toca; `pnpm check` en verde en local). Rama borrada. T135 cerrada (ESTADO, BITACORA, SYNC, ticket `DONE`).
+
+Pendiente: el usuario lee el borrador del issue y decide si se publica; push y merge de `cc/t135-cierre` con OK.
+Siguiente: T136, o T130 si llega la tienda. `AGENTS.md`: sin cambios. Exponential: T135 a `DONE`.

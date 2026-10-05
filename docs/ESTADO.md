@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-05
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T149 · El consentimiento del comprador llega al pedido de la tienda (Shopify sí, Jumpseller no lo ofrece), `VT-47`
-**Siguiente paso:** push, PR y merge de `cc/t135-mpp-charge` con OK (`/revisar` hecho, los 9 hallazgos corregidos); publicar el issue de `stellar/stellar-mpp-sdk` solo con OK. T130 cuando haya tienda de terceros (el usuario la está consiguiendo). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T135 · MPP charge, prueba técnica: no admite pagar desde el `policy_rail`; se evalúa y no se construye (`R-20`)
+**Siguiente paso:** T136 (SDK publicado en npm), la siguiente del Bloque B; T130 cuando haya tienda de terceros. Publicar el issue de `stellar/stellar-mpp-sdk` solo con OK del usuario. T130 cuando haya tienda de terceros (el usuario la está consiguiendo). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -21,7 +21,7 @@
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
 | T134 AP2 dentro del checkout UCP | si alcanza | ✅ terminada: tienda firma y no cobra sin mandato, agente cierra (`R-15`, `R-16`, `VT-43`); compra real `ord_muudx8kyda00e05b33` verificada por la librería oficial de AP2 | [PR #52](https://github.com/vicentewolde/AgentPey/pull/52), mergeado; evidencia en `cc/t134-evidencia` |
-| T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | 👀 en revisión: el SDK oficial no acepta pagar desde el `policy_rail` (cuatro rechazos en testnet, control con llave clásica cobra); no se construye (`R-20`); brecha 21 e issue listo | `cc/t135-mpp-charge` |
+| T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ✅ terminada: el SDK oficial no acepta pagar desde el `policy_rail` (la red sí acepta la firma; cuatro rechazos por el pagador, control con llave clásica cobra); no se construye (`R-20`); brecha 21; issue listo, sin publicar | [PR #61](https://github.com/vicentewolde/AgentPey/pull/61), mergeado |
 | T136 SDK publicado en npm | si alcanza | ⏳ pendiente | |
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ⏳ pendiente | |
 | T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente | |
@@ -43,6 +43,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
+- [ ] T135: leer el borrador del issue para `stellar/stellar-mpp-sdk` (`docs/fase-8-agentes-reales/evidencia/T135-issue-mpp.md`) y decidir si se publica
 - [ ] Para T130: conseguir la tienda de terceros (en proceso, 5-oct). T144: el usuario confirmó que tiene Grok, no dots ni Muse
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
@@ -128,3 +129,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-05, T149 en vivo: con OK del usuario, rail UCP recargado con 3 USDC (tx `629dd7d8…`) y compra real de un imán con AP2 y `--marketing yes`: `ord_muvlkwxp66c0327a66` (Shopify `19016845787442`, tx `bcfad848…`), recibo con los tres checks. El pedido de Shopify tiene `customerAcceptsMarketing: true` (los permisos actuales alcanzan); la orden pública no muestra el consentimiento; la librería oficial de AP2 verifica el mandato, cuyo checkout firmado lleva el consentimiento. Rail UCP en 2,7684210 USDC.
 - 2026-10-05, T135: prueba técnica de MPP charge con el SDK oficial (`@stellar/mpp` 0.7.1) en un paquete aislado, `scripts/mpp-probe/`. Desde el rail UCP, el servidor oficial rechazó los cuatro intentos (pull y patrocinado; "invalid Stellar public key" para `did:pkh:…:C…` y "Transfer from does not match credential source" con el dueño como pagador) sin mover nada; el control con la llave clásica del agente cobró 0,01 USDC (tx `9e983664…`). No se construye (`R-4`, `R-20`); MPP en UCP sería un medio de pago aparte. Brecha 21 en el anexo, texto del issue listo y sin publicar, criterios 3 y 4 de la fase marcados.
 - 2026-10-05, T135 `/revisar`: sin bloqueantes; corregidos los 9 hallazgos a pedido del usuario, sin mover plata. El principal: el veredicto de la prueba podía dar un falso "rechazado"; ahora exige el motivo exacto del SDK en cada intento y que el saldo del rail se lea igual antes y después. Un paso nuevo simula en modo estricto la transferencia firmada por el rail y la red la acepta: la firma es buena y el único obstáculo es el tipo de pagador. Aclarado que el servidor patrocinado no tuvo control; el issue cita las líneas del SDK.
+- 2026-10-05, T135 cerrada: [PR #61](https://github.com/vicentewolde/AgentPey/pull/61) en `main` por fast-forward, con OK del usuario (sin CI: solo corre el de Vitrinee, que T135 no toca; `pnpm check` en verde en local). Queda publicar el issue, con OK.
