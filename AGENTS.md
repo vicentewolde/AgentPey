@@ -93,6 +93,12 @@ igual que el modo de conformidad de T131, la verificación del recibo (T132),
 AP2 (T134, con la llave de plataforma de `R-16` y la de cada tienda de `VT-43`), MPP (T135) y las wallets (T143). Lo delegable, si te llega, está
 marcado tarea por tarea en el spec: datos de prueba de T131, mapeo de campos
 de T133, README de T136, tests de perfil de T137 y el HTML de T141.
+Desde T136 (`R-21`), el pago UCP del agente pasa por el paquete público
+`packages/ucp-stellar` (`@agentpey/ucp-stellar`): sus chequeos antes de firmar,
+`pay()` y los pagadores (`policyRailPayer`, `classicPayer`) son firma y flujo
+de fondos, perímetro de `P-10`, aunque el paquete sea público. Sus errores son
+`UcpStellarError`, no `AgentPassError`: no dependen de ningún paquete del
+monorepo, y un test lo exige. Publicarlo en npm lo decide el usuario.
 
 **Vitrinee, desde 2026-09-23 (T98):** Vitrinee se fusionó en este repo
 (`docs/DECISIONES.md § P-12`) y es la puerta del vendedor para comercios reales.

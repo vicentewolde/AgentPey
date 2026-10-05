@@ -11,6 +11,7 @@
     { "path": "../../packages/sdk" },
     { "path": "../../packages/mandate" },
     { "path": "../../packages/ap2" },
+    { "path": "../../packages/ucp-stellar" },
     { "path": "../../packages/vault" }
   ]
 }

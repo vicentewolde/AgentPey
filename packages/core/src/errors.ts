@@ -150,6 +150,10 @@ export type AgentPassErrorCode =
   | "RailInsufficientFunds"
   /** The x402 client could not build the payment, before anything was signed or sent: nothing was paid. */
   | "PaymentNotCreated"
+  /** A UCP store's Stellar handler, or its checkout, is on a network other than Stellar testnet (T136, R-21). */
+  | "UnsupportedNetwork"
+  /** A UCP checkout costs more than the ceiling its payer allowed (`@agentpey/ucp-stellar`'s `maxAmount`, T136). */
+  | "AmountAboveLimit"
   /** A webhook endpoint's URL is not one this platform will send to — wrong scheme, a port, or an address that does not route publicly. */
   | "WebhookUrlNotAllowed"
   /** No webhook endpoint visible to this partner has that id. */

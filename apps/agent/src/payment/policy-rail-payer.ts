@@ -35,31 +35,30 @@
  * the same `PaymentPayload` shape — this registers as one more
  * `SchemeNetworkClient`, so `x402Client` wraps it exactly as it wraps
  * `ExactStellarScheme`.
+ *
+ * Since T136 (R-21) the scheme itself lives in the public package
+ * `@agentpey/ucp-stellar` (`policyRailPayer`), which takes a signing callback
+ * instead of a secret. What stays here is the agent's side: the owner's
+ * secret turned into that callback, the balance read the agent's way, and the
+ * package's errors as `AgentPassError`s with the same codes.
  */
 import { AgentPassError } from "@agentpass/core";
 import {
-  Keypair,
-  authorizeEntry,
-  contract,
-  nativeToScVal,
-  rpc,
-  type xdr,
-} from "@stellar/stellar-sdk";
-import type {
-  PaymentPayloadResult,
-  PaymentRequirements,
-  SchemeNetworkClient,
-} from "@x402/core/types";
-import {
-  findDefaultAsset,
-  getEstimatedLedgerCloseTimeSeconds,
-  getNetworkPassphrase,
-  getRpcClient,
-  getRpcUrl,
-} from "@x402/stellar";
+  assertSimulationUsable as packageAssertSimulationUsable,
+  authorizeAsRailOwner,
+  describeShortfall as packageDescribeShortfall,
+  isUcpStellarError,
+  policyRailPayer,
+  railOwnerSigner,
+  type BalanceReader,
+  type UcpStellarPayer,
+} from "@agentpey/ucp-stellar";
+import type { Keypair, rpc, xdr } from "@stellar/stellar-sdk";
+import type { PaymentPayloadResult, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
+import { findDefaultAsset } from "@x402/stellar";
 
 import { readRailUsdcBalance } from "../policy/rail-balance.js";
-import { fromScaledAmount, toScaledAmount } from "../scope/amount.js";
+import { toScaledAmount } from "../scope/amount.js";
 
 /** Which smart account pays, and whose key speaks for it. */
 export interface PolicyRailPayer {
@@ -73,55 +72,14 @@ export interface PolicyRailPayer {
   readonly ownerSecret: string;
 }
 
-function paymentError(message: string, details: Record<string, unknown>, cause?: unknown): AgentPassError {
-  return new AgentPassError("NetworkError", message, { cause, details });
+/** The package's error as the agent's, with the same code: the package's codes are a subset of the agent's (R-21). */
+function asAgentPassError(error: unknown): unknown {
+  return isUcpStellarError(error) ? new AgentPassError(error.code, error.message, { cause: error.cause, details: { ...error.details } }) : error;
 }
 
-/**
- * `@x402/stellar` exports `handleSimulationResult` for exactly this, but it is
- * typed against its own bundled `@stellar/stellar-sdk@16.3.0`, and this
- * module's simulation comes from the repo's `17.0.1` — the same cross-package
- * mismatch `x402.ts` already sidesteps for signers. Six lines here cost less
- * than a cast that would silence a real type difference.
- */
-export async function assertSimulationUsable(
-  simulation: rpc.Api.SimulateTransactionResponse | undefined,
-  details: Record<string, unknown>,
-  funds: InsufficientFundsProbe,
-): Promise<void> {
-  if (simulation === undefined) {
-    throw paymentError("the transfer from policy_rail was never simulated", details);
-  }
-  if (rpc.Api.isSimulationError(simulation)) {
-    // Before reporting this as a network-shaped failure, answer the one
-    // question that has a completely different remedy: does the rail simply
-    // not hold enough of the asset? (`C-113`, T92.)
-    //
-    // Checked by reading the balance rather than by matching a contract error
-    // number out of `simulation.error`. That string is the Soroban host's
-    // rendering of whatever the asset contract raised — for the Stellar Asset
-    // Contract, "not enough balance" is an opaque `Error(Contract, #N)` whose
-    // numbering is the token's, not ours. Reading the balance answers the
-    // question the person actually has, and cannot go stale against a
-    // contract we do not control.
-    const shortfall = await describeShortfall(funds);
-    if (shortfall !== undefined) {
-      throw new AgentPassError(
-        "RailInsufficientFunds",
-        "this agent's payment account does not hold enough to pay for this purchase",
-        { details: { ...details, ...shortfall } },
-      );
-    }
-    throw paymentError("simulating the transfer from policy_rail failed", {
-      ...details,
-      // `__check_auth`'s own error codes surface here — a `perTx`/`perDay`
-      // refusal by the contract never reaches the network at all.
-      error: simulation.error,
-    });
-  }
-  if (rpc.Api.isSimulationRestore(simulation)) {
-    throw paymentError("policy_rail's state has expired and needs restoring before it can pay", details);
-  }
+/** The agent reads balances as seven-decimal strings; the package, as atomic units. */
+function atomicReader(readBalance: (address: string, assetContractId: string) => Promise<string>): BalanceReader {
+  return async (address, assetContractId) => toScaledAmount(await readBalance(address, assetContractId));
 }
 
 /** What {@link describeShortfall} needs to ask "is the rail simply empty?". */
@@ -137,42 +95,35 @@ export interface InsufficientFundsProbe {
 /**
  * `{ balance, required }` when the rail holds less than the transfer needs,
  * `undefined` when it holds enough — or when the balance could not be read at
- * all.
- *
- * An unreadable balance answers `undefined` on purpose: this runs while
- * another failure is already being reported, and a diagnostic that throws
- * would replace a real error with a worse one. The caller falls back to the
- * generic simulation failure, which is exactly the behaviour that existed
- * before this check.
+ * all (this runs while another failure is already being reported).
  */
 export async function describeShortfall(
   probe: InsufficientFundsProbe,
 ): Promise<{ readonly balance: string; readonly required: string } | undefined> {
-  let balance: string;
-  try {
-    balance = await probe.readBalance(probe.contractId, probe.asset);
-  } catch {
-    return undefined;
-  }
-  let held: bigint;
-  let needed: bigint;
-  try {
-    held = toScaledAmount(balance);
-    needed = BigInt(probe.amount);
-  } catch {
-    return undefined;
-  }
-  if (held >= needed) return undefined;
-  return { balance, required: fromScaledAmount(needed) };
+  return packageDescribeShortfall({ ...probe, readBalance: atomicReader(probe.readBalance) });
 }
 
 /**
- * Signs one authorization entry as `policy_rail`'s owner.
- *
- * Returns `{ signature, publicKey }` rather than bare bytes on purpose: that
- * is the only branch of {@link authorizeEntry} that does not try to read a
- * signing key out of the entry's own address, and the only one that produces
- * the `{ public_key, signature }` struct `__check_auth` decodes.
+ * @throws AgentPassError `RailInsufficientFunds` when the simulation failed and
+ * the rail is short; `NetworkError` for any other unusable simulation (`C-113`).
+ */
+export async function assertSimulationUsable(
+  simulation: rpc.Api.SimulateTransactionResponse | undefined,
+  details: Record<string, unknown>,
+  funds: InsufficientFundsProbe,
+): Promise<void> {
+  try {
+    await packageAssertSimulationUsable(simulation, details, { ...funds, readBalance: atomicReader(funds.readBalance) });
+  } catch (error) {
+    throw asAgentPassError(error);
+  }
+}
+
+/**
+ * Signs one authorization entry as `policy_rail`'s owner, returning
+ * `{ signature, publicKey }`: the only branch of `authorizeEntry` that does not
+ * read a signing key out of the entry's own (`C…`) address, and the one that
+ * produces the `{ public_key, signature }` struct `__check_auth` decodes.
  */
 export function authorizeAsPolicyRailOwner(
   owner: Keypair,
@@ -182,25 +133,13 @@ export function authorizeAsPolicyRailOwner(
   validUntilLedgerSeq: number,
   networkPassphrase: string,
 ) => Promise<xdr.SorobanAuthorizationEntry> {
-  return (entry, _signer, validUntilLedgerSeq, networkPassphrase) =>
-    authorizeEntry(
-      entry,
-      // eslint-disable-next-line @typescript-eslint/require-await
-      async (_preimage: unknown, payload: Uint8Array) => ({
-        signature: owner.sign(Buffer.from(payload)),
-        publicKey: owner.publicKey(),
-      }),
-      validUntilLedgerSeq,
-      networkPassphrase,
-    );
+  // eslint-disable-next-line @typescript-eslint/require-await
+  return authorizeAsRailOwner(async (payload) => ({ publicKey: owner.publicKey(), signature: owner.sign(Buffer.from(payload)) }));
 }
 
 /**
- * The `exact` scheme, paid by a `policy_rail` smart account.
- *
- * Deliberately not a subclass of `ExactStellarScheme`: it shares the
- * transaction it builds, not the signing step, and the signing step is the
- * whole difference.
+ * The `exact` scheme, paid by a `policy_rail` smart account: the package's
+ * `policyRailPayer`, signing with the owner's secret.
  */
 export class PolicyRailStellarScheme implements SchemeNetworkClient {
   readonly scheme = "exact";
@@ -208,112 +147,39 @@ export class PolicyRailStellarScheme implements SchemeNetworkClient {
   /**
    * The same reverse lookup `ExactStellarScheme` registers. Without it
    * `x402Client`'s spend controls reject every challenge priced in USDC as an
-   * unknown asset before this scheme is ever asked to build anything —
-   * found by running the real payment, not by reading the interface.
+   * unknown asset before this scheme is ever asked to build anything.
    */
   readonly findDefaultAsset = findDefaultAsset;
 
-  private readonly owner: Keypair;
-  /** Injected so tests can answer "how much does the rail hold?" without a network. */
-  private readonly readBalance: (address: string, assetContractId: string) => Promise<string>;
+  private readonly inner: UcpStellarPayer;
 
   constructor(
-    private readonly payer: PolicyRailPayer,
+    payer: PolicyRailPayer,
+    /** Injected so tests can answer "how much does the rail hold?" without a network. */
     readBalance: (address: string, assetContractId: string) => Promise<string> = readRailUsdcBalance,
   ) {
-    this.owner = Keypair.fromSecret(payer.ownerSecret);
-    this.readBalance = readBalance;
+    try {
+      this.inner = policyRailPayer({ contractId: payer.contractId, signAuthPayload: railOwnerSigner(payer.ownerSecret), readBalance: atomicReader(readBalance) });
+    } catch (error) {
+      throw asAgentPassError(error);
+    }
   }
 
   /**
    * @throws AgentPassError `RailInsufficientFunds` when the simulation fails
-   * and the rail turns out not to hold enough of the asset — the one
-   * simulation failure with a remedy a person can act on (`C-113`).
+   * and the rail turns out not to hold enough of the asset (`C-113`).
    * @throws AgentPassError `NetworkError` when the RPC is unreachable, the
    * simulation fails for any other reason, or the signed transaction still
-   * reports a missing signer — the last of which is what a mismatch between
-   * the deployed contract's `owner` and `payer.ownerSecret` looks like from
-   * here.
+   * reports a missing signer — what a mismatch between the deployed
+   * contract's `owner` and `ownerSecret` looks like from here.
+   * @throws AgentPassError `PaymentNotCreated` when anything else stops the
+   * transfer from being built; nothing was sent.
    */
-  async createPaymentPayload(
-    x402Version: number,
-    paymentRequirements: PaymentRequirements,
-  ): Promise<PaymentPayloadResult> {
-    const { network, payTo, asset, amount, maxTimeoutSeconds } = paymentRequirements;
-    const networkPassphrase = getNetworkPassphrase(network);
-    const rpcUrl = getRpcUrl(network);
-
-    const rpcClient = getRpcClient(network);
-    const [{ sequence }, ledgerSeconds] = await Promise.all([
-      rpcClient.getLatestLedger(),
-      getEstimatedLedgerCloseTimeSeconds(network),
-    ]);
-    const maxLedger = sequence + Math.ceil(maxTimeoutSeconds / ledgerSeconds);
-
-    // Same call `ExactStellarScheme` makes, with the contract as `from`. No
-    // `publicKey`: the source account stays the SDK's null account, because
-    // the facilitator rebuilds and sponsors the envelope (T24).
-    let tx: contract.AssembledTransaction<unknown>;
+  async createPaymentPayload(x402Version: number, paymentRequirements: PaymentRequirements): Promise<PaymentPayloadResult> {
     try {
-      tx = await contract.AssembledTransaction.build({
-        contractId: asset,
-        method: "transfer",
-        args: [
-          nativeToScVal(this.payer.contractId, { type: "address" }),
-          nativeToScVal(payTo, { type: "address" }),
-          nativeToScVal(amount, { type: "i128" }),
-        ],
-        networkPassphrase,
-        rpcUrl,
-        parseResultXdr: (result: unknown) => result,
-        // Ask the RPC for legacy (v1) address credentials. This repo's
-        // `@stellar/stellar-sdk@17` defaults to CAP-71 `…AddressV2`, which the
-        // facilitator — built against `16.3.0` — cannot even parse: it answers
-        // `invalid_exact_stellar_payload_malformed`, and would reject anything
-        // but v1 credentials anyway. Found by paying for real and reading the
-        // rejection, not from the types.
-        useUpgradedAuth: false,
-      });
+      return await this.inner.createPaymentPayload(x402Version, paymentRequirements);
     } catch (error) {
-      throw paymentError("could not build the transfer from policy_rail", {
-        contractId: this.payer.contractId,
-        asset,
-        payTo,
-        amount,
-      }, error);
+      throw asAgentPassError(error);
     }
-    await assertSimulationUsable(
-      tx.simulation,
-      { contractId: this.payer.contractId, asset, payTo, amount },
-      { contractId: this.payer.contractId, asset, amount, readBalance: this.readBalance },
-    );
-
-    await tx.signAuthEntries({
-      address: this.payer.contractId,
-      expiration: maxLedger,
-      authorizeEntry: authorizeAsPolicyRailOwner(this.owner),
-    });
-
-    // Simulating again with the signature in place is what prices
-    // `__check_auth` into the fee the facilitator sees (`M-22` measured it at
-    // 38 888 of the 50 000 stroops it allows). Existing auth entries survive:
-    // `assembleTransaction` keeps them rather than taking the simulation's.
-    await tx.simulate({ useUpgradedAuth: false });
-    await assertSimulationUsable(
-      tx.simulation,
-      { contractId: this.payer.contractId, asset, payTo, amount },
-      { contractId: this.payer.contractId, asset, amount, readBalance: this.readBalance },
-    );
-
-    const missing = tx.needsNonInvokerSigningBy();
-    if (missing.length > 0) {
-      throw paymentError("policy_rail's authorization did not take", {
-        contractId: this.payer.contractId,
-        stillNeedsSigningBy: missing,
-        hint: "the deployed contract's owner is probably a different key than ownerSecret",
-      });
-    }
-
-    return { x402Version, payload: { transaction: tx.built?.toXDR() ?? "" } };
   }
 }

@@ -19,6 +19,7 @@
     "@agentpass/sdk": "workspace:*",
     "@agentpey/ap2": "workspace:*",
     "@agentpey/mandate": "workspace:*",
+    "@agentpey/ucp-stellar": "workspace:*",
     "@agentpey/vault": "workspace:*",
     "@stellar/stellar-sdk": "^17.0.1",
     "@x402/core": "~2.24.0",

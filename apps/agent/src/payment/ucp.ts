@@ -2,24 +2,26 @@
  * Paying a UCP checkout on Stellar (T122, Fase 7, E-1): the buyer's side of
  * the `com.agentpey.stellar_x402` payment handler.
  *
- * The twin of {@link executeBazaarPayment}, with the same guarantees in the
- * same order. What differs is only how the price arrives and how the payment
- * leaves: the payment requirements come from the checkout session's handler
- * config instead of an HTTP 402, and the signed payload goes back in the body
- * of Complete Checkout instead of a `PAYMENT-SIGNATURE` header.
- *
- * **Before anything is signed**, three independent checks, in this order:
+ * Since T136 (R-21) the protocol half lives in the public package
+ * `@agentpey/ucp-stellar`: reading the store's profile, checking the handler
+ * and the checkout against it, signing and completing. This module keeps what
+ * is AgentPey's own, and runs it in the package's `beforeSign` hook, after the
+ * package's checks and before anything is signed:
  *
  * 1. The requirements name the same recipient, asset and network as the
- *    handler the store declares at its `/.well-known/ucp` (the handler spec's
- *    step 2). The checkout response alone is not enough: the store writes it.
- * 2. `toPaymentTerms` pins the recipient to the venue's own account and maps
+ *    handler the store declares at its `/.well-known/ucp` (the package, the
+ *    handler spec's step 2). The checkout response alone is not enough: the
+ *    store writes it.
+ * 2. The checkout is for the signed intent's lines (T148).
+ * 3. AP2, when asked for (T134).
+ * 4. `toPaymentTerms` pins the recipient to the venue's own account and maps
  *    the asset through the venue registry, as for any x402 venue.
- * 3. `policyRail.authorise` reconciles them against the signed intent, the
+ * 5. `policyRail.authorise` reconciles them against the signed intent, the
  *    scope and the Mandate. Untouched by this module (P-14).
  *
  * Paying from a `policy_rail`, the network then checks `perTx`/`perDay` a
- * fourth time, inside the transfer.
+ * last time, inside the transfer. Every error is an `AgentPassError` with the
+ * package's code, and carries `paymentSent` (`C-113`).
  *
  * Nothing in this file knows Vitrinee: it speaks UCP and the handler spec, so
  * any business that declares the handler can be paid the same way (C-88).
@@ -29,8 +31,18 @@ import type { Scope } from "@agentpass/core";
 import { checkoutJwtFrom, closeCheckoutMandate, issueOpenMandatePair, verifyMerchantAuthorization } from "@agentpey/ap2";
 import type { AgentPeyMandateRef, Ap2Signer } from "@agentpey/ap2";
 import type { AgentPayMandate } from "@agentpey/mandate";
-import { x402Client, x402HTTPClient } from "@x402/core/client";
-import type { PaymentRequired, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
+import {
+  MAX_UCP_LINES as PACKAGE_MAX_UCP_LINES,
+  STELLAR_X402_HANDLER as PACKAGE_STELLAR_X402_HANDLER,
+  isUcpStellarError,
+  originMatchesNamespace as packageOriginMatchesNamespace,
+  pay,
+  quote as quoteCheckout,
+  type UcpBusinessProfile,
+  type UcpReceipt,
+  type UcpStellarError,
+} from "@agentpey/ucp-stellar";
+import type { PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
 import { ExactStellarScheme, STELLAR_TESTNET_CAIP2, createEd25519Signer } from "@x402/stellar";
 import { decodeProtectedHeader } from "jose";
 import { z } from "zod";
@@ -41,9 +53,9 @@ import type { VenueRegistry } from "../catalog/registry.js";
 import { intentLines, type PurchaseIntent } from "../intent/intent.js";
 import { policyRailError, type PolicyRail } from "../policy/policy-rail.js";
 import { PolicyRailStellarScheme, type PolicyRailPayer } from "./policy-rail-payer.js";
-import { spendControlsFor, toPaymentTerms, withPaymentSent } from "./x402.js";
+import { toPaymentTerms, withPaymentSent } from "./x402.js";
 
-export const STELLAR_X402_HANDLER = "com.agentpey.stellar_x402";
+export const STELLAR_X402_HANDLER = PACKAGE_STELLAR_X402_HANDLER;
 /**
  * AgentPey's platform profile, sent with every request as UCP asks. The UCP
  * version the agent speaks is the one this profile declares (2026-04-08): a
@@ -82,21 +94,7 @@ export interface UcpAp2Options {
   readonly closed: Set<string>;
 }
 
-const reverseDomain = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_]*)+$/;
-
 // ---------------------------------------------------------------- wire shapes
-
-const declaration = z.looseObject({ version: z.string(), spec: z.string().optional(), schema: z.string().optional(), config: z.unknown().optional() });
-
-const profileSchema = z.looseObject({
-  ucp: z.looseObject({
-    version: z.string(),
-    services: z.record(z.string().regex(reverseDomain), z.array(declaration.extend({ transport: z.string(), endpoint: z.string().optional() }))),
-    capabilities: z.record(z.string().regex(reverseDomain), z.array(declaration)).optional(),
-    payment_handlers: z.record(z.string().regex(reverseDomain), z.array(declaration.extend({ id: z.string() }))),
-  }),
-  keys: z.array(z.unknown()).optional(),
-});
 
 /** A store's P-256 key, as its profile publishes it for AP2 (T134). */
 const storeP256KeySchema = z.looseObject({
@@ -107,55 +105,40 @@ const storeP256KeySchema = z.looseObject({
   kid: z.string().min(1),
 });
 
-const handlerConfigSchema = z.looseObject({
-  x402_version: z.literal(2),
-  scheme: z.literal("exact"),
-  network: z.string(),
-  asset: z.looseObject({ code: z.string(), contract: z.string().regex(/^C[A-Z2-7]{55}$/), decimals: z.number().int() }),
-  pay_to: z.string().regex(/^G[A-Z2-7]{55}$/),
-});
-
-const requirementsSchema = z.looseObject({
-  scheme: z.literal("exact"),
-  network: z.string(),
-  asset: z.string(),
-  amount: z.string().regex(/^\d+$/),
-  payTo: z.string(),
-  maxTimeoutSeconds: z.number().int().positive(),
-  extra: z.record(z.string(), z.unknown()).optional(),
-});
-
-const messageSchema = z.looseObject({ type: z.string(), code: z.string().optional(), content: z.string().optional(), severity: z.string().optional() });
-
-const checkoutSchema = z.looseObject({
-  ucp: z.looseObject({ payment_handlers: z.record(z.string(), z.array(z.looseObject({ id: z.string(), config: z.unknown().optional() }))).optional() }),
-  id: z.string().min(1),
-  status: z.string(),
-  currency: z.string(),
-  totals: z.array(z.looseObject({ type: z.string(), amount: z.number() })),
-  messages: z.array(messageSchema).optional(),
-  order: z.looseObject({ id: z.string(), permalink_url: z.string() }).optional(),
-  receipt: z
-    .looseObject({
-      jws: z.string(),
-      hash: z.string(),
-      settlement_tx_hash: z.string(),
-      verify_url: z.string(),
-      anchor: z.looseObject({ status: z.string(), registry: z.string() }),
-    })
-    .optional(),
-});
-type UcpCheckout = z.infer<typeof checkoutSchema>;
-
-/** The lines a checkout says it is for (T148): what the store will charge and ship, read from its own answer. */
-const checkoutLinesSchema = z.array(z.looseObject({ item: z.looseObject({ id: z.string().min(1) }), quantity: z.int().positive() })).min(1);
-
 /** Whether two lists name the same lines, in the same order. */
 function sameLines(a: readonly UcpLine[], b: readonly UcpLine[]): boolean {
   return a.length === b.length && a.every((line, i) => line.productId === b[i]!.productId && line.quantity === b[i]!.quantity);
 }
 
 const linePairs = (lines: readonly UcpLine[]) => lines.map((line) => [line.productId, line.quantity]);
+
+/** Whether the store offers AP2, and the P-256 keys its profile publishes (T134). */
+function ap2Of(profile: UcpBusinessProfile): UcpQuote["ap2"] {
+  return {
+    offered: profile.ucp.capabilities?.[UCP_AP2_MANDATE] !== undefined,
+    keys: (profile.keys ?? []).flatMap((key) => {
+      const parsed = storeP256KeySchema.safeParse(key);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  };
+}
+
+/**
+ * The package's error as the agent's: same code, message, cause and details. `paymentSent` is stamped by the
+ * caller, from the package's own answer.
+ */
+function fromPackage(error: UcpStellarError): AgentPassError {
+  return new AgentPassError(error.code, error.message, { cause: error.cause, details: { ...error.details } });
+}
+
+/**
+ * Any error out of the package, as an `AgentPassError` stamped with `paymentSent`. The package's own errors say
+ * whether the payment was sent; anything else came out of this module's hook or payer, which run before the door.
+ */
+function settled(error: unknown): unknown {
+  if (isUcpStellarError(error)) return withPaymentSent(fromPackage(error), error.paymentSent);
+  return withPaymentSent(error, false);
+}
 
 // ---------------------------------------------------------------- public API
 
@@ -205,7 +188,7 @@ export interface UcpPurchaseLines {
 }
 
 /** The most lines one checkout carries, as the stores take them. */
-export const MAX_UCP_LINES = 10;
+export const MAX_UCP_LINES = PACKAGE_MAX_UCP_LINES;
 
 /** @throws AgentPassError `InvalidArguments` unless the input names exactly one of the two forms, with 1 to 10 lines */
 export function ucpLinesOf(input: UcpPurchaseLines): readonly UcpLine[] {
@@ -246,26 +229,13 @@ export interface UcpPaymentReceipt {
   /** What was paid: the requirements `authorise()` reconciled. */
   readonly paid: { readonly amount: string; readonly asset: string; readonly payTo: string };
   readonly transaction: string | undefined;
-  readonly receipt: NonNullable<UcpCheckout["receipt"]> | undefined;
+  readonly receipt: UcpReceipt | undefined;
   /** The closed AP2 checkout mandate sent in `complete`, when the store asked for one (T134). */
   readonly ap2Mandate?: string;
 }
 
-function networkError(message: string, details: Record<string, unknown>, cause?: unknown): AgentPassError {
-  return new AgentPassError("NetworkError", message, { cause, details });
-}
-
-function authorityOf(name: string): string {
-  const [tld, domain] = name.split(".");
-  return `${domain ?? ""}.${tld ?? ""}`;
-}
-
 /** UCP's spec-URL binding: HTTPS, default port, exactly the name's domain. */
-export function originMatchesNamespace(name: string, url: string | undefined): boolean {
-  if (url === undefined || !URL.canParse(url)) return false;
-  const parsed = new URL(url);
-  return parsed.protocol === "https:" && parsed.port === "" && parsed.hostname === authorityOf(name);
-}
+export const originMatchesNamespace = packageOriginMatchesNamespace;
 
 /** What a store answered, read and checked: everything a payment needs, nothing signed yet (T128). */
 export interface UcpQuote {
@@ -317,114 +287,6 @@ export interface PayUcpQuoteInput {
   readonly recheck?: boolean;
 }
 
-type UcpCall = (method: string, url: string, body?: unknown, headers?: Record<string, string>) => Promise<{ status: number; json: unknown }>;
-
-function caller(fetchImpl: typeof fetch, platformProfile: string = AGENTPEY_PLATFORM_PROFILE): UcpCall {
-  return async (method, url, body, headers = {}) => {
-    let res: Response;
-    try {
-      res = await fetchImpl(url, {
-        method,
-        headers: { accept: "application/json", "UCP-Agent": `profile="${platformProfile}"`, ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-    } catch (error) {
-      throw networkError("could not reach the UCP store", { url }, error);
-    }
-    const json: unknown = await res.json().catch(() => undefined);
-    return { status: res.status, json };
-  };
-}
-
-interface StoreHandler {
-  readonly handlerId: string;
-  readonly declared: z.infer<typeof handlerConfigSchema>;
-  readonly endpoint: string;
-  readonly ap2: UcpQuote["ap2"];
-}
-
-/** The store's profile: where to talk to it, and where the money goes. */
-async function readStoreHandler(call: UcpCall, origin: string): Promise<StoreHandler> {
-  const profileReply = await call("GET", `${origin}/.well-known/ucp`);
-  const profile = profileSchema.safeParse(profileReply.json);
-  if (profileReply.status !== 200 || !profile.success) {
-    throw new AgentPassError("MerchantRejectedRequest", "the store does not publish a UCP business profile", { details: { storeUrl: origin, status: profileReply.status } });
-  }
-  const [handler] = profile.data.ucp.payment_handlers[STELLAR_X402_HANDLER] ?? [];
-  if (handler === undefined || !originMatchesNamespace(STELLAR_X402_HANDLER, handler.spec) || !originMatchesNamespace(STELLAR_X402_HANDLER, handler.schema)) {
-    throw new AgentPassError("MerchantRejectedRequest", `the store does not declare ${STELLAR_X402_HANDLER} with its spec on agentpey.com`, { details: { storeUrl: origin } });
-  }
-  const declared = handlerConfigSchema.safeParse(handler.config);
-  if (!declared.success) {
-    throw new AgentPassError("MerchantRejectedRequest", "the store's Stellar x402 handler config is malformed", { details: { storeUrl: origin } });
-  }
-  const endpoint = profile.data.ucp.services["dev.ucp.shopping"]?.find((service) => service.transport === "rest")?.endpoint;
-  if (endpoint === undefined || !URL.canParse(endpoint) || new URL(endpoint).origin !== new URL(origin).origin) {
-    throw new AgentPassError("MerchantRejectedRequest", "the store declares no REST endpoint of its own", { details: { storeUrl: origin } });
-  }
-  const ap2 = {
-    offered: profile.data.ucp.capabilities?.[UCP_AP2_MANDATE] !== undefined,
-    keys: (profile.data.keys ?? []).flatMap((key) => {
-      const parsed = storeP256KeySchema.safeParse(key);
-      return parsed.success ? [parsed.data] : [];
-    }),
-  };
-  return { handlerId: handler.id, declared: declared.data, endpoint, ap2 };
-}
-
-/**
- * The checkout's own payment requirement, refused unless the checkout is ready
- * and the requirement names the same recipient, asset and network as the
- * handler the store declares publicly. The checkout response alone is not
- * enough: the store writes it.
- */
-function requirementsOf(
-  json: unknown,
-  status: number,
-  store: StoreHandler,
-  origin: string,
-): { checkout: UcpCheckout; requirements: PaymentRequirements; raw: Readonly<Record<string, unknown>>; lines: readonly UcpLine[] } {
-  const checkout = checkoutSchema.safeParse(json);
-  if (!checkout.success || status >= 300) {
-    throw new AgentPassError("MerchantRejectedRequest", "the store did not open a checkout for this product", {
-      details: { storeUrl: origin, status, messages: messagesOf(json) },
-    });
-  }
-  if (checkout.data.status !== "ready_for_complete") {
-    throw new AgentPassError("MerchantRejectedRequest", "the store's checkout is not ready to pay", {
-      details: { checkoutId: checkout.data.id, status: checkout.data.status, messages: checkout.data.messages ?? [] },
-    });
-  }
-  const resolved = z
-    .looseObject({ payment_requirements: requirementsSchema, binding: z.looseObject({ checkout_id: z.string() }) })
-    .safeParse(checkout.data.ucp.payment_handlers?.[STELLAR_X402_HANDLER]?.[0]?.config);
-  if (!resolved.success || resolved.data.binding.checkout_id !== checkout.data.id) {
-    throw new AgentPassError("MerchantRejectedRequest", "the checkout carries no payment requirements for this session", { details: { checkoutId: checkout.data.id } });
-  }
-  const requirements = resolved.data.payment_requirements as unknown as PaymentRequirements;
-  if (requirements.payTo !== store.declared.pay_to || requirements.asset !== store.declared.asset.contract || requirements.network !== store.declared.network) {
-    throw new AgentPassError("InvalidProduct", "the checkout asks to pay someone or something other than the store's declared handler", {
-      details: { checkoutId: checkout.data.id, payTo: requirements.payTo, declaredPayTo: store.declared.pay_to, asset: requirements.asset, network: requirements.network },
-    });
-  }
-  const lines = checkoutLinesSchema.safeParse((json as { line_items?: unknown }).line_items);
-  if (!lines.success) {
-    throw new AgentPassError("MerchantRejectedRequest", "the checkout does not say which lines it is for", { details: { checkoutId: checkout.data.id } });
-  }
-  // `raw` is the store's bytes as parsed, an object (the schema above passed): what AP2 closes over must be exactly
-  // what the store signed, and zod's output may drop or reorder members.
-  return {
-    checkout: checkout.data,
-    requirements,
-    raw: json as Readonly<Record<string, unknown>>,
-    lines: lines.data.map((line) => ({ productId: line.item.id, quantity: line.quantity })),
-  };
-}
-
-function totalOf(checkout: UcpCheckout): { amount: number; currency: string } {
-  return { amount: checkout.totals.find((line) => line.type === "total")?.amount ?? 0, currency: checkout.currency };
-}
-
 /**
  * Opens a UCP checkout for one product, or a cart (T148), and reads back what it would cost,
  * checked against the store's public profile. Signs nothing and moves no
@@ -435,46 +297,27 @@ function totalOf(checkout: UcpCheckout): { amount: number; currency: string } {
  */
 export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch; readonly platformProfile?: string }, input: QuoteUcpCheckoutInput): Promise<UcpQuote> {
   const lines = ucpLinesOf(input);
-  const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
-  const origin = input.storeUrl.replace(/\/+$/, "");
-  const store = await readStoreHandler(call, origin);
-  const { consent, ...buyer } = input.buyer ?? {};
-  const session = (withConsent: boolean) => ({
-    line_items: lines.map((line) => ({ item: { id: line.productId }, quantity: line.quantity })),
-    ...(input.buyer === undefined ? {} : { buyer: withConsent && consent !== undefined ? { ...buyer, consent } : buyer }),
-    fulfillment: { methods: [{ type: "shipping", destinations: [input.destination] }] },
-  });
-  let reply = await call("POST", `${store.endpoint}/checkout-sessions`, session(false));
-  // The buyer's consent (T149) goes in an update: UCP 2026-08-25 has a store count only the consent options it
-  // advertised in an earlier answer, and the create's answer is where it advertises them. Before any mandate is opened.
-  if (consent !== undefined) {
-    const opened = requirementsOf(reply.json, reply.status, store, origin).checkout;
-    reply = await call("PUT", `${store.endpoint}/checkout-sessions/${encodeURIComponent(opened.id)}`, session(true));
-    const updated = checkoutSchema.safeParse(reply.json);
-    if (updated.success && updated.data.id !== opened.id) {
-      throw new AgentPassError("MerchantRejectedRequest", "the store answered the consent update with another checkout", { details: { checkoutId: opened.id, answered: updated.data.id } });
-    }
+  try {
+    const quoted = await quoteCheckout(
+      { storeUrl: input.storeUrl, lines: [...lines], destination: input.destination, ...(input.buyer === undefined ? {} : { buyer: input.buyer }) },
+      { platformProfile: deps.platformProfile ?? AGENTPEY_PLATFORM_PROFILE, ...(deps.fetchImpl === undefined ? {} : { fetch: deps.fetchImpl }) },
+    );
+    return {
+      storeUrl: quoted.storeUrl,
+      endpoint: quoted.endpoint,
+      handlerId: quoted.handlerId,
+      checkoutId: quoted.checkoutId,
+      productId: quoted.lines[0]!.productId,
+      quantity: quoted.lines[0]!.quantity,
+      lines: quoted.lines,
+      requirements: quoted.requirements,
+      total: quoted.total,
+      checkout: quoted.checkout,
+      ap2: ap2Of(quoted.profile),
+    };
+  } catch (error) {
+    throw isUcpStellarError(error) ? fromPackage(error) : error;
   }
-  const { checkout, requirements, raw, lines: opened } = requirementsOf(reply.json, reply.status, store, origin);
-  // The store's own answer says what it will charge for: it must be the lines asked for (T148 review).
-  if (!sameLines(lines, opened)) {
-    throw new AgentPassError("InvalidProduct", "the store opened a checkout for other lines than the ones asked for", {
-      details: { checkoutId: checkout.id, asked: linePairs(lines), opened: linePairs(opened) },
-    });
-  }
-  return {
-    storeUrl: origin,
-    endpoint: store.endpoint,
-    handlerId: store.handlerId,
-    checkoutId: checkout.id,
-    productId: opened[0]!.productId,
-    quantity: opened[0]!.quantity,
-    lines: opened,
-    requirements,
-    total: totalOf(checkout),
-    checkout: raw,
-    ap2: store.ap2,
-  };
 }
 
 /**
@@ -490,17 +333,10 @@ export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch
  * `paymentSent` (`C-113`).
  */
 export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, input: PayUcpQuoteInput): Promise<UcpPaymentReceipt> {
-  let paymentSent = false;
   try {
-    return await payAndMark();
-  } catch (error) {
-    throw withPaymentSent(error, paymentSent);
-  }
-
-  async function payAndMark(): Promise<UcpPaymentReceipt> {
     // The checkout is for what the signed intent says, line by line (T148): the amount alone is reconciled below,
     // and two carts can cost the same. `quote.lines` are the store's own, read from its answer; with `recheck`, the
-    // lines it answers now are compared again below.
+    // package refuses lines that changed since the quote, and they are compared with the intent again below.
     const intended = intentLines(input.intent.purchase);
     const forIntent = (lines: readonly UcpLine[]): void => {
       if (!sameLines(intended, lines)) {
@@ -510,104 +346,38 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
       }
     };
     forIntent(quote.lines);
-    const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
-    let requirements = quote.requirements;
-    let handlerId = quote.handlerId;
-    let latest = quote.checkout;
-    let storeAp2 = quote.ap2;
-    if (input.recheck === true) {
-      const store = await readStoreHandler(call, quote.storeUrl);
-      if (store.endpoint !== quote.endpoint) {
-        throw new AgentPassError("QuoteChanged", "the store now declares another REST endpoint than when it quoted", { details: { checkoutId: quote.checkoutId } });
-      }
-      const current = await call("GET", `${store.endpoint}/checkout-sessions/${encodeURIComponent(quote.checkoutId)}`);
-      let fresh: PaymentRequirements;
-      let freshRaw: Readonly<Record<string, unknown>>;
-      let freshLines: readonly UcpLine[];
-      try {
-        ({ requirements: fresh, raw: freshRaw, lines: freshLines } = requirementsOf(current.json, current.status, store, quote.storeUrl));
-      } catch (error) {
-        throw new AgentPassError("QuoteChanged", "the store's checkout no longer matches what it quoted", { cause: error, details: { checkoutId: quote.checkoutId } });
-      }
-      const same = (["payTo", "asset", "network", "amount", "scheme"] as const).every((field) => fresh[field] === quote.requirements[field]);
-      if (!same) {
-        throw new AgentPassError("QuoteChanged", "the store now asks for another recipient, asset, network or amount than it quoted", {
-          details: { checkoutId: quote.checkoutId, quoted: { payTo: quote.requirements.payTo, amount: quote.requirements.amount }, now: { payTo: fresh.payTo, amount: fresh.amount } },
-        });
-      }
-      // The same total can be another cart: the lines the store would charge now must still be the intent's.
-      forIntent(freshLines);
-      requirements = fresh;
-      handlerId = store.handlerId;
-      latest = freshRaw;
-      storeAp2 = store.ap2;
-    }
 
-    // AP2 (T134, R-15): before the rail authorises or anything is signed. The intent is taken first (brecha 14),
-    // then the store's signature on the checkout is checked against its published key, and the mandate closed over it.
-    const ap2Mandate = deps.ap2 === undefined ? undefined : await closeMandate(deps.ap2, storeAp2, latest, quote, input);
-
-    // With the venue's pinned account and assets, and with the Mandate.
-    const terms = toPaymentTerms(requirements, input.venueId, input.registry ?? DEFAULT_VENUE_REGISTRY);
-    const decision = await deps.policyRail.authorise({ intent: input.intent, scope: input.scope, mandate: input.mandate, terms });
-    if (!decision.authorised) throw policyRailError(decision);
-
-    // Sign exactly the authorised requirement, capped at its own amount.
-    const scheme =
+    let ap2Mandate: string | undefined;
+    const scheme: SchemeNetworkClient =
       deps.schemeForTests ??
       (deps.payer === undefined ? new ExactStellarScheme(createEd25519Signer(deps.signerSecret, STELLAR_TESTNET_CAIP2)) : new PolicyRailStellarScheme(deps.payer));
-    const client = x402Client.fromConfig({ schemes: [{ network: STELLAR_TESTNET_CAIP2, client: scheme }] });
-    client.setSpendControls(spendControlsFor(requirements));
-    const completeUrl = `${quote.endpoint}/checkout-sessions/${encodeURIComponent(quote.checkoutId)}/complete`;
-    const paymentRequired: PaymentRequired = {
-      x402Version: 2,
-      resource: { url: completeUrl, description: `UCP checkout ${quote.checkoutId}`, mimeType: "application/json" },
-      accepts: [requirements],
-    };
-    const payload = await new x402HTTPClient(client).createPaymentPayload(paymentRequired);
-    const transaction = (payload.payload as { transaction?: unknown }).transaction;
-    if (typeof transaction !== "string") throw new AgentPassError("PaymentNotCreated", "the payment scheme produced no transaction", { details: {} });
-
-    // The door. From here on money may have moved.
-    paymentSent = true;
-    const completed = await call(
-      "POST",
-      completeUrl,
-      {
-        payment: {
-          instruments: [
-            {
-              id: "instr_1",
-              handler_id: handlerId,
-              type: "stellar_x402",
-              selected: true,
-              credential: { type: "x402_payment_payload", x402_version: 2, accepted: payload.accepted, payload: { transaction } },
-            },
-          ],
-        },
-        ...(ap2Mandate === undefined ? {} : { ap2: { checkout_mandate: ap2Mandate } }),
+    const paid = await pay(quote, {
+      payer: scheme,
+      // The ceiling here is `authorise()`, which reconciles the amount with the signed intent: the package's own
+      // cap is the quoted amount, which `recheck` already holds the store to.
+      maxAmount: BigInt(quote.requirements.amount),
+      recheck: input.recheck === true,
+      platformProfile: deps.platformProfile ?? AGENTPEY_PLATFORM_PROFILE,
+      ...(deps.fetchImpl === undefined ? {} : { fetch: deps.fetchImpl }),
+      ...(input.idempotencyKey === undefined ? {} : { idempotencyKey: input.idempotencyKey }),
+      beforeSign: async ({ requirements, checkout, lines, profile }) => {
+        // The same total can be another cart: the lines the store would charge now must still be the intent's.
+        forIntent(lines);
+        // AP2 (T134, R-15): before the rail authorises or anything is signed. The intent is taken first (brecha 14),
+        // then the store's signature on the checkout is checked against its published key, and the mandate closed over it.
+        if (deps.ap2 !== undefined) {
+          ap2Mandate = await closeMandate(deps.ap2, profile === undefined ? quote.ap2 : ap2Of(profile), checkout, quote, input, requirements);
+        }
+        // With the venue's pinned account and assets, and with the Mandate.
+        const terms = toPaymentTerms(requirements, input.venueId, input.registry ?? DEFAULT_VENUE_REGISTRY);
+        const decision = await deps.policyRail.authorise({ intent: input.intent, scope: input.scope, mandate: input.mandate, terms });
+        if (!decision.authorised) throw policyRailError(decision);
+        return ap2Mandate === undefined ? undefined : { completeExtensions: { ap2: { checkout_mandate: ap2Mandate } } };
       },
-      input.idempotencyKey === undefined ? {} : { "Idempotency-Key": input.idempotencyKey },
-    );
-    const done = checkoutSchema.safeParse(completed.json);
-    if (!done.success || done.data.status !== "completed" || done.data.order === undefined) {
-      throw networkError("the store did not confirm the completed checkout", {
-        checkoutId: quote.checkoutId,
-        status: completed.status,
-        checkoutStatus: done.success ? done.data.status : undefined,
-        messages: messagesOf(completed.json),
-      });
-    }
-    return {
-      checkoutId: done.data.id,
-      orderId: done.data.order.id,
-      permalinkUrl: done.data.order.permalink_url,
-      total: totalOf(done.data),
-      paid: { amount: requirements.amount, asset: requirements.asset, payTo: requirements.payTo },
-      transaction: done.data.receipt?.settlement_tx_hash,
-      receipt: done.data.receipt,
-      ...(ap2Mandate === undefined ? {} : { ap2Mandate }),
-    };
+    });
+    return { ...paid, ...(ap2Mandate === undefined ? {} : { ap2Mandate }) };
+  } catch (error) {
+    throw settled(error);
   }
 }
 
@@ -630,7 +400,14 @@ const signedCheckoutSchema = z.looseObject({
  * checkout mandate for exactly these lines (items and quantities) and this store, and close it
  * over the signed checkout for this store (`aud`) and this checkout (`nonce`).
  */
-async function closeMandate(ap2: UcpAp2Options, store: UcpQuote["ap2"], checkout: Readonly<Record<string, unknown>>, quote: UcpQuote, input: PayUcpQuoteInput): Promise<string> {
+async function closeMandate(
+  ap2: UcpAp2Options,
+  store: UcpQuote["ap2"],
+  checkout: Readonly<Record<string, unknown>>,
+  quote: UcpQuote,
+  input: PayUcpQuoteInput,
+  requirements: PaymentRequirements,
+): Promise<string> {
   if (!store.offered) {
     throw new AgentPassError("Ap2MerchantAuthorizationInvalid", "this payment must carry an AP2 mandate and the store does not offer AP2", { details: { storeUrl: quote.storeUrl } });
   }
@@ -664,7 +441,7 @@ async function closeMandate(ap2: UcpAp2Options, store: UcpQuote["ap2"], checkout
     throw new AgentPassError("Ap2MerchantAuthorizationInvalid", "the store's signed checkout is not for the quoted lines", { details: { checkoutId: quote.checkoutId } });
   }
   const now = new Date();
-  const maxCents = BigInt(quote.requirements.amount) / STELLAR_UNITS_PER_CENT;
+  const maxCents = BigInt(requirements.amount) / STELLAR_UNITS_PER_CENT;
   const open = (
     await issueOpenMandatePair(
       {
@@ -712,9 +489,4 @@ export async function executeUcpPayment(deps: ExecuteUcpPaymentDeps, input: Exec
     throw withPaymentSent(error, false);
   }
   return payUcpQuote(deps, quote, input);
-}
-
-function messagesOf(json: unknown): unknown[] {
-  const messages = (json as { messages?: unknown } | undefined)?.messages;
-  return Array.isArray(messages) ? messages.slice(0, 5) : [];
 }

@@ -14,6 +14,7 @@
     { "path": "./packages/partner-api" },
     { "path": "./packages/partner-sdk" },
     { "path": "./packages/webhooks" },
+    { "path": "./packages/ucp-stellar" },
     { "path": "./apps/agent" },
     { "path": "./apps/web" },
     { "path": "./apps/status-dashboard" },

@@ -1,0 +1,42 @@
+{
+  "name": "@agentpey/ucp-stellar",
+  "version": "0.1.0",
+  "description": "Buy from a UCP store that accepts Stellar: read its profile, check its com.agentpey.stellar_x402 payment handler, quote a checkout and pay it, on Stellar testnet.",
+  "license": "Apache-2.0",
+  "author": "AgentPey",
+  "homepage": "https://github.com/vicentewolde/AgentPey/tree/main/packages/ucp-stellar#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vicentewolde/AgentPey.git",
+    "directory": "packages/ucp-stellar"
+  },
+  "keywords": ["ucp", "stellar", "x402", "agentic-commerce", "agent-payments", "soroban"],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "!dist/**/*.test.*", "!dist/**/*.tsbuildinfo", "src", "!src/**/*.test.ts", "README.md", "LICENSE"],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "prepack": "rm -rf dist tsconfig.tsbuildinfo && tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "~17.0.1",
+    "@x402/core": "~2.24.0",
+    "@x402/stellar": "~2.24.0",
+    "zod": "^4.5.4"
+  }
+}

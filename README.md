@@ -20,6 +20,19 @@ Stellar testnet, whose limits the network enforces. Only the wallet that owns
 that rail can sign in. Exact steps to connect each one, and to press `pay`
 yourself when the chat will not: [`apps/mcp/README.md`](apps/mcp/README.md).
 
+## Buy from your own agent
+
+[`@agentpey/ucp-stellar`](packages/ucp-stellar/README.md) is the same buyer's
+side as a package: read a UCP store's profile, check its Stellar payment
+handler, quote a checkout and pay it from a classic account or a
+`policy_rail`, on testnet. It never holds a key; a payer takes a function that
+signs. AgentPey's own agent pays through it. The example in its README buys a
+magnet (after `pnpm build`):
+
+```bash
+node packages/ucp-stellar/example/buy.mjs
+```
+
 ## Vitrinee: real stores join without writing code
 
 AgentPey is the **buyer** with rules: identity, a signed Mandate, a
