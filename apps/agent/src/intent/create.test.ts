@@ -7,6 +7,7 @@ import { Keypair } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 
 import { createAgent, type Agent } from "../agent.js";
+import { createInMemorySpendLedger } from "../ledger/spend-ledger.js";
 import { createMockCatalog, MOCK_VENUE_ID, USDC_TESTNET } from "../catalog/mock.js";
 import type { CredentialVerifier } from "../credential/verifier.js";
 import type { MandateVerifier } from "../mandate/verifier.js";
@@ -427,6 +428,26 @@ describe("a cart intent (T148)", () => {
     for (const lines of [[], Array.from({ length: 11 }, () => ({ productId: "mate-calabaza", quantity: 1 }))]) {
       expect(hasErrorCode(await agent.signCart!(lines).catch((error: unknown) => error), "InvalidIntent")).toBe(true);
     }
+  });
+
+  it("refuses a line of no units, or of a fraction, before the rail records any spend (T148 review)", async () => {
+    const ledger = createInMemorySpendLedger();
+    const credential = await makeTestCredential();
+    const mandate = await makeTestMandate({ principal: credential.issuerKeypair, agent: credential.subjectKeypair });
+    const agent = await createAgent({
+      credential: credential.jws,
+      mandate: mandate.jws,
+      catalog: createMockCatalog(),
+      verifier: createStubVerifier(),
+      mandateVerifier: createStubMandateVerifier(),
+      signer: credential.subjectKeypair,
+      ledger,
+    });
+    for (const quantity of [0, -1, 1.5]) {
+      const refused = await agent.signCart!([{ productId: "mate-calabaza", quantity: 1 }, { productId: "bombilla-alpaca", quantity }]).catch((error: unknown) => error);
+      expect(hasErrorCode(refused, "InvalidIntent")).toBe(true);
+    }
+    expect(await ledger.spentOn(credential.credential.credentialSubject.id, "USDC", new Date())).toBe("0.0000000");
   });
 
   it("is withheld from an agent that could not buy, as create_purchase_intent is", async () => {

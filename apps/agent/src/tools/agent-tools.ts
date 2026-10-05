@@ -316,6 +316,10 @@ async function prepareIntent(
   if (lines.length === 0 || lines.length > MAX_INTENT_LINES) {
     throw new AgentPassError("InvalidIntent", `a purchase has 1 to ${MAX_INTENT_LINES} lines`, { details: { lines: lines.length } });
   }
+  // Before the rail is asked anything: it records spend for what it authorises.
+  if (lines.some((line) => !Number.isSafeInteger(line.quantity) || line.quantity < 1)) {
+    throw new AgentPassError("InvalidIntent", "every line needs a quantity of at least 1", { details: { quantities: lines.map((line) => line.quantity) } });
+  }
   // Every line from this venue's own catalogue, at the price it quotes now.
   const products: Product[] = [];
   for (const line of lines) products.push(await catalog.getProduct(line.productId));
@@ -752,8 +756,21 @@ export type CartIntentSigner = (lines: ReadonlyArray<{ readonly productId: strin
 export function createCartIntentSigner(deps: AgentToolsDeps): CartIntentSigner | undefined {
   const purchaseIntentDeps = purchaseIntentDepsOf(deps);
   if (purchaseIntentDeps === undefined) return undefined;
-  return async (lines) => intentResult(await buildSignedIntent(purchaseIntentDeps, lines));
+  return async (lines) => {
+    // A boundary like the tool's, with the tool's own rules per line (T148 review).
+    const parsed = cartLinesSchema.safeParse(lines);
+    if (!parsed.success) {
+      throw new AgentPassError("InvalidIntent", "the cart's lines are not valid", { details: { issues: parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`) } });
+    }
+    return intentResult(await buildSignedIntent(purchaseIntentDeps, parsed.data));
+  };
 }
+
+/** What a cart signer accepts: the tool's product id and quantity rules, one to ten lines. */
+const cartLinesSchema = z
+  .array(z.strictObject({ productId: productIdSchema, quantity: z.int().min(1).max(10_000) }))
+  .min(1)
+  .max(MAX_INTENT_LINES);
 
 /**
  * The agent's tool set — three to five tools, depending on what verified and

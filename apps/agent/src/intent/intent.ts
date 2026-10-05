@@ -23,7 +23,7 @@ import { z } from "zod";
 
 import { assetIdSchema, venueIdSchema } from "../catalog/ids.js";
 import { productIdSchema } from "../catalog/catalog.js";
-import { fromScaledAmount, multiplyAmount } from "../scope/amount.js";
+import { fromScaledAmount, multiplyAmount, toScaledAmount } from "../scope/amount.js";
 
 export const AGENTPAY_INTENT_TYPE = "PurchaseIntent";
 export const AGENTPAY_INTENT_FAMILY = "AgentPayIntent";
@@ -68,15 +68,22 @@ export const intentLineSchema = z.strictObject({
 
 /**
  * A cart (T148): two to ten lines at the one venue the intent names, all
- * priced in one asset. `totalAmount` is Σ `unitAmount x quantity`, and like
- * the single form's it is never what a decision reads: every check derives
- * the total from the lines again. The same product may appear in two lines.
+ * priced in one asset. `totalAmount` is Σ `unitAmount x quantity` (the schema
+ * refuses any other), and like the single form's it is never what a decision
+ * reads: every check derives the total from the lines again. The same product may appear in two lines.
  */
-export const intentCartSchema = z.strictObject({
-  lines: z.array(intentLineSchema).min(2).max(MAX_INTENT_LINES),
-  totalAmount: decimalAmountSchema,
-  asset: assetIdSchema,
-});
+export const intentCartSchema = z
+  .strictObject({
+    lines: z.array(intentLineSchema).min(2).max(MAX_INTENT_LINES),
+    totalAmount: decimalAmountSchema,
+    asset: assetIdSchema,
+  })
+  // A cart that states a total its lines do not add up to is not signed, nor verified (T148 review): no decision
+  // reads `totalAmount`, but a verifier outside AgentPey might.
+  .refine((cart) => toScaledAmount(cart.totalAmount) === cart.lines.reduce((sum, line) => sum + multiplyAmount(line.unitAmount, line.quantity), 0n), {
+    message: "totalAmount must be the sum of unitAmount x quantity over the lines",
+    path: ["totalAmount"],
+  });
 
 /** What the intent buys: one product, or a cart. */
 export const intentPurchaseSchema = z.union([intentSingleSchema, intentCartSchema]);

@@ -96,6 +96,39 @@ describe("signIntent", () => {
   });
 });
 
+describe("a cart intent (T148)", () => {
+  const cart = (totalAmount: string) =>
+    ({
+      ...anIntent(),
+      purchase: {
+        lines: [
+          { productId: "mate-calabaza", quantity: 1, unitAmount: "18.50" },
+          { productId: "bombilla-alpaca", quantity: 2, unitAmount: "12.00" },
+        ],
+        totalAmount,
+        asset: USDC_TESTNET,
+      },
+    }) as PurchaseIntent;
+
+  it("signs and verifies when its total is the sum of its lines, however it is written", async () => {
+    for (const total of ["42.50", "42.5000000"]) {
+      const { jws } = await signIntent(cart(total), AGENT);
+      expect((await verifyIntent(jws, INSIDE)).intent.purchase).toMatchObject({ totalAmount: total });
+    }
+  });
+
+  it("refuses to sign a cart whose stated total is not the sum of its lines (T148 review)", async () => {
+    for (const total of ["42.49", "0", "85.00"]) {
+      await expect(signIntent(cart(total), AGENT)).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "InvalidIntent"));
+    }
+  });
+
+  it("refuses a cart of a single line: one product is the single form", async () => {
+    const one = { ...anIntent(), purchase: { lines: [{ productId: "mate-calabaza", quantity: 1, unitAmount: "18.50" }], totalAmount: "18.50", asset: USDC_TESTNET } } as PurchaseIntent;
+    await expect(signIntent(one, AGENT)).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "InvalidIntent"));
+  });
+});
+
 describe("verifyIntent", () => {
   it("round-trips a signed intent", async () => {
     const signed = await signIntent(anIntent(), AGENT);
