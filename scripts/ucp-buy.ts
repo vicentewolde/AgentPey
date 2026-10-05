@@ -17,8 +17,9 @@
  * of a bare HTTP 402:
  *
  * 1. Issue the agent's credential and the principal's Mandate, anchored on
- *    testnet. The Mandate's limits are the UCP rail's: 3.00 USDC per purchase,
- *    5.00 per day.
+ *    testnet. The Mandate's limits are the UCP rail's, read from
+ *    `deployments/testnet.json` (5.00 USDC per purchase, 10.00 per day since
+ *    T148, `R-19`).
  * 2. The agent signs a purchase intent for the product, from the store's own
  *    catalogue (its venue comes from the Vitrinee platform directory, C-141).
  * 3. `executeUcpPayment`: open the UCP checkout, check its payment
@@ -65,12 +66,14 @@ import { deriveP256, p256FromScalar } from "../packages/ap2/src/keys.js";
 import { PLATFORM_AP2_KID } from "./lib/ap2-platform.js";
 
 import { ReceiptRegistryClient, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
+import { readDeployment } from "./lib/deployment.js";
 import { readEnvFile } from "./lib/env-file.js";
 import { TESTNET } from "./lib/network.js";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const ENV_PATH = resolve(REPO_ROOT, ".env.local");
 const VITRINEE_DEPLOYMENT = resolve(REPO_ROOT, "deployments/vitrinee-testnet.json");
+const AGENTPEY_DEPLOYMENT = resolve(REPO_ROOT, "deployments/testnet.json");
 const RECEIPT_OUT = resolve(REPO_ROOT, ".vitrinee/last-ucp-receipt.jws");
 const AP2_OUT = resolve(REPO_ROOT, ".vitrinee/ap2-t134");
 /** The label the agent's AP2 key is derived under, from its Stellar seed (R-16). */
@@ -166,7 +169,13 @@ async function main(): Promise<void> {
   out("\nAgentPey · compra UCP pagada sobre Stellar · Fase 7 (T122) · testnet");
   line("tienda", storeUrl);
   for (const [i, l] of lines.entries()) line(lines.length === 1 ? "producto" : `línea ${i + 1}`, `${l.productId} × ${l.quantity}`);
-  line("pagador", `${railId} (policy_rail UCP: 3.00 por compra, 5.00 por día)`);
+  // The Mandate's limits are the rail's own, as recorded when it was deployed: the two gates on the same numbers (T148, R-19).
+  const recorded = (await readDeployment(AGENTPEY_DEPLOYMENT)).policyRailUcp;
+  if (recorded === null || recorded.contractId !== railId) {
+    throw new AgentPassError("ConfigError", "UCP_POLICY_RAIL_CONTRACT_ID is not the UCP rail recorded in deployments/testnet.json", { details: { railId, recorded: recorded?.contractId ?? null } });
+  }
+  const limits = { perTx: recorded.perTx, perDay: recorded.perDay };
+  line("pagador", `${railId} (policy_rail UCP: ${limits.perTx} por compra, ${limits.perDay} por día)`);
 
   // The store's venue, from the Vitrinee platform's public directory (C-141).
   const registry = await expandPlatformVenues(DEFAULT_VENUE_REGISTRY);
@@ -180,7 +189,7 @@ async function main(): Promise<void> {
     actions: ["catalog:read", "intent:create"],
     venues: [venue.venueId],
     assets: [`USDC:${USDC_CONTRACT}`],
-    limits: { perTx: "3.00", perDay: "5.00", currency: "USDC" },
+    limits: { ...limits, currency: "USDC" },
   };
 
   step(1, "Credencial y Mandato, firmados y anclados en testnet");

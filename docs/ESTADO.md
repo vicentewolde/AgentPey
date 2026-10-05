@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-05
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T147 · La tienda avisa al agente: la orden muestra el despacho y los avisos firmados ("creada", "despachada") llegan verificados a agentpey.com, probado con un despacho real en Shopify
-**Siguiente paso:** `/revisar` de T148 (`cc/t148-varios-productos`); push, PR y merge con OK; después la compra real con dos productos, que pide antes un rail UCP nuevo con un `perTx` mayor (redeploy, con OK y valores del usuario). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** `/revisar` de T148 (`cc/t148-varios-productos`); push, PR y merge con OK; después la compra real con dos productos desde el rail UCP nuevo (`R-19`), con OK. El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -43,7 +43,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Para la compra real de T148: dar el OK y los valores de un rail UCP nuevo (`perTx` y `perDay`; el contrato los fija al nacer). Ningún par de productos de agentcommerce cabe bajo 3,00 USDC
+- [ ] Para la compra real de T148: el OK de la compra (rail UCP nuevo `CBDRI5B7…D3YA` ya desplegado, 5,00/10,00, con 5 USDC, `R-19`). El rail viejo `CA6P4KKV…` conserva unos 1,59 USDC que solo su principal puede retirar
 - [ ] Para T130: conseguir la tienda de terceros. Para T144: confirmar si hay acceso a dots, Muse y Grok Bot
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard

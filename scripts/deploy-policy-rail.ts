@@ -25,13 +25,14 @@
  * cannot be read out of the process list.
  *
  * `--profile ucp` (T122) deploys a second instance of the same contract for
- * UCP purchases at real stores, with limits a real product fits in: 3.00 USDC
- * per purchase and 5.00 per day, the same as a tenant's rail (C-133). It is
+ * UCP purchases at real stores, with limits a real cart fits in: 5.00 USDC
+ * per purchase and 10.00 per day since T148 (`R-19`; 3.00 and 5.00 before,
+ * the same as a tenant's rail, C-133). It is
  * recorded apart (`policyRailUcp`, `UCP_POLICY_RAIL_CONTRACT_ID`), so the
  * shared rail and everything that pays from it are untouched.
  *
- * `--profile mcp` (T128, `R-9`) is the MCP server's own rail: the same limits
- * as `ucp`, but owned by the MCP agent's key (`MCP_AGENT_SECRET_KEY`, written
+ * `--profile mcp` (T128, `R-9`) is the MCP server's own rail: 3.00 and 5.00,
+ * the limits `ucp` had when it was decided, owned by the MCP agent's key (`MCP_AGENT_SECRET_KEY`, written
  * by `pnpm run mcp:setup`), recorded as `policyRailMcp`. That key holds no
  * USDC, so this script does not fund it: the principal sends USDC to the
  * rail's contract id from their own wallet.
@@ -96,11 +97,15 @@ const SHARED: RailProfile = {
   fundFromOwner: true,
 };
 
-/** Real store products cost 1.5 to 3 USDC: one fits, three of them in a day, and a 3.01 purchase is refused on chain. */
+/**
+ * Real store products cost 1.5 to 3 USDC. Since T148 (`R-19`) a purchase may be a
+ * cart, and no two agentcommerce products fit under 3.00: 5.00 per purchase
+ * fits two, 10.00 per day a few carts, and a 5.01 purchase is refused on chain.
+ */
 const UCP: RailProfile = {
   name: "ucp",
-  perTx: "3.0000000",
-  perDay: "5.0000000",
+  perTx: "5.0000000",
+  perDay: "10.0000000",
   fundThreshold: "1.0000000",
   fundTarget: "5.0000000",
   recordKey: "policyRailUcp",
@@ -109,10 +114,12 @@ const UCP: RailProfile = {
   fundFromOwner: true,
 };
 
-/** The MCP server's rail (R-9): the UCP limits, its own owner, funded by the principal. */
+/** The MCP server's rail (R-9): 3.00 and 5.00, its own owner, funded by the principal. Not raised with `ucp` (R-19). */
 const MCP: RailProfile = {
   ...UCP,
   name: "mcp",
+  perTx: "3.0000000",
+  perDay: "5.0000000",
   recordKey: "policyRailMcp",
   envKey: "MCP_POLICY_RAIL_CONTRACT_ID",
   ownerEnvKey: "MCP_AGENT_SECRET_KEY",

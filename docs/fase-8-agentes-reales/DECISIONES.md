@@ -570,3 +570,29 @@ pasa, pero AgentPey no podría comprar un carrito). Agregar `lines` a la
 herramienta del modelo (su esquema JSON quedaba con `product_id` y `quantity`
 opcionales).
 
+### R-19 · El rail UCP sube a 5,00 por compra y 10,00 por día, en un contrato nuevo; el del MCP no cambia · `Vigente` — ajusta `E-5`
+**Fecha:** 2026-10-05 · **Tarea:** T148 · Decidida por el usuario (subir el `perTx`); los valores, propuestos por Claude Code y **aprobados por el usuario**
+
+Para la compra real de T148 ningún par de productos de `agentcommerce` cabía
+bajo 3,00 USDC (el más barato, imán + taza: 3480 CLP, unos 3,66 USDC). El
+contrato `policy_rail` fija `per_tx` y `per_day` en su constructor y no tiene
+cómo cambiarlos, así que subirlos es desplegar otra instancia del mismo wasm
+(`8690d1f5…`): `CBDRI5B72VWNZGRVUXNMUNOSYWXGB7RZLK5ITRVOVSGOS4VXPCRMD3YA`, 5,00
+por compra y 10,00 por día, mismos dueño (`GAK6E5…`, el agente) y principal
+(`GD2MCESI…`), fondeado con 5 USDC desde la reserva. `UCP_POLICY_RAIL_CONTRACT_ID`
+y `deployments/testnet.json` (`policyRailUcp`) apuntan al nuevo. `ucp:buy` toma
+los topes del Mandato del rail registrado, para que las dos barreras miren los
+mismos números.
+
+El rail viejo (`CA6P4KKV…VIYP`, 3,00 y 5,00) queda con lo que tenía (unos 1,59
+USDC); solo su principal puede retirarlo. Pagó los casos de T122 a T147, y el
+reembolso real de T124 (`E-25`) vuelve a él, que es quien pagó esa compra.
+
+El rail del MCP (`R-9`) sigue en 3,00 y 5,00: su perfil ya no hereda los topes
+del UCP.
+
+**Alternativas descartadas.** Pedir al usuario un producto más barato en Shopify
+(no toca contratos, pero el usuario eligió subir el tope). Un contrato con
+`set_limits` (cambiar los topes sin redesplegar, pero es un contrato nuevo y un
+punto más que proteger).
+
