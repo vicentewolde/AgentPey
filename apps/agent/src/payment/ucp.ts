@@ -147,6 +147,16 @@ const checkoutSchema = z.looseObject({
 });
 type UcpCheckout = z.infer<typeof checkoutSchema>;
 
+/** The lines a checkout says it is for (T148): what the store will charge and ship, read from its own answer. */
+const checkoutLinesSchema = z.array(z.looseObject({ item: z.looseObject({ id: z.string().min(1) }), quantity: z.int().positive() })).min(1);
+
+/** Whether two lists name the same lines, in the same order. */
+function sameLines(a: readonly UcpLine[], b: readonly UcpLine[]): boolean {
+  return a.length === b.length && a.every((line, i) => line.productId === b[i]!.productId && line.quantity === b[i]!.quantity);
+}
+
+const linePairs = (lines: readonly UcpLine[]) => lines.map((line) => [line.productId, line.quantity]);
+
 // ---------------------------------------------------------------- public API
 
 export interface UcpDestination {
@@ -371,7 +381,7 @@ function requirementsOf(
   status: number,
   store: StoreHandler,
   origin: string,
-): { checkout: UcpCheckout; requirements: PaymentRequirements; raw: Readonly<Record<string, unknown>> } {
+): { checkout: UcpCheckout; requirements: PaymentRequirements; raw: Readonly<Record<string, unknown>>; lines: readonly UcpLine[] } {
   const checkout = checkoutSchema.safeParse(json);
   if (!checkout.success || status >= 300) {
     throw new AgentPassError("MerchantRejectedRequest", "the store did not open a checkout for this product", {
@@ -395,9 +405,18 @@ function requirementsOf(
       details: { checkoutId: checkout.data.id, payTo: requirements.payTo, declaredPayTo: store.declared.pay_to, asset: requirements.asset, network: requirements.network },
     });
   }
+  const lines = checkoutLinesSchema.safeParse((json as { line_items?: unknown }).line_items);
+  if (!lines.success) {
+    throw new AgentPassError("MerchantRejectedRequest", "the checkout does not say which lines it is for", { details: { checkoutId: checkout.data.id } });
+  }
   // `raw` is the store's bytes as parsed, an object (the schema above passed): what AP2 closes over must be exactly
   // what the store signed, and zod's output may drop or reorder members.
-  return { checkout: checkout.data, requirements, raw: json as Readonly<Record<string, unknown>> };
+  return {
+    checkout: checkout.data,
+    requirements,
+    raw: json as Readonly<Record<string, unknown>>,
+    lines: lines.data.map((line) => ({ productId: line.item.id, quantity: line.quantity })),
+  };
 }
 
 function totalOf(checkout: UcpCheckout): { amount: number; currency: string } {
@@ -422,15 +441,21 @@ export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch
     ...(input.buyer === undefined ? {} : { buyer: input.buyer }),
     fulfillment: { methods: [{ type: "shipping", destinations: [input.destination] }] },
   });
-  const { checkout, requirements, raw } = requirementsOf(created.json, created.status, store, origin);
+  const { checkout, requirements, raw, lines: opened } = requirementsOf(created.json, created.status, store, origin);
+  // The store's own answer says what it will charge for: it must be the lines asked for (T148 review).
+  if (!sameLines(lines, opened)) {
+    throw new AgentPassError("InvalidProduct", "the store opened a checkout for other lines than the ones asked for", {
+      details: { checkoutId: checkout.id, asked: linePairs(lines), opened: linePairs(opened) },
+    });
+  }
   return {
     storeUrl: origin,
     endpoint: store.endpoint,
     handlerId: store.handlerId,
     checkoutId: checkout.id,
-    productId: lines[0]!.productId,
-    quantity: lines[0]!.quantity,
-    lines,
+    productId: opened[0]!.productId,
+    quantity: opened[0]!.quantity,
+    lines: opened,
     requirements,
     total: totalOf(checkout),
     checkout: raw,
@@ -460,13 +485,17 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
 
   async function payAndMark(): Promise<UcpPaymentReceipt> {
     // The checkout is for what the signed intent says, line by line (T148): the amount alone is reconciled below,
-    // and two carts can cost the same.
+    // and two carts can cost the same. `quote.lines` are the store's own, read from its answer; with `recheck`, the
+    // lines it answers now are compared again below.
     const intended = intentLines(input.intent.purchase);
-    if (intended.length !== quote.lines.length || intended.some((line, i) => line.productId !== quote.lines[i]!.productId || line.quantity !== quote.lines[i]!.quantity)) {
-      throw new AgentPassError("InvalidProduct", "the checkout is for other lines than the signed intent", {
-        details: { checkoutId: quote.checkoutId, intent: intended.map((l) => [l.productId, l.quantity]), checkout: quote.lines.map((l) => [l.productId, l.quantity]) },
-      });
-    }
+    const forIntent = (lines: readonly UcpLine[]): void => {
+      if (!sameLines(intended, lines)) {
+        throw new AgentPassError("InvalidProduct", "the checkout is for other lines than the signed intent", {
+          details: { checkoutId: quote.checkoutId, intent: linePairs(intended), checkout: linePairs(lines) },
+        });
+      }
+    };
+    forIntent(quote.lines);
     const call = caller(deps.fetchImpl ?? fetch, deps.platformProfile);
     let requirements = quote.requirements;
     let handlerId = quote.handlerId;
@@ -480,8 +509,9 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
       const current = await call("GET", `${store.endpoint}/checkout-sessions/${encodeURIComponent(quote.checkoutId)}`);
       let fresh: PaymentRequirements;
       let freshRaw: Readonly<Record<string, unknown>>;
+      let freshLines: readonly UcpLine[];
       try {
-        ({ requirements: fresh, raw: freshRaw } = requirementsOf(current.json, current.status, store, quote.storeUrl));
+        ({ requirements: fresh, raw: freshRaw, lines: freshLines } = requirementsOf(current.json, current.status, store, quote.storeUrl));
       } catch (error) {
         throw new AgentPassError("QuoteChanged", "the store's checkout no longer matches what it quoted", { cause: error, details: { checkoutId: quote.checkoutId } });
       }
@@ -491,6 +521,8 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
           details: { checkoutId: quote.checkoutId, quoted: { payTo: quote.requirements.payTo, amount: quote.requirements.amount }, now: { payTo: fresh.payTo, amount: fresh.amount } },
         });
       }
+      // The same total can be another cart: the lines the store would charge now must still be the intent's.
+      forIntent(freshLines);
       requirements = fresh;
       handlerId = store.handlerId;
       latest = freshRaw;

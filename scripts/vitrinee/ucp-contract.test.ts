@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeVenueId } from "../../apps/agent/src/catalog/ids.js";
 import { loadVenueRegistry } from "../../apps/agent/src/catalog/registry.js";
 import type { PurchaseIntent } from "../../apps/agent/src/intent/intent.js";
-import { AGENTPEY_PLATFORM_PROFILE, AGENTPEY_PLATFORM_PROFILE_2026_08_25, AGENTPEY_PLATFORM_PROFILE_AP2, executeUcpPayment, type ExecuteUcpPaymentDeps } from "../../apps/agent/src/payment/ucp.js";
+import { AGENTPEY_PLATFORM_PROFILE, AGENTPEY_PLATFORM_PROFILE_2026_08_25, AGENTPEY_PLATFORM_PROFILE_AP2, executeUcpPayment, payUcpQuote, quoteUcpCheckout, type ExecuteUcpPaymentDeps } from "../../apps/agent/src/payment/ucp.js";
 import { deriveP256 } from "../../packages/ap2/src/keys.js";
 import { mayHaveBeenPaid } from "../../apps/agent/src/payment/x402.js";
 import { createInMemorySpendLedger } from "../../apps/agent/src/ledger/spend-ledger.js";
@@ -327,6 +327,52 @@ describe("AgentPey pays a cart at a Vitrinee store over UCP (T148)", () => {
     expect(error).toMatchObject({ code: "InvalidProduct" });
     expect(mayHaveBeenPaid(error)).toBe(false);
     expect(scheme.calls).toEqual([]);
+  });
+
+  it("refuses a checkout whose store answers other lines than the ones asked for (T148 review)", async () => {
+    const swap: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      if (init?.method !== "POST" || !String(input).endsWith("/checkout-sessions")) return res;
+      const body = (await res.json()) as { line_items: Array<{ item: { id: string } }> };
+      body.line_items[1]!.item.id = "polera-valpo-l";
+      return new Response(JSON.stringify(body), { status: res.status, headers: res.headers });
+    };
+    const error = await attempt(() =>
+      quoteUcpCheckout({ fetchImpl: swap }, { storeUrl: server.url, lines: [{ productId: "gorro-andes", quantity: 1 }, { productId: "stickers-cordillera", quantity: 2 }], destination: DESTINATION }),
+    );
+    expect(error).toMatchObject({ code: "InvalidProduct", details: { opened: [["gorro-andes", 1], ["polera-valpo-l", 2]] } });
+  });
+
+  it("refuses, on re-reading a kept quote, a cart changed to other lines at the same total, before anything is authorised or signed (T148 review)", async () => {
+    const scheme = fakeScheme();
+    const grant = scope();
+    const lines = [
+      { productId: "gorro-andes", quantity: 1 },
+      { productId: "stickers-cordillera", quantity: 2 },
+    ];
+    const quote = await quoteUcpCheckout({}, { storeUrl: server.url, lines, destination: DESTINATION });
+    // Someone with the checkout's id splits the two packs into two lines: the same total, so the same requirements.
+    const changed = await fetch(`${quote.endpoint}/checkout-sessions/${quote.checkoutId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json", "UCP-Agent": `profile="${AGENTPEY_PLATFORM_PROFILE}"` },
+      body: JSON.stringify({ line_items: [{ item: { id: "gorro-andes" }, quantity: 1 }, { item: { id: "stickers-cordillera" }, quantity: 1 }, { item: { id: "stickers-cordillera" }, quantity: 1 }] }),
+    });
+    expect(((await changed.json()) as { line_items: unknown[] }).line_items).toHaveLength(3);
+    const ledger = createInMemorySpendLedger();
+    const theIntent = cartIntent([["gorro-andes", 1, HAT], ["stickers-cordillera", 2, STICKERS]], "15.7578948");
+    const error = await attempt(() =>
+      payUcpQuote({ policyRail: createLocalPolicyRail({ ledger }), signerSecret: agent.secret(), schemeForTests: scheme }, quote, {
+        intent: theIntent,
+        scope: grant,
+        mandate: mandate(grant),
+        ...venue(),
+        recheck: true,
+      }),
+    );
+    expect(error).toMatchObject({ code: "InvalidProduct", details: { checkout: [["gorro-andes", 1], ["stickers-cordillera", 1], ["stickers-cordillera", 1]] } });
+    expect(mayHaveBeenPaid(error)).toBe(false);
+    expect(scheme.calls).toEqual([]);
+    expect(await ledger.hasRecorded(theIntent.intentId)).toBe(false);
   });
 
   it("refuses before signing a cart above the per-transaction limit, though each line is under it", async () => {
