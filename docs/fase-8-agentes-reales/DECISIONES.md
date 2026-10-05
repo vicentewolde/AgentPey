@@ -543,11 +543,18 @@ agente tiene que decir qué compra. Se decide:
 4. **La herramienta `create_purchase_intent` no cambia** (mismo esquema, misma
    respuesta): es lo que el modelo puede llamar. El carrito se firma con
    `agent.signCart`, que no es una herramienta y existe solo si el agente puede
-   comprar; corre el mismo `buildSignedIntent` (las dos autoridades, las dos
-   vivas, el rail). Una línea por `signCart` da la forma simple.
+   comprar; valida sus líneas con zod (las reglas de la herramienta) y corre el
+   mismo `buildSignedIntent` (las dos autoridades, las dos vivas, el rail), que
+   rechaza una cantidad menor que 1 antes de que el rail registre gasto. Una
+   línea por `signCart` da la forma simple. El esquema del carrito exige que
+   `totalAmount` sea la suma de las líneas (los tres, corregidos en `/revisar`).
 5. **Antes de autorizar**, `payUcpQuote` compara las líneas del checkout con las
    de la intención, en orden (`InvalidProduct`): dos carritos pueden costar lo
-   mismo. Por eso un checkout de dos gorros contra una intención de uno ahora se
+   mismo. Las líneas son **las que responde la tienda** (corregido en
+   `/revisar`): `quoteUcpCheckout` rechaza un checkout abierto con otras líneas
+   que las pedidas, y con `recheck` (el camino del MCP) se comparan otra vez las
+   que la tienda tiene ahora, porque un `PUT` puede cambiar el carrito sin
+   cambiar el total ni los requisitos de pago. Por eso un checkout de dos gorros contra una intención de uno ahora se
    rechaza con `InvalidProduct` y no con `TermsAmountMismatch`; sigue siendo
    antes de firmar nada.
 6. **AP2:** el mandato abierto lleva una entrada `checkout.line_items` por línea
@@ -582,7 +589,8 @@ por compra y 10,00 por día, mismos dueño (`GAK6E5…`, el agente) y principal
 (`GD2MCESI…`), fondeado con 5 USDC desde la reserva. `UCP_POLICY_RAIL_CONTRACT_ID`
 y `deployments/testnet.json` (`policyRailUcp`) apuntan al nuevo. `ucp:buy` toma
 los topes del Mandato del rail registrado, para que las dos barreras miren los
-mismos números.
+mismos números; por eso el archivo de despliegue valida `perTx` y `perDay` como
+montos decimales (corregido en `/revisar`).
 
 El rail viejo (`CA6P4KKV…VIYP`, 3,00 y 5,00) queda con lo que tenía (unos 1,59
 USDC); solo su principal puede retirarlo. Pagó los casos de T122 a T147, y el

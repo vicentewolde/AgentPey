@@ -1282,10 +1282,19 @@ dos átomos, y el recibo se contradiría.
   suma, y un faltante se informa en la línea que lo provoca
   (`$.line_items[i]`). Un grupo de despacho cubre todas las líneas (UCP: un grupo
   por método cuando la plataforma no pide varios).
-- **Cotización.** La sesión guarda una cotización por línea (unitario y total en
-  USDC y en pesos, SKU y nombre) y la suma. Un `PUT` que cambia las líneas toma
-  una cotización nueva aunque el total sea el mismo: el pedido se hace de esa
-  foto una vez pagado.
+- **Cotización.** La sesión guarda una cotización por línea (producto, unitario
+  y total en USDC y en pesos, SKU y nombre) y la suma. Un `PUT` que cambia las
+  líneas toma una cotización nueva aunque el total sea el mismo: el pedido se
+  hace de esa foto una vez pagado. Se compara por producto, no por SKU y nombre
+  (en Jumpseller dos productos pueden compartirlos). Un carrito que no se puede
+  cotizar (falta stock) se queda sin foto, para no mostrar los totales del
+  anterior (los dos, corregidos en `/revisar`).
+- **Cobrado y sin pedido.** Si la foto de un checkout ya pagado no es de sus
+  líneas o no suma lo cobrado, no se crea pedido (no se podría firmar el
+  recibo, `VT-45`): la sesión queda retenida con su liquidación, se registra
+  para conciliar y responde 500 `SettlementUnaccounted`, como decidió `VT-41`
+  para la plata que se movió y no se puede convertir en pedido. No ocurre por
+  construcción; hay un test que lo fuerza.
 - **Reserva.** `complete` reserva las unidades de todas las líneas, sumadas por
   producto, o ninguna (`tryReserveAll`), y las suelta todas al terminar.
 - **Pedido.** `OrderRecord` guarda `items[]` en vez de `product` y `quantity`.

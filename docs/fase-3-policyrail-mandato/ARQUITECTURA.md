@@ -240,6 +240,11 @@ Los ocho datos del `PurchaseIntent` (§7 de la arquitectura de la Fase 2) alcanz
 para la comparación completa: agente, principal, venue, producto/cantidad/monto,
 asset, límite y ventana. **La forma del `PurchaseIntent` no cambió.**
 
+> **Desde T148 (Fase 8, `R-18`):** un carrito es una segunda forma de `purchase`
+> (`lines`, de 2 a 10). `checkMandate` revisa `grant.products` en **cada** línea
+> y compara la **suma** de las líneas con `perTx` (chequeo 8); `reconcileTerms`
+> también compara la suma. Con un producto, todo lo de arriba sigue igual.
+
 Los ocho códigos son propios de la fase, distintos de los `Scope*` de la Fase 2
 aunque `grant` y `scope` compartan forma (`M-9`): permite saber, sin ambigüedad,
 cuál de las dos autoridades rechazó una compra.

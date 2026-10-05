@@ -7949,3 +7949,17 @@ subir el `perTx`, y el contrato `policy_rail` lo fija al nacer: hace falta despl
 del usuario). `AGENTS.md`: sin cambios (T148 no es delegable; toca `checkMandate`). Exponential: T148 a
 `IN_PROGRESS`.
 
+## 2026-10-05 (30) — cc/t148-varios-productos (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T148: un bloqueante (el agente comparaba la intención con las líneas pedidas, no con las que
+responde la tienda; con `recheck` solo comparaba el monto, así que un `PUT` a otro carrito del mismo total se pagaba
+sin AP2), dos importantes (`signCart` sin zod, con gasto registrado antes de fallar; `perTx`/`perDay` del archivo de
+despliegue sin validar) y seis sugerencias, todos corregidos a pedido del usuario. Con OK del usuario, rail UCP nuevo
+`CBDRI5B72VWNZGRVUXNMUNOSYWXGB7RZLK5ITRVOVSGOS4VXPCRMD3YA` (5,00/10,00, 5 USDC desde la reserva, `R-19`); el del MCP
+sigue en 3,00/5,00; `ucp:buy` toma los topes del rail registrado. `pnpm check`, `vitrinee:check` y la suite (48/9/20)
+en verde.
+
+Pendiente: push, PR, merge y deploy con OK; compra real con dos productos (imán + taza) con OK. El rail viejo
+`CA6P4KKV…` conserva unos 1,59 USDC que solo su principal puede retirar. `AGENTS.md`: sin cambios.

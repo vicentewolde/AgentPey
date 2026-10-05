@@ -388,8 +388,20 @@ tienda), más un control negativo: con la regla de suma apagada, seis tests
 fallan. Se volvieron a leer los nueve recibos reales emitidos hasta hoy y todos
 cumplen la regla nueva. La suite oficial de UCP pasa de 47 a 48.
 
-**Lo que falta.** `/revisar` y la compra real. Ningún par de productos de
-`agentcommerce` cabe bajo el tope de 3,00 USDC por compra del rail UCP; el
-usuario eligió subirlo, y como el contrato fija sus topes al nacer, es
-desplegar otra instancia del rail (con su OK y sus valores).
+**La revisión.** `/revisar` encontró una falla seria, corregida: el agente
+comparaba la intención con las líneas que él había pedido, no con las que la
+tienda tenía. Si alguien cambiaba el carrito por otro del mismo precio entre la
+cotización y el pago, sin AP2 el agente pagaba igual, aunque el producto nuevo
+no estuviera permitido. Ahora compara con lo que responde la tienda, al cotizar
+y otra vez al releer antes de pagar. También se corrigieron un firmador de
+carritos que no validaba su entrada (una cantidad cero dejaba presupuesto
+diario ocupado), los topes del rail leídos sin validar, y seis detalles más.
+
+**El rail nuevo** (`R-19`). Ningún par de productos de `agentcommerce` cabía
+bajo 3,00 USDC por compra. Como el contrato fija sus topes al nacer, con OK del
+usuario se desplegó otro rail UCP de 5,00 por compra y 10,00 por día, con 5
+USDC de la reserva. El del MCP no cambió.
+
+**Lo que falta.** Push, PR, merge y deploy, y después la compra real con dos
+productos.
 

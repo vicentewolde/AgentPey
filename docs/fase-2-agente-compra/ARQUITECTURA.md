@@ -212,6 +212,14 @@ interface PurchaseIntent {
 }
 ```
 
+> **Desde T148 (Fase 8, `R-18`):** `purchase` tiene una segunda forma, el
+> carrito: `{ lines: [{ productId, quantity, unitAmount }], totalAmount, asset }`,
+> de 2 a 10 líneas, con `totalAmount` igual a la suma (el esquema rechaza otro).
+> La forma de arriba sigue siendo la de un producto, byte por byte. `checkScope`
+> (§6) no cambia: un carrito se le presenta como una unidad al precio total
+> (`scopeRequestOf`). La herramienta `create_purchase_intent` sigue siendo de un
+> producto; un carrito se firma con `agent.signCart`.
+
 Firmado por el **agente** (no por el emisor de la credencial) — misma
 maquinaria VC-JWT de la Fase 1: JWS compacto EdDSA, `kid` nunca elige la llave
 de verificación, firma antes que ventana temporal (`B-18`).
