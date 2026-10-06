@@ -59,6 +59,13 @@
   </p>
 
   <section class="card">
+    <h2><span data-tr="en">0. What this page sees</span><span data-tr="es">0. Lo que ve esta página</span></h2>
+    <p><span data-tr="en">Whether each wallet's extension is reachable from this page. An extension that does not show up here cannot be used here, even if it is installed.</span><span data-tr="es">Si la extensión de cada wallet se puede usar desde esta página. Una extensión que no aparece aquí no se puede usar aquí, aunque esté instalada.</span></p>
+    <table><tbody id="detected"><tr><td>…</td></tr></tbody></table>
+    <button id="detect" class="btn" type="button" style="margin-top:12px"><span data-tr="en">Check again</span><span data-tr="es">Revisar de nuevo</span></button>
+  </section>
+
+  <section class="card">
     <h2><span data-tr="en">1. Connect a wallet</span><span data-tr="es">1. Conecta una wallet</span></h2>
     <p><span data-tr="en">Pick the wallet to test. Use a testnet account.</span><span data-tr="es">Elige la wallet que vas a probar. Usa una cuenta de testnet.</span></p>
     <button id="connect" class="btn" type="button"><span data-tr="en">Choose a wallet</span><span data-tr="es">Elegir una wallet</span></button>
@@ -113,7 +120,7 @@
     noAccount: { en: " (this account does not exist on testnet yet; the test still works)", es: " (esta cuenta todavía no existe en testnet; la prueba funciona igual)" }
   };
   var t = function (key) { return T[key][lang()]; };
-  var report = { wallet: null, walletId: null, address: null, signsMessage: null, messageVerifies: null, signsTransaction: null, transactionVerifies: null, errors: {}, userAgent: navigator.userAgent, at: null };
+  var report = { detected: null, page: location.origin, wallet: null, walletId: null, address: null, signsMessage: null, messageVerifies: null, signsTransaction: null, transactionVerifies: null, errors: {}, userAgent: navigator.userAgent, at: null };
   var paint = function () {
     var yes = function (v) { return v === null ? "-" : v ? "yes" : "no"; };
     document.getElementById("r-wallet").textContent = report.wallet || "-";
@@ -141,6 +148,26 @@
   if (typeof window.AgentpeyWallet === "undefined") { status("connect-status", false, t("noKit")); return; }
   var wallet = window.AgentpeyWallet;
   var address = null;
+
+  var NAMES = { freighter: "Freighter", xbullExtension: "xBull (extension)", lobstr: "LOBSTR", hana: "Hana" };
+  var detectNow = function () {
+    document.getElementById("detected").innerHTML = "<tr><td>…</td></tr>";
+    return wallet.detect().then(function (seen) {
+      report.detected = seen;
+      var body = document.getElementById("detected");
+      body.innerHTML = "";
+      Object.keys(NAMES).forEach(function (id) {
+        var row = document.createElement("tr");
+        var name = document.createElement("td"); name.textContent = NAMES[id];
+        var state = document.createElement("td"); state.textContent = seen[id] ? "✔ " + (lang() === "es" ? "detectada" : "detected") : "✘ " + (lang() === "es" ? "no detectada" : "not detected");
+        state.className = seen[id] ? "ok" : "err";
+        row.appendChild(name); row.appendChild(state); body.appendChild(row);
+      });
+      paint();
+    });
+  };
+  document.getElementById("detect").addEventListener("click", detectNow);
+  detectNow().then(function () { setTimeout(detectNow, 3000); });
 
   document.getElementById("connect").addEventListener("click", function () {
     status("connect-status", null, t("waiting"));

@@ -14,12 +14,47 @@ import { describe } from "./messages.js";
 import { createWallet } from "./wallet.js";
 import { OFFERED_WALLETS } from "./wallets.js";
 
+/**
+ * LOBSTR's extension answers "are you there?" by message, in up to 2 s, and the kit's picker gives every wallet 1 s:
+ * a slow answer showed LOBSTR as not installed. The question is asked once, as the page loads, and the picker reads
+ * the answer.
+ */
+class PatientLobstrModule extends LobstrModule {
+  private presence: Promise<boolean> | undefined;
+  override isAvailable(): Promise<boolean> {
+    this.presence ??= super.isAvailable().then((present) => {
+      if (!present) this.presence = undefined; // asked again next time: the extension may load later
+      return present;
+    });
+    return this.presence;
+  }
+}
+
+const freighter = new FreighterModule();
+const xbull = new xBullModule();
+const lobstr = new PatientLobstrModule();
+const hana = new HanaModule();
+void lobstr.isAvailable();
+
 StellarWalletsKit.init({
-  modules: [new FreighterModule(), new xBullModule(), new LobstrModule(), new HanaModule()],
+  modules: [freighter, xbull, lobstr, hana],
   network: Networks.TESTNET,
   authModal: { showInstallLabel: true, hideUnsupportedWallets: false },
 });
 
 const wallet = createWallet(StellarWalletsKit);
 
-Object.assign(globalThis, { AgentpeyWallet: { ...wallet, offered: OFFERED_WALLETS, WalletError, describe } });
+const within = (ms: number, check: () => Promise<boolean>): Promise<boolean> =>
+  Promise.race([check().catch(() => false), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms))]);
+
+/**
+ * Which wallets' extensions this page can see right now, with more patience than the picker (3 s each). For the lab:
+ * an extension that does not inject itself into the page (some skip `http://localhost`) shows here as `false`.
+ * xBull is reported as its extension's presence (`window.xBullSDK`); without it, xBull opens its web wallet instead.
+ */
+async function detect(): Promise<Record<string, boolean>> {
+  const [freighterSeen, lobstrSeen, hanaSeen] = await Promise.all([within(3000, () => freighter.isAvailable()), within(3000, () => lobstr.isAvailable()), within(3000, () => hana.isAvailable())]);
+  return { freighter: freighterSeen, xbullExtension: "xBullSDK" in globalThis, lobstr: lobstrSeen, hana: hanaSeen };
+}
+
+Object.assign(globalThis, { AgentpeyWallet: { ...wallet, offered: OFFERED_WALLETS, WalletError, describe, detect } });
