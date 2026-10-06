@@ -3,8 +3,9 @@
  * check found it (docs/fase-8-agentes-reales/evidencia/T143.md). Every screen starts with a SEP-53 sign-in, so a
  * wallet that cannot sign messages is offered nowhere: Albedo and Rabet answer `signMessage` with "not supported" in
  * Stellar Wallets Kit 2.7.0. LOBSTR signs messages, but cannot be told the network and signed the lab's testnet
- * transaction for mainnet: it is offered only where no transaction is signed. Hana is offered for messages only until
- * the lab shows it signs testnet transactions: the kit saying so is the assumption LOBSTR disproved.
+ * transaction for mainnet: it is offered only where no transaction is signed. Hana signs messages, but not as SEP-53
+ * (its signature does not verify with the server's check, lab, 6-oct): it is offered nowhere, since every screen
+ * signs in with SEP-53.
  */
 export type Need = "message" | "transaction";
 
@@ -12,7 +13,6 @@ export const OFFERED_WALLETS = [
   { id: "freighter", name: "Freighter", signs: ["message", "transaction"] },
   { id: "xbull", name: "xBull", signs: ["message", "transaction"] },
   { id: "lobstr", name: "LOBSTR", signs: ["message"] },
-  { id: "hana", name: "Hana", signs: ["message"] },
 ] as const satisfies ReadonlyArray<{ id: string; name: string; signs: readonly Need[] }>;
 
 export type OfferedWalletId = (typeof OFFERED_WALLETS)[number]["id"];
@@ -22,6 +22,7 @@ export const LEFT_OUT_WALLETS = [
   { id: "albedo", why: "does not sign messages (SEP-53)" },
   { id: "rabet", why: "does not sign messages (SEP-53)" },
   { id: "hot-wallet", why: "mainnet only" },
+  { id: "hana", why: "signs messages, but not as SEP-53: the server's check does not verify them" },
 ] as const;
 
 export function isOffered(id: string): id is OfferedWalletId {

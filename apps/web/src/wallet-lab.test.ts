@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -17,6 +18,13 @@ describe("the wallet lab (T143)", () => {
 
   it("verifies a SEP-53 signature with the same function a sign-in uses", () => {
     expect(checkLabMessage({ address: wallet.publicKey(), nonce: "n", signature: signStellarMessage(wallet, message) }, message)).toMatchObject({ ok: true, verified: true });
+  });
+
+  it("names a signature over the raw message, or its plain SHA-256, as not SEP-53 (what a non-SEP-53 wallet does)", () => {
+    const raw = Buffer.from(wallet.sign(Buffer.from(message, "utf8"))).toString("base64");
+    expect(checkLabMessage({ address: wallet.publicKey(), nonce: "n", signature: raw }, message)).toMatchObject({ ok: false, code: "NotSep53", message: expect.stringContaining("raw bytes") });
+    const hashed = Buffer.from(wallet.sign(createHash("sha256").update(message, "utf8").digest())).toString("base64");
+    expect(checkLabMessage({ address: wallet.publicKey(), nonce: "n", signature: hashed }, message)).toMatchObject({ ok: false, code: "NotSep53", message: expect.stringContaining("SHA-256") });
   });
 
   it("refuses a signature over another message, or by another account", () => {

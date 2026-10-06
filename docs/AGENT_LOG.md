@@ -8231,3 +8231,16 @@ README de `packages/wallet-kit`, documentación. `pnpm check`, `vitrinee:check` 
 Pendiente: los íconos de las wallets (bajarlos pide permiso del usuario), Hana en el laboratorio, las pantallas en
 local (responder, portal, inicio de sesión del MCP), y aprobar y revocar en agentpey.com tras el merge. `AGENTS.md`:
 sin cambios. Exponential: sin cambios.
+
+## 2026-10-06 (50) — cc/t143-mas-wallets (sin push)
+
+Agente: Claude Code.
+
+Qué: Hana en el laboratorio (el usuario la instaló): firma mensajes que no verifican como SEP-53, así que no se ofrece
+en ninguna pantalla y sale del archivo empaquetado. El laboratorio nombra ahora una firma que no es SEP-53 cuando es
+un error común (`NotSep53`). Lista final: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo
+mensaje. Los servidores de prueba locales se habían apagado solos tras unas horas; se volvieron a levantar.
+
+Pendiente: el criterio 2 del spec no se cumple en aprobar y revocar (una sola wallet además de Freighter): decisión del
+usuario; el inicio de sesión del MCP en local con Freighter; el permiso para bajar los íconos; aprobar y revocar en
+agentpey.com tras el merge. `AGENTS.md`: sin cambios. Exponential: sin cambios.

@@ -104,8 +104,8 @@ describe("the wallets offered", () => {
     expect(OFFERED_WALLETS.every((wallet) => (wallet.signs as readonly string[]).includes("message"))).toBe(true);
   });
 
-  it("offers LOBSTR only where no testnet transaction is signed (it signs them for mainnet), and Hana only for messages until tested", () => {
-    expect(walletsFor(["message"])).toEqual(["freighter", "xbull", "lobstr", "hana"]);
+  it("offers LOBSTR only where no testnet transaction is signed (it signs them for mainnet), and Hana nowhere (not SEP-53)", () => {
+    expect(walletsFor(["message"])).toEqual(["freighter", "xbull", "lobstr"]);
     expect(walletsFor(["message", "transaction"])).toEqual(["freighter", "xbull"]);
   });
 

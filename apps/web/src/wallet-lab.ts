@@ -10,6 +10,8 @@
  *   would accept it, so "never sent" is a property of the transaction, not a promise.
  * - The lab answers only on a local server (`localhost`, `127.0.0.1`, `[::1]`): on agentpey.com it is a 404.
  */
+import { createHash } from "node:crypto";
+
 import { verifyStellarMessage } from "@agentpass/core";
 import { Account, Keypair, Networks, Operation, StrKey, TransactionBuilder, type Transaction } from "@stellar/stellar-sdk";
 import { z } from "zod";
@@ -36,9 +38,19 @@ export function isLocalHost(host: string | undefined): boolean {
 
 /** Checks a wallet's SEP-53 signature over the challenge `nonce` was issued for. The caller has already taken the nonce. */
 export function checkLabMessage(input: z.infer<typeof labMessageSchema>, message: string): LabResult {
-  return verifyStellarMessage(input.address, message, input.signature)
-    ? { ok: true, verified: true, address: input.address }
-    : { ok: false, code: "InvalidSignature", message: "the signature does not verify as SEP-53 for that account" };
+  if (verifyStellarMessage(input.address, message, input.signature)) return { ok: true, verified: true, address: input.address };
+  // Not SEP-53: say what the wallet signed instead, when it is one of the usual mistakes (for the table and the SEP's
+  // gap list). The real screens only ever accept SEP-53.
+  const signature = Buffer.from(input.signature, "base64");
+  const key = Keypair.fromPublicKey(input.address);
+  const tried: Array<[string, Buffer]> = [
+    ["the message's raw bytes, with no SEP-53 prefix and no hash", Buffer.from(message, "utf8")],
+    ["the SHA-256 of the message, with no SEP-53 prefix", createHash("sha256").update(message, "utf8").digest()],
+    ["the hex of the message's bytes", Buffer.from(Buffer.from(message, "utf8").toString("hex"), "utf8")],
+  ];
+  const instead = signature.length === 64 ? tried.find(([, payload]) => key.verify(payload, signature)) : undefined;
+  if (instead !== undefined) return { ok: false, code: "NotSep53", message: `the wallet signed ${instead[0]}: a valid signature, but not SEP-53` };
+  return { ok: false, code: "InvalidSignature", message: "the signature does not verify as SEP-53 for that account, nor as the raw or hashed message" };
 }
 
 /** An unsigned testnet transaction with `address` as its source: one manage-data operation, sequence 0, five minutes. */

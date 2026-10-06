@@ -3,7 +3,6 @@
  * `window.AgentpeyWallet` for the signing screens, which are plain HTML.
  */
 import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
-import { HanaModule } from "@creit.tech/stellar-wallets-kit/modules/hana";
 import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
 import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit/sdk";
@@ -39,12 +38,11 @@ class PatientLobstrModule extends LobstrModule {
 const freighter = new FreighterModule();
 const xbull = new xBullModule();
 const lobstr = new PatientLobstrModule();
-const hana = new HanaModule();
 
 /** What this screen signs, from its script tag; the picker offers only the wallets that can sign all of it. */
 const needs = parseNeeds(document.currentScript?.getAttribute("data-needs"));
 const offeredHere = walletsFor(needs);
-const modules = { freighter, xbull, lobstr, hana };
+const modules = { freighter, xbull, lobstr };
 if (offeredHere.includes("lobstr")) void lobstr.isAvailable();
 
 StellarWalletsKit.init({
@@ -64,8 +62,8 @@ const within = (ms: number, check: () => Promise<boolean>): Promise<boolean> =>
  * xBull is reported as its extension's presence (`window.xBullSDK`); without it, xBull opens its web wallet instead.
  */
 async function detect(): Promise<Record<string, boolean>> {
-  const [freighterSeen, lobstrSeen, hanaSeen] = await Promise.all([within(3000, () => freighter.isAvailable()), within(3000, () => lobstr.isAvailable()), within(3000, () => hana.isAvailable())]);
-  return { freighter: freighterSeen, xbullExtension: "xBullSDK" in globalThis, lobstr: lobstrSeen, hana: hanaSeen };
+  const [freighterSeen, lobstrSeen] = await Promise.all([within(3000, () => freighter.isAvailable()), within(3000, () => lobstr.isAvailable())]);
+  return { freighter: freighterSeen, xbullExtension: "xBullSDK" in globalThis, lobstr: lobstrSeen };
 }
 
 Object.assign(globalThis, { AgentpeyWallet: { ...wallet, offered: OFFERED_WALLETS.filter((w) => offeredHere.includes(w.id)), needs, WalletError, describe, detect } });

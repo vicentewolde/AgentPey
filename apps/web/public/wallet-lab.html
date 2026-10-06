@@ -148,7 +148,7 @@
   var wallet = window.AgentpeyWallet;
   var address = null;
 
-  var NAMES = { freighter: "Freighter", xbullExtension: "xBull (extension)", lobstr: "LOBSTR", hana: "Hana" };
+  var NAMES = { freighter: "Freighter", xbullExtension: "xBull (extension)", lobstr: "LOBSTR" };
   var detectNow = function () {
     document.getElementById("detected").innerHTML = "<tr><td>…</td></tr>";
     return wallet.detect().then(function (seen) {
