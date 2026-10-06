@@ -318,7 +318,7 @@ más rápido que lo estimado.
 #### T143 · Más wallets que Freighter (`C-160`)
 - **Prioridad:** si alcanza · **Estimación:** 8 h · **Delegable a Codex:** no (firma de wallet)
 - **Depende de:** spec aprobado
-- **Descripción:** Stellar Wallets Kit en `consent.html`, `revocar.html`, `resolve/responder.html` y el portal de comercios. Primero comprobar en la práctica, wallet por wallet, que la firma de mensajes cumple SEP-53 y verifica en `packages/core/src/sep53.ts`. De paso, cargar la librería con `integrity` (deuda de T126).
+- **Descripción:** Stellar Wallets Kit en `consent.html`, `revocar.html`, `resolve/responder.html`, el portal de comercios y el inicio de sesión OAuth del servidor MCP (`apps/mcp/src/oauth/login-page.ts`, agregado a pedido del usuario el 6-oct). Primero comprobar en la práctica, wallet por wallet, que la firma de mensajes cumple SEP-53 y verifica en `packages/core/src/sep53.ts`. De paso, cargar la librería con `integrity` (deuda de T126).
 - **Hecho cuando:**
   - [ ] una tabla wallet por wallet: firma mensaje, firma transacción, verifica en el servidor
   - [ ] las tres pantallas funcionan con al menos dos wallets además de Freighter, probadas por el usuario
@@ -456,6 +456,7 @@ renegocia el 10-oct.**
 | 2026-10-05 | T136: `@agentpey/ucp-stellar` en `packages/ucp-stellar`, con la opción A del usuario (el agente lo usa, `R-21`). Dos criterios marcados; la publicación en npm espera el permiso del usuario |
 | 2026-10-06 | T136 cerrada: publicada en npm por el usuario (`@agentpey/ucp-stellar@0.1.0`), instalada desde npm en un proyecto vacío y el ejemplo cotiza contra `agentcommerce`. Tercer criterio marcado |
 | 2026-10-06 | T137: kit de conformidad del medio de pago como script del repo (`R-22`), 20 comprobaciones; pasa contra agentcommerce con un cobro real desde el rail UCP y falla contra la tienda rota. Dos criterios marcados |
+| 2026-10-06 | T143: a pedido del usuario, el inicio de sesión OAuth del MCP entra en la tarea (también firmaba solo con Freighter) |
 
 ## 11. Fuentes externas
 

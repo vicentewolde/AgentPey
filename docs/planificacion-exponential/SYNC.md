@@ -62,7 +62,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T140 | `cmusmv6be001hkx041xa4bf06` | Resolutor intercambiable en AgentResolve (pide aprobación) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T141 | `cmusmv7d8001lkx048cfbear7` | Página pública: tiendas comprables por agentes | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T142 | `cmusmv8du001pkx04tifjz4j7` | Guion y grabación de la demo | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
-| T143 | `cmusmv9l0001tkx049cepmzg5` | Más wallets que Freighter (`C-160`) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
+| T143 | `cmusmv9l0001tkx049cepmzg5` | Más wallets que Freighter (`C-160`) | SPEC | `IN_PROGRESS` | 2026-10-03 | 2026-10-06 | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T144 | `cmusmvarv001xkx045fmtjf76` | dots, Muse y Grok Bot como agentes de AgentPey (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T145 | `cmusmvbuz0021kx04srcpkpxd` | Equipos SCF pagando IA y servicios con Stellar (prueba técnica) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |
 | T146 | `cmusmvcw70025kx042wrweuku` | Demo: presupuesto de equipo en testnet (pide aprobación) | SPEC | `READY_TO_PLAN` | 2026-10-03 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [P-16](../DECISIONES.md) | |

@@ -52,7 +52,7 @@ de Stellar (`R-22`).
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
 | T141 Página de tiendas | pendiente |
 | T142 Guion y grabación | pendiente |
-| T143 Más wallets | pendiente |
+| T143 Más wallets | en curso (falta la prueba del usuario) |
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | pendiente |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
@@ -366,6 +366,23 @@ segundo después del pago. El usuario marcó el pedido como despachado en el
 admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
+
+## T143 · Más wallets que Freighter (2026-10-06, en curso)
+
+**Qué quedó hasta ahora.** Las cinco pantallas donde una persona firma con su
+wallet (aprobar el Mandato, revocarlo, responder una disputa, entrar al portal
+de comercios y conectar Claude o ChatGPT al MCP) ya no exigen Freighter: abren
+un selector con las wallets que pueden firmar mensajes, Freighter, xBull,
+LOBSTR y Hana. Dos wallets que el kit soporta, Albedo y Rabet, no se ofrecen,
+porque no firman mensajes y toda pantalla empieza con esa firma. La librería
+que habla con las wallets ya no viene de un servidor ajeno: se arma con el
+resto de AgentPey y la sirve cada sitio. Lo que el servidor revisa de cada
+firma no cambió.
+
+**Falta.** Probarlo con wallets reales. Para eso hay una página de prueba,
+`/wallet-lab.html`, que firma un mensaje y una transacción (que nunca se envía)
+y muestra si el servidor verifica cada una. El usuario la prueba con LOBSTR y
+con la versión web de xBull, y de ahí sale la tabla del spec (`R-23`).
 
 ## T137 · El kit de conformidad del medio de pago (2026-10-06, cerrada)
 

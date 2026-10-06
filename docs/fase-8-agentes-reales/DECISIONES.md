@@ -775,3 +775,40 @@ salvo que él ponga su llave.
 0.2.0 y su publicación). Saltarse los requisitos cuando el perfil falla
 (escondía las fallas del checkout de una tienda con varias a la vez). Probar
 la credencial alterada solo con `--pay` (sin llave no se probaba nada).
+
+---
+
+### R-23 · Las pantallas de firma usan una capa de wallets propia sobre Stellar Wallets Kit, empaquetada y servida desde cada dominio · `Vigente`
+**Fecha:** 2026-10-06 · **Tarea:** T143 · Propuesta de Claude Code; la forma de cargarla y el alcance, **decididos por el usuario**
+
+`C-160` decidió Stellar Wallets Kit. Se decide cómo:
+
+1. **Una capa propia, `packages/wallet-kit`**, encima del kit (`@creit.tech/stellar-wallets-kit` **2.7.0**, versión
+   exacta): `connect()` (el selector del kit), `signMessage()` (SEP-53, firma devuelta siempre en base64 de 64 bytes,
+   venga en base64, bytes, hex o un `Buffer` serializado) y `signTransaction()`, ambas en testnet y para la cuenta
+   conectada (una firma de otra cuenta es `WrongAccount`, que importa con LOBSTR, que no deja elegir cuenta). Errores
+   propios, `WalletError`, con mensajes en inglés y español en un solo lugar (`describe`).
+2. **Se empaqueta con esbuild dentro de `pnpm build`** (`dist/wallet-kit.js`, unos 190 KB) y **cada app lo sirve
+   desde su propio dominio**: `agentpey.com/wallet-kit.js`, `vitrinee.agentpey.com/portal/wallet-kit.js`,
+   `mcp.agentpey.com/wallet-kit.js`. Ninguna pantalla carga un script de un CDN; eso cierra la deuda de T126 mejor que
+   un `integrity`. El inicio de sesión del MCP, que tiene CSP estricta, fija además el `integrity` del archivo que
+   sirve, calculado al arrancar, y no muestra la página si el archivo no existe.
+3. **Solo se ofrecen wallets que firman mensajes**, porque toda pantalla empieza con un inicio de sesión SEP-53:
+   Freighter, xBull, LOBSTR y Hana. Fuera: Albedo y Rabet (el kit lanza "does not support signMessage"), HOT (solo
+   mainnet), y WalletConnect, Ledger y Trezor (pesan mucho y no hacen falta hoy). La lista final sale de la tabla de
+   T143, wallet por wallet.
+4. **La verificación del servidor no cambia:** `sep53.ts`, `WalletSessions` y los endpoints de cada pantalla siguen
+   iguales. El laboratorio (`/wallet-lab.html`) usa el mismo almacén de desafíos y el mismo `verifyStellarMessage`,
+   en un endpoint que no crea inquilinos; su transacción de prueba se arma y se verifica, nunca se envía.
+5. **Cuatro dependencias del kit traen scripts de instalación** (`@reown/appkit`, `bufferutil`, `secp256k1`,
+   `utf-8-validate`): se revisaron y se niegan en `pnpm-workspace.yaml`. Ninguno hace falta para un archivo de
+   navegador.
+6. **El inicio de sesión del MCP entra en T143** a pedido del usuario (spec actualizado el 6-oct).
+
+**Motivo.** Una sola forma de hablar con las wallets en cinco pantallas, sin código de terceros que cambie al
+cargar la página, y sin tocar lo que verifica el servidor.
+
+**Alternativas descartadas.** El kit desde un CDN con `integrity` (el kit carga muchos módulos y un CDN los sirve en
+varios archivos: el `integrity` cubriría solo el primero). Un adaptador propio por wallet sin el kit (más código de
+firma nuestro, y `C-160` ya eligió el kit). El selector con todas las wallets del kit (ofrecería wallets que no
+pueden iniciar sesión). Guardar el archivo empaquetado en git (190 KB generados en cada cambio).

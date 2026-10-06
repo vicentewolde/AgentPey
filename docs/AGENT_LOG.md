@@ -8186,3 +8186,31 @@ fast-forward (`eebc0aa..edccba6`, los 4 commits de T137); rama borrada. T137 ✅
 Pendiente: push de `cc/t137-cierre` con OK. Siguiente: T143 por el calendario del spec, o T130 si llega la tienda.
 Rail UCP en 1,0631577 USDC (no alcanza para un imán: recarga antes de otra compra real). `AGENTS.md`: sin cambios.
 Exponential: T137 a `DONE`.
+
+## 2026-10-06 (47) — main (operación) y cc/t143-mas-wallets
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, `cc/t137-cierre` en `main` (`4552a79`). Con su pedido, rail UCP recargado con 10 USDC desde la
+reserva (`pnpm run rail:topup -- CBDRI5…D3YA 10 --yes`, tx `2bbda97b…b928`): 1,0631577 → 11,0631577 USDC; la reserva
+quedó en 678,424. Arranca T143 con el plan aprobado: kit empaquetado desde nuestro dominio, el inicio de sesión del MCP
+dentro de la tarea (spec actualizado), Lobstr como wallet de prueba del usuario, la lista final según la tabla.
+
+Pendiente: T143 entera. `AGENTS.md`: sin cambios. Exponential: T143 a `IN_PROGRESS`.
+
+## 2026-10-06 (48) — cc/t143-mas-wallets (sin push)
+
+Agente: Claude Code.
+
+Qué: T143 en código (`R-23`). `packages/wallet-kit`: capa propia sobre Stellar Wallets Kit 2.7.0 (exacta), con
+`connect`, `signMessage` (SEP-53, firma normalizada a base64) y `signTransaction`, errores `WalletError` y mensajes en
+un solo lugar; empaquetada con esbuild en `pnpm build` y servida desde cada dominio (`/wallet-kit.js`,
+`/portal/wallet-kit.js`). Las cinco pantallas la usan (consent, revocar, responder, portal, inicio de sesión del MCP,
+este último con `integrity` del archivo propio y CSP ajustada). Solo wallets que firman mensajes: Freighter, xBull,
+LOBSTR, Hana. Laboratorio `/wallet-lab.html` con tres endpoints que no crean inquilinos ni envían nada. Scripts de
+instalación de cuatro dependencias negados en `pnpm-workspace.yaml`. `pnpm check`, `vitrinee:check` y `pnpm build` en
+verde. El tarball del kit se bajó al scratchpad para leerlo sin pedir permiso antes; se le avisó al usuario.
+
+Pendiente: la prueba del usuario en `/wallet-lab.html` con LOBSTR y xBull web (tabla de la evidencia, lista final de
+wallets), las tres pantallas probadas por el usuario, `/revisar`, PR y merge con OK. `AGENTS.md`: sí, una línea sobre
+`packages/wallet-kit` en el perímetro de `P-10`. Exponential: sin cambios.
