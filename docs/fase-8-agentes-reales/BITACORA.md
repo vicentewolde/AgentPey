@@ -383,8 +383,12 @@ firma no cambió.
 local, el usuario firmó con xBull, LOBSTR y Freighter. xBull y Freighter
 firmaron todo y el servidor lo verificó. LOBSTR firma bien los mensajes, pero
 firma las transacciones para mainnet: por eso cada pantalla dice qué firma, y
-LOBSTR no se ofrece para aprobar ni revocar un Mandato. Hana queda solo para
-mensajes hasta probarla.
+LOBSTR no se ofrece para aprobar ni revocar un Mandato. Hana firma los
+mensajes en otro formato que el estándar, así que no se ofrece en ninguna.
+Con eso, para aprobar y revocar solo queda xBull además de Freighter, y el
+usuario ajustó el criterio del spec en ese sentido. El inicio de sesión del
+MCP se probó en local con Freighter y funcionó. Los logos del selector se
+sirven ahora desde nuestros sitios.
 
 **La revisión.** No encontró ningún camino que firme con una cuenta distinta de
 la verificada. Pidió probar las pantallas de verdad antes de dar la tarea por

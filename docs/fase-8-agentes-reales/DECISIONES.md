@@ -803,7 +803,13 @@ la credencial alterada solo con `--pay` (sin llave no se probaba nada).
    (`<script … data-needs="message transaction">`, sin declarar son las dos) y el selector ofrece solo las wallets que
    pueden. LOBSTR queda fuera de `consent.html` y `revocar.html`. **Hana no se ofrece en ninguna:** en el laboratorio
    firmó un mensaje que no verifica como SEP-53, y la verificación del servidor no se cambia por una wallet. Lista
-   final: Freighter y xBull en las cinco pantallas, LOBSTR en las tres que solo firman mensajes.
+   final: Freighter y xBull en las cinco pantallas, LOBSTR en las tres que solo firman mensajes. Con eso, el
+   criterio 2 de T143 no se cumplía en aprobar y revocar; **el usuario lo ajustó** (opción A, 6-oct): donde se firma
+   una transacción de testnet bastan las wallets que la firman bien. Descartado: probar más wallets (Klever, OneKey,
+   Bitget), sin garantía y con más extensiones que instalar.
+7. **Los íconos del selector se sirven desde cada sitio** (`packages/wallet-kit/icons`, copiados una vez del CDN del
+   kit con permiso del usuario): `/wallet-icons/` y `/portal/wallet-icons/`, de una lista cerrada. El selector no
+   carga nada de otro sitio, y la CSP del MCP queda en `img-src 'self' data:`.
 4. **La verificación del servidor no cambia:** `sep53.ts`, `WalletSessions` y los endpoints de cada pantalla siguen
    iguales. El laboratorio (`/wallet-lab.html`) usa el mismo almacén de desafíos y el mismo `verifyStellarMessage`,
    en un endpoint que no crea inquilinos; su transacción de prueba se arma y se verifica, nunca se envía.

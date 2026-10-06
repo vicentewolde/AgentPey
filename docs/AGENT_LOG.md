@@ -8244,3 +8244,16 @@ mensaje. Los servidores de prueba locales se habían apagado solos tras unas hor
 Pendiente: el criterio 2 del spec no se cumple en aprobar y revocar (una sola wallet además de Freighter): decisión del
 usuario; el inicio de sesión del MCP en local con Freighter; el permiso para bajar los íconos; aprobar y revocar en
 agentpey.com tras el merge. `AGENTS.md`: sin cambios. Exponential: sin cambios.
+
+## 2026-10-06 (51) — cc/t143-mas-wallets (sin push)
+
+Agente: Claude Code.
+
+Qué: el inicio de sesión del MCP en local con Freighter funcionó (código con `sub` `GD2MCE…IK5GN`), tras arreglar
+que la huella del archivo empaquetado quedaba vieja si se rehacía con el servidor corriendo. Con permiso del usuario,
+los tres íconos del selector se copiaron a `packages/wallet-kit/icons` y cada app los sirve de una lista cerrada; la
+CSP del MCP queda en `img-src 'self'`. El usuario eligió la opción A para el criterio 2 (spec ajustado). Configuración
+`agentpey-mcp-local` agregada a `.claude/launch.json`.
+
+Pendiente: push, PR y merge con OK; después, en agentpey.com, aprobar y revocar un Mandato con Freighter y xBull y
+entrar al portal (criterio 2). `AGENTS.md`: sin cambios. Exponential: sin cambios.
