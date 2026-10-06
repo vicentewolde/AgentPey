@@ -739,6 +739,15 @@ T137 pide tests abiertos que comprueben cualquier tienda que declare
    `com.agentpey.shopping.receipt`). Los requisitos corren aunque el perfil
    tenga errores, para informarlos todos; el cobro solo sobre un perfil que una
    plataforma podría pagar (P3 y P5 sin fallas, R4 y R5 bien).
+   **Precisado tras `/revisar`:** no se firma nada para una tienda que ya falló
+   P3, P5, P6, R2, R3, R4, R5 o R6, ni para un checkout en otro activo que
+   `--asset` (USDC de testnet por defecto) o por encima de `--max-amount`. La
+   corrida firma **una sola** autorización, válida 120 s como mucho aunque la
+   tienda pida más, y la usa en C1, C2 y C3: por su nonce se liquida una vez a
+   lo sumo, mienta la tienda o no. El peor caso es un pago de hasta
+   `--max-amount`. El saldo del pagador se lee antes y después de C1 (una
+   tienda que liquida y contesta que no queda en `fail`) y al final (bajó
+   exactamente un pago). Si C1 no llega a la tienda, la corrida se corta.
 3. **El cobro real de la evidencia sale del rail UCP** (`R-19`), recargado con
    3 USDC desde la reserva, con autorización del usuario: los topes de la red
    siguen valiendo. Descartado: la llave clásica de la reserva (sin topes y con
@@ -751,7 +760,9 @@ T137 pide tests abiertos que comprueben cualquier tienda que declare
    aunque la tienda ignore el chequeo, y con `--pay`, con una transacción
    firmada de verdad. Una tienda que completa con la basura no liquidó nada,
    así que el primero solo atrapa a la que completa sin cobrar; el segundo
-   atrapa a la que cobra igual.
+   atrapa a la que cobra igual. **Precisado tras `/revisar`:** el `pass` de R6
+   lo dice en su detalle (la basura también era inválida); solo C1 prueba que
+   la tienda compara `accepted`.
 6. **Ninguna comprobación lanza:** una falla de red es un `fail` con su motivo,
    y una comprobación que no puede correr dice por qué se saltó. Sale con
    código 1 si alguna falla.

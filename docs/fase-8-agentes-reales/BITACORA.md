@@ -383,6 +383,15 @@ tienda de Vitrinee de verdad, en el proceso, pasa todo; y la tienda rota falla
 exactamente en lo que rompe cada vez. Para el cobro, el usuario autorizó
 recargar el rail con 3 USDC desde la reserva (`R-22`).
 
+**La revisión.** `/revisar` encontró que el kit, contra una tienda tramposa,
+podía cobrar dos veces: firmaba un pago de prueba que la tienda se quedaba, y
+después otro. Ahora firma una sola autorización por corrida, válida dos minutos
+como mucho, y la usa para todo, así que como mucho se cobra una vez. Además no
+firma nada para una tienda que ya falló otra comprobación, solo paga en USDC
+salvo que se le pida otro activo, y vigila el saldo del pagador para atrapar a
+una tienda que cobra y dice que no. A pedido del usuario se corrigieron los
+quince hallazgos y se repitió la compra real, que volvió a pasar las 20.
+
 **Tropiezos.** La primera corrida ignoró la opción "solo perfil", porque pnpm
 agrega un `--` que confundía la lectura de opciones; corrió de más la parte de
 requisitos, que no mueve plata. Y el motivo de una cuenta sin línea de

@@ -8158,3 +8158,19 @@ Rail UCP en 2,6315788 USDC. La reserva mostraba 100 USDC más que unas horas ant
 
 Pendiente: `/revisar`, push, PR y merge con OK. `AGENTS.md`: sin cambios (los tests de perfil eran delegables y se
 hicieron aquí). Exponential: T137 a `IN_PROGRESS`.
+
+## 2026-10-06 (45) — cc/t137-kit-conformidad (sin push)
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T137, dos bloqueantes en el cobro: una tienda tramposa podía cobrar dos veces (C1 le dejaba una
+autorización firmada y C2 firmaba otra), y el kit firmaba para tiendas que ya habían fallado R3 o R6. Corregidos los
+15 hallazgos a pedido del usuario: una sola autorización por corrida (C1, C2 y C3, con `pay()` y un pagador que
+devuelve lo firmado), válida 120 s como mucho; saldo del pagador antes y después de C1 y al final; corte si C1 no
+llega; sin firma tras fallas previas; `--asset` (USDC por defecto); E2 compara la llave; `scheme` en R4; `line_items`
+con zod; anclaje pendiente como aviso (`--anchor-wait`); `--registry` validado y leído del deployment; rotura nueva
+`settles-signed`; tests sin salida a la red; `.env.example`. 27 tests, mutación comprobada, `pnpm check` en verde. Con
+autorización del usuario, otra compra real: 20/20 (`ord_muws1afd200277f471`, Shopify `19049210183986`, tx
+`08a4e77f…7995`), una sola liquidación. Rail UCP en 1,0631577 USDC.
+
+Pendiente: push, PR y merge con OK. `AGENTS.md`: sin cambios. Exponential: sin cambios.
