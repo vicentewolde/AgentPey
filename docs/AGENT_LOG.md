@@ -8142,3 +8142,19 @@ monorepo); el `pnpm-workspace.yaml` de AgentPey no cambió.
 
 Pendiente: push y merge de `cc/t136-publicacion` con OK. Siguiente: T130 si llega la tienda; si no, T137.
 `AGENTS.md`: sin cambios. Exponential: T136 a `DONE`.
+
+## 2026-10-06 (44) — cc/t137-kit-conformidad (sin push)
+
+Agente: Claude Code.
+
+Qué: T137 con el plan aprobado (`R-22`). Kit de conformidad del medio de pago en `scripts/ucp-stellar-conformance/`:
+`pnpm run ucp:stellar:conformance -- <url>` (20 comprobaciones: perfil, requisitos, cobro, recibo; `--profile-only`,
+`--pay` con `UCP_STELLAR_CONFORMANCE_SECRET`, `--rail`, `--max-amount`, `--registry`, `--json`) y
+`pnpm run ucp:stellar:broken-store` (cinco roturas elegibles). `ajv` a las devDependencies de la raíz (ya en el
+lockfile). 17 tests; `pnpm check` en verde. Con autorización del usuario, rail UCP recargado con 3 USDC (tx
+`f234ec2a…e4af`); el kit contra agentcommerce con cobro real pasó 20/20 (`ord_muwqcvf16d7c595e74`, Shopify
+`19048232780082`, tx `97fedde0…4e07`, recibo con los tres checks; una sola liquidación). La tienda rota: 6 fallas.
+Rail UCP en 2,6315788 USDC. La reserva mostraba 100 USDC más que unas horas antes; no los movió esta tarea.
+
+Pendiente: `/revisar`, push, PR y merge con OK. `AGENTS.md`: sin cambios (los tests de perfil eran delegables y se
+hicieron aquí). Exponential: T137 a `IN_PROGRESS`.

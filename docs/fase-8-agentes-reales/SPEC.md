@@ -289,8 +289,8 @@ más rápido que lo estimado.
 - **Depende de:** T131, T132
 - **Descripción:** tests abiertos que comprueban cualquier tienda que declare `com.agentpey.stellar_x402`: perfil, dominio del namespace, requisitos, cobro y recibo. Las comprobaciones de solo lectura corren contra cualquier URL; las de cobro, solo con una llave de testnet que pone quien lo corre.
 - **Hecho cuando:**
-  - [ ] `pnpm run ucp:stellar:conformance -- <url>` da un informe por comprobación
-  - [ ] pasa contra una tienda de Vitrinee y falla, con un mensaje claro, contra una tienda de prueba rota a propósito
+  - [x] `pnpm run ucp:stellar:conformance -- <url>` da un informe por comprobación (20 comprobaciones en cuatro grupos, `R-22`)
+  - [x] pasa contra una tienda de Vitrinee y falla, con un mensaje claro, contra una tienda de prueba rota a propósito (agentcommerce 20 de 20 con un cobro real, `ord_muwqcvf16d7c595e74`; la tienda rota, 6 fallas con su motivo; `evidencia/T137.md`)
 
 ### Bloque C · Resolutores externos (si alcanza; primero pruebas técnicas)
 
@@ -455,6 +455,7 @@ renegocia el 10-oct.**
 | 2026-10-04 | T134: la tienda firma cada checkout y verifica el mandato AP2 antes de cobrar; el agente lo cierra (`abierto~~cierre`, `R-15`), con la llave de la plataforma (`R-16`) y la de la tienda derivada (`VT-43`). La librería oficial de AP2 verifica una cadena de muestra. Cuatro criterios marcados; falta la compra real tras el deploy. Se hizo en una rama con los dos lados en vez de dos PR |
 | 2026-10-05 | T136: `@agentpey/ucp-stellar` en `packages/ucp-stellar`, con la opción A del usuario (el agente lo usa, `R-21`). Dos criterios marcados; la publicación en npm espera el permiso del usuario |
 | 2026-10-06 | T136 cerrada: publicada en npm por el usuario (`@agentpey/ucp-stellar@0.1.0`), instalada desde npm en un proyecto vacío y el ejemplo cotiza contra `agentcommerce`. Tercer criterio marcado |
+| 2026-10-06 | T137: kit de conformidad del medio de pago como script del repo (`R-22`), 20 comprobaciones; pasa contra agentcommerce con un cobro real desde el rail UCP y falla contra la tienda rota. Dos criterios marcados |
 
 ## 11. Fuentes externas
 

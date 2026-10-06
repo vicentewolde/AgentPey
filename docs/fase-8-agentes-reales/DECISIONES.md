@@ -718,3 +718,49 @@ paridad (opción B, la que recomendé por el riesgo cerca del congelamiento;
 deja dos copias del código que firma). Publicar `AgentPassError` (scope
 ajeno, y arrastra el resto de `@agentpass/core`). AP2 en el paquete (pide la
 llave de una plataforma). `maxAmount` opcional (un pago sin tope del llamador).
+
+---
+
+### R-22 · El kit de conformidad del medio de pago es un script abierto del repo, que solo cobra con una llave de quien lo corre · `Vigente`
+**Fecha:** 2026-10-06 · **Tarea:** T137 · Propuesta de Claude Code; los cuatro puntos abiertos, **decididos por el usuario**
+
+T137 pide tests abiertos que comprueben cualquier tienda que declare
+`com.agentpey.stellar_x402`. Se decide:
+
+1. **Vive en el repo** (`scripts/ucp-stellar-conformance/`,
+   `pnpm run ucp:stellar:conformance`), abierto bajo Apache-2.0, no dentro de
+   `@agentpey/ucp-stellar`: no pide publicar otra versión. Reusa el paquete para
+   pagar y `verifyReceipt` de `@vitrinee/anchor` para el recibo.
+2. **Cuatro grupos, cada uno pide más que el anterior:** perfil (solo GETs,
+   contra cualquier URL, `--profile-only`); requisitos (abre un checkout y manda
+   un `complete` con una transacción basura, sin plata); cobro (solo con
+   `--pay` y una llave de testnet en `UCP_STELLAR_CONFORMANCE_SECRET`, con tope
+   `--max-amount`); recibo (solo si la tienda declara
+   `com.agentpey.shopping.receipt`). Los requisitos corren aunque el perfil
+   tenga errores, para informarlos todos; el cobro solo sobre un perfil que una
+   plataforma podría pagar (P3 y P5 sin fallas, R4 y R5 bien).
+3. **El cobro real de la evidencia sale del rail UCP** (`R-19`), recargado con
+   3 USDC desde la reserva, con autorización del usuario: los topes de la red
+   siguen valiendo. Descartado: la llave clásica de la reserva (sin topes y con
+   una cuenta de cientos de USDC expuesta) y una cuenta nueva de un solo uso.
+4. **El recibo se confía al receipt-registry de AgentPey**
+   (`CADILO6Q…ZTM5`) por defecto; un recibo anclado en otro contrato falla
+   salvo `--registry`. Si no, una tienda tramposa anclaría en un contrato suyo.
+5. **Se prueba el rechazo de una credencial con `accepted` alterado** (la spec
+   dice DEBE), dos veces: con una transacción basura, que no puede mover plata
+   aunque la tienda ignore el chequeo, y con `--pay`, con una transacción
+   firmada de verdad. Una tienda que completa con la basura no liquidó nada,
+   así que el primero solo atrapa a la que completa sin cobrar; el segundo
+   atrapa a la que cobra igual.
+6. **Ninguna comprobación lanza:** una falla de red es un `fail` con su motivo,
+   y una comprobación que no puede correr dice por qué se saltó. Sale con
+   código 1 si alguna falla.
+
+**Motivo.** Que un tercero pueda comprobar su tienda antes de decir que
+acepta el medio de pago, sin tener que creerle a AgentPey, y sin mover plata
+salvo que él ponga su llave.
+
+**Alternativas descartadas.** El kit dentro del paquete publicado (pide una
+0.2.0 y su publicación). Saltarse los requisitos cuando el perfil falla
+(escondía las fallas del checkout de una tienda con varias a la vez). Probar
+la credencial alterada solo con `--pay` (sin llave no se probaba nada).

@@ -31,7 +31,8 @@ tienda, comprobado con una compra real. **T135 cerrada**: MPP charge no
 admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
 **T136 cerrada**: el paquete [`@agentpey/ucp-stellar`](https://www.npmjs.com/package/@agentpey/ucp-stellar)
 está publicado en npm, compra desde un proyecto vacío, y el agente de AgentPey
-paga a través de él (`R-21`).
+paga a través de él (`R-21`). **T137 en revisión**: un kit abierto comprueba si
+cualquier tienda implementa bien el medio de pago de Stellar (`R-22`).
 
 | Tarea | Estado |
 |---|---|
@@ -44,7 +45,7 @@ paga a través de él (`R-21`).
 | T134 AP2 en el checkout | cerrada |
 | T135 MPP charge (prueba técnica) | cerrada |
 | T136 SDK en npm | cerrada |
-| T137 Kit de conformidad de Stellar | pendiente |
+| T137 Kit de conformidad de Stellar | en revisión |
 | T138 Prueba técnica: GenLayer | pendiente |
 | T139 Prueba técnica: Trustless Work | pendiente |
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
@@ -364,6 +365,29 @@ segundo después del pago. El usuario marcó el pedido como despachado en el
 admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
+
+## T137 · El kit de conformidad del medio de pago (2026-10-06, en revisión)
+
+**Qué quedó.** Una tienda que diga "acepto pagos de agentes en Stellar" ahora
+se puede comprobar con un comando: `pnpm run ucp:stellar:conformance --` y su
+dirección. El kit responde, una línea por comprobación, si la tienda publica
+bien su perfil, si el dinero va a la cuenta que dice, si rechaza un pago
+trucado, si cobra una sola vez y si su recibo se puede verificar en la red. Por
+defecto solo lee; el cobro real corre únicamente si quien lo usa pone su propia
+llave de testnet. Contra nuestra tienda de Shopify pasaron las 20
+comprobaciones, con una compra real de un imán pagada desde el rail. Contra una
+tienda rota a propósito, el kit marcó sus seis fallas, cada una con su motivo.
+
+**Cómo se probó.** Además de las dos corridas reales, 17 tests sin red: la
+tienda de Vitrinee de verdad, en el proceso, pasa todo; y la tienda rota falla
+exactamente en lo que rompe cada vez. Para el cobro, el usuario autorizó
+recargar el rail con 3 USDC desde la reserva (`R-22`).
+
+**Tropiezos.** La primera corrida ignoró la opción "solo perfil", porque pnpm
+agrega un `--` que confundía la lectura de opciones; corrió de más la parte de
+requisitos, que no mueve plata. Y el motivo de una cuenta sin línea de
+confianza salía con todo el registro de diagnóstico de la red; ahora es una
+frase.
 
 ## T136 · El SDK `@agentpey/ucp-stellar` (2026-10-05 y 06, cerrada)
 
