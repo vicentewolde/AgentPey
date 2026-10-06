@@ -18,18 +18,25 @@ export const WALLET_KIT_PATH = "/wallet-kit.js";
 /** The external hosts the wallet picker loads images from (its wallet icons), for a page with a strict CSP. */
 export const WALLET_KIT_IMAGE_HOSTS = ["https://stellar.creit.tech"] as const;
 
-let integrity: string | undefined;
+const integrities = new Map<string, string>();
 
 /**
- * The Subresource Integrity value of the bundle (`sha384-…`), computed once from the file, or `undefined` when it is
- * not built. A page that pins it loads exactly the file this server built.
+ * The Subresource Integrity value of a bundle (`sha384-…`), computed once per file, or `undefined` when it is not
+ * built. A page that pins it loads exactly the file this server built.
  */
-export function walletKitIntegrity(): string | undefined {
-  if (integrity !== undefined) return integrity;
+export function walletKitIntegrity(bundle: string = WALLET_KIT_BUNDLE): string | undefined {
+  const known = integrities.get(bundle);
+  if (known !== undefined) return known;
   try {
-    integrity = `sha384-${createHash("sha384").update(readFileSync(WALLET_KIT_BUNDLE)).digest("base64")}`;
-    return integrity;
+    const value = `sha384-${createHash("sha384").update(readFileSync(bundle)).digest("base64")}`;
+    integrities.set(bundle, value);
+    return value;
   } catch {
     return undefined;
   }
+}
+
+/** A short fingerprint of an integrity value, for a cache-busting `?v=`: a new bundle is a new URL. */
+export function walletKitVersion(integrity: string): string {
+  return integrity.replace(/^sha384-/, "").replace(/[^A-Za-z0-9]/g, "").slice(0, 16);
 }

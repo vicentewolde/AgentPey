@@ -22,10 +22,16 @@ import { OFFERED_WALLETS, parseNeeds, walletsFor } from "./wallets.js";
 class PatientLobstrModule extends LobstrModule {
   private presence: Promise<boolean> | undefined;
   override isAvailable(): Promise<boolean> {
-    this.presence ??= super.isAvailable().then((present) => {
-      if (!present) this.presence = undefined; // asked again next time: the extension may load later
-      return present;
-    });
+    this.presence ??= super
+      .isAvailable()
+      .then((present) => {
+        if (!present) this.presence = undefined; // asked again next time: the extension may load later
+        return present;
+      })
+      .catch(() => {
+        this.presence = undefined; // a failed question is not an answer: ask again next time
+        return false;
+      });
     return this.presence;
   }
 }

@@ -39,6 +39,9 @@ describe("normalizeSignature", () => {
     ["bytes", SIG],
     ["a byte array", Array.from(SIG)],
     ["a serialized Buffer", { type: "Buffer", data: Array.from(SIG) }],
+    ["an ArrayBuffer", SIG.buffer.slice(0)],
+    ["a DataView", new DataView(SIG.buffer.slice(0))],
+    ["a Uint8Array that went through JSON", JSON.parse(JSON.stringify(SIG))],
   ])("turns %s into base64 of the 64 bytes", (_shape, value) => {
     expect(normalizeSignature(value)).toBe(SIG_B64);
   });
@@ -48,6 +51,8 @@ describe("normalizeSignature", () => {
     ["not a signature", "hello world!"],
     ["nothing", undefined],
     ["a number", 7],
+    ["an object with other keys", { a: 1, b: 2 }],
+    ["an index object of the wrong length", JSON.parse(JSON.stringify(SIG.slice(0, 63)))],
   ])("refuses %s", (_what, value) => {
     expect(() => normalizeSignature(value)).toThrow(WalletError);
   });
@@ -99,9 +104,9 @@ describe("the wallets offered", () => {
     expect(OFFERED_WALLETS.every((wallet) => (wallet.signs as readonly string[]).includes("message"))).toBe(true);
   });
 
-  it("offers LOBSTR only where no testnet transaction is signed: it signs them for mainnet", () => {
+  it("offers LOBSTR only where no testnet transaction is signed (it signs them for mainnet), and Hana only for messages until tested", () => {
     expect(walletsFor(["message"])).toEqual(["freighter", "xbull", "lobstr", "hana"]);
-    expect(walletsFor(["message", "transaction"])).toEqual(["freighter", "xbull", "hana"]);
+    expect(walletsFor(["message", "transaction"])).toEqual(["freighter", "xbull"]);
   });
 
   it("reads a screen's needs from its script tag, and takes both when it declares nothing", () => {

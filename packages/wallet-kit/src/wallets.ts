@@ -3,7 +3,8 @@
  * check found it (docs/fase-8-agentes-reales/evidencia/T143.md). Every screen starts with a SEP-53 sign-in, so a
  * wallet that cannot sign messages is offered nowhere: Albedo and Rabet answer `signMessage` with "not supported" in
  * Stellar Wallets Kit 2.7.0. LOBSTR signs messages, but cannot be told the network and signed the lab's testnet
- * transaction for mainnet: it is offered only where no transaction is signed.
+ * transaction for mainnet: it is offered only where no transaction is signed. Hana is offered for messages only until
+ * the lab shows it signs testnet transactions: the kit saying so is the assumption LOBSTR disproved.
  */
 export type Need = "message" | "transaction";
 
@@ -11,7 +12,7 @@ export const OFFERED_WALLETS = [
   { id: "freighter", name: "Freighter", signs: ["message", "transaction"] },
   { id: "xbull", name: "xBull", signs: ["message", "transaction"] },
   { id: "lobstr", name: "LOBSTR", signs: ["message"] },
-  { id: "hana", name: "Hana", signs: ["message", "transaction"] },
+  { id: "hana", name: "Hana", signs: ["message"] },
 ] as const satisfies ReadonlyArray<{ id: string; name: string; signs: readonly Need[] }>;
 
 export type OfferedWalletId = (typeof OFFERED_WALLETS)[number]["id"];

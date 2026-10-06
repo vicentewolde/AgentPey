@@ -36,9 +36,16 @@ function checked(bytes: Uint8Array | undefined, shape: string): string {
  */
 export function normalizeSignature(value: unknown): string {
   if (value instanceof Uint8Array) return checked(value, "bytes");
+  if (value instanceof ArrayBuffer) return checked(new Uint8Array(value), "ArrayBuffer");
+  if (ArrayBuffer.isView(value)) return checked(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), "a view of bytes");
   if (Array.isArray(value) && value.every((n) => Number.isInteger(n) && n >= 0 && n < 256)) return checked(Uint8Array.from(value as number[]), "byte array");
   if (typeof value === "object" && value !== null && (value as { type?: unknown }).type === "Buffer" && Array.isArray((value as { data?: unknown }).data)) {
     return normalizeSignature((value as { data: unknown[] }).data);
+  }
+  // A Uint8Array that went through JSON: `{ "0": 12, "1": 200, … }`, with exactly the keys 0..n-1.
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    const entries = Object.entries(value);
+    if (entries.length > 0 && entries.every(([key], i) => key === String(i))) return normalizeSignature(entries.map(([, byte]) => byte));
   }
   if (typeof value === "string") {
     const text = value.trim();

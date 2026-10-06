@@ -366,6 +366,13 @@ To see the network refuse a purchase above the rail's per-transaction limit
 pnpm run ucp:probe-per-tx -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --quantity 2
 ```
 
+The signing pages (the Mandate, its revocation, a dispute answer, the merchant
+portal, the MCP sign-in) take any Stellar wallet that signs messages, through
+one wallet layer served from each site
+([`packages/wallet-kit`](packages/wallet-kit/README.md)). Locally it exists
+once `pnpm build` has run; `http://localhost:8787/wallet-lab.html` checks a
+wallet against the server.
+
 `pnpm run web` puts both behind buttons, alongside the MandateVault log that
 records every decision and anchors each payment on chain. It is deployed live
 at [agentpey.com](https://agentpey.com), alongside the F9 pilot's

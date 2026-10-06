@@ -37,6 +37,8 @@ export interface PortalOptions {
   onboarding: Omit<OnboardingDeps, "comercios">;
   /** Where the portal's static page lives. Defaults to `apps/vitrinee-portal/public`. */
   staticDir?: string;
+  /** The wallet layer's bundle (T143). Defaults to the one `pnpm build` makes; tests point it at a file of their own. */
+  walletKitBundle?: string;
   log?: (message: string, fields?: Record<string, unknown>) => void;
 }
 
@@ -166,14 +168,15 @@ export function createPortalRouter(options: PortalOptions): Router {
 
   const staticDir = options.staticDir ?? fileURLToPath(new URL("../../../../apps/vitrinee-portal/public", import.meta.url));
   // The wallet layer (T143): Stellar Wallets Kit bundled by `pnpm build`, served from this origin, no CDN.
+  const walletKitBundle = options.walletKitBundle ?? WALLET_KIT_BUNDLE;
   router.get("/portal/wallet-kit.js", (_req, res) => {
-    if (!existsSync(WALLET_KIT_BUNDLE)) {
-      log("wallet-kit bundle missing; run pnpm build", { path: WALLET_KIT_BUNDLE });
+    if (!existsSync(walletKitBundle)) {
+      log("wallet-kit bundle missing; run pnpm build", { path: walletKitBundle });
       res.status(503).type("text/plain").send("the wallet layer is not built");
       return;
     }
     res.set({ "Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff" });
-    res.type("text/javascript").sendFile(WALLET_KIT_BUNDLE);
+    res.type("text/javascript").sendFile(walletKitBundle);
   });
   if (existsSync(staticDir)) {
     router.use("/portal", express.static(staticDir, { index: false, maxAge: "5m" }));

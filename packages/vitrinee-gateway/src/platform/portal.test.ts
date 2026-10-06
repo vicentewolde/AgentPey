@@ -1,5 +1,8 @@
 import { randomBytes } from "node:crypto";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { signStellarMessage } from "@agentpass/core";
 import { Keypair } from "@stellar/stellar-sdk";
@@ -30,6 +33,10 @@ interface Reply {
 }
 
 /** `fetch` will not set `Host`; the platform routes on nothing else. */
+/** A stand-in for the bundled wallet layer (T143): tests do not depend on `pnpm build` having run. */
+const TEST_WALLET_KIT = join(mkdtempSync(join(tmpdir(), "portal-wallet-kit-")), "wallet-kit.js");
+writeFileSync(TEST_WALLET_KIT, "window.AgentpeyWallet = {};");
+
 function call(base: string, host: string, path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<Reply> {
   const url = new URL(path, base);
   const payload = init.body === undefined ? undefined : JSON.stringify(init.body);
@@ -123,6 +130,7 @@ describe("the owners' portal: sign in with the wallet, register a store, see its
       comercios,
       rootComercio: undefined,
       portal: {
+        walletKitBundle: TEST_WALLET_KIT,
         sessions: new WalletSessions({ sessionKey: randomBytes(32) }),
         ordersFor: (c) => table.for(c),
         onboarding: {
@@ -157,6 +165,14 @@ describe("the owners' portal: sign in with the wallet, register a store, see its
     expect(cookie).not.toMatch(/domain=/i);
     return cookie.split(";")[0]!;
   }
+
+  it("serves the wallet layer from this origin, as JavaScript with nosniff (T143)", async () => {
+    const kit = await call(base, PLATFORM, "/portal/wallet-kit.js");
+    expect(kit.status).toBe(200);
+    expect(kit.headers["content-type"]).toContain("javascript");
+    expect(kit.headers["x-content-type-options"]).toBe("nosniff");
+    expect(kit.text).toBe("window.AgentpeyWallet = {};");
+  });
 
   it("serves the portal page on the platform host only", async () => {
     const page = await call(base, PLATFORM, "/");

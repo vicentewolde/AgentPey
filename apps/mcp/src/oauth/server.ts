@@ -23,7 +23,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { verifyStellarMessage } from "@agentpass/core";
-import { WALLET_KIT_BUNDLE, WALLET_KIT_IMAGE_HOSTS, WALLET_KIT_PATH, walletKitIntegrity as walletKitIntegrityOf } from "@agentpey/wallet-kit";
+import { WALLET_KIT_BUNDLE, WALLET_KIT_IMAGE_HOSTS, WALLET_KIT_PATH, walletKitIntegrity as walletKitIntegrityOf, walletKitVersion } from "@agentpey/wallet-kit";
 import { OAuthError, OAuthErrorCode, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier } from "@modelcontextprotocol/server";
 import { StrKey } from "@stellar/stellar-sdk";
 import express, { type Request, type Response, type Router } from "express";
@@ -50,8 +50,8 @@ export interface OAuthServerOptions {
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => Date;
   readonly log?: (message: string, fields?: Record<string, unknown>) => void;
-  /** The wallet layer's integrity, `undefined` when it is not built. Defaults to the built bundle's (T143); tests set it. */
-  readonly walletKitIntegrity?: () => string | undefined;
+  /** The wallet layer's bundle (T143). Defaults to the one `pnpm build` makes; tests point it at a file of their own. */
+  readonly walletKitBundle?: string;
 }
 
 const CIMD_TIMEOUT_MS = 5_000;
@@ -250,7 +250,8 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
   };
 
   const router = express.Router();
-  const kitIntegrity = options.walletKitIntegrity ?? walletKitIntegrityOf;
+  const kitBundle = options.walletKitBundle ?? WALLET_KIT_BUNDLE;
+  const kitIntegrity = () => walletKitIntegrityOf(kitBundle);
   router.use(["/register", "/token", "/authorize/challenge", "/authorize/approve", "/authorize/deny"], express.json({ limit: "32kb" }), express.urlencoded({ extended: false, limit: "32kb" }));
 
   router.post("/register", async (req: Request, res: Response) => {
@@ -278,7 +279,8 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       res.status(503).type("text/plain").send("the wallet layer is not built");
       return;
     }
-    res.set({ "Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff" }).type("text/javascript").sendFile(WALLET_KIT_BUNDLE);
+    // The page asks for it by fingerprint (`?v=`), so a long cache is safe: a new bundle is a new URL.
+    res.set({ "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff" }).type("text/javascript").sendFile(kitBundle);
   });
 
   router.get("/authorize", async (req: Request, res: Response) => {
@@ -315,9 +317,9 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       .status(200)
       .set({
         "Cache-Control": "no-store",
-        // The wallet layer is this origin's /wallet-kit.js, pinned by integrity in the page; its picker shows the
-        // wallets' icons from their CDN (T143).
-        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}' 'self'; style-src 'unsafe-inline'; img-src ${WALLET_KIT_IMAGE_HOSTS.join(" ")} data:; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
+        // The wallet layer is this origin's /wallet-kit.js, allowed by the nonce and pinned by integrity in the page;
+        // its picker shows the wallets' icons (T143).
+        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src ${WALLET_KIT_IMAGE_HOSTS.join(" ")} data:; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
         "Referrer-Policy": "no-referrer",
       })
       .type("html")
@@ -330,6 +332,7 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
             loopback: isLoopback(query.data.redirect_uri),
             walletHint: `${options.allowedWallet.slice(0, 6)}…${options.allowedWallet.slice(-6)}`,
             walletKitIntegrity,
+            walletKitSrc: `${WALLET_KIT_PATH}?v=${walletKitVersion(walletKitIntegrity)}`,
           },
           nonce,
         ),

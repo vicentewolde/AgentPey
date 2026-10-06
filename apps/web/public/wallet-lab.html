@@ -116,8 +116,7 @@
     connected: { en: "Connected: ", es: "Conectada: " },
     verifying: { en: "Checking on the server…", es: "Revisando en el servidor…" },
     msgOk: { en: "The wallet signed, and the server verified the SEP-53 signature.", es: "La wallet firmó y el servidor verificó la firma SEP-53." },
-    txOk: { en: "The wallet signed, and the server verified the signature. Nothing was sent.", es: "La wallet firmó y el servidor verificó la firma. No se envió nada." },
-    noAccount: { en: " (this account does not exist on testnet yet; the test still works)", es: " (esta cuenta todavía no existe en testnet; la prueba funciona igual)" }
+    txOk: { en: "The wallet signed, and the server verified the signature. Nothing was sent: the test transaction is valid on no network.", es: "La wallet firmó y el servidor verificó la firma. No se envió nada: la transacción de prueba no es válida en ninguna red." }
   };
   var t = function (key) { return T[key][lang()]; };
   var report = { detected: null, page: location.origin, wallet: null, walletId: null, address: null, signsMessage: null, messageVerifies: null, signsTransaction: null, transactionVerifies: null, errors: {}, userAgent: navigator.userAgent, at: null };
@@ -204,10 +203,8 @@
 
   document.getElementById("transaction").addEventListener("click", function () {
     status("transaction-status", null, t("waiting"));
-    var exists = true;
     post("/api/wallet/lab/transaction", { address: address }).then(function (built) {
       if (!built.ok) throw built;
-      exists = built.exists;
       return wallet.signTransaction(built.xdr, address);
     }).then(function (signedXdr) {
       report.signsTransaction = true;
@@ -216,7 +213,7 @@
     }).then(function (verified) {
       report.transactionVerifies = verified.ok === true;
       if (!verified.ok) throw verified;
-      status("transaction-status", true, t("txOk") + (exists ? "" : t("noAccount")));
+      status("transaction-status", true, t("txOk"));
       paint();
     }).catch(function (error) {
       if (report.signsTransaction !== true) report.signsTransaction = false;

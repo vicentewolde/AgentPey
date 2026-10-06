@@ -25,7 +25,6 @@ interface ResponderModule {
   parseUsdc(text: string): string | null;
   publicKeyBytes(address: string): Uint8Array | null;
   verifySep53(address: string, message: string, signature: string): Promise<boolean | null>;
-  toBase64Signature(signed: unknown): string;
 }
 
 const PAGE_MODULE = fileURLToPath(new URL("../../../apps/web/public/resolve/responder.js", import.meta.url));
@@ -123,15 +122,4 @@ describe("the page checks Freighter's signature before it hands out the file", (
     expect(await page.verifySep53(merchantOwnerKey.publicKey(), message, "not base64!")).toBe(false);
   });
 
-  it("reads every shape Freighter returns a signature in, and turns anything else into an empty one", () => {
-    const signature = signStellarMessage(merchantOwnerKey, message);
-    const bytes = Buffer.from(signature, "base64");
-    expect(page.toBase64Signature(signature)).toBe(signature);
-    expect(page.toBase64Signature(new Uint8Array(bytes))).toBe(signature);
-    expect(page.toBase64Signature(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength))).toBe(signature);
-    expect(page.toBase64Signature(bytes.toJSON())).toBe(signature);
-    expect(page.toBase64Signature({ ...Array.from(bytes) })).toBe(signature);
-    expect(page.toBase64Signature(null)).toBe("");
-    expect(page.toBase64Signature({ a: "x" })).toBe("");
-  });
 });

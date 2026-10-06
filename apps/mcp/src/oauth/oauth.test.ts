@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { signStellarMessage } from "@agentpass/core";
 import { Keypair } from "@stellar/stellar-sdk";
@@ -27,7 +30,11 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((done) => server.close(done))));
 });
 
-async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string; issuer?: string; wallet?: Keypair; walletKitIntegrity?: () => string | undefined } = {}): Promise<Started> {
+/** A stand-in for the bundled wallet layer, written once for these tests. */
+const TEST_BUNDLE = join(mkdtempSync(join(tmpdir(), "mcp-wallet-kit-")), "wallet-kit.js");
+writeFileSync(TEST_BUNDLE, "window.AgentpeyWallet = {};");
+
+async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string; issuer?: string; wallet?: Keypair; walletKitBundle?: string } = {}): Promise<Started> {
   const server = createServer();
   servers.push(server);
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
@@ -39,7 +46,7 @@ async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string;
   const logs: string[] = [];
   const clock = { now: new Date() };
   const log = (message: string, fields?: Record<string, unknown>) => logs.push(JSON.stringify({ message, ...fields }));
-  // The wallet layer's integrity is fixed here: tests do not depend on the bundle being built (T143).
+  // A bundle of the test's own: tests do not depend on `pnpm build` having run (T143).
   const oauth = createOAuthServer({
     publicUrl: issuer,
     resource,
@@ -47,7 +54,7 @@ async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string;
     secret: SECRET,
     now: () => clock.now,
     log,
-    walletKitIntegrity: options.walletKitIntegrity ?? (() => "sha384-TESTKIT"),
+    walletKitBundle: options.walletKitBundle ?? TEST_BUNDLE,
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
   // Tools are never called here: only `tools/list`, which does not touch the shopper.
@@ -306,18 +313,29 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(otherPath.status).toBe(400);
   });
 
-  it("serves the sign-in page with a strict policy and its own wallet layer pinned by integrity (T143)", async () => {
+  it("serves the sign-in page with a strict policy and its own wallet layer, allowed by nonce and pinned by integrity (T143)", async () => {
     const s = await start();
     const page = await authorizePage(s, await register(s), pkce().challenge);
-    expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'nonce-[^']+' 'self'; style-src 'unsafe-inline'; img-src https:\/\/stellar\.creit\.tech data:; connect-src 'self';/);
+    const csp = page.headers.get("content-security-policy") ?? "";
+    expect(csp).toMatch(/default-src 'none'; script-src 'nonce-([^']+)'; style-src 'unsafe-inline'; img-src https:\/\/stellar\.creit\.tech data:; connect-src 'self';/);
+    expect(csp).not.toContain("'self'; style-src");
+    const nonce = /'nonce-([^']+)'/.exec(csp)![1]!;
     const html = await page.text();
-    expect(html).toContain('<script src="/wallet-kit.js" data-needs="message" integrity="sha384-TESTKIT" crossorigin="anonymous"></script>');
+    const tag = /<script nonce="([^"]+)" src="(\/wallet-kit\.js\?v=[A-Za-z0-9]+)" data-needs="message" integrity="(sha384-[A-Za-z0-9+/=]+)" crossorigin="anonymous"><\/script>/.exec(html);
+    expect(tag).not.toBeNull();
+    expect(tag![1]).toBe(nonce);
+    // The bytes served are exactly the ones the page pins.
+    const served = await fetch(`${s.url}${tag![2]}`);
+    expect(served.status).toBe(200);
+    expect(served.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(served.headers.get("content-type")).toContain("javascript");
+    expect(`sha384-${createHash("sha384").update(Buffer.from(await served.arrayBuffer())).digest("base64")}`).toBe(tag![3]);
     expect(html).not.toMatch(/unpkg|freighter-api/);
     expect(html).toContain("Continue only if you started this connection yourself");
   });
 
   it("does not serve the sign-in page without the pinned wallet layer, and says why", async () => {
-    const s = await start({ walletKitIntegrity: () => undefined });
+    const s = await start({ walletKitBundle: "/nonexistent/wallet-kit.js" });
     const page = await authorizePage(s, await register(s), pkce().challenge);
     expect(page.status).toBe(503);
     expect(await page.text()).toContain("the wallet layer is not built");

@@ -60,8 +60,7 @@ import {
   type AgentPayMandate,
 } from "@agentpey/mandate";
 import { createPostgresMandateVault, type MandateVault } from "@agentpey/vault";
-import { WALLET_KIT_BUNDLE, WALLET_KIT_PATH } from "@agentpey/wallet-kit";
-import { z } from "zod";
+import { WALLET_KIT_PATH } from "@agentpey/wallet-kit";
 import { AUTHORIZATION_HEADER, computeConsentSessionStatus, IDEMPOTENCY_KEY_HEADER } from "@agentpey/partner-api";
 
 import type { Agent, CatalogAdapter, CreatePurchaseIntentResult, MandateSource, VenueId } from "@agentpey/agent";
@@ -116,7 +115,8 @@ import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.
 import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
 import { ucpPublicPath } from "./ucp-public.js";
-import { buildLabTransaction, checkLabMessage, checkLabTransaction, labMessageSchema, labTransactionCheckSchema, labTransactionSchema } from "./wallet-lab.js";
+import { serveWalletKit } from "./wallet-kit-route.js";
+import { isLocalHost, routeWalletLab } from "./wallet-lab.js";
 import { MAX_BODY_BYTES as ORDER_WEBHOOK_MAX_BYTES, createOrderWebhookReceiver } from "./ucp-webhooks.js";
 import {
   createPostgresWalletSessionStore,
@@ -1123,10 +1123,17 @@ async function readRawBody(req: IncomingMessage, maxBytes: number): Promise<Buff
 const ORDER_WEBHOOK_PATH = "/ucp/webhooks/orders";
 const orderWebhooks = createOrderWebhookReceiver({ log: (msg, fields) => log("info", msg, fields) });
 
+/** No JSON body this server reads is anywhere near this; past it the body is drained and read as empty (`{}`). */
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
+
 async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  if (chunks.length === 0) return {};
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size <= MAX_JSON_BODY_BYTES) chunks.push(chunk as Buffer);
+  }
+  if (chunks.length === 0 || size > MAX_JSON_BODY_BYTES) return {};
   try {
     return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
   } catch {
@@ -1142,24 +1149,15 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
   ".md": "text/markdown; charset=utf-8",
 };
 
-/**
- * The wallet layer the signing screens load (T143): Stellar Wallets Kit bundled by `pnpm build`, served from this
- * origin so no CDN is in the page at load time.
- */
-async function serveWalletKit(res: ServerResponse): Promise<void> {
-  try {
-    await stat(WALLET_KIT_BUNDLE);
-  } catch {
-    logError("[wallet-kit] the bundle is missing; run pnpm build", new Error("wallet-kit bundle missing"), { path: WALLET_KIT_BUNDLE });
-    sendJson(res, 503, { code: "NotFound", message: "the wallet layer is not built" });
+async function serveStatic(pathname: string, res: ServerResponse, host: string | undefined): Promise<void> {
+  if (pathname === WALLET_KIT_PATH) {
+    return serveWalletKit(res, { onMissing: (path) => logError("[wallet-kit] the bundle is missing; run pnpm build", new Error("wallet-kit bundle missing"), { path }) });
+  }
+  // T143: the wallet lab is for a local server only; on agentpey.com it does not exist.
+  if (pathname === "/wallet-lab.html" && !isLocalHost(host)) {
+    sendJson(res, 404, { code: "NotFound", message: `no route for ${pathname}` });
     return;
   }
-  res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=300", "x-content-type-options": "nosniff" });
-  createReadStream(WALLET_KIT_BUNDLE).pipe(res);
-}
-
-async function serveStatic(pathname: string, res: ServerResponse): Promise<void> {
-  if (pathname === WALLET_KIT_PATH) return serveWalletKit(res);
   // `/` is the landing page; `/landing` stays as an alias, so links shared
   // before the swap keep working.
   // `/consent/{id}` (T51's consent_url) is the hosted Mandate signing page,
@@ -1253,7 +1251,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   }
 
   if (req.method === "GET" && !pathname.startsWith("/api/") && !pathname.startsWith("/v1/")) {
-    await serveStatic(pathname, res);
+    await serveStatic(pathname, res, req.headers.host);
     return;
   }
 
@@ -1340,55 +1338,17 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     return;
   }
 
-  // T143: the wallet lab (`/wallet-lab.html`). The same challenge store and SEP-53 check as a sign-in, but no tenant
-  // is created; the test transaction is built and checked, never sent.
-  if (req.method === "POST" && pathname === "/api/wallet/lab/message") {
-    const parsed = labMessageSchema.safeParse(await readJsonBody(req));
-    if (!parsed.success) {
-      sendJson(res, 400, { ok: false, code: "InvalidArguments", message: "address, nonce and signature are required" });
-      return;
-    }
-    const walletSessionStore = await getWalletSessionStore(await readEnv());
-    if (!(await walletSessionStore.takeChallenge(parsed.data.nonce))) {
-      sendJson(res, 400, { ok: false, code: "InvalidArguments", message: "that challenge does not exist, was already used, or expired" });
-      return;
-    }
-    const result = checkLabMessage(parsed.data, challengeMessage(parsed.data.nonce));
-    sendJson(res, result.ok ? 200 : 400, result);
-    return;
-  }
-  if (req.method === "POST" && pathname === "/api/wallet/lab/transaction") {
-    const parsed = labTransactionSchema.safeParse(await readJsonBody(req));
-    if (!parsed.success) {
-      sendJson(res, 400, { ok: false, code: "InvalidArguments", message: "address must be a Stellar account (G...)" });
-      return;
-    }
-    // The account's sequence when it exists on testnet; a wallet signs either way, and nothing is sent.
-    let sequence = "0";
-    let exists = false;
-    try {
-      const account = await fetch(`https://horizon-testnet.stellar.org/accounts/${parsed.data.address}`);
-      if (account.ok) {
-        const body = z.looseObject({ sequence: z.string().regex(/^\d+$/) }).safeParse(await account.json());
-        if (body.success) {
-          sequence = body.data.sequence;
-          exists = true;
-        }
-      }
-    } catch {
-      // Horizon unreachable: the test transaction still works with sequence 0.
-    }
-    sendJson(res, 200, { ok: true, exists, ...buildLabTransaction(parsed.data.address, sequence) });
-    return;
-  }
-  if (req.method === "POST" && pathname === "/api/wallet/lab/transaction/verify") {
-    const parsed = labTransactionCheckSchema.safeParse(await readJsonBody(req));
-    if (!parsed.success) {
-      sendJson(res, 400, { ok: false, code: "InvalidArguments", message: "address and xdr are required" });
-      return;
-    }
-    const result = checkLabTransaction(parsed.data);
-    sendJson(res, result.ok ? 200 : 400, result);
+  // T143: the wallet lab, local only (`wallet-lab.ts`). The same challenge store and SEP-53 check as a sign-in, but
+  // nothing that creates a tenant, and a test transaction valid on no network.
+  const lab = await routeWalletLab(
+    { method: req.method ?? "GET", pathname, host: req.headers.host, body: () => readJsonBody(req) },
+    {
+      takeChallenge: async (nonce) => (await getWalletSessionStore(await readEnv())).takeChallenge(nonce),
+      challengeMessage,
+    },
+  );
+  if (lab !== undefined) {
+    sendJson(res, lab.status, lab.body);
     return;
   }
 

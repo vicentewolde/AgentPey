@@ -294,8 +294,12 @@ var address = "";
 var signedResult = null;
 var statuses = {};
 
-/** A wallet-layer error, kept as itself so a language switch says it again in the other language. */
+/**
+ * A wallet-layer error, kept as itself so a language switch says it again in the other language. A signature by
+ * another account says, here, which account the answer needs: the store's payout account.
+ */
 function walletProblem(error) {
+  if (error && error.name === "WalletError" && error.code === "WrongAccount") return { key: "walletChanged" };
   return typeof AgentpeyWallet !== "undefined" && AgentpeyWallet.describe(error, "en") !== undefined ? { wallet: error } : null;
 }
 

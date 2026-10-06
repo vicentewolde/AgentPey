@@ -4,7 +4,7 @@ AgentPey's MCP server (T128): Claude and ChatGPT connect to it to search
 Vitrinee stores, quote, pay on Stellar testnet from the MCP's own
 `policy_rail`, read the order with its verified receipt, and sign a refund
 claim. OAuth 2.1 in front of `/mcp`; the only person who can sign in is the
-wallet that owns the rail, by signing a message with Freighter.
+wallet that owns the rail, by signing a message with a Stellar wallet.
 
 Connect a client to:
 
@@ -12,9 +12,12 @@ Connect a client to:
 https://mcp.agentpey.com/mcp
 ```
 
-Signing in needs [Freighter](https://www.freighter.app/) in the browser, on
-testnet, holding the wallet that owns the rail (`MCP_ALLOWED_WALLET`). Any
-other wallet is refused.
+Signing in needs a Stellar wallet that signs messages in the browser
+(Freighter, xBull, LOBSTR or Hana, picked on the page), holding the account
+that owns the rail (`MCP_ALLOWED_WALLET`). Any other account is refused. The
+page loads the wallet layer from this server, `/wallet-kit.js`, pinned by its
+integrity; locally it exists once `pnpm build` has run (otherwise the page is a
+503).
 
 ## Connect Claude
 
@@ -29,7 +32,7 @@ Team and Enterprise path below comes from those docs too, untested here.
 3. Authentication: **Sign in when needed**. OAuth client: keep the option
    Claude marks as detected. Leave **Request headers** empty. Click **Add**.
 4. Claude opens "Connect to AgentPey". Click the button, approve the message
-   in Freighter, and you are back in Claude, connected.
+   in your wallet, and you are back in Claude, connected.
 5. In a chat, open **+ → Connectors** and turn **AgentPey** on. Then ask, for
    example: `compra un imán en agentcommerce`.
 
@@ -51,7 +54,7 @@ developer mode is on Plus, Pro, Business, Enterprise and Education.
    then **Create custom MCP server**. Name: `AgentPey`. Description: one
    line on what it does. MCP server URL: `https://mcp.agentpey.com/mcp`.
    Authentication: **OAuth**.
-3. ChatGPT opens "Connect to AgentPey". Sign in with Freighter as above.
+3. ChatGPT opens "Connect to AgentPey". Sign in with your wallet as above.
 4. In a chat, open **+ → Developer mode** and select **AgentPey**. Name the
    tool when you ask, for example: `Use the AgentPey app to buy a magnet in
    agentcommerce`.
@@ -71,7 +74,7 @@ npx @modelcontextprotocol/inspector@2.9.0
 ```
 
 1. In the page it opens: Transport Type **Streamable HTTP**, URL
-   `https://mcp.agentpey.com/mcp`, **Connect**. Sign in with Freighter; the
+   `https://mcp.agentpey.com/mcp`, **Connect**. Sign in with your wallet; the
    page warns that a local app is asking, which is expected.
 2. Ask the chat for a quote. Copy its quote id (`q_…`).
 3. In the Inspector: **Tools → List Tools → pay**. `quote_id`: the id;

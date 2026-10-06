@@ -21,6 +21,8 @@ export interface LoginPageInput {
   readonly walletHint: string;
   /** The `integrity` of `/wallet-kit.js` (`walletKitIntegrity()`). */
   readonly walletKitIntegrity: string;
+  /** Where the page loads it from: `/wallet-kit.js?v=<fingerprint>`, so a new bundle is never matched with a cached old one. */
+  readonly walletKitSrc: string;
 }
 
 function escapeHtml(value: string): string {
@@ -54,7 +56,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
   .warn { color: var(--fg); border-left: 3px solid var(--err); padding-left: 10px; }
   code { word-break: break-all; }
 </style>
-<script src="/wallet-kit.js" data-needs="message" integrity="${escapeHtml(input.walletKitIntegrity)}" crossorigin="anonymous"></script>
+<script nonce="${nonce}" src="${escapeHtml(input.walletKitSrc)}" data-needs="message" integrity="${escapeHtml(input.walletKitIntegrity)}" crossorigin="anonymous"></script>
 </head>
 <body>
 <main>

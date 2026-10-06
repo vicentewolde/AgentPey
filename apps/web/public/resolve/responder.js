@@ -120,25 +120,6 @@ export async function responseChallengeMessage(response) {
   ].join("\n");
 }
 
-/**
- * Freighter returns a signature as base64 already, or as bytes in one of
- * several shapes (Uint8Array, ArrayBuffer, a serialised Buffer, a plain object
- * of indices). Anything else is an empty string, which never verifies.
- */
-export function toBase64Signature(signed) {
-  if (typeof signed === "string") return signed;
-  if (signed === null || typeof signed !== "object") return "";
-  let values;
-  if (signed instanceof ArrayBuffer) values = new Uint8Array(signed);
-  else if (ArrayBuffer.isView(signed)) values = new Uint8Array(signed.buffer, signed.byteOffset, signed.byteLength);
-  else if (Array.isArray(signed.data)) values = signed.data;
-  else values = Object.values(signed);
-  if (!values.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) return "";
-  let binary = "";
-  for (const byte of values) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
 const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const ED25519_PUBLIC_KEY_VERSION = 6 << 3;
 
