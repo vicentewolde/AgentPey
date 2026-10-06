@@ -379,10 +379,18 @@ que habla con las wallets ya no viene de un servidor ajeno: se arma con el
 resto de AgentPey y la sirve cada sitio. Lo que el servidor revisa de cada
 firma no cambió.
 
-**Falta.** Probarlo con wallets reales. Para eso hay una página de prueba,
-`/wallet-lab.html`, que firma un mensaje y una transacción (que nunca se envía)
-y muestra si el servidor verifica cada una. El usuario la prueba con LOBSTR y
-con la versión web de xBull, y de ahí sale la tabla del spec (`R-23`).
+**La prueba con wallets reales.** En una página de prueba que solo existe en
+local, el usuario firmó con xBull, LOBSTR y Freighter. xBull y Freighter
+firmaron todo y el servidor lo verificó. LOBSTR firma bien los mensajes, pero
+firma las transacciones para mainnet: por eso cada pantalla dice qué firma, y
+LOBSTR no se ofrece para aprobar ni revocar un Mandato. Hana queda solo para
+mensajes hasta probarla.
+
+**La revisión.** No encontró ningún camino que firme con una cuenta distinta de
+la verificada. Pidió probar las pantallas de verdad antes de dar la tarea por
+hecha, y quince arreglos: la transacción de prueba ya no es válida en ninguna
+red, la página de prueba no existe en agentpey.com, la del MCP es más
+estricta, y más tests. Todos corregidos a pedido del usuario.
 
 ## T137 · El kit de conformidad del medio de pago (2026-10-06, cerrada)
 

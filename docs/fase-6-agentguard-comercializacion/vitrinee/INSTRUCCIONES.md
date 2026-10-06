@@ -156,7 +156,7 @@ pruebas), con otro juego de credenciales (`VT-33`). Para el dueño de la tienda:
 ## Estado al 2026-09-24 (T105 en PR)
 
 - **Portal de dueños (T105, `VT-31`).** `vitrinee.agentpey.com/` es el portal:
-  el dueño entra firmando con Freighter (SEP-0053) y da de alta su tienda
+  el dueño entra firmando con su wallet de Stellar (SEP-0053; desde T143, cualquiera que firme mensajes, `R-23`) y da de alta su tienda
   Jumpseller, con cuatro pruebas antes de guardar nada, y ve sus pedidos. Rutas
   en `/api/portal/*` (`packages/vitrinee-gateway/src/platform/portal.ts`),
   página en `apps/vitrinee-portal/public/`. Solo existe en modo plataforma. La

@@ -8214,3 +8214,20 @@ verde. El tarball del kit se bajó al scratchpad para leerlo sin pedir permiso a
 Pendiente: la prueba del usuario en `/wallet-lab.html` con LOBSTR y xBull web (tabla de la evidencia, lista final de
 wallets), las tres pantallas probadas por el usuario, `/revisar`, PR y merge con OK. `AGENTS.md`: sí, una línea sobre
 `packages/wallet-kit` en el perímetro de `P-10`. Exponential: sin cambios.
+
+## 2026-10-06 (49) — cc/t143-mas-wallets (sin push)
+
+Agente: Claude Code.
+
+Qué: la prueba del usuario en el laboratorio. LOBSTR y xBull no se detectaban: LOBSTR perdía la carrera de 1 s del
+kit (se le pregunta al cargar la página) y el puente de xBull abría la wallet web. Con eso, xBull y Freighter firman
+todo y verifican; LOBSTR firma mensajes pero transacciones para mainnet (`SignedForAnotherNetwork`, confirmado), así
+que cada pantalla declara `data-needs` y LOBSTR no se ofrece en consent ni revocar. `/revisar`: sin caminos que firmen
+con otra cuenta; un bloqueante (probar las pantallas reales) y 14 más, todos corregidos a pedido del usuario: Hana solo
+mensajes, transacción de prueba con secuencia 0 y sin Horizon, laboratorio solo en local, CSP del MCP por nonce con
+`?v=` de huella, más formas de firma, tests HTTP de las rutas, `readJsonBody` con tope de 1 MiB, limpieza de responder,
+README de `packages/wallet-kit`, documentación. `pnpm check`, `vitrinee:check` y `pnpm build` en verde.
+
+Pendiente: los íconos de las wallets (bajarlos pide permiso del usuario), Hana en el laboratorio, las pantallas en
+local (responder, portal, inicio de sesión del MCP), y aprobar y revocar en agentpey.com tras el merge. `AGENTS.md`:
+sin cambios. Exponential: sin cambios.

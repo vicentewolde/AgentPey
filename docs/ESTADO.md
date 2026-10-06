@@ -29,7 +29,7 @@
 | T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
 | T141 Página "Tiendas comprables por agentes" | para el video | ⏳ pendiente | |
 | T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
-| T143 Más wallets que Freighter (`C-160`) | si alcanza | 🔨 en curso: capa de wallets sobre Stellar Wallets Kit, servida desde cada dominio (`R-23`); las cinco pantallas la usan; falta la prueba del usuario en `/wallet-lab.html` (LOBSTR y xBull web) | `cc/t143-mas-wallets` |
+| T143 Más wallets que Freighter (`C-160`) | si alcanza | 🔨 en curso: capa de wallets servida desde cada dominio (`R-23`); laboratorio: xBull y Freighter firman todo, LOBSTR solo mensajes (firma transacciones para mainnet); `/revisar` con 15 arreglos hechos; falta Hana, las pantallas en local y aprobar y revocar en agentpey.com tras el merge | `cc/t143-mas-wallets` |
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); con el corte del 7-oct se cortaría entera, porque solo dots sobrevivía | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |

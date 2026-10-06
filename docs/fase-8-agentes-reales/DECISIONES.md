@@ -792,17 +792,23 @@ la credencial alterada solo con `--pay` (sin llave no se probaba nada).
    desde su propio dominio**: `agentpey.com/wallet-kit.js`, `vitrinee.agentpey.com/portal/wallet-kit.js`,
    `mcp.agentpey.com/wallet-kit.js`. Ninguna pantalla carga un script de un CDN; eso cierra la deuda de T126 mejor que
    un `integrity`. El inicio de sesión del MCP, que tiene CSP estricta, fija además el `integrity` del archivo que
-   sirve, calculado al arrancar, y no muestra la página si el archivo no existe.
+   sirve, calculado al arrancar, y no muestra la página si el archivo no existe. **Precisado tras `/revisar`:** el
+   script se autoriza por el `nonce` de la página (sin `'self'` en `script-src`) y se pide como
+   `/wallet-kit.js?v=<huella>`, para que un archivo nuevo nunca se cruce con uno viejo en caché.
 3. **Solo se ofrecen wallets que firman mensajes**, porque toda pantalla empieza con un inicio de sesión SEP-53:
    Freighter, xBull, LOBSTR y Hana. Fuera: Albedo y Rabet (el kit lanza "does not support signMessage"), HOT (solo
    mainnet), y WalletConnect, Ledger y Trezor (pesan mucho y no hacen falta hoy). La lista final sale de la tabla de
    T143, wallet por wallet. **Precisado tras la prueba del usuario:** LOBSTR firma mensajes SEP-53 que verifican,
    pero no deja elegir la red y firmó la transacción de testnet para otra; por eso **cada pantalla declara qué firma**
    (`<script … data-needs="message transaction">`, sin declarar son las dos) y el selector ofrece solo las wallets que
-   pueden. LOBSTR queda fuera de `consent.html` y `revocar.html`.
+   pueden. LOBSTR queda fuera de `consent.html` y `revocar.html`. Hana, también, hasta que el laboratorio muestre que
+   firma transacciones de testnet: que el kit lo diga es la suposición que LOBSTR desmintió.
 4. **La verificación del servidor no cambia:** `sep53.ts`, `WalletSessions` y los endpoints de cada pantalla siguen
    iguales. El laboratorio (`/wallet-lab.html`) usa el mismo almacén de desafíos y el mismo `verifyStellarMessage`,
    en un endpoint que no crea inquilinos; su transacción de prueba se arma y se verifica, nunca se envía.
+   **Precisado tras `/revisar`:** la transacción de prueba lleva secuencia 0 y el servidor no le pregunta nada a
+   Horizon, así que no es válida en ninguna red; y el laboratorio (página y endpoints) solo existe en un servidor
+   local: en agentpey.com es un 404.
 5. **Cuatro dependencias del kit traen scripts de instalación** (`@reown/appkit`, `bufferutil`, `secp256k1`,
    `utf-8-validate`): se revisaron y se niegan en `pnpm-workspace.yaml`. Ninguno hace falta para un archivo de
    navegador.
