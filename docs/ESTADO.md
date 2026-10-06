@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-05
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T135 · MPP charge, prueba técnica: no admite pagar desde el `policy_rail`; se evalúa y no se construye (`R-20`)
-**Siguiente paso:** T136 (`cc/t136-sdk-npm`): push, PR y merge con OK; la publicación en npm, aparte y con permiso explícito. T130 cuando haya tienda de terceros (el usuario la está consiguiendo). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin respuestas el 5-oct). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** T136 mergeada ([PR #63](https://github.com/vicentewolde/AgentPey/pull/63)); falta la publicación en npm, aparte y con permiso explícito. T130 cuando haya tienda de terceros (el usuario la está consiguiendo). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin respuestas el 5-oct). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -22,7 +22,7 @@
 | T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
 | T134 AP2 dentro del checkout UCP | si alcanza | ✅ terminada: tienda firma y no cobra sin mandato, agente cierra (`R-15`, `R-16`, `VT-43`); compra real `ord_muudx8kyda00e05b33` verificada por la librería oficial de AP2 | [PR #52](https://github.com/vicentewolde/AgentPey/pull/52), mergeado; evidencia en `cc/t134-evidencia` |
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ✅ terminada: el SDK oficial no acepta pagar desde el `policy_rail` (la red sí acepta la firma; cuatro rechazos por el pagador, control con llave clásica cobra); no se construye (`R-20`); brecha 21; issue publicado ([stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)) | [PR #61](https://github.com/vicentewolde/AgentPey/pull/61), mergeado |
-| T136 SDK publicado en npm | si alcanza | 👀 en revisión: `@agentpey/ucp-stellar` instalado desde su tarball en un proyecto vacío; el ejemplo compró `ord_muvqqsth2fb48d4110`; el agente paga a través del paquete (`R-21`). `/revisar`: 1 bloqueante (el tope decimal lo fijaba la tienda) y 10 más, todos corregidos. Falta PR, merge y publicar en npm (con permiso) | `cc/t136-sdk-npm` |
+| T136 SDK publicado en npm | si alcanza | 👀 mergeada, falta publicar en npm (con permiso): `@agentpey/ucp-stellar` instalado desde su tarball en un proyecto vacío; el ejemplo compró `ord_muvqqsth2fb48d4110`; el agente paga a través del paquete (`R-21`). `/revisar`: 1 bloqueante (el tope decimal lo fijaba la tienda) y 10 más, todos corregidos. Falta publicar en npm (con permiso) | [PR #63](https://github.com/vicentewolde/AgentPey/pull/63), mergeado |
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ⏳ pendiente | |
 | T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente | |
 | T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente | |

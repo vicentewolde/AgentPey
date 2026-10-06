@@ -8113,3 +8113,15 @@ Tarball nuevo: el ejemplo cotiza; no se repitió la compra. `R-21`, evidencia §
 
 Pendiente: push, PR y merge con OK; publicar en npm solo con permiso explícito (la organización `agentpey` la crea el
 usuario). `AGENTS.md`: sin cambios en esta entrada. Exponential: sin cambios.
+
+## 2026-10-05 (42) — cc/t136-sdk-npm → main, cc/t136-cierre (sin push)
+
+Agente: Claude Code.
+
+Qué: con OK del usuario y CI 4/4, [PR #63](https://github.com/vicentewolde/AgentPey/pull/63) en `main` por
+fast-forward (`f2214e4..229ee96`, los 4 commits de T136); rama borrada. ESTADO, SYNC y BITACORA dicen "mergeada,
+falta publicar".
+
+Pendiente: publicar `@agentpey/ucp-stellar` en npm, solo con permiso explícito del usuario y tras crear él la
+organización `agentpey`; recién ahí T136 queda ✅ y el ticket pasa a `DONE`. Push de `cc/t136-cierre` con OK.
+`AGENTS.md`: sin cambios. Exponential: T136 en `QA` con el PR.

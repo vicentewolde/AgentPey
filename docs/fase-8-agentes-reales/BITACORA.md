@@ -29,9 +29,10 @@ varios productos, con un solo cobro y un recibo de un ítem por línea.
 **T149 cerrada**: el consentimiento del comprador llega al pedido de la
 tienda, comprobado con una compra real. **T135 cerrada**: MPP charge no
 admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
-**T136 en revisión**: el paquete `@agentpey/ucp-stellar` compra desde un
-proyecto vacío, y el agente de AgentPey paga a través de él (`R-21`); falta
-`/revisar` y la publicación en npm, que espera el permiso del usuario.
+**T136 mergeada** ([PR #63](https://github.com/vicentewolde/AgentPey/pull/63)):
+el paquete `@agentpey/ucp-stellar` compra desde un proyecto vacío, y el agente
+de AgentPey paga a través de él (`R-21`); falta la publicación en npm, que
+espera el permiso del usuario.
 
 | Tarea | Estado |
 |---|---|
@@ -43,7 +44,7 @@ proyecto vacío, y el agente de AgentPey paga a través de él (`R-21`); falta
 | T133 UCP `2026-08-25` | cerrada |
 | T134 AP2 en el checkout | cerrada |
 | T135 MPP charge (prueba técnica) | cerrada |
-| T136 SDK en npm | en revisión (falta publicar) |
+| T136 SDK en npm | mergeada (falta publicar) |
 | T137 Kit de conformidad de Stellar | pendiente |
 | T138 Prueba técnica: GenLayer | pendiente |
 | T139 Prueba técnica: Trustless Work | pendiente |
@@ -365,7 +366,7 @@ admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
 
-## T136 · El SDK `@agentpey/ucp-stellar` (2026-10-05, en revisión)
+## T136 · El SDK `@agentpey/ucp-stellar` (2026-10-05, mergeada; falta publicar)
 
 **Qué quedó.** Cualquier programador puede ahora hacer que su propio agente
 compre en una tienda UCP que acepta Stellar, con un paquete:
