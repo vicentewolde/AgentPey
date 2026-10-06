@@ -33,7 +33,9 @@ admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
 está publicado en npm, compra desde un proyecto vacío, y el agente de AgentPey
 paga a través de él (`R-21`). **T137 cerrada** ([PR #64](https://github.com/vicentewolde/AgentPey/pull/64)):
 un kit abierto comprueba si cualquier tienda implementa bien el medio de pago
-de Stellar (`R-22`).
+de Stellar (`R-22`). **T143 cerrada** ([PR #65](https://github.com/vicentewolde/AgentPey/pull/65)):
+las cinco pantallas de firma aceptan Freighter y xBull, y las que solo firman
+un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 
 | Tarea | Estado |
 |---|---|
@@ -52,7 +54,7 @@ de Stellar (`R-22`).
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
 | T141 Página de tiendas | pendiente |
 | T142 Guion y grabación | pendiente |
-| T143 Más wallets | en curso (falta la prueba del usuario) |
+| T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | pendiente |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
@@ -367,13 +369,13 @@ admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
 
-## T143 · Más wallets que Freighter (2026-10-06, en curso)
+## T143 · Más wallets que Freighter (2026-10-06, cerrada)
 
-**Qué quedó hasta ahora.** Las cinco pantallas donde una persona firma con su
+**Qué quedó funcionando.** Las cinco pantallas donde una persona firma con su
 wallet (aprobar el Mandato, revocarlo, responder una disputa, entrar al portal
 de comercios y conectar Claude o ChatGPT al MCP) ya no exigen Freighter: abren
-un selector con las wallets que pueden firmar mensajes, Freighter, xBull,
-LOBSTR y Hana. Dos wallets que el kit soporta, Albedo y Rabet, no se ofrecen,
+un selector con las wallets que pueden firmar lo que esa pantalla pide:
+Freighter y xBull en todas, y LOBSTR donde solo se firma un mensaje. Dos wallets que el kit soporta, Albedo y Rabet, no se ofrecen,
 porque no firman mensajes y toda pantalla empieza con esa firma. La librería
 que habla con las wallets ya no viene de un servidor ajeno: se arma con el
 resto de AgentPey y la sirve cada sitio. Lo que el servidor revisa de cada
@@ -395,6 +397,10 @@ la verificada. Pidió probar las pantallas de verdad antes de dar la tarea por
 hecha, y quince arreglos: la transacción de prueba ya no es válida en ninguna
 red, la página de prueba no existe en agentpey.com, la del MCP es más
 estricta, y más tests. Todos corregidos a pedido del usuario.
+
+**En agentpey.com.** Justo después del merge, el usuario aprobó y revocó un
+Mandato con Freighter y con xBull, y entró al portal de comercios. Todo
+funcionó, y no hubo que deshacer nada.
 
 ## T137 · El kit de conformidad del medio de pago (2026-10-06, cerrada)
 

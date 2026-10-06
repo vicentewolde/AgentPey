@@ -321,7 +321,7 @@ más rápido que lo estimado.
 - **Descripción:** Stellar Wallets Kit en `consent.html`, `revocar.html`, `resolve/responder.html`, el portal de comercios y el inicio de sesión OAuth del servidor MCP (`apps/mcp/src/oauth/login-page.ts`, agregado a pedido del usuario el 6-oct). Primero comprobar en la práctica, wallet por wallet, que la firma de mensajes cumple SEP-53 y verifica en `packages/core/src/sep53.ts`. De paso, cargar la librería con `integrity` (deuda de T126).
 - **Hecho cuando:**
   - [x] una tabla wallet por wallet: firma mensaje, firma transacción, verifica en el servidor (`evidencia/T143.md` §4 y §6: Freighter, xBull, LOBSTR, Hana)
-  - [ ] las pantallas que solo firman un mensaje funcionan con al menos dos wallets además de Freighter, y las que firman una transacción de testnet, con todas las que la firman bien (hoy xBull), probadas por el usuario (**ajustado por el usuario el 6-oct**, opción A: LOBSTR firma transacciones para mainnet y Hana no firma SEP-53; antes decía "las tres pantallas funcionan con al menos dos wallets además de Freighter")
+  - [x] las pantallas que solo firman un mensaje funcionan con al menos dos wallets además de Freighter, y las que firman una transacción de testnet, con todas las que la firman bien (hoy xBull), probadas por el usuario (**ajustado por el usuario el 6-oct**, opción A: LOBSTR firma transacciones para mainnet y Hana no firma SEP-53; antes decía "las tres pantallas funcionan con al menos dos wallets además de Freighter")
   - [x] una wallet que no firma mensajes no se ofrece donde hace falta (Albedo y Rabet en ninguna; Hana tampoco, por no firmar SEP-53; LOBSTR no donde se firma una transacción de testnet; `data-needs`, `R-23`)
   - [x] la verificación del lado del servidor no cambia (`sep53.ts`, `WalletSessions` y los endpoints de cada pantalla, sin cambios)
 
@@ -458,6 +458,7 @@ renegocia el 10-oct.**
 | 2026-10-06 | T137: kit de conformidad del medio de pago como script del repo (`R-22`), 20 comprobaciones; pasa contra agentcommerce con un cobro real desde el rail UCP y falla contra la tienda rota. Dos criterios marcados |
 | 2026-10-06 | T143: a pedido del usuario, el inicio de sesión OAuth del MCP entra en la tarea (también firmaba solo con Freighter) |
 | 2026-10-06 | T143: el usuario ajustó el criterio 2 (opción A): donde se firma una transacción de testnet bastan las wallets que la firman bien (hoy xBull), porque LOBSTR firma para mainnet y Hana no firma SEP-53. Criterios 1, 3 y 4 marcados |
+| 2026-10-06 | T143 cerrada: el usuario probó en agentpey.com aprobar y revocar un Mandato con Freighter y con xBull, y entrar al portal; criterio 2 marcado ([PR #65](https://github.com/vicentewolde/AgentPey/pull/65)) |
 
 ## 11. Fuentes externas
 

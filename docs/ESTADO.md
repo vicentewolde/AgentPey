@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-06
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T137 · Kit de conformidad del medio de pago de Stellar: `pnpm run ucp:stellar:conformance`, que pasa contra agentcommerce y falla contra una tienda rota (`R-22`)
-**Siguiente paso:** el Bloque B está completo. Por el calendario del spec (§8), T143 (más wallets que Freighter, era del 6-oct); después T138, T139 y T145 (pruebas técnicas, 8-oct) y T141 (9-oct). T130 en cuanto llegue la tienda de terceros. T130 cuando haya tienda de terceros (el usuario la está consiguiendo). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin respuestas el 5-oct). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Última tarea terminada:** T143 · Más wallets que Freighter: Freighter y xBull en las cinco pantallas de firma, LOBSTR en las de solo mensaje, probado por el usuario en agentpey.com (`R-23`)
+**Siguiente paso:** por el calendario del spec (§8), T138, T139 y T145 (pruebas técnicas, 8-oct) y T141 (9-oct). T130 cuando haya tienda de terceros (el usuario la está consiguiendo). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin respuestas el 5-oct). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
 
 ## Progreso de la fase
 
@@ -29,7 +29,7 @@
 | T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
 | T141 Página "Tiendas comprables por agentes" | para el video | ⏳ pendiente | |
 | T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
-| T143 Más wallets que Freighter (`C-160`) | si alcanza | 🔨 en curso: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana en ninguna (`R-23`); criterio 2 ajustado por el usuario; inicio de sesión del MCP probado en local; falta aprobar, revocar y el portal en agentpey.com tras el merge | `cc/t143-mas-wallets` |
+| T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); con el corte del 7-oct se cortaría entera, porque solo dots sobrevivía | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
@@ -129,3 +129,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-05, T135: prueba técnica de MPP charge con el SDK oficial (`@stellar/mpp` 0.7.1) en un paquete aislado, `scripts/mpp-probe/`. Desde el rail UCP, el servidor oficial rechazó los cuatro intentos (pull y patrocinado; "invalid Stellar public key" para `did:pkh:…:C…` y "Transfer from does not match credential source" con el dueño como pagador) sin mover nada; el control con la llave clásica del agente cobró 0,01 USDC (tx `9e983664…`). No se construye (`R-4`, `R-20`); MPP en UCP sería un medio de pago aparte. Brecha 21 en el anexo, texto del issue listo y sin publicar, criterios 3 y 4 de la fase marcados.
 - 2026-10-05, T135 `/revisar`: sin bloqueantes; corregidos los 9 hallazgos a pedido del usuario, sin mover plata. El principal: el veredicto de la prueba podía dar un falso "rechazado"; ahora exige el motivo exacto del SDK en cada intento y que el saldo del rail se lea igual antes y después. Un paso nuevo simula en modo estricto la transferencia firmada por el rail y la red la acepta: la firma es buena y el único obstáculo es el tipo de pagador. Aclarado que el servidor patrocinado no tuvo control; el issue cita las líneas del SDK.
 - 2026-10-05, T135 cerrada: [PR #61](https://github.com/vicentewolde/AgentPey/pull/61) en `main` por fast-forward, con OK del usuario (sin CI: solo corre el de Vitrinee, que T135 no toca; `pnpm check` en verde en local). Con OK del usuario, issue publicado: [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90).
+- 2026-10-06: T143 cerrada ([PR #65](https://github.com/vicentewolde/AgentPey/pull/65)). La capa de wallets es propia (`packages/wallet-kit`), sin CDN; LOBSTR firma transacciones para mainnet y Hana no firma SEP-53. El usuario probó aprobar, revocar y el portal en agentpey.com. Siguiente: las pruebas técnicas del 8-oct.

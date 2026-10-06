@@ -8257,3 +8257,16 @@ CSP del MCP queda en `img-src 'self'`. El usuario eligió la opción A para el c
 
 Pendiente: push, PR y merge con OK; después, en agentpey.com, aprobar y revocar un Mandato con Freighter y xBull y
 entrar al portal (criterio 2). `AGENTS.md`: sin cambios. Exponential: sin cambios.
+
+## 2026-10-06 (52) — cc/t143-cierre
+
+Agente: Claude Code.
+
+Qué: T143 cerrada. [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) mergeado (fast-forward, `main` en
+`9f84899`), en vivo en agentpey.com, vitrinee.agentpey.com y mcp.agentpey.com unos 4 minutos después. El usuario
+aprobó y revocó un Mandato con Freighter y con xBull y entró al portal: todo funcionó, criterio 2 marcado. Ticket
+`DONE` en `SYNC.md`; `exp:sync` corrido.
+
+Pendiente: T138, T139 y T145 (8-oct), T141 (9-oct), T130 cuando haya tienda de terceros, reembolso de T124 el 8 o
+9-oct. `AGENTS.md`: sin cambios (la nota de `packages/wallet-kit` ya entró con T143). Exponential: ticket T143
+(`cmusmv9l0001tkx049cepmzg5`) a `DONE` con el PR #65; T143 no tiene tarjeta en el tablero, así que `exp:sync` no movió nada.
