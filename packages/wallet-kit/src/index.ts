@@ -3,7 +3,7 @@
  * origin (no CDN), and the list of wallets offered.
  */
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 export { OFFERED_WALLETS, LEFT_OUT_WALLETS, isOffered, parseNeeds, walletsFor, type Need, type OfferedWalletId } from "./wallets.js";
@@ -18,18 +18,21 @@ export const WALLET_KIT_PATH = "/wallet-kit.js";
 /** The external hosts the wallet picker loads images from (its wallet icons), for a page with a strict CSP. */
 export const WALLET_KIT_IMAGE_HOSTS = ["https://stellar.creit.tech"] as const;
 
-const integrities = new Map<string, string>();
+const integrities = new Map<string, { readonly stamp: string; readonly value: string }>();
 
 /**
- * The Subresource Integrity value of a bundle (`sha384-…`), computed once per file, or `undefined` when it is not
- * built. A page that pins it loads exactly the file this server built.
+ * The Subresource Integrity value of a bundle (`sha384-…`), or `undefined` when it is not built. A page that pins it
+ * loads exactly the file this server serves. Computed again whenever the file changes (its size or modification
+ * time): a bundle rebuilt under a running server must not be announced with the old file's hash, or browsers block it.
  */
 export function walletKitIntegrity(bundle: string = WALLET_KIT_BUNDLE): string | undefined {
-  const known = integrities.get(bundle);
-  if (known !== undefined) return known;
   try {
+    const { size, mtimeMs } = statSync(bundle);
+    const stamp = `${size}:${mtimeMs}`;
+    const known = integrities.get(bundle);
+    if (known !== undefined && known.stamp === stamp) return known.value;
     const value = `sha384-${createHash("sha384").update(readFileSync(bundle)).digest("base64")}`;
-    integrities.set(bundle, value);
+    integrities.set(bundle, { stamp, value });
     return value;
   } catch {
     return undefined;
