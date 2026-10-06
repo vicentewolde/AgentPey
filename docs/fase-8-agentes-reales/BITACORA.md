@@ -31,8 +31,9 @@ tienda, comprobado con una compra real. **T135 cerrada**: MPP charge no
 admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
 **T136 cerrada**: el paquete [`@agentpey/ucp-stellar`](https://www.npmjs.com/package/@agentpey/ucp-stellar)
 está publicado en npm, compra desde un proyecto vacío, y el agente de AgentPey
-paga a través de él (`R-21`). **T137 en revisión**: un kit abierto comprueba si
-cualquier tienda implementa bien el medio de pago de Stellar (`R-22`).
+paga a través de él (`R-21`). **T137 cerrada** ([PR #64](https://github.com/vicentewolde/AgentPey/pull/64)):
+un kit abierto comprueba si cualquier tienda implementa bien el medio de pago
+de Stellar (`R-22`).
 
 | Tarea | Estado |
 |---|---|
@@ -45,7 +46,7 @@ cualquier tienda implementa bien el medio de pago de Stellar (`R-22`).
 | T134 AP2 en el checkout | cerrada |
 | T135 MPP charge (prueba técnica) | cerrada |
 | T136 SDK en npm | cerrada |
-| T137 Kit de conformidad de Stellar | en revisión |
+| T137 Kit de conformidad de Stellar | cerrada |
 | T138 Prueba técnica: GenLayer | pendiente |
 | T139 Prueba técnica: Trustless Work | pendiente |
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
@@ -366,7 +367,7 @@ admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
 
-## T137 · El kit de conformidad del medio de pago (2026-10-06, en revisión)
+## T137 · El kit de conformidad del medio de pago (2026-10-06, cerrada)
 
 **Qué quedó.** Una tienda que diga "acepto pagos de agentes en Stellar" ahora
 se puede comprobar con un comando: `pnpm run ucp:stellar:conformance --` y su
