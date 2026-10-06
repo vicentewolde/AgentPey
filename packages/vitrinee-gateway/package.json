@@ -20,6 +20,7 @@
   "dependencies": {
     "@agentpass/core": "workspace:*",
     "@agentpey/ap2": "workspace:*",
+    "@agentpey/wallet-kit": "workspace:*",
     "@stellar/stellar-sdk": "^17.1.0",
     "@vitrinee/adapters": "workspace:*",
     "@vitrinee/anchor": "workspace:*",

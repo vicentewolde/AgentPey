@@ -5,5 +5,11 @@ packages:
   - "apps/*"
 
 # vitest pulls esbuild, whose postinstall resolves the prebuilt platform binary.
+# Stellar Wallets Kit (T143) pulls four packages with install scripts, none needed for a browser bundle: reviewed and
+# denied, so no third-party code runs at install time.
 allowBuilds:
+  '@reown/appkit': false
+  bufferutil: false
   esbuild: true
+  secp256k1: false
+  utf-8-validate: false

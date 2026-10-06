@@ -136,7 +136,7 @@
 </style>
 </head>
 <body>
-<script src="https://unpkg.com/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
+<script src="/wallet-kit.js"></script>
 
 <main class="wrap">
   <div class="top">
@@ -188,8 +188,8 @@
       <span data-tr="es">Solo esa wallet puede revocarlo. No es una regla de esta página: el contrato en Stellar rechaza una revocación que no venga firmada por ella.</span>
     </p>
     <p class="lead">
-      <span data-tr="en">Use the Connect wallet button at the top right: Freighter asks for a verification signature, which moves no money.</span>
-      <span data-tr="es">Usa el botón Conectar wallet de arriba a la derecha: Freighter te pide una firma de verificación, que no mueve dinero.</span>
+      <span data-tr="en">Use the Connect wallet button at the top right and choose your wallet: it asks for a verification signature, which moves no money.</span>
+      <span data-tr="es">Usa el botón Conectar wallet de arriba a la derecha y elige tu wallet: te pide una firma de verificación, que no mueve dinero.</span>
     </p>
     <p id="wallet-status" class="status" role="status"></p>
     <p id="wallet-address" class="wallet-address" hidden></p>
@@ -205,8 +205,8 @@
     <p class="panel-kicker"><span data-tr="en">04 · Sign the revocation</span><span data-tr="es">04 · Firma la revocación</span></p>
     <h2><span data-tr="en">Revoke</span><span data-tr="es">Revocar</span></h2>
     <p class="lead">
-      <span data-tr="en">Freighter will ask you to approve writing the revocation to Stellar Testnet. After that, the agent can no longer pay.</span>
-      <span data-tr="es">Freighter te pedirá una aprobación para escribir la revocación en Stellar Testnet. Después de esto, el agente deja de poder pagar.</span>
+      <span data-tr="en">Your wallet will ask you to approve writing the revocation to Stellar Testnet. After that, the agent can no longer pay.</span>
+      <span data-tr="es">Tu wallet te pedirá una aprobación para escribir la revocación en Stellar Testnet. Después de esto, el agente deja de poder pagar.</span>
     </p>
     <div class="actions"><button id="revoke-btn" class="btn" type="button"><span data-tr="en">Revoke the permission</span><span data-tr="es">Revocar el permiso</span></button></div>
     <p id="revoke-status" class="status" role="status"></p>
@@ -232,11 +232,11 @@ var prepared = null;
 
 /* ---------- language ---------- */
 var T = {
-  walletMissing: { en: "Freighter was not found. Install it and reload the page.", es: "No encontramos Freighter. Instálalo y vuelve a cargar la página." },
-  walletWaiting: { en: "Waiting for Freighter…", es: "Esperando a Freighter…" },
+  walletMissing: { en: "The wallet connection did not load. Reload the page.", es: "No se cargó la conexión con las wallets. Vuelve a cargar la página." },
+  walletWaiting: { en: "Waiting for your wallet…", es: "Esperando a tu wallet…" },
   walletVerified: { en: "Wallet verified.", es: "Wallet verificada." },
   walletFailed: { en: "Could not verify the wallet.", es: "No se pudo verificar la wallet." },
-  waitingSignature: { en: "Waiting for your signature in Freighter…", es: "Esperando la firma en Freighter…" },
+  waitingSignature: { en: "Waiting for your signature in your wallet…", es: "Esperando tu firma en la wallet…" },
   submitting: { en: "Sending the revocation to the network…", es: "Enviando la revocación a la red…" },
   revokeFailed: { en: "Could not revoke.", es: "No se pudo revocar." },
   missingId: { en: "The permission id is missing.", es: "Falta el identificador del permiso." },
@@ -279,6 +279,7 @@ var pageNotice = null;
 var statuses = {};
 
 function resolveMessage(message) {
+  if (message.wallet) return AgentpeyWallet.describe(message.wallet, lang());
   return message.key ? t(message.key) : message.text;
 }
 
@@ -287,16 +288,9 @@ async function api(path, options) {
   return { status: res.status, body: await res.json() };
 }
 
-/** Freighter returns a signature either as base64 already, or as bytes. */
-function toBase64Signature(signedMessage) {
-  if (typeof signedMessage === "string") return signedMessage;
-  var bytes = new Uint8Array(signedMessage);
-  var binary = "";
-  for (var i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
 function errorMessage(error, fallbackKey) {
+  // A wallet-layer error is kept as itself, so a language switch can say it again in the other language.
+  if (typeof AgentpeyWallet !== "undefined" && AgentpeyWallet.describe(error, "en") !== undefined) return { wallet: error };
   if (error && error.body && error.body.message) return { text: error.body.message };
   if (error && error.key) return { key: error.key };
   if (error && error.message) return { text: error.message };
@@ -378,7 +372,7 @@ function renderState() {
 
 async function connectWallet() {
   var button = document.getElementById("wallet-btn");
-  if (typeof freighterApi === "undefined") {
+  if (typeof AgentpeyWallet === "undefined") {
     setStatus("wallet-status", "error", { key: "walletMissing" });
     return;
   }
@@ -386,18 +380,14 @@ async function connectWallet() {
   setStatus("wallet-status", "", { key: "walletWaiting" });
 
   try {
-    var presence = await freighterApi.isConnected();
-    if (presence && presence.error) throw new Error(presence.error);
-
-    var access = await freighterApi.requestAccess();
-    if (access && access.error) throw new Error(access.error);
-    var address = access.address || access;
+    // The picker offers only wallets that can sign the verification message (T143).
+    var connected = await AgentpeyWallet.connect();
+    var address = connected.address;
 
     var challenge = await api("/api/wallet/challenge", { method: "POST" });
     if (!challenge.body.ok) throw { body: challenge.body };
 
-    var signed = await freighterApi.signMessage(challenge.body.message, { address: address });
-    if (signed && signed.error) throw new Error(signed.error);
+    var signed = await AgentpeyWallet.signMessage(challenge.body.message, address);
 
     // One call: proving the wallet and preparing the transaction happen
     // together, so no state has to be kept between them and the challenge is
@@ -407,7 +397,7 @@ async function connectWallet() {
       body: JSON.stringify({
         address: address,
         nonce: challenge.body.nonce,
-        signature: toBase64Signature(signed.signedMessage || signed),
+        signature: signed.signature,
       }),
     });
     if (!result.body.ok) throw { body: result.body };
@@ -436,16 +426,12 @@ async function revoke() {
   setStatus("revoke-status", "", { key: "waitingSignature" });
 
   try {
-    var signed = await freighterApi.signTransaction(prepared.xdr, {
-      address: walletAddress,
-      networkPassphrase: "Test SDF Network ; September 2015",
-    });
-    if (signed && signed.error) throw new Error(signed.error);
+    var signedXdr = await AgentpeyWallet.signTransaction(prepared.xdr, walletAddress);
 
     setStatus("revoke-status", "", { key: "submitting" });
     var result = await api(apiPath + "/submit", {
       method: "POST",
-      body: JSON.stringify({ requestId: prepared.requestId, signedXdr: signed.signedTxXdr || signed }),
+      body: JSON.stringify({ requestId: prepared.requestId, signedXdr: signedXdr }),
     });
     if (!result.body.ok) throw { body: result.body };
 

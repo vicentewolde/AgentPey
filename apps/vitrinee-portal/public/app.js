@@ -1,18 +1,19 @@
 /*
- * The owners' portal (T105): sign in with Freighter (SEP-0053), register a
+ * The owners' portal (T105): sign in with a Stellar wallet (SEP-0053), register a
  * Jumpseller store, see its orders. Plain browser JavaScript, served by the
- * gateway at /portal/app.js on the platform host only.
+ * gateway at /portal/app.js on the platform host only. The wallet comes from
+ * /portal/wallet-kit.js (T143): a picker of the wallets that sign messages.
  */
-/* global freighterApi */
+/* global AgentpeyWallet */
 var PLATFORM_HOST = location.hostname;
 var CHECKS = ["slug", "payout", "store", "signing"];
 /* Which check each refusal belongs to; everything before it passed. */
 var FAILED_CHECK = { SlugUnavailable: "slug", PayoutAccountNotReady: "payout", StoreCredentialsRejected: "store", SigningKeyNotFunded: "signing" };
 
 var T = {
-  walletMissing: { en: "Freighter was not found. Install it and reload the page.", es: "No encontramos Freighter. Instálalo y vuelve a cargar la página." },
-  walletWaiting: { en: "Waiting for Freighter…", es: "Esperando a Freighter…" },
-  waitingSignature: { en: "Sign the message in Freighter to prove this account is yours…", es: "Firma el mensaje en Freighter para probar que la cuenta es tuya…" },
+  walletMissing: { en: "The wallet connection did not load. Reload the page.", es: "No se cargó la conexión con las wallets. Vuelve a cargar la página." },
+  walletWaiting: { en: "Choose your wallet and connect it…", es: "Elige tu wallet y conéctala…" },
+  waitingSignature: { en: "Sign the message in your wallet to prove this account is yours…", es: "Firma el mensaje en tu wallet para probar que la cuenta es tuya…" },
   signinFailed: { en: "Could not sign in.", es: "No se pudo entrar." },
   signedIn: { en: "Signed in.", es: "Listo, entraste." },
   loadFailed: { en: "Could not load your stores.", es: "No se pudieron cargar tus tiendas." },
@@ -26,8 +27,8 @@ var T = {
     es: "La cuenta de tu wallet todavía no existe en Stellar testnet. Fondéala con XLM de testnet y vuelve a intentarlo.",
   },
   payout_usdc_trustline_missing: {
-    en: "Your wallet cannot receive USDC yet. In Freighter, add the asset USDC (issuer GBBD47…LFLA5) on testnet, then try again.",
-    es: "Tu wallet todavía no puede recibir USDC. En Freighter, agrega el activo USDC (emisor GBBD47…LFLA5) en testnet y vuelve a intentarlo.",
+    en: "Your wallet cannot receive USDC yet. In your wallet, add the asset USDC (issuer GBBD47…LFLA5) on testnet, then try again.",
+    es: "Tu wallet todavía no puede recibir USDC. En tu wallet, agrega el activo USDC (emisor GBBD47…LFLA5) en testnet y vuelve a intentarlo.",
   },
   storeRejected: { en: "Jumpseller did not accept that login and token. Copy them again from the API section of your Jumpseller admin.", es: "Jumpseller no aceptó ese login y token. Cópialos de nuevo desde la sección API de tu panel de Jumpseller." },
   storeRejectedShopify: { en: "Shopify did not accept that client id and secret. Check them, that the app is installed on this store, and that the app and the store are in the same organization.", es: "Shopify no aceptó ese client id y secret. Revísalos, que la app esté instalada en esta tienda y que la app y la tienda estén en la misma organización." },
@@ -81,14 +82,6 @@ function setStatus(id, kind, key, text) {
   el.dataset.key = key || "";
 }
 
-function toBase64Signature(signed) {
-  if (typeof signed === "string") return signed;
-  var bytes = new Uint8Array(signed);
-  var binary = "";
-  for (var i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
 function el(tag, attrs, children) {
   var node = document.createElement(tag);
   for (var k in attrs || {}) {
@@ -103,29 +96,24 @@ function el(tag, attrs, children) {
 /* ---------- sign-in ---------- */
 async function signIn() {
   var button = document.getElementById("signin-btn");
-  if (typeof freighterApi === "undefined") return setStatus("signin-status", "err", "walletMissing");
+  if (typeof AgentpeyWallet === "undefined") return setStatus("signin-status", "err", "walletMissing");
   button.disabled = true;
   setStatus("signin-status", "", "walletWaiting");
   try {
-    var presence = await freighterApi.isConnected();
-    if (presence && presence.error) throw new Error(presence.error);
-    var access = await freighterApi.requestAccess();
-    if (access && access.error) throw new Error(access.error);
-    var address = access.address || access;
+    var address = (await AgentpeyWallet.connect()).address;
 
     var challenge = await api("/api/portal/challenge", { method: "POST", body: JSON.stringify({ account: address }) });
     if (challenge.status !== 200) throw { body: challenge.body };
     setStatus("signin-status", "", "waitingSignature");
-    var signed = await freighterApi.signMessage(challenge.body.message, { address: address });
-    if (signed && signed.error) throw new Error(signed.error);
-    var signature = toBase64Signature(signed.signedMessage || signed);
+    var signature = (await AgentpeyWallet.signMessage(challenge.body.message, address)).signature;
 
     var session = await api("/api/portal/session", { method: "POST", body: JSON.stringify({ account: address, nonce: challenge.body.nonce, signature: signature }) });
     if (session.status !== 200) throw { body: session.body };
     setStatus("signin-status", "ok", "signedIn");
     await loadMe();
   } catch (error) {
-    setStatus("signin-status", "err", null, t("signinFailed") + " " + ((error && error.body && error.body.message) || (error && error.message) || ""));
+    var walletSays = AgentpeyWallet.describe(error, lang());
+    setStatus("signin-status", "err", null, walletSays || t("signinFailed") + " " + ((error && error.body && error.body.message) || (error && error.message) || ""));
   } finally {
     button.disabled = false;
   }

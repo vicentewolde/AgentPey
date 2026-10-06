@@ -146,7 +146,7 @@
 </style>
 </head>
 <body>
-<script src="https://unpkg.com/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
+<script src="/wallet-kit.js"></script>
 
 <main class="wrap">
   <div class="top">
@@ -229,10 +229,10 @@
     <p class="panel-kicker"><span data-tr="en">04 · Sign and send</span><span data-tr="es">04 · Firma y envía</span></p>
     <h2><span data-tr="en">Sign your answer</span><span data-tr="es">Firma tu respuesta</span></h2>
     <p class="lead">
-      <span data-tr="en">Freighter shows a short message with the receipt, the claim, your position and the hash of your answer. Signing moves no money. Then download the file and send it back to the arbiter.</span>
-      <span data-tr="es">Freighter te muestra un mensaje corto con el recibo, el reclamo, tu posición y el hash de tu respuesta. Firmar no mueve dinero. Después descarga el archivo y envíaselo al árbitro.</span>
+      <span data-tr="en">Your wallet shows a short message with the receipt, the claim, your position and the hash of your answer. Signing moves no money. Then download the file and send it back to the arbiter.</span>
+      <span data-tr="es">Tu wallet te muestra un mensaje corto con el recibo, el reclamo, tu posición y el hash de tu respuesta. Firmar no mueve dinero. Después descarga el archivo y envíaselo al árbitro.</span>
     </p>
-    <div class="actions"><button id="sign-btn" class="btn" type="button" disabled><span data-tr="en">Sign with Freighter</span><span data-tr="es">Firmar con Freighter</span></button></div>
+    <div class="actions"><button id="sign-btn" class="btn" type="button" disabled><span data-tr="en">Sign with your wallet</span><span data-tr="es">Firmar con tu wallet</span></button></div>
     <p id="sign-status" class="status" role="status"></p>
     <div id="done-row" hidden>
       <dl id="done-facts" class="result"></dl>
@@ -242,25 +242,25 @@
 </main>
 
 <script type="module">
-import { formatAtomic, parseUsdc, readClaim, buildResponse, responseChallengeMessage, responseHash, responseFile, toBase64Signature, verifySep53 } from "./responder.js";
+import { formatAtomic, parseUsdc, readClaim, buildResponse, responseChallengeMessage, responseHash, responseFile, verifySep53 } from "./responder.js";
 
 var T = {
   pasteOrChoose: { en: "Choose the claim file or paste it first.", es: "Primero elige el archivo del reclamo o pégalo." },
   notAClaim: { en: "This is not an AgentResolve claim. Check that you loaded claim.jws.", es: "Esto no es un reclamo de AgentResolve. Revisa que cargaste claim.jws." },
   claimRead: { en: "Claim loaded. Now connect your wallet.", es: "Reclamo cargado. Ahora conecta tu wallet." },
-  walletMissing: { en: "Freighter was not found. Install it and reload the page.", es: "No encontramos Freighter. Instálalo y vuelve a cargar la página." },
-  walletWaiting: { en: "Waiting for Freighter…", es: "Esperando a Freighter…" },
+  walletMissing: { en: "The wallet connection did not load. Reload the page.", es: "No se cargó la conexión con las wallets. Vuelve a cargar la página." },
+  walletWaiting: { en: "Waiting for your wallet…", es: "Esperando a tu wallet…" },
   walletOk: { en: "This is the store's payout account. You can answer.", es: "Es la cuenta de cobro de la tienda. Puedes responder." },
-  walletWrong: { en: "This wallet is not the payout account in the receipt. Switch accounts in Freighter and connect again.", es: "Esta wallet no es la cuenta de cobro del recibo. Cambia de cuenta en Freighter y vuelve a conectar." },
+  walletWrong: { en: "This wallet is not the payout account in the receipt. Switch to that account in your wallet and connect again.", es: "Esta wallet no es la cuenta de cobro del recibo. Cambia a esa cuenta en tu wallet y vuelve a conectar." },
   walletFailed: { en: "Could not connect the wallet.", es: "No se pudo conectar la wallet." },
   needStatement: { en: "Write your statement before signing.", es: "Escribe tus descargos antes de firmar." },
   badAmount: { en: "Enter an amount greater than 0 and less than the amount claimed.", es: "Ingresa un monto mayor que 0 y menor que lo reclamado." },
   tooMuchEvidence: { en: "Up to 5 lines of evidence, each up to 2000 characters.", es: "Hasta 5 líneas de evidencia, de hasta 2000 caracteres cada una." },
-  waitingSignature: { en: "Waiting for your signature in Freighter…", es: "Esperando tu firma en Freighter…" },
+  waitingSignature: { en: "Waiting for your signature in your wallet…", es: "Esperando tu firma en la wallet…" },
   signed: { en: "Signed. Download the file and send it to the arbiter.", es: "Firmada. Descarga el archivo y envíaselo al árbitro." },
   signFailed: { en: "Could not sign.", es: "No se pudo firmar." },
-  walletChanged: { en: "Freighter signed with another account. Select the store's payout account in Freighter, connect again and sign.", es: "Freighter firmó con otra cuenta. Elige en Freighter la cuenta de cobro de la tienda, vuelve a conectar y firma." },
-  signatureInvalid: { en: "The signature Freighter returned does not verify, so the arbiter would reject it. Try signing again.", es: "La firma que devolvió Freighter no verifica, así que el árbitro la rechazaría. Intenta firmar de nuevo." },
+  walletChanged: { en: "The wallet signed with another account. Select the store's payout account in your wallet, connect again and sign.", es: "La wallet firmó con otra cuenta. Elige en tu wallet la cuenta de cobro de la tienda, vuelve a conectar y firma." },
+  signatureInvalid: { en: "The signature your wallet returned does not verify, so the arbiter would reject it. Try signing again.", es: "La firma que devolvió tu wallet no verifica, así que el árbitro la rechazaría. Intenta firmar de nuevo." },
   signedUnchecked: { en: "Signed. This browser could not check the signature itself; the arbiter will. Download the file and send it to the arbiter.", es: "Firmada. Este navegador no pudo comprobar la firma; lo hará el árbitro. Descarga el archivo y envíaselo al árbitro." },
   store: { en: "Store", es: "Tienda" },
   order: { en: "Order", es: "Pedido" },
@@ -294,6 +294,11 @@ var address = "";
 var signedResult = null;
 var statuses = {};
 
+/** A wallet-layer error, kept as itself so a language switch says it again in the other language. */
+function walletProblem(error) {
+  return typeof AgentpeyWallet !== "undefined" && AgentpeyWallet.describe(error, "en") !== undefined ? { wallet: error } : null;
+}
+
 function setStatus(id, kind, message) {
   statuses[id] = { kind: kind, message: message };
   paintStatus(id);
@@ -302,7 +307,7 @@ function paintStatus(id) {
   var state = statuses[id];
   var el = document.getElementById(id);
   el.className = "status " + (state.kind === "error" ? "err" : state.kind === "ok" ? "ok" : "");
-  el.textContent = state.message.key ? t(state.message.key) : state.message.text;
+  el.textContent = state.message.wallet ? AgentpeyWallet.describe(state.message.wallet, lang()) : state.message.key ? t(state.message.key) : state.message.text;
 }
 
 function formatDate(value) {
@@ -382,15 +387,12 @@ function refreshSignButton() {
 
 async function connectWallet() {
   var button = document.getElementById("wallet-btn");
-  if (typeof freighterApi === "undefined") { setStatus("wallet-status", "error", { key: "walletMissing" }); return; }
+  if (typeof AgentpeyWallet === "undefined") { setStatus("wallet-status", "error", { key: "walletMissing" }); return; }
   button.disabled = true;
   setStatus("wallet-status", "", { key: "walletWaiting" });
   try {
-    var presence = await freighterApi.isConnected();
-    if (presence && presence.error) throw new Error(presence.error);
-    var access = await freighterApi.requestAccess();
-    if (access && access.error) throw new Error(access.error);
-    address = access.address || access;
+    // The picker offers only wallets that can sign the answer's message (T143).
+    address = (await AgentpeyWallet.connect()).address;
     button.textContent = address.slice(0, 4) + "…" + address.slice(-4);
     button.classList.add("connected");
     button.title = address;
@@ -398,7 +400,7 @@ async function connectWallet() {
     else setStatus("wallet-status", "error", { key: "walletWrong" });
   } catch (error) {
     address = "";
-    setStatus("wallet-status", "error", error && error.message ? { text: error.message } : { key: "walletFailed" });
+    setStatus("wallet-status", "error", walletProblem(error) || (error && error.message ? { text: error.message } : { key: "walletFailed" }));
   } finally {
     button.disabled = false;
     refreshSignButton();
@@ -438,10 +440,8 @@ async function sign() {
   setStatus("sign-status", "", { key: "waitingSignature" });
   try {
     var message = await responseChallengeMessage(response);
-    var signed = await freighterApi.signMessage(message, { address: address });
-    if (signed && signed.error) throw new Error(signed.error);
-    if (signed && signed.signerAddress && signed.signerAddress !== address) throw { key: "walletChanged" };
-    var signature = toBase64Signature(signed && signed.signedMessage !== undefined ? signed.signedMessage : signed);
+    // The wallet layer refuses a signature by another account (WrongAccount) and hands back base64.
+    var signature = (await AgentpeyWallet.signMessage(message, address)).signature;
     // Checked here, before the file exists: a bad signature found by the
     // arbiter could come after the 48 h, and the dispute would be decided
     // with one side (E-22).
@@ -456,7 +456,7 @@ async function sign() {
     setStatus("sign-status", "ok", { key: verified === null ? "signedUnchecked" : "signed" });
   } catch (error) {
     document.getElementById("done-row").hidden = true;
-    setStatus("sign-status", "error", error && error.key ? { key: error.key } : error && error.message ? { text: error.message } : { key: "signFailed" });
+    setStatus("sign-status", "error", walletProblem(error) || (error && error.key ? { key: error.key } : error && error.message ? { text: error.message } : { key: "signFailed" }));
   } finally {
     refreshSignButton();
   }

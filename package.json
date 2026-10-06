@@ -29,7 +29,7 @@
     "partner:key": "tsx --tsconfig tsconfig.scripts.json scripts/issue-api-key.ts",
     "partner:return-origins": "tsx --tsconfig tsconfig.scripts.json scripts/partner-return-origins.ts",
     "web": "pnpm --filter @agentpey/web run dev",
-    "build": "tsc -b",
+    "build": "tsc -b && pnpm --filter @agentpey/wallet-kit run bundle",
     "test": "pnpm -r --stream test && vitest run",
     "test:integration": "pnpm --filter @agentpass/sdk run test:integration && pnpm --filter @agentpey/mandate run test:integration",
     "typecheck": "tsc -b && tsc -p tsconfig.scripts.json",

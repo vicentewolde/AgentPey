@@ -19,6 +19,7 @@
     "@agentpey/partner-api": "workspace:*",
     "@agentpey/tenancy": "workspace:*",
     "@agentpey/vault": "workspace:*",
+    "@agentpey/wallet-kit": "workspace:*",
     "@agentpey/webhooks": "workspace:*",
     "@stellar/stellar-sdk": "^17.0.1",
     "@vitrinee/core": "workspace:*",

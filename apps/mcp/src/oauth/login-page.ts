@@ -4,13 +4,10 @@
  * account, and only that wallet gets in. English by default, neutral Latin
  * American Spanish when the browser asks for it.
  *
- * Freighter's script is pinned by version and by integrity hash, so a
- * compromised CDN cannot swap the code that asks for the signature.
+ * The wallet layer (T143) is this server's own file, `/wallet-kit.js`, pinned by the integrity hash of the exact
+ * bundle it serves: no CDN can swap the code that asks for the signature. Any wallet that signs messages can be
+ * used, but only the configured wallet gets in: the server checks the account, not the wallet's brand.
  */
-export const FREIGHTER_SCRIPT = {
-  src: "https://unpkg.com/@stellar/freighter-api@6.0.1/build/index.min.js",
-  integrity: "sha384-PBwq0JVfqy16Z6jvKJPx93jpStXbwF2oWvsRTODkvE/3hOX5zmLvAuMiKgAaxe2b",
-} as const;
 
 export interface LoginPageInput {
   /** The signed authorization request, handed back on every call from the page. */
@@ -22,6 +19,8 @@ export interface LoginPageInput {
   readonly loopback: boolean;
   /** The one wallet that can sign in, shortened for display. */
   readonly walletHint: string;
+  /** The `integrity` of `/wallet-kit.js` (`walletKitIntegrity()`). */
+  readonly walletKitIntegrity: string;
 }
 
 function escapeHtml(value: string): string {
@@ -55,7 +54,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
   .warn { color: var(--fg); border-left: 3px solid var(--err); padding-left: 10px; }
   code { word-break: break-all; }
 </style>
-<script src="${FREIGHTER_SCRIPT.src}" integrity="${FREIGHTER_SCRIPT.integrity}" crossorigin="anonymous"></script>
+<script src="/wallet-kit.js" integrity="${escapeHtml(input.walletKitIntegrity)}" crossorigin="anonymous"></script>
 </head>
 <body>
 <main>
@@ -66,7 +65,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
     <p><span data-t="only">Only this wallet can sign in:</span> <code>${escapeHtml(input.walletHint)}</code></p>
     <p class="warn" data-t="yours">Continue only if you started this connection yourself, from your own Claude or ChatGPT. If someone sent you this link, close it.</p>
     ${input.loopback ? '<p class="warn" data-t="local">The app asking runs on this computer. Any program here could claim to be it.</p>' : ""}
-    <button id="sign" type="button" data-t="sign">Sign in with Freighter</button>
+    <button id="sign" type="button" data-t="sign">Sign in with your wallet</button>
     <a id="deny" class="deny" href="#" data-t="deny">Cancel</a>
     <div id="status" class="status" role="status"></div>
   </div>
@@ -74,8 +73,8 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
 <script nonce="${nonce}">
 const DATA = ${data};
 const TEXT = {
-  en: { missing: "Freighter is not installed in this browser.", waiting: "Waiting for Freighter…", wrong: "That wallet cannot sign in here.", failed: "Sign-in failed. Try again.", done: "Signed in. Going back…" },
-  es: { yours: "Continúa solo si tú iniciaste esta conexión, desde tu propio Claude o ChatGPT. Si alguien te mandó este enlace, ciérralo.", local: "La app que pide acceso corre en este computador. Cualquier programa aquí podría hacerse pasar por ella.", title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", sign: "Iniciar sesión con Freighter", deny: "Cancelar", missing: "Freighter no está instalado en este navegador.", waiting: "Esperando a Freighter…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
+  en: { missing: "The wallet connection did not load. Reload the page.", waiting: "Choose your wallet and sign…", wrong: "That wallet cannot sign in here.", failed: "Sign-in failed. Try again.", done: "Signed in. Going back…" },
+  es: { yours: "Continúa solo si tú iniciaste esta conexión, desde tu propio Claude o ChatGPT. Si alguien te mandó este enlace, ciérralo.", local: "La app que pide acceso corre en este computador. Cualquier programa aquí podría hacerse pasar por ella.", title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", sign: "Iniciar sesión con tu wallet", deny: "Cancelar", missing: "No se cargó la conexión con las wallets. Vuelve a cargar la página.", waiting: "Elige tu wallet y firma…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
 };
 const lang = (navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en";
 const t = (key) => (TEXT[lang] && TEXT[lang][key]) || TEXT.en[key] || key;
@@ -86,20 +85,7 @@ if (lang === "es") {
 }
 const status = document.getElementById("status");
 const say = (kind, key) => { status.className = "status " + kind; status.textContent = t(key); };
-
-function toBase64Signature(signed) {
-  if (typeof signed === "string") return signed;
-  if (signed === null || typeof signed !== "object") return "";
-  let values;
-  if (signed instanceof ArrayBuffer) values = new Uint8Array(signed);
-  else if (ArrayBuffer.isView(signed)) values = new Uint8Array(signed.buffer, signed.byteOffset, signed.byteLength);
-  else if (Array.isArray(signed.data)) values = signed.data;
-  else values = Object.values(signed);
-  if (!values.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 255)) return "";
-  let binary = "";
-  for (const byte of values) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
+const sayText = (kind, text) => { status.className = "status " + kind; status.textContent = text; };
 
 async function post(path, body) {
   const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -118,22 +104,20 @@ document.getElementById("deny").addEventListener("click", async (event) => {
 
 document.getElementById("sign").addEventListener("click", async () => {
   const button = document.getElementById("sign");
-  if (typeof freighterApi === "undefined") { say("error", "missing"); return; }
+  if (typeof AgentpeyWallet === "undefined") { say("error", "missing"); return; }
   button.disabled = true;
   say("", "waiting");
   try {
-    const access = await freighterApi.requestAccess();
-    if (access && access.error) throw new Error(access.error);
-    const account = access.address || access;
+    const account = (await AgentpeyWallet.connect()).address;
     const { message, challenge } = await post("/authorize/challenge", { request: DATA.request, account });
-    const signed = await freighterApi.signMessage(message, { address: account });
-    if (signed && signed.error) throw new Error(signed.error);
-    const signature = toBase64Signature(signed && signed.signedMessage !== undefined ? signed.signedMessage : signed);
+    const signature = (await AgentpeyWallet.signMessage(message, account)).signature;
     const { redirect } = await post("/authorize/approve", { request: DATA.request, account, challenge, signature });
     say("ok", "done");
     window.location.assign(redirect);
   } catch (error) {
-    say("error", error && error.code === "access_denied" ? "wrong" : "failed");
+    const walletSays = AgentpeyWallet.describe(error, lang);
+    if (walletSays !== undefined) sayText("error", walletSays);
+    else say("error", error && error.code === "access_denied" ? "wrong" : "failed");
     button.disabled = false;
   }
 });

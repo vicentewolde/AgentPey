@@ -14,6 +14,7 @@
     { "path": "../../packages/activity" },
     { "path": "../../packages/partner-api" },
     { "path": "../../packages/tenancy" },
+    { "path": "../../packages/wallet-kit" },
     { "path": "../agent" },
     { "path": "../../packages/vitrinee-core" }
   ]

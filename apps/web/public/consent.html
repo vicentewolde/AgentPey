@@ -141,7 +141,7 @@
     .grant-row, .result-row { grid-template-columns: 1fr; gap: 5px; }
   }
 </style>
-<script src="https://unpkg.com/@stellar/freighter-api@6.0.1/build/index.min.js"></script>
+<script src="/wallet-kit.js"></script>
 </head>
 <body>
 <main class="wrap">
@@ -203,8 +203,8 @@
     <p class="panel-kicker"><span data-tr="en">02 · Sign the Mandate</span><span data-tr="es">02 · Firma el Mandato</span></p>
     <h2><span data-tr="en">Confirm your consent</span><span data-tr="es">Confirma el consentimiento</span></h2>
     <p class="lead">
-      <span data-tr="en">First connect your wallet with the button at the top right: Freighter asks for a verification signature, which moves no money. Then sign here: Freighter asks for two approvals, one to sign the Mandate and one to anchor it on Stellar Testnet.</span>
-      <span data-tr="es">Primero conecta tu wallet con el botón de arriba a la derecha: Freighter te pide una firma de verificación, que no mueve dinero. Después firma aquí: Freighter te pide dos aprobaciones, una para firmar el Mandato y otra para anclarlo en Stellar Testnet.</span>
+      <span data-tr="en">First connect your wallet with the button at the top right and choose yours: it asks for a verification signature, which moves no money. Then sign here: your wallet asks for two approvals, one to sign the Mandate and one to anchor it on Stellar Testnet.</span>
+      <span data-tr="es">Primero conecta tu wallet con el botón de arriba a la derecha y elige la tuya: te pide una firma de verificación, que no mueve dinero. Después firma aquí: tu wallet te pide dos aprobaciones, una para firmar el Mandato y otra para anclarlo en Stellar Testnet.</span>
     </p>
     <p id="wallet-status" class="status" role="status"></p>
     <p id="wallet-address" class="wallet-address" hidden></p>
@@ -225,7 +225,6 @@
 </main>
 
 <script>
-var TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
 var consentId = "";
 var consentPath = "";
 var walletAddress = "";
@@ -243,17 +242,17 @@ var returnUrl = "";
 /* ---------- language ---------- */
 var T = {
   walletMissing: {
-    en: "Freighter was not found. Install it from freighter.app and reload this page.",
-    es: "No se encontró Freighter. Instálalo desde freighter.app y recarga esta página.",
+    en: "The wallet connection did not load. Reload this page.",
+    es: "No se cargó la conexión con las wallets. Recarga esta página.",
   },
-  walletWaiting: { en: "Waiting for Freighter to connect your wallet…", es: "Esperando que Freighter conecte tu wallet…" },
-  walletSignVerify: { en: "Sign the verification message in Freighter…", es: "Firma el mensaje de verificación en Freighter…" },
+  walletWaiting: { en: "Choose your wallet and connect it…", es: "Elige tu wallet y conéctala…" },
+  walletSignVerify: { en: "Sign the verification message in your wallet…", es: "Firma el mensaje de verificación en tu wallet…" },
   walletVerifying: { en: "Verifying the signature…", es: "Verificando la firma…" },
   walletConnectedLabel: { en: "Wallet connected: ", es: "Wallet conectada: " },
   walletVerified: { en: "Wallet verified. You can now review and sign the Mandate.", es: "Wallet verificada. Ya puedes revisar y firmar el Mandato." },
   walletFailed: { en: "Could not connect the wallet.", es: "No se pudo conectar la wallet." },
-  signMandate: { en: "Sign the Mandate in Freighter…", es: "Firma el Mandato en Freighter…" },
-  signAnchor: { en: "Sign the anchor transaction in Freighter…", es: "Firma la transacción de anclaje en Freighter…" },
+  signMandate: { en: "Sign the Mandate in your wallet…", es: "Firma el Mandato en tu wallet…" },
+  signAnchor: { en: "Sign the anchor transaction in your wallet…", es: "Firma la transacción de anclaje en tu wallet…" },
   anchoring: { en: "Anchoring the Mandate on Stellar Testnet…", es: "Anclando el Mandato en Stellar Testnet…" },
   needWallet: { en: "Connect and verify your wallet before signing.", es: "Conecta y verifica tu wallet antes de firmar." },
   preparing: { en: "Preparing the Mandate…", es: "Preparando el Mandato…" },
@@ -293,6 +292,7 @@ var pageNotice = null;
 var statuses = {};
 
 function resolveMessage(message) {
+  if (message.wallet) return AgentpeyWallet.describe(message.wallet, lang());
   return message.key ? t(message.key) : message.text;
 }
 
@@ -301,18 +301,9 @@ async function api(path, options) {
   return { status: res.status, body: await res.json() };
 }
 
-/** Freighter's `signMessage` can return the signature as a base64 string or
-    as byte-array-like data. Normalise either shape to the base64 string the
-    server's SEP-0053 check expects. */
-function signedMessageToBase64(signedMessage) {
-  if (typeof signedMessage === "string") return signedMessage;
-  var bytes = new Uint8Array(Object.values(signedMessage));
-  var binary = "";
-  for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
 function messageFor(error, fallbackKey) {
+  // A wallet-layer error is kept as itself, so a language switch can say it again in the other language.
+  if (typeof AgentpeyWallet !== "undefined" && AgentpeyWallet.describe(error, "en") !== undefined) return { wallet: error };
   if (error && error.body && error.body.message) return { text: error.body.message };
   if (error && error.key) return { key: error.key };
   if (error && error.message) return { text: error.message };
@@ -448,29 +439,21 @@ function renderSuccess(anchored) {
 async function connectWallet() {
   var button = document.getElementById("wallet-btn");
   var status = document.getElementById("wallet-status");
-  if (typeof freighterApi === "undefined") {
+  if (typeof AgentpeyWallet === "undefined") {
     setStatus(status, false, { key: "walletMissing" });
     return;
   }
   button.disabled = true;
   try {
-    const presence = await freighterApi.isConnected();
-    if (!presence.isConnected) throw { key: "walletMissing" };
-
+    // The picker offers only wallets that can sign the verification message and the Mandate (T143).
     setStatus(status, true, { key: "walletWaiting" });
-    const access = await freighterApi.requestAccess();
-    if (access.error) throw new Error(access.error);
-    const address = access.address;
+    const address = (await AgentpeyWallet.connect()).address;
 
     const { body: challenge } = await api("/api/wallet/challenge", { method: "POST" });
     if (!challenge.ok) throw { body: challenge };
 
     setStatus(status, true, { key: "walletSignVerify" });
-    const signed = await freighterApi.signMessage(challenge.message, {
-      address: address,
-      networkPassphrase: TESTNET_PASSPHRASE,
-    });
-    if (signed.error) throw new Error(signed.error);
+    const signed = await AgentpeyWallet.signMessage(challenge.message, address);
 
     setStatus(status, true, { key: "walletVerifying" });
     const { body: verified } = await api(consentPath + "/wallet-verify", {
@@ -479,7 +462,7 @@ async function connectWallet() {
       body: JSON.stringify({
         address: address,
         nonce: challenge.nonce,
-        signature: signedMessageToBase64(signed.signedMessage),
+        signature: signed.signature,
       }),
     });
     if (!verified.ok) throw { body: verified };
@@ -497,37 +480,28 @@ async function connectWallet() {
 }
 
 async function runWalletMandateFlow(pending, status) {
-  if (typeof freighterApi === "undefined") throw { key: "walletMissing" };
-  const access = await freighterApi.requestAccess();
-  if (access.error) throw new Error(access.error);
-  const address = access.address;
+  if (typeof AgentpeyWallet === "undefined") throw { key: "walletMissing" };
+  // The account the server verified at connection: the wallet layer refuses a signature by any other (WrongAccount).
+  const address = walletAddress;
 
   setStatus(status, true, { key: "signMandate" });
-  const signed = await freighterApi.signMessage(pending.challengeMessage, {
-    address: address,
-    networkPassphrase: TESTNET_PASSPHRASE,
-  });
-  if (signed.error) throw new Error(signed.error);
+  const signed = await AgentpeyWallet.signMessage(pending.challengeMessage, address);
 
   const { body: consent } = await api(consentPath + "/wallet-consent", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ signature: signedMessageToBase64(signed.signedMessage) }),
+    body: JSON.stringify({ signature: signed.signature }),
   });
   if (!consent.ok) throw { body: consent };
 
   setStatus(status, true, { key: "signAnchor" });
-  const signedTx = await freighterApi.signTransaction(consent.xdr, {
-    address: address,
-    networkPassphrase: TESTNET_PASSPHRASE,
-  });
-  if (signedTx.error) throw new Error(signedTx.error);
+  const signedXdr = await AgentpeyWallet.signTransaction(consent.xdr, address);
 
   setStatus(status, true, { key: "anchoring" });
   const { body: anchored } = await api(consentPath + "/wallet-anchor", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ requestId: consent.requestId, signedXdr: signedTx.signedTxXdr }),
+    body: JSON.stringify({ requestId: consent.requestId, signedXdr: signedXdr }),
   });
   if (!anchored.ok) throw { body: anchored };
   return anchored;

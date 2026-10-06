@@ -10,6 +10,7 @@
     { "path": "../../packages/sdk" },
     { "path": "../../packages/mandate" },
     { "path": "../../packages/resolve" },
+    { "path": "../../packages/wallet-kit" },
     { "path": "../../packages/vitrinee-core" },
     { "path": "../../packages/vitrinee-anchor" },
     { "path": "../../packages/vitrinee-adapters" },

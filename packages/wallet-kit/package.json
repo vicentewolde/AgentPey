@@ -1,0 +1,25 @@
+{
+  "name": "@agentpey/wallet-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "One wallet interface for AgentPey's signing screens, over Stellar Wallets Kit, bundled into one self-hosted file (T143, C-160).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "bundle": "node ./bundle.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "2.7.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

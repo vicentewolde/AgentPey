@@ -99,6 +99,10 @@ Desde T136 (`R-21`), el pago UCP del agente pasa por el paquete público
 de fondos, perímetro de `P-10`, aunque el paquete sea público. Sus errores son
 `UcpStellarError`, no `AgentPassError`: no dependen de ningún paquete del
 monorepo, y un test lo exige. Publicarlo en npm lo decide el usuario.
+Desde T143 (`R-23`), `packages/wallet-kit` es la capa de wallets de las cinco
+pantallas de firma (consentimiento, revocación, respuesta a una disputa, portal
+de comercios, inicio de sesión del MCP): firma de wallet, perímetro de `P-10`.
+Ninguna pantalla carga scripts de un CDN; no agregues uno.
 
 **Vitrinee, desde 2026-09-23 (T98):** Vitrinee se fusionó en este repo
 (`docs/DECISIONES.md § P-12`) y es la puerta del vendedor para comercios reales.

@@ -27,7 +27,7 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((done) => server.close(done))));
 });
 
-async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string; issuer?: string; wallet?: Keypair } = {}): Promise<Started> {
+async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string; issuer?: string; wallet?: Keypair; walletKitIntegrity?: () => string | undefined } = {}): Promise<Started> {
   const server = createServer();
   servers.push(server);
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
@@ -39,7 +39,17 @@ async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string;
   const logs: string[] = [];
   const clock = { now: new Date() };
   const log = (message: string, fields?: Record<string, unknown>) => logs.push(JSON.stringify({ message, ...fields }));
-  const oauth = createOAuthServer({ publicUrl: issuer, resource, allowedWallet: wallet.publicKey(), secret: SECRET, now: () => clock.now, log, ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }) });
+  // The wallet layer's integrity is fixed here: tests do not depend on the bundle being built (T143).
+  const oauth = createOAuthServer({
+    publicUrl: issuer,
+    resource,
+    allowedWallet: wallet.publicKey(),
+    secret: SECRET,
+    now: () => clock.now,
+    log,
+    walletKitIntegrity: options.walletKitIntegrity ?? (() => "sha384-TESTKIT"),
+    ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+  });
   // Tools are never called here: only `tools/list`, which does not touch the shopper.
   const app = createMcpApp({ shopper: {} as unknown as Shopper, log, auth: { oauth, resource, allowInsecureIssuer: true } });
   server.on("request", app);
@@ -296,13 +306,22 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(otherPath.status).toBe(400);
   });
 
-  it("serves the sign-in page with a strict policy and Freighter pinned by integrity", async () => {
+  it("serves the sign-in page with a strict policy and its own wallet layer pinned by integrity (T143)", async () => {
     const s = await start();
     const page = await authorizePage(s, await register(s), pkce().challenge);
-    expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'nonce-[^']+' https:\/\/unpkg\.com\/@stellar\/freighter-api@6\.0\.1\/build\/index\.min\.js;/);
+    expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'nonce-[^']+' 'self'; style-src 'unsafe-inline'; img-src https:\/\/stellar\.creit\.tech data:; connect-src 'self';/);
     const html = await page.text();
-    expect(html).toMatch(/integrity="sha384-[A-Za-z0-9+/=]+" crossorigin="anonymous"/);
+    expect(html).toContain('<script src="/wallet-kit.js" integrity="sha384-TESTKIT" crossorigin="anonymous"></script>');
+    expect(html).not.toMatch(/unpkg|freighter-api/);
     expect(html).toContain("Continue only if you started this connection yourself");
+  });
+
+  it("does not serve the sign-in page without the pinned wallet layer, and says why", async () => {
+    const s = await start({ walletKitIntegrity: () => undefined });
+    const page = await authorizePage(s, await register(s), pkce().challenge);
+    expect(page.status).toBe(503);
+    expect(await page.text()).toContain("the wallet layer is not built");
+    expect((await fetch(`${s.url}/wallet-kit.js`)).status).toBe(503);
   });
 
   it("never writes a token or the secret to its logs", async () => {

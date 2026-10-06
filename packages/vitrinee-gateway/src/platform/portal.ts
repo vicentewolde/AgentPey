@@ -15,6 +15,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { WALLET_KIT_BUNDLE } from "@agentpey/wallet-kit";
 import { VitrineeError } from "@vitrinee/core";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { z } from "zod";
@@ -164,6 +165,16 @@ export function createPortalRouter(options: PortalOptions): Router {
   router.use(PORTAL_API, api);
 
   const staticDir = options.staticDir ?? fileURLToPath(new URL("../../../../apps/vitrinee-portal/public", import.meta.url));
+  // The wallet layer (T143): Stellar Wallets Kit bundled by `pnpm build`, served from this origin, no CDN.
+  router.get("/portal/wallet-kit.js", (_req, res) => {
+    if (!existsSync(WALLET_KIT_BUNDLE)) {
+      log("wallet-kit bundle missing; run pnpm build", { path: WALLET_KIT_BUNDLE });
+      res.status(503).type("text/plain").send("the wallet layer is not built");
+      return;
+    }
+    res.set({ "Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff" });
+    res.type("text/javascript").sendFile(WALLET_KIT_BUNDLE);
+  });
   if (existsSync(staticDir)) {
     router.use("/portal", express.static(staticDir, { index: false, maxAge: "5m" }));
     router.get("/", (_req, res) => {

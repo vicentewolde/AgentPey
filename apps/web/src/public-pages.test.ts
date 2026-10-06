@@ -23,6 +23,17 @@ describe("the static pages", () => {
     });
   }
 
+  // T143: every signing page loads the wallet layer from this origin, never a CDN, and offers any wallet that signs
+  // messages instead of naming one.
+  for (const name of ["consent.html", "revocar.html", "resolve/responder.html", "wallet-lab.html"]) {
+    it(`${name} loads /wallet-kit.js from this origin, and no wallet script from a CDN`, async () => {
+      const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
+      expect(html).toContain('<script src="/wallet-kit.js"></script>');
+      expect(html).not.toMatch(/unpkg\.com|jsdelivr|freighter-api|freighterApi/);
+      expect(html).not.toContain("\u2014");
+    });
+  }
+
   it("consent.html puts Connect wallet in the top bar, before the consent itself (T108)", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "consent.html"), "utf8");
     const button = html.indexOf('id="wallet-btn"');

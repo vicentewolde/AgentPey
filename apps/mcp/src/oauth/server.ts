@@ -23,12 +23,13 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { verifyStellarMessage } from "@agentpass/core";
+import { WALLET_KIT_BUNDLE, WALLET_KIT_IMAGE_HOSTS, WALLET_KIT_PATH, walletKitIntegrity as walletKitIntegrityOf } from "@agentpey/wallet-kit";
 import { OAuthError, OAuthErrorCode, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier } from "@modelcontextprotocol/server";
 import { StrKey } from "@stellar/stellar-sdk";
 import express, { type Request, type Response, type Router } from "express";
 import { z } from "zod";
 
-import { FREIGHTER_SCRIPT, loginPage } from "./login-page.js";
+import { loginPage } from "./login-page.js";
 import { RedeemedCodes, TokenSigner, TOKEN_TTL_SECONDS } from "./tokens.js";
 
 export const MCP_SCOPE = "shop";
@@ -49,6 +50,8 @@ export interface OAuthServerOptions {
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => Date;
   readonly log?: (message: string, fields?: Record<string, unknown>) => void;
+  /** The wallet layer's integrity, `undefined` when it is not built. Defaults to the built bundle's (T143); tests set it. */
+  readonly walletKitIntegrity?: () => string | undefined;
 }
 
 const CIMD_TIMEOUT_MS = 5_000;
@@ -247,6 +250,7 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
   };
 
   const router = express.Router();
+  const kitIntegrity = options.walletKitIntegrity ?? walletKitIntegrityOf;
   router.use(["/register", "/token", "/authorize/challenge", "/authorize/approve", "/authorize/deny"], express.json({ limit: "32kb" }), express.urlencoded({ extended: false, limit: "32kb" }));
 
   router.post("/register", async (req: Request, res: Response) => {
@@ -266,6 +270,15 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       response_types: ["code"],
       token_endpoint_auth_method: "none",
     });
+  });
+
+  // The wallet layer the sign-in page loads (T143), from this origin.
+  router.get(WALLET_KIT_PATH, (_req: Request, res: Response) => {
+    if (kitIntegrity() === undefined) {
+      res.status(503).type("text/plain").send("the wallet layer is not built");
+      return;
+    }
+    res.set({ "Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff" }).type("text/javascript").sendFile(WALLET_KIT_BUNDLE);
   });
 
   router.get("/authorize", async (req: Request, res: Response) => {
@@ -291,18 +304,33 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       scope,
       ...(query.data.state === undefined ? {} : { state: query.data.state }),
     });
+    // No sign-in page without the pinned wallet layer: a page that loaded an unpinned script would be worse.
+    const walletKitIntegrity = kitIntegrity();
+    if (walletKitIntegrity === undefined) {
+      res.status(503).type("text/plain").send("The sign-in page is not available: the wallet layer is not built.");
+      return;
+    }
     const nonce = randomBytes(16).toString("base64");
     res
       .status(200)
       .set({
         "Cache-Control": "no-store",
-        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}' ${FREIGHTER_SCRIPT.src}; style-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
+        // The wallet layer is this origin's /wallet-kit.js, pinned by integrity in the page; its picker shows the
+        // wallets' icons from their CDN (T143).
+        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}' 'self'; style-src 'unsafe-inline'; img-src ${WALLET_KIT_IMAGE_HOSTS.join(" ")} data:; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
         "Referrer-Policy": "no-referrer",
       })
       .type("html")
       .send(
         loginPage(
-          { request, clientName: client.name, redirectHost: new URL(query.data.redirect_uri).host, loopback: isLoopback(query.data.redirect_uri), walletHint: `${options.allowedWallet.slice(0, 6)}…${options.allowedWallet.slice(-6)}` },
+          {
+            request,
+            clientName: client.name,
+            redirectHost: new URL(query.data.redirect_uri).host,
+            loopback: isLoopback(query.data.redirect_uri),
+            walletHint: `${options.allowedWallet.slice(0, 6)}…${options.allowedWallet.slice(-6)}`,
+            walletKitIntegrity,
+          },
           nonce,
         ),
       );

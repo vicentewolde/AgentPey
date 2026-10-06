@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · Wallet lab</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #fbfaf8; --paper-2: #f2f0ea; --ink: #0f1211; --ink-2: #434946; --ink-3: #707875; --rule: #e3e0d9;
+    --accent: #0a7a56; --accent-wash: #e9f3ee; --danger: #b3261e; --danger-wash: #fbeceb;
+    --serif: "Instrument Serif", ui-serif, Georgia, serif; --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html[lang="en"] [data-tr="es"], html[lang="es"] [data-tr="en"] { display: none; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 16px 72px; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px, 6vw, 52px); line-height: 1.05; margin: 0 0 12px; }
+  p.lede { color: var(--ink-2); margin: 0 0 28px; max-width: 62ch; }
+  .lang { float: right; font-size: 14px; }
+  .lang button { background: none; border: 0; color: var(--ink-3); cursor: pointer; font: inherit; padding: 2px 4px; }
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px; margin: 0 0 16px; }
+  .card h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
+  .card p { margin: 0 0 12px; color: var(--ink-2); font-size: 14px; }
+  .btn { background: var(--ink); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font: 500 15px var(--sans); cursor: pointer; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .status { margin-top: 10px; font-size: 14px; min-height: 1.5em; overflow-wrap: anywhere; }
+  .ok { color: var(--accent); } .err { color: var(--danger); }
+  code, .mono { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  pre { background: var(--paper-2); border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="lang"><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button></div>
+  <h1><span data-tr="en">Wallet lab</span><span data-tr="es">Laboratorio de wallets</span></h1>
+  <p class="lede">
+    <span data-tr="en">Checks, wallet by wallet, what AgentPey's signing pages need: a SEP-53 message signature that our server verifies, and a transaction signature. Testnet only. Nothing here moves money: the test transaction is checked by the server and never sent.</span>
+    <span data-tr="es">Comprueba, wallet por wallet, lo que necesitan las páginas de firma de AgentPey: una firma de mensaje SEP-53 que nuestro servidor verifica, y una firma de transacción. Solo testnet. Nada de esto mueve dinero: el servidor revisa la transacción de prueba y nunca la envía.</span>
+  </p>
+
+  <section class="card">
+    <h2><span data-tr="en">1. Connect a wallet</span><span data-tr="es">1. Conecta una wallet</span></h2>
+    <p><span data-tr="en">Pick the wallet to test. Use a testnet account.</span><span data-tr="es">Elige la wallet que vas a probar. Usa una cuenta de testnet.</span></p>
+    <button id="connect" class="btn" type="button"><span data-tr="en">Choose a wallet</span><span data-tr="es">Elegir una wallet</span></button>
+    <div id="connect-status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2><span data-tr="en">2. Sign a message (SEP-53)</span><span data-tr="es">2. Firma un mensaje (SEP-53)</span></h2>
+    <p><span data-tr="en">The same kind of message every sign-in asks for. The server checks it with the code the real pages use.</span><span data-tr="es">El mismo tipo de mensaje que pide cada inicio de sesión. El servidor lo revisa con el mismo código de las páginas reales.</span></p>
+    <button id="message" class="btn" type="button" disabled><span data-tr="en">Sign the message</span><span data-tr="es">Firmar el mensaje</span></button>
+    <div id="message-status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2><span data-tr="en">3. Sign a transaction</span><span data-tr="es">3. Firma una transacción</span></h2>
+    <p><span data-tr="en">A test transaction from your account. The server checks your signature and drops it; it is never sent to Stellar.</span><span data-tr="es">Una transacción de prueba desde tu cuenta. El servidor revisa tu firma y la descarta; nunca se envía a Stellar.</span></p>
+    <button id="transaction" class="btn" type="button" disabled><span data-tr="en">Sign the transaction</span><span data-tr="es">Firmar la transacción</span></button>
+    <div id="transaction-status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2><span data-tr="en">Result</span><span data-tr="es">Resultado</span></h2>
+    <table>
+      <thead><tr><th>Wallet</th><th><span data-tr="en">Signs a message</span><span data-tr="es">Firma mensaje</span></th><th><span data-tr="en">Signs a transaction</span><span data-tr="es">Firma transacción</span></th><th><span data-tr="en">Verifies on the server</span><span data-tr="es">Verifica en el servidor</span></th></tr></thead>
+      <tbody><tr><td id="r-wallet">-</td><td id="r-message">-</td><td id="r-transaction">-</td><td id="r-server">-</td></tr></tbody>
+    </table>
+    <p style="margin-top:12px"><span data-tr="en">Copy this and send it back:</span><span data-tr="es">Copia esto y envíalo de vuelta:</span></p>
+    <pre id="report">{}</pre>
+  </section>
+</main>
+
+<script src="/wallet-kit.js"></script>
+<script>
+(function () {
+  "use strict";
+  var lang = function () { return document.documentElement.lang === "es" ? "es" : "en"; };
+  document.querySelectorAll("[data-lang]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var chosen = button.getAttribute("data-lang");
+      document.documentElement.lang = chosen;
+      try { document.cookie = "agentpey_lang=" + chosen + "; path=/; max-age=31536000; SameSite=Lax"; } catch (e) {}
+    });
+  });
+
+  var T = {
+    noKit: { en: "The wallet layer did not load. Reload the page.", es: "No se cargó la capa de wallets. Vuelve a cargar la página." },
+    waiting: { en: "Waiting for the wallet…", es: "Esperando a la wallet…" },
+    connected: { en: "Connected: ", es: "Conectada: " },
+    verifying: { en: "Checking on the server…", es: "Revisando en el servidor…" },
+    msgOk: { en: "The wallet signed, and the server verified the SEP-53 signature.", es: "La wallet firmó y el servidor verificó la firma SEP-53." },
+    txOk: { en: "The wallet signed, and the server verified the signature. Nothing was sent.", es: "La wallet firmó y el servidor verificó la firma. No se envió nada." },
+    noAccount: { en: " (this account does not exist on testnet yet; the test still works)", es: " (esta cuenta todavía no existe en testnet; la prueba funciona igual)" }
+  };
+  var t = function (key) { return T[key][lang()]; };
+  var report = { wallet: null, walletId: null, address: null, signsMessage: null, messageVerifies: null, signsTransaction: null, transactionVerifies: null, errors: {}, userAgent: navigator.userAgent, at: null };
+  var paint = function () {
+    var yes = function (v) { return v === null ? "-" : v ? "yes" : "no"; };
+    document.getElementById("r-wallet").textContent = report.wallet || "-";
+    document.getElementById("r-message").textContent = yes(report.signsMessage);
+    document.getElementById("r-transaction").textContent = yes(report.signsTransaction);
+    var server = report.messageVerifies === null && report.transactionVerifies === null ? "-" : "message " + yes(report.messageVerifies) + ", transaction " + yes(report.transactionVerifies);
+    document.getElementById("r-server").textContent = server;
+    report.at = new Date().toISOString();
+    document.getElementById("report").textContent = JSON.stringify(report, null, 2);
+  };
+  var status = function (id, ok, text) {
+    var el = document.getElementById(id);
+    el.className = "status " + (ok === null ? "" : ok ? "ok" : "err");
+    el.textContent = text;
+  };
+  var reason = function (error) {
+    if (error && error.code && error.message) return error.code + ": " + error.message;
+    if (error && error.message) return error.message;
+    return String(error);
+  };
+  var post = function (path, body) {
+    return fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}) }).then(function (res) { return res.json(); });
+  };
+
+  if (typeof window.AgentpeyWallet === "undefined") { status("connect-status", false, t("noKit")); return; }
+  var wallet = window.AgentpeyWallet;
+  var address = null;
+
+  document.getElementById("connect").addEventListener("click", function () {
+    status("connect-status", null, t("waiting"));
+    wallet.connect().then(function (connected) {
+      address = connected.address;
+      report.wallet = connected.walletName; report.walletId = connected.walletId; report.address = connected.address;
+      report.signsMessage = report.messageVerifies = report.signsTransaction = report.transactionVerifies = null; report.errors = {};
+      status("connect-status", true, t("connected") + connected.walletName + " · " + connected.address);
+      document.getElementById("message").disabled = false;
+      document.getElementById("transaction").disabled = false;
+      paint();
+    }).catch(function (error) { report.errors.connect = reason(error); status("connect-status", false, reason(error)); paint(); });
+  });
+
+  document.getElementById("message").addEventListener("click", function () {
+    status("message-status", null, t("waiting"));
+    post("/api/wallet/challenge").then(function (challenge) {
+      if (!challenge.ok) throw challenge;
+      return wallet.signMessage(challenge.message, address).then(function (signed) {
+        report.signsMessage = true;
+        status("message-status", null, t("verifying"));
+        return post("/api/wallet/lab/message", { address: address, nonce: challenge.nonce, signature: signed.signature });
+      });
+    }).then(function (verified) {
+      report.messageVerifies = verified.ok === true;
+      if (!verified.ok) throw verified;
+      status("message-status", true, t("msgOk"));
+      paint();
+    }).catch(function (error) {
+      if (report.signsMessage !== true) report.signsMessage = false;
+      report.errors.message = reason(error); status("message-status", false, reason(error)); paint();
+    });
+  });
+
+  document.getElementById("transaction").addEventListener("click", function () {
+    status("transaction-status", null, t("waiting"));
+    var exists = true;
+    post("/api/wallet/lab/transaction", { address: address }).then(function (built) {
+      if (!built.ok) throw built;
+      exists = built.exists;
+      return wallet.signTransaction(built.xdr, address);
+    }).then(function (signedXdr) {
+      report.signsTransaction = true;
+      status("transaction-status", null, t("verifying"));
+      return post("/api/wallet/lab/transaction/verify", { address: address, xdr: signedXdr });
+    }).then(function (verified) {
+      report.transactionVerifies = verified.ok === true;
+      if (!verified.ok) throw verified;
+      status("transaction-status", true, t("txOk") + (exists ? "" : t("noAccount")));
+      paint();
+    }).catch(function (error) {
+      if (report.signsTransaction !== true) report.signsTransaction = false;
+      report.errors.transaction = reason(error); status("transaction-status", false, reason(error)); paint();
+    });
+  });
+  paint();
+})();
+</script>
+</body>
+</html>
