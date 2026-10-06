@@ -33,6 +33,14 @@ magnet (after `pnpm build`):
 node packages/ucp-stellar/example/buy.mjs
 ```
 
+To check that a store implements the Stellar handler, run the conformance kit
+([`scripts/ucp-stellar-conformance/`](scripts/ucp-stellar-conformance/README.md)),
+one line per check:
+
+```bash
+pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --profile-only
+```
+
 ## Vitrinee: real stores join without writing code
 
 AgentPey is the **buyer** with rules: identity, a signed Mandate, a
