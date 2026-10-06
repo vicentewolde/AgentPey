@@ -172,6 +172,10 @@ describe("the owners' portal: sign in with the wallet, register a store, see its
     expect(kit.headers["content-type"]).toContain("javascript");
     expect(kit.headers["x-content-type-options"]).toBe("nosniff");
     expect(kit.text).toBe("window.AgentpeyWallet = {};");
+    const icon = await call(base, PLATFORM, "/portal/wallet-icons/xbull.png");
+    expect(icon.status).toBe(200);
+    expect(icon.headers["content-type"]).toBe("image/png");
+    expect((await call(base, PLATFORM, "/portal/wallet-icons/albedo.png")).status).toBe(404);
   });
 
   it("serves the portal page on the platform host only", async () => {

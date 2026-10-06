@@ -20,6 +20,15 @@
         "dev"
       ],
       "port": 4040
+    },
+    {
+      "name": "agentpey-mcp-local",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "set -a; . ./.env.local; set +a; MCP_PUBLIC_URL=http://localhost:3401 PORT=3401 exec pnpm --filter @agentpey/mcp start"
+      ],
+      "port": 3401
     }
   ]
 }

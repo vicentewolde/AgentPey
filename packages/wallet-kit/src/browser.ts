@@ -41,6 +41,15 @@ const lobstr = new PatientLobstrModule();
 
 /** What this screen signs, from its script tag; the picker offers only the wallets that can sign all of it. */
 const needs = parseNeeds(document.currentScript?.getAttribute("data-needs"));
+
+/**
+ * The wallets' icons, from the same site and folder as this script (`/wallet-icons/`, or `/portal/wallet-icons/` on
+ * the portal), instead of the kit's CDN: the picker loads nothing from another site.
+ */
+const scriptUrl = document.currentScript instanceof HTMLScriptElement && document.currentScript.src !== "" ? document.currentScript.src : location.href;
+for (const [id, module] of [["freighter", freighter], ["xbull", xbull], ["lobstr", lobstr]] as const) {
+  module.productIcon = new URL(`wallet-icons/${id}.png`, scriptUrl).href;
+}
 const offeredHere = walletsFor(needs);
 const modules = { freighter, xbull, lobstr };
 if (offeredHere.includes("lobstr")) void lobstr.isAvailable();

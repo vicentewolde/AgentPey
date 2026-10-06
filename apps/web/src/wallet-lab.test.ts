@@ -9,7 +9,7 @@ import { signStellarMessage } from "@agentpass/core";
 import { Account, Asset, Keypair, Networks, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { WALLET_KIT_HEADERS, serveWalletKit } from "./wallet-kit-route.js";
+import { WALLET_KIT_HEADERS, serveWalletIcon, serveWalletKit } from "./wallet-kit-route.js";
 import { LAB_DATA_NAME, buildLabTransaction, checkLabMessage, checkLabTransaction, isLocalHost, routeWalletLab, type LabDeps } from "./wallet-lab.js";
 
 describe("the wallet lab (T143)", () => {
@@ -156,6 +156,19 @@ describe("/wallet-kit.js", () => {
     expect(res.headers.get("content-type")).toBe(WALLET_KIT_HEADERS["content-type"]);
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(await res.text()).toBe("window.AgentpeyWallet = {};");
+  });
+
+  it("serves a wallet's icon from the closed list, and 404s anything else", async () => {
+    const server = createServer((req, res) => void serveWalletIcon(new URL(req.url ?? "/", "http://x").pathname, res));
+    servers.push(server);
+    await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const icon = await fetch(`${base}/wallet-icons/lobstr.png`);
+    expect(icon.status).toBe(200);
+    expect(icon.headers.get("content-type")).toBe("image/png");
+    expect(icon.headers.get("x-content-type-options")).toBe("nosniff");
+    expect((await fetch(`${base}/wallet-icons/hana.png`)).status).toBe(404);
+    expect((await fetch(`${base}/wallet-icons/..%2Fpackage.json`)).status).toBe(404);
   });
 
   it("answers 503, and says so, when the bundle is not built", async () => {

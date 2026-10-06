@@ -15,7 +15,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { WALLET_KIT_BUNDLE } from "@agentpey/wallet-kit";
+import { WALLET_KIT_BUNDLE, walletIconFile } from "@agentpey/wallet-kit";
 import { VitrineeError } from "@vitrinee/core";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { z } from "zod";
@@ -177,6 +177,16 @@ export function createPortalRouter(options: PortalOptions): Router {
     }
     res.set({ "Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff" });
     res.type("text/javascript").sendFile(walletKitBundle);
+  });
+  // The wallets' icons for the picker, from a closed list: the portal shows no image from another site (T143).
+  router.get("/portal/wallet-icons/:name", (req, res) => {
+    const file = walletIconFile(req.params.name);
+    if (file === undefined) {
+      res.status(404).json({ code: "NotFound", message: "no such wallet icon" });
+      return;
+    }
+    res.set({ "Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff" });
+    res.type("image/png").sendFile(file);
   });
   if (existsSync(staticDir)) {
     router.use("/portal", express.static(staticDir, { index: false, maxAge: "5m" }));

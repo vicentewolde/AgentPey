@@ -317,7 +317,8 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     const s = await start();
     const page = await authorizePage(s, await register(s), pkce().challenge);
     const csp = page.headers.get("content-security-policy") ?? "";
-    expect(csp).toMatch(/default-src 'none'; script-src 'nonce-([^']+)'; style-src 'unsafe-inline'; img-src https:\/\/stellar\.creit\.tech data:; connect-src 'self';/);
+    expect(csp).toMatch(/default-src 'none'; script-src 'nonce-([^']+)'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self';/);
+    expect(csp).not.toContain("creit");
     expect(csp).not.toContain("'self'; style-src");
     const nonce = /'nonce-([^']+)'/.exec(csp)![1]!;
     const html = await page.text();
@@ -332,6 +333,16 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(`sha384-${createHash("sha384").update(Buffer.from(await served.arrayBuffer())).digest("base64")}`).toBe(tag![3]);
     expect(html).not.toMatch(/unpkg|freighter-api/);
     expect(html).toContain("Continue only if you started this connection yourself");
+  });
+
+  it("serves the wallets' icons from this origin, and nothing outside the closed list (T143)", async () => {
+    const s = await start();
+    const icon = await fetch(`${s.url}/wallet-icons/freighter.png`);
+    expect(icon.status).toBe(200);
+    expect(icon.headers.get("content-type")).toBe("image/png");
+    expect(Buffer.from(await icon.arrayBuffer()).subarray(1, 4).toString()).toBe("PNG");
+    expect((await fetch(`${s.url}/wallet-icons/hana.png`)).status).toBe(404);
+    expect((await fetch(`${s.url}/wallet-icons/..%2F..%2Fpackage.json`)).status).toBe(404);
   });
 
   it("does not serve the sign-in page without the pinned wallet layer, and says why", async () => {

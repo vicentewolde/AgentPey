@@ -15,8 +15,19 @@ export const WALLET_KIT_BUNDLE = fileURLToPath(new URL("../dist/wallet-kit.js", 
 /** The path each app serves it at. */
 export const WALLET_KIT_PATH = "/wallet-kit.js";
 
-/** The external hosts the wallet picker loads images from (its wallet icons), for a page with a strict CSP. */
-export const WALLET_KIT_IMAGE_HOSTS = ["https://stellar.creit.tech"] as const;
+/**
+ * The wallets' icons, served by each app next to the bundle (`/wallet-icons/<id>.png`, or `/portal/wallet-icons/…`
+ * on the portal): the picker shows no image from another site. Copied once from Stellar Wallets Kit's CDN
+ * (`https://stellar.creit.tech/wallet-icons/`, 6-oct-2026, with the user's permission).
+ */
+export const WALLET_ICONS_DIR = fileURLToPath(new URL("../icons/", import.meta.url));
+export const WALLET_ICON_FILES = ["freighter.png", "xbull.png", "lobstr.png"] as const;
+export const WALLET_ICONS_PATH = "/wallet-icons/";
+
+/** The icon file for a requested name, or `undefined` for any name not in the closed list (no path is ever built from input). */
+export function walletIconFile(name: string): string | undefined {
+  return (WALLET_ICON_FILES as readonly string[]).includes(name) ? fileURLToPath(new URL(`../icons/${name}`, import.meta.url)) : undefined;
+}
 
 const integrities = new Map<string, { readonly stamp: string; readonly value: string }>();
 

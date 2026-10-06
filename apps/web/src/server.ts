@@ -115,7 +115,7 @@ import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.
 import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
 import { ucpPublicPath } from "./ucp-public.js";
-import { serveWalletKit } from "./wallet-kit-route.js";
+import { isWalletIconPath, serveWalletIcon, serveWalletKit } from "./wallet-kit-route.js";
 import { isLocalHost, routeWalletLab } from "./wallet-lab.js";
 import { MAX_BODY_BYTES as ORDER_WEBHOOK_MAX_BYTES, createOrderWebhookReceiver } from "./ucp-webhooks.js";
 import {
@@ -1153,6 +1153,7 @@ async function serveStatic(pathname: string, res: ServerResponse, host: string |
   if (pathname === WALLET_KIT_PATH) {
     return serveWalletKit(res, { onMissing: (path) => logError("[wallet-kit] the bundle is missing; run pnpm build", new Error("wallet-kit bundle missing"), { path }) });
   }
+  if (isWalletIconPath(pathname)) return serveWalletIcon(pathname, res);
   // T143: the wallet lab is for a local server only; on agentpey.com it does not exist.
   if (pathname === "/wallet-lab.html" && !isLocalHost(host)) {
     sendJson(res, 404, { code: "NotFound", message: `no route for ${pathname}` });

@@ -23,7 +23,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { verifyStellarMessage } from "@agentpass/core";
-import { WALLET_KIT_BUNDLE, WALLET_KIT_IMAGE_HOSTS, WALLET_KIT_PATH, walletKitIntegrity as walletKitIntegrityOf, walletKitVersion } from "@agentpey/wallet-kit";
+import { WALLET_ICONS_PATH, WALLET_KIT_BUNDLE, WALLET_KIT_PATH, walletIconFile, walletKitIntegrity as walletKitIntegrityOf, walletKitVersion } from "@agentpey/wallet-kit";
 import { OAuthError, OAuthErrorCode, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier } from "@modelcontextprotocol/server";
 import { StrKey } from "@stellar/stellar-sdk";
 import express, { type Request, type Response, type Router } from "express";
@@ -283,6 +283,15 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     res.set({ "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff" }).type("text/javascript").sendFile(kitBundle);
   });
 
+  router.get(`${WALLET_ICONS_PATH}:name`, (req: Request, res: Response) => {
+    const file = walletIconFile(String(req.params["name"] ?? ""));
+    if (file === undefined) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.set({ "Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff" }).type("image/png").sendFile(file);
+  });
+
   router.get("/authorize", async (req: Request, res: Response) => {
     const query = authorizeQuerySchema.safeParse(req.query);
     // Before the client is known, nothing is redirected: an error goes on the page, never to an unchecked URI.
@@ -318,8 +327,8 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       .set({
         "Cache-Control": "no-store",
         // The wallet layer is this origin's /wallet-kit.js, allowed by the nonce and pinned by integrity in the page;
-        // its picker shows the wallets' icons (T143).
-        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src ${WALLET_KIT_IMAGE_HOSTS.join(" ")} data:; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
+        // its picker shows the wallets' icons from this origin too (T143): nothing from another site.
+        "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`,
         "Referrer-Policy": "no-referrer",
       })
       .type("html")
