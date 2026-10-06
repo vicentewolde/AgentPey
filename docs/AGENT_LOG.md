@@ -8125,3 +8125,20 @@ falta publicar".
 Pendiente: publicar `@agentpey/ucp-stellar` en npm, solo con permiso explícito del usuario y tras crear él la
 organización `agentpey`; recién ahí T136 queda ✅ y el ticket pasa a `DONE`. Push de `cc/t136-cierre` con OK.
 `AGENTS.md`: sin cambios. Exponential: T136 en `QA` con el PR.
+
+## 2026-10-06 (43) — cc/t136-publicacion (sin push)
+
+Agente: Claude Code.
+
+Qué: T136 cerrada. El usuario creó la organización `agentpey` en npm, inició sesión y, con su permiso y su 2FA,
+publicó `@agentpey/ucp-stellar@0.1.0` desde su terminal (el primer intento dio `E403` porque la cuenta no tenía 2FA;
+no se subió nada). Antes: `npm org ls` (owner), `pnpm publish --dry-run --no-git-checks` y revisión del tarball (46 KB,
+sin secretos). Después: `npm view` (33 archivos, integridad `sha512-oxPrn…VzA==`), instalación desde npm en un
+proyecto vacío y el ejemplo cotiza (`cs_muwojx4a7fe02034d972296e9e06`, sin mover plata). Tercer criterio del spec,
+ESTADO ✅, BITACORA, SYNC y evidencia §9.
+
+Nota: pnpm 11 agregó solo el paquete a `minimumReleaseAgeExclude` del proyecto de prueba (scratchpad, fuera del
+monorepo); el `pnpm-workspace.yaml` de AgentPey no cambió.
+
+Pendiente: push y merge de `cc/t136-publicacion` con OK. Siguiente: T130 si llega la tienda; si no, T137.
+`AGENTS.md`: sin cambios. Exponential: T136 a `DONE`.

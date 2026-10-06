@@ -29,10 +29,9 @@ varios productos, con un solo cobro y un recibo de un ítem por línea.
 **T149 cerrada**: el consentimiento del comprador llega al pedido de la
 tienda, comprobado con una compra real. **T135 cerrada**: MPP charge no
 admite pagar desde el `policy_rail`; se documenta y no se construye (`R-20`).
-**T136 mergeada** ([PR #63](https://github.com/vicentewolde/AgentPey/pull/63)):
-el paquete `@agentpey/ucp-stellar` compra desde un proyecto vacío, y el agente
-de AgentPey paga a través de él (`R-21`); falta la publicación en npm, que
-espera el permiso del usuario.
+**T136 cerrada**: el paquete [`@agentpey/ucp-stellar`](https://www.npmjs.com/package/@agentpey/ucp-stellar)
+está publicado en npm, compra desde un proyecto vacío, y el agente de AgentPey
+paga a través de él (`R-21`).
 
 | Tarea | Estado |
 |---|---|
@@ -44,7 +43,7 @@ espera el permiso del usuario.
 | T133 UCP `2026-08-25` | cerrada |
 | T134 AP2 en el checkout | cerrada |
 | T135 MPP charge (prueba técnica) | cerrada |
-| T136 SDK en npm | mergeada (falta publicar) |
+| T136 SDK en npm | cerrada |
 | T137 Kit de conformidad de Stellar | pendiente |
 | T138 Prueba técnica: GenLayer | pendiente |
 | T139 Prueba técnica: Trustless Work | pendiente |
@@ -366,7 +365,7 @@ admin de Shopify; al consultar la orden, la tienda le preguntó a Shopify,
 registró el despacho y mandó el aviso "tu pedido salió", que agentpey.com
 verificó y aceptó. Nadie tuvo que preguntar nada.
 
-## T136 · El SDK `@agentpey/ucp-stellar` (2026-10-05, mergeada; falta publicar)
+## T136 · El SDK `@agentpey/ucp-stellar` (2026-10-05 y 06, cerrada)
 
 **Qué quedó.** Cualquier programador puede ahora hacer que su propio agente
 compre en una tienda UCP que acepta Stellar, con un paquete:
@@ -401,6 +400,14 @@ nombrar el activo que acepta. A pedido del usuario se corrigieron los once
 hallazgos, entre ellos que el agente lleve su propia cuenta de si el pago ya
 salió (para no devolver presupuesto de un pago que pudo cobrarse) y tests de
 ese caso.
+
+**La publicación.** El 6 de octubre el usuario creó la organización `agentpey`
+en npm, inició sesión y publicó la versión 0.1.0 desde su terminal. El primer
+intento lo rechazó npm porque la cuenta no tenía la verificación en dos pasos;
+la activó y el segundo pasó. Unos minutos después el paquete apareció en npm,
+se instaló desde ahí en una carpeta vacía y el ejemplo cotizó contra la tienda
+real. Cualquier persona puede instalarlo hoy con `npm install
+@agentpey/ucp-stellar`.
 
 **Tropiezos.** El primer tarball salió sin el código compilado (un archivo de
 compilación viejo engañó a `tsc`); ahora el empaquetado limpia y compila

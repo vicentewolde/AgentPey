@@ -282,7 +282,7 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] el paquete se instala desde un tarball en un proyecto vacío y el ejemplo del README, de menos de 30 líneas, corre contra una tienda real (15 líneas; compra real `ord_muvqqsth2fb48d4110` en `agentcommerce`, `evidencia/T136.md`)
   - [x] no arrastra dependencias privadas del monorepo (`R-21`; lo exige `manifest.test.ts`)
-  - [ ] publicado en npm, **con permiso explícito del usuario para esa publicación**
+  - [x] publicado en npm, **con permiso explícito del usuario para esa publicación** (el usuario publicó `@agentpey/ucp-stellar@0.1.0` el 2026-10-06; [npmjs.com/package/@agentpey/ucp-stellar](https://www.npmjs.com/package/@agentpey/ucp-stellar))
 
 #### T137 · Kit de conformidad del medio de pago de Stellar
 - **Prioridad:** si alcanza · **Estimación:** 8 h · **Delegable a Codex:** los tests de perfil y de esquema; los de cobro y recibo no
@@ -454,6 +454,7 @@ renegocia el 10-oct.**
 | 2026-10-04 | T134, `/revisar`: un bloqueante (el bloqueo AP2 se calculaba por solicitud, así que un `complete` que ya no negociaba AP2 cobraba sin mandato) y 16 hallazgos más, corregidos a pedido del usuario. El bloqueo pasa a ser de la sesión; el `iss` del mandato abierto queda atado al perfil de la plataforma; los términos comparados incluyen destino y comprador. `R-15` y `R-16` precisadas; §4.4 alineada con `R-15` (sin mandato de pago) |
 | 2026-10-04 | T134: la tienda firma cada checkout y verifica el mandato AP2 antes de cobrar; el agente lo cierra (`abierto~~cierre`, `R-15`), con la llave de la plataforma (`R-16`) y la de la tienda derivada (`VT-43`). La librería oficial de AP2 verifica una cadena de muestra. Cuatro criterios marcados; falta la compra real tras el deploy. Se hizo en una rama con los dos lados en vez de dos PR |
 | 2026-10-05 | T136: `@agentpey/ucp-stellar` en `packages/ucp-stellar`, con la opción A del usuario (el agente lo usa, `R-21`). Dos criterios marcados; la publicación en npm espera el permiso del usuario |
+| 2026-10-06 | T136 cerrada: publicada en npm por el usuario (`@agentpey/ucp-stellar@0.1.0`), instalada desde npm en un proyecto vacío y el ejemplo cotiza contra `agentcommerce`. Tercer criterio marcado |
 
 ## 11. Fuentes externas
 
