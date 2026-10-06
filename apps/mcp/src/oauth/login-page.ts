@@ -54,7 +54,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
   .warn { color: var(--fg); border-left: 3px solid var(--err); padding-left: 10px; }
   code { word-break: break-all; }
 </style>
-<script src="/wallet-kit.js" integrity="${escapeHtml(input.walletKitIntegrity)}" crossorigin="anonymous"></script>
+<script src="/wallet-kit.js" data-needs="message" integrity="${escapeHtml(input.walletKitIntegrity)}" crossorigin="anonymous"></script>
 </head>
 <body>
 <main>

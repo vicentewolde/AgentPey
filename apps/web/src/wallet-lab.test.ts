@@ -26,6 +26,13 @@ describe("the wallet lab (T143)", () => {
     expect(checkLabTransaction({ address: wallet.publicKey(), xdr: tx.toXDR() })).toMatchObject({ ok: true, verified: true });
   });
 
+  it("names a transaction signed for mainnet instead of testnet (LOBSTR cannot be told the network)", () => {
+    const { xdr } = buildLabTransaction(wallet.publicKey(), "0");
+    const onMainnet = TransactionBuilder.fromXDR(xdr, Networks.PUBLIC);
+    onMainnet.sign(wallet);
+    expect(checkLabTransaction({ address: wallet.publicKey(), xdr: onMainnet.toXDR() })).toMatchObject({ ok: false, code: "SignedForAnotherNetwork" });
+  });
+
   it("refuses the lab transaction signed by another key", () => {
     const tx = TransactionBuilder.fromXDR(buildLabTransaction(wallet.publicKey(), "0").xdr, Networks.TESTNET);
     tx.sign(Keypair.random());

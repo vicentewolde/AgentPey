@@ -54,10 +54,18 @@ export function checkLabTransaction(input: z.infer<typeof labTransactionCheckSch
   if (!isLab) return { ok: false, code: "InvalidArguments", message: "that is not the lab's test transaction for this account" };
   const key = Keypair.fromPublicKey(input.address);
   const hint = Buffer.from(key.signatureHint());
+  const signedOver = (hash: Buffer) =>
+    tx.signatures.some((decorated) => {
+      const wire = decorated.toXdrObject();
+      return Buffer.from(wire.hint).equals(hint) && key.verify(hash, Buffer.from(wire.signature));
+    });
   const hash = Buffer.from(tx.hash());
-  const signed = tx.signatures.some((decorated) => {
-    const wire = decorated.toXdrObject();
-    return Buffer.from(wire.hint).equals(hint) && key.verify(hash, Buffer.from(wire.signature));
-  });
-  return signed ? { ok: true, verified: true, hash: hash.toString("hex") } : { ok: false, code: "InvalidSignature", message: "the transaction carries no valid signature by that account" };
+  if (signedOver(hash)) return { ok: true, verified: true, hash: hash.toString("hex") };
+  // A wallet that cannot be told the network (LOBSTR) may sign the same envelope for mainnet: its signature is good,
+  // but over another network's hash, so it would be refused on testnet. Said as such, not as a bad signature.
+  const mainnet = TransactionBuilder.fromXDR(tx.toXDR(), Networks.PUBLIC);
+  if (signedOver(Buffer.from(mainnet.hash()))) {
+    return { ok: false, code: "SignedForAnotherNetwork", message: "the wallet signed this transaction for Stellar mainnet, not testnet" };
+  }
+  return { ok: false, code: "InvalidSignature", message: "the transaction carries no valid signature by that account" };
 }

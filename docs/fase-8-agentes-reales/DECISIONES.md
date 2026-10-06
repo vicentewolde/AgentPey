@@ -796,7 +796,10 @@ la credencial alterada solo con `--pay` (sin llave no se probaba nada).
 3. **Solo se ofrecen wallets que firman mensajes**, porque toda pantalla empieza con un inicio de sesión SEP-53:
    Freighter, xBull, LOBSTR y Hana. Fuera: Albedo y Rabet (el kit lanza "does not support signMessage"), HOT (solo
    mainnet), y WalletConnect, Ledger y Trezor (pesan mucho y no hacen falta hoy). La lista final sale de la tabla de
-   T143, wallet por wallet.
+   T143, wallet por wallet. **Precisado tras la prueba del usuario:** LOBSTR firma mensajes SEP-53 que verifican,
+   pero no deja elegir la red y firmó la transacción de testnet para otra; por eso **cada pantalla declara qué firma**
+   (`<script … data-needs="message transaction">`, sin declarar son las dos) y el selector ofrece solo las wallets que
+   pueden. LOBSTR queda fuera de `consent.html` y `revocar.html`.
 4. **La verificación del servidor no cambia:** `sep53.ts`, `WalletSessions` y los endpoints de cada pantalla siguen
    iguales. El laboratorio (`/wallet-lab.html`) usa el mismo almacén de desafíos y el mismo `verifyStellarMessage`,
    en un endpoint que no crea inquilinos; su transacción de prueba se arma y se verifica, nunca se envía.

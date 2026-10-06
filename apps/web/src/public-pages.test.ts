@@ -23,12 +23,13 @@ describe("the static pages", () => {
     });
   }
 
-  // T143: every signing page loads the wallet layer from this origin, never a CDN, and offers any wallet that signs
-  // messages instead of naming one.
-  for (const name of ["consent.html", "revocar.html", "resolve/responder.html", "wallet-lab.html"]) {
-    it(`${name} loads /wallet-kit.js from this origin, and no wallet script from a CDN`, async () => {
+  // T143: every signing page loads the wallet layer from this origin, never a CDN, and says what it signs, so the
+  // picker offers only the wallets that can (LOBSTR signs testnet transactions for mainnet: not where one is signed).
+  const needs: Record<string, string> = { "consent.html": "message transaction", "revocar.html": "message transaction", "resolve/responder.html": "message", "wallet-lab.html": "message" };
+  for (const [name, signs] of Object.entries(needs)) {
+    it(`${name} loads /wallet-kit.js from this origin for "${signs}", and no wallet script from a CDN`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
-      expect(html).toContain('<script src="/wallet-kit.js"></script>');
+      expect(html).toContain(`<script src="/wallet-kit.js" data-needs="${signs}"></script>`);
       expect(html).not.toMatch(/unpkg\.com|jsdelivr|freighter-api|freighterApi/);
       expect(html).not.toContain("\u2014");
     });

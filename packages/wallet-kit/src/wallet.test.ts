@@ -4,7 +4,7 @@ import { WalletError } from "./errors.js";
 import { describe as describeError } from "./messages.js";
 import { normalizeSignature } from "./signature.js";
 import { TESTNET_PASSPHRASE, createWallet, toWalletError, type KitLike } from "./wallet.js";
-import { LEFT_OUT_WALLETS, OFFERED_WALLETS, isOffered } from "./wallets.js";
+import { LEFT_OUT_WALLETS, OFFERED_WALLETS, isOffered, parseNeeds, walletsFor } from "./wallets.js";
 
 const ADDRESS = "GBQS3GKS2JS6JAVJOC2ZZ3MTTC7LYDHLRQAMQYMZM34TUJGO6CXNXJVP";
 const OTHER = "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K";
@@ -96,7 +96,20 @@ describe("the wallet layer", () => {
 describe("the wallets offered", () => {
   it("offers only wallets that sign messages, Freighter first", () => {
     expect(OFFERED_WALLETS[0].id).toBe("freighter");
-    expect(OFFERED_WALLETS.every((wallet) => wallet.signsMessages)).toBe(true);
+    expect(OFFERED_WALLETS.every((wallet) => (wallet.signs as readonly string[]).includes("message"))).toBe(true);
+  });
+
+  it("offers LOBSTR only where no testnet transaction is signed: it signs them for mainnet", () => {
+    expect(walletsFor(["message"])).toEqual(["freighter", "xbull", "lobstr", "hana"]);
+    expect(walletsFor(["message", "transaction"])).toEqual(["freighter", "xbull", "hana"]);
+  });
+
+  it("reads a screen's needs from its script tag, and takes both when it declares nothing", () => {
+    expect(parseNeeds("message")).toEqual(["message"]);
+    expect(parseNeeds("message transaction")).toEqual(["message", "transaction"]);
+    expect(parseNeeds(" transaction  message transaction ")).toEqual(["transaction", "message"]);
+    expect(parseNeeds(null)).toEqual(["message", "transaction"]);
+    expect(parseNeeds("everything")).toEqual(["message", "transaction"]);
   });
 
   it("does not offer Albedo or Rabet, which cannot sign messages", () => {

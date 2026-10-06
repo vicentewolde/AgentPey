@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-export { OFFERED_WALLETS, LEFT_OUT_WALLETS, isOffered, type OfferedWalletId } from "./wallets.js";
+export { OFFERED_WALLETS, LEFT_OUT_WALLETS, isOffered, parseNeeds, walletsFor, type Need, type OfferedWalletId } from "./wallets.js";
 export { normalizeSignature } from "./signature.js";
 export { WalletError, type WalletErrorCode } from "./errors.js";
 

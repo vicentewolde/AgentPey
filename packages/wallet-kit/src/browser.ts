@@ -12,7 +12,7 @@ import { Networks } from "@creit.tech/stellar-wallets-kit/types";
 import { WalletError } from "./errors.js";
 import { describe } from "./messages.js";
 import { createWallet } from "./wallet.js";
-import { OFFERED_WALLETS } from "./wallets.js";
+import { OFFERED_WALLETS, parseNeeds, walletsFor } from "./wallets.js";
 
 /**
  * LOBSTR's extension answers "are you there?" by message, in up to 2 s, and the kit's picker gives every wallet 1 s:
@@ -34,10 +34,15 @@ const freighter = new FreighterModule();
 const xbull = new xBullModule();
 const lobstr = new PatientLobstrModule();
 const hana = new HanaModule();
-void lobstr.isAvailable();
+
+/** What this screen signs, from its script tag; the picker offers only the wallets that can sign all of it. */
+const needs = parseNeeds(document.currentScript?.getAttribute("data-needs"));
+const offeredHere = walletsFor(needs);
+const modules = { freighter, xbull, lobstr, hana };
+if (offeredHere.includes("lobstr")) void lobstr.isAvailable();
 
 StellarWalletsKit.init({
-  modules: [freighter, xbull, lobstr, hana],
+  modules: offeredHere.map((id) => modules[id]),
   network: Networks.TESTNET,
   authModal: { showInstallLabel: true, hideUnsupportedWallets: false },
 });
@@ -57,4 +62,4 @@ async function detect(): Promise<Record<string, boolean>> {
   return { freighter: freighterSeen, xbullExtension: "xBullSDK" in globalThis, lobstr: lobstrSeen, hana: hanaSeen };
 }
 
-Object.assign(globalThis, { AgentpeyWallet: { ...wallet, offered: OFFERED_WALLETS, WalletError, describe, detect } });
+Object.assign(globalThis, { AgentpeyWallet: { ...wallet, offered: OFFERED_WALLETS.filter((w) => offeredHere.includes(w.id)), needs, WalletError, describe, detect } });

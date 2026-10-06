@@ -311,7 +311,7 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     const page = await authorizePage(s, await register(s), pkce().challenge);
     expect(page.headers.get("content-security-policy")).toMatch(/default-src 'none'; script-src 'nonce-[^']+' 'self'; style-src 'unsafe-inline'; img-src https:\/\/stellar\.creit\.tech data:; connect-src 'self';/);
     const html = await page.text();
-    expect(html).toContain('<script src="/wallet-kit.js" integrity="sha384-TESTKIT" crossorigin="anonymous"></script>');
+    expect(html).toContain('<script src="/wallet-kit.js" data-needs="message" integrity="sha384-TESTKIT" crossorigin="anonymous"></script>');
     expect(html).not.toMatch(/unpkg|freighter-api/);
     expect(html).toContain("Continue only if you started this connection yourself");
   });

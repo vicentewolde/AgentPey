@@ -164,7 +164,7 @@ describe("the owners' portal: sign in with the wallet, register a store, see its
     expect(page.headers["content-type"]).toContain("text/html");
     // Any wallet that signs messages (T143), from this origin: no CDN script.
     expect(page.text).toContain("Connect your wallet");
-    expect(page.text).toContain('<script src="/portal/wallet-kit.js"></script>');
+    expect(page.text).toContain('<script src="/portal/wallet-kit.js" data-needs="message"></script>');
     expect(page.text).not.toMatch(/unpkg|freighter-api/);
     // The pilot's copy never uses the em dash (U+2014).
     expect(page.text).not.toContain("\u2014");
