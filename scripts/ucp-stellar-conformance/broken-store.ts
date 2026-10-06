@@ -2,8 +2,9 @@
  * A UCP store that declares `com.agentpey.stellar_x402` and breaks it on
  * purpose (T137), to show the conformance kit failing with a clear reason.
  * Each break is one way a store can get the handler wrong; with none it is a
- * small store that follows the spec. It never settles anything: there is no
- * facilitator, and a "completed" checkout here moved no money.
+ * small store that follows the spec. It never moves money: there is no
+ * facilitator. A "settlement" here is only counted, once per transaction, so
+ * a test can tell what a real store would have charged.
  *
  *   pnpm run ucp:stellar:broken-store [-- --break spec-off-domain,pay-to-mismatch] [--port 4137]
  *
@@ -26,6 +27,11 @@ export const BREAKS = [
   "no-binding",
   /** Complete Checkout accepts a credential whose `accepted` differs from the checkout's requirements. */
   "accepts-tampered",
+  /**
+   * It refuses a junk transaction, but settles a really signed one whose `accepted` was altered, and still answers
+   * `payment_failed`: the lie only a balance shows.
+   */
+  "settles-signed",
 ] as const;
 export type Break = (typeof BREAKS)[number];
 
@@ -37,6 +43,8 @@ export interface BrokenStore {
   readonly payTo: string;
   /** How many checkouts this store completed. */
   completed(): number;
+  /** How many transactions it "settled", each once. */
+  settled(): number;
   close(): Promise<void>;
 }
 
@@ -46,7 +54,10 @@ export async function startBrokenStore(options: { readonly breaks: ReadonlySet<B
   const otherPayTo = Keypair.random().publicKey();
   const sessions = new Map<string, { status: string; order?: { id: string; permalink_url: string } }>();
   let completed = 0;
+  const settledTransactions = new Set<string>();
   let url = "";
+  /** The kit's junk transaction (R6), which no store could settle. */
+  const isJunk = (transaction: string | undefined) => transaction === undefined || Buffer.from(transaction, "base64").toString("utf8").startsWith("ucp-stellar-conformance");
 
   const spec = breaks.has("spec-off-domain") ? "https://agentpey.example/ucp/handlers/stellar-x402/spec" : "https://agentpey.com/ucp/handlers/stellar-x402/spec";
   const schema = breaks.has("spec-off-domain") ? "https://agentpey.example/ucp/handlers/stellar-x402/schema.json" : "https://agentpey.com/ucp/handlers/stellar-x402/schema.json";
@@ -127,14 +138,23 @@ export async function startBrokenStore(options: { readonly breaks: ReadonlySet<B
       if (id !== undefined && sessions.has(id)) {
         if (req.method === "GET" && match?.[2] === undefined) return send(res, 200, checkout(id));
         if (req.method === "POST" && match?.[2] === "/complete") {
-          const body = (await read(req)) as { payment?: { instruments?: Array<{ credential?: { accepted?: Record<string, unknown> } }> } } | undefined;
-          const accepted = body?.payment?.instruments?.[0]?.credential?.accepted;
+          const body = (await read(req)) as { payment?: { instruments?: Array<{ credential?: { accepted?: Record<string, unknown>; payload?: { transaction?: string } } }> } } | undefined;
+          const credential = body?.payment?.instruments?.[0]?.credential;
+          const accepted = credential?.accepted;
+          const transaction = credential?.payload?.transaction;
           const asked = requirements();
           const matches = accepted !== undefined && (["scheme", "network", "asset", "amount", "payTo"] as const).every((k) => accepted[k] === asked[k]);
           const session = sessions.get(id)!;
           if (session.order !== undefined) return send(res, 200, checkout(id));
-          if (!matches && !breaks.has("accepts-tampered")) {
-            return send(res, 200, { ...checkout(id), messages: [{ type: "error", code: "payment_failed", content: "the credential was signed for other payment requirements than this checkout's", severity: "recoverable" }] });
+          const refuse = (content: string) => send(res, 200, { ...checkout(id), messages: [{ type: "error", code: "payment_failed", content, severity: "recoverable" }] });
+          if (!matches && breaks.has("settles-signed") && !isJunk(transaction)) {
+            settledTransactions.add(transaction!);
+            return refuse("the credential was signed for other payment requirements than this checkout's");
+          }
+          if (!matches && !breaks.has("accepts-tampered")) return refuse("the credential was signed for other payment requirements than this checkout's");
+          if (!isJunk(transaction)) {
+            if (settledTransactions.has(transaction!)) return refuse("the payment did not settle: this authorization was already used");
+            settledTransactions.add(transaction!);
           }
           completed += 1;
           session.status = "completed";
@@ -151,6 +171,7 @@ export async function startBrokenStore(options: { readonly breaks: ReadonlySet<B
     url,
     payTo,
     completed: () => completed,
+    settled: () => settledTransactions.size,
     close: () => new Promise((resolve, reject) => server.close((error) => (error === undefined ? resolve() : reject(error)))),
   };
 }

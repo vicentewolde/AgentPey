@@ -21,6 +21,7 @@
  * reason. A check that cannot run says why it was skipped.
  */
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
+import { StrKey } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
 import {
@@ -32,6 +33,7 @@ import {
   originMatchesNamespace,
   toAtomic,
   pay,
+  UcpStellarError,
   type BalanceReader,
   type PayableQuote,
   type UcpDestination,
@@ -40,8 +42,6 @@ import {
 import type { RegistryReader, ReceiptVerification } from "../../packages/vitrinee-anchor/src/index.js";
 
 export const RECEIPT_EXTENSION = "com.agentpey.shopping.receipt";
-/** AgentPey's receipt-registry on testnet (deployments/vitrinee-testnet.json): the registry trusted unless told otherwise. */
-export const AGENTPEY_RECEIPT_REGISTRY = "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5";
 export const DEFAULT_PLATFORM_PROFILE = "https://agentpey.com/ucp/platform/agentpey.json";
 
 export type Outcome = "pass" | "fail" | "warn" | "skip";
@@ -81,9 +81,12 @@ export interface KitOptions {
   readonly platformProfile: string;
   /** The receipt registry trusted; a receipt anchored in another fails. */
   readonly registry: string;
-  /** The charge group runs only with this: a payer holding a testnet key, and the most it may pay. */
-  readonly charge?: { readonly payer: UcpStellarPayer; readonly maxAmount: string };
-  /** How long to wait for a pending receipt anchor. */
+  /**
+   * The charge group runs only with this: a payer holding a testnet key, the account it pays from (to read its
+   * balance), the most it may pay, and the one asset contract it pays in.
+   */
+  readonly charge?: { readonly payer: UcpStellarPayer; readonly payerAddress: string; readonly maxAmount: string; readonly asset: string };
+  /** How long to wait for a pending receipt anchor, in milliseconds. */
   readonly anchorWaitMs?: number;
 }
 
@@ -144,6 +147,8 @@ const receiptShape = z.looseObject({
 type Receipt = z.infer<typeof receiptShape>;
 
 const publishedKey = z.looseObject({ kid: z.string(), kty: z.string(), crv: z.string().optional(), x: z.string().optional() });
+
+const lineItemsShape = z.array(z.looseObject({ item: z.looseObject({ id: z.string().min(1) }), quantity: z.int().positive() })).min(1);
 
 const MARK: Record<Outcome, string> = { pass: "✔", fail: "✘", warn: "!", skip: "–" };
 
@@ -388,18 +393,19 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
   if (!parsedRequirements.success) {
     report.add("R4", "requirements", "pays what the profile declares", "fail", "the checkout carries no payment_requirements");
     report.skip("R5", "requirements", "amount", "needs payment_requirements (R4)");
-    report.skip("R6", "requirements", `refuses ${TAMPER_NOTE}`, "needs payment_requirements (R4)");
+    report.skip("R6", "requirements", TITLES["R6"]!, "needs payment_requirements (R4)");
     skipCharge(report, "needs payment_requirements");
     return;
   }
   const requirements = parsedRequirements.data;
   const mismatches = [
+    requirements.scheme !== "exact" ? `scheme ${requirements.scheme} (the handler is exact)` : undefined,
     requirements.payTo !== declared.pay_to ? `payTo ${requirements.payTo} (profile: ${declared.pay_to})` : undefined,
     requirements.asset !== declared.asset.contract ? `asset ${requirements.asset} (profile: ${declared.asset.contract})` : undefined,
     requirements.network !== declared.network ? `network ${requirements.network} (profile: ${declared.network})` : undefined,
   ].filter((m) => m !== undefined);
   const paysDeclared = mismatches.length === 0;
-  report.add("R4", "requirements", "pays what the profile declares", paysDeclared ? "pass" : "fail", paysDeclared ? `payTo, asset and network are the profile's` : `the checkout asks for ${mismatches.join(", ")}: a platform must refuse to sign`);
+  report.add("R4", "requirements", "pays what the profile declares", paysDeclared ? "pass" : "fail", paysDeclared ? `scheme exact; payTo, asset and network are the profile's` : `the checkout asks for ${mismatches.join(", ")}: a platform must refuse to sign`);
 
   const amountOk = /^[1-9]\d*$/.test(requirements.amount);
   const needsFx = checkout.currency !== undefined && checkout.currency !== declared.asset.code;
@@ -410,7 +416,7 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
 
   // R6: an altered accepted, with a junk transaction that cannot move money even at a store that ignores the check.
   if (!amountOk) {
-    report.skip("R6", "requirements", `refuses ${TAMPER_NOTE}`, "needs a valid amount (R5)");
+    report.skip("R6", "requirements", TITLES["R6"]!, "needs a valid amount (R5)");
   } else {
     const tampered = { ...requirements, amount: (BigInt(requirements.amount) + 1n).toString() };
     const junk = Buffer.from("ucp-stellar-conformance: not a transaction").toString("base64");
@@ -419,9 +425,9 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
         method: "POST",
         body: JSON.stringify(completeBody(handler.data.id, tampered, junk)),
       });
-      refusalVerdict(report, "R6", "requirements", reply, "with a junk transaction");
+      refusalVerdict(report, "R6", "requirements", TITLES["R6"]!, reply, "with a junk transaction", "the transaction was also invalid, so this shows only that the store does not complete without settling; C1 (--pay) shows it compares accepted");
     } catch (error) {
-      report.add("R6", "requirements", `refuses ${TAMPER_NOTE}`, "fail", `the probe could not reach the store: ${why(error)}`);
+      report.add("R6", "requirements", TITLES["R6"]!, "fail", `the probe could not reach the store: ${why(error)}`);
     }
   }
 
@@ -430,24 +436,44 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
     skipCharge(report, "runs only with --pay and a testnet key");
     return;
   }
-  if (!payable || !paysDeclared || !amountOk) {
-    skipCharge(report, !payable ? "the profile is not one a platform may pay against (P3, P5): nothing is signed" : "the checkout does not pay what the profile declares (R4, R5): nothing is signed");
+  // Nothing is signed for a store that already failed a check a signed payment would depend on.
+  const failedBefore = ["P3", "P5", "P6", "R2", "R3", "R4", "R5", "R6"].filter((id) => report.results.find((r) => r.id === id)?.outcome === "fail");
+  if (!payable || !paysDeclared || !amountOk || failedBefore.length > 0) {
+    skipCharge(report, `the store failed ${failedBefore.join(", ")}: nothing is signed for it`);
     return;
   }
-  await charge(report, options, deps, { origin, endpoint, handlerId: handler.data.id, checkoutId: checkout.id, requirements, raw: opened.json as Record<string, unknown>, profile });
+  if (requirements.asset !== options.charge.asset) {
+    skipCharge(report, `the checkout is priced in ${requirements.asset}; the kit pays only in ${options.charge.asset} (--asset): nothing is signed`);
+    return;
+  }
+  const lines = lineItemsShape.safeParse(checkout.line_items);
+  if (!lines.success) {
+    skipCharge(report, "the checkout does not say which line_items it is for: nothing is signed");
+    return;
+  }
+  await charge(report, options, deps, {
+    origin,
+    endpoint,
+    handlerId: handler.data.id,
+    checkoutId: checkout.id,
+    requirements,
+    lines: lines.data.map((line) => ({ productId: line.item.id, quantity: line.quantity })),
+    raw: opened.json as Record<string, unknown>,
+    profile,
+  });
 }
 
-function refusalVerdict(report: Report, id: string, group: Group, reply: { status: number; json: unknown }, how: string): void {
+function refusalVerdict(report: Report, id: string, group: Group, title: string, reply: { status: number; json: unknown }, how: string, note: string): void {
   const answered = checkoutShape.safeParse(reply.json);
   const completed = answered.success && (answered.data.status === "completed" || answered.data.order !== undefined);
   const failed = messagesOf(reply.json).some((m) => m.code === "payment_failed");
-  if (completed) report.add(id, group, `refuses ${TAMPER_NOTE}`, "fail", `the store completed the checkout ${how}; the spec says it MUST reject it`);
-  else if (!failed) report.add(id, group, `refuses ${TAMPER_NOTE}`, "fail", `refused, but not with payment_failed (status ${reply.status}: ${describeMessages(reply.json)})`);
-  else report.add(id, group, `refuses ${TAMPER_NOTE}`, "pass", `refused ${how}: ${describeMessages(reply.json)}`);
+  if (completed) report.add(id, group, title, "fail", `the store completed the checkout ${how}; the spec says it MUST reject it`);
+  else if (!failed) report.add(id, group, title, "fail", `refused, but not with payment_failed (status ${reply.status}: ${describeMessages(reply.json)})`);
+  else report.add(id, group, title, "pass", `refused ${how} (${describeMessages(reply.json)}); ${note}`);
 }
 
 function skipCharge(report: Report, reason: string): void {
-  for (const [id, title] of [["C1", `refuses ${TAMPER_NOTE}, signed`], ["C2", "completes with the exact credential"], ["C3", "settles a credential once"]] as const) report.skip(id, "charge", title, reason);
+  for (const [id, title] of Object.entries(C_TITLES)) report.skip(id, "charge", title, reason);
   for (const [id, title] of [["E1", "receipt on the checkout and the order"], ["E2", "receipt key in the profile"], ["E3", "receipt in the trusted registry"], ["E4", "receipt's three checks"]] as const) report.skip(id, "receipt", title, "needs a completed charge");
 }
 
@@ -484,71 +510,113 @@ interface Opened {
   readonly handlerId: string;
   readonly checkoutId: string;
   readonly requirements: Requirements;
+  readonly lines: ReadonlyArray<{ readonly productId: string; readonly quantity: number }>;
   readonly raw: Record<string, unknown>;
   readonly profile: Profile;
 }
 
+/** The longest a signed authorization may stay valid: whoever saw it can settle it until it expires. */
+export const MAX_SIGNED_VALIDITY_SECONDS = 120;
+
+const C_TITLES = { C1: `refuses ${TAMPER_NOTE}, signed`, C2: "completes with the exact credential", C3: "settles a credential once" } as const;
+
+function stopCharge(report: Report, after: "C1" | "C2", reason: string): void {
+  if (after === "C1") report.skip("C2", "charge", C_TITLES.C2, reason);
+  report.skip("C3", "charge", C_TITLES.C3, reason);
+  skipReceipt(report, "needs a completed charge");
+}
+
+/**
+ * The charge, with **one** signed authorization for the whole run: C1 sends it with `accepted` altered, C2 pays
+ * with the same one through `@agentpey/ucp-stellar`, C3 replays it. Its nonce settles once at most, so a store that
+ * lies about C1 cannot make the kit pay twice; and its validity is capped, so a store that kept it can settle it only
+ * briefly. The payer's balance is read before and after, so a store that settled while refusing is caught.
+ */
 async function charge(report: Report, options: KitOptions, deps: KitDeps, opened: Opened): Promise<void> {
-  const { payer, maxAmount } = options.charge!;
+  const { payer, payerAddress, maxAmount } = options.charge!;
   const completeUrl = `${opened.endpoint}/checkout-sessions/${encodeURIComponent(opened.checkoutId)}/complete`;
+  const amount = BigInt(opened.requirements.amount);
 
   // The kit's own ceiling, checked before anything is signed.
   let maxAtomic: bigint;
   try {
     maxAtomic = toAtomic(maxAmount, 7);
   } catch (error) {
-    report.add("C1", "charge", `refuses ${TAMPER_NOTE}, signed`, "skip", `--max-amount: ${why(error)}`);
-    report.skip("C2", "charge", "completes with the exact credential", "needs a valid --max-amount");
-    report.skip("C3", "charge", "settles a credential once", "needs a valid --max-amount");
-    skipReceipt(report, "needs a completed charge");
+    report.add("C1", "charge", C_TITLES.C1, "skip", `--max-amount: ${why(error)}`);
+    stopCharge(report, "C1", "needs a valid --max-amount");
     return;
   }
-  if (BigInt(opened.requirements.amount) > maxAtomic) {
-    report.add("C1", "charge", `refuses ${TAMPER_NOTE}, signed`, "skip", `the checkout costs ${fromAtomic(BigInt(opened.requirements.amount), 7)}, above --max-amount ${maxAmount}: nothing was signed`);
-    report.skip("C2", "charge", "completes with the exact credential", "above --max-amount");
-    report.skip("C3", "charge", "settles a credential once", "above --max-amount");
-    skipReceipt(report, "needs a completed charge");
+  if (amount > maxAtomic) {
+    report.add("C1", "charge", C_TITLES.C1, "skip", `the checkout costs ${fromAtomic(amount, 7)}, above --max-amount ${maxAmount}: nothing was signed`);
+    stopCharge(report, "C1", "above --max-amount");
     return;
   }
 
-  // C1: signed for real, with `accepted` altered. A conforming store refuses before settling; a store that ignores
-  // the check settles the real (correct) amount, within maxAmount, and the kit stops there.
-  let signed: string;
+  let before: bigint;
   try {
-    const payload = await payer.createPaymentPayload(2, opened.requirements as Parameters<UcpStellarPayer["createPaymentPayload"]>[1]);
+    before = await deps.readBalance(payerAddress, opened.requirements.asset);
+  } catch (error) {
+    report.add("C1", "charge", C_TITLES.C1, "skip", `could not read the payer's balance, so a settlement could not be told apart: ${why(error)}; nothing was signed`);
+    stopCharge(report, "C1", "needs the payer's balance");
+    return;
+  }
+
+  // The one signature, with a validity capped at MAX_SIGNED_VALIDITY_SECONDS whatever the store asks.
+  const signFor = { ...opened.requirements, maxTimeoutSeconds: Math.min(opened.requirements.maxTimeoutSeconds, MAX_SIGNED_VALIDITY_SECONDS) };
+  let signed = "";
+  try {
+    const payload = await payer.createPaymentPayload(2, signFor as Parameters<UcpStellarPayer["createPaymentPayload"]>[1]);
     signed = String((payload.payload as { transaction?: unknown }).transaction ?? "");
-    if (signed === "") throw new TypeError("the payer produced no transaction");
   } catch (error) {
-    report.add("C1", "charge", `refuses ${TAMPER_NOTE}, signed`, "fail", `the payer could not sign: ${why(error)}`);
-    report.skip("C2", "charge", "completes with the exact credential", "needs a signed payment (C1)");
-    report.skip("C3", "charge", "settles a credential once", "needs a completed charge (C2)");
-    skipReceipt(report, "needs a completed charge");
+    report.add("C1", "charge", C_TITLES.C1, "fail", `the payer could not sign: ${why(error)}`);
+    stopCharge(report, "C1", "needs a signed payment (C1)");
     return;
   }
-  const tampered = { ...opened.requirements, amount: (BigInt(opened.requirements.amount) + 1n).toString() };
-  try {
-    const reply = await getJson(deps, options, completeUrl, { method: "POST", body: JSON.stringify(completeBody(opened.handlerId, tampered, signed)) });
-    refusalVerdict(report, "C1", "charge", reply, "with a really signed transaction");
-    if (report.results.at(-1)?.outcome === "fail" && checkoutShape.safeParse(reply.json).data?.status === "completed") {
-      report.skip("C2", "charge", "completes with the exact credential", "the store already completed on C1's altered credential");
-      report.skip("C3", "charge", "settles a credential once", "the store already completed on C1's altered credential");
-      skipReceipt(report, "the charge did not follow the spec (C1)");
-      return;
-    }
-  } catch (error) {
-    report.add("C1", "charge", `refuses ${TAMPER_NOTE}, signed`, "fail", `the probe could not reach the store: ${why(error)}`);
+  if (signed === "") {
+    report.add("C1", "charge", C_TITLES.C1, "fail", "the payer produced no transaction");
+    stopCharge(report, "C1", "needs a signed payment (C1)");
+    return;
   }
 
-  // C2: the real payment, through @agentpey/ucp-stellar (recheck on, maxAmount, the asset the profile declares). The
-  // payer is wrapped to keep the credential for C3.
-  let credential: string | undefined;
-  const keeping: UcpStellarPayer = {
+  // C1: the signed payment with `accepted` altered. A conforming store refuses before settling.
+  const tampered = { ...opened.requirements, amount: (amount + 1n).toString() };
+  let reply: { status: number; json: unknown };
+  try {
+    reply = await getJson(deps, options, completeUrl, { method: "POST", body: JSON.stringify(completeBody(opened.handlerId, tampered, signed)) });
+  } catch (error) {
+    report.add("C1", "charge", C_TITLES.C1, "fail", `the probe did not reach the store (${why(error)}); the store may hold the signed authorization until it expires, so nothing more is sent`);
+    stopCharge(report, "C1", "C1 did not reach the store");
+    return;
+  }
+  const answered = checkoutShape.safeParse(reply.json);
+  if (answered.success && (answered.data.status === "completed" || answered.data.order !== undefined)) {
+    report.add("C1", "charge", C_TITLES.C1, "fail", "the store completed the checkout with a really signed transaction whose accepted was altered; the spec says it MUST reject it");
+    stopCharge(report, "C1", "the store already completed on C1's altered credential");
+    return;
+  }
+  // A store that settled and still answered a refusal: the payer's balance says so.
+  await deps.sleep(5_000);
+  const afterProbe = await deps.readBalance(payerAddress, opened.requirements.asset).catch(() => undefined);
+  if (afterProbe !== undefined && afterProbe < before) {
+    report.add("C1", "charge", C_TITLES.C1, "fail", `the store answered a refusal but the payer's balance fell by ${fromAtomic(before - afterProbe, 7)}: it settled the altered credential`);
+    stopCharge(report, "C1", "the store settled C1's altered credential");
+    return;
+  }
+  refusalVerdict(report, "C1", "charge", C_TITLES.C1, reply, "with a really signed transaction", "the balance did not move");
+  if (report.results.at(-1)?.outcome === "fail") {
+    stopCharge(report, "C1", "the store did not refuse C1 as the spec says");
+    return;
+  }
+
+  // C2: the same signed payment, through @agentpey/ucp-stellar (recheck on, maxAmount, the accepted asset). The
+  // payer hands back the one signature, and only for the requirements it was signed for.
+  const presigned: UcpStellarPayer = {
     scheme: payer.scheme,
     ...(payer.findDefaultAsset === undefined ? {} : { findDefaultAsset: payer.findDefaultAsset.bind(payer) }),
-    createPaymentPayload: async (...args) => {
-      const payload = await payer.createPaymentPayload(...args);
-      credential = String((payload.payload as { transaction?: unknown }).transaction ?? "");
-      return payload;
+    createPaymentPayload: async (x402Version, requirements) => {
+      const same = (["scheme", "network", "asset", "amount", "payTo"] as const).every((field) => requirements[field] === opened.requirements[field]);
+      if (!same) throw new UcpStellarError("QuoteChanged", "the store now asks for other requirements than the ones signed", { details: { checkoutId: opened.checkoutId } });
+      return { x402Version, payload: { transaction: signed } };
     },
   };
   const quoteToPay: PayableQuote = {
@@ -556,37 +624,39 @@ async function charge(report: Report, options: KitOptions, deps: KitDeps, opened
     endpoint: opened.endpoint,
     handlerId: opened.handlerId,
     checkoutId: opened.checkoutId,
-    lines: (opened.raw["line_items"] as Array<{ item: { id: string }; quantity: number }>).map((line) => ({ productId: line.item.id, quantity: line.quantity })),
+    lines: opened.lines,
     requirements: opened.requirements as PayableQuote["requirements"],
     checkout: opened.raw,
   };
   let orderId: string;
   let receipt: unknown;
   try {
-    const paid = await pay(quoteToPay, { payer: keeping, maxAmount, asset: opened.requirements.asset, platformProfile: options.platformProfile, fetch: deps.fetch });
+    const paid = await pay(quoteToPay, { payer: presigned, maxAmount, asset: options.charge!.asset, platformProfile: options.platformProfile, fetch: deps.fetch });
     orderId = paid.orderId;
     receipt = paid.receipt;
-    report.add("C2", "charge", "completes with the exact credential", "pass", `order ${paid.orderId}, ${fromAtomic(BigInt(paid.paid.amount), 7)} paid to ${paid.paid.payTo}${paid.transaction === undefined ? "" : `, tx ${paid.transaction}`}`);
+    report.add("C2", "charge", C_TITLES.C2, "pass", `order ${paid.orderId}, ${fromAtomic(BigInt(paid.paid.amount), 7)} paid to ${paid.paid.payTo}${paid.transaction === undefined ? "" : `, tx ${paid.transaction}`}`);
   } catch (error) {
     const sent = !isUcpStellarError(error) || error.paymentSent;
-    report.add("C2", "charge", "completes with the exact credential", "fail", `${why(error)}${sent ? " (the payment may have been sent: read the checkout before trying again)" : " (nothing was sent)"}`);
-    report.skip("C3", "charge", "settles a credential once", "needs a completed charge (C2)");
-    skipReceipt(report, "needs a completed charge");
+    report.add("C2", "charge", C_TITLES.C2, "fail", `${why(error)}${sent ? " (the payment may have been sent: read the checkout before trying again)" : " (nothing was sent)"}`);
+    stopCharge(report, "C2", "needs a completed charge (C2)");
     return;
   }
 
-  // C3: the same credential again must not make a second order.
-  if (credential === undefined || credential === "") {
-    report.skip("C3", "charge", "settles a credential once", "the credential was not kept");
-  } else {
-    try {
-      const again = await getJson(deps, options, completeUrl, { method: "POST", body: JSON.stringify(completeBody(opened.handlerId, opened.requirements, credential)) });
-      const answered = checkoutShape.safeParse(again.json);
-      const otherOrder = answered.success && answered.data.order !== undefined && answered.data.order.id !== orderId;
-      report.add("C3", "charge", "settles a credential once", otherOrder ? "fail" : "pass", otherOrder ? `the replay made another order, ${answered.data!.order!.id}` : `the replay made no other order (status ${again.status}, ${answered.success ? `checkout ${answered.data.status}` : describeMessages(again.json)})`);
-    } catch (error) {
-      report.add("C3", "charge", "settles a credential once", "fail", `the replay could not reach the store: ${why(error)}`);
+  // C3: the same credential again makes no other order, and the payer paid exactly once.
+  try {
+    const again = await getJson(deps, options, completeUrl, { method: "POST", body: JSON.stringify(completeBody(opened.handlerId, opened.requirements, signed)) });
+    const replayed = checkoutShape.safeParse(again.json);
+    const otherOrder = replayed.success && replayed.data.order !== undefined && replayed.data.order.id !== orderId;
+    const after = await deps.readBalance(payerAddress, opened.requirements.asset).catch(() => undefined);
+    const drop = after === undefined ? undefined : before - after;
+    if (otherOrder) report.add("C3", "charge", C_TITLES.C3, "fail", `the replay made another order, ${replayed.data!.order!.id}`);
+    else if (drop !== undefined && drop > amount) report.add("C3", "charge", C_TITLES.C3, "fail", `the payer's balance fell by ${fromAtomic(drop, 7)}, more than the one payment of ${fromAtomic(amount, 7)}`);
+    else {
+      const paidOnce = drop === undefined ? "; the payer's balance could not be read again" : drop === amount ? `, and the payer's balance fell by ${fromAtomic(drop, 7)}: one payment` : `; the payer's balance fell by ${fromAtomic(drop, 7)} so far (the network may not show the payment yet)`;
+      report.add("C3", "charge", C_TITLES.C3, "pass", `the replay made no other order (status ${again.status})${paidOnce}`);
     }
+  } catch (error) {
+    report.add("C3", "charge", C_TITLES.C3, "fail", `the replay could not reach the store: ${why(error)}`);
   }
 
   await receiptChecks(report, options, deps, opened, orderId, receipt);
@@ -616,8 +686,12 @@ async function receiptChecks(report: Report, options: KitOptions, deps: KitDeps,
     const parsed = publishedKey.safeParse(key);
     return parsed.success ? [parsed.data] : [];
   });
+  // The key published under that kid must be the one its did:stellar names (the one E4 verifies with).
+  const expectedX = kid === undefined ? undefined : didKeyX(kid);
   const published = keys.find((key) => key.kid === kid && key.kty === "OKP" && key.crv === "Ed25519");
-  report.add("E2", "receipt", "receipt key in the profile", published === undefined ? "fail" : "pass", published === undefined ? `the receipt is signed by ${String(kid)}, which the profile's keys do not publish as an Ed25519 key` : `${String(kid)}`);
+  if (published === undefined) report.add("E2", "receipt", "receipt key in the profile", "fail", `the receipt is signed by ${kid ?? "(no kid)"}, which the profile's keys do not publish as an Ed25519 key`);
+  else if (expectedX === undefined || published.x !== expectedX) report.add("E2", "receipt", "receipt key in the profile", "fail", `the profile publishes ${kid} with another key (x ${published.x ?? "(none)"}) than its did:stellar names (${expectedX ?? "unreadable"})`);
+  else report.add("E2", "receipt", "receipt key in the profile", "pass", `${kid}, the key its did:stellar names`);
 
   // E3: anchored in the registry the caller trusts.
   const trusted = order.anchor.registry === options.registry;
@@ -630,8 +704,20 @@ async function receiptChecks(report: Report, options: KitOptions, deps: KitDeps,
     order = (await readOrderReceipt(deps, options, opened.endpoint, orderId)) ?? order;
   }
   const verification = await deps.verifyReceipt(order.jws, deps.registry(options.registry));
+  const waited = Math.round((options.anchorWaitMs ?? 60_000) / 1000);
+  if (!verification.valid && order.anchor.status !== "anchored" && verification.checks.signature.ok && verification.checks.settlement.ok) {
+    report.add("E4", "receipt", "receipt's three checks", "warn", `signature ok, settlement ok, and the anchor still ${order.anchor.status} after ${waited} s (anchoring is asynchronous: read the order again later, or raise --anchor-wait)`);
+    return;
+  }
   const parts = [`signature ${verification.checks.signature.ok ? "ok" : `no (${verification.checks.signature.reason ?? ""})`}`, `anchor ${verification.checks.anchored.ok ? "ok" : `no (${verification.checks.anchored.reason ?? order.anchor.status})`}`, `settlement ${verification.checks.settlement.ok ? "ok" : `no (${verification.checks.settlement.reason ?? ""})`}`];
   report.add("E4", "receipt", "receipt's three checks", verification.valid ? "pass" : "fail", parts.join(", "));
+}
+
+/** The base64url Ed25519 key a `did:stellar:<network>:G…[#fragment]` names; undefined when it names none. */
+function didKeyX(kid: string): string | undefined {
+  const account = /^did:stellar:[a-z]+:(G[A-Z2-7]{55})(?:#.*)?$/.exec(kid)?.[1];
+  if (account === undefined || !StrKey.isValidEd25519PublicKey(account)) return undefined;
+  return Buffer.from(StrKey.decodeEd25519PublicKey(account)).toString("base64url");
 }
 
 /** The `kid` of a compact JWS's protected header, without verifying anything (E4 verifies). */

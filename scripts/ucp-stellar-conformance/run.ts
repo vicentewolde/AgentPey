@@ -10,27 +10,41 @@
  *   --pay                 run the charge and receipt checks: pays one checkout, on testnet
  *   --rail <C...>         pay from this policy_rail, signing as its owner (default: a classic account)
  *   --max-amount <n>      the most the charge may cost, in the asset (default 2.00)
- *   --registry <C...>     the receipt registry to trust (default: AgentPey's)
+ *   --asset <C...>        the only asset contract the charge pays in (default: USDC on testnet)
+ *   --anchor-wait <s>     how long to wait for a pending receipt anchor (default 60)
+ *   --registry <C...>     the receipt registry to trust (default: AgentPey's, from deployments/vitrinee-testnet.json)
  *   --platform-profile <url>  sent in UCP-Agent (default: AgentPey's public profile)
  *   --email <address>     the buyer's email on the checkout (default conformance@agentpey.com)
  *   --json                the report as JSON
  *
  * With `--pay`, the key comes from the environment, `UCP_STELLAR_CONFORMANCE_SECRET`: a testnet secret (`S...`) of
- * a classic account holding the asset, or of the rail's owner with `--rail`. It is never printed or stored.
+ * a classic account holding the asset, or of the rail's owner with `--rail`. It is never printed or stored. The run
+ * signs one payment authorization, valid for two minutes at most, and settles it at most once.
  *
  * Exit code: 0 when no check fails, 1 when one does, 2 for a usage error.
  */
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 import { Networks } from "@stellar/stellar-sdk";
+import { z } from "zod";
 
-import { classicPayer, keypairSigner, policyRailPayer, railOwnerSigner, readTokenBalance, type UcpStellarPayer } from "../../packages/ucp-stellar/src/index.js";
+import { USDC_TESTNET, classicPayer, keypairSigner, policyRailPayer, railOwnerSigner, readTokenBalance, type UcpStellarPayer } from "../../packages/ucp-stellar/src/index.js";
 import { ReceiptRegistryClient, verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
-import { AGENTPEY_RECEIPT_REGISTRY, DEFAULT_PLATFORM_PROFILE, formatReport, runConformance, type KitDeps } from "./checks.js";
+import { DEFAULT_PLATFORM_PROFILE, formatReport, runConformance, type KitDeps } from "./checks.js";
 
 const RPC_URL = "https://soroban-testnet.stellar.org";
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const SECRET_ENV = "UCP_STELLAR_CONFORMANCE_SECRET";
+const CONTRACT = /^C[A-Z2-7]{55}$/;
+
+/** AgentPey's receipt-registry on testnet, as the repo records its deployment. */
+function agentpeyRegistry(): string {
+  const deployment = z
+    .looseObject({ receiptRegistry: z.looseObject({ contractId: z.string().regex(CONTRACT) }) })
+    .parse(JSON.parse(readFileSync(new URL("../../deployments/vitrinee-testnet.json", import.meta.url), "utf8")));
+  return deployment.receiptRegistry.contractId;
+}
 const DESTINATION = { first_name: "Conformance", last_name: "Kit", street_address: "Av. Providencia 1234", address_locality: "Providencia", address_region: "RM", address_country: "CL" };
 
 function usage(message: string): never {
@@ -60,7 +74,9 @@ async function main(): Promise<void> {
       pay: { type: "boolean", default: false },
       rail: { type: "string" },
       "max-amount": { type: "string", default: "2.00" },
-      registry: { type: "string", default: AGENTPEY_RECEIPT_REGISTRY },
+      asset: { type: "string", default: USDC_TESTNET },
+      "anchor-wait": { type: "string", default: "60" },
+      registry: { type: "string" },
       "platform-profile": { type: "string", default: DEFAULT_PLATFORM_PROFILE },
       email: { type: "string", default: "conformance@agentpey.com" },
       json: { type: "boolean", default: false },
@@ -68,15 +84,20 @@ async function main(): Promise<void> {
   });
   const storeUrl = positionals[0];
   if (storeUrl === undefined || !URL.canParse(storeUrl)) usage("give the store's URL");
-  if (values.rail !== undefined && !/^C[A-Z2-7]{55}$/.test(values.rail)) usage("--rail is a contract address (C...)");
+  if (values.rail !== undefined && !CONTRACT.test(values.rail)) usage("--rail is a contract address (C...)");
+  if (!CONTRACT.test(values.asset)) usage("--asset is the asset's contract address (C...)");
+  if (values.registry !== undefined && !CONTRACT.test(values.registry)) usage("--registry is a contract address (C...)");
+  if (!/^\d{1,4}$/.test(values["anchor-wait"])) usage("--anchor-wait is a number of seconds");
+  const registry = values.registry ?? agentpeyRegistry();
 
-  let charge: { payer: UcpStellarPayer; maxAmount: string } | undefined;
+  let charge: { payer: UcpStellarPayer; payerAddress: string; maxAmount: string; asset: string } | undefined;
   if (values.pay) {
     const secret = process.env[SECRET_ENV]?.trim();
     if (secret === undefined || secret === "") usage(`--pay needs ${SECRET_ENV}: a testnet secret of the paying account, or of the rail's owner with --rail`);
     try {
-      const payer = values.rail === undefined ? classicPayer(keypairSigner(secret)) : policyRailPayer({ contractId: values.rail, signAuthPayload: railOwnerSigner(secret) });
-      charge = { payer, maxAmount: values["max-amount"] };
+      const signer = values.rail === undefined ? keypairSigner(secret) : undefined;
+      const payer = signer === undefined ? policyRailPayer({ contractId: values.rail!, signAuthPayload: railOwnerSigner(secret) }) : classicPayer(signer);
+      charge = { payer, payerAddress: values.rail ?? signer!.address, maxAmount: values["max-amount"], asset: values.asset };
     } catch {
       usage(`${SECRET_ENV} is not a Stellar secret key`);
     }
@@ -90,7 +111,8 @@ async function main(): Promise<void> {
       destination: DESTINATION,
       email: values.email,
       platformProfile: values["platform-profile"],
-      registry: values.registry,
+      registry,
+      anchorWaitMs: Number(values["anchor-wait"]) * 1000,
       ...(charge === undefined ? {} : { charge }),
     },
     liveDeps(),
