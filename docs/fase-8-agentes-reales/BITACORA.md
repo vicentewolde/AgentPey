@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-05 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-07 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -37,7 +37,10 @@ de Stellar (`R-22`). **T143 cerrada** ([PR #65](https://github.com/vicentewolde/
 las cinco pantallas de firma aceptan Freighter y xBull, y las que solo firman
 un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLayer y
-Trustless Work (T138, T139) para el final de la fase (`R-24`).
+Trustless Work (T138, T139) para el final de la fase (`R-24`). **T145 cerrada**:
+un equipo puede pagar servicios por uso desde un `policy_rail`; las
+suscripciones con tarjeta quedan como diseño, y T146 se construye después del
+video sobre un rail ya desplegado (`R-25`).
 
 | Tarea | Estado |
 |---|---|
@@ -58,7 +61,7 @@ Trustless Work (T138, T139) para el final de la fase (`R-24`).
 | T142 Guion y grabación | pendiente |
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
-| T145 Tesorería de equipos (prueba técnica) | en revisión, espera la decisión del usuario |
+| T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
 | T146 Demo de presupuesto de equipo | pendiente, aprobada (`R-25`) |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
@@ -633,8 +636,8 @@ dar a sus agentes un presupuesto en Stellar para pagar herramientas y servicios
 servicios que cobran por uso, sí, hoy en testnet y con lo que ya existe**; para
 suscripciones (ChatGPT, GitHub y similares), **todavía no**. Cards402 prohíbe
 los cobros recurrentes en su contrato, y ASGCard no publica términos, KYC ni el
-banco que emite. Además, aunque se cargue una tarjeta desde el rail, lo que la
-tarjeta compra queda fuera del Mandato y del recibo.
+banco que emite. Además, el rail actual no puede cargar una tarjeta, y aunque
+pudiera, lo que la tarjeta compra quedaría fuera del Mandato y del recibo.
 
 **Lo que se aprendió.** SCF paga en XLM y el rail maneja un solo asset, así que
 el equipo convierte antes. El rail aplica montos pero no a quién se paga, no
@@ -642,8 +645,8 @@ tiene tope mensual y tiene un solo agente; ninguna de esas brechas se construye
 ahora. Para un abogado quedan cinco preguntas, entre ellas si tener la llave
 del agente en la versión hospedada cuenta como custodia.
 
-**Recomendación.** Construir T146 después del video, reutilizando
-`policyRailUcp` para pagar créditos de SignalDesk en testnet y armando el
-resumen del mes, sin desplegar nada nuevo. **El usuario la aprobó**, y las
+**Recomendación.** Construir T146 después del video, reutilizando un rail ya
+desplegado (`policyRailUcp`) para pagar créditos de SignalDesk en testnet y
+armando el resumen del mes, sin desplegar nada nuevo. **El usuario la aprobó**, y las
 suscripciones quedan solo como diseño (`R-25`).
 

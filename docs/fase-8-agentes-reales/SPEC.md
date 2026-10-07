@@ -328,7 +328,7 @@ más rápido que lo estimado.
   - [x] la verificación del lado del servidor no cambia (`sep53.ts`, `WalletSessions` y los endpoints de cada pantalla, sin cambios)
 
 #### T144 · dots, Muse y Grok Bot como agentes de AgentPey · prueba técnica
-- **Prioridad:** si alcanza; solo dots sobrevive al corte · **Estimación:** 5 h · **Delegable a Codex:** no
+- **Prioridad:** si alcanza (el corte no se aplica, `R-24`) · **Estimación:** 5 h · **Delegable a Codex:** no
 - **Depende de:** T128; de los accesos del usuario
 - **Hecho cuando:**
   - [ ] `T144-agentes.md` con una tabla agente por agente: qué funciona, qué falta, evidencia
@@ -342,7 +342,7 @@ más rápido que lo estimado.
 
 #### T146 · Demo: presupuesto de equipo en testnet
 - **Prioridad:** se corta segundo · **Estimación:** 6 h · **Delegable a Codex:** no
-- **Depende de:** T145, **y la aprobación del usuario**
+- **Depende de:** T145, **y la aprobación del usuario** (aprobada el 7-oct, `R-25`: sobre un rail ya desplegado, sin desplegar nada nuevo)
 - **Hecho cuando:**
   - [ ] un `policy_rail` con topes paga un servicio x402 en testnet, con recibo y un resumen de gastos del mes
 
@@ -394,8 +394,8 @@ Es la tarea T142. Se escribe al cerrar el Bloque A.
 | 5 oct | Segundo PR de T128 (OAuth y deploy), T129 (Claude) y T131 |
 | 6 oct | T130, T133 y T143 |
 | 7 oct | T134, T135, T144 y T147 |
-| 8 oct | Reembolso real de T124; T136, T148 y T149; T138, T139 y T145 (pruebas técnicas) |
-| 9 oct | T137, T141, T146 si T145 lo permite, y T140 si el usuario la aprobó |
+| 8 oct | Reembolso real de T124; T136, T148 y T149; T138, T139 y T145 (pruebas técnicas; T138 y T139 al final de la fase, `R-24`) |
+| 9 oct | T137, T141, T146 si T145 lo permite, y T140 si el usuario la aprobó (T146 y T140 pasan a después del video, `R-24`) |
 | 10 oct | Congelar código; T142, grabación |
 | 11 oct | Edición y entrega del video |
 

@@ -29,12 +29,12 @@ servicios desde ahí, con topes que el agente no pueda saltarse. Dos caminos:
 
 | Pieza | Qué aplica | Dónde |
 |---|---|---|
-| `policy_rail` (contrato) | Un solo `owner` (la llave del agente), un `principal` (la wallet que fondea), un solo asset, `per_tx`, `per_day` por día UTC y `valid_until`. El `principal` puede rotar o cortar al agente (`set_owner`) y retirar fondos (`withdraw`). **No revisa el destino** ni tiene tope mensual; los topes se fijan al desplegar | `contracts/policy-rail/src/lib.rs` (`Config` 114-129, `__check_auth` 323) |
+| `policy_rail` (contrato) | Un solo `owner` (la llave del agente), un `principal` (la wallet que fondea), un solo asset, `per_tx`, `per_day` por día UTC y `valid_until`. Solo firma **una** llamada: `transfer` de su propio asset, desde sí mismo; cualquier otra invocación es `UnexpectedInvocation`. El `principal` puede rotar o cortar al agente (`set_owner`) y retirar fondos (`withdraw`). **No revisa el destino** ni tiene tope mensual; los topes se fijan al desplegar | `contracts/policy-rail/src/lib.rs` (`Config` 114-129, `__check_auth` 323) |
 | Rails desplegados en testnet | `policyRail` (0,002/0,01), `policyRailUcp` (5/10), `policyRailMcp` (3/5), todos en el USDC de testnet `CBIELTK6…DAMA` | `deployments/testnet.json` |
-| Mandato | `scope` con `venues`, `assets`, `limits` (`perTx`, `perDay`) y, en el grant, `payTo` (payees permitidos) y `products`. **No tiene categorías.** Lo aplica `checkMandate` fuera de la red | `packages/core/src/credential.ts:40-51`, `packages/mandate/src/mandate.ts:74-77`, `apps/agent/src/mandate/check-mandate.ts:83` |
+| Mandato | `scope` con `venues`, `assets`, `limits` (`perTx`, `perDay`) y, en el grant, `payTo` (payees permitidos) y `products`. **No tiene categorías.** Se aplica fuera de la red en tres puntos: `checkMandate` (comercio, producto, asset, vigencia, `perTx`), `reconcileTerms` (el `payTo` contra el `402` real, `M-14`) y `PolicyRail.authorise` (`perDay`, con el `SpendLedger`) | `packages/core/src/credential.ts:40-51`, `packages/mandate/src/mandate.ts:74-77`, `apps/agent/src/mandate/check-mandate.ts:83`, `apps/agent/src/policy/terms.ts:96`, `apps/agent/src/policy/policy-rail.ts:181` |
 | Pago x402 desde un rail | `PolicyRailStellarScheme` sobre `policyRailPayer` de `@agentpey/ucp-stellar` (T136). Lo usan el MCP, las tiendas de la plataforma y `pnpm demo:pay-real --payer=policy-rail`. El `execute_payment` del agente de línea de comandos paga desde su cuenta clásica, con la autorización fuera de la red | `apps/agent/src/payment/x402.ts:340-344`, `apps/mcp/src/runtime.ts:127`, `apps/agent/src/tools/agent-tools.ts:579` |
 | Servicio x402 que cobra por uso | SignalDesk: `signaldesk:ai-credits-1000` a 0,10 USDC y un informe de mercado a 0,25, con recibo firmado, en el mismo USDC de testnet | `apps/signaldesk/README.md` |
-| Registro | MandateVault: cadena de hashes con `granted`, `refused`, `anchored` (liga el `paymentTx`) y `released`. `packages/activity` lee el uso por día y los rechazos. **No hay resumen por mes** | `packages/vault/src/vault.ts`, `packages/activity/src/index.ts:84,121` |
+| Registro | MandateVault: cadena de hashes con `granted`, `refused`, `anchored` (liga el `paymentTx`) y `released`. Lo escribe la plataforma hospedada (`apps/web`); `ucp:buy`, `demo:pay-real` y el MCP llevan el gasto en memoria (`createInMemorySpendLedger`). `packages/activity` lee el uso por día y los rechazos de un inquilino. **No hay resumen por mes** | `packages/vault/src/vault.ts`, `packages/activity/src/index.ts:84,121` |
 | MPP | No paga desde un `policy_rail`: el SDK oficial solo acepta un pagador `G…` | `R-20`, [stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) |
 
 ## 4. Camino A · Cobro por uso
@@ -43,14 +43,15 @@ servicios desde ahí, con topes que el agente no pueda saltarse. Dos caminos:
 equipo fondea un `policy_rail` con USDC; el agente firma como `owner` y paga
 servicios x402. El Mandato dice a qué servicios (`venues`, `payTo`) y cuánto;
 el rail lo vuelve a aplicar en la red para `per_tx` y `per_day`. Cada pago deja
-el recibo del servicio y una entrada `anchored` en el Vault.
+el recibo del servicio y, en la plataforma hospedada, una entrada `anchored` en
+el Vault.
 
 **Qué servicios hay hoy** ([x402 en Stellar](https://developers.stellar.org/docs/build/agentic-payments/x402), [facilitador "Built on Stellar"](https://developers.stellar.org/docs/build/agentic-payments/x402/built-on-stellar), [MPP en Stellar](https://developers.stellar.org/docs/build/agentic-payments/mpp), [MPP Router](https://www.mpprouter.dev/integration.md)):
 
 | Servicio | Red | ¿Paga un `policy_rail`? |
 |---|---|---|
 | SignalDesk y el bazaar (propios y del embajador) | testnet | Sí: es el camino de T128, T136 y la plataforma |
-| Facilitador x402 de OpenZeppelin (`channels.openzeppelin.com/x402/testnet`) | testnet y mainnet | El cliente firma entradas de autorización de Soroban; que acepte un pagador contrato está **sin confirmar** (se puede probar en testnet) |
+| Facilitador x402 de OpenZeppelin (`channels.openzeppelin.com/x402/testnet`) | testnet y mainnet | **Sí**: un `policy_rail` pagó con ese facilitador en T31 (`docs/fase-5-mandatevault/evidencia/T31.md`), y hoy el rail del MCP paga por él a las tiendas de Vitrinee |
 | MPP charge (`@stellar/mpp`) | testnet y mainnet | No (`R-20`) |
 | MPP Router: unos 88 servicios, entre ellos `openai_chat`, `anthropic_messages`, `openrouter_chat`, `gemini_generate`, fal.ai, Exa y Firecrawl | **solo mainnet** | Acepta MPP o x402 v2; con un pagador contrato, **sin confirmar**. Es un intermediario: cobra USDC en Stellar y paga al proveedor desde su propio fondo en otra red |
 | Un proveedor de IA que cobre directo en Stellar testnet | | **No encontré ninguno** |
@@ -79,7 +80,7 @@ el recibo del servicio y una entrada `anchored` en el Vault.
 | Tarjeta | Visa prepagada ("Reward Card") emitida por **Pathward, N.A.**; Cards402 es program manager | Mastercard virtual en USD; el código integra a 4payments; **banco emisor no publicado** |
 | Red | Stellar mainnet | x402 en `stellar:pubnet`, o Stripe MPP |
 | Fondeo | USDC o XLM, llamando `pay_usdc(from, amount, order_id)` en un contrato de Soroban con `from.require_auth()` | x402 contra el USDC de mainnet, a una tesorería `G…` |
-| ¿Desde un `policy_rail`? | En teoría sí (`from` es una `Address`); **sin confirmar** que el contrato desplegado sea el del repo y que el reembolso vuelva a un `C…` | Se autentica con una firma Ed25519 de una wallet `G…`; los `C…` no aparecen |
+| ¿Desde un `policy_rail`? | **No, con el contrato actual.** `pay_usdc` es una llamada a otro contrato, y el rail solo autoriza un `transfer` de su asset (`lib.rs:361-370`). Haría falta un cambio de contrato | Se autentica con una firma Ed25519 de una wallet `G…`; los `C…` no aparecen |
 | Suscripciones | **No.** El contrato del titular: "Recurring payments: Not permitted" | **Sin confirmar** |
 | KYC y titular | El alta pide solo un correo; KYC y titular **sin confirmar** | **No publicados**; `/terms` y `/legal` dan 404 |
 | Costo y límites | $0 de Cards402; Pathward cobra $2,50 al mes desde el sexto mes y $2 + 2 % por transacción extranjera; saldo máximo $10.000, $5.000 por día; el saldo no se reembolsa | $10 por tarjeta, 3,5 % por carga, de $5 a $5.000 |
@@ -89,9 +90,11 @@ tarjetas y anunció soporte de Stellar ([rain.xyz](https://www.rain.xyz/blog/rai
 no un producto para un equipo; MPP Router dice dar acceso a tarjetas de regalo
 de Bitrefill.
 
-**El vínculo con el Mandato se corta en la tarjeta.** Lo único que pasa en la
-red es la carga de la tarjeta: el Mandato y el rail pueden topar cuánto se
-carga, pero lo que la tarjeta compra después ocurre en la red de Visa o
+**El vínculo con el Mandato se corta en la tarjeta.** El rail actual ni siquiera
+puede cargarla: ninguno de los dos emisores se fondea con un `transfer` simple
+desde un `C…`. Aun con un rail que lo permitiera, lo único que pasa en la red
+sería la carga: el Mandato y el rail podrían topar cuánto se carga, pero lo que
+la tarjeta compra después ocurre en la red de Visa o
 Mastercard, sin recibo verificable ni Mandato. El control por servicio queda en
 manos del emisor (Cards402 ofrece topes por llave y aprobación por categoría de
 comercio).
@@ -146,22 +149,24 @@ emisor; Cards402 se declara software y no un *money services business*.
 
 ## 7. Recomendación
 
-1. **Construir T146 tal como está en el spec**, después del video: el
-   `policy_rail` de la plataforma (`policyRailUcp`, 5/10 USDC) paga
-   `signaldesk:ai-credits-1000` en testnet, con recibo, y un script nuevo arma
-   el resumen de gastos del mes desde el Vault y `packages/activity`. **Sin
-   desplegar nada nuevo** y sin tocar contratos. Estimación: 6 h (la del
-   spec); el resumen mensual es lo único nuevo, unas 3 h.
-2. **No construir el camino B.** Se anota como diseño en el anexo del SEP: una
-   tarjeta se carga desde el rail, pero el Mandato no llega a lo que la tarjeta
-   compra.
+1. **Construir T146 tal como está en el spec**, después del video, **sin
+   desplegar nada nuevo** y sin tocar contratos: un rail ya desplegado paga
+   `signaldesk:ai-credits-1000` (0,10 USDC) en testnet, con recibo, y un script
+   arma el resumen de gastos del mes. El candidato es `policyRailUcp` (5/10
+   USDC), que hoy usa `ucp:buy` y comparte su tope diario con esas compras;
+   `policyRail` no sirve (0,002 por pago). Lo que falta cablear: el pago x402
+   desde ese rail (`demo:pay-real` lee `POLICY_RAIL_CONTRACT_ID`) y un registro
+   de los pagos para el resumen (fuera de la plataforma el gasto vive en
+   memoria). Estimación: las 6 h del spec; el plan exacto se arma en
+   `/tarea T146`.
+2. **No construir el camino B.** Se anota como diseño en el anexo del SEP: cargar
+   una tarjeta desde el rail pide un cambio de contrato, y aun así el Mandato no
+   llegaría a lo que la tarjeta compra.
 3. **Lo que se puede decir en el video:** "un equipo puede dar a sus agentes un
    presupuesto en la red para servicios que cobran por uso; para
    suscripciones, todavía no hay un emisor que podamos recomendar". No decir
    "pagamos ChatGPT desde Stellar".
-4. **Abierto, para cuando haga falta:** probar en testnet si el facilitador de
-   OpenZeppelin acepta un pagador contrato (1 a 2 h); si MPP Router tiene
-   testnet; un rail con lista de destinos y tope mensual (cambio de contrato,
+4. **Abierto, para cuando haga falta:** si MPP Router tiene testnet; un rail con lista de destinos y tope mensual (cambio de contrato,
    con permiso del usuario).
 
 ## 8. Decisión del usuario

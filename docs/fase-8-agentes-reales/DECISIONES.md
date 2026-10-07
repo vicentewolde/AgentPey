@@ -864,11 +864,16 @@ La prueba técnica de T145 ([evidencia](evidencia/T145-tesoreria-equipos.md)) co
 funciona desde un `policy_rail` en testnet, y que no hay un emisor de tarjetas fondeado desde Stellar que se pueda
 recomendar para suscripciones. Se decide:
 
-1. **T146 se construye**, después del video (`R-24`): `policyRailUcp` paga `signaldesk:ai-credits-1000` en testnet,
-   con recibo, y un script nuevo arma el resumen de gastos del mes desde el Vault y `packages/activity`. **No se
-   despliega nada nuevo** y no se tocan contratos.
-2. **El camino de suscripciones queda como diseño**: una tarjeta se carga desde el rail, pero lo que compra queda
-   fuera del Mandato y del recibo.
+1. **T146 se construye**, después del video (`R-24`): un rail ya desplegado (el candidato es `policyRailUcp`, 5/10
+   USDC, compartido con `ucp:buy`) paga `signaldesk:ai-credits-1000` en testnet, con recibo, y un script arma el
+   resumen de gastos del mes. **No se despliega nada nuevo** y no se tocan contratos. El cableado del rail en el
+   pago x402 y el registro de pagos para el resumen se planifican en `/tarea T146`.
+2. **El camino de suscripciones queda como diseño**: el `policy_rail` actual no puede cargar una tarjeta (solo
+   autoriza un `transfer` de su asset; Cards402 y ASGCard piden otra invocación o una cuenta `G…`), y aun con un
+   cambio de contrato lo que la tarjeta compra quedaría fuera del Mandato y del recibo.
+
+**Precisado tras `/revisar` (mismo día):** el primer texto decía que una tarjeta "se carga desde el rail" y que
+el resumen saldría del Vault; las dos cosas eran inexactas y se corrigieron. La decisión no cambia.
 
 **Motivo.** Cards402 prohíbe los cobros recurrentes en su contrato del titular y ASGCard no publica términos, KYC
 ni banco emisor; reutilizar un rail existente basta para mostrar un presupuesto de equipo aplicado por la red.

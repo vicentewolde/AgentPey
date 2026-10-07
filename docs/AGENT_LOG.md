@@ -8294,5 +8294,17 @@ Qué: T145, prueba técnica sin código: `evidencia/T145-tesoreria-equipos.md`. 
 términos ni KYC publicados); SCF paga en XLM; cinco preguntas para revisión legal. Recomienda T146 reutilizando
 `policyRailUcp`, sin desplegar nada nuevo.
 
-Pendiente: decisión del usuario sobre T146 y el camino de suscripciones; `/revisar`; push y merge de `cc/fase8-orden`
-y de esta rama con OK. `AGENTS.md`: sin cambios. Exponential: ticket T145 a `IN_PROGRESS`.
+Pendiente: (resuelto en la entrada siguiente). `AGENTS.md`: sin cambios. Exponential: ticket T145 a `IN_PROGRESS`.
+
+## 2026-10-07 (3) — cc/t145-tesoreria-equipos
+
+Agente: Claude Code.
+
+Qué: el usuario aprobó T146 sobre un rail ya desplegado y dejó las suscripciones con tarjeta como diseño (`R-25`).
+`/revisar` sin cambios de código: corregido que el `policy_rail` no puede cargar una tarjeta (solo autoriza un
+`transfer` de su asset), que el facilitador de OpenZeppelin ya acepta un rail (T31), dónde se aplica cada parte del
+Mandato, y que el Vault solo lo escribe la plataforma hospedada. T145 cerrada; merge a `main` con OK del usuario.
+
+Pendiente: el reembolso real de T124 (8 o 9-oct), T141, T130 cuando haya tienda, T142; después T146 y T144; al final
+T138, T139 y T140 (`R-24`). `AGENTS.md`: sin cambios. Exponential: ticket T145 a `DONE`.
+
