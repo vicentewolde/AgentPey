@@ -13,7 +13,7 @@ https://mcp.agentpey.com/mcp
 ```
 
 Signing in needs a Stellar wallet that signs messages in the browser
-(Freighter, xBull, LOBSTR or Hana, picked on the page), holding the account
+(Freighter, xBull or LOBSTR, picked on the page), holding the account
 that owns the rail (`MCP_ALLOWED_WALLET`). Any other account is refused. The
 page loads the wallet layer from this server, `/wallet-kit.js`, pinned by its
 integrity; locally it exists once `pnpm build` has run (otherwise the page is a
@@ -62,6 +62,14 @@ developer mode is on Plus, Pro, Business, Enterprise and Education.
 ChatGPT asks you to confirm before it pays, and then calls `pay` itself: no
 need for the Inspector. Write calls (`quote`, `pay`, `open_claim`) may also
 show their arguments for approval first.
+
+## One product or a cart
+
+`quote` takes one product (`product_id`, optional `quantity`) or a cart of up
+to ten lines from the same store (`items: [{ product_id, quantity }]`), never
+both. A cart is one checkout, one signed intent and one payment; the quote
+lists its lines in `items`. `get_order` returns the payment's transaction link
+in `receipt.explorer_url`.
 
 ## Pay a quote yourself
 

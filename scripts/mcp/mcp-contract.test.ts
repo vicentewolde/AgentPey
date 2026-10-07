@@ -38,7 +38,7 @@ const AGENT_DID = stellarAddressToDid(agent.publicKey(), "testnet");
 const AGENT_REGISTRY = "CCL57L4ZDBRRWL2PKHZCYQZRDV4A37LOZRWMSCRQQ5JYRKMJW6I3TM7F";
 const USDC = `USDC:${USDC_TESTNET.contractId}`;
 /** USDC per unit, as the store's x402 catalog prices it (testConfig's exchange rate). */
-const PRICES: Record<string, string> = { "gorro-andes": "13.6736842" };
+const PRICES: Record<string, string> = { "gorro-andes": "13.6736842", "stickers-cordillera": "1.0421053" };
 const DESTINATION = { first_name: "Ana", last_name: "Pérez", street_address: "Av. Irarrázaval 1234", address_locality: "Ñuñoa", address_region: "Metropolitana", address_country: "CL" };
 
 let store: VitrineeApp;
@@ -107,10 +107,19 @@ const scope = (perTx = "50.00", perDay = "100.00"): Scope => ({
   limits: { perTx, perDay, currency: "USDC" },
 });
 
-/** Stands in for `create_purchase_intent`: the intent the agent would sign for this product. */
-function signIntent({ productId, quantity }: { productId: string; quantity: number }): Promise<PurchaseIntent> {
-  const unit = PRICES[productId] ?? "1.0000000";
-  const total = (Number(unit) * quantity).toFixed(7);
+const units = (amount: string) => BigInt(Math.round(Number(amount) * 1e7));
+const decimal = (atomic: bigint) => `${atomic / 10_000_000n}.${(atomic % 10_000_000n).toString().padStart(7, "0")}`;
+
+/** Stands in for `create_purchase_intent` (one line) or the agent's cart signer (more): the intent the agent would sign. */
+function signIntent({ lines }: { lines: ReadonlyArray<{ productId: string; quantity: number }> }): Promise<PurchaseIntent> {
+  const [first] = lines;
+  if (first === undefined) throw new Error("no lines");
+  const priced = lines.map((line) => ({ ...line, unitAmount: PRICES[line.productId] ?? "1.0000000" }));
+  const total = decimal(priced.reduce((sum, line) => sum + units(line.unitAmount) * BigInt(line.quantity), 0n));
+  const purchase =
+    lines.length === 1
+      ? { productId: first.productId, quantity: first.quantity, unitAmount: priced[0]!.unitAmount, totalAmount: total, asset: USDC as PurchaseIntent["purchase"]["asset"] }
+      : { lines: priced, totalAmount: total, asset: USDC as PurchaseIntent["purchase"]["asset"] };
   return Promise.resolve({
     type: ["AgentPayIntent", "PurchaseIntent"],
     intentId: crypto.randomUUID(),
@@ -120,7 +129,7 @@ function signIntent({ productId, quantity }: { productId: string; quantity: numb
     principal: PRINCIPAL_DID,
     credential: { hash: "a".repeat(64), registry: AGENT_REGISTRY },
     venue: venueId(),
-    purchase: { productId, quantity, unitAmount: unit, totalAmount: total, asset: USDC as PurchaseIntent["purchase"]["asset"] },
+    purchase,
     authorisation: { perTx: "50.00", currency: "USDC" },
   });
 }
@@ -233,7 +242,13 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
     const quoted = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", quantity: 1, destination: DESTINATION, email: "ana@example.com" });
     expect(quoted.isError).toBeFalsy();
     const quote = quoted.structuredContent!;
-    expect(quote).toMatchObject({ total: { amount: 12990, currency: "CLP" }, pays: { amount_usdc: "13.6736842", to: MERCHANT, network: "stellar:testnet", asset: USDC_TESTNET.contractId, from: RAIL } });
+    expect(quote).toMatchObject({
+      product_id: "gorro-andes",
+      quantity: 1,
+      items: [{ product_id: "gorro-andes", quantity: 1 }],
+      total: { amount: 12990, currency: "CLP" },
+      pays: { amount_usdc: "13.6736842", to: MERCHANT, network: "stellar:testnet", asset: USDC_TESTNET.contractId, from: RAIL },
+    });
     // A quote signs nothing and settles nothing.
     expect(mcp.scheme.calls).toEqual([]);
 
@@ -252,12 +267,63 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
       total: { amount: 12990, currency: "CLP" },
       receipt: { valid: true, anchor: "anchored", checks: { order: { ok: true }, signature: { ok: true }, anchored: { ok: true }, settlement: { ok: true } } },
     });
+    // T150: the chat gets the transaction's link from the server, not by composing it.
+    const receipt = read.structuredContent!["receipt"];
+    expect(receipt.explorer_url).toBe(`https://stellar.expert/explorer/testnet/tx/${receipt.settlement_tx_hash}`);
 
     const claimed = await mcp.call("open_claim", { store: storeName(), order_id: order["order_id"], reason: "not_delivered", description: "Never arrived" });
     expect(claimed.isError).toBeFalsy();
     const claim = await verifyClaim(claimed.structuredContent!["claim_jws"] as string);
     expect(claim.document).toMatchObject({ claimant: AGENT_DID, reason: "not_delivered", amountAtomic: "136736842", receipt: { hash: read.structuredContent!["receipt"].hash } });
     expect(claim.hash).toBe(claimed.structuredContent!["claim_hash"]);
+  });
+
+  it("quotes a cart of two products as one checkout and pays it with one payment (T150)", async () => {
+    const quoted = await mcp.call("quote", {
+      store: storeName(),
+      items: [
+        { product_id: "gorro-andes", quantity: 1 },
+        { product_id: "stickers-cordillera", quantity: 2 },
+      ],
+      destination: DESTINATION,
+    });
+    expect(quoted.isError).toBeFalsy();
+    const quote = quoted.structuredContent!;
+    expect(quote).toMatchObject({
+      product_id: null,
+      quantity: null,
+      items: [
+        { product_id: "gorro-andes", quantity: 1 },
+        { product_id: "stickers-cordillera", quantity: 2 },
+      ],
+      total: { amount: 14970, currency: "CLP" },
+      pays: { amount_usdc: "15.7578948", to: MERCHANT },
+    });
+
+    const before = mcp.scheme.calls.length;
+    const paid = await mcp.call("pay", { quote_id: quote["quote_id"], confirm: true });
+    expect(paid.isError).toBeFalsy();
+    expect(mcp.scheme.calls.slice(before)).toEqual([expect.objectContaining({ amount: "157578948", payTo: MERCHANT })]);
+
+    await store.anchors.idle();
+    const read = await mcp.call("get_order", { store: storeName(), order_id: paid.structuredContent!["order_id"] });
+    // A UCP order line's quantity is { total, fulfilled, original }.
+    expect(read.structuredContent!["items"].map((item: { id: string; quantity: { total: number } }) => [item.id, item.quantity.total])).toEqual([
+      ["gorro-andes", 1],
+      ["stickers-cordillera", 2],
+    ]);
+    // The receipt is this order's, signed and anchored. Settlement is not asserted: this file's fake Horizon
+    // answers every transaction with the single hat's amount.
+    expect(read.structuredContent!["receipt"]).toMatchObject({ checks: { order: { ok: true }, signature: { ok: true }, anchored: { ok: true } } });
+  });
+
+  it("refuses a quote that names both a product and a cart, or neither", async () => {
+    const both = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", items: [{ product_id: "gorro-andes", quantity: 1 }], destination: DESTINATION });
+    expect(both.isError).toBe(true);
+    const neither = await mcp.call("quote", { store: storeName(), destination: DESTINATION });
+    expect(neither.isError).toBe(true);
+    const cartWithQuantity = await mcp.call("quote", { store: storeName(), quantity: 2, items: [{ product_id: "gorro-andes", quantity: 1 }], destination: DESTINATION });
+    expect(cartWithQuantity.isError).toBe(true);
   });
 
   it("refuses to pay without the person's confirmation, false or missing, and the quote stays payable", async () => {

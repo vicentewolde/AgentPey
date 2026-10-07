@@ -942,3 +942,22 @@ promueve.
 **Alternativas descartadas.** Pagar desde la cuenta clásica del agente para esquivar la comisión (sin topes en la
 red, `R-4`). Una página para el resumen (queda en la terminal; el usuario no la pidió). Un tope de comisión sin
 límite (un pagador podría encarecer el cobro a voluntad).
+
+---
+
+### R-28 · `quote` del MCP acepta un carrito, y `get_order` trae el enlace a la transacción (T150) · `Vigente`
+**Fecha:** 2026-10-07 · **Tarea:** T150 · Pedido del usuario ("pulido del MCP para el video"); la forma, propuesta de Claude Code
+
+1. **`quote` toma un producto o un carrito, nunca los dos.** Un producto: `product_id` y `quantity` opcional, como
+   siempre. Un carrito: `items` con 1 a 10 líneas `{ product_id, quantity }` de la misma tienda. Una línea se firma con
+   `create_purchase_intent`, como antes; más de una, con el `signCart` del agente (T148), que hace los mismos chequeos.
+   La cotización devuelve `items` siempre, y `product_id`/`quantity` en `null` cuando es un carrito.
+2. **`get_order` arma `receipt.explorer_url`** desde `settlement_tx_hash`, como ya hacía `pay`.
+3. **`open_claim` no cambia.**
+
+**Motivo.** En el video, Claude compra más de un producto en una sola compra y muestra el enlace del pago sin
+inventarlo; las dos piezas ya existían en el agente (T148) y en `pay`.
+
+**Alternativas descartadas.** Un tool `quote_cart` aparte (dos formas de cotizar para el modelo, con la misma
+semántica). Que `items` acepte también un producto (dos formas de decir lo mismo: una línea se dice con
+`product_id`).

@@ -39,8 +39,10 @@ export const outputSchemas = {
   quote: z.object({
     quote_id: z.string(),
     store: z.string(),
-    product_id: z.string(),
-    quantity: z.number().int(),
+    /** The product and its quantity when the quote is for one; null for a cart, whose lines are in `items`. */
+    product_id: z.string().nullable(),
+    quantity: z.number().int().nullable(),
+    items: z.array(z.object({ product_id: z.string(), quantity: z.number().int() })),
     total: z.object({ amount: z.number(), currency: z.string() }),
     pays: z.object({ amount_usdc: z.string(), to: z.string(), network: z.string(), asset: z.string(), from: z.string().nullable() }),
     expires_at: z.string(),
@@ -68,6 +70,7 @@ export const outputSchemas = {
         hash: z.string(),
         verify_url: z.string().nullable(),
         settlement_tx_hash: z.string().nullable(),
+        explorer_url: z.string().nullable(),
         anchor: z.string().nullable(),
         valid: z.boolean(),
         checks: z.object({ order: check, signature: check, anchored: check, settlement: check }),
@@ -151,7 +154,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Quote a purchase",
       description:
-        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. The agent signs a purchase intent for it, but nothing is paid and no money moves. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
+        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. One product (product_id, quantity) or several from the same store in one checkout (items, up to 10 lines), paid with one payment. The agent signs a purchase intent for it, but nothing is paid and no money moves. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
       inputSchema: quoteInputSchema,
       outputSchema: outputSchemas.quote,
       annotations: { title: "Quote a purchase", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },

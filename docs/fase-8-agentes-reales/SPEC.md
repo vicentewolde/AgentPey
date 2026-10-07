@@ -2,7 +2,7 @@
 
 - **Estado:** Aprobado (2026-10-03)
 - **Rama base:** `main`
-- **Tareas:** T128 a T146
+- **Tareas:** T128 a T150 (T147 a T149 agregadas por `R-12`; T150 a pedido del usuario el 7-oct, `R-28`)
 - **Referencias:** [`P-16`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método),
   [`P-10`](../DECISIONES.md) (perímetro de "nunca Codex"),
   el traspaso del 3-oct (`docs/traspaso-fase-8-agentes-reales.md`, archivo local sin versionar),
@@ -355,6 +355,15 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] la página lista las tiendas reales y cada recibo enlaza a su verificación ([agentpey.com/tiendas](https://agentpey.com/tiendas), [evidencia](evidencia/T141.md) §2, §3 y §7)
   - [x] no muestra nada que no salga del directorio o de la red (directorio, `receipt-registry` y Horizon; el texto del conector es fijo; `R-26`)
+
+#### T150 · Pulido del MCP para el video (`R-28`)
+- **Prioridad:** para el video · **Estimación:** 3 h · **Delegable a Codex:** no (toca `quote`, que firma el intent)
+- **Depende de:** T128, T148
+- **Descripción:** dos deudas que se ven en cámara. `get_order` devuelve el enlace a la transacción del pago (T129: Claude lo armaba a mano), y `quote` acepta un carrito de la misma tienda (T148 lo dejó con un producto), firmado con `signCart` y pagado con un solo pago. `open_claim` no cambia.
+- **Hecho cuando:**
+  - [x] `get_order` trae `receipt.explorer_url` de la transacción del pago (test sin red; [evidencia](evidencia/T150.md))
+  - [x] `quote` con `items` (1 a 10 líneas) abre un solo checkout y `pay` lo paga con un solo pago; con `product_id` funciona como antes; nombrar los dos, o ninguno, es un error (tests sin red; [evidencia](evidencia/T150.md))
+  - [ ] una cotización de carrito desde Claude en `mcp.agentpey.com`, tras el deploy
 
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)

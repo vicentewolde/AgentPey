@@ -8371,3 +8371,15 @@ y merge con OK.
 
 Pendiente: tras el deploy, `pnpm run team:pay -- --times 4` contra SignalDesk en producción (mañana, con el día
 nuevo) para marcar el criterio de T146 y grabar la escena. `AGENTS.md`: sin cambios. Exponential: T146 a `QA`.
+
+## 2026-10-07 (9) — cc/t150-pulido-mcp (sin push)
+
+Agente: Claude Code.
+
+Qué: T150 (a pedido del usuario, `R-28`, agregada al spec). `quote` del MCP acepta `items` (carrito, firmado con
+`signCart`, un solo pago) y `get_order` trae `receipt.explorer_url`. `open_claim` sin cambios. Tests en
+`scripts/mcp/mcp-contract.test.ts`; `pnpm check` verde. T146 mergeado y desplegado antes (SignalDesk responde 200).
+
+Pendiente: `/revisar`, push, PR y merge con OK; una cotización de carrito desde Claude tras el deploy. El 8-oct,
+`team:pay -- --times 4` contra SignalDesk en producción para cerrar T146. `AGENTS.md`: sin cambios. Exponential: T150
+sin ticket propio (anotado en `SYNC.md`).

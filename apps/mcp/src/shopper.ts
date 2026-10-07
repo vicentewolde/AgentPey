@@ -23,6 +23,7 @@ import {
   type PolicyRail,
   type PurchaseIntent,
   type UcpDestination,
+  type UcpLine,
   type UcpPaymentReceipt,
   type VenueId,
   type VenueRegistry,
@@ -42,8 +43,8 @@ import type { QuoteBook, QuoteEntry } from "./quotes.js";
 export interface SignIntentInput {
   readonly venueId: VenueId;
   readonly registry: VenueRegistry;
-  readonly productId: string;
-  readonly quantity: number;
+  /** One line is the model's own `create_purchase_intent`; more is a cart, signed with the same checks (T148, T150). */
+  readonly lines: readonly UcpLine[];
 }
 
 export interface ShopperDeps {
@@ -51,7 +52,7 @@ export interface ShopperDeps {
   readonly venues: () => Promise<VenueRegistry>;
   /** The registry before expansion: a venue in `venues()` and not here is a platform store. */
   readonly fixedVenues: VenueRegistry;
-  /** The agent signs a purchase intent for exactly this product and quantity (`create_purchase_intent`). */
+  /** The agent signs a purchase intent for exactly these lines. */
   readonly signIntent: (input: SignIntentInput) => Promise<PurchaseIntent>;
   readonly scope: Scope;
   readonly mandate: AgentPayMandate;
@@ -95,13 +96,27 @@ const destinationSchema = z.strictObject({
   postal_code: z.string().trim().min(1).max(20).optional(),
 });
 
-export const quoteInputSchema = z.strictObject({
-  store: z.string().trim().min(1).max(200),
+const lineInputSchema = z.strictObject({
   product_id: z.string().trim().min(1).max(200),
   quantity: z.int().min(1).max(10).default(1),
-  destination: destinationSchema,
-  email: z.email().optional(),
 });
+
+/** One product (`product_id`, `quantity`) or a cart (`items`, 1 to 10 lines, T150), never both. */
+export const quoteInputSchema = z
+  .strictObject({
+    store: z.string().trim().min(1).max(200),
+    product_id: z.string().trim().min(1).max(200).optional(),
+    quantity: z.int().min(1).max(10).optional(),
+    items: z.array(lineInputSchema).min(1).max(10).optional(),
+    destination: destinationSchema,
+    email: z.email().optional(),
+  })
+  .refine((input) => (input.items === undefined) !== (input.product_id === undefined), {
+    message: "give either product_id (with an optional quantity) or items, not both",
+  })
+  .refine((input) => input.items === undefined || input.quantity === undefined, {
+    message: "in a cart each item carries its own quantity",
+  });
 export type QuoteInput = z.input<typeof quoteInputSchema>;
 
 export const claimInputSchema = z.strictObject({
@@ -200,13 +215,18 @@ export class Shopper {
    */
   async quote(raw: QuoteInput) {
     const input = quoteInputSchema.parse(raw);
+    const lines: UcpLine[] =
+      input.items === undefined
+        ? [{ productId: input.product_id ?? "", quantity: input.quantity ?? 1 }]
+        : input.items.map((item) => ({ productId: item.product_id, quantity: item.quantity }));
+    const single = lines.length === 1 ? lines[0] : undefined;
     const { registry, store } = await this.store(input.store);
-    const intent = await this.deps.signIntent({ venueId: store.venueId, registry, productId: input.product_id, quantity: input.quantity });
+    const intent = await this.deps.signIntent({ venueId: store.venueId, registry, lines });
     const destination: UcpDestination = input.destination;
     const quote = await quoteUcpCheckout(this.fetchOption(), {
       storeUrl: store.url,
-      productId: input.product_id,
-      quantity: input.quantity,
+      // A one-line checkout is sent exactly as before T150; more lines are a cart (T148).
+      ...(single === undefined ? { lines } : { productId: single.productId, quantity: single.quantity }),
       buyer: { first_name: destination.first_name ?? "", last_name: destination.last_name ?? "", ...(input.email === undefined ? {} : { email: input.email }) },
       destination,
     });
@@ -215,8 +235,9 @@ export class Shopper {
     return {
       quote_id: entry.id,
       store: store.name,
-      product_id: input.product_id,
-      quantity: input.quantity,
+      product_id: single?.productId ?? null,
+      quantity: single?.quantity ?? null,
+      items: quote.lines.map((line) => ({ product_id: line.productId, quantity: line.quantity })),
       total: quote.total,
       pays: {
         amount_usdc: usdcAtomicToDecimal(BigInt(quote.requirements.amount)),
@@ -306,6 +327,8 @@ export class Shopper {
               hash: receipt.hash,
               verify_url: receipt.verify_url ?? null,
               settlement_tx_hash: receipt.settlement_tx_hash ?? null,
+              // Built here, not by the chat (T129 found Claude composing it by hand).
+              explorer_url: receipt.settlement_tx_hash === undefined ? null : `https://stellar.expert/explorer/testnet/tx/${receipt.settlement_tx_hash}`,
               anchor: receipt.anchor?.status ?? null,
               valid: verification.valid && binding?.ok === true,
               checks: {

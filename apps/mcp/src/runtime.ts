@@ -105,7 +105,7 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
   return new Shopper({
     venues: () => expandPlatformVenues(DEFAULT_VENUE_REGISTRY, { onIssue: (platform, issue) => log("directory issue", { platform, issue }) }),
     fixedVenues: DEFAULT_VENUE_REGISTRY,
-    signIntent: async ({ venueId, registry, productId, quantity }) => {
+    signIntent: async ({ venueId, registry, lines }) => {
       // A fresh agent per intent: it re-checks the credential and the Mandate on chain each time.
       const agent = await createAgent({
         credential: env.MCP_CREDENTIAL_JWS,
@@ -117,8 +117,17 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
         ledger,
         now: new Date(),
       });
-      const signed = intentResultSchema.safeParse(await agent.tools.invoke("create_purchase_intent", { product_id: productId, quantity }));
-      if (!signed.success) throw new AgentPassError("InvalidIntent", "create_purchase_intent did not return a signed intent", { details: {} });
+      const [single] = lines;
+      // One product through the model's own tool, as before; a cart through the agent's cart signer, same checks (T148).
+      let result: unknown;
+      if (lines.length === 1 && single !== undefined) {
+        result = await agent.tools.invoke("create_purchase_intent", { product_id: single.productId, quantity: single.quantity });
+      } else {
+        if (agent.signCart === undefined) throw new AgentPassError("InvalidIntent", "this agent cannot sign a cart", { details: {} });
+        result = await agent.signCart(lines);
+      }
+      const signed = intentResultSchema.safeParse(result);
+      if (!signed.success) throw new AgentPassError("InvalidIntent", "the agent did not return a signed intent", { details: {} });
       return (await verifyIntent(signed.data.jws)).intent;
     },
     scope: credential.credential.credentialSubject.scope,

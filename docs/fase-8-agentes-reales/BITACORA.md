@@ -65,6 +65,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
 | T146 Demo de presupuesto de equipo | en revisión |
+| T150 Pulido del MCP | en revisión |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |
@@ -689,4 +690,14 @@ contrato revisa sus topes dentro de la transferencia. No se movió dinero. Se su
 SignalDesk en local; producción queda arreglada con el merge.
 
 Evidencia: [`evidencia/T146.md`](evidencia/T146.md).
+
+---
+
+## T150 · Pulido del MCP para el video — 2026-10-07
+
+**Qué quedó funcionando.** Desde Claude o ChatGPT ahora se puede cotizar más de un producto de la misma tienda en una
+sola compra: una cotización, una firma del agente y un solo pago. Y al leer una orden, el MCP entrega el enlace a la
+transacción del pago, para que el chat no lo arme a mano. La firma del reclamo no cambió (`R-28`).
+
+Evidencia: [`evidencia/T150.md`](evidencia/T150.md).
 
