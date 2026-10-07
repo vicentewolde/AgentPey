@@ -294,6 +294,8 @@ más rápido que lo estimado.
 
 ### Bloque C · Resolutores externos (si alcanza; primero pruebas técnicas)
 
+> Desde el 7-oct (`R-24`): este bloque va al final de la fase, después del video.
+
 #### T138 · Prueba técnica: GenLayer como jurado de AgentResolve · parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa y fondos)
 - **Descripción:** investigación, sin código de producto. Responder: cómo se presenta un reclamo de AgentResolve como caso de Internet Court; cómo se expresa un reembolso parcial con un veredicto de tres valores; cuál de las tres opciones de relevo (único auditable, varios con multifirma, puente); costo y tiempo.
@@ -402,6 +404,12 @@ corta en este orden: T140, T146, T137, T144 (salvo dots), T136, T135, T134,
 T149, T148, T147, T143. T128 a T132 y el reembolso real no se tocan. Las pruebas técnicas T138,
 T139 y T145 quedan como documentos aunque no se construya nada. **Esto no se
 renegocia el 10-oct.**
+
+**Ajuste del 7-oct (`R-24`, decidido por el usuario).** La línea de corte no se
+aplica: no se corta ninguna tarea. T138 y T139 pasan al final de la fase,
+después del video, y T140 queda detrás de ellas. El orden de lo que queda:
+T145, reembolso real de T124, T141, T130 cuando haya tienda, T142 (código
+congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T140.
 
 | Riesgo | Mitigación |
 |---|---|

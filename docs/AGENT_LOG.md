@@ -8270,3 +8270,17 @@ aprobó y revocó un Mandato con Freighter y con xBull y entró al portal: todo 
 Pendiente: T138, T139 y T145 (8-oct), T141 (9-oct), T130 cuando haya tienda de terceros, reembolso de T124 el 8 o
 9-oct. `AGENTS.md`: sin cambios (la nota de `packages/wallet-kit` ya entró con T143). Exponential: ticket T143
 (`cmusmv9l0001tkx049cepmzg5`) a `DONE` con el PR #65; T143 no tiene tarjeta en el tablero, así que `exp:sync` no movió nada.
+
+## 2026-10-07 — cc/fase8-orden
+
+Agente: Claude Code.
+
+Qué: `R-24`, decidido por el usuario: la línea de corte de la Fase 8 no se aplica (no se corta ninguna tarea), y T138
+y T139 pasan al final de la fase, con T140 detrás. Spec §8, `ESTADO.md` y bitácora ajustados.
+
+**Aviso para Codex y cualquier otra sesión:** no tocar `contracts/*`, AgentResolve (`packages/resolve/`,
+`scripts/resolve*`, `apps/web/public/resolve/`), `open_claim` del MCP ni el `payTo` de Vitrinee, y no desplegar
+contratos en testnet, hasta nuevo aviso del usuario.
+
+Pendiente: T145, el reembolso real de T124 (8 o 9-oct), T141, T130 cuando haya tienda, T142. `AGENTS.md`: sin
+cambios (el aviso de arriba alcanza). Exponential: sin cambios (ningún ticket cambia de estado).

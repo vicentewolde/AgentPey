@@ -828,3 +828,29 @@ cargar la página, y sin tocar lo que verifica el servidor.
 varios archivos: el `integrity` cubriría solo el primero). Un adaptador propio por wallet sin el kit (más código de
 firma nuestro, y `C-160` ya eligió el kit). El selector con todas las wallets del kit (ofrecería wallets que no
 pueden iniciar sesión). Guardar el archivo empaquetado en git (190 KB generados en cada cambio).
+
+---
+
+### R-24 · No se corta nada para la hackatón; GenLayer y Trustless Work (T138, T139) pasan al final de la fase · `Vigente`
+**Fecha:** 2026-10-07 · **Tarea:** orden de la fase · **Decidido por el usuario**
+
+El 7-oct en la noche el Bloque A no está completo (faltan T130 y T142), así que
+la línea de corte de la sección 8 del spec se habría aplicado. El usuario
+decide:
+
+1. **No se corta ninguna tarea.** T140, T144 y T146 siguen pendientes, con las
+   condiciones que ya tenían en el spec (T140 y T146 piden aprobación; T144
+   depende de los accesos del usuario).
+2. **T138 (GenLayer) y T139 (Trustless Work) pasan al final de la fase**, después
+   del video. El usuario quiere esas dos integraciones para el Build Award de SCF.
+   T140, que depende de una de ellas, queda detrás.
+3. El orden para lo que queda: T145 (prueba técnica), reembolso real de T124
+   (8 o 9-oct), T141, T130 cuando haya tienda, T142 con el código congelado el
+   10-oct; después T146 y T144 si alcanzan; al final T138, T139 y T140.
+
+**Motivo.** El video no depende de las tareas que la línea de corte sacaba, y
+las dos integraciones de resolutores externos tienen más valor presentadas
+aparte que como pruebas técnicas apuradas antes del video.
+
+**Alternativas descartadas.** Aplicar la línea de corte tal como estaba
+(T140, T146, T137, T144…). Hacer T138 y T139 el 8-oct como decía el calendario.

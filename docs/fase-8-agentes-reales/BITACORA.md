@@ -36,6 +36,8 @@ un kit abierto comprueba si cualquier tienda implementa bien el medio de pago
 de Stellar (`R-22`). **T143 cerrada** ([PR #65](https://github.com/vicentewolde/AgentPey/pull/65)):
 las cinco pantallas de firma aceptan Freighter y xBull, y las que solo firman
 un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
+El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLayer y
+Trustless Work (T138, T139) para el final de la fase (`R-24`).
 
 | Tarea | Estado |
 |---|---|
@@ -49,8 +51,8 @@ un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 | T135 MPP charge (prueba técnica) | cerrada |
 | T136 SDK en npm | cerrada |
 | T137 Kit de conformidad de Stellar | cerrada |
-| T138 Prueba técnica: GenLayer | pendiente |
-| T139 Prueba técnica: Trustless Work | pendiente |
+| T138 Prueba técnica: GenLayer | pendiente, al final de la fase (`R-24`) |
+| T139 Prueba técnica: Trustless Work | pendiente, al final de la fase (`R-24`) |
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
 | T141 Página de tiendas | pendiente |
 | T142 Guion y grabación | pendiente |

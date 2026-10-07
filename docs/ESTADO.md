@@ -5,10 +5,10 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-06
+**Actualizado:** 2026-10-07
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T143 · Más wallets que Freighter: Freighter y xBull en las cinco pantallas de firma, LOBSTR en las de solo mensaje, probado por el usuario en agentpey.com (`R-23`)
-**Siguiente paso:** por el calendario del spec (§8), T138, T139 y T145 (pruebas técnicas, 8-oct) y T141 (9-oct). T130 cuando haya tienda de terceros (el usuario la está consiguiendo). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin respuestas el 5-oct). El 8 o 9 de octubre, el reembolso real de T124 (`E-25`)
+**Siguiente paso:** el orden de `R-24` (7-oct): T145 (prueba técnica), el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T141, T130 cuando haya tienda de terceros (el usuario la está consiguiendo) y T142 con el código congelado el 10-oct. Después T146 y T144 si alcanzan; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90) (sin respuestas el 5-oct)
 
 ## Progreso de la fase
 
@@ -24,20 +24,20 @@
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ✅ terminada: el SDK oficial no acepta pagar desde el `policy_rail` (la red sí acepta la firma; cuatro rechazos por el pagador, control con llave clásica cobra); no se construye (`R-20`); brecha 21; issue publicado ([stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)) | [PR #61](https://github.com/vicentewolde/AgentPey/pull/61), mergeado |
 | T136 SDK publicado en npm | si alcanza | ✅ terminada: [`@agentpey/ucp-stellar@0.1.0`](https://www.npmjs.com/package/@agentpey/ucp-stellar) en npm (publicado por el usuario el 6-oct), instalado desde npm en un proyecto vacío; el ejemplo compró `ord_muvqqsth2fb48d4110`; el agente paga a través del paquete (`R-21`) | [PR #63](https://github.com/vicentewolde/AgentPey/pull/63), mergeado |
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ✅ terminada: `pnpm run ucp:stellar:conformance -- <url>`, 20 comprobaciones (`R-22`); agentcommerce 20/20 con cobro real y una sola firma (`ord_muws1afd200277f471`); la tienda rota, 6 fallas con su motivo | [PR #64](https://github.com/vicentewolde/AgentPey/pull/64), mergeado |
-| T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente | |
-| T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente | |
+| T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
+| T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
 | T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
 | T141 Página "Tiendas comprables por agentes" | para el video | ⏳ pendiente | |
 | T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
-| T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); con el corte del 7-oct se cortaría entera, porque solo dots sobrevivía | |
+| T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); el corte del 7-oct no se aplica (`R-24`) | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ⏳ pendiente | |
 | T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
 | T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20; compra real `ord_muvlkwxp66c0327a66` con `customerAcceptsMarketing` en Shopify | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |
 
-Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143.
+Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 
 Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
 
