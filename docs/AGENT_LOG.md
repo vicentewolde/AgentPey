@@ -8284,3 +8284,15 @@ contratos en testnet, hasta nuevo aviso del usuario.
 
 Pendiente: T145, el reembolso real de T124 (8 o 9-oct), T141, T130 cuando haya tienda, T142. `AGENTS.md`: sin
 cambios (el aviso de arriba alcanza). Exponential: sin cambios (ningún ticket cambia de estado).
+
+## 2026-10-07 (2) — cc/t145-tesoreria-equipos (sale de cc/fase8-orden, sin push)
+
+Agente: Claude Code.
+
+Qué: T145, prueba técnica sin código: `evidencia/T145-tesoreria-equipos.md`. Cobro por uso viable en testnet con el
+`policy_rail` y SignalDesk; suscripciones sin emisor recomendable (Cards402 prohíbe cobros recurrentes, ASGCard sin
+términos ni KYC publicados); SCF paga en XLM; cinco preguntas para revisión legal. Recomienda T146 reutilizando
+`policyRailUcp`, sin desplegar nada nuevo.
+
+Pendiente: decisión del usuario sobre T146 y el camino de suscripciones; `/revisar`; push y merge de `cc/fase8-orden`
+y de esta rama con OK. `AGENTS.md`: sin cambios. Exponential: ticket T145 a `IN_PROGRESS`.

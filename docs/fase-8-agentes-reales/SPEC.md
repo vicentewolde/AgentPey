@@ -338,7 +338,7 @@ más rápido que lo estimado.
 - **Prioridad:** si alcanza · **Estimación:** 5 h · **Delegable a Codex:** no (regulación, `P-10`)
 - **Descripción:** dos caminos: servicios que cobran por uso (x402 o MPP desde un `policy_rail` del equipo) y suscripciones (tarjeta virtual fondeada con USDC). Responder quién hace el KYC, quién es titular, cómo se ata el gasto al Mandato y al recibo, y qué toca regulación. Nada con dinero real.
 - **Hecho cuando:**
-  - [ ] `T145-tesoreria-equipos.md` con opciones, recomendación y lo que requiere revisión legal
+  - [x] `T145-tesoreria-equipos.md` con opciones, recomendación y lo que requiere revisión legal ([evidencia](evidencia/T145-tesoreria-equipos.md))
 
 #### T146 · Demo: presupuesto de equipo en testnet
 - **Prioridad:** se corta segundo · **Estimación:** 6 h · **Delegable a Codex:** no

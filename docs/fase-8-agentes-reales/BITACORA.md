@@ -58,7 +58,7 @@ Trustless Work (T138, T139) para el final de la fase (`R-24`).
 | T142 Guion y grabación | pendiente |
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
-| T145 Tesorería de equipos (prueba técnica) | pendiente |
+| T145 Tesorería de equipos (prueba técnica) | en revisión, espera la decisión del usuario |
 | T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
@@ -622,4 +622,27 @@ USDC, un pedido en Shopify con las dos líneas, y un recibo con dos ítems que
 suman lo cobrado y los tres checks en verde. La librería oficial de AP2
 verificó el mandato, que nombraba las dos líneas. El primer intento cayó en la
 instancia vieja mientras terminaba el deploy y se rechazó antes de cobrar nada.
+
+---
+
+## T145 · Equipos SCF pagando IA y servicios con Stellar (prueba técnica) — 2026-10-07
+
+**Qué quedó.** Un documento que responde si un equipo financiado por SCF puede
+dar a sus agentes un presupuesto en Stellar para pagar herramientas y servicios
+([evidencia](evidencia/T145-tesoreria-equipos.md)). La respuesta corta: **para
+servicios que cobran por uso, sí, hoy en testnet y con lo que ya existe**; para
+suscripciones (ChatGPT, GitHub y similares), **todavía no**. Cards402 prohíbe
+los cobros recurrentes en su contrato, y ASGCard no publica términos, KYC ni el
+banco que emite. Además, aunque se cargue una tarjeta desde el rail, lo que la
+tarjeta compra queda fuera del Mandato y del recibo.
+
+**Lo que se aprendió.** SCF paga en XLM y el rail maneja un solo asset, así que
+el equipo convierte antes. El rail aplica montos pero no a quién se paga, no
+tiene tope mensual y tiene un solo agente; ninguna de esas brechas se construye
+ahora. Para un abogado quedan cinco preguntas, entre ellas si tener la llave
+del agente en la versión hospedada cuenta como custodia.
+
+**Recomendación.** Construir T146 después del video, reutilizando
+`policyRailUcp` para pagar créditos de SignalDesk en testnet y armando el
+resumen del mes, sin desplegar nada nuevo. Espera la decisión del usuario.
 
