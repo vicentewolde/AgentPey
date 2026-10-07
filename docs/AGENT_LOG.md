@@ -8320,3 +8320,16 @@ Qué: T141. `/tiendas` (alias `/stores`) en `apps/web`, con los datos de `GET /a
 
 Pendiente: `/revisar`, push, PR y merge con OK; después, mirar la página en agentpey.com tras el deploy. `AGENTS.md`:
 sin cambios. Exponential: ticket T141 a `IN_PROGRESS`.
+
+## 2026-10-07 (5) — cc/t141-tiendas-agentes
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T141 sin bloqueantes. Corregido: plazo de 8 s también para las lecturas del registro (un socket
+colgado dejaba `/api/stores` esperando para siempre), la sección del conector ya no promete el tope en la red para el
+paquete de npm ni para el kit, una entrada inválida del directorio se deja fuera sin tumbar la página, solo se sigue
+la página siguiente del mismo Horizon, el recibo se muestra solo si el registro lo tiene para esa tienda, y si una
+reconstrucción falla se sirve la última respuesta. `R-26` precisado. Push, PR y merge con OK del usuario.
+
+Pendiente: ver `/tiendas` en agentpey.com tras el deploy y marcar los dos criterios del spec y el ticket `DONE`.
+`AGENTS.md`: sin cambios. Exponential: T141 a `QA` con el PR.

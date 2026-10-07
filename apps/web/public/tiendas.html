@@ -147,8 +147,8 @@
   <section aria-labelledby="connect-title">
     <h2 id="connect-title"><span data-tr="en">Let an agent buy here</span><span data-tr="es">Haz que un agente compre aquí</span></h2>
     <p class="lead">
-      <span data-tr="en">Three ways in, all on Stellar testnet. The agent never chooses who gets paid or how much: both come from the store's quote, and a <code>policy_rail</code> contract enforces the spending limit on the network.</span>
-      <span data-tr="es">Tres formas de entrar, todas en Stellar testnet. El agente nunca elige a quién le paga ni cuánto: las dos cosas salen de la cotización de la tienda, y un contrato <code>policy_rail</code> aplica el tope de gasto en la red.</span>
+      <span data-tr="en">Two ways for an agent to buy, and one to check a store, all on Stellar testnet. Who gets paid and how much come from the store's quote, not from the agent. The connector pays from a <code>policy_rail</code> contract, whose spending limit the network enforces.</span>
+      <span data-tr="es">Dos formas de que un agente compre y una de revisar una tienda, todas en Stellar testnet. A quién se le paga y cuánto salen de la cotización de la tienda, no del agente. El conector paga desde un contrato <code>policy_rail</code>, cuyo tope de gasto aplica la red.</span>
     </p>
     <ol class="steps">
       <li>
@@ -161,8 +161,8 @@
       </li>
       <li>
         <strong><span data-tr="en">Your own agent, with the npm package</span><span data-tr="es">Tu propio agente, con el paquete de npm</span></strong>
-        <span data-tr="en">Read a store's UCP profile, quote a checkout and pay it from a classic account or a <code>policy_rail</code>. The package never holds a key.</span>
-        <span data-tr="es">Lee el perfil UCP de una tienda, cotiza un checkout y págalo desde una cuenta clásica o un <code>policy_rail</code>. El paquete nunca guarda una llave.</span>
+        <span data-tr="en">Read a store's UCP profile, quote a checkout and pay it from a classic account or a <code>policy_rail</code>; only a <code>policy_rail</code> has its limit enforced by the network. The package never holds a key.</span>
+        <span data-tr="es">Lee el perfil UCP de una tienda, cotiza un checkout y págalo desde una cuenta clásica o un <code>policy_rail</code>; solo con un <code>policy_rail</code> la red aplica el tope. El paquete nunca guarda una llave.</span>
         <pre>npm install @agentpey/ucp-stellar</pre>
         <p class="muted" style="margin:8px 0 0"><a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">@agentpey/ucp-stellar</a></p>
       </li>

@@ -40,7 +40,8 @@ El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLay
 Trustless Work (T138, T139) para el final de la fase (`R-24`). **T145 cerrada**:
 un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño, y T146 se construye después del
-video sobre un rail ya desplegado (`R-25`).
+video sobre un rail ya desplegado (`R-25`). **T141 en revisión**: `agentpey.com/tiendas`
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`).
 
 | Tarea | Estado |
 |---|---|

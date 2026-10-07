@@ -1229,14 +1229,19 @@ let storesDirectory: { list(): Promise<StoresPage> } | undefined;
 async function listStores(): Promise<StoresPage> {
   if (storesDirectory === undefined) {
     const raw = await readFile(new URL("../../../deployments/vitrinee-testnet.json", import.meta.url), "utf8").catch(() => "");
-    const parsed = z.object({ receiptRegistry: z.object({ contractId: z.string().regex(/^C[A-Z2-7]{55}$/) }) }).safeParse(
-      raw === "" ? undefined : JSON.parse(raw),
-    );
+    let json: unknown;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      json = undefined;
+    }
+    const parsed = z.object({ receiptRegistry: z.object({ contractId: z.string().regex(/^C[A-Z2-7]{55}$/) }) }).safeParse(json);
     if (!parsed.success) {
       throw new AgentPassError("ConfigError", "deployments/vitrinee-testnet.json does not name the receipt registry", { details: {} });
     }
     storesDirectory = createStoresDirectory({
       fetchImpl: fetch,
+      // Behind the gateway this env var is filtered out (`apps/gateway/src/hosts.ts`), so production always reads the default.
       directoryUrl: process.env["VITRINEE_DIRECTORY_URL"] ?? "https://vitrinee.agentpey.com/api/comercios",
       horizonUrl: "https://horizon-testnet.stellar.org",
       registry: new ReceiptRegistryClient({

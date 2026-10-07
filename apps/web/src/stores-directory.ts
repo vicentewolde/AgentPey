@@ -24,7 +24,7 @@ import { z } from "zod";
 export interface StoresRegistry {
   readonly contractId: string;
   count(merchant: string): Promise<number>;
-  get(hashHex: string): Promise<{ amount: bigint; orderRef: string; ledger: number; timestamp: number } | null>;
+  get(hashHex: string): Promise<{ merchant: string; amount: bigint; orderRef: string; ledger: number; timestamp: number } | null>;
 }
 
 export interface StoresDirectoryDeps {
@@ -35,6 +35,8 @@ export interface StoresDirectoryDeps {
   readonly now?: () => number;
   /** How long one answer is shared across callers. */
   readonly ttlMs?: number;
+  /** The most any one outbound call may take: Horizon, the directory, or a registry read. */
+  readonly timeoutMs?: number;
 }
 
 export interface LatestReceipt {
@@ -62,6 +64,8 @@ export interface StoreRow {
 
 export interface StoresPage {
   readonly platform_host: string;
+  /** Directory entries left out because they did not have the shape a store row needs. */
+  readonly skipped: number;
   readonly network: "stellar:testnet";
   readonly registry: string;
   readonly generated_at: string;
@@ -76,15 +80,16 @@ const PAGE_SIZE = 50;
 const EXPLORER_TX = "https://stellar.expert/explorer/testnet/tx/";
 
 const directorySchema = z.object({
-  platformHost: z.string().min(1),
-  comercios: z.array(
-    z.looseObject({
-      slug: z.string().regex(/^[a-z0-9-]{1,64}$/),
-      name: z.string().min(1).max(120),
-      url: z.url({ protocol: /^https$/ }),
-      signingDid: z.string().regex(/^did:stellar:testnet:G[A-Z2-7]{55}$/),
-    }),
-  ),
+  platformHost: z.string().regex(/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/),
+  comercios: z.array(z.unknown()).max(500),
+});
+
+/** One store, checked on its own: an entry that does not fit is left out, and never hides the others. */
+const storeSchema = z.looseObject({
+  slug: z.string().regex(/^[a-z0-9-]{1,64}$/),
+  name: z.string().min(1).max(120),
+  url: z.url({ protocol: /^https$/ }),
+  signingDid: z.string().regex(/^did:stellar:testnet:G[A-Z2-7]{55}$/),
 });
 
 const operationsSchema = z.object({
@@ -137,8 +142,21 @@ export function anchoredHash(op: Operation, registryId: string, merchant: string
   }
 }
 
-function withTimeout(fetchImpl: typeof fetch): typeof fetch {
-  return (input, init) => fetchImpl(input, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+function withTimeout(fetchImpl: typeof fetch, timeoutMs: number): typeof fetch {
+  return (input, init) => fetchImpl(input, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+}
+
+/**
+ * `rpc.Server` has no timeout of its own: without this, one hung socket to
+ * Soroban RPC would leave a build in flight forever, and every later visit
+ * would wait on it.
+ */
+function within<T>(promise: Promise<T>, timeoutMs: number, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new AgentPassError("NetworkError", `${what} took longer than ${timeoutMs} ms`, { details: { what } })), timeoutMs);
+  });
+  return Promise.race([promise, expired]).finally(() => clearTimeout(timer));
 }
 
 async function readJson(fetchImpl: typeof fetch, url: string): Promise<unknown> {
@@ -156,13 +174,19 @@ async function findLatestAnchor(
 ): Promise<{ hash: string; txHash: string } | null> {
   let url: string | undefined = `${horizonUrl}/accounts/${merchant}/operations?order=desc&limit=${PAGE_SIZE}`;
   for (let page = 0; page < MAX_PAGES && url !== undefined; page++) {
-    const parsed = operationsSchema.parse(await readJson(fetchImpl, url));
+    const res = await fetchImpl(url, { headers: { accept: "application/json" } });
+    // An account that does not exist yet has sent no anchor: that is "none", not "could not tell".
+    if (res.status === 404 && page === 0) return null;
+    if (!res.ok) throw new AgentPassError("NetworkError", `GET ${url} answered ${res.status}`, { details: { url, status: res.status } });
+    const parsed = operationsSchema.parse(await res.json());
     for (const op of parsed._embedded.records) {
       const hash = anchoredHash(op, registryId, merchant);
       if (hash !== null) return { hash, txHash: op.transaction_hash };
     }
     if (parsed._embedded.records.length < PAGE_SIZE) return null;
-    url = parsed._links?.next?.href;
+    const next = parsed._links?.next?.href;
+    // Follow Horizon's own next page only: never a URL on another host.
+    url = next !== undefined && next.startsWith(`${horizonUrl}/`) ? next : undefined;
   }
   return null;
 }
@@ -170,19 +194,20 @@ async function findLatestAnchor(
 async function storeRow(
   deps: StoresDirectoryDeps,
   fetchImpl: typeof fetch,
-  store: z.infer<typeof directorySchema>["comercios"][number],
+  store: z.infer<typeof storeSchema>,
+  timeoutMs: number,
 ): Promise<StoreRow> {
   const signing = store.signingDid.slice("did:stellar:testnet:".length);
   const base = store.url.replace(/\/+$/, "");
   const [count, latest] = await Promise.all([
-    deps.registry.count(signing).catch(() => null),
+    within(deps.registry.count(signing), timeoutMs, "registry count").catch(() => null),
     (async (): Promise<StoreRow["latest"]> => {
       try {
         const found = await findLatestAnchor(fetchImpl, deps.horizonUrl, deps.registry.contractId, signing);
         if (found === null) return { status: "none" };
-        const record = await deps.registry.get(found.hash);
-        // Horizon named it, but the registry must still hold it before it is shown as anchored.
-        if (record === null) return { status: "unavailable" };
+        const record = await within(deps.registry.get(found.hash), timeoutMs, "registry get");
+        // Horizon named it, but the registry must still hold it, for this store, before it is shown as anchored.
+        if (record === null || record.merchant !== signing) return { status: "unavailable" };
         return {
           status: "found",
           receipt: {
@@ -215,7 +240,8 @@ async function storeRow(
 export function createStoresDirectory(deps: StoresDirectoryDeps): { list(): Promise<StoresPage> } {
   const now = deps.now ?? Date.now;
   const ttl = deps.ttlMs ?? DEFAULT_TTL_MS;
-  const fetchImpl = withTimeout(deps.fetchImpl);
+  const timeoutMs = deps.timeoutMs ?? TIMEOUT_MS;
+  const fetchImpl = withTimeout(deps.fetchImpl, timeoutMs);
   let cached: { at: number; page: StoresPage } | undefined;
   let inFlight: Promise<StoresPage> | undefined;
 
@@ -229,9 +255,14 @@ export function createStoresDirectory(deps: StoresDirectoryDeps): { list(): Prom
         details: { url: deps.directoryUrl },
       });
     }
-    const stores = await Promise.all(directory.comercios.map((store) => storeRow(deps, fetchImpl, store)));
+    const valid = directory.comercios.flatMap((entry) => {
+      const parsed = storeSchema.safeParse(entry);
+      return parsed.success ? [parsed.data] : [];
+    });
+    const stores = await Promise.all(valid.map((store) => storeRow(deps, fetchImpl, store, timeoutMs)));
     return {
       platform_host: directory.platformHost,
+      skipped: directory.comercios.length - valid.length,
       network: "stellar:testnet",
       registry: deps.registry.contractId,
       generated_at: new Date(now()).toISOString(),
@@ -246,6 +277,12 @@ export function createStoresDirectory(deps: StoresDirectoryDeps): { list(): Prom
         .then((page) => {
           cached = { at: now(), page };
           return page;
+        })
+        .catch((error: unknown) => {
+          // A recent answer, with its real `generated_at`, beats an error page; try again after another window.
+          if (cached === undefined) throw error;
+          cached = { at: now(), page: cached.page };
+          return cached.page;
         })
         .finally(() => {
           inFlight = undefined;

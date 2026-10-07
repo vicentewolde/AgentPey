@@ -899,7 +899,13 @@ mostrar nada que no salga del directorio o de la red. Se decide:
    (`<tienda>/receipts/<hash>`: firma, ancla y pago) y a la transacción en Stellar Expert. No dice "verificado" a
    secas: comprobar la firma pide el recibo, que guarda la tienda.
 4. **Rutas:** `/tiendas`, con `/stores` como alias; los datos en `GET /api/stores`, con caché de 60 segundos. Una
-   tienda que no responde se muestra igual, con "no disponible ahora"; solo un directorio caído es un error.
+   tienda que no responde se muestra igual, con "no disponible ahora", y una entrada del directorio que no tiene la
+   forma esperada se deja fuera y se cuenta (`skipped`), sin esconder a las demás. Cada llamada saliente (directorio,
+   Horizon, lecturas del registro) tiene un plazo de 8 segundos. Si una reconstrucción falla, se sigue mostrando la
+   última respuesta, con su fecha real; solo un directorio caído sin respuesta previa es un error.
+5. **Precisado tras `/revisar`:** el recibo se muestra solo si el registro lo tiene **para esa tienda**
+   (`record.merchant` igual a la cuenta firmante), y una cuenta firmante que Horizon todavía no conoce es "sin
+   recibos", no "no disponible".
 
 **Motivo.** Todo lo que se muestra se puede comprobar en la red sin confiar en AgentPey, y el registro, no Horizon,
 es la fuente de lo que el recibo dice.

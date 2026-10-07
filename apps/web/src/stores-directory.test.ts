@@ -50,7 +50,7 @@ function registry(overrides: Partial<StoresRegistry> = {}): StoresRegistry {
     contractId: REGISTRY,
     count: vi.fn(async () => 16),
     get: vi.fn(async (hash: string) =>
-      hash === HASH_A ? { amount: 15_684_211n, orderRef: "ord_muws1afd200277f471", ledger: 5_000_000, timestamp: 1_791_300_000 } : null,
+      hash === HASH_A ? { merchant: SIGNER, amount: 15_684_211n, orderRef: "ord_muws1afd200277f471", ledger: 5_000_000, timestamp: 1_791_300_000 } : null,
     ),
     ...overrides,
   };
@@ -174,12 +174,79 @@ describe("createStoresDirectory", () => {
     ).rejects.toMatchObject({ code: "NetworkError" });
   });
 
-  it("drops nothing silently: a store whose URL is not https makes the directory invalid", async () => {
-    const bad = { ...directory, comercios: [{ ...directory.comercios[0], url: "javascript:alert(1)" }] };
-    const fetchImpl = fakeFetch({ [DIR_URL]: bad });
+  it("leaves out an entry whose URL is not https, counts it, and keeps the other stores", async () => {
+    const bad = { ...directory, comercios: [{ ...directory.comercios[0], slug: "bad", url: "javascript:alert(1)" }, ...directory.comercios] };
+    const fetchImpl = fakeFetch({ [DIR_URL]: bad, [OPS]: { _embedded: { records: [] } } });
+    const page = await createStoresDirectory({ fetchImpl, directoryUrl: DIR_URL, horizonUrl: HORIZON, registry: registry() }).list();
+    expect(page.skipped).toBe(1);
+    expect(page.stores.map((s) => s.slug)).toEqual(["agentcommerce"]);
+  });
+
+  it("refuses a platform host that is not a host name", async () => {
+    const fetchImpl = fakeFetch({ [DIR_URL]: { ...directory, platformHost: "evil.com/x?" } });
     await expect(
       createStoresDirectory({ fetchImpl, directoryUrl: DIR_URL, horizonUrl: HORIZON, registry: registry() }).list(),
     ).rejects.toMatchObject({ code: "NetworkError" });
+  });
+
+  it("does not wait forever on a registry read that never answers", async () => {
+    const fetchImpl = fakeFetch({ [DIR_URL]: directory, [OPS]: { _embedded: { records: [anchorOp({ hash: HASH_A, tx: TX_A })] } } });
+    const never = () => new Promise<never>(() => undefined);
+    const page = await createStoresDirectory({
+      fetchImpl,
+      directoryUrl: DIR_URL,
+      horizonUrl: HORIZON,
+      registry: registry({ count: never, get: never }),
+      timeoutMs: 20,
+    }).list();
+    expect(page.stores[0]).toMatchObject({ receipts_anchored: null, latest: { status: "unavailable" } });
+  });
+
+  it("calls a signing account Horizon does not know a store with no receipt yet", async () => {
+    const fetchImpl = fakeFetch({ [DIR_URL]: directory, [OPS]: () => new Response("not found", { status: 404 }) });
+    const page = await createStoresDirectory({ fetchImpl, directoryUrl: DIR_URL, horizonUrl: HORIZON, registry: registry({ count: async () => 0 }) }).list();
+    expect(page.stores[0]?.latest).toEqual({ status: "none" });
+  });
+
+  it("does not show a receipt the registry holds for another merchant", async () => {
+    const fetchImpl = fakeFetch({ [DIR_URL]: directory, [OPS]: { _embedded: { records: [anchorOp({ hash: HASH_A, tx: TX_A })] } } });
+    const other = registry({ get: async () => ({ merchant: OTHER_SIGNER, amount: 1n, orderRef: "x", ledger: 1, timestamp: 1 }) });
+    const page = await createStoresDirectory({ fetchImpl, directoryUrl: DIR_URL, horizonUrl: HORIZON, registry: other }).list();
+    expect(page.stores[0]?.latest).toEqual({ status: "unavailable" });
+  });
+
+  it("follows Horizon's next page to find an older anchor, but never a next link on another host", async () => {
+    const filler = Array.from({ length: 50 }, () => ({ type: "payment", transaction_hash: TX_B }));
+    const page2 = `${HORIZON}/accounts/${SIGNER}/next-page`;
+    const ok = fakeFetch({
+      [DIR_URL]: directory,
+      [page2]: { _embedded: { records: [anchorOp({ hash: HASH_A, tx: TX_A })] } },
+      [OPS]: { _embedded: { records: filler }, _links: { next: { href: page2 } } },
+    });
+    const found = await createStoresDirectory({ fetchImpl: ok, directoryUrl: DIR_URL, horizonUrl: HORIZON, registry: registry() }).list();
+    expect(found.stores[0]?.latest.status).toBe("found");
+
+    const elsewhere = fakeFetch({
+      [DIR_URL]: directory,
+      [OPS]: { _embedded: { records: filler }, _links: { next: { href: "https://evil.example/ops" } } },
+    });
+    const notFollowed = await createStoresDirectory({ fetchImpl: elsewhere, directoryUrl: DIR_URL, horizonUrl: HORIZON, registry: registry() }).list();
+    expect(notFollowed.stores[0]?.latest).toEqual({ status: "none" });
+    expect(vi.mocked(elsewhere).mock.calls.some(([u]) => String(u).startsWith("https://evil.example"))).toBe(false);
+  });
+
+  it("keeps serving the last answer when a rebuild fails", async () => {
+    let t = 0;
+    let up = true;
+    const fetchImpl = fakeFetch({
+      [DIR_URL]: () => (up ? Response.json(directory) : new Response("down", { status: 503 })),
+      [OPS]: { _embedded: { records: [] } },
+    });
+    const stores = createStoresDirectory({ fetchImpl, directoryUrl: DIR_URL, horizonUrl: HORIZON, registry: registry(), now: () => t, ttlMs: 1000 });
+    const first = await stores.list();
+    up = false;
+    t = 1001;
+    await expect(stores.list()).resolves.toBe(first);
   });
 
   it("shares one answer for the cache window and builds again after it", async () => {
