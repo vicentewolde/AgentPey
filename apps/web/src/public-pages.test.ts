@@ -14,7 +14,7 @@ const PUBLIC_DIR = resolve(fileURLToPath(new URL("../public", import.meta.url)))
  * that break a page without any test noticing.
  */
 describe("the static pages", () => {
-  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html"]) {
+  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "tiendas.html"]) {
     it(`${name} never combines timeZoneName with dateStyle or timeStyle`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
       const combined = /\{[^}]*(dateStyle|timeStyle)[^}]*timeZoneName[^}]*\}|\{[^}]*timeZoneName[^}]*(dateStyle|timeStyle)[^}]*\}/;
@@ -61,5 +61,18 @@ describe("the static pages", () => {
     expect(html).not.toContain('href="/consent"');
     expect(html).not.toContain('href="/sign"');
     expect(html.match(/href="https:\/\/realops\.agentpey\.com"/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // T141: the store list is built from /api/stores, which carries text from the directory: never as HTML.
+  it("tiendas.html reads /api/stores and never writes what it reads as HTML", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "tiendas.html"), "utf8");
+    expect(html).toContain('fetch("/api/stores"');
+    expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+    expect(html).not.toContain("\u2014");
+  });
+
+  it("landing.html links to the store list", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "landing.html"), "utf8");
+    expect(html).toContain('href="/tiendas"');
   });
 });

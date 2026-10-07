@@ -45,6 +45,8 @@ import {
 } from "@agentpass/core";
 import { createAgentPass, type AgentPass, type CredStatus } from "@agentpass/sdk";
 import { Keypair, Networks } from "@stellar/stellar-sdk";
+import { ReceiptRegistryClient } from "@vitrinee/anchor";
+import { z } from "zod";
 
 import { createDirectory, type ConsentSessionRecord, type Directory, type MandateRecord } from "@agentpey/directory";
 import {
@@ -114,6 +116,7 @@ import { ensureTenantPolicyRail } from "./tenant-rail.js";
 import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.js";
 import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
+import { createStoresDirectory, type StoresPage } from "./stores-directory.js";
 import { ucpPublicPath } from "./ucp-public.js";
 import { isWalletIconPath, serveWalletIcon, serveWalletKit } from "./wallet-kit-route.js";
 import { isLocalHost, routeWalletLab } from "./wallet-lab.js";
@@ -1175,6 +1178,9 @@ async function serveStatic(pathname: string, res: ServerResponse, host: string |
           // mandate id is read client-side from the path.
           pathname.startsWith("/revocar/")
           ? "/revocar.html"
+          : // T141: the stores an agent can buy from; `/stores` is the English alias.
+          pathname === "/tiendas" || pathname === "/stores"
+          ? "/tiendas.html"
           : // T126: where a merchant answers an AgentResolve claim. Static: the
             // claim is loaded and the answer signed and downloaded in the page.
             pathname === "/resolve/responder"
@@ -1214,6 +1220,35 @@ const publicDiscovery = createPublicDiscovery({
   },
 });
 
+/**
+ * The data behind `/tiendas` (T141): the platform's directory, the receipt
+ * registry and Horizon, nothing from this server's database. Built on first
+ * use, so a missing deployment file breaks that page and not the server.
+ */
+let storesDirectory: { list(): Promise<StoresPage> } | undefined;
+async function listStores(): Promise<StoresPage> {
+  if (storesDirectory === undefined) {
+    const raw = await readFile(new URL("../../../deployments/vitrinee-testnet.json", import.meta.url), "utf8").catch(() => "");
+    const parsed = z.object({ receiptRegistry: z.object({ contractId: z.string().regex(/^C[A-Z2-7]{55}$/) }) }).safeParse(
+      raw === "" ? undefined : JSON.parse(raw),
+    );
+    if (!parsed.success) {
+      throw new AgentPassError("ConfigError", "deployments/vitrinee-testnet.json does not name the receipt registry", { details: {} });
+    }
+    storesDirectory = createStoresDirectory({
+      fetchImpl: fetch,
+      directoryUrl: process.env["VITRINEE_DIRECTORY_URL"] ?? "https://vitrinee.agentpey.com/api/comercios",
+      horizonUrl: "https://horizon-testnet.stellar.org",
+      registry: new ReceiptRegistryClient({
+        contractId: parsed.data.receiptRegistry.contractId,
+        rpcUrl: "https://soroban-testnet.stellar.org",
+        networkPassphrase: Networks.TESTNET,
+      }),
+    });
+  }
+  return storesDirectory.list();
+}
+
 const server = createServer((req, res) => {
   void handle(req, res).catch((error: unknown) => {
     logError("unhandled web request error", error, { method: req.method ?? "unknown", path: req.url ?? "", status: 500 });
@@ -1230,6 +1265,17 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   if (req.method === "GET" && pathname === "/discovery/search") {
     const result = await handleDiscoverySearch(publicDiscovery, url.searchParams.get("query"));
     sendJson(res, result.status, result.body);
+    return;
+  }
+
+  // T141: the public list of stores an agent can buy from.
+  if (req.method === "GET" && pathname === "/api/stores") {
+    try {
+      sendJson(res, 200, { ok: true, ...(await listStores()) }, { "cache-control": "public, max-age=60" });
+    } catch (error) {
+      logError("[stores] the store list could not be built", error);
+      sendJson(res, 503, { ok: false, ...errorBody(error) });
+    }
     return;
   }
 

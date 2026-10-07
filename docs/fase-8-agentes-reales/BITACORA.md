@@ -57,7 +57,7 @@ video sobre un rail ya desplegado (`R-25`).
 | T138 Prueba técnica: GenLayer | pendiente, al final de la fase (`R-24`) |
 | T139 Prueba técnica: Trustless Work | pendiente, al final de la fase (`R-24`) |
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
-| T141 Página de tiendas | pendiente |
+| T141 Página de tiendas | en revisión |
 | T142 Guion y grabación | pendiente |
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
@@ -649,4 +649,24 @@ del agente en la versión hospedada cuenta como custodia.
 desplegado (`policyRailUcp`) para pagar créditos de SignalDesk en testnet y
 armando el resumen del mes, sin desplegar nada nuevo. **El usuario la aprobó**, y las
 suscripciones quedan solo como diseño (`R-25`).
+
+---
+
+## T141 · Página pública "Tiendas comprables por agentes" — 2026-10-07
+
+**Qué quedó funcionando.** En `agentpey.com/tiendas` (y `/stores`) hay una página que muestra las tiendas donde un
+agente ya puede comprar: AgentCommerce, Bazar Cordillera y MycoKit. De cada una dice cuántos recibos tiene anclados
+en Stellar y cuál fue el último (orden, monto, fecha), con un enlace para verificarlo y otro a la transacción en la
+red. Abajo explica las tres formas de hacer que un agente compre: el conector de Claude y ChatGPT, el paquete de npm
+y el kit para revisar una tienda. En inglés por defecto y en español, y se ve bien en un celular.
+
+**Por qué se puede confiar en lo que muestra.** Nada sale de la base de datos de AgentPey: la lista es el directorio
+público, la cantidad de recibos la cuenta el contrato del registro, y el último recibo se busca en el historial de la
+red y se confirma en el registro antes de mostrarlo (`R-26`).
+
+**Lo que apareció al probar contra la red real.** Una operación de despliegue de Bazar Cordillera trae un campo vacío
+que el código no esperaba, y la tienda salía como "no disponible"; corregido y con test. En celular, un comando largo
+estiraba las tarjetas; corregido.
+
+Evidencia: [`evidencia/T141.md`](evidencia/T141.md).
 

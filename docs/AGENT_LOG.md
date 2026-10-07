@@ -8308,3 +8308,15 @@ Mandato, y que el Vault solo lo escribe la plataforma hospedada. T145 cerrada; m
 Pendiente: el reembolso real de T124 (8 o 9-oct), T141, T130 cuando haya tienda, T142; después T146 y T144; al final
 T138, T139 y T140 (`R-24`). `AGENTS.md`: sin cambios. Exponential: ticket T145 a `DONE`.
 
+
+## 2026-10-07 (4) — cc/t141-tiendas-agentes (sin push)
+
+Agente: Claude Code.
+
+Qué: T141. `/tiendas` (alias `/stores`) en `apps/web`, con los datos de `GET /api/stores`
+(`apps/web/src/stores-directory.ts`): directorio de Vitrinee, `count(merchant)` del `receipt-registry` y el último
+`anchor` de cada cuenta firmante leído de Horizon y confirmado con `get(hash)` (`R-26`). Enlace en la landing.
+`apps/web` depende ahora de `@vitrinee/anchor` (solo lectura). `pnpm check` verde.
+
+Pendiente: `/revisar`, push, PR y merge con OK; después, mirar la página en agentpey.com tras el deploy. `AGENTS.md`:
+sin cambios. Exponential: ticket T141 a `IN_PROGRESS`.

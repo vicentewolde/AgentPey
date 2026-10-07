@@ -881,3 +881,30 @@ ni banco emisor; reutilizar un rail existente basta para mostrar un presupuesto 
 **Alternativas descartadas.** Un rail nuevo para el equipo (un despliegue más, sin nada que mostrar que el existente
 no muestre). Integrar Cards402 para compras de una vez (no responde la pregunta de las suscripciones y mueve dinero
 real en mainnet).
+
+---
+
+### R-26 · La página de tiendas lee el último recibo de Horizon y lo confirma en el registro; dice "anclado", no "verificado" · `Vigente`
+**Fecha:** 2026-10-07 · **Tarea:** T141 · Propuesta de Claude Code, **aprobada por el usuario** (rutas `/tiendas` y `/stores`)
+
+T141 pide una página con las tiendas del directorio, su perfil UCP y el último recibo verificado de cada una, sin
+mostrar nada que no salga del directorio o de la red. Se decide:
+
+1. **Las tiendas salen del directorio** (`GET /api/comercios`); **la cantidad de recibos**, de `count(merchant)` en
+   `receipt-registry`, por la cuenta firmante de cada tienda (`VT-8`).
+2. **El último recibo sale de Horizon**: la cuenta firmante es la fuente de cada `anchor`, así que su historial de
+   operaciones trae el hash y la transacción. Antes de mostrarlo, el servidor confirma con `get(hash)` que el registro
+   lo tiene, y el monto, la orden y la fecha que se muestran son los del registro, no los argumentos que copia Horizon.
+3. **La página dice "anclado en Stellar" y enlaza a la verificación completa** de la tienda
+   (`<tienda>/receipts/<hash>`: firma, ancla y pago) y a la transacción en Stellar Expert. No dice "verificado" a
+   secas: comprobar la firma pide el recibo, que guarda la tienda.
+4. **Rutas:** `/tiendas`, con `/stores` como alias; los datos en `GET /api/stores`, con caché de 60 segundos. Una
+   tienda que no responde se muestra igual, con "no disponible ahora"; solo un directorio caído es un error.
+
+**Motivo.** Todo lo que se muestra se puede comprobar en la red sin confiar en AgentPey, y el registro, no Horizon,
+es la fuente de lo que el recibo dice.
+
+**Alternativas descartadas.** Los eventos `receipt_anchored` del RPC (guardan 7 días: una tienda sin ventas en la
+semana quedaría vacía). Un endpoint nuevo en cada tienda con su último recibo (no es ni el directorio ni la red, y
+toca Vitrinee). Pedir el recibo a la tienda y verificar la firma en el servidor de la página (más llamadas por visita,
+y la tienda ya ofrece esa verificación).
