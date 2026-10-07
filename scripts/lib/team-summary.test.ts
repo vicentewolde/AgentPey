@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createFileMandateVault, type MandateVault } from "@agentpey/vault";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { currentMonth, fromUnits, summarizeMonth, toUnits } from "./team-summary.js";
+import { currentMonth, fromUnits, summarizeMonth, TEAM_LIMITS, toUnits } from "./team-summary.js";
 
 const SUBJECT = "did:stellar:testnet:GTEAM";
 let dir: string;
@@ -96,5 +96,18 @@ describe("summarizeMonth", () => {
   it("refuses a month that is not YYYY-MM", () => {
     expect(() => summarizeMonth([], "2026-13")).toThrow(expect.objectContaining({ code: "InvalidArguments" }));
     expect(() => summarizeMonth([], "octubre")).toThrow(expect.objectContaining({ code: "InvalidArguments" }));
+  });
+});
+
+describe("the team's daily budget across runs", () => {
+  it("survives reopening the vault file, so a later run still sees the day's spend and the next purchase does not fit", async () => {
+    const path = join(dir, "vault.jsonl");
+    for (const id of ["a", "b", "c"]) await grant(id, TEAM_LIMITS.perTx, "2026-10-07T12:00:00Z");
+
+    const reopened = createFileMandateVault({ path });
+    const spent = await reopened.spentOn(SUBJECT, "USDC", new Date("2026-10-07T20:00:00Z"));
+    expect(spent).toBe("0.3000000");
+    expect(toUnits(spent) + toUnits(TEAM_LIMITS.perTx) > toUnits(TEAM_LIMITS.perDay)).toBe(true);
+    expect(await reopened.spentOn(SUBJECT, "USDC", new Date("2026-10-08T00:00:01Z"))).toBe("0.0000000");
   });
 });

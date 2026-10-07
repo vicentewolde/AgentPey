@@ -45,18 +45,23 @@ pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com 
 
 A team gives its agent a budget, and the agent spends it on a pay-per-use
 service: `signaldesk:ai-credits-1000` (0.10 USDC), paid from an already
-deployed `policy_rail`. The team's Mandate allows 0.10 per purchase and 0.30
-per UTC day; the rail's own limits are enforced by the network inside the
-transfer. With four purchases on a fresh day, three settle and the fourth is
-refused before anything is signed:
+deployed `policy_rail` (`policyRailUcp`). The team's credential and Mandate
+allow 0.10 per purchase and 0.30 per UTC day, checked before anything is
+signed; the rail's own limits (5 and 10 USDC, shared with `ucp:buy`) are
+enforced by the network inside the transfer. With four purchases on a fresh
+day, three settle and the fourth is refused before anything is signed. It
+moves testnet USDC, and needs `.env.local` with `AGENT_SECRET_KEY` as the
+owner of `policyRailUcp`:
 
 ```bash
 pnpm run team:pay -- --times 4
 ```
 
-Every decision lands in a hash-chained vault (`.team-budget/vault.jsonl`,
-local). The month's spending, with each payment's transaction and the rail's
-limits read from the network:
+Every PolicyRail decision lands in a hash-chained vault
+(`.team-budget/vault.jsonl`, local; the day's budget holds across runs that
+share it). `TEAM_SIGNALDESK_URL` points the purchase at a local SignalDesk
+instead of the live one. The month's spending, with each payment's
+transaction and the rail's limits read from the network:
 
 ```bash
 pnpm run team:summary -- --month 2026-10

@@ -918,21 +918,26 @@ y la tienda ya ofrece esa verificación).
 ---
 
 ### R-27 · T146 se adelanta al video; SignalDesk acepta pagos desde un `policy_rail` subiendo su tope de comisión · `Vigente`
-**Fecha:** 2026-10-07 · **Tarea:** T146 · El orden y el presupuesto (0,30 por día), **decididos por el usuario**; el arreglo de SignalDesk, propuesta de Claude Code
+**Fecha:** 2026-10-07 · **Tarea:** T146 · El orden y el presupuesto (0,30 por día), **decididos por el usuario**; el arreglo de SignalDesk, propuesta de Claude Code **aprobada por el usuario** al pedir el merge, tras saber que llega a producción con él
 
 1. **T146 va antes del video** (pedido del usuario el 7-oct): cambia el orden de `R-24`, que la dejaba para
    después. Lo demás de `R-24` sigue igual.
 2. **Forma de la demo:** `pnpm run team:pay` emite credencial y Mandato del "equipo" (0,10 por compra, 0,30 por día,
-   solo `signaldesk:ai-credits-1000`, `payTo` de SignalDesk), paga desde `policyRailUcp` y deja cada decisión en un
-   MandateVault en archivo (`.team-budget/vault.jsonl`, local); cada pago se ancla con su transacción (T28).
-   `pnpm run team:summary` lee el Vault, verifica la cadena y suma el mes junto a los topes del rail leídos de la
-   red. El presupuesto del equipo vale entre corridas, porque el Vault es el libro del día.
+   solo `signaldesk:ai-credits-1000`, `payTo` de SignalDesk), paga desde `policyRailUcp` y deja cada decisión de
+   PolicyRail en un MandateVault en archivo (`.team-budget/vault.jsonl`, local); cada pago se ancla con su
+   transacción (T28). `pnpm run team:summary` lee el Vault, verifica la cadena y suma el mes junto a los topes del
+   rail leídos de la red. **Precisado tras `/revisar`:** el tope del equipo lo aplica PolicyRail fuera de la red;
+   la red aplica el del rail (5 y 10, compartido con `ucp:buy`), que no conoce el 0,30. El total del día vive en el
+   archivo del Vault: vale entre corridas que lo comparten, se reinicia si se mueve o se borra, y un archivo de
+   bloqueo impide dos corridas a la vez. Un rechazo anterior a PolicyRail (credencial revocada, producto fuera del
+   Mandato) se muestra pero no se registra, y un gasto cuyo pago falló no se libera (`M-15`).
 3. **SignalDesk acepta comisiones de hasta 200 000 stroops** (`MAX_SETTLEMENT_FEE_STROOPS`). Con el tope por defecto
    de `@x402/stellar` (50 000), su facilitador rechazaba todo pago desde un `policy_rail` (72 101 stroops, por el
    `__check_auth` del rail). Lo paga el facilitador de SignalDesk, en testnet.
 
-**Motivo.** El video puede mostrar un presupuesto de equipo aplicado dos veces (el Mandato antes de firmar, la red
-dentro de la transferencia), y el comercio propio del piloto no puede rechazar justo el pagador que AgentPey promueve.
+**Motivo.** El video puede mostrar dos topes, uno dentro del otro: el del equipo antes de firmar y el del rail en la
+red, dentro de la transferencia. Y el comercio propio del piloto no puede rechazar justo el pagador que AgentPey
+promueve.
 
 **Alternativas descartadas.** Pagar desde la cuenta clásica del agente para esquivar la comisión (sin topes en la
 red, `R-4`). Una página para el resumen (queda en la terminal; el usuario no la pidió). Un tope de comisión sin

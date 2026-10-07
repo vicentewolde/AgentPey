@@ -6,25 +6,36 @@
  * The "team" is the principal that signs the Mandate; its agent buys
  * `signaldesk:ai-credits-1000` (0.10 USDC) and pays from `policyRailUcp`, a
  * `policy_rail` that is already deployed (`R-25`: nothing new is deployed).
- * Two budgets apply, one inside the other:
+ * Two budgets apply, one inside the other, enforced in different places:
  *
- * - the **team's**, in the Mandate: 0.10 per purchase and 0.30 per UTC day,
- *   checked before anything is signed, against this script's own
- *   MandateVault — so it holds across runs, not just within one;
- * - the **rail's**, in the contract: `per_tx` and `per_day`, checked by the
- *   network inside the transfer itself.
+ * - the **team's**, in the credential and the Mandate: 0.10 per purchase and
+ *   0.30 per UTC day, checked off-chain by PolicyRail before anything is
+ *   signed. The day's total lives in this script's own MandateVault, keyed by
+ *   the agent, so it holds across runs that share that file; moving or
+ *   deleting the file starts the day over. A lock file keeps two runs from
+ *   spending against it at once.
+ * - the **rail's**, in the contract: `per_tx` and `per_day` (5 and 10 on
+ *   `policyRailUcp`, shared with `ucp:buy`), checked by the network inside the
+ *   transfer itself. The network does not know the team's 0.30.
  *
- * Every decision lands in the vault (`.team-budget/vault.jsonl`, hash-chained):
- * a grant before payment, a refusal with its code, and, once a payment
- * settles, an `anchored` entry tying it to its transaction (T28) through a
- * companion anchor in `agent_registry`. `pnpm run team:summary` reads it back.
+ * Every PolicyRail decision lands in the vault (`.team-budget/vault.jsonl`,
+ * hash-chained): a grant before payment, a daily-limit refusal with its code,
+ * and, once a payment settles, an `anchored` entry tying it to its transaction
+ * (T28) through a companion anchor in `agent_registry`. A refusal the agent
+ * raises before PolicyRail (a revoked credential, a product outside the
+ * Mandate) is printed, not recorded. `pnpm run team:summary` reads it back.
+ *
+ * Known limits: a grant whose payment failed is never released here, even
+ * when the payment provably never left (`M-15` makes that the safe side); and
+ * a payment that settles but fails to anchor stays without its `anchored`
+ * entry.
  *
  * With `--times 4` on a fresh day, three purchases settle and the fourth is
- * refused by the Mandate's daily budget before anything is signed.
+ * refused by the team's daily budget before anything is signed.
  */
-import { mkdirSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, unlinkSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { AgentPassCredential, Scope } from "@agentpass/core";
@@ -58,7 +69,7 @@ import {
 } from "@agentpey/agent";
 
 import { readEnvFile } from "./lib/env-file.js";
-import { TEAM_VAULT_PATH } from "./lib/team-summary.js";
+import { TEAM_LIMITS, TEAM_VAULT_PATH } from "./lib/team-summary.js";
 import { TESTNET } from "./lib/network.js";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -75,10 +86,18 @@ const TEAM_SCOPE: Scope = {
   actions: ["catalog:read", "intent:create"],
   venues: [SIGNALDESK_VENUE],
   assets: [USDC],
-  limits: { perTx: "0.10", perDay: "0.30", currency: "USDC" },
+  limits: { ...TEAM_LIMITS, currency: "USDC" },
 };
 
 const MAX_TIMES = 6;
+
+/** The refusals that are the team's budget at work; any other error stops the run. */
+const BUDGET_REFUSALS: ReadonlySet<string> = new Set([
+  "ScopeDailyLimitExceeded",
+  "MandateDailyLimitExceeded",
+  "ScopeAmountExceeded",
+  "MandateAmountExceeded",
+]);
 
 function parseTimes(argv: readonly string[]): number {
   const at = argv.indexOf("--times");
@@ -112,8 +131,14 @@ async function main(): Promise<void> {
   const team = Keypair.fromSecret(requireEnv(env, "ISSUER_SECRET_KEY"));
   const agentKey = Keypair.fromSecret(requireEnv(env, "AGENT_SECRET_KEY"));
   const registryId = requireEnv(env, "AGENT_REGISTRY_CONTRACT_ID");
-  // A local SignalDesk (`pnpm run signaldesk`) can stand in for the live one, e.g. to try a fix before it deploys.
-  const signaldeskUrl = (process.env["TEAM_SIGNALDESK_URL"] ?? "https://signaldesk.agentpey.com").replace(/\/+$/, "");
+  // A local SignalDesk can stand in for the live one, e.g. to try a fix before it deploys. Who gets paid does
+  // not change with it: `payTo` is still pinned by venues.json and the Mandate.
+  const signaldeskInput = process.env["TEAM_SIGNALDESK_URL"] ?? "https://signaldesk.agentpey.com";
+  const signaldeskParsed = z.url({ protocol: /^https?$/ }).safeParse(signaldeskInput);
+  if (!signaldeskParsed.success) {
+    throw new AgentPassError("ConfigError", "TEAM_SIGNALDESK_URL must be an http(s) URL", { details: { got: signaldeskInput } });
+  }
+  const signaldeskUrl = signaldeskParsed.data.replace(/\/+$/, "");
   const rail = deploymentSchema.parse(JSON.parse(await readFile(DEPLOYMENT_PATH, "utf8"))).policyRailUcp;
   if (rail.owner !== agentKey.publicKey()) {
     throw new AgentPassError("ConfigError", "AGENT_SECRET_KEY is not the owner of policyRailUcp", {
@@ -122,10 +147,26 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(dirname(TEAM_VAULT_PATH), { recursive: true });
+  // The file vault is read once into memory: a second run at the same time would spend against a stale total
+  // and fork the hash chain. One run at a time.
+  const lockPath = `${TEAM_VAULT_PATH}.lock`;
+  let lock: number;
+  try {
+    lock = openSync(lockPath, "wx");
+  } catch (error) {
+    throw new AgentPassError("ConfigError", "another team:pay is running (or one crashed): remove the lock file if not", {
+      cause: error,
+      details: { lock: relative(REPO_ROOT, lockPath) },
+    });
+  }
+  process.on("exit", () => {
+    closeSync(lock);
+    unlinkSync(lockPath);
+  });
   const vault = createFileMandateVault({ path: TEAM_VAULT_PATH });
   const integrity = vault.verify();
   if (!integrity.ok) {
-    throw new AgentPassError("VaultCorrupted", "the team's vault does not verify; refusing to spend against it", { details: { path: TEAM_VAULT_PATH } });
+    throw new AgentPassError("VaultCorrupted", "the team's vault does not verify; refusing to spend against it", { details: { path: relative(REPO_ROOT, TEAM_VAULT_PATH) } });
   }
 
   const teamDid = stellarAddressToDid(team.publicKey(), "testnet");
@@ -137,7 +178,7 @@ async function main(): Promise<void> {
   line("servicio", `${PRODUCT_ID} en ${signaldeskUrl}`);
   line("tope del equipo", `${TEAM_SCOPE.limits.perTx} por compra, ${TEAM_SCOPE.limits.perDay} por día (Mandato)`);
   line("tope del rail", `${rail.perTx} por compra, ${rail.perDay} por día (red, ${rail.contractId})`);
-  line("vault", `${TEAM_VAULT_PATH} (${vault.list().length} registros, cadena válida)`);
+  line("vault", `${relative(REPO_ROOT, TEAM_VAULT_PATH)} (${vault.list().length} registros, cadena válida)`);
 
   const agentpass = await createAgentPass({
     contractId: registryId,
@@ -199,11 +240,12 @@ async function main(): Promise<void> {
     try {
       intent = (await agent.tools.invoke("create_purchase_intent", { product_id: PRODUCT_ID, quantity: 1 })) as CreatePurchaseIntentResult;
     } catch (error) {
-      if (isAgentPassError(error)) {
+      if (isAgentPassError(error) && BUDGET_REFUSALS.has(error.code)) {
         line("rechazada", `${error.code}: ${error.message}`);
         line("firmado", "nada: el presupuesto del equipo la rechazó antes de firmar o pagar");
         continue;
       }
+      // Anything else (a revoked credential, the network) is not the budget speaking: stop and say what it was.
       throw error;
     }
     line("intent", intent.intent_id);

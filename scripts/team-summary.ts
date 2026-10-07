@@ -11,7 +11,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
@@ -20,12 +20,11 @@ import { z } from "zod";
 
 import { createFileMandateVault } from "@agentpey/vault";
 
-import { currentMonth, fromUnits, summarizeMonth, TEAM_VAULT_PATH, toUnits } from "./lib/team-summary.js";
+import { currentMonth, fromUnits, summarizeMonth, TEAM_LIMITS, TEAM_VAULT_PATH, toUnits } from "./lib/team-summary.js";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEPLOYMENT_PATH = resolve(REPO_ROOT, "deployments/testnet.json");
 const RPC_URL = "https://soroban-testnet.stellar.org";
-const TEAM_PER_DAY = "0.30";
 const SECONDS_PER_DAY = 86_400;
 
 interface RailReads {
@@ -67,13 +66,13 @@ async function readRail(contractId: string): Promise<{ perTx: string; perDay: st
 async function main(): Promise<void> {
   const month = parseMonth(process.argv.slice(2));
   if (!existsSync(TEAM_VAULT_PATH)) {
-    throw new AgentPassError("ConfigError", "no team vault yet: run pnpm run team:pay first", { details: { path: TEAM_VAULT_PATH } });
+    throw new AgentPassError("ConfigError", "no team vault yet: run pnpm run team:pay first", { details: { path: relative(REPO_ROOT, TEAM_VAULT_PATH) } });
   }
   const vault = createFileMandateVault({ path: TEAM_VAULT_PATH });
   const integrity = vault.verify();
 
   process.stdout.write(`\nAgentPey · gastos del equipo · ${month}\n\n`);
-  line("vault", `${TEAM_VAULT_PATH}`);
+  line("vault", relative(REPO_ROOT, TEAM_VAULT_PATH));
   if (!integrity.ok) {
     line("cadena", "NO verifica: el archivo se editó después de escrito. No se muestra ningún total.");
     process.exitCode = 1;
@@ -99,8 +98,8 @@ async function main(): Promise<void> {
 
   process.stdout.write("\nTotales\n");
   line("gastado", `${summary.spent} ${summary.currency ?? "USDC"} en ${settled.length} ${settled.length === 1 ? "pago" : "pagos"}, ${summary.activeDays} ${summary.activeDays === 1 ? "día" : "días"} con gasto`);
-  const ceiling = toUnits(TEAM_PER_DAY) * BigInt(summary.activeDays);
-  line("tope del equipo", `${TEAM_PER_DAY} por día (Mandato): ${fromUnits(ceiling)} como máximo en esos días`);
+  const ceiling = toUnits(TEAM_LIMITS.perDay) * BigInt(summary.activeDays);
+  line("tope del equipo", `${TEAM_LIMITS.perDay} por día (credencial y Mandato, fuera de la red): ${fromUnits(ceiling)} como máximo en esos días`);
 
   const deployment = z
     .object({ policyRailUcp: z.object({ contractId: z.string() }) })

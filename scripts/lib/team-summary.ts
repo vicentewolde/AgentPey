@@ -42,6 +42,9 @@ export interface MonthSummary {
   readonly activeDays: number;
 }
 
+/** The team's budget for its agent (decided by the user for T146), shared by `team:pay` and `team:summary`. */
+export const TEAM_LIMITS = { perTx: "0.10", perDay: "0.30" } as const;
+
 /** Where `team:pay` keeps the team's vault and `team:summary` reads it. Local, never versioned. */
 export const TEAM_VAULT_PATH = resolve(fileURLToPath(new URL("../..", import.meta.url)), ".team-budget/vault.jsonl");
 

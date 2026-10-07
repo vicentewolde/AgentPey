@@ -8358,3 +8358,16 @@ SignalDesk local con el arreglo. `pnpm check` verde.
 Pendiente: `/revisar`, push, PR y merge con OK; después del deploy, una compra contra SignalDesk en producción.
 Ojo: el lector de entorno de SignalDesk ignora variables vacías, así que `DATABASE_URL=` no la deja en memoria.
 `AGENTS.md`: sin cambios. Exponential: ticket T146 a `IN_PROGRESS`.
+
+## 2026-10-07 (8) — cc/t146-presupuesto-equipo
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T146 sin bloqueantes. Corregido: los textos ya no dicen que la red aplica el tope del equipo (lo
+aplica PolicyRail; la red aplica el del rail), archivo de bloqueo contra dos `team:pay` a la vez, solo los rechazos
+de tope se muestran como del presupuesto, `TEAM_LIMITS` en un solo lugar, URL validada, test de que el gasto del día
+sobrevive a reabrir el Vault. El arreglo de SignalDesk, aprobado por el usuario al pedir el merge (`R-27`). Push, PR
+y merge con OK.
+
+Pendiente: tras el deploy, `pnpm run team:pay -- --times 4` contra SignalDesk en producción (mañana, con el día
+nuevo) para marcar el criterio de T146 y grabar la escena. `AGENTS.md`: sin cambios. Exponential: T146 a `QA`.
