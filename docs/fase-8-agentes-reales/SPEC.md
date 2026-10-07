@@ -353,8 +353,8 @@ más rápido que lo estimado.
 - **Depende de:** T128 (para la sección del conector)
 - **Descripción:** en `agentpey.com`: las tiendas del directorio (`GET /api/comercios`) con su perfil UCP, el último recibo verificado de cada una y cómo conectar el conector. En inglés por defecto y español neutro.
 - **Hecho cuando:**
-  - [ ] la página lista las tiendas reales y cada recibo enlaza a su verificación (probado en local, [evidencia](evidencia/T141.md) §2 y §3; se marca al verla en agentpey.com)
-  - [ ] no muestra nada que no salga del directorio o de la red (directorio, `receipt-registry` y Horizon; el texto del conector es fijo; `R-26`; se marca al verla en agentpey.com)
+  - [x] la página lista las tiendas reales y cada recibo enlaza a su verificación ([agentpey.com/tiendas](https://agentpey.com/tiendas), [evidencia](evidencia/T141.md) §2, §3 y §7)
+  - [x] no muestra nada que no salga del directorio o de la red (directorio, `receipt-registry` y Horizon; el texto del conector es fijo; `R-26`)
 
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)

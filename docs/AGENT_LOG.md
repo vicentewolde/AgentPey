@@ -8333,3 +8333,14 @@ reconstrucción falla se sirve la última respuesta. `R-26` precisado. Push, PR 
 
 Pendiente: ver `/tiendas` en agentpey.com tras el deploy y marcar los dos criterios del spec y el ticket `DONE`.
 `AGENTS.md`: sin cambios. Exponential: T141 a `QA` con el PR.
+
+## 2026-10-07 (6) — cc/t141-cierre
+
+Agente: Claude Code.
+
+Qué: T141 cerrada. PR #67 mergeado (fast-forward) y en vivo en agentpey.com/tiendas unos 3 minutos después: tres
+tiendas, cada una con su último recibo anclado. Criterios del spec marcados, ticket `DONE`.
+
+Pendiente: el reembolso real de T124 (8 o 9-oct, con pasos del usuario), T130 cuando haya tienda de terceros, T142
+con el código congelado el 10-oct; después T146 y T144; al final T138, T139 y T140 (`R-24`). `AGENTS.md`: sin
+cambios. Exponential: ticket T141 a `DONE` con el PR #67.

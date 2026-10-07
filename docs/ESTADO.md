@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-07
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T143 · Más wallets que Freighter: Freighter y xBull en las cinco pantallas de firma, LOBSTR en las de solo mensaje, probado por el usuario en agentpey.com (`R-23`)
-**Siguiente paso:** ver `/tiendas` en agentpey.com tras el deploy y cerrar T141. Después, el orden de `R-24`: el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T146 y T144 si alcanzan; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** T141 · Página "Tiendas comprables por agentes", en vivo en agentpey.com/tiendas (`R-26`)
+**Siguiente paso:** el orden de `R-24`: el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T146 y T144 si alcanzan; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -27,7 +27,7 @@
 | T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
 | T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
 | T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
-| T141 Página "Tiendas comprables por agentes" | para el video | 👀 en revisión: `/tiendas` (alias `/stores`) lista las tres tiendas del directorio con su perfil UCP, sus recibos anclados y el último, leído de Horizon y confirmado en el registro (`R-26`); probada en local contra la red real; falta verla en agentpey.com | [PR #67](https://github.com/vicentewolde/AgentPey/pull/67) |
+| T141 Página "Tiendas comprables por agentes" | para el video | ✅ terminada, en vivo en [agentpey.com/tiendas](https://agentpey.com/tiendas): `/tiendas` (alias `/stores`) lista las tres tiendas del directorio con su perfil UCP, sus recibos anclados y el último, leído de Horizon y confirmado en el registro (`R-26`); probada contra la red real | [PR #67](https://github.com/vicentewolde/AgentPey/pull/67) |
 | T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); el corte del 7-oct no se aplica (`R-24`) | |

@@ -40,7 +40,7 @@ El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLay
 Trustless Work (T138, T139) para el final de la fase (`R-24`). **T145 cerrada**:
 un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño, y T146 se construye después del
-video sobre un rail ya desplegado (`R-25`). **T141 en revisión**: `agentpey.com/tiendas`
+video sobre un rail ya desplegado (`R-25`). **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
 muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`).
 
 | Tarea | Estado |
@@ -58,7 +58,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T138 Prueba técnica: GenLayer | pendiente, al final de la fase (`R-24`) |
 | T139 Prueba técnica: Trustless Work | pendiente, al final de la fase (`R-24`) |
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
-| T141 Página de tiendas | en revisión |
+| T141 Página de tiendas | cerrada |
 | T142 Guion y grabación | pendiente |
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
