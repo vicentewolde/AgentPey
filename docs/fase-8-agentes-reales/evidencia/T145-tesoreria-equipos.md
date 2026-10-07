@@ -166,5 +166,5 @@ emisor; Cards402 se declara software y no un *money services business*.
 
 ## 8. Decisión del usuario
 
-- [ ] ¿Se construye T146 como en la recomendación 1?
-- [ ] ¿El camino B queda solo como diseño?
+- [x] ¿Se construye T146 como en la recomendación 1? **Sí** (usuario, 2026-10-07, `R-25`)
+- [x] ¿El camino B queda solo como diseño? **Sí** (usuario, 2026-10-07, `R-25`)

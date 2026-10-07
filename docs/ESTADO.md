@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-07
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T143 · Más wallets que Freighter: Freighter y xBull en las cinco pantallas de firma, LOBSTR en las de solo mensaje, probado por el usuario en agentpey.com (`R-23`)
-**Siguiente paso:** decisión del usuario sobre T145 (¿T146 sí?, ¿suscripciones solo diseño?) y `/revisar`. Después, el orden de `R-24`: el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T141, T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T146 y T144 si alcanzan; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** el orden de `R-24`: el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T141, T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T146 y T144 si alcanzan; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -31,8 +31,8 @@
 | T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); el corte del 7-oct no se aplica (`R-24`) | |
-| T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | 👀 en revisión: cobro por uso viable en testnet con lo que existe; suscripciones sin emisor recomendable (Cards402 prohíbe cobros recurrentes, ASGCard no publica términos ni KYC); recomienda T146 sin desplegar nada nuevo. Espera la decisión del usuario | `cc/t145-tesoreria-equipos` |
-| T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, pide aprobación tras T145 | |
+| T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | 👀 en revisión: cobro por uso viable en testnet con lo que existe; suscripciones sin emisor recomendable (Cards402 prohíbe cobros recurrentes, ASGCard no publica términos ni KYC); el usuario aprobó T146 sin desplegar nada nuevo y las suscripciones solo como diseño (`R-25`) | `cc/t145-tesoreria-equipos` |
+| T146 Demo de presupuesto de equipo | se corta segundo | ⏳ pendiente, aprobada por el usuario (`R-25`), después del video | |
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
 | T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20; compra real `ord_muvlkwxp66c0327a66` con `customerAcceptsMarketing` en Shopify | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |

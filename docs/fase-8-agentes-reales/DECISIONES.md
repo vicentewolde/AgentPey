@@ -854,3 +854,25 @@ aparte que como pruebas técnicas apuradas antes del video.
 
 **Alternativas descartadas.** Aplicar la línea de corte tal como estaba
 (T140, T146, T137, T144…). Hacer T138 y T139 el 8-oct como decía el calendario.
+
+---
+
+### R-25 · T146 se construye sobre un rail ya desplegado; las suscripciones con tarjeta quedan solo como diseño · `Vigente`
+**Fecha:** 2026-10-07 · **Tarea:** T145 · Recomendación de Claude Code, **aprobada por el usuario**
+
+La prueba técnica de T145 ([evidencia](evidencia/T145-tesoreria-equipos.md)) concluyó que el cobro por uso ya
+funciona desde un `policy_rail` en testnet, y que no hay un emisor de tarjetas fondeado desde Stellar que se pueda
+recomendar para suscripciones. Se decide:
+
+1. **T146 se construye**, después del video (`R-24`): `policyRailUcp` paga `signaldesk:ai-credits-1000` en testnet,
+   con recibo, y un script nuevo arma el resumen de gastos del mes desde el Vault y `packages/activity`. **No se
+   despliega nada nuevo** y no se tocan contratos.
+2. **El camino de suscripciones queda como diseño**: una tarjeta se carga desde el rail, pero lo que compra queda
+   fuera del Mandato y del recibo.
+
+**Motivo.** Cards402 prohíbe los cobros recurrentes en su contrato del titular y ASGCard no publica términos, KYC
+ni banco emisor; reutilizar un rail existente basta para mostrar un presupuesto de equipo aplicado por la red.
+
+**Alternativas descartadas.** Un rail nuevo para el equipo (un despliegue más, sin nada que mostrar que el existente
+no muestre). Integrar Cards402 para compras de una vez (no responde la pregunta de las suscripciones y mueve dinero
+real en mainnet).

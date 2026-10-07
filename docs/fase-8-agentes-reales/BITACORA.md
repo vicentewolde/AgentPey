@@ -59,7 +59,7 @@ Trustless Work (T138, T139) para el final de la fase (`R-24`).
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | en revisión, espera la decisión del usuario |
-| T146 Demo de presupuesto de equipo | pendiente (pide aprobación) |
+| T146 Demo de presupuesto de equipo | pendiente, aprobada (`R-25`) |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |
@@ -644,5 +644,6 @@ del agente en la versión hospedada cuenta como custodia.
 
 **Recomendación.** Construir T146 después del video, reutilizando
 `policyRailUcp` para pagar créditos de SignalDesk en testnet y armando el
-resumen del mes, sin desplegar nada nuevo. Espera la decisión del usuario.
+resumen del mes, sin desplegar nada nuevo. **El usuario la aprobó**, y las
+suscripciones quedan solo como diseño (`R-25`).
 
