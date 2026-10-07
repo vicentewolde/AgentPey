@@ -41,6 +41,27 @@ one line per check:
 pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --profile-only
 ```
 
+## A team budget on the network
+
+A team gives its agent a budget, and the agent spends it on a pay-per-use
+service: `signaldesk:ai-credits-1000` (0.10 USDC), paid from an already
+deployed `policy_rail`. The team's Mandate allows 0.10 per purchase and 0.30
+per UTC day; the rail's own limits are enforced by the network inside the
+transfer. With four purchases on a fresh day, three settle and the fourth is
+refused before anything is signed:
+
+```bash
+pnpm run team:pay -- --times 4
+```
+
+Every decision lands in a hash-chained vault (`.team-budget/vault.jsonl`,
+local). The month's spending, with each payment's transaction and the rail's
+limits read from the network:
+
+```bash
+pnpm run team:summary -- --month 2026-10
+```
+
 ## Vitrinee: real stores join without writing code
 
 AgentPey is the **buyer** with rules: identity, a signed Mandate, a

@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       "@agentpass/core": fileURLToPath(new URL("./packages/core/src/index.ts", import.meta.url)),
       "@agentpass/sdk": fileURLToPath(new URL("./packages/sdk/src/index.ts", import.meta.url)),
+      "@agentpey/vault": fileURLToPath(new URL("./packages/vault/src/index.ts", import.meta.url)),
     },
   },
   test: {

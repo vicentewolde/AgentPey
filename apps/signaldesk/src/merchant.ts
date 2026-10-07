@@ -349,12 +349,25 @@ export interface StartOptions {
   readonly store?: SignalDeskStore;
 }
 
+/**
+ * The most network fee, in stroops, this merchant's facilitator will pay to
+ * settle one payment. `@x402/stellar` defaults to 50 000, enough for a classic
+ * account; a payment from a `policy_rail` runs the rail's `__check_auth` (its
+ * limits, inside the transfer) and simulated at 72 101 on testnet on
+ * 2026-10-07 (T146), so the default refused every rail. 200 000 (0.02 XLM,
+ * paid by the facilitator, testnet only) leaves room without letting a payer
+ * make settlement arbitrarily expensive.
+ */
+export const MAX_SETTLEMENT_FEE_STROOPS = 200_000;
+
 export function createSignalDeskServer(input: SignalDeskConfig, options: StartOptions = {}): Server {
   const config = signalDeskConfigSchema.parse(input);
   const store = options.store ?? createMemoryStore();
   const facilitator = new x402Facilitator().register(
     STELLAR_TESTNET_CAIP2,
-    new ExactStellarScheme([createEd25519Signer(config.facilitatorSecret, STELLAR_TESTNET_CAIP2)]),
+    new ExactStellarScheme([createEd25519Signer(config.facilitatorSecret, STELLAR_TESTNET_CAIP2)], {
+      maxTransactionFeeStroops: MAX_SETTLEMENT_FEE_STROOPS,
+    }),
   );
 
   return createServer((request, response) => {

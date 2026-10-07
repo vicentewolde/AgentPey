@@ -63,7 +63,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
-| T146 Demo de presupuesto de equipo | pendiente, aprobada (`R-25`) |
+| T146 Demo de presupuesto de equipo | en revisión |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |
@@ -670,4 +670,22 @@ que el código no esperaba, y la tienda salía como "no disponible"; corregido y
 estiraba las tarjetas; corregido.
 
 Evidencia: [`evidencia/T141.md`](evidencia/T141.md).
+
+---
+
+## T146 · Demo: presupuesto de equipo en testnet — 2026-10-07
+
+**Qué quedó funcionando.** Un equipo le da a su agente un presupuesto y el agente lo gasta en un servicio que cobra
+por uso: créditos de IA de SignalDesk, a 0,10 USDC, pagados desde un `policy_rail` que ya estaba desplegado. El
+equipo permite 0,10 por compra y 0,30 por día. Con cuatro compras en un día, tres se pagan, cada una con su recibo y
+su transacción anclada, y la cuarta se rechaza antes de firmar nada. Un segundo comando muestra los gastos del mes:
+cada pago con su transacción, el rechazo con su motivo, el total frente al presupuesto y los topes del rail leídos de
+la red. Se adelantó al video a pedido del usuario (`R-27`).
+
+**Lo que apareció.** SignalDesk, el comercio propio del piloto, rechazaba todo pago desde un `policy_rail`: su
+facilitador aceptaba como máximo 50 000 stroops de comisión y un pago desde el rail cuesta unos 72 000, porque el
+contrato revisa sus topes dentro de la transferencia. No se movió dinero. Se subió el máximo a 200 000 y se probó con
+SignalDesk en local; producción queda arreglada con el merge.
+
+Evidencia: [`evidencia/T146.md`](evidencia/T146.md).
 

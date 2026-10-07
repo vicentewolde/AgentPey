@@ -50,6 +50,8 @@
     "exp:sync": "tsx --tsconfig tsconfig.scripts.json scripts/exponential/sync-board.ts",
     "mcp:setup": "tsx --tsconfig tsconfig.scripts.json scripts/mcp-setup.ts",
     "ucp:buy": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-buy.ts",
+    "team:pay": "tsx --tsconfig tsconfig.scripts.json scripts/team-budget.ts",
+    "team:summary": "tsx --tsconfig tsconfig.scripts.json scripts/team-summary.ts",
     "ucp:probe-per-tx": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-probe-per-tx.ts",
     "ucp:conformance": "tsx --tsconfig tsconfig.scripts.json scripts/vitrinee/ucp-conformance/run.ts",
     "ucp:stellar:conformance": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-stellar-conformance/run.ts",

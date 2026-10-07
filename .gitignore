@@ -36,3 +36,6 @@ credential.jws
 
 # The official UCP conformance suite, cloned by pnpm run ucp:conformance (T131)
 .ucp-conformance/
+
+# The team's MandateVault from pnpm run team:pay (T146): local evidence, never versioned
+.team-budget/

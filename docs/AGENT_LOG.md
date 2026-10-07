@@ -8344,3 +8344,17 @@ tiendas, cada una con su último recibo anclado. Criterios del spec marcados, ti
 Pendiente: el reembolso real de T124 (8 o 9-oct, con pasos del usuario), T130 cuando haya tienda de terceros, T142
 con el código congelado el 10-oct; después T146 y T144; al final T138, T139 y T140 (`R-24`). `AGENTS.md`: sin
 cambios. Exponential: ticket T141 a `DONE` con el PR #67.
+
+## 2026-10-07 (7) — cc/t146-presupuesto-equipo (sin push)
+
+Agente: Claude Code.
+
+Qué: T146, adelantada al video a pedido del usuario (`R-27`). `pnpm run team:pay` y `team:summary`
+(`scripts/team-budget.ts`, `scripts/team-summary.ts`, `scripts/lib/team-summary.ts`): Mandato del equipo 0,10/0,30,
+pago desde `policyRailUcp`, Vault en `.team-budget/` (ignorado por git). Arreglo en SignalDesk: tope de comisión del
+facilitador a 200 000 stroops (rechazaba todo pago desde un rail). Tres pagos reales de 0,10 y un rechazo, contra
+SignalDesk local con el arreglo. `pnpm check` verde.
+
+Pendiente: `/revisar`, push, PR y merge con OK; después del deploy, una compra contra SignalDesk en producción.
+Ojo: el lector de entorno de SignalDesk ignora variables vacías, así que `DATABASE_URL=` no la deja en memoria.
+`AGENTS.md`: sin cambios. Exponential: ticket T146 a `IN_PROGRESS`.
