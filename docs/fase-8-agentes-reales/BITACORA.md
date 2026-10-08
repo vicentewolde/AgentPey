@@ -68,7 +68,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |
-| T150 Pulido del MCP | en revisión |
+| T150 Pulido del MCP | cerrada |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -700,4 +700,8 @@ sola compra: una cotización, una firma del agente y un solo pago. Y al leer una
 transacción del pago, para que el chat no lo arme a mano. La firma del reclamo no cambió (`R-28`).
 
 Evidencia: [`evidencia/T150.md`](evidencia/T150.md).
+
+**Cierre de T150 (8-oct).** Desde Claude, en producción: cotizó un carrito de imán y posavasos y, al pedírselo, lo
+pagó él mismo, en una sola transacción, con el recibo verificado. Para que entrara en el tope del MCP, el usuario
+rebajó el posavasos a 990 CLP.
 

@@ -363,7 +363,7 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] `get_order` trae `receipt.explorer_url` de la transacción del pago (test sin red; [evidencia](evidencia/T150.md))
   - [x] `quote` con `items` (1 a 10 líneas) abre un solo checkout y `pay` lo paga con un solo pago; con `product_id` funciona como antes; nombrar los dos, o ninguno, es un error (tests sin red; [evidencia](evidencia/T150.md))
-  - [ ] una cotización de carrito desde Claude en `mcp.agentpey.com`, tras el deploy
+  - [x] una cotización de carrito desde Claude en `mcp.agentpey.com`, tras el deploy (8-oct: imán y posavasos, pagado; `ord_muzwp0qecb2904cfc8`, [evidencia](evidencia/T150.md) §5)
 
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)

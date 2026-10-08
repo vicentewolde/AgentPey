@@ -8420,3 +8420,13 @@ eso deja cada deploy en 503 y convierte una app que no sube en una caída total,
 
 Pendiente: health check del gateway y `healthCheckPath` en Render (con OK del usuario), después del 12-oct.
 `AGENTS.md`: sin cambios. Exponential: sin ticket.
+## 2026-10-08 (3) — cc/t150-cierre
+
+Agente: Claude Code.
+
+Qué: T150 cerrada. En claude.ai, tras el arreglo del incidente (`P-17`), Claude cotizó un carrito (imán y posavasos,
+2 480 CLP, 2,6105264 USDC) y lo pagó él mismo al pedírselo: `ord_muzwp0qecb2904cfc8`, recibo con firma, ancla y pago
+en verde. Observación: hasta ahora Claude no llamaba a `pay` (`R-11`). El posavasos quedó en 990 CLP en Shopify.
+
+Pendiente: `/revisar` y merge de `cc/gateway-puerto-primero` con OK; el reembolso real de T124; T130; T142.
+`AGENTS.md`: sin cambios. Exponential: T150 sin ticket propio (`SYNC.md` en `DONE`).

@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-08
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T146 · Demo de presupuesto de equipo, en producción contra SignalDesk (`R-27`)
-**Siguiente paso:** una cotización de carrito desde Claude en mcp.agentpey.com para cerrar T150. Luego el orden de `R-24` (T146 se adelantó, `R-27`): el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T144 si alcanza; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** T150 · Pulido del MCP: Claude compró un carrito en producción (`R-28`)
+**Siguiente paso:** el orden de `R-24` (T146 se adelantó, `R-27`): el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T144 si alcanza; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -36,7 +36,7 @@
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
 | T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20; compra real `ord_muvlkwxp66c0327a66` con `customerAcceptsMarketing` en Shopify | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |
-| T150 Pulido del MCP para el video (`R-28`) | para el video | 👀 en revisión: `quote` acepta un carrito (`items`, un solo pago) y `get_order` trae `receipt.explorer_url`; falta una cotización de carrito desde Claude tras el deploy | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
+| T150 Pulido del MCP para el video (`R-28`) | para el video | ✅ terminada: Claude cotizó y pagó un carrito (imán y posavasos) en `mcp.agentpey.com`, `ord_muzwp0qecb2904cfc8`, recibo con los tres checks; `get_order` trae el enlace al pago | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 
@@ -65,6 +65,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción (pide un contrato nuevo, fuera de alcance). Brecha 14: es parte de T134.
 - T128 (PR 2): el servidor guarda en memoria qué tokens de renovación ya se usaron; tras un reinicio, uno usado sirve una vez más hasta vencer (una semana). Y el rail `mcp` tiene como principal la misma cuenta que cobra en `agentcommerce` y `mycokit`.
 - T131: la memoria de `Idempotency-Key` vive en el proceso un día, con tope (`VT-42`); tras un reinicio, o con dos creaciones simultáneas con la misma clave, puede quedar otra sesión `incomplete` (nunca un segundo cobro). La simulación de despacho de la tienda de conformidad solo comprueba el secreto; el evento llega con T147. Y conformance#116 abierto en la suite: cuando lo corrijan, se quita el renombre de `locality` de la tienda de prueba.
+- 8-oct: Claude llamó a `pay` él mismo al pedírselo (T150); hasta ahora no lo hacía (`R-11`). Observación, sin cambiar la decisión. El posavasos de agentcommerce quedó en 990 CLP para el video.
 - T129 (`/revisar`): resuelto en T150 (`get_order` trae `receipt.explorer_url`). Y el disco local estuvo al 100 % durante `pnpm check` (`ENOSPC`): liberar espacio antes de T131.
 - T128 (`/revisar` del PR 1, sugerencias que quedaron): un pago incierto no se reintenta con la misma clave (la cotización ya se consumió); `recheck` apagado por defecto en `payUcpQuote`; la relectura no compara el id del checkout; una cotización con fecha inválida no vence; la tienda por primera etiqueta no avisa ambigüedad; `open_claim` no comprueba que el rail del MCP pagó el recibo (el árbitro sí); total 0 si la tienda no manda línea `total`; `start` apunta a `main.ts` (llega en el PR 2) y tres dependencias sin usar; tests con `any`.
 - T132: `signReceipt` todavía lanza un error de zod, no un `VitrineeError`, cuando los datos no cumplen el esquema (ya era así). Y "un pago, un recibo" vale dentro de un proceso: `vitrinee.orders` no tiene índice único sobre el hash del pago (`VT-40`); hace falta si un comercio llega a tener más de un proceso.
