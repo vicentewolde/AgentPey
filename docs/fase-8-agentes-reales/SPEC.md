@@ -378,8 +378,8 @@ más rápido que lo estimado.
 - **Prioridad:** para el video · **Estimación:** 3 h · **Delegable a Codex:** no (narrativa)
 - **Descripción:** la portada cuenta la Fase 8: Claude y ChatGPT comprando, UCP, AP2, el SDK, el kit de conformidad, las disputas con reembolso real y el presupuesto de equipo, cada pieza con su enlace a la evidencia o a una página en vivo; números del hero que no se escriben a mano; navegación con "En vivo" y "Tiendas". Inglés por defecto y español neutro con tú, sin "—".
 - **Hecho cuando:**
-  - [ ] la portada nombra cada pieza de la Fase 8 con un enlace que funciona
-  - [ ] ningún número de la portada queda desactualizado al crecer el repo
+  - [x] la portada nombra cada pieza de la Fase 8 con un enlace que funciona ([evidencia](evidencia/T152.md))
+  - [x] ningún número de la portada queda desactualizado al crecer el repo (los del hero se leen de `/api/live`; test en `public-pages.test.ts`)
 
 #### T153 · Página del presupuesto de equipo (`R-29`)
 - **Prioridad:** para el video · **Estimación:** 3 h · **Delegable a Codex:** no

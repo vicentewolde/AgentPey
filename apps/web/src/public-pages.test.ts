@@ -76,6 +76,17 @@ describe("the static pages", () => {
     expect(html).toContain('href="/tiendas"');
   });
 
+  // T152: the landing's numbers are read live, never written by hand, and it points at the live pages.
+  it("landing.html reads its hero numbers from /api/live and links to /en-vivo", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "landing.html"), "utf8");
+    expect(html).toContain('fetch("/api/live"');
+    for (const id of ["live-stores", "live-purchases", "live-usdc", "live-disputes"]) expect(html).toContain(`id="${id}">…</b>`);
+    expect(html).not.toMatch(/id="stat-(tests|commits)"/);
+    expect(html).toContain('href="/en-vivo"');
+    expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+    expect(html).not.toContain("\u2014");
+  });
+
   // T151: the live feed renders what /api/live returns, which carries text from stores and receipts: never as HTML.
   it("en-vivo.html polls /api/live and never writes what it reads as HTML", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "en-vivo.html"), "utf8");

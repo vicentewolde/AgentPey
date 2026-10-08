@@ -70,7 +70,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T149 Consentimiento | cerrada |
 | T150 Pulido del MCP | cerrada |
 | T151 Página En vivo | en revisión |
-| T152 Portada al día | pendiente |
+| T152 Portada al día | en revisión |
 | T153 Página del presupuesto de equipo | pendiente |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
@@ -736,4 +736,16 @@ contratos en Stellar, y los productos y el pago, del recibo firmado por la tiend
 (`R-30`). La página solo muestra disputas; no abre ni resuelve ninguna.
 
 Evidencia: [`evidencia/T151.md`](evidencia/T151.md).
+
+---
+
+## T152 · Portada de agentpey.com al día — 2026-10-08
+
+**Qué quedó.** La portada cuenta lo que AgentPey hace hoy: agentes de IA comprando en tiendas reales, con topes que
+aplica la red. Sus números ya no se escriben a mano: tiendas, compras, USDC pagados y reclamos resueltos se leen en
+vivo de la red, igual que en `/en-vivo`. Una sección nueva muestra cada pieza de la Fase 8 con su enlace (el
+conector para Claude y ChatGPT, las tiendas UCP, AP2, las disputas con reembolso real, el presupuesto de equipo y
+el SDK en npm), y la sección de estado dice que van siete fases listas y la octava en curso.
+
+Evidencia: [`evidencia/T152.md`](evidencia/T152.md).
 

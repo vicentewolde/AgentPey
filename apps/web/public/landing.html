@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en" data-title-en="AgentPey · payment infrastructure for AI agents" data-title-es="AgentPey · infraestructura de pagos para agentes de IA">
+<html lang="en" data-title-en="AgentPey · AI agents buying on Stellar" data-title-es="AgentPey · agentes de IA comprando en Stellar">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AgentPey · payment infrastructure for AI agents</title>
-<meta name="description" content="AgentPey is payment infrastructure for AI agents: a provable identity, a spending limit Stellar enforces on-chain, and control you can pull from outside the agent. Live on Stellar testnet, paying real x402 charges." />
+<title>AgentPey · AI agents buying on Stellar</title>
+<meta name="description" content="AI agents buying at real stores on Stellar testnet: Claude and ChatGPT pay in USDC through UCP, a smart contract caps every payment, every receipt is signed and anchored, and refund claims end in a verdict on-chain." />
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -278,6 +278,9 @@
     border-top: 1px solid var(--rule-c);
   }
   .stats.hero-stats { margin-top: 48px; padding-top: 30px; }
+  .stats-note { margin: 14px 0 0; font-size: 12.5px; color: var(--fg-3); }
+  .stats-note a { color: var(--fg-2); }
+  .cta-note code { font-family: var(--mono); font-size: 0.92em; overflow-wrap: anywhere; }
   .stat b {
     display: block;
     font-family: var(--serif);
@@ -439,6 +442,7 @@
       <a href="#evidence"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></a>
       <a href="#bazaar"><span data-tr="en">Bazaar</span><span data-tr="es">Bazaar</span></a>
       <a href="#status"><span data-tr="en">Status</span><span data-tr="es">Estado</span></a>
+      <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
       <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
     </nav>
     <div class="utils">
@@ -458,58 +462,178 @@
   <header class="hero">
     <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
     <h1>
-      <span data-tr="en">Payment infrastructure for AI agents: <em>control</em>, identity, and protection.</span>
-      <span data-tr="es">Infraestructura de pagos para agentes de IA: <em>control</em>, identidad y protección.</span>
+      <span data-tr="en">AI agents buying at real stores, with <em>limits</em> the network enforces.</span>
+      <span data-tr="es">Agentes de IA comprando en tiendas reales, con <em>límites</em> que aplica la red.</span>
     </h1>
     <p class="sub">
-      <span data-tr="en">A signed credential proves you're the owner of your agent. The Stellar network verifies that every x402 payment is authorized and stays within what's allowed.</span>
-      <span data-tr="es">Una credencial firmada prueba que eres el dueño de tu agente. La red Stellar verifica que cada pago x402 esté autorizado y cumpla lo permitido.</span>
+      <span data-tr="en">Claude and ChatGPT shop at stores that speak UCP and pay in USDC on Stellar. A smart contract caps every payment inside the transfer itself, every receipt is signed and anchored, and a refund claim ends in a verdict on-chain.</span>
+      <span data-tr="es">Claude y ChatGPT compran en tiendas que hablan UCP y pagan en USDC sobre Stellar. Un contrato inteligente topa cada pago dentro de la transferencia misma, cada recibo queda firmado y anclado, y un reclamo termina en un veredicto en la red.</span>
     </p>
     <div class="cta-row">
-      <a class="btn" href="https://realops.agentpey.com">
-        <span data-tr="en">Watch it pay, live →</span>
-        <span data-tr="es">Míralo pagar, en vivo →</span>
+      <a class="btn" href="/en-vivo">
+        <span data-tr="en">See agents buying, live →</span>
+        <span data-tr="es">Mira a los agentes comprar, en vivo →</span>
       </a>
       <p class="cta-note">
-        <span data-tr="en">Hire an agent on RealOps and sign its Mandate here with your Stellar wallet, on testnet.</span>
-        <span data-tr="es">Contrata un agente en RealOps y firma su Mandato aquí con tu wallet de Stellar, en testnet.</span>
+        <span data-tr="en">Or connect Claude or ChatGPT to <code>https://mcp.agentpey.com/mcp</code> and watch your purchase show up there. Testnet only.</span>
+        <span data-tr="es">O conecta Claude o ChatGPT a <code>https://mcp.agentpey.com/mcp</code> y mira tu compra aparecer ahí. Solo en testnet.</span>
       </p>
     </div>
 
-    <div class="stats hero-stats">
+    <div class="stats hero-stats" id="hero-stats" aria-live="polite">
       <div class="stat">
-        <b id="stat-tests">1348</b>
-        <span>
-          <span data-tr="en">tests, all green: 1294 TypeScript, 54 Rust</span>
-          <span data-tr="es">tests, todos en verde: 1294 TypeScript, 54 Rust</span>
-        </span>
+        <b id="live-stores">…</b>
+        <span><span data-tr="en">stores where agents buy today</span><span data-tr="es">tiendas donde los agentes compran hoy</span></span>
       </div>
       <div class="stat">
-        <b>5</b>
-        <span>
-          <span data-tr="en">phases of work shipped, each with its own written evidence</span>
-          <span data-tr="es">fases de trabajo construidas, cada una con su propia evidencia escrita</span>
-        </span>
+        <b id="live-purchases">…</b>
+        <span><span data-tr="en">recent purchases by agents, each with a receipt anchored on Stellar</span><span data-tr="es">compras recientes de agentes, cada una con su recibo anclado en Stellar</span></span>
       </div>
       <div class="stat">
-        <b id="stat-commits">212</b>
-        <span>
-          <span data-tr="en">commits, and you can read every one of them</span>
-          <span data-tr="es">commits, y puedes leerlos todos</span>
-        </span>
+        <b id="live-usdc">…</b>
+        <span><span data-tr="en">USDC paid in them, under limits the network enforces</span><span data-tr="es">USDC pagados en ellas, con topes que aplica la red</span></span>
       </div>
       <div class="stat">
-        <b>8</b>
-        <span>
-          <span data-tr="en">real testnet transactions on this page, each one checkable on Stellar Expert</span>
-          <span data-tr="es">transacciones reales de testnet en esta página, cada una comprobable en Stellar Expert</span>
-        </span>
+        <b id="live-disputes">…</b>
+        <span><span data-tr="en">refund claims resolved on-chain among them</span><span data-tr="es">reclamos resueltos en la red entre ellas</span></span>
       </div>
     </div>
+    <p class="stats-note"><span data-tr="en">Read live from the network, as on <a href="/en-vivo">/en-vivo</a>.</span><span data-tr="es">Leído en vivo de la red, como en <a href="/en-vivo">/en-vivo</a>.</span></p>
   </header>
 </div>
 
 <div class="wrap">
+  <section id="today">
+    <p class="eyebrow">
+      <span data-tr="en">What agents can do today</span>
+      <span data-tr="es">Lo que los agentes ya pueden hacer</span>
+    </p>
+    <h2 class="sh">
+      <span data-tr="en">Real agents, real stores, every step on Stellar.</span>
+      <span data-tr="es">Agentes reales, tiendas reales, cada paso en Stellar.</span>
+    </h2>
+    <p class="lead">
+      <span data-tr="en">Each of these runs on Stellar testnet today, and each links to the page or the evidence that shows it.</span>
+      <span data-tr="es">Todo esto funciona hoy en Stellar testnet, y cada pieza enlaza a la página o a la evidencia que lo muestra.</span>
+    </p>
+
+    <div class="ev-list">
+      <div class="ev">
+        <div>
+          <h3>
+            <span data-tr="en">Claude and ChatGPT buy here</span>
+            <span data-tr="es">Claude y ChatGPT compran aquí</span>
+          </h3>
+          <p>
+            <span data-tr="en">An MCP connector at mcp.agentpey.com: the chat searches the stores, quotes one product or a cart, and pays from a policy_rail whose limits Stellar enforces. Claude paid a two-product cart on its own on October 8.</span>
+            <span data-tr="es">Un conector MCP en mcp.agentpey.com: el chat busca en las tiendas, cotiza un producto o un carrito, y paga desde un policy_rail cuyos topes aplica Stellar. El 8 de octubre Claude pagó solo un carrito de dos productos.</span>
+          </p>
+        </div>
+        <div class="tx">
+          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/apps/mcp/README.md" target="_blank" rel="noopener">
+            <span data-tr="en">Connect it ↗</span>
+            <span data-tr="es">Conéctalo ↗</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="ev">
+        <div>
+          <h3>
+            <span data-tr="en">Stores that speak the standard</span>
+            <span data-tr="es">Tiendas que hablan el estándar</span>
+          </h3>
+          <p>
+            <span data-tr="en">Every store publishes a UCP profile and catalog in two versions of the standard and declares a Stellar payment handler anyone can test with our open kit. The store software runs the official UCP conformance suite: 49 tests pass, and each one that does not has its reason written down.</span>
+            <span data-tr="es">Cada tienda publica su perfil y su catálogo UCP en dos versiones del estándar y declara un medio de pago de Stellar que cualquiera puede probar con nuestro kit abierto. El software de las tiendas corre la suite oficial de conformidad de UCP: pasan 49 tests, y cada uno que no pasa tiene su motivo escrito.</span>
+          </p>
+        </div>
+        <div class="tx">
+          <a class="verify" href="/tiendas">
+            <span data-tr="en">See the stores →</span>
+            <span data-tr="es">Ver las tiendas →</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="ev">
+        <div>
+          <h3>
+            <span data-tr="en">AP2 mandates in the checkout</span>
+            <span data-tr="es">Mandatos AP2 en el checkout</span>
+          </h3>
+          <p>
+            <span data-tr="en">With AP2, the store signs its terms and will not charge without the buyer's mandate, which the official AP2 library verifies on a real purchase.</span>
+            <span data-tr="es">Con AP2, la tienda firma sus términos y no cobra sin el mandato del comprador, que la librería oficial de AP2 verifica sobre una compra real.</span>
+          </p>
+        </div>
+        <div class="tx">
+          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T134.md" target="_blank" rel="noopener">
+            <span data-tr="en">Evidence ↗</span>
+            <span data-tr="es">Evidencia ↗</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="ev">
+        <div>
+          <h3>
+            <span data-tr="en">Disputes that end in a refund</span>
+            <span data-tr="es">Disputas que terminan en un reembolso</span>
+          </h3>
+          <p>
+            <span data-tr="en">A buyer's agent signs a claim, the merchant answers with its own signature, an AI arbiter writes a reasoned verdict, a person confirms it, and the contract pays back from the merchant's guarantee. Done for real on October 8.</span>
+            <span data-tr="es">El agente del comprador firma un reclamo, el comercio responde con su firma, un árbitro con IA escribe un veredicto razonado, una persona lo confirma y el contrato devuelve desde la garantía del comercio. Hecho de verdad el 8 de octubre.</span>
+          </p>
+        </div>
+        <div class="tx">
+          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T124-reembolso-real.md" target="_blank" rel="noopener">
+            <span data-tr="en">Evidence ↗</span>
+            <span data-tr="es">Evidencia ↗</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="ev">
+        <div>
+          <h3>
+            <span data-tr="en">A team budget on the network</span>
+            <span data-tr="es">Un presupuesto de equipo en la red</span>
+          </h3>
+          <p>
+            <span data-tr="en">A team gives its agent 0.30 USDC a day for AI credits: three purchases settle, the fourth is refused before anything is signed, and the month adds up from a hash-chained record.</span>
+            <span data-tr="es">Un equipo le da a su agente 0,30 USDC al día para créditos de IA: tres compras se pagan, la cuarta se rechaza antes de firmar nada, y el mes se suma desde un registro encadenado por hashes.</span>
+          </p>
+        </div>
+        <div class="tx">
+          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T146.md" target="_blank" rel="noopener">
+            <span data-tr="en">Evidence ↗</span>
+            <span data-tr="es">Evidencia ↗</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="ev">
+        <div>
+          <h3>
+            <span data-tr="en">Open tools for anyone</span>
+            <span data-tr="es">Herramientas abiertas para cualquiera</span>
+          </h3>
+          <p>
+            <span data-tr="en">The buyer's side as a package on npm, @agentpey/ucp-stellar, which never holds a key; and a conformance kit that checks any store's Stellar payment handler, one line per check.</span>
+            <span data-tr="es">El lado del comprador como paquete en npm, @agentpey/ucp-stellar, que nunca guarda una llave; y un kit de conformidad que revisa el medio de pago de Stellar de cualquier tienda, una línea por comprobación.</span>
+          </p>
+        </div>
+        <div class="tx">
+          <a class="verify" href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">
+            <span data-tr="en">On npm ↗</span>
+            <span data-tr="es">En npm ↗</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="activity">
     <p class="eyebrow live">
       <span class="live-dot" aria-hidden="true"></span>
@@ -820,8 +944,8 @@
       <span data-tr="es">En qué punto está</span>
     </p>
     <h2 class="sh">
-      <span data-tr="en">Five phases done.</span>
-      <span data-tr="es">Cinco fases listas.</span>
+      <span data-tr="en">Seven phases done, the eighth in progress.</span>
+      <span data-tr="es">Siete fases listas; la octava, en curso.</span>
     </h2>
 
     <div class="status">
@@ -859,6 +983,27 @@
           <span data-tr="es">Cada decisión guardada como evidencia y anclada en Stellar</span>
         </div>
         <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
+      </div>
+      <div class="status-row">
+        <div class="what">
+          <span data-tr="en">A platform where partners and real stores plug in without writing code</span>
+          <span data-tr="es">Una plataforma donde partners y tiendas reales se suman sin escribir código</span>
+        </div>
+        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
+      </div>
+      <div class="status-row">
+        <div class="what">
+          <span data-tr="en">Agentic commerce on Stellar: UCP, AP2 mandates and disputes</span>
+          <span data-tr="es">Comercio agéntico sobre Stellar: UCP, mandatos AP2 y disputas</span>
+        </div>
+        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
+      </div>
+      <div class="status-row">
+        <div class="what">
+          <span data-tr="en">Real agents buying: Claude and ChatGPT through an MCP connector</span>
+          <span data-tr="es">Agentes reales comprando: Claude y ChatGPT con un conector MCP</span>
+        </div>
+        <div class="st"><span data-tr="en">In progress</span><span data-tr="es">En curso</span></div>
       </div>
       <div class="status-row">
         <div class="what">
@@ -943,6 +1088,28 @@
     document.addEventListener("agentpey:lang", renderFeedTimes);
     renderFeedTimes();
     setInterval(renderFeedTimes, 30000);
+  })();
+</script>
+
+<script>
+  /* The hero's numbers, read live from /api/live and /api/stores: never written by hand (T152). */
+  (function () {
+    function set(id, value) { var n = document.getElementById(id); if (n) n.textContent = value; }
+    function fmt(v) { return Number(v).toLocaleString(document.documentElement.lang === "es" ? "es-CL" : "en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
+    var usdc = null;
+    function render() { if (usdc !== null) set("live-usdc", fmt(usdc)); }
+    fetch("/api/live", { headers: { accept: "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+      .then(function (d) {
+        if (!d || !d.totals || !Array.isArray(d.stores)) return;
+        set("live-stores", String(d.stores.length));
+        set("live-purchases", String(d.totals.purchases));
+        set("live-disputes", String(d.totals.disputes_resolved));
+        usdc = d.totals.usdc;
+        render();
+      })
+      .catch(function () {});
+    document.addEventListener("agentpey:lang", render);
   })();
 </script>
 

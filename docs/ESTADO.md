@@ -38,7 +38,7 @@
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20; compra real `ord_muvlkwxp66c0327a66` con `customerAcceptsMarketing` en Shopify | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |
 | T150 Pulido del MCP para el video (`R-28`) | para el video | ✅ terminada: Claude cotizó y pagó un carrito (imán y posavasos) en `mcp.agentpey.com`, `ord_muzwp0qecb2904cfc8`, recibo con los tres checks; `get_order` trae el enlace al pago | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
 | T151 Página "En vivo" (`R-29`, `R-30`) | para el video | 👀 en revisión: `/en-vivo` (alias `/live`) muestra 31 compras y 2 disputas resueltas leídas de la red, refrescadas cada 10 s; falta ver una compra nueva aparecer sola tras el deploy | [PR #71](https://github.com/vicentewolde/AgentPey/pull/71) |
-| T152 Portada al día (`R-29`) | para el video | ⏳ pendiente | |
+| T152 Portada al día (`R-29`) | para el video | 👀 en revisión: portada con la Fase 8, números en vivo desde `/api/live`, sección "Lo que los agentes ya pueden hacer" y navegación con En vivo | `cc/t152-portada` |
 | T153 Página del presupuesto de equipo (`R-29`) | para el video | ⏳ pendiente | |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.

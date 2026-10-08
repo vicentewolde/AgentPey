@@ -8465,3 +8465,14 @@ contadores aclarados. Push, PR y merge con OK.
 
 Pendiente: ver una compra nueva aparecer sola tras el deploy; T152 y T153. Ojo: el test de concurrencia de
 `apps/mcp/src/oauth/oauth.test.ts` falla a veces por tiempo con la máquina cargada. `AGENTS.md`: sin cambios.
+
+## 2026-10-08 (7) — cc/t152-portada (sin push)
+
+Agente: Claude Code.
+
+Qué: T151 en producción (`/en-vivo` y `/live` responden; 31 compras, 2 disputas resueltas). T152: portada con la
+Fase 8, números del hero en vivo desde `/api/live`, sección nueva con cada pieza y su enlace, estado "siete fases
+listas", navegación con En vivo. El botón del cierre sigue en RealOps (`C-120`). `pnpm check` verde.
+
+Pendiente: `/revisar`, merge con OK; T153; ver una compra nueva aparecer sola en `/en-vivo` (criterio de T151).
+`AGENTS.md`: sin cambios. Exponential: T152 sin ticket propio.
