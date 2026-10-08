@@ -67,6 +67,12 @@ transaction and the rail's limits read from the network:
 pnpm run team:summary -- --month 2026-10
 ```
 
+The same month as a page, written next to the vault and opened in the browser:
+
+```bash
+pnpm run team:summary -- --html
+```
+
 ## Vitrinee: real stores join without writing code
 
 AgentPey is the **buyer** with rules: identity, a signed Mandate, a

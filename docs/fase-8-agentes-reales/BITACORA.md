@@ -37,7 +37,7 @@ de Stellar (`R-22`). **T143 cerrada** ([PR #65](https://github.com/vicentewolde/
 las cinco pantallas de firma aceptan Freighter y xBull, y las que solo firman
 un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLayer y
-Trustless Work (T138, T139) para el final de la fase (`R-24`). El 8-oct: el reembolso real de T124 (pedido #1006), T150 cerrada con Claude comprando un carrito, `/en-vivo` en producción (T151) y la portada al día (T152, en revisión). **T145 cerrada**:
+Trustless Work (T138, T139) para el final de la fase (`R-24`). El 8-oct: el reembolso real de T124 (pedido #1006), T150 cerrada con Claude comprando un carrito, `/en-vivo` en producción (T151) y la portada al día (T152, en producción). **T145 cerrada**:
 un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
@@ -70,8 +70,8 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T149 Consentimiento | cerrada |
 | T150 Pulido del MCP | cerrada |
 | T151 Página En vivo | en revisión |
-| T152 Portada al día | en revisión |
-| T153 Página del presupuesto de equipo | pendiente |
+| T152 Portada al día | cerrada |
+| T153 Página del presupuesto de equipo | en revisión |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -748,4 +748,19 @@ conector para Claude y ChatGPT, las tiendas UCP, AP2, las disputas con reembolso
 el SDK en npm), y la sección de estado dice que van siete fases listas y la octava en curso.
 
 Evidencia: [`evidencia/T152.md`](evidencia/T152.md).
+
+**Cierre de T152 (8-oct).** Mergeada y en vivo en agentpey.com. La revisión encontró tres frases que decían más de
+lo que el proyecto respalda (el conector abierto a cualquiera, el presupuesto "en la red", el tope de "cada pago"), y
+se corrigieron antes del merge.
+
+---
+
+## T153 · Página del presupuesto de equipo — 2026-10-08
+
+**Qué quedó funcionando.** `pnpm run team:summary -- --html` abre una página con el mes del equipo: el tope de 0,30
+USDC al día, cuánto se gastó cada día frente a ese tope, cada pago con su transacción en Stellar, los rechazos en
+rojo y los topes del rail leídos de la red. Es local porque el registro del equipo es local, y muestra lo mismo que
+la terminal, pero se ve en cámara.
+
+Evidencia: [`evidencia/T153.md`](evidencia/T153.md).
 

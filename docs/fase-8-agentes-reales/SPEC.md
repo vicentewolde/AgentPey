@@ -386,7 +386,7 @@ más rápido que lo estimado.
 - **Depende de:** T146
 - **Descripción:** `pnpm run team:summary -- --html` genera y abre una página local con el gasto por día frente al tope del equipo, cada pago con su transacción, los rechazos destacados y los topes del rail leídos de la red. Local, porque el Vault del equipo es local.
 - **Hecho cuando:**
-  - [ ] la página muestra lo mismo que `team:summary` en la terminal, sin pedir nada a un servidor de AgentPey
+  - [x] la página muestra lo mismo que `team:summary` en la terminal, sin pedir nada a un servidor de AgentPey ([evidencia](evidencia/T153.md))
 
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)

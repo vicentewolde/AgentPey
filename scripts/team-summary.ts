@@ -8,10 +8,14 @@
  * and no total is printed from it. The rail's limits and today's spend are
  * read from the contract itself (`per_tx`, `per_day`, `spent_on`), not from
  * anything this repository wrote down.
+ *
+ * With `--html` (T153) it also writes the same month as a page next to the
+ * vault and opens it in the browser.
  */
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { relative, resolve } from "node:path";
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
@@ -20,6 +24,7 @@ import { z } from "zod";
 
 import { createFileMandateVault } from "@agentpey/vault";
 
+import { renderSummaryHtml, type RailReading } from "./lib/team-summary-html.js";
 import { currentMonth, fromUnits, summarizeMonth, TEAM_LIMITS, TEAM_VAULT_PATH, toUnits } from "./lib/team-summary.js";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -104,12 +109,31 @@ async function main(): Promise<void> {
   const deployment = z
     .object({ policyRailUcp: z.object({ contractId: z.string() }) })
     .parse(JSON.parse(await readFile(DEPLOYMENT_PATH, "utf8")));
+  let railReading: RailReading | null = null;
   try {
     const rail = await readRail(deployment.policyRailUcp.contractId);
+    railReading = { contractId: deployment.policyRailUcp.contractId, ...rail };
     line("tope del rail", `${rail.perTx} por compra, ${rail.perDay} por día (leído de la red)`);
     line("rail hoy", `${rail.spentToday} gastado hoy por el rail (incluye otras compras que paga el mismo rail)`);
   } catch (error) {
     line("tope del rail", `no se pudo leer de la red ahora (${error instanceof Error ? error.message.slice(0, 80) : String(error)})`);
+  }
+
+  if (process.argv.slice(2).includes("--html")) {
+    const html = renderSummaryHtml({
+      month,
+      summary,
+      teamPerTx: TEAM_LIMITS.perTx,
+      teamPerDay: TEAM_LIMITS.perDay,
+      records: vault.list().length,
+      rail: railReading,
+      generatedAt: new Date(),
+    });
+    const out = resolve(dirname(TEAM_VAULT_PATH), `resumen-${month}.html`);
+    await writeFile(out, html);
+    line("página", relative(REPO_ROOT, out));
+    // Opened in the default browser on macOS; elsewhere the path above is enough.
+    if (process.platform === "darwin") spawn("open", [out], { stdio: "ignore", detached: true }).unref();
   }
   process.stdout.write("\n");
 }

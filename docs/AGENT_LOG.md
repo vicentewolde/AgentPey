@@ -8488,3 +8488,14 @@ enlaces al kit y a la corrida, contadores con "n/a" y reintento, `R-31` (botón 
 `C-120`). Push, PR y merge con OK.
 
 Pendiente: T153; ver una compra nueva en `/en-vivo`. `AGENTS.md`: sin cambios.
+
+## 2026-10-08 (9) — cc/t153-presupuesto-pagina (sin push)
+
+Agente: Claude Code.
+
+Qué: T152 en producción (portada nueva en agentpey.com). T153: `pnpm run team:summary -- --html` escribe y abre
+`.team-budget/resumen-<mes>.html` (`scripts/lib/team-summary-html.ts`, función pura con 6 tests): gasto por día
+frente al tope, pagos con su transacción, rechazos, topes del rail leídos de la red. `pnpm check` verde.
+
+Pendiente: `/revisar`, merge con OK; ver una compra nueva en `/en-vivo`; T142 y T144 el 11-oct. `AGENTS.md`: sin
+cambios. Exponential: T152 `DONE` en `SYNC.md`; T153 sin ticket propio.
