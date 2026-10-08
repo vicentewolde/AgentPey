@@ -54,6 +54,7 @@ describe("waitForLateApp (R-32)", () => {
     const port = await freePort();
     setTimeout(() => {
       server = createServer();
+      server.on("error", () => undefined);
       server.listen(port, "127.0.0.1");
     }, 150);
     await expect(waitForLateApp(port, { timeoutMs: 5000, isAlive: () => true, intervalMs: 50 })).resolves.toBe(true);
@@ -68,8 +69,18 @@ describe("waitForLateApp (R-32)", () => {
     expect(Date.now() - started).toBeLessThan(2000);
   });
 
-  it("gives up with false once its own timeout passes", async () => {
+  it("gives up with false once its own timeout passes, not before", async () => {
     const port = await freePort();
+    const started = Date.now();
     await expect(waitForLateApp(port, { timeoutMs: 200, isAlive: () => true, intervalMs: 50 })).resolves.toBe(false);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(190);
+  });
+
+  it("answers false if the process exited while its port was answering, so it is never routed to", async () => {
+    server = createServer();
+    const port = await new Promise<number>((resolve) => server!.listen(0, "127.0.0.1", () => resolve((server!.address() as AddressInfo).port)));
+    let checks = 0;
+    // Alive for the loop's own check, dead by the time the port has answered.
+    await expect(waitForLateApp(port, { timeoutMs: 5000, isAlive: () => checks++ === 0, intervalMs: 50 })).resolves.toBe(false);
   });
 });

@@ -69,12 +69,16 @@ export async function waitForPort(port: number, timeoutMs: number): Promise<void
   }
 }
 
-/** Whether something accepts a TCP connection on `127.0.0.1:port` right now. */
+/** Whether something accepts a TCP connection on `127.0.0.1:port` right now; a connect that hangs counts as no. */
 function answers(port: number): Promise<boolean> {
   return new Promise<boolean>((resolvePromise) => {
     const socket = connect({ host: "127.0.0.1", port }, () => {
       socket.end();
       resolvePromise(true);
+    });
+    socket.setTimeout(2000, () => {
+      socket.destroy();
+      resolvePromise(false);
     });
     socket.on("error", () => resolvePromise(false));
   });
@@ -88,7 +92,8 @@ function answers(port: number): Promise<boolean> {
  *
  * Resolves `true` once the port answers, `false` if `isAlive()` turns false
  * first (the child exited: nothing will ever answer) or `timeoutMs` passes.
- * Never throws: the caller only decides whether to route to the app.
+ * Not expected to reject; the caller still catches, so a non-critical app can
+ * never take the gateway down.
  */
 export async function waitForLateApp(port: number, options: { readonly timeoutMs: number; readonly isAlive: () => boolean; readonly intervalMs?: number }): Promise<boolean> {
   const deadline = Date.now() + options.timeoutMs;

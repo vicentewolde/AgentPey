@@ -1,9 +1,9 @@
 # Gateway
 
-One Render service, four apps. `agentpey.com`, `realops.agentpey.com`,
-`signaldesk.agentpey.com` and `vitrinee.agentpey.com` all point at this one
-service; this process spawns `apps/web`, `apps/realops`, `apps/signaldesk` and
-`packages/vitrinee-gateway` as separate children and forwards each request to
+One Render service, five apps. `agentpey.com`, `realops.agentpey.com`,
+`signaldesk.agentpey.com`, `vitrinee.agentpey.com` and `mcp.agentpey.com` all
+point at this one service; this process spawns `apps/web`, `apps/realops`,
+`apps/signaldesk`, `packages/vitrinee-gateway` and `apps/mcp` as separate children and forwards each request to
 the right one by its `Host` header.
 
 **Vitrinee is different in three ways (T102, `C-136`).** Its variables are
@@ -11,7 +11,8 @@ stored as `VITRINEE_<NAME>` and handed to its process alone as `<NAME>`
 (`envAliases` in `hosts.ts`), because it reads generic names like `ADAPTER` and
 `PUBLIC_BASE_URL`. It is only started when its secrets are set
 (`requiredEnv`); until then its host answers `503`. And it is not critical: if
-it exits, its host answers `503` and the other three keep serving, instead of
+it exits, its host answers `503` and the others keep serving (the MCP is not
+critical either), instead of
 the whole service restarting.
 
 **A non-critical app that is slow to start joins late (`R-32`).** The gateway
@@ -19,7 +20,8 @@ waits up to 45 s for every app before it listens. A non-critical app (Vitrinee,
 the MCP) that misses that window is not given up on: its host answers `503`
 while the gateway keeps checking its port for up to five more minutes, and it is
 routed to as soon as it answers (`gateway: mcp came up late; now routed to` in
-the log). Critical apps are unchanged: one that misses the window fails the
+the log). While it is waited for, the `503` carries `retry-after: 10` instead of
+`300`. Critical apps are unchanged: one that misses the window fails the
 deploy.
 
 **Why this exists.** Before T86 the three apps were three separate Render

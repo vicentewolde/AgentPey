@@ -23,7 +23,7 @@
  *   restarts a crashed service, and restarting through the same startup path
  *   above is simpler and easier to reason about than a second, bespoke retry
  *   policy living only here. The one exception is an app marked
- *   `critical: false` (Vitrinee, `C-136`): a merchant the pilot can run
+ *   `critical: false` (Vitrinee, `C-136`, and the MCP): an app the pilot can run
  *   without stops being routed to, and the rest keeps serving.
  *
  * Not unit-tested itself, for the same reason `apps/web/src/server.ts` and
@@ -73,8 +73,10 @@ const toStart = APP_TARGETS.filter((target) => {
 const spawned = toStart.map((target) => spawnApp(target, REPO_ROOT, TSX_BIN, process.env));
 /** The apps that are up and may be routed to. A non-critical app that exits leaves this set. */
 const running = new Set<AppName>();
-/** The apps whose process has exited: a late one is never routed to after this. */
+/** The apps whose process has exited: never routed to after this, late or not. */
 const exited = new Set<AppName>();
+/** Non-critical apps the gateway is still waiting for after the startup window (`R-32`). */
+const lateWaiting = new Set<AppName>();
 
 // Assigned once the server below is actually listening. `shutdown` has to
 // tolerate it still being `undefined` — a signal can arrive at any time,
@@ -132,19 +134,25 @@ await Promise.all(
   toStart.map(async (target) => {
     try {
       await waitForPort(target.port, READY_TIMEOUT_MS);
-      running.add(target.name);
+      // The child can exit between its port answering and this line running.
+      if (!exited.has(target.name)) running.add(target.name);
     } catch (error) {
       // A critical app that never came up is the old failure, unchanged.
       if (target.critical) throw error;
       process.stderr.write(`gateway: ${target.name} did not come up yet; its host answers 503 while the gateway keeps waiting for it\n`);
-      void waitForLateApp(target.port, { timeoutMs: LATE_READY_TIMEOUT_MS, isAlive: () => !exited.has(target.name) && !shuttingDown }).then((up) => {
-        if (up && !exited.has(target.name) && !shuttingDown) {
-          running.add(target.name);
-          process.stdout.write(`gateway: ${target.name} came up late; now routed to\n`);
-        } else if (!exited.has(target.name) && !shuttingDown) {
-          process.stderr.write(`gateway: ${target.name} never came up; its host answers 503 until the next deploy\n`);
-        }
-      });
+      lateWaiting.add(target.name);
+      void waitForLateApp(target.port, { timeoutMs: LATE_READY_TIMEOUT_MS, isAlive: () => !exited.has(target.name) && !shuttingDown })
+        .then((up) => {
+          if (up && !exited.has(target.name) && !shuttingDown) {
+            running.add(target.name);
+            process.stdout.write(`gateway: ${target.name} came up late; now routed to\n`);
+          } else if (!exited.has(target.name) && !shuttingDown) {
+            process.stderr.write(`gateway: ${target.name} never came up; its host answers 503 until the next deploy\n`);
+          }
+        })
+        // A non-critical app must never take the gateway down, not even through an unexpected rejection here.
+        .catch((lateError: unknown) => process.stderr.write(`gateway: waiting for ${target.name} failed: ${String(lateError)}\n`))
+        .finally(() => lateWaiting.delete(target.name));
     }
   }),
 );
@@ -158,7 +166,9 @@ server = createServer((req, res) => {
     return;
   }
   if (!running.has(target.name)) {
-    res.writeHead(503, { "content-type": "text/plain; charset=utf-8", "retry-after": "300" });
+    // Still being waited for (`R-32`): it is usually seconds away, not a deploy away.
+    const retryAfter = lateWaiting.has(target.name) ? "10" : "300";
+    res.writeHead(503, { "content-type": "text/plain; charset=utf-8", "retry-after": retryAfter });
     res.end(`${target.name} is not running on this deployment\n`);
     return;
   }

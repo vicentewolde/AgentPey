@@ -1036,7 +1036,8 @@ escuchar, y el MCP arrancó a los 46 s y, en un deploy manual, a los 48 s (en lo
 
 **Se decide.** Si una app no crítica (`critical: false`: Vitrinee y el MCP) no responde en los 45 s, su dominio
 responde `503` mientras el gateway sigue revisando su puerto hasta cinco minutos más, y se le enruta apenas responde.
-Si su proceso termina antes, se deja de esperar. Las apps críticas no cambian: si no llegan, el deploy falla.
+Si su proceso termina antes, se deja de esperar. Mientras se espera, el `503` pide reintentar en 10 s (no en 300).
+Las apps críticas no cambian: si no llegan, el deploy falla.
 
 **Qué no cambia.** `P-17`: el gateway sigue esperando a las apps antes de abrir el puerto público. El health check
 con `healthCheckPath` sigue pendiente para después de la hackatón.

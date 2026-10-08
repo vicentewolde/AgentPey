@@ -8513,3 +8513,16 @@ navegador fuera de macOS sin caerse; escritura con error tipado; salida cruda en
 Pendiente: ver una compra nueva aparecer sola en `/en-vivo` (cierra T151); T130 cuando haya tienda; el 11-oct, el
 guion de T142 (con chequeo previo de que todo está vivo) y la tabla de T144; al final T138, T139 y T140. Deuda nueva
 en `ESTADO.md`: `parseLine` del Vault no valida con zod los campos de cada entrada. `AGENTS.md`: sin cambios.
+
+## 2026-10-08 (11) — cc/gateway-app-tardia
+
+Agente: Claude Code.
+
+Qué: incidente tras el deploy de T153: `mcp.agentpey.com` en `503` porque el MCP arrancó a los 46 y 48 s y el gateway
+espera 45. Arreglo `R-32`, aprobado por el usuario: una app no crítica que llega tarde se suma cuando responde (hasta
+5 min más, `retry-after: 10` mientras tanto); las críticas y `P-17` sin cambios. `/revisar` sin bloqueantes; corregidos
+una carrera en el arranque normal, `.catch` de la espera, plazo por conexión, tests y README (cinco apps).
+`pnpm check` verde.
+
+Pendiente: push, PR y merge con OK; tras el deploy, ver `gateway: up: …, mcp` o `mcp came up late` en el log y que
+`mcp.agentpey.com` responda. Después, la compra desde Claude para cerrar T151. `AGENTS.md`: sin cambios.
