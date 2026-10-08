@@ -70,7 +70,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - T131: la memoria de `Idempotency-Key` vive en el proceso un día, con tope (`VT-42`); tras un reinicio, o con dos creaciones simultáneas con la misma clave, puede quedar otra sesión `incomplete` (nunca un segundo cobro). La simulación de despacho de la tienda de conformidad solo comprueba el secreto; el evento llega con T147. Y conformance#116 abierto en la suite: cuando lo corrijan, se quita el renombre de `locality` de la tienda de prueba.
 - 8-oct: reembolso real de T124 hecho (veredicto `refund_full`, 1,5684211 USDC, confirmado por el usuario con `E-18`) y `ord_muq1…` con su disputa resuelta en vivo (cierra el pendiente de T127).
 - 8-oct: tras el deploy de T153, `mcp.agentpey.com` quedó en `503`: el MCP arrancó a los 46 y 48 s y el gateway
-  espera 45. Arreglado con `R-32` (una app no crítica tardía se suma cuando responde). Antes de grabar, abrir
+  espera 45. Arreglado con `R-32` (una app no crítica tardía se suma cuando responde, [PR #74](https://github.com/vicentewolde/AgentPey/pull/74)). Antes de grabar, abrir
   `https://mcp.agentpey.com/.well-known/oauth-protected-resource`.
 - 8-oct: Claude llamó a `pay` él mismo al pedírselo (T150); hasta ahora no lo hacía (`R-11`). Observación, sin cambiar la decisión. El posavasos de agentcommerce quedó en 990 CLP para el video.
 - T129 (`/revisar`): resuelto en T150 (`get_order` trae `receipt.explorer_url`). Y el disco local estuvo al 100 % durante `pnpm check` (`ENOSPC`): liberar espacio antes de T131.

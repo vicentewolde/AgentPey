@@ -8524,5 +8524,7 @@ espera 45. Arreglo `R-32`, aprobado por el usuario: una app no crítica que lleg
 una carrera en el arranque normal, `.catch` de la espera, plazo por conexión, tests y README (cinco apps).
 `pnpm check` verde.
 
-Pendiente: push, PR y merge con OK; tras el deploy, ver `gateway: up: …, mcp` o `mcp came up late` en el log y que
+Push, [PR #74](https://github.com/vicentewolde/AgentPey/pull/74) y fast-forward a `main` con OK del usuario.
+
+Pendiente: tras el deploy, ver `gateway: up: …, mcp` o `mcp came up late` en el log y que
 `mcp.agentpey.com` responda. Después, la compra desde Claude para cerrar T151. `AGENTS.md`: sin cambios.
