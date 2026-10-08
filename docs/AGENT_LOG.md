@@ -8406,3 +8406,17 @@ Criterio del spec marcado, ticket `DONE`.
 
 Pendiente: una cotización de carrito desde Claude para cerrar T150; el reembolso real de T124 (8 o 9-oct, con pasos
 del usuario); T130 cuando haya tienda; T142. `AGENTS.md`: sin cambios. Exponential: T146 a `DONE`.
+
+## 2026-10-08 (2) — incidente en producción y cc/gateway-puerto-primero
+
+Agente: Claude Code.
+
+Qué: desde las 13:22 (hora de Chile) todos los dominios del servicio AgentPey en Render servían RealOps: el deploy
+de `4ad8d9e` falló y Render detectó el puerto 4102 de RealOps antes de que el gateway abriera el 10000. Con OK del
+usuario, se agregó `PORT=10000` en el panel de Render (vía Chrome); el redeploy dejó todo en 200 a las ~16:00. En la
+rama: el gateway abre su puerto antes de esperar a las apps (503 "starting" mientras suben) y `render.yaml` declara
+`PORT`. `P-17`. `pnpm check` verde. No se pudo levantar el gateway completo en local sin que las apps lean
+`.env.local` y se conecten a la base de producción, así que la prueba es el próximo deploy.
+
+Pendiente: `/revisar`, PR y merge con OK; tras el deploy, ver en los logs de Render "listening" antes de
+"waiting". `AGENTS.md`: sin cambios. Exponential: sin ticket.

@@ -838,3 +838,29 @@ Spec aprobado por el usuario el 2026-10-03. Tareas T128 a T146, orden, cortes y 
 [`fase-8-agentes-reales/SPEC.md`](fase-8-agentes-reales/SPEC.md). Decisiones
 de la fase con prefijo `R-`.
 
+
+---
+
+### P-17 · El puerto público del servicio de Render se fija en `PORT=10000` y el gateway lo abre antes de levantar las apps · `Vigente`
+**Fecha:** 2026-10-08 · **Origen:** incidente en producción · **Aprobado por el usuario** (las dos partes)
+
+**Qué pasó.** El deploy automático de `4ad8d9e` (solo documentación) falló el 8-oct a las 13:22 (hora de Chile). El
+gateway abría el puerto público recién cuando las cinco apps respondían, y esta vez tardaron. Mientras tanto, Render
+buscó un puerto abierto, encontró RealOps en 4102 ("Detected service running on port 4102") y desde ese momento
+mandó **todo** el tráfico de todos los dominios a RealOps, sin pasar por el gateway: agentpey.com, el MCP,
+SignalDesk, Vitrinee y las tiendas respondían con el login de RealOps (`/entrar`). Duró unas dos horas y media; no
+se perdió ni se movió nada.
+
+**Se decide:**
+
+1. **`PORT=10000` como variable del servicio en Render** (puesta desde el panel el 8-oct y escrita en
+   `render.yaml`). Con `PORT` definido, Render usa ese puerto y no busca otro.
+2. **El gateway abre el puerto público primero** y después espera a las apps. Mientras una app arranca, su dominio
+   responde `503` "starting" con `Retry-After: 10`, en vez de que el gateway no escuche. Una app crítica que no sube
+   sigue tirando el servicio entero, como antes (ahora con un mensaje y `shutdown`, no con una excepción suelta).
+
+**Motivo.** Las dos protegen contra lo mismo por caminos distintos: la variable le dice a Render dónde mirar, y
+escuchar primero no le deja nada que encontrar por error. Antes funcionaba por suerte de tiempos.
+
+**Alternativa descartada.** Solo la variable (un servicio nuevo, o alguien que la borre, vuelve al problema). Solo
+el cambio de código (el gateway sigue arrancando hijos antes de escuchar, aunque sea por milisegundos).

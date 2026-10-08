@@ -70,6 +70,12 @@ services:
       # last failure.
       - key: COREPACK_INTEGRITY_KEYS
         value: ""
+      # The gateway's public port, stated rather than left for Render to
+      # detect: on 2026-10-08 Render scanned while the apps were starting,
+      # found RealOps on 4102 first and routed every host to it, past the
+      # gateway. With PORT set, Render uses it and never scans.
+      - key: PORT
+        value: "10000"
 
       # ---- Shared ----------------------------------------------------------
       # The pilot's one Postgres, the only name all three apps are handed. Each
