@@ -61,17 +61,41 @@ export function spawnApp(target: AppTarget, repoRoot: string, tsxBin: string, so
 export async function waitForPort(port: number, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const reachable = await new Promise<boolean>((resolvePromise) => {
-      const socket = connect({ host: "127.0.0.1", port }, () => {
-        socket.end();
-        resolvePromise(true);
-      });
-      socket.on("error", () => resolvePromise(false));
-    });
-    if (reachable) return;
+    if (await answers(port)) return;
     if (Date.now() >= deadline) {
       throw new Error(`nothing answered on 127.0.0.1:${port} within ${timeoutMs}ms`);
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
   }
+}
+
+/** Whether something accepts a TCP connection on `127.0.0.1:port` right now. */
+function answers(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolvePromise) => {
+    const socket = connect({ host: "127.0.0.1", port }, () => {
+      socket.end();
+      resolvePromise(true);
+    });
+    socket.on("error", () => resolvePromise(false));
+  });
+}
+
+/**
+ * For a non-critical app that missed the startup window (`R-32`): keeps
+ * checking its port after the gateway is already serving the others, so an
+ * app that comes up a few seconds late joins then instead of answering `503`
+ * until the next deploy.
+ *
+ * Resolves `true` once the port answers, `false` if `isAlive()` turns false
+ * first (the child exited: nothing will ever answer) or `timeoutMs` passes.
+ * Never throws: the caller only decides whether to route to the app.
+ */
+export async function waitForLateApp(port: number, options: { readonly timeoutMs: number; readonly isAlive: () => boolean; readonly intervalMs?: number }): Promise<boolean> {
+  const deadline = Date.now() + options.timeoutMs;
+  while (options.isAlive()) {
+    if (await answers(port)) return options.isAlive();
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, options.intervalMs ?? 1000));
+  }
+  return false;
 }

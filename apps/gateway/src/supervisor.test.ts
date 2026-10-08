@@ -1,5 +1,5 @@
 /**
- * `waitForPort` only — real TCP, no real spawn. `spawnApp` launches an actual
+ * `waitForPort` and `waitForLateApp` only — real TCP, no real spawn. `spawnApp` launches an actual
  * child process running `tsx` against a full app's `server.ts`, which needs a
  * real Postgres and real Stellar keys to come up cleanly; that is exercised
  * by running the gateway itself (see the package README), not by a unit test
@@ -10,7 +10,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { waitForPort } from "./supervisor.js";
+import { waitForLateApp, waitForPort } from "./supervisor.js";
 
 describe("waitForPort", () => {
   let server: Server | undefined;
@@ -31,5 +31,45 @@ describe("waitForPort", () => {
 
   it("throws once the timeout passes, for a port nothing is listening on", async () => {
     await expect(waitForPort(1, 300)).rejects.toThrow(/nothing answered/);
+  });
+});
+
+describe("waitForLateApp (R-32)", () => {
+  let server: Server | undefined;
+
+  afterEach(async () => {
+    if (server !== undefined) await new Promise<void>((resolve) => server!.close(() => resolve()));
+    server = undefined;
+  });
+
+  /** A free port, closed again so nothing answers on it until a test opens it. */
+  async function freePort(): Promise<number> {
+    const probe = createServer();
+    const port = await new Promise<number>((resolve) => probe.listen(0, "127.0.0.1", () => resolve((probe.address() as AddressInfo).port)));
+    await new Promise<void>((resolve) => probe.close(() => resolve()));
+    return port;
+  }
+
+  it("resolves true when an app that missed the window starts answering later", async () => {
+    const port = await freePort();
+    setTimeout(() => {
+      server = createServer();
+      server.listen(port, "127.0.0.1");
+    }, 150);
+    await expect(waitForLateApp(port, { timeoutMs: 5000, isAlive: () => true, intervalMs: 50 })).resolves.toBe(true);
+  });
+
+  it("stops at once with false when the app's process has exited", async () => {
+    const port = await freePort();
+    let alive = true;
+    setTimeout(() => (alive = false), 100);
+    const started = Date.now();
+    await expect(waitForLateApp(port, { timeoutMs: 5000, isAlive: () => alive, intervalMs: 50 })).resolves.toBe(false);
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it("gives up with false once its own timeout passes", async () => {
+    const port = await freePort();
+    await expect(waitForLateApp(port, { timeoutMs: 200, isAlive: () => true, intervalMs: 50 })).resolves.toBe(false);
   });
 });

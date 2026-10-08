@@ -1023,3 +1023,26 @@ barra de apps. Un test fija los dos botones.
 
 **Alternativa descartada.** Los dos botones a `/en-vivo` (RealOps quedaría solo en la barra, y `C-120` sigue
 siendo la forma de probar el piloto de punta a punta con un Mandato propio).
+
+---
+
+### R-32 · Una app no crítica que tarda en arrancar se suma tarde en vez de quedar en `503` hasta el próximo deploy · `Vigente`
+**Fecha:** 2026-10-08 · **Origen:** incidente en producción · Propuesta de Claude Code, **aprobada por el usuario**
+
+**Qué pasó.** El 8-oct, tras el deploy de T153, `mcp.agentpey.com` respondía `503` ("mcp is not running on this
+deployment") y Claude no podía cotizar. El log de Render mostró por qué: el gateway espera 45 s a cada app antes de
+escuchar, y el MCP arrancó a los 46 s y, en un deploy manual, a los 48 s (en los dos deploys anteriores, a los 37 y
+41 s). Una app no crítica que no llegaba a tiempo quedaba fuera hasta el siguiente deploy, que podía perder igual.
+
+**Se decide.** Si una app no crítica (`critical: false`: Vitrinee y el MCP) no responde en los 45 s, su dominio
+responde `503` mientras el gateway sigue revisando su puerto hasta cinco minutos más, y se le enruta apenas responde.
+Si su proceso termina antes, se deja de esperar. Las apps críticas no cambian: si no llegan, el deploy falla.
+
+**Qué no cambia.** `P-17`: el gateway sigue esperando a las apps antes de abrir el puerto público. El health check
+con `healthCheckPath` sigue pendiente para después de la hackatón.
+
+**Motivo.** El MCP es lo que Claude usa en el video; no puede depender de ganarle por un segundo a un reloj en cada
+deploy.
+
+**Alternativas descartadas.** Subir el límite a 90 s (cada deploy tarda más en quedar arriba, y vuelve a fallar si el
+MCP pasa de 90 s). Redesplegar a mano hasta que llegue (perdió dos veces seguidas el 8-oct).

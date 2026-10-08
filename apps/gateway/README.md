@@ -14,6 +14,14 @@ stored as `VITRINEE_<NAME>` and handed to its process alone as `<NAME>`
 it exits, its host answers `503` and the other three keep serving, instead of
 the whole service restarting.
 
+**A non-critical app that is slow to start joins late (`R-32`).** The gateway
+waits up to 45 s for every app before it listens. A non-critical app (Vitrinee,
+the MCP) that misses that window is not given up on: its host answers `503`
+while the gateway keeps checking its port for up to five more minutes, and it is
+routed to as soon as it answers (`gateway: mcp came up late; now routed to` in
+the log). Critical apps are unchanged: one that misses the window fails the
+deploy.
+
 **Why this exists.** Before T86 the three apps were three separate Render
 services — three Starter plans to keep all of them warm. `agentpey-web`,
 `agentpey-realops` and `agentpey-signaldesk` never imported each other and

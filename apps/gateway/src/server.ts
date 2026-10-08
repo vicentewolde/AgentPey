@@ -13,7 +13,10 @@
  * - **The gateway does not accept a single public request until every
  *   child it started is confirmed listening.** Racing a request against a child
  *   still starting up would either hang or answer `502` for no reason a
- *   person watching could tell apart from a real outage.
+ *   person watching could tell apart from a real outage. A non-critical app
+ *   that misses the window answers `503` meanwhile and joins as soon as its
+ *   port answers (`R-32`): the MCP measured 46-48 s on Render on 8-oct, just
+ *   past the window, and stayed down until a deploy it could also miss.
  * - **Any child exiting unexpectedly — or the gateway's own listener failing
  *   to start — brings this whole process down**, taking every other child
  *   with it rather than orphaning them. Not a respawn loop: Render already
@@ -35,12 +38,14 @@ import { fileURLToPath } from "node:url";
 
 import { APP_TARGETS, buildHostMap, missingEnv, resolveTarget, type AppName } from "./hosts.js";
 import { proxyRequest } from "./proxy.js";
-import { spawnApp, waitForPort } from "./supervisor.js";
+import { spawnApp, waitForLateApp, waitForPort } from "./supervisor.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const TSX_BIN = resolve(REPO_ROOT, "node_modules/.bin/tsx");
 /** A first purchase deploys and funds a rail and waits for testnet settlement — 20-40s measured in T84. Comfortably inside this. */
 const READY_TIMEOUT_MS = 45_000;
+/** How long a non-critical app that missed the window above is still waited for, while the others already serve (`R-32`). */
+const LATE_READY_TIMEOUT_MS = 5 * 60_000;
 const PORT = Number(process.env.PORT ?? 8080);
 
 const vitrineeHost = process.env.GATEWAY_VITRINEE_HOST ?? "vitrinee.agentpey.com";
@@ -68,6 +73,8 @@ const toStart = APP_TARGETS.filter((target) => {
 const spawned = toStart.map((target) => spawnApp(target, REPO_ROOT, TSX_BIN, process.env));
 /** The apps that are up and may be routed to. A non-critical app that exits leaves this set. */
 const running = new Set<AppName>();
+/** The apps whose process has exited: a late one is never routed to after this. */
+const exited = new Set<AppName>();
 
 // Assigned once the server below is actually listening. `shutdown` has to
 // tolerate it still being `undefined` — a signal can arrive at any time,
@@ -100,6 +107,7 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 
 for (const { target, child } of spawned) {
   child.on("exit", (code, signal) => {
+    exited.add(target.name);
     if (shuttingDown) return;
     if (!target.critical) {
       // A merchant the pilot can run without (T102, `C-136`): it stops being
@@ -128,7 +136,15 @@ await Promise.all(
     } catch (error) {
       // A critical app that never came up is the old failure, unchanged.
       if (target.critical) throw error;
-      process.stderr.write(`gateway: ${target.name} did not come up; its host answers 503\n`);
+      process.stderr.write(`gateway: ${target.name} did not come up yet; its host answers 503 while the gateway keeps waiting for it\n`);
+      void waitForLateApp(target.port, { timeoutMs: LATE_READY_TIMEOUT_MS, isAlive: () => !exited.has(target.name) && !shuttingDown }).then((up) => {
+        if (up && !exited.has(target.name) && !shuttingDown) {
+          running.add(target.name);
+          process.stdout.write(`gateway: ${target.name} came up late; now routed to\n`);
+        } else if (!exited.has(target.name) && !shuttingDown) {
+          process.stderr.write(`gateway: ${target.name} never came up; its host answers 503 until the next deploy\n`);
+        }
+      });
     }
   }),
 );
