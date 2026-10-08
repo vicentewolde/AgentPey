@@ -27,6 +27,29 @@ export interface StoresRegistry {
   get(hashHex: string): Promise<{ merchant: string; amount: bigint; orderRef: string; ledger: number; timestamp: number } | null>;
 }
 
+export type DirectoryStore = z.infer<typeof storeSchema>;
+
+/**
+ * The platform's directory, each entry checked on its own (T141 review): an
+ * entry without the shape a store needs is left out and counted, never hiding
+ * the others. Shared with the live page (T151).
+ *
+ * @throws AgentPassError `NetworkError` when the directory does not answer with a list.
+ */
+export async function readDirectory(fetchImpl: typeof fetch, directoryUrl: string): Promise<{ platformHost: string; stores: DirectoryStore[]; skipped: number }> {
+  let directory: z.infer<typeof directorySchema>;
+  try {
+    directory = directorySchema.parse(await readJson(fetchImpl, directoryUrl));
+  } catch (error) {
+    throw new AgentPassError("NetworkError", "the store directory did not answer with a list of stores", { cause: error, details: { url: directoryUrl } });
+  }
+  const stores = directory.comercios.flatMap((entry) => {
+    const parsed = storeSchema.safeParse(entry);
+    return parsed.success ? [parsed.data] : [];
+  });
+  return { platformHost: directory.platformHost, stores, skipped: directory.comercios.length - stores.length };
+}
+
 export interface StoresDirectoryDeps {
   readonly fetchImpl: typeof fetch;
   readonly directoryUrl: string;
@@ -85,7 +108,7 @@ const directorySchema = z.object({
 });
 
 /** One store, checked on its own: an entry that does not fit is left out, and never hides the others. */
-const storeSchema = z.looseObject({
+export const storeSchema = z.looseObject({
   slug: z.string().regex(/^[a-z0-9-]{1,64}$/),
   name: z.string().min(1).max(120),
   url: z.url({ protocol: /^https$/ }),
@@ -142,7 +165,7 @@ export function anchoredHash(op: Operation, registryId: string, merchant: string
   }
 }
 
-function withTimeout(fetchImpl: typeof fetch, timeoutMs: number): typeof fetch {
+export function withTimeout(fetchImpl: typeof fetch, timeoutMs: number): typeof fetch {
   return (input, init) => fetchImpl(input, { ...init, signal: AbortSignal.timeout(timeoutMs) });
 }
 
@@ -151,7 +174,7 @@ function withTimeout(fetchImpl: typeof fetch, timeoutMs: number): typeof fetch {
  * Soroban RPC would leave a build in flight forever, and every later visit
  * would wait on it.
  */
-function within<T>(promise: Promise<T>, timeoutMs: number, what: string): Promise<T> {
+export function within<T>(promise: Promise<T>, timeoutMs: number, what: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const expired = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new AgentPassError("NetworkError", `${what} took longer than ${timeoutMs} ms`, { details: { what } })), timeoutMs);
@@ -166,35 +189,48 @@ async function readJson(fetchImpl: typeof fetch, url: string): Promise<unknown> 
 }
 
 /** The newest `anchor` this merchant sent to the registry, as `{ hash, txHash }`, or `null` if none in reach. */
+/** The newest `anchor` operations this merchant sent to the registry, newest first, at most `limit` (T151). */
+export async function listAnchors(
+  fetchImpl: typeof fetch,
+  horizonUrl: string,
+  registryId: string,
+  merchant: string,
+  limit: number,
+): Promise<Array<{ hash: string; txHash: string }>> {
+  const found: Array<{ hash: string; txHash: string }> = [];
+  let url: string | undefined = `${horizonUrl}/accounts/${merchant}/operations?order=desc&limit=${PAGE_SIZE}`;
+  for (let page = 0; page < MAX_PAGES && url !== undefined; page++) {
+    const res = await fetchImpl(url, { headers: { accept: "application/json" } });
+    // An account that does not exist yet has sent no anchor: that is "none", not "could not tell".
+    if (res.status === 404 && page === 0) return found;
+    if (!res.ok) throw new AgentPassError("NetworkError", `GET ${url} answered ${res.status}`, { details: { url, status: res.status } });
+    const parsed = operationsSchema.parse(await res.json());
+    for (const op of parsed._embedded.records) {
+      const hash = anchoredHash(op, registryId, merchant);
+      if (hash !== null) found.push({ hash, txHash: op.transaction_hash });
+      if (found.length >= limit) return found;
+    }
+    if (parsed._embedded.records.length < PAGE_SIZE) return found;
+    const next = parsed._links?.next?.href;
+    // Follow Horizon's own next page only: never a URL on another host.
+    url = next !== undefined && next.startsWith(`${horizonUrl}/`) ? next : undefined;
+  }
+  return found;
+}
+
 async function findLatestAnchor(
   fetchImpl: typeof fetch,
   horizonUrl: string,
   registryId: string,
   merchant: string,
 ): Promise<{ hash: string; txHash: string } | null> {
-  let url: string | undefined = `${horizonUrl}/accounts/${merchant}/operations?order=desc&limit=${PAGE_SIZE}`;
-  for (let page = 0; page < MAX_PAGES && url !== undefined; page++) {
-    const res = await fetchImpl(url, { headers: { accept: "application/json" } });
-    // An account that does not exist yet has sent no anchor: that is "none", not "could not tell".
-    if (res.status === 404 && page === 0) return null;
-    if (!res.ok) throw new AgentPassError("NetworkError", `GET ${url} answered ${res.status}`, { details: { url, status: res.status } });
-    const parsed = operationsSchema.parse(await res.json());
-    for (const op of parsed._embedded.records) {
-      const hash = anchoredHash(op, registryId, merchant);
-      if (hash !== null) return { hash, txHash: op.transaction_hash };
-    }
-    if (parsed._embedded.records.length < PAGE_SIZE) return null;
-    const next = parsed._links?.next?.href;
-    // Follow Horizon's own next page only: never a URL on another host.
-    url = next !== undefined && next.startsWith(`${horizonUrl}/`) ? next : undefined;
-  }
-  return null;
+  return (await listAnchors(fetchImpl, horizonUrl, registryId, merchant, 1))[0] ?? null;
 }
 
 async function storeRow(
   deps: StoresDirectoryDeps,
   fetchImpl: typeof fetch,
-  store: z.infer<typeof storeSchema>,
+  store: DirectoryStore,
   timeoutMs: number,
 ): Promise<StoreRow> {
   const signing = store.signingDid.slice("did:stellar:testnet:".length);
@@ -246,23 +282,11 @@ export function createStoresDirectory(deps: StoresDirectoryDeps): { list(): Prom
   let inFlight: Promise<StoresPage> | undefined;
 
   async function build(): Promise<StoresPage> {
-    let directory: z.infer<typeof directorySchema>;
-    try {
-      directory = directorySchema.parse(await readJson(fetchImpl, deps.directoryUrl));
-    } catch (error) {
-      throw new AgentPassError("NetworkError", "the store directory did not answer with a list of stores", {
-        cause: error,
-        details: { url: deps.directoryUrl },
-      });
-    }
-    const valid = directory.comercios.flatMap((entry) => {
-      const parsed = storeSchema.safeParse(entry);
-      return parsed.success ? [parsed.data] : [];
-    });
-    const stores = await Promise.all(valid.map((store) => storeRow(deps, fetchImpl, store, timeoutMs)));
+    const directory = await readDirectory(fetchImpl, deps.directoryUrl);
+    const stores = await Promise.all(directory.stores.map((store) => storeRow(deps, fetchImpl, store, timeoutMs)));
     return {
       platform_host: directory.platformHost,
-      skipped: directory.comercios.length - valid.length,
+      skipped: directory.skipped,
       network: "stellar:testnet",
       registry: deps.registry.contractId,
       generated_at: new Date(now()).toISOString(),

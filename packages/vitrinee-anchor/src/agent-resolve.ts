@@ -14,7 +14,7 @@ import { Contract, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { VitrineeError } from "@vitrinee/core";
 import { z } from "zod";
 
-import { hashToBytes } from "./scval.js";
+import { hashOfKey, hashToBytes } from "./scval.js";
 
 export const AGENT_RESOLVE_STORAGE_SCHEMA_VERSION = 1;
 
@@ -123,5 +123,30 @@ export class AgentResolveReader implements DisputeReader {
     const entry = entries[0];
     if (entry === undefined || entry.val.type !== "contractData") return null;
     return decodeDispute(entry.val.contractData.val);
+  }
+
+  /** Many disputes in one `getLedgerEntries` call (T151); a receipt with no dispute is absent from the map. At most 200. */
+  async getMany(receiptHashes: readonly string[]): Promise<Map<string, DisputeRecord>> {
+    const unique = [...new Set(receiptHashes)];
+    if (unique.length > 200) throw new VitrineeError("ValidationError", "at most 200 disputes per read", { details: { count: unique.length } });
+    const found = new Map<string, DisputeRecord>();
+    if (unique.length === 0) return found;
+    const keys = unique.map((hash) =>
+      xdr.LedgerKey.contractData(
+        new xdr.LedgerKeyContractData({ contract: this.contract.address().toScAddress(), key: disputeKey(hash), durability: xdr.ContractDataDurability.persistent }),
+      ),
+    );
+    const { entries } = await this.server.getLedgerEntries(...keys);
+    for (const entry of entries) {
+      if (entry.val.type !== "contractData") continue;
+      const hash = hashOfKey(entry.val.contractData.key, "Dispute");
+      if (hash === null) continue;
+      try {
+        found.set(hash, decodeDispute(entry.val.contractData.val));
+      } catch {
+        // Left out rather than shown half-read.
+      }
+    }
+    return found;
   }
 }

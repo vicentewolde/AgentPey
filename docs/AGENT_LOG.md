@@ -8442,3 +8442,15 @@ usuario (`accept_full`), `resolve:decide` (`refund_full`), confirmación del has
 cierra el pendiente de T127. Evidencia en `fase-8-agentes-reales/evidencia/T124-reembolso-real.md`.
 
 Pendiente: merge con OK; T130 cuando haya tienda; T142. `AGENTS.md`: sin cambios. Exponential: sin cambios.
+
+## 2026-10-08 (5) — cc/t151-en-vivo (sin push)
+
+Agente: Claude Code.
+
+Qué: T151 (con T151 a T153 agregadas al spec, `R-29`). `/en-vivo` y `/live` en `apps/web`, con `GET /api/live`
+(`live-activity.ts`, `ledger-reader.ts`): compras desde Horizon y `receipt-registry`, disputas desde AgentResolve,
+productos y pago desde el recibo firmado anclado (`R-30`). `@vitrinee/anchor` gana `getMany` y `hashOfKey`, solo
+lectura. `pnpm check` y `vitrinee:check` verdes.
+
+Pendiente: `/revisar`, merge con OK; tras el deploy, ver una compra nueva aparecer sola (criterio 2). T152 y T153.
+`AGENTS.md`: sin cambios. Exponential: T151 sin ticket propio.

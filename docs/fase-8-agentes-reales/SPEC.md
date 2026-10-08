@@ -2,7 +2,7 @@
 
 - **Estado:** Aprobado (2026-10-03)
 - **Rama base:** `main`
-- **Tareas:** T128 a T150 (T147 a T149 agregadas por `R-12`; T150 a pedido del usuario el 7-oct, `R-28`)
+- **Tareas:** T128 a T153 (T147 a T149 agregadas por `R-12`; T150 a pedido del usuario el 7-oct, `R-28`; T151 a T153 el 8-oct, `R-29`)
 - **Referencias:** [`P-16`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método),
   [`P-10`](../DECISIONES.md) (perímetro de "nunca Codex"),
   el traspaso del 3-oct (`docs/traspaso-fase-8-agentes-reales.md`, archivo local sin versionar),
@@ -364,6 +364,29 @@ más rápido que lo estimado.
   - [x] `get_order` trae `receipt.explorer_url` de la transacción del pago (test sin red; [evidencia](evidencia/T150.md))
   - [x] `quote` con `items` (1 a 10 líneas) abre un solo checkout y `pay` lo paga con un solo pago; con `product_id` funciona como antes; nombrar los dos, o ninguno, es un error (tests sin red; [evidencia](evidencia/T150.md))
   - [x] una cotización de carrito desde Claude en `mcp.agentpey.com`, tras el deploy (8-oct: imán y posavasos, pagado; `ord_muzwp0qecb2904cfc8`, [evidencia](evidencia/T150.md) §5)
+
+#### T151 · Página "En vivo" (`R-29`)
+- **Prioridad:** para el video · **Estimación:** 6 h · **Delegable a Codex:** no
+- **Depende de:** T141
+- **Descripción:** `agentpey.com/en-vivo` (alias `/live`): lo que hacen los agentes en las tiendas del directorio, refrescado cada 10 s. Cada compra con su tienda, productos, monto y hora, enlace al recibo y a la transacción; si tiene disputa, su estado (abierta o reembolsada, con el monto) y el hash del veredicto. Arriba, totales. Solo **muestra** disputas: no conecta nada congelado.
+- **Hecho cuando:**
+  - [x] la página lista las compras recientes de las tiendas reales con su recibo y su transacción, y las disputas con su estado leído del contrato (local contra la red real, [evidencia](evidencia/T151.md) §2)
+  - [ ] una compra nueva aparece sola en menos de 30 s, sin recargar
+  - [x] lo que muestra sale de la red (registro de recibos, AgentResolve, Horizon) o del directorio; los productos y el pago, del recibo firmado cuyo hash es el anclado, y la página lo dice (`R-30`; **precisado**: el borrador decía "de la orden UCP", pero el recibo firmado es verificable contra la red)
+
+#### T152 · Portada de agentpey.com al día (`R-29`)
+- **Prioridad:** para el video · **Estimación:** 3 h · **Delegable a Codex:** no (narrativa)
+- **Descripción:** la portada cuenta la Fase 8: Claude y ChatGPT comprando, UCP, AP2, el SDK, el kit de conformidad, las disputas con reembolso real y el presupuesto de equipo, cada pieza con su enlace a la evidencia o a una página en vivo; números del hero que no se escriben a mano; navegación con "En vivo" y "Tiendas". Inglés por defecto y español neutro con tú, sin "—".
+- **Hecho cuando:**
+  - [ ] la portada nombra cada pieza de la Fase 8 con un enlace que funciona
+  - [ ] ningún número de la portada queda desactualizado al crecer el repo
+
+#### T153 · Página del presupuesto de equipo (`R-29`)
+- **Prioridad:** para el video · **Estimación:** 3 h · **Delegable a Codex:** no
+- **Depende de:** T146
+- **Descripción:** `pnpm run team:summary -- --html` genera y abre una página local con el gasto por día frente al tope del equipo, cada pago con su transacción, los rechazos destacados y los topes del rail leídos de la red. Local, porque el Vault del equipo es local.
+- **Hecho cuando:**
+  - [ ] la página muestra lo mismo que `team:summary` en la terminal, sin pedir nada a un servidor de AgentPey
 
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)

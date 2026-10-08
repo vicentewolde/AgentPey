@@ -29,6 +29,23 @@ export function receiptKey(hashHex: string): xdr.ScVal {
   return xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Receipt"), xdr.ScVal.scvBytes(hashToBytes(hashHex))]);
 }
 
+/**
+ * The receipt hash a `Receipt(hash)` or `Dispute(hash)` storage key names, or
+ * `null` for any other key: how a batched read (`getMany`, T151) matches the
+ * entries it gets back, which arrive unordered and only for keys that exist.
+ */
+export function hashOfKey(key: xdr.ScVal, variant: "Receipt" | "Dispute"): string | null {
+  try {
+    const native: unknown = scValToNative(key);
+    if (!Array.isArray(native) || native.length !== 2 || native[0] !== variant) return null;
+    const bytes: unknown = native[1];
+    if (!(bytes instanceof Uint8Array) || bytes.length !== 32) return null;
+    return Buffer.from(bytes).toString("hex");
+  } catch {
+    return null;
+  }
+}
+
 /** `DataKey::Count(Address)` */
 export function countKey(merchant: string): xdr.ScVal {
   return xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Count"), new Address(merchant).toScVal()]);

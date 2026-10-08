@@ -69,6 +69,9 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |
 | T150 Pulido del MCP | cerrada |
+| T151 Página En vivo | en revisión |
+| T152 Portada al día | pendiente |
+| T153 Página del presupuesto de equipo | pendiente |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -717,4 +720,20 @@ veredicto, y recién entonces el contrato devolvió 1,5684211 USDC al rail que h
 muestra la disputa como pendiente primero y como reembolsada después, en el formato estándar de UCP.
 
 Evidencia: [`evidencia/T124-reembolso-real.md`](evidencia/T124-reembolso-real.md).
+
+---
+
+## T151 · Página "En vivo" — 2026-10-08
+
+**Qué quedó funcionando.** `agentpey.com/en-vivo` muestra lo que los agentes compran en las tres tiendas: cada
+compra con sus productos, monto y hora, con enlaces al recibo, al pago y al ancla en la red; y cada reclamo con su
+estado, como el reembolso real de hoy ("Reembolsados 1,57 USDC") con el enlace al veredicto. Arriba, los totales: 31
+compras, 55,84 USDC pagados por agentes, 2 disputas resueltas. Se refresca sola cada 10 segundos y resalta lo nuevo.
+En inglés y español, y en celular.
+
+**Por qué se puede confiar.** Nada sale de la base de datos de AgentPey: las compras y las disputas se leen de los
+contratos en Stellar, y los productos y el pago, del recibo firmado por la tienda cuyo hash es el que está anclado
+(`R-30`). La página solo muestra disputas; no abre ni resuelve ninguna.
+
+Evidencia: [`evidencia/T151.md`](evidencia/T151.md).
 

@@ -4,6 +4,7 @@ import { Address, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk
 import { describe, expect, it } from "vitest";
 
 import { AGENT_RESOLVE_STORAGE_SCHEMA_VERSION, decodeDispute, disputeKey } from "./agent-resolve.js";
+import { countKey, hashOfKey, receiptKey } from "./scval.js";
 
 const RECEIPT = "fe3c5730884a59a72760217ae192757b7bb376bb1467f1e2d2ea7a6047c0f076";
 const CLAIM = "12075d85a757b96394b63a52e19dc18842b335eb4f6a3d321b408202d9f7d37f";
@@ -96,5 +97,22 @@ describe("a dispute the contract could never hold is refused, not shown", () => 
     ["a time no date can hold", disputeScVal("Resolved", VERDICT, 0n, 99_999_999_999_999)],
   ])("%s", (_name, value) => {
     expect(() => decodeDispute(value)).toThrow(expect.objectContaining({ code: "AnchorError" }));
+  });
+});
+
+describe("hashOfKey (T151)", () => {
+  const hash = "ab".repeat(32);
+
+  it("reads the receipt hash a Receipt or Dispute key names", () => {
+    expect(hashOfKey(receiptKey(hash), "Receipt")).toBe(hash);
+    expect(hashOfKey(disputeKey(hash), "Dispute")).toBe(hash);
+  });
+
+  it("refuses the other variant, a count key, and anything that is not a two-part key with 32 bytes", () => {
+    expect(hashOfKey(receiptKey(hash), "Dispute")).toBeNull();
+    expect(hashOfKey(disputeKey(hash), "Receipt")).toBeNull();
+    expect(hashOfKey(countKey("GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ"), "Receipt")).toBeNull();
+    expect(hashOfKey(xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Receipt"), xdr.ScVal.scvBytes(Buffer.alloc(16))]), "Receipt")).toBeNull();
+    expect(hashOfKey(xdr.ScVal.scvSymbol("Receipt"), "Receipt")).toBeNull();
   });
 });

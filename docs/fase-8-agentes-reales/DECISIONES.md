@@ -967,3 +967,43 @@ inventarlo; las dos piezas ya existían en el agente (T148) y en `pay`.
 **Alternativas descartadas.** Un tool `quote_cart` aparte (dos formas de cotizar para el modelo, con la misma
 semántica). Que `items` acepte también un producto (dos formas de decir lo mismo: una línea se dice con
 `product_id`).
+
+---
+
+### R-29 · Tres tareas más para el video (T151 a T153), y T144 queda como tabla · `Vigente`
+**Fecha:** 2026-10-08 · **Decidido por el usuario**
+
+El usuario graba el 11-oct en la tarde y quiere mostrar lo más avanzado posible. Se agregan al spec:
+
+1. **T151, página "En vivo"**: compras y disputas de las tiendas, leídas de la red, refrescadas solas.
+2. **T152, portada al día** con la Fase 8.
+3. **T153, página local del presupuesto de equipo** (`team:summary -- --html`).
+
+**T144** no tiene un agente disponible sin pago o sin acceso (Grok Bot pide plan pago, dots no acepta conectores
+propios, Muse es solo de EE. UU.): queda como la tabla del spec, sin compra, y se escribe al final. **El guion de T142
+se escribe el 11-oct**, cuando el resto esté hecho, para que no cambie después.
+
+**Motivo.** Lo que más pesa en el video es ver a los agentes comprar y a la red responder; las tres tareas lo muestran
+sin tocar nada congelado.
+
+**Alternativa descartada.** Escribir el guion primero (cambiaría con cada mejora).
+
+---
+
+### R-30 · La página "En vivo" toma productos y pago del recibo anclado, y lee la red en lote desde `@vitrinee/anchor` · `Vigente`
+**Fecha:** 2026-10-08 · **Tarea:** T151 · Propuesta de Claude Code dentro de la tarea aprobada
+
+1. **Compras y disputas, de la red**, como `/tiendas` (`R-26`): las anclas de cada cuenta firmante en Horizon,
+   confirmadas en `receipt-registry` para esa tienda, y el estado de cada disputa en AgentResolve.
+2. **Productos y transacción del pago, del recibo firmado**, leído de la orden de la tienda (`/orders/:id`, que lo
+   trae para toda venta, o la orden UCP) y usado solo si la firma es de la cuenta firmante de esa tienda y su
+   SHA-256 es el hash anclado. Así lo mostrado es lo que la red respalda, no el texto suelto de una orden.
+3. **Lectura en lote en `@vitrinee/anchor`** (`ReceiptRegistryClient.getMany`, `AgentResolveReader.getMany`,
+   `hashOfKey`): dos llamadas `getLedgerEntries` por refresco en vez de una por recibo, con las claves y la
+   decodificación del propio paquete. Solo lectura; no toca nada congelado de Vitrinee.
+
+**Motivo.** La página se refresca cada 10 s para cada persona que la mira: una lectura por recibo sería decenas de
+llamadas al RPC público por refresco. Y un nombre de producto que no viene del recibo anclado no se puede comprobar.
+
+**Alternativas descartadas.** Los nombres de la orden UCP (no firmados, y las ventas anteriores a UCP no la tienen).
+La lectura en lote en `apps/web` con su propia copia del SDK (sus objetos `xdr` no se mezclan con los del paquete).

@@ -9,7 +9,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { VitrineeError } from "@vitrinee/core";
 
-import { anchorArgs, countKey, decodeRecord, isAlreadyAnchored, receiptKey, type AnchoredRecord } from "./scval.js";
+import { anchorArgs, countKey, decodeRecord, hashOfKey, isAlreadyAnchored, receiptKey, type AnchoredRecord } from "./scval.js";
 
 export interface RegistryConfig {
   contractId: string;
@@ -66,6 +66,35 @@ export class ReceiptRegistryClient implements RegistryReader {
   async get(hashHex: string): Promise<AnchoredRecord | null> {
     const value = await this.readPersistent(receiptKey(hashHex));
     return value === null ? null : decodeRecord(value);
+  }
+
+  /**
+   * Many receipts in one `getLedgerEntries` call (T151): a hash with no entry,
+   * or whose entry does not decode, is absent from the map. At most 200 hashes,
+   * the RPC's own limit per call.
+   */
+  async getMany(hashes: readonly string[]): Promise<Map<string, AnchoredRecord>> {
+    const unique = [...new Set(hashes)];
+    if (unique.length > 200) throw new VitrineeError("ValidationError", "at most 200 receipts per read", { details: { count: unique.length } });
+    const found = new Map<string, AnchoredRecord>();
+    if (unique.length === 0) return found;
+    const keys = unique.map((hash) =>
+      xdr.LedgerKey.contractData(
+        new xdr.LedgerKeyContractData({ contract: this.contract.address().toScAddress(), key: receiptKey(hash), durability: xdr.ContractDataDurability.persistent }),
+      ),
+    );
+    const { entries } = await this.server.getLedgerEntries(...keys);
+    for (const entry of entries) {
+      if (entry.val.type !== "contractData") continue;
+      const hash = hashOfKey(entry.val.contractData.key, "Receipt");
+      if (hash === null) continue;
+      try {
+        found.set(hash, decodeRecord(entry.val.contractData.val));
+      } catch {
+        // Left out rather than shown half-read.
+      }
+    }
+    return found;
   }
 
   async count(merchant: string): Promise<number> {

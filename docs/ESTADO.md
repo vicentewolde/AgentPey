@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-08
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T150 · Pulido del MCP: Claude compró un carrito en producción (`R-28`)
-**Siguiente paso:** el orden de `R-24` (T146 se adelantó, `R-27`): T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T144 si alcanza; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** T151, T152 y T153 (`R-29`); T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -30,13 +30,16 @@
 | T141 Página "Tiendas comprables por agentes" | para el video | ✅ terminada, en vivo en [agentpey.com/tiendas](https://agentpey.com/tiendas): `/tiendas` (alias `/stores`) lista las tres tiendas del directorio con su perfil UCP, sus recibos anclados y el último, leído de Horizon y confirmado en el registro (`R-26`); probada contra la red real | [PR #67](https://github.com/vicentewolde/AgentPey/pull/67) |
 | T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
-| T144 dots, Muse y Grok Bot | si alcanza | ⏳ pendiente: el usuario solo tiene Grok (sin dots ni Muse, 5-oct); el corte del 7-oct no se aplica (`R-24`) | |
+| T144 dots, Muse y Grok Bot | si alcanza | ⏳ queda como tabla sin compra (`R-29`: Grok Bot pide plan pago): el usuario solo tiene Grok (sin dots ni Muse, 5-oct); el corte del 7-oct no se aplica (`R-24`) | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ✅ terminada: cobro por uso viable en testnet con lo que existe; suscripciones sin emisor recomendable (Cards402 prohíbe cobros recurrentes, ASGCard no publica términos ni KYC); el usuario aprobó T146 sin desplegar nada nuevo y las suscripciones solo como diseño (`R-25`) | [PR #66](https://github.com/vicentewolde/AgentPey/pull/66) |
 | T146 Demo de presupuesto de equipo | se corta segundo | ✅ terminada: `pnpm run team:pay` pagó tres créditos de SignalDesk en producción desde `policyRailUcp` y rechazó la cuarta compra por el presupuesto del equipo (0,30 por día); `team:summary` suma el mes (`R-27`) | [PR #68](https://github.com/vicentewolde/AgentPey/pull/68) |
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
 | T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20; compra real `ord_muvlkwxp66c0327a66` con `customerAcceptsMarketing` en Shopify | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |
 | T150 Pulido del MCP para el video (`R-28`) | para el video | ✅ terminada: Claude cotizó y pagó un carrito (imán y posavasos) en `mcp.agentpey.com`, `ord_muzwp0qecb2904cfc8`, recibo con los tres checks; `get_order` trae el enlace al pago | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
+| T151 Página "En vivo" (`R-29`, `R-30`) | para el video | 👀 en revisión: `/en-vivo` (alias `/live`) muestra 31 compras y 2 disputas resueltas leídas de la red, refrescadas cada 10 s; falta ver una compra nueva aparecer sola tras el deploy | `cc/t151-en-vivo` |
+| T152 Portada al día (`R-29`) | para el video | ⏳ pendiente | |
+| T153 Página del presupuesto de equipo (`R-29`) | para el video | ⏳ pendiente | |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 

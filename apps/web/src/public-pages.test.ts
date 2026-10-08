@@ -14,7 +14,7 @@ const PUBLIC_DIR = resolve(fileURLToPath(new URL("../public", import.meta.url)))
  * that break a page without any test noticing.
  */
 describe("the static pages", () => {
-  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "tiendas.html"]) {
+  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "tiendas.html", "en-vivo.html"]) {
     it(`${name} never combines timeZoneName with dateStyle or timeStyle`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
       const combined = /\{[^}]*(dateStyle|timeStyle)[^}]*timeZoneName[^}]*\}|\{[^}]*timeZoneName[^}]*(dateStyle|timeStyle)[^}]*\}/;
@@ -75,4 +75,13 @@ describe("the static pages", () => {
     const html = await readFile(resolve(PUBLIC_DIR, "landing.html"), "utf8");
     expect(html).toContain('href="/tiendas"');
   });
+
+  // T151: the live feed renders what /api/live returns, which carries text from stores and receipts: never as HTML.
+  it("en-vivo.html polls /api/live and never writes what it reads as HTML", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "en-vivo.html"), "utf8");
+    expect(html).toContain('fetch("/api/live"');
+    expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+    expect(html).not.toContain("\u2014");
+  });
 });
+

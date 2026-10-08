@@ -117,6 +117,8 @@ import { executeTenantPurchase, previewTenantPurchase } from "./tenant-purchase.
 import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
 import { createStoresDirectory, type StoresPage } from "./stores-directory.js";
+import { createLiveActivity, type LivePage } from "./live-activity.js";
+import { createLedgerReader } from "./ledger-reader.js";
 import { ucpPublicPath } from "./ucp-public.js";
 import { isWalletIconPath, serveWalletIcon, serveWalletKit } from "./wallet-kit-route.js";
 import { isLocalHost, routeWalletLab } from "./wallet-lab.js";
@@ -1181,7 +1183,10 @@ async function serveStatic(pathname: string, res: ServerResponse, host: string |
           : // T141: the stores an agent can buy from; `/stores` is the English alias.
           pathname === "/tiendas" || pathname === "/stores"
           ? "/tiendas.html"
-          : // T126: where a merchant answers an AgentResolve claim. Static: the
+          : // T151: live activity; `/live` is the English alias.
+            pathname === "/en-vivo" || pathname === "/live"
+            ? "/en-vivo.html"
+            : // T126: where a merchant answers an AgentResolve claim. Static: the
             // claim is loaded and the answer signed and downloaded in the page.
             pathname === "/resolve/responder"
             ? "/resolve/responder.html"
@@ -1254,6 +1259,44 @@ async function listStores(): Promise<StoresPage> {
   return storesDirectory.list();
 }
 
+/**
+ * The data behind `/en-vivo` (T151): the directory, Horizon, the receipt
+ * registry and AgentResolve, read-only. Built on first use, like the stores.
+ */
+let liveActivity: { read(): Promise<LivePage> } | undefined;
+async function readLive(): Promise<LivePage> {
+  if (liveActivity === undefined) {
+    const parse = (raw: string): unknown => {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return undefined;
+      }
+    };
+    const [vitrineeRaw, testnetRaw] = await Promise.all([
+      readFile(new URL("../../../deployments/vitrinee-testnet.json", import.meta.url), "utf8").catch(() => ""),
+      readFile(new URL("../../../deployments/testnet.json", import.meta.url), "utf8").catch(() => ""),
+    ]);
+    const contractId = z.string().regex(/^C[A-Z2-7]{55}$/);
+    const registry = z.object({ receiptRegistry: z.object({ contractId }) }).safeParse(parse(vitrineeRaw));
+    const resolve = z.object({ agentResolve: z.object({ contractId }) }).safeParse(parse(testnetRaw));
+    if (!registry.success || !resolve.success) {
+      throw new AgentPassError("ConfigError", "deployments/*.json do not name the receipt registry and AgentResolve", { details: {} });
+    }
+    const registryId = registry.data.receiptRegistry.contractId;
+    const resolveId = resolve.data.agentResolve.contractId;
+    liveActivity = createLiveActivity({
+      fetchImpl: fetch,
+      directoryUrl: process.env["VITRINEE_DIRECTORY_URL"] ?? "https://vitrinee.agentpey.com/api/comercios",
+      horizonUrl: "https://horizon-testnet.stellar.org",
+      registryId,
+      resolveId,
+      readLedger: createLedgerReader({ rpcUrl: "https://soroban-testnet.stellar.org", networkPassphrase: Networks.TESTNET, registryId, resolveId }),
+    });
+  }
+  return liveActivity.read();
+}
+
 const server = createServer((req, res) => {
   void handle(req, res).catch((error: unknown) => {
     logError("unhandled web request error", error, { method: req.method ?? "unknown", path: req.url ?? "", status: 500 });
@@ -1270,6 +1313,17 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   if (req.method === "GET" && pathname === "/discovery/search") {
     const result = await handleDiscoverySearch(publicDiscovery, url.searchParams.get("query"));
     sendJson(res, result.status, result.body);
+    return;
+  }
+
+  // T151: what agents are doing at the stores, read from the network.
+  if (req.method === "GET" && pathname === "/api/live") {
+    try {
+      sendJson(res, 200, { ok: true, ...(await readLive()) }, { "cache-control": "public, max-age=5" });
+    } catch (error) {
+      logError("[live] the live activity could not be built", error);
+      sendJson(res, 503, { ok: false, ...errorBody(error) });
+    }
     return;
   }
 

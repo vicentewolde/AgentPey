@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en" data-title-en="AgentPey · live" data-title-es="AgentPey · en vivo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · live</title>
+<meta name="description" content="What AI agents are buying right now at stores on Stellar testnet: every purchase with its anchored receipt, and every dispute with its state, read from the network." />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the agentpey.com subdomains. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #fbfaf8;
+    --paper-2: #f2f0ea;
+    --ink: #0f1211;
+    --ink-2: #434946;
+    --ink-3: #7d8481;
+    --rule: #e3e0d9;
+    --accent: #0a7a56;
+    --accent-soft: #e3f3ec;
+    --warn: #9a5b00;
+    --warn-soft: #fbf0dc;
+    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html[lang="en"] [data-tr="es"],
+  html[lang="es"] [data-tr="en"] { display: none; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 56px); }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
+  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; }
+  .mark .logo { width: 24px; height: 24px; flex: none; }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .utils > a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
+  .utils > a:hover { color: var(--ink); }
+  .lang { display: flex; align-items: center; gap: 8px; }
+  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
+  .lang span { color: var(--rule); font-size: 11.5px; }
+  html[lang="en"] .lang button[data-set-lang="en"], html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
+
+  .hero { padding: clamp(28px, 4vw, 48px) 0 24px; }
+  .eyebrow { font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin: 0; display: flex; align-items: center; gap: 8px; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s ease-out infinite; }
+  .live-dot.stale { background: var(--warn); animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.2rem, 6vw, 3.8rem); line-height: 1.06; letter-spacing: -0.016em; margin: 16px 0 0; max-width: 22ch; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .sub { margin: 18px 0 0; color: var(--ink-2); max-width: 70ch; font-size: clamp(1rem, 1.6vw, 1.1rem); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 12px; margin: 26px 0 8px; }
+  .stat { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+  .stat b { display: block; font-family: var(--serif); font-weight: 400; font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.05; }
+  .stat span { font-size: 12.5px; color: var(--ink-3); }
+  .refresh { font-size: 12.5px; color: var(--ink-3); margin: 6px 0 18px; }
+
+  .feed { list-style: none; margin: 0 0 40px; padding: 0; display: grid; gap: 10px; }
+  .row { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; align-items: start; min-width: 0; }
+  .row.new { animation: arrive 2.4s ease-out; }
+  @keyframes arrive { 0% { background: var(--accent-soft); border-color: var(--accent); transform: translateY(-6px); } 100% { background: #fff; border-color: var(--rule); transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .row.new, .live-dot { animation: none; } }
+  .what { font-weight: 600; overflow-wrap: anywhere; }
+  .meta { font-size: 13px; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .store { display: inline-block; font-size: 12px; font-weight: 500; background: var(--paper-2); border-radius: 999px; padding: 1px 9px; color: var(--ink-2); }
+  .amount { font-family: var(--serif); font-size: 1.6rem; line-height: 1; text-align: right; white-space: nowrap; }
+  .amount small { font-family: var(--sans); font-size: 12px; color: var(--ink-3); }
+  .links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+  .badge { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 6px; padding: 2px 8px; }
+  .badge.open { background: var(--warn-soft); color: var(--warn); }
+  .badge.resolved { background: var(--accent-soft); color: var(--accent); }
+  .badge.rejected { background: var(--paper-2); color: var(--ink-2); }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .state { color: var(--ink-2); padding: 18px 0; }
+  .warn { color: var(--warn); }
+  .source { font-size: 13px; color: var(--ink-3); max-width: 80ch; margin: 0 0 30px; }
+  .source a { color: var(--ink-2); }
+  footer { padding: 26px 0 40px; font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--ink-3); }
+  @media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr); } .amount { text-align: left; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <a class="mark" href="/">
+      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
+      <span>AgentPey</span>
+    </a>
+    <div class="utils">
+      <a href="/"><span data-tr="en">Home</span><span data-tr="es">Inicio</span></a>
+      <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+      <div class="lang">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+      </div>
+      <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow"><span class="live-dot" id="dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <h1>
+      <span data-tr="en">What AI agents are <em>buying</em> right now.</span>
+      <span data-tr="es">Lo que los agentes de IA están <em>comprando</em> ahora.</span>
+    </h1>
+    <p class="sub">
+      <span data-tr="en">Every purchase an agent made at the stores below, with its receipt anchored on Stellar, and every refund claim with the state the dispute contract holds. Read from the network, not from our database.</span>
+      <span data-tr="es">Cada compra que un agente hizo en estas tiendas, con su recibo anclado en Stellar, y cada reclamo con el estado que guarda el contrato de disputas. Leído de la red, no de nuestra base de datos.</span>
+    </p>
+    <div class="stats" aria-live="polite">
+      <div class="stat"><b id="s-purchases">·</b><span data-tr="en">recent purchases</span><span data-tr="es">compras recientes</span></div>
+      <div class="stat"><b id="s-usdc">·</b><span data-tr="en">USDC paid by agents</span><span data-tr="es">USDC pagados por agentes</span></div>
+      <div class="stat"><b id="s-disputes">·</b><span data-tr="en">disputes resolved</span><span data-tr="es">disputas resueltas</span></div>
+      <div class="stat"><b id="s-refunded">·</b><span data-tr="en">USDC refunded on-chain</span><span data-tr="es">USDC reembolsados en la red</span></div>
+    </div>
+    <p class="refresh" id="refresh"></p>
+  </header>
+
+  <ul class="feed" id="feed" aria-live="polite">
+    <li class="state"><span data-tr="en">Reading the network…</span><span data-tr="es">Leyendo la red…</span></li>
+  </ul>
+
+  <p class="source" id="source" hidden></p>
+
+  <footer>
+    <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
+    <a href="/api/live">/api/live</a>
+  </footer>
+</div>
+
+<script>
+  /* The feed, polled from /api/live. Every value is set with textContent or a checked https URL, never as HTML. */
+  (function () {
+    var root = document.documentElement;
+    var POLL_MS = 10000;
+    var data = null;
+    var seen = null;
+    var fresh = {};
+    var failedAt = null;
+    var lastOk = null;
+
+    var T = {
+      en: {
+        order: "Order", receipt: "Receipt", payment: "Payment", anchor: "Anchor", verdict: "Verdict on-chain",
+        open: "Dispute open · {a} USDC locked", resolved: "Refunded {r} USDC", rejected: "Claim rejected",
+        productsUnknown: "a purchase", none: "No purchases yet.", error: "The network could not be read right now; showing the last answer.",
+        down: "The live feed could not be loaded right now. Try again in a minute.",
+        refresh: "Updated {ago}. Refreshes every 10 s.",
+        source: "Sources: purchases from Horizon and {reg}; disputes from {res}; products and payment from each anchored receipt, whose signature and hash are checked against the network. "
+      },
+      es: {
+        order: "Orden", receipt: "Recibo", payment: "Pago", anchor: "Ancla", verdict: "Veredicto en la red",
+        open: "Disputa abierta · {a} USDC bloqueados", resolved: "Reembolsados {r} USDC", rejected: "Reclamo rechazado",
+        productsUnknown: "una compra", none: "Todavía no hay compras.", error: "No se pudo leer la red ahora; se muestra la última respuesta.",
+        down: "No se pudo cargar el feed ahora. Prueba de nuevo en un minuto.",
+        refresh: "Actualizado {ago}. Se refresca cada 10 s.",
+        source: "Fuentes: las compras, de Horizon y {reg}; las disputas, de {res}; los productos y el pago, de cada recibo anclado, con su firma y su hash comprobados contra la red. "
+      }
+    };
+    function lang() { return root.lang === "es" ? "es" : "en"; }
+    function t(k) { return T[lang()][k]; }
+    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+    function safeUrl(v) { try { var u = new URL(v); return u.protocol === "https:" ? u.href : null; } catch (e) { return null; } }
+    function link(href, text) { var u = safeUrl(href); if (!u) return el("span", "", text); var a = el("a", "", text); a.href = u; a.target = "_blank"; a.rel = "noopener"; return a; }
+    function short(h) { return h.slice(0, 8) + "…" + h.slice(-4); }
+    function num(v) { return Number(v).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
+    function ago(iso) {
+      var s = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+      var v, u;
+      if (s < 60) { v = s; u = " s"; }
+      else if (s < 3600) { v = Math.floor(s / 60); u = " min"; }
+      else if (s < 86400) { v = Math.floor(s / 3600); u = " h"; }
+      else { v = Math.floor(s / 86400); u = lang() === "es" ? (v === 1 ? " día" : " días") : (v === 1 ? " day" : " days"); }
+      return lang() === "es" ? "hace " + v + u : v + u + " ago";
+    }
+
+    function row(p) {
+      var li = el("li", "row" + (fresh[p.hash] ? " new" : ""));
+      var left = el("div");
+      var what = el("div", "what");
+      var items = p.items && p.items.length ? p.items.map(function (i) { return (i.quantity > 1 ? i.quantity + " × " : "") + i.title; }).join(" + ") : t("productsUnknown");
+      what.textContent = items;
+      left.appendChild(what);
+      var meta = el("div", "meta");
+      meta.appendChild(el("span", "store", p.store_name));
+      meta.appendChild(el("span", "", ago(p.at)));
+      meta.appendChild(el("span", "mono", t("order") + " " + p.order_ref));
+      if (p.dispute) {
+        var d = p.dispute;
+        var refunded = d.status === "resolved" && Number(d.refund_usdc) > 0;
+        var label = d.status === "open" ? t("open").replace("{a}", num(d.amount_usdc)) : refunded ? t("resolved").replace("{r}", num(d.refund_usdc)) : t("rejected");
+        meta.appendChild(el("span", "badge " + (d.status === "open" ? "open" : refunded ? "resolved" : "rejected"), label));
+      }
+      left.appendChild(meta);
+      li.appendChild(left);
+      var amount = el("div", "amount", num(p.amount_usdc));
+      amount.appendChild(el("small", "", " USDC"));
+      li.appendChild(amount);
+      var links = el("div", "links");
+      links.appendChild(link(p.verify_url, t("receipt") + " " + short(p.hash)));
+      if (p.payment_url) links.appendChild(link(p.payment_url, t("payment") + " " + short(p.payment_tx)));
+      links.appendChild(link(p.anchor_url, t("anchor") + " " + short(p.anchor_tx)));
+      if (p.dispute && p.dispute.verdict_hash && data) links.appendChild(link("https://stellar.expert/explorer/testnet/contract/" + data.resolve_contract, t("verdict") + " " + short(p.dispute.verdict_hash)));
+      li.appendChild(links);
+      return li;
+    }
+
+    function render() {
+      var feed = document.getElementById("feed");
+      var dot = document.getElementById("dot");
+      dot.className = "live-dot" + (failedAt ? " stale" : "");
+      if (!data) {
+        if (failedAt) feed.replaceChildren(el("li", "state warn", t("down")));
+        return;
+      }
+      document.getElementById("s-purchases").textContent = String(data.totals.purchases);
+      document.getElementById("s-usdc").textContent = num(data.totals.usdc);
+      document.getElementById("s-disputes").textContent = String(data.totals.disputes_resolved);
+      document.getElementById("s-refunded").textContent = num(data.totals.refunded_usdc);
+      if (data.purchases.length === 0) feed.replaceChildren(el("li", "state", t("none")));
+      else feed.replaceChildren.apply(feed, data.purchases.map(row));
+      var r = document.getElementById("refresh");
+      r.textContent = (failedAt ? t("error") + " " : "") + t("refresh").replace("{ago}", ago(lastOk || data.generated_at));
+      var source = document.getElementById("source");
+      var parts = t("source").split(/(\{reg\}|\{res\})/);
+      source.replaceChildren();
+      parts.forEach(function (part) {
+        if (part === "{reg}") source.appendChild(link("https://stellar.expert/explorer/testnet/contract/" + data.registry, "receipt-registry"));
+        else if (part === "{res}") source.appendChild(link("https://stellar.expert/explorer/testnet/contract/" + data.resolve_contract, "AgentResolve"));
+        else source.appendChild(document.createTextNode(part));
+      });
+      source.hidden = false;
+    }
+
+    function poll() {
+      fetch("/api/live", { headers: { accept: "application/json" }, cache: "no-store" })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error(String(res.status))); })
+        .then(function (body) {
+          if (!body || !Array.isArray(body.purchases)) throw new Error("bad body");
+          fresh = {};
+          if (seen !== null) body.purchases.forEach(function (p) { if (!seen[p.hash]) fresh[p.hash] = true; });
+          seen = {};
+          body.purchases.forEach(function (p) { seen[p.hash] = true; });
+          data = body;
+          failedAt = null;
+          lastOk = new Date().toISOString();
+          render();
+        })
+        .catch(function () { failedAt = new Date().toISOString(); render(); });
+    }
+
+    document.addEventListener("agentpey:lang", function () { fresh = {}; render(); });
+    poll();
+    setInterval(poll, POLL_MS);
+    setInterval(function () { if (data) { fresh = {}; render(); } }, 15000);
+  })();
+</script>
+
+<script>
+  /* EN/ES switch, as on the landing. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
+</script>
+
+</body>
+</html>
