@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-07 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-08 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -37,7 +37,7 @@ de Stellar (`R-22`). **T143 cerrada** ([PR #65](https://github.com/vicentewolde/
 las cinco pantallas de firma aceptan Freighter y xBull, y las que solo firman
 un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLayer y
-Trustless Work (T138, T139) para el final de la fase (`R-24`). **T145 cerrada**:
+Trustless Work (T138, T139) para el final de la fase (`R-24`). El 8-oct: el reembolso real de T124 (pedido #1006), T150 cerrada con Claude comprando un carrito, `/en-vivo` en producción (T151) y la portada al día (T152, en revisión). **T145 cerrada**:
 un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de

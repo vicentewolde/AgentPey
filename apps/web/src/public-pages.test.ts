@@ -55,12 +55,16 @@ describe("the static pages", () => {
     expect(html.match(/data-tr="es"/g)?.length).toBe(html.match(/data-tr="en"/g)?.length);
   });
 
-  it("the landing's live buttons go to RealOps, not to the removed demo", async () => {
+  it("the landing's live buttons go to the live pages, never to the removed demo (C-120, R-31)", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "landing.html"), "utf8");
 
     expect(html).not.toContain('href="/consent"');
     expect(html).not.toContain('href="/sign"');
-    expect(html.match(/href="https:\/\/realops\.agentpey\.com"/g)?.length).toBeGreaterThanOrEqual(2);
+    // The closing button opens the RealOps pilot (C-120); the hero's goes to /en-vivo (R-31).
+    const close = html.slice(html.indexOf('<div class="close">'));
+    expect(close).toMatch(/<a class="btn" href="https:\/\/realops\.agentpey\.com">/);
+    const hero = html.slice(html.indexOf('<header class="hero">'), html.indexOf("</header>"));
+    expect(hero).toMatch(/<a class="btn" href="\/en-vivo">/);
   });
 
   // T141: the store list is built from /api/stores, which carries text from the directory: never as HTML.
@@ -82,6 +86,8 @@ describe("the static pages", () => {
     expect(html).toContain('fetch("/api/live"');
     for (const id of ["live-stores", "live-purchases", "live-usdc", "live-disputes"]) expect(html).toContain(`id="${id}">…</b>`);
     expect(html).not.toMatch(/id="stat-(tests|commits)"/);
+    // Every text in English has its Spanish pair.
+    expect(html.match(/data-tr="es"/g)?.length).toBe(html.match(/data-tr="en"/g)?.length);
     expect(html).toContain('href="/en-vivo"');
     expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
     expect(html).not.toContain("\u2014");

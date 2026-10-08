@@ -8476,3 +8476,15 @@ listas", navegación con En vivo. El botón del cierre sigue en RealOps (`C-120`
 
 Pendiente: `/revisar`, merge con OK; T153; ver una compra nueva aparecer sola en `/en-vivo` (criterio de T151).
 `AGENTS.md`: sin cambios. Exponential: T152 sin ticket propio.
+
+## 2026-10-08 (8) — cc/t152-portada
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T152 con tres bloqueantes de texto, corregidos: la invitación a conectar el MCP (solo entra la
+wallet dueña del rail), "presupuesto de equipo en la red" (lo aplica PolicyRail) y "un contrato topa cada pago" (no
+vale para el SDK con cuenta clásica). También: "Claude pagó tras el sí de la persona", alcance de la suite de UCP,
+enlaces al kit y a la corrida, contadores con "n/a" y reintento, `R-31` (botón del hero a `/en-vivo`, enmienda
+`C-120`). Push, PR y merge con OK.
+
+Pendiente: T153; ver una compra nueva en `/en-vivo`. `AGENTS.md`: sin cambios.

@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-08
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T150 · Pulido del MCP: Claude compró un carrito en producción (`R-28`)
-**Siguiente paso:** T151, T152 y T153 (`R-29`); T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** merge de T152 y T153 (`R-29`); ver una compra nueva aparecer sola en `/en-vivo` (cierra T151); T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 

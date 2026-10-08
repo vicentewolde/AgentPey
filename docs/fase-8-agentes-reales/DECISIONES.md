@@ -1007,3 +1007,18 @@ llamadas al RPC público por refresco. Y un nombre de producto que no viene del 
 
 **Alternativas descartadas.** Los nombres de la orden UCP (no firmados, y las ventas anteriores a UCP no la tienen).
 La lectura en lote en `apps/web` con su propia copia del SDK (sus objetos `xdr` no se mezclan con los del paquete).
+
+---
+
+### R-31 · El botón principal de la portada lleva a `/en-vivo`; el del cierre sigue en RealOps · `Vigente` — enmienda `C-120`
+**Fecha:** 2026-10-08 · **Tarea:** T152 · Propuesta de Claude Code; el usuario aprobó el plan ("el botón principal lleva a `/en-vivo`") y pidió el merge
+
+`C-120` llevó los botones "en vivo" de la portada a RealOps, cuando la portada contaba el piloto de la Fase 6. La
+portada de T152 cuenta la Fase 8, y lo que se ve "en vivo" son los agentes comprando: el botón del hero lleva a
+`/en-vivo`. **El botón del cierre sigue abriendo el piloto de RealOps**, como fija `C-120`, y RealOps sigue en la
+barra de apps. Un test fija los dos botones.
+
+**Motivo.** El video abre en la portada, y el hero debe llevar a lo que muestra el video.
+
+**Alternativa descartada.** Los dos botones a `/en-vivo` (RealOps quedaría solo en la barra, y `C-120` sigue
+siendo la forma de probar el piloto de punta a punta con un Mandato propio).
