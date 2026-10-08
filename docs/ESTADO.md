@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-07
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T141 · Página "Tiendas comprables por agentes", en vivo en agentpey.com/tiendas (`R-26`)
-**Siguiente paso:** el 8-oct, `pnpm run team:pay -- --times 4` contra SignalDesk en producción para cerrar T146; hoy, `/revisar` y merge de T150 (pulido del MCP) para el video (pedido del usuario el 7-oct). Luego el orden de `R-24` (T146 se adelantó, `R-27`): el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T144 si alcanza; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** el 8-oct, `pnpm run team:pay -- --times 4` contra SignalDesk en producción para cerrar T146; una cotización de carrito desde Claude para cerrar T150 para el video (pedido del usuario el 7-oct). Luego el orden de `R-24` (T146 se adelantó, `R-27`): el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T144 si alcanza; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -36,7 +36,7 @@
 | T147 Eventos de despacho y webhooks (`R-12`) | si alcanza | ✅ terminada: orden con `fulfillment.events`, webhooks firmados RFC 9421 con cola en la orden, despacho leído de Shopify, receptor en agentpey.com (`R-17`, `VT-44`); suite 47/10/20; despacho real `ord_muv8xjmi1a53efae61` | [PR #55](https://github.com/vicentewolde/AgentPey/pull/55), mergeado; evidencia en `cc/t147-evidencia` |
 | T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20; compra real `ord_muvlkwxp66c0327a66` con `customerAcceptsMarketing` en Shopify | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |
-| T150 Pulido del MCP para el video (`R-28`) | para el video | 👀 en revisión: `quote` acepta un carrito (`items`, un solo pago) y `get_order` trae `receipt.explorer_url`; falta una cotización de carrito desde Claude tras el deploy | `cc/t150-pulido-mcp` |
+| T150 Pulido del MCP para el video (`R-28`) | para el video | 👀 en revisión: `quote` acepta un carrito (`items`, un solo pago) y `get_order` trae `receipt.explorer_url`; falta una cotización de carrito desde Claude tras el deploy | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 
