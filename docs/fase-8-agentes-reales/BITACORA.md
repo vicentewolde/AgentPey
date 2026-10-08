@@ -37,7 +37,7 @@ de Stellar (`R-22`). **T143 cerrada** ([PR #65](https://github.com/vicentewolde/
 las cinco pantallas de firma aceptan Freighter y xBull, y las que solo firman
 un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLayer y
-Trustless Work (T138, T139) para el final de la fase (`R-24`). El 8-oct: el reembolso real de T124 (pedido #1006), T150 cerrada con Claude comprando un carrito, `/en-vivo` en producción (T151) y la portada al día (T152, en producción). **T145 cerrada**:
+Trustless Work (T138, T139) para el final de la fase (`R-24`). El 8-oct: el reembolso real de T124 (pedido #1006), T150 cerrada con Claude comprando un carrito, `/en-vivo` en producción (T151), la portada al día (T152, en producción) y la página del presupuesto de equipo (T153, [PR #73](https://github.com/vicentewolde/AgentPey/pull/73)). **T145 cerrada**:
 un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
@@ -71,7 +71,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T150 Pulido del MCP | cerrada |
 | T151 Página En vivo | en revisión |
 | T152 Portada al día | cerrada |
-| T153 Página del presupuesto de equipo | en revisión |
+| T153 Página del presupuesto de equipo | cerrada |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.

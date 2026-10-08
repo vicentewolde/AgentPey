@@ -8499,3 +8499,17 @@ frente al tope, pagos con su transacción, rechazos, topes del rail leídos de l
 
 Pendiente: `/revisar`, merge con OK; ver una compra nueva en `/en-vivo`; T142 y T144 el 11-oct. `AGENTS.md`: sin
 cambios. Exponential: T152 `DONE` en `SYNC.md`; T153 sin ticket propio.
+
+## 2026-10-08 (10) — cc/t153-presupuesto-pagina
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T153 sin bloqueantes. Corregido: solo cuenta como "pagada en Stellar" una compra con transacción
+anclada (las que el presupuesto contó sin transacción salen aparte, `M-15`); liberados y motivo del rail caído como en
+la terminal; día sobre el tope en rojo; sin fuentes de Google; con la cadena rota se borran las páginas viejas;
+navegador fuera de macOS sin caerse; escritura con error tipado; salida cruda en la evidencia; nota cruzada en `R-27`.
+`pnpm check` verde. Push, [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) y fast-forward a `main` con OK.
+
+Pendiente: ver una compra nueva aparecer sola en `/en-vivo` (cierra T151); T130 cuando haya tienda; el 11-oct, el
+guion de T142 (con chequeo previo de que todo está vivo) y la tabla de T144; al final T138, T139 y T140. Deuda nueva
+en `ESTADO.md`: `parseLine` del Vault no valida con zod los campos de cada entrada. `AGENTS.md`: sin cambios.

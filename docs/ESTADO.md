@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-08
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T152 · Portada de agentpey.com al día, en producción (`R-31`)
-**Siguiente paso:** `/revisar` y merge de T153; ver una compra nueva aparecer sola en `/en-vivo` (cierra T151); T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** T153 · Página local del presupuesto de equipo (`team:summary -- --html`)
+**Siguiente paso:** ver una compra nueva aparecer sola en `/en-vivo` (cierra T151); T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -39,7 +39,7 @@
 | T150 Pulido del MCP para el video (`R-28`) | para el video | ✅ terminada: Claude cotizó y pagó un carrito (imán y posavasos) en `mcp.agentpey.com`, `ord_muzwp0qecb2904cfc8`, recibo con los tres checks; `get_order` trae el enlace al pago | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
 | T151 Página "En vivo" (`R-29`, `R-30`) | para el video | 👀 en revisión: `/en-vivo` (alias `/live`) muestra 31 compras y 2 disputas resueltas leídas de la red, refrescadas cada 10 s; falta ver una compra nueva aparecer sola tras el deploy | [PR #71](https://github.com/vicentewolde/AgentPey/pull/71) |
 | T152 Portada al día (`R-29`, `R-31`) | para el video | ✅ terminada, en vivo en agentpey.com: la Fase 8, números en vivo desde `/api/live`, sección con cada pieza y su enlace | [PR #72](https://github.com/vicentewolde/AgentPey/pull/72) |
-| T153 Página del presupuesto de equipo (`R-29`) | para el video | 👀 en revisión: `pnpm run team:summary -- --html` genera y abre la página local con gasto por día, pagos, rechazos y topes del rail | `cc/t153-presupuesto-pagina` |
+| T153 Página del presupuesto de equipo (`R-29`) | para el video | ✅ terminada: `pnpm run team:summary -- --html` genera y abre la página local con gasto por día, pagos (solo los anclados cuentan como pagados en Stellar), rechazos y topes del rail | [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 

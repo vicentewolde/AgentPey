@@ -72,7 +72,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T150 | — (sin ticket Exponential propio) | Pulido del MCP para el video: carrito en quote y enlace en get_order | SPEC | `DONE` | 2026-10-07 | 2026-10-07 | 2026-10-08 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-28](../fase-8-agentes-reales/DECISIONES.md) | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
 | T151 | — (sin ticket Exponential propio) | Página En vivo: compras y disputas leídas de la red | SPEC | `QA` | 2026-10-08 | 2026-10-08 | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-29](../fase-8-agentes-reales/DECISIONES.md) | [PR #71](https://github.com/vicentewolde/AgentPey/pull/71) |
 | T152 | — (sin ticket Exponential propio) | Portada de agentpey.com al día con la Fase 8 | SPEC | `DONE` | 2026-10-08 | 2026-10-08 | 2026-10-08 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-29](../fase-8-agentes-reales/DECISIONES.md) | [PR #72](https://github.com/vicentewolde/AgentPey/pull/72) |
-| T153 | — (sin ticket Exponential propio) | Página local del presupuesto de equipo | SPEC | `QA` | 2026-10-08 | 2026-10-08 | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-29](../fase-8-agentes-reales/DECISIONES.md) | |
+| T153 | — (sin ticket Exponential propio) | Página local del presupuesto de equipo | SPEC | `DONE` | 2026-10-08 | 2026-10-08 | 2026-10-08 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-29](../fase-8-agentes-reales/DECISIONES.md) | [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
