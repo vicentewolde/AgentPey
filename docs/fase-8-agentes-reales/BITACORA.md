@@ -39,7 +39,7 @@ un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLayer y
 Trustless Work (T138, T139) para el final de la fase (`R-24`). **T145 cerrada**:
 un equipo puede pagar servicios por uso desde un `policy_rail`; las
-suscripciones con tarjeta quedan como diseño (`R-25`). **T146 en revisión**, adelantada al
+suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
 muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`).
@@ -64,7 +64,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
-| T146 Demo de presupuesto de equipo | en revisión |
+| T146 Demo de presupuesto de equipo | cerrada |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |

@@ -8394,3 +8394,15 @@ carrito que pasa el tope por compra. `R-28` precisado. Push, PR y merge con OK d
 
 Pendiente: una cotización de carrito desde Claude tras el deploy. `AGENTS.md`: sin cambios. Exponential: T150 sin
 ticket propio.
+
+## 2026-10-08 — cc/t146-cierre
+
+Agente: Claude Code.
+
+Qué: T146 cerrada. `pnpm run team:pay -- --times 4` contra SignalDesk en producción (tras el deploy de PR #68):
+tres pagos de 0,10 desde `policyRailUcp`, cada uno con recibo en `signaldesk.agentpey.com` y ancla en la red, y la
+cuarta compra rechazada por el presupuesto del equipo sin firmar nada. `team:summary`: 0,60 en seis pagos, dos días.
+Criterio del spec marcado, ticket `DONE`.
+
+Pendiente: una cotización de carrito desde Claude para cerrar T150; el reembolso real de T124 (8 o 9-oct, con pasos
+del usuario); T130 cuando haya tienda; T142. `AGENTS.md`: sin cambios. Exponential: T146 a `DONE`.

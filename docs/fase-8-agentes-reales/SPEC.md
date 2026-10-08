@@ -344,7 +344,7 @@ más rápido que lo estimado.
 - **Prioridad:** se corta segundo · **Estimación:** 6 h · **Delegable a Codex:** no
 - **Depende de:** T145, **y la aprobación del usuario** (aprobada el 7-oct, `R-25`: sobre un rail ya desplegado, sin desplegar nada nuevo)
 - **Hecho cuando:**
-  - [ ] un `policy_rail` con topes paga un servicio x402 en testnet, con recibo y un resumen de gastos del mes (`pnpm run team:pay` y `team:summary`, [evidencia](evidencia/T146.md), `R-27`; probado contra SignalDesk en local, se marca con la compra contra `signaldesk.agentpey.com` tras el deploy)
+  - [x] un `policy_rail` con topes paga un servicio x402 en testnet, con recibo y un resumen de gastos del mes (`pnpm run team:pay` y `team:summary` contra `signaldesk.agentpey.com` el 8-oct, [evidencia](evidencia/T146.md) §6, `R-27`)
 
 ### Bloque D · Cierre
 
