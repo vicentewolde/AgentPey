@@ -762,5 +762,12 @@ USDC al día, cuánto se gastó cada día frente a ese tope, cada pago con su tr
 rojo y los topes del rail leídos de la red. Es local porque el registro del equipo es local, y muestra lo mismo que
 la terminal, pero se ve en cámara.
 
+**Revisión (8-oct).** Sin bloqueantes. La página contaba como "pagada en Stellar" toda compra que el presupuesto
+contó, también las que nunca tuvieron transacción (un pago que falló no se libera, `M-15`); ahora esas salen aparte y
+solo se enlaza lo que tiene transacción. También: los liberados y el motivo de un rail caído aparecen como en la
+terminal, un día sobre el tope se ve en rojo, sin fuentes de Google, la cadena rota borra las páginas viejas, el
+navegador se abre también fuera de macOS, y la evidencia lleva la salida cruda. Con los datos reales nada cambia a la
+vista.
+
 Evidencia: [`evidencia/T153.md`](evidencia/T153.md).
 

@@ -940,7 +940,8 @@ red, dentro de la transferencia. Y el comercio propio del piloto no puede rechaz
 promueve.
 
 **Alternativas descartadas.** Pagar desde la cuenta clásica del agente para esquivar la comisión (sin topes en la
-red, `R-4`). Una página para el resumen (queda en la terminal; el usuario no la pidió). Un tope de comisión sin
+red, `R-4`). Una página para el resumen (queda en la terminal; el usuario no la pidió). *Nota:* el usuario la pidió después; la
+agregó `R-29` §3 como T153. Un tope de comisión sin
 límite (un pagador podría encarecer el cobro a voluntad).
 
 ---

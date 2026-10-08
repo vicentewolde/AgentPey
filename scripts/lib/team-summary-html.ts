@@ -5,7 +5,9 @@
  * network or a browser. Local on purpose: the team's vault is local.
  *
  * Every value that comes from the vault or the network is escaped; the only
- * links are to Stellar Expert, built from hashes checked to be hex.
+ * links are to Stellar Expert, built from hashes checked to be hex. A payment
+ * the vault counted but never anchored to a transaction (`M-15`: a failed
+ * payment is not released) is shown as such, never as paid on Stellar.
  */
 import { fromUnits, toUnits, type MonthSummary } from "./team-summary.js";
 
@@ -24,6 +26,8 @@ export interface SummaryPageInput {
   readonly records: number;
   /** `null` when the rail could not be read from the network. */
   readonly rail: RailReading | null;
+  /** Why the rail could not be read, shown when `rail` is `null`. */
+  readonly railError?: string;
   readonly generatedAt: Date;
 }
 
@@ -32,7 +36,7 @@ export interface DayRow {
   readonly spent: string;
   readonly payments: number;
   readonly refusals: number;
-  /** Spent over the team's daily budget, 0 to 100 (never more: the budget refused the rest). */
+  /** Spent over the team's daily budget, in percent. Above 100 only if the vault holds more than the budget let through. */
   readonly percent: number;
 }
 
@@ -49,8 +53,12 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 }
 
+function hasTx(hash: string | null): hash is string {
+  return hash !== null && HEX64.test(hash);
+}
+
 function txLink(hash: string | null): string {
-  if (hash === null || !HEX64.test(hash)) return '<span class="muted">·</span>';
+  if (!hasTx(hash)) return `<span class="muted">${tr("no anchored transaction", "sin transacción anclada")}</span>`;
   return `<a href="https://stellar.expert/explorer/testnet/tx/${hash}" target="_blank" rel="noopener">${hash.slice(0, 8)}…${hash.slice(-4)}</a>`;
 }
 
@@ -77,7 +85,7 @@ export function dayRows(summary: MonthSummary, teamPerDay: string): DayRow[] {
       spent: fromUnits(row.spent),
       payments: row.payments,
       refusals: row.refusals,
-      percent: cap === 0n ? 0 : Math.min(100, Number((row.spent * 10_000n) / cap) / 100),
+      percent: cap === 0n ? 0 : Number((row.spent * 10_000n) / cap) / 100,
     }));
 }
 
@@ -88,6 +96,9 @@ function tr(en: string, es: string): string {
 export function renderSummaryHtml(input: SummaryPageInput): string {
   const { summary } = input;
   const settled = summary.payments.filter((p) => !p.released);
+  const onChain = settled.filter((p) => hasTx(p.paymentTx));
+  const unanchored = settled.length - onChain.length;
+  const released = summary.payments.length - settled.length;
   const days = dayRows(summary, input.teamPerDay);
   const e = escapeHtml;
 
@@ -99,10 +110,10 @@ export function renderSummaryHtml(input: SummaryPageInput): string {
             (d) => `
       <div class="day">
         <div class="day-head"><b>${e(d.day)}</b><span title="${e(d.spent)} USDC">${e(displayAmount(d.spent))} / ${e(input.teamPerDay)} USDC</span></div>
-        <div class="bar" role="img" aria-label="${e(d.spent)} of ${e(input.teamPerDay)} USDC"><div class="fill${d.percent >= 100 ? " full" : ""}" style="width:${d.percent.toFixed(2)}%"></div></div>
+        <div class="bar" role="img" aria-label="${e(d.spent)} of ${e(input.teamPerDay)} USDC"><div class="fill${d.percent > 100 ? " over" : d.percent === 100 ? " full" : ""}" style="width:${Math.min(100, d.percent).toFixed(2)}%"></div></div>
         <div class="day-foot">${d.payments} ${tr(d.payments === 1 ? "payment" : "payments", d.payments === 1 ? "pago" : "pagos")}${
           d.refusals > 0 ? ` · <span class="refused">${d.refusals} ${tr("refused", d.refusals === 1 ? "rechazada" : "rechazadas")}</span>` : ""
-        }</div>
+        }${d.percent > 100 ? ` · <span class="refused">${tr("over the budget", "sobre el presupuesto")}</span>` : ""}</div>
       </div>`,
           )
           .join("");
@@ -123,7 +134,9 @@ export function renderSummaryHtml(input: SummaryPageInput): string {
 
   const rail =
     input.rail === null
-      ? `<p class="muted">${tr("The rail could not be read from the network right now.", "No se pudo leer el rail de la red ahora.")}</p>`
+      ? `<p class="muted">${tr("The rail could not be read from the network right now.", "No se pudo leer el rail de la red ahora.")}${
+          input.railError === undefined ? "" : ` <code>${e(input.railError)}</code>`
+        }</p>`
       : `<dl class="kv">
         <dt>${tr("Contract", "Contrato")}</dt><dd><a href="https://stellar.expert/explorer/testnet/contract/${e(input.rail.contractId)}" target="_blank" rel="noopener">${e(input.rail.contractId.slice(0, 8))}…${e(input.rail.contractId.slice(-6))}</a></dd>
         <dt>${tr("Per payment", "Por pago")}</dt><dd>${e(input.rail.perTx)} USDC</dd>
@@ -141,8 +154,6 @@ export function renderSummaryHtml(input: SummaryPageInput): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AgentPey · team budget · ${e(input.month)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root { --paper:#fbfaf8; --paper-2:#f2f0ea; --ink:#0f1211; --ink-2:#434946; --ink-3:#7d8481; --rule:#e3e0d9; --accent:#0a7a56; --accent-soft:#e3f3ec; --bad:#a23b2a; --bad-soft:#fbe9e5;
     --serif:"Instrument Serif",ui-serif,Georgia,serif; --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; }
@@ -169,6 +180,7 @@ export function renderSummaryHtml(input: SummaryPageInput): string {
   .bar { height: 14px; background: var(--paper-2); border-radius: 999px; margin: 10px 0 8px; overflow: hidden; }
   .fill { height: 100%; background: var(--accent); border-radius: 999px; }
   .fill.full { background: linear-gradient(90deg, var(--accent), #0d9468); }
+  .fill.over { background: var(--bad); }
   .day-foot { font-size: 13px; color: var(--ink-3); }
   .refused { color: var(--bad); font-weight: 600; }
   table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; font-size: 14px; }
@@ -202,8 +214,14 @@ export function renderSummaryHtml(input: SummaryPageInput): string {
   )}</p>
 
   <div class="stats">
-    <div class="stat"><b title="${e(summary.spent)} USDC">${e(displayAmount(summary.spent))}</b><span>${tr("USDC spent this month", "USDC gastados este mes")}</span></div>
-    <div class="stat"><b>${settled.length}</b><span>${tr("purchases paid on Stellar", "compras pagadas en Stellar")}</span></div>
+    <div class="stat"><b title="${e(summary.spent)} USDC">${e(displayAmount(summary.spent))}</b><span>${
+      unanchored > 0 ? tr("USDC counted by the budget this month", "USDC contados por el presupuesto este mes") : tr("USDC spent this month", "USDC gastados este mes")
+    }</span></div>
+    <div class="stat"><b>${onChain.length}</b><span>${tr("purchases paid on Stellar", "compras pagadas en Stellar")}</span></div>${
+      unanchored > 0
+        ? `\n    <div class="stat"><b>${unanchored}</b><span>${tr("counted by the budget, no anchored transaction", "contadas por el presupuesto, sin transacción anclada")}</span></div>`
+        : ""
+    }
     <div class="stat bad"><b>${summary.refusals.length}</b><span>${tr("refused by the budget, nothing signed", "rechazadas por el presupuesto, sin firmar nada")}</span></div>
     <div class="stat"><b>${summary.activeDays}</b><span>${tr("days with spending", "días con gasto")}</span></div>
   </div>
@@ -214,7 +232,11 @@ export function renderSummaryHtml(input: SummaryPageInput): string {
   <div class="two">
     <div>
       <h2>${tr("Payments", "Pagos")}</h2>
-      <table>${paymentRows}</table>
+      <table>${paymentRows}</table>${
+        released > 0
+          ? `\n      <p class="muted">${released} ${tr(released === 1 ? "released: it never reached the network and is not counted." : "released: they never reached the network and are not counted.", released === 1 ? "liberado: nunca llegó a la red y no cuenta." : "liberados: nunca llegaron a la red y no cuentan.")}</p>`
+          : ""
+      }
     </div>
     <div>
       <h2>${tr("Refusals", "Rechazos")}</h2>
@@ -226,8 +248,8 @@ export function renderSummaryHtml(input: SummaryPageInput): string {
   ${rail}
 
   <footer>${tr(
-    `Generated ${e(input.generatedAt.toISOString())} by pnpm run team:summary -- --html. Every payment links to its transaction on Stellar Expert.`,
-    `Generado ${e(input.generatedAt.toISOString())} con pnpm run team:summary -- --html. Cada pago enlaza a su transacción en Stellar Expert.`,
+    `Generated ${e(input.generatedAt.toISOString())} by pnpm run team:summary -- --html. Every payment with an anchored transaction links to it on Stellar Expert.`,
+    `Generado ${e(input.generatedAt.toISOString())} con pnpm run team:summary -- --html. Cada pago con transacción anclada enlaza a ella en Stellar Expert.`,
   )}</footer>
 </div>
 <script>

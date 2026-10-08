@@ -10,11 +10,13 @@
  * anything this repository wrote down.
  *
  * With `--html` (T153) it also writes the same month as a page next to the
- * vault and opens it in the browser.
+ * vault and opens it in the default browser. A chain that does not verify
+ * writes no page and removes the one an earlier run left, so no page says
+ * "chain verified" about a vault that no longer does.
  */
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,6 +55,15 @@ function parseMonth(argv: readonly string[]): string {
   return at === -1 ? currentMonth(new Date()) : (argv[at + 1] ?? "");
 }
 
+/** The default browser's opener on each platform; the printed path is enough if it fails. */
+function openInBrowser(path: string): void {
+  const [command, args]: readonly [string, string[]] =
+    process.platform === "darwin" ? ["open", [path]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", path]] : ["xdg-open", [path]];
+  const child = spawn(command, args, { stdio: "ignore", detached: true });
+  child.on("error", () => line("", `no se pudo abrir el navegador: abre ${path}`));
+  child.unref();
+}
+
 function line(label: string, value: string): void {
   process.stdout.write(`  ${label.padEnd(18)} ${value}\n`);
 }
@@ -70,6 +81,7 @@ async function readRail(contractId: string): Promise<{ perTx: string; perDay: st
 
 async function main(): Promise<void> {
   const month = parseMonth(process.argv.slice(2));
+  const wantsHtml = process.argv.slice(2).includes("--html");
   if (!existsSync(TEAM_VAULT_PATH)) {
     throw new AgentPassError("ConfigError", "no team vault yet: run pnpm run team:pay first", { details: { path: relative(REPO_ROOT, TEAM_VAULT_PATH) } });
   }
@@ -80,6 +92,12 @@ async function main(): Promise<void> {
   line("vault", relative(REPO_ROOT, TEAM_VAULT_PATH));
   if (!integrity.ok) {
     line("cadena", "NO verifica: el archivo se editó después de escrito. No se muestra ningún total.");
+    if (wantsHtml) {
+      // The month is only trusted once summarizeMonth has validated it, so every page of this vault goes.
+      const stale = (await readdir(dirname(TEAM_VAULT_PATH))).filter((name) => /^resumen-\d{4}-\d{2}\.html$/.test(name));
+      await Promise.all(stale.map((name) => rm(resolve(dirname(TEAM_VAULT_PATH), name), { force: true })));
+      line("página", "no se escribió, y se borraron las de corridas anteriores");
+    }
     process.exitCode = 1;
     return;
   }
@@ -110,16 +128,18 @@ async function main(): Promise<void> {
     .object({ policyRailUcp: z.object({ contractId: z.string() }) })
     .parse(JSON.parse(await readFile(DEPLOYMENT_PATH, "utf8")));
   let railReading: RailReading | null = null;
+  let railError: string | undefined;
   try {
     const rail = await readRail(deployment.policyRailUcp.contractId);
     railReading = { contractId: deployment.policyRailUcp.contractId, ...rail };
     line("tope del rail", `${rail.perTx} por compra, ${rail.perDay} por día (leído de la red)`);
     line("rail hoy", `${rail.spentToday} gastado hoy por el rail (incluye otras compras que paga el mismo rail)`);
   } catch (error) {
-    line("tope del rail", `no se pudo leer de la red ahora (${error instanceof Error ? error.message.slice(0, 80) : String(error)})`);
+    railError = error instanceof Error ? error.message.slice(0, 80) : String(error);
+    line("tope del rail", `no se pudo leer de la red ahora (${railError})`);
   }
 
-  if (process.argv.slice(2).includes("--html")) {
+  if (wantsHtml) {
     const html = renderSummaryHtml({
       month,
       summary,
@@ -127,13 +147,20 @@ async function main(): Promise<void> {
       teamPerDay: TEAM_LIMITS.perDay,
       records: vault.list().length,
       rail: railReading,
+      ...(railError === undefined ? {} : { railError }),
       generatedAt: new Date(),
     });
     const out = resolve(dirname(TEAM_VAULT_PATH), `resumen-${month}.html`);
-    await writeFile(out, html);
+    try {
+      await writeFile(out, html);
+    } catch (error) {
+      throw new AgentPassError("ConfigError", "could not write the summary page", {
+        details: { path: relative(REPO_ROOT, out), reason: error instanceof Error ? error.message : String(error) },
+        cause: error,
+      });
+    }
     line("página", relative(REPO_ROOT, out));
-    // Opened in the default browser on macOS; elsewhere the path above is enough.
-    if (process.platform === "darwin") spawn("open", [out], { stdio: "ignore", detached: true }).unref();
+    openInBrowser(out);
   }
   process.stdout.write("\n");
 }

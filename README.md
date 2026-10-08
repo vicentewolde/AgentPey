@@ -67,7 +67,8 @@ transaction and the rail's limits read from the network:
 pnpm run team:summary -- --month 2026-10
 ```
 
-The same month as a page, written next to the vault and opened in the browser:
+The same month as a page, written next to the vault and opened in the default browser
+(the path is printed if it cannot be opened):
 
 ```bash
 pnpm run team:summary -- --html
