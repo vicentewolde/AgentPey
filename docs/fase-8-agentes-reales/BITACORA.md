@@ -705,3 +705,16 @@ Evidencia: [`evidencia/T150.md`](evidencia/T150.md).
 pagó él mismo, en una sola transacción, con el recibo verificado. Para que entrara en el tope del MCP, el usuario
 rebajó el posavasos a 990 CLP.
 
+---
+
+## Pendiente de la Fase 7: el reembolso real de T124 y la orden de T127 — 2026-10-08
+
+**Qué pasó.** Una compra que la tienda nunca preparó (el imán del 1-oct, pedido #1006) recuperó su plata. El agente
+firmó un reclamo y el árbitro abrió la disputa en Stellar, que congeló el monto en la garantía de la tienda. La
+tienda, desde la página `agentpey.com/resolve/responder` y con la firma de su cuenta de cobro, aceptó devolver el
+total. Claude, como árbitro, leyó las dos versiones y propuso un reembolso total. El usuario confirmó el hash del
+veredicto, y recién entonces el contrato devolvió 1,5684211 USDC al rail que había pagado. La orden de la tienda
+muestra la disputa como pendiente primero y como reembolsada después, en el formato estándar de UCP.
+
+Evidencia: [`evidencia/T124-reembolso-real.md`](evidencia/T124-reembolso-real.md).
+

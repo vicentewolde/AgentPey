@@ -8,7 +8,7 @@
 **Actualizado:** 2026-10-08
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T150 · Pulido del MCP: Claude compró un carrito en producción (`R-28`)
-**Siguiente paso:** el orden de `R-24` (T146 se adelantó, `R-27`): el reembolso real de T124 el 8 o 9 de octubre (`E-25`), T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T144 si alcanza; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** el orden de `R-24` (T146 se adelantó, `R-27`): T130 cuando haya tienda de terceros y T142 con el código congelado el 10-oct; luego T144 si alcanza; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -47,7 +47,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - [ ] Para T130: conseguir la tienda de terceros (en proceso, 5-oct). T144: el usuario confirmó que tiene Grok, no dots ni Muse
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
-- [ ] 8 o 9 de octubre: confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página; después, comprobar que `ord_muq1gqhycf4961492c` muestra la disputa abierta y luego resuelta (cierra T127)
+- [x] 8 o 9 de octubre (hecho el 8-oct, [evidencia](fase-8-agentes-reales/evidencia/T124-reembolso-real.md)): confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página; después, comprobar que `ord_muq1gqhycf4961492c` muestra la disputa abierta y luego resuelta (cierra T127)
 
 
 ## Deuda y pendientes fuera de la fase
@@ -65,6 +65,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción (pide un contrato nuevo, fuera de alcance). Brecha 14: es parte de T134.
 - T128 (PR 2): el servidor guarda en memoria qué tokens de renovación ya se usaron; tras un reinicio, uno usado sirve una vez más hasta vencer (una semana). Y el rail `mcp` tiene como principal la misma cuenta que cobra en `agentcommerce` y `mycokit`.
 - T131: la memoria de `Idempotency-Key` vive en el proceso un día, con tope (`VT-42`); tras un reinicio, o con dos creaciones simultáneas con la misma clave, puede quedar otra sesión `incomplete` (nunca un segundo cobro). La simulación de despacho de la tienda de conformidad solo comprueba el secreto; el evento llega con T147. Y conformance#116 abierto en la suite: cuando lo corrijan, se quita el renombre de `locality` de la tienda de prueba.
+- 8-oct: reembolso real de T124 hecho (veredicto `refund_full`, 1,5684211 USDC, confirmado por el usuario con `E-18`) y `ord_muq1…` con su disputa resuelta en vivo (cierra el pendiente de T127).
 - 8-oct: Claude llamó a `pay` él mismo al pedírselo (T150); hasta ahora no lo hacía (`R-11`). Observación, sin cambiar la decisión. El posavasos de agentcommerce quedó en 990 CLP para el video.
 - T129 (`/revisar`): resuelto en T150 (`get_order` trae `receipt.explorer_url`). Y el disco local estuvo al 100 % durante `pnpm check` (`ENOSPC`): liberar espacio antes de T131.
 - T128 (`/revisar` del PR 1, sugerencias que quedaron): un pago incierto no se reintenta con la misma clave (la cotización ya se consumió); `recheck` apagado por defecto en `payUcpQuote`; la relectura no compara el id del checkout; una cotización con fecha inválida no vence; la tienda por primera etiqueta no avisa ambigüedad; `open_claim` no comprueba que el rail del MCP pagó el recibo (el árbitro sí); total 0 si la tienda no manda línea `total`; `start` apunta a `main.ts` (llega en el PR 2) y tres dependencias sin usar; tests con `any`.

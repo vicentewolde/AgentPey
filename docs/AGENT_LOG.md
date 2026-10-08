@@ -8430,3 +8430,15 @@ en verde. Observación: hasta ahora Claude no llamaba a `pay` (`R-11`). El posav
 
 Pendiente: `/revisar` y merge de `cc/gateway-puerto-primero` con OK; el reembolso real de T124; T130; T142.
 `AGENTS.md`: sin cambios. Exponential: T150 sin ticket propio (`SYNC.md` en `DONE`).
+
+## 2026-10-08 (4) — cc/t124-reembolso-real (sin push)
+
+Agente: Claude Code.
+
+Qué: el reembolso real de T124, con AgentResolve tal como está y el árbitro abriendo a mano. Pedido Shopify #1006
+sin preparar; `resolve:open` (disputa abierta, 1,5684211 USDC bloqueados), respuesta del comercio firmada por el
+usuario (`accept_full`), `resolve:decide` (`refund_full`), confirmación del hash por el usuario (`E-18`),
+`resolve:execute` y `resolve:verify` en verde. `ord_muq1…` muestra la disputa pendiente y luego resuelta (-1490 CLP):
+cierra el pendiente de T127. Evidencia en `fase-8-agentes-reales/evidencia/T124-reembolso-real.md`.
+
+Pendiente: merge con OK; T130 cuando haya tienda; T142. `AGENTS.md`: sin cambios. Exponential: sin cambios.

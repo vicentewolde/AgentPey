@@ -377,8 +377,8 @@ más rápido que lo estimado.
 
 No son tareas: no hay nada que construir. Su evidencia va a la carpeta de la Fase 7.
 
-- [ ] **8 o 9 de octubre:** reembolso real de T124 sobre el pedido Shopify `18952373174578`, en una rama de evidencia, con el código de `main`
-- [ ] **El mismo día:** `ord_muq1gqhycf4961492c` muestra la disputa abierta y después resuelta (T127)
+- [x] **8 o 9 de octubre:** reembolso real de T124 sobre el pedido Shopify `18952373174578` (#1006), en una rama de evidencia, con el código de `main` (8-oct: veredicto `refund_full`, 1,5684211 USDC devueltos al pagador, [evidencia](evidencia/T124-reembolso-real.md))
+- [x] **El mismo día:** `ord_muq1gqhycf4961492c` muestra la disputa abierta y después resuelta (T127; [evidencia](evidencia/T124-reembolso-real.md) §2 y §6)
 
 ## 6. Criterios de aceptación de la fase
 
