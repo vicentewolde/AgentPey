@@ -984,7 +984,7 @@ propios, Muse es solo de EE. UU.): queda como la tabla del spec, sin compra, y s
 se escribe el 11-oct**, cuando el resto esté hecho, para que no cambie después.
 
 **Motivo.** Lo que más pesa en el video es ver a los agentes comprar y a la red responder; las tres tareas lo muestran
-sin tocar nada congelado.
+sin abrir, responder ni resolver disputas, ni conectarlas con el chat, el pago, el despacho o webhooks.
 
 **Alternativa descartada.** Escribir el guion primero (cambiaría con cada mejora).
 
@@ -1000,7 +1000,7 @@ sin tocar nada congelado.
    SHA-256 es el hash anclado. Así lo mostrado es lo que la red respalda, no el texto suelto de una orden.
 3. **Lectura en lote en `@vitrinee/anchor`** (`ReceiptRegistryClient.getMany`, `AgentResolveReader.getMany`,
    `hashOfKey`): dos llamadas `getLedgerEntries` por refresco en vez de una por recibo, con las claves y la
-   decodificación del propio paquete. Solo lectura; no toca nada congelado de Vitrinee.
+   decodificación del propio paquete. Solo lectura: no cambia `get`, `count` ni `anchor`, ni nada del flujo de cobro de Vitrinee.
 
 **Motivo.** La página se refresca cada 10 s para cada persona que la mira: una lectura por recibo sería decenas de
 llamadas al RPC público por refresco. Y un nombre de producto que no viene del recibo anclado no se puede comprobar.

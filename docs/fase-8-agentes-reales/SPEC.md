@@ -368,7 +368,7 @@ más rápido que lo estimado.
 #### T151 · Página "En vivo" (`R-29`)
 - **Prioridad:** para el video · **Estimación:** 6 h · **Delegable a Codex:** no
 - **Depende de:** T141
-- **Descripción:** `agentpey.com/en-vivo` (alias `/live`): lo que hacen los agentes en las tiendas del directorio, refrescado cada 10 s. Cada compra con su tienda, productos, monto y hora, enlace al recibo y a la transacción; si tiene disputa, su estado (abierta o reembolsada, con el monto) y el hash del veredicto. Arriba, totales. Solo **muestra** disputas: no conecta nada congelado.
+- **Descripción:** `agentpey.com/en-vivo` (alias `/live`): lo que hacen los agentes en las tiendas del directorio, refrescado cada 10 s. Cada compra con su tienda, productos, monto y hora, enlace al recibo y a la transacción; si tiene disputa, su estado (abierta o reembolsada, con el monto) y el hash del veredicto. Arriba, totales. Solo **muestra** disputas: no abre, responde ni resuelve ninguna, ni las conecta con el chat, el pago, el despacho o webhooks.
 - **Hecho cuando:**
   - [x] la página lista las compras recientes de las tiendas reales con su recibo y su transacción, y las disputas con su estado leído del contrato (local contra la red real, [evidencia](evidencia/T151.md) §2)
   - [ ] una compra nueva aparece sola en menos de 30 s, sin recargar

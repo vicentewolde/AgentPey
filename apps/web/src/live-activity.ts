@@ -110,6 +110,10 @@ const DEFAULT_TTL_MS = 8_000;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_PER_STORE = 20;
 const MAX_SHOWN = 40;
+/** A receipt that could not be read is not asked for again before this (T151 review): the page polls for every viewer. */
+const MISS_RETRY_MS = 10 * 60_000;
+/** Receipts kept in memory; each is small and never changes, and the page shows at most `MAX_SHOWN`. */
+const MAX_FACTS = 500;
 
 const orderSchema = z.looseObject({ receipt: z.looseObject({ jws: z.string().max(20_000) }).optional() });
 
@@ -144,7 +148,8 @@ export async function readReceiptFacts(
   let jws: string | undefined;
   for (const [url, headers] of sources) {
     try {
-      const res = await fetchImpl(url, { headers });
+      // A redirect is not followed: the receipt is read from the store's own origin or not at all.
+      const res = await fetchImpl(url, { headers, redirect: "error" });
       if (!res.ok) continue;
       const parsed = orderSchema.safeParse(await res.json());
       jws = parsed.success ? parsed.data.receipt?.jws : undefined;
@@ -175,6 +180,8 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
   const fetchImpl = withTimeout(deps.fetchImpl, timeoutMs);
   /** What each anchored receipt says, by its hash: a receipt never changes, so each is read once. */
   const factsCache = new Map<string, ReceiptFacts>();
+  /** When a receipt that could not be read may be tried again. */
+  const missedUntil = new Map<string, number>();
   let cached: { at: number; page: LivePage } | undefined;
   let inFlight: Promise<LivePage> | undefined;
 
@@ -210,10 +217,17 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
 
     await Promise.all(
       shown
-        .filter((c) => !factsCache.has(c.hash))
+        .filter((c) => !factsCache.has(c.hash) && (missedUntil.get(c.hash) ?? 0) <= now())
         .map(async (c) => {
           const facts = await readReceiptFacts(fetchImpl, c.base, c.receipt.orderRef, c.hash, c.store.signingDid);
-          if (facts !== null) factsCache.set(c.hash, facts);
+          if (facts === null) {
+            missedUntil.set(c.hash, now() + MISS_RETRY_MS);
+            return;
+          }
+          missedUntil.delete(c.hash);
+          factsCache.set(c.hash, facts);
+          // Oldest first out, so memory stays bounded however long the server runs.
+          while (factsCache.size > MAX_FACTS) factsCache.delete(factsCache.keys().next().value as string);
         }),
     );
 
@@ -273,7 +287,7 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
   return {
     async read() {
       if (cached !== undefined && now() - cached.at < ttl) return cached.page;
-      inFlight ??= build()
+      const refresh = (inFlight ??= build()
         .then((page) => {
           cached = { at: now(), page };
           return page;
@@ -287,8 +301,10 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
         })
         .finally(() => {
           inFlight = undefined;
-        });
-      return inFlight;
+        }));
+      // Past its window, the last page is served at once while the next one builds (T151 review): no viewer waits
+      // on a slow store. Only the very first read waits.
+      return cached !== undefined ? cached.page : refresh;
     },
   };
 }

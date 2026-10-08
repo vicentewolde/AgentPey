@@ -226,4 +226,57 @@ describe("createLiveActivity (T151)", () => {
     const cold = createLiveActivity({ ...d, readLedger: async () => Promise.reject(new Error("rpc down")) });
     await expect(cold.read()).rejects.toMatchObject({ code: "NetworkError" });
   });
+
+  it("does not ask again, for ten minutes, for a receipt the store could not give", async () => {
+    let t = 0;
+    const d = deps({ now: () => t, ttlMs: 1000 });
+    const live = createLiveActivity(d);
+    await live.read();
+    const betaReads = () => vi.mocked(d.fetchImpl).mock.calls.filter(([u]) => String(u).includes("ord_beta1")).length;
+    const first = betaReads();
+    t = 2000;
+    await live.read();
+    await new Promise((r) => setTimeout(r, 0));
+    t = 4000;
+    await live.read();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(betaReads()).toBe(first);
+    t = 11 * 60_000;
+    await live.read();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(betaReads()).toBeGreaterThan(first);
+  });
+
+  it("serves the last page at once past its window, while the next one builds", async () => {
+    let t = 0;
+    let slow = false;
+    const d = deps({ now: () => t, ttlMs: 1000 });
+    const readLedger = vi.fn(async (hashes: readonly string[]) => {
+      if (slow) await new Promise((r) => setTimeout(r, 200));
+      return d.readLedger(hashes);
+    });
+    const live = createLiveActivity({ ...d, readLedger });
+    const first = await live.read();
+    slow = true;
+    t = 2000;
+    const started = Date.now();
+    await expect(live.read()).resolves.toBe(first);
+    expect(Date.now() - started).toBeLessThan(100);
+  });
+
+  it("ignores a receipt whose hash is the anchored one but that another key signed", async () => {
+    const strangerReceipt = signed(Keypair.random(), "ord_alpha1", [["Imán", 1, "1.5684211", "15684211"]], tx("9"));
+    const receipts = new Map([[strangerReceipt.hash, receipt(A, "ord_alpha1", 15_684_211n, 1_791_400_000)]]);
+    const d = deps({ receipts });
+    const fetchImpl = fetchFor({
+      [DIR]: directory,
+      [`${HORIZON}/accounts/${A}/operations`]: { _embedded: { records: [anchorOp(strangerReceipt.hash, tx("1"), A)] } },
+      [`${HORIZON}/accounts/${B}/operations`]: { _embedded: { records: [] } },
+      "https://alpha.vitrinee.agentpey.com/orders/ord_alpha1": { receipt: { jws: strangerReceipt.jws } },
+    });
+    const page = await createLiveActivity({ ...d, fetchImpl }).read();
+    expect(page.purchases).toHaveLength(1);
+    expect(page.purchases[0]).toMatchObject({ order_ref: "ord_alpha1", items: null, payment_tx: null });
+  });
 });
+

@@ -108,7 +108,7 @@ const directorySchema = z.object({
 });
 
 /** One store, checked on its own: an entry that does not fit is left out, and never hides the others. */
-export const storeSchema = z.looseObject({
+const storeSchema = z.looseObject({
   slug: z.string().regex(/^[a-z0-9-]{1,64}$/),
   name: z.string().min(1).max(120),
   url: z.url({ protocol: /^https$/ }),
@@ -188,7 +188,6 @@ async function readJson(fetchImpl: typeof fetch, url: string): Promise<unknown> 
   return res.json();
 }
 
-/** The newest `anchor` this merchant sent to the registry, as `{ hash, txHash }`, or `null` if none in reach. */
 /** The newest `anchor` operations this merchant sent to the registry, newest first, at most `limit` (T151). */
 export async function listAnchors(
   fetchImpl: typeof fetch,
@@ -218,6 +217,7 @@ export async function listAnchors(
   return found;
 }
 
+/** The newest `anchor` this merchant sent to the registry, as `{ hash, txHash }`, or `null` if none in reach. */
 async function findLatestAnchor(
   fetchImpl: typeof fetch,
   horizonUrl: string,

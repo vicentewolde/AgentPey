@@ -129,9 +129,9 @@
     </p>
     <div class="stats" aria-live="polite">
       <div class="stat"><b id="s-purchases">·</b><span data-tr="en">recent purchases</span><span data-tr="es">compras recientes</span></div>
-      <div class="stat"><b id="s-usdc">·</b><span data-tr="en">USDC paid by agents</span><span data-tr="es">USDC pagados por agentes</span></div>
-      <div class="stat"><b id="s-disputes">·</b><span data-tr="en">disputes resolved</span><span data-tr="es">disputas resueltas</span></div>
-      <div class="stat"><b id="s-refunded">·</b><span data-tr="en">USDC refunded on-chain</span><span data-tr="es">USDC reembolsados en la red</span></div>
+      <div class="stat"><b id="s-usdc">·</b><span data-tr="en">USDC paid in those purchases</span><span data-tr="es">USDC pagados en esas compras</span></div>
+      <div class="stat"><b id="s-disputes">·</b><span data-tr="en">disputes resolved among them</span><span data-tr="es">disputas resueltas entre ellas</span></div>
+      <div class="stat"><b id="s-refunded">·</b><span data-tr="en">USDC refunded on-chain among them</span><span data-tr="es">USDC reembolsados en la red entre ellas</span></div>
     </div>
     <p class="refresh" id="refresh"></p>
   </header>
@@ -240,7 +240,7 @@
       if (data.purchases.length === 0) feed.replaceChildren(el("li", "state", t("none")));
       else feed.replaceChildren.apply(feed, data.purchases.map(row));
       var r = document.getElementById("refresh");
-      r.textContent = (failedAt ? t("error") + " " : "") + t("refresh").replace("{ago}", ago(lastOk || data.generated_at));
+      r.textContent = (failedAt ? t("error") + " " : "") + t("refresh").replace("{ago}", ago(data.generated_at));
       var source = document.getElementById("source");
       var parts = t("source").split(/(\{reg\}|\{res\})/);
       source.replaceChildren();

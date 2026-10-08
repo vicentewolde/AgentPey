@@ -8454,3 +8454,14 @@ lectura. `pnpm check` y `vitrinee:check` verdes.
 
 Pendiente: `/revisar`, merge con OK; tras el deploy, ver una compra nueva aparecer sola (criterio 2). T152 y T153.
 `AGENTS.md`: sin cambios. Exponential: T151 sin ticket propio.
+
+## 2026-10-08 (6) — cc/t151-en-vivo
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T151 sin bloqueantes. Corregido: recibos no leídos no se reintentan en 10 min, la página guardada
+se sirve mientras se arma la nueva, tests de `getMany`, sin redirecciones, memoria acotada, hora de los datos,
+contadores aclarados. Push, PR y merge con OK.
+
+Pendiente: ver una compra nueva aparecer sola tras el deploy; T152 y T153. Ojo: el test de concurrencia de
+`apps/mcp/src/oauth/oauth.test.ts` falla a veces por tiempo con la máquina cargada. `AGENTS.md`: sin cambios.

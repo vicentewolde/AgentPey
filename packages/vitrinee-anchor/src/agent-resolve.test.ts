@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { Address, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 
-import { AGENT_RESOLVE_STORAGE_SCHEMA_VERSION, decodeDispute, disputeKey } from "./agent-resolve.js";
+import { AGENT_RESOLVE_STORAGE_SCHEMA_VERSION, AgentResolveReader, decodeDispute, disputeKey } from "./agent-resolve.js";
+import { ReceiptRegistryClient } from "./registry.js";
 import { countKey, hashOfKey, receiptKey } from "./scval.js";
 
 const RECEIPT = "fe3c5730884a59a72760217ae192757b7bb376bb1467f1e2d2ea7a6047c0f076";
@@ -114,5 +115,79 @@ describe("hashOfKey (T151)", () => {
     expect(hashOfKey(countKey("GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ"), "Receipt")).toBeNull();
     expect(hashOfKey(xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Receipt"), xdr.ScVal.scvBytes(Buffer.alloc(16))]), "Receipt")).toBeNull();
     expect(hashOfKey(xdr.ScVal.scvSymbol("Receipt"), "Receipt")).toBeNull();
+  });
+});
+
+/** A fake RPC answering `getLedgerEntries` with `found` entries only, in the order given. */
+function fakeRpc(found: Array<{ key: xdr.ScVal; val: xdr.ScVal }>) {
+  const calls: unknown[][] = [];
+  return {
+    calls,
+    getLedgerEntries: async (...keys: unknown[]) => {
+      calls.push(keys);
+      return { entries: found.map(({ key, val }) => ({ val: { type: "contractData", contractData: { key, val } } })) };
+    },
+  };
+}
+
+function receiptScVal(orderRef: string): xdr.ScVal {
+  return xdr.ScVal.scvMap([
+    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("amount"), val: nativeToScVal(15_684_211n, { type: "i128" }) }),
+    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("ledger"), val: xdr.ScVal.scvU32(4_900_000) }),
+    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("merchant"), val: new Address(MERCHANT).toScVal() }),
+    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("order_ref"), val: xdr.ScVal.scvBytes(Buffer.from(orderRef)) }),
+    new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol("timestamp"), val: xdr.ScVal.scvU64(1_791_000_000n) }),
+  ]);
+}
+
+describe("getMany (T151)", () => {
+  const one = "11".repeat(32);
+  const two = "22".repeat(32);
+  const config = { contractId: "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5", rpcUrl: "https://rpc.test", networkPassphrase: "Test SDF Network ; September 2015" };
+
+  it("reads many receipts in one call, matching entries that come back in any order and leaving out the missing", async () => {
+    const client = new ReceiptRegistryClient(config);
+    const rpcFake = fakeRpc([
+      { key: receiptKey(two), val: receiptScVal("ord_two") },
+      { key: receiptKey(one), val: receiptScVal("ord_one") },
+    ]);
+    (client as unknown as { server: unknown }).server = rpcFake;
+    const found = await client.getMany([one, two, "33".repeat(32), one]);
+    expect(rpcFake.calls).toHaveLength(1);
+    expect(rpcFake.calls[0]).toHaveLength(3);
+    expect([...found.entries()].map(([hash, record]) => [hash, record.orderRef]).sort()).toEqual([
+      [one, "ord_one"],
+      [two, "ord_two"],
+    ]);
+  });
+
+  it("leaves out an entry that does not decode, and asks nothing for no hashes", async () => {
+    const client = new ReceiptRegistryClient(config);
+    const rpcFake = fakeRpc([{ key: receiptKey(one), val: xdr.ScVal.scvU32(7) }]);
+    (client as unknown as { server: unknown }).server = rpcFake;
+    expect((await client.getMany([one])).size).toBe(0);
+    expect((await client.getMany([])).size).toBe(0);
+    expect(rpcFake.calls).toHaveLength(1);
+  });
+
+  it("refuses more than 200 hashes with a typed error", async () => {
+    const client = new ReceiptRegistryClient(config);
+    const many = Array.from({ length: 201 }, (_, i) => i.toString(16).padStart(64, "0"));
+    await expect(client.getMany(many)).rejects.toMatchObject({ code: "ValidationError" });
+    const reader = new AgentResolveReader({ contractId: config.contractId, rpcUrl: config.rpcUrl });
+    await expect(reader.getMany(many)).rejects.toMatchObject({ code: "ValidationError" });
+  });
+
+  it("reads many disputes in one call, keyed by receipt hash", async () => {
+    const reader = new AgentResolveReader({ contractId: config.contractId, rpcUrl: config.rpcUrl });
+    const rpcFake = fakeRpc([
+      { key: disputeKey(one), val: disputeScVal("Resolved", "ab".repeat(32), 15_684_211n, 1_791_100_000) },
+      // A receipt key in the answer is not a dispute.
+      { key: receiptKey(two), val: receiptScVal("ord_two") },
+    ]);
+    (reader as unknown as { server: unknown }).server = rpcFake;
+    const found = await reader.getMany([one, two]);
+    expect([...found.keys()]).toEqual([one]);
+    expect(found.get(one)).toMatchObject({ status: "resolved", refundAtomic: 15_684_211n });
   });
 });
