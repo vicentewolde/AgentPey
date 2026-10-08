@@ -41,4 +41,41 @@ describe("QuoteBook (T128)", () => {
     expect(book.size).toBe(2);
     expect(() => book.take(first.id)).toThrow(expect.objectContaining({ code: "QuoteNotFound" }));
   });
+
+  it("tells onDrop about every quote that leaves unpaid, and never about one taken to be paid (T150 review)", async () => {
+    const clock = { now: new Date("2026-10-03T12:00:00Z") };
+    const dropped: Array<[string, string]> = [];
+    const book = new QuoteBook({ max: 2, ttlMs: 60_000, now: () => clock.now, onDrop: (entry, reason) => void dropped.push([entry.id, reason]) });
+    const until = intentUntil("2026-10-03T13:00:00Z");
+    const paid = book.issue({ quote, venueId, intent: until });
+    book.take(paid.id);
+    const evicted = book.issue({ quote, venueId, intent: until });
+    const kept = book.issue({ quote, venueId, intent: until });
+    book.issue({ quote, venueId, intent: until });
+    expect(dropped).toEqual([[evicted.id, "evicted"]]);
+
+    clock.now = new Date("2026-10-03T12:01:00Z");
+    expect(() => book.take(kept.id)).toThrow(expect.objectContaining({ code: "QuoteExpired" }));
+    await book.sweep();
+    expect(dropped.map(([, reason]) => reason)).toEqual(["evicted", "expired", "expired"]);
+    expect(dropped.some(([id]) => id === paid.id)).toBe(false);
+  });
+
+  it("waits for onDrop when sweeping, so a reservation is back before the next decision", async () => {
+    const clock = { now: new Date("2026-10-03T12:00:00Z") };
+    let released = false;
+    const book = new QuoteBook({
+      ttlMs: 1000,
+      now: () => clock.now,
+      onDrop: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        released = true;
+      },
+    });
+    book.issue({ quote, venueId, intent: intentUntil("2026-10-03T13:00:00Z") });
+    clock.now = new Date("2026-10-03T12:00:02Z");
+    await book.sweep();
+    expect(released).toBe(true);
+  });
 });
+

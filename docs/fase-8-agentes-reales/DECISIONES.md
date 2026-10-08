@@ -952,8 +952,14 @@ límite (un pagador podría encarecer el cobro a voluntad).
    siempre. Un carrito: `items` con 1 a 10 líneas `{ product_id, quantity }` de la misma tienda. Una línea se firma con
    `create_purchase_intent`, como antes; más de una, con el `signCart` del agente (T148), que hace los mismos chequeos.
    La cotización devuelve `items` siempre, y `product_id`/`quantity` en `null` cuando es un carrito.
-2. **`get_order` arma `receipt.explorer_url`** desde `settlement_tx_hash`, como ya hacía `pay`.
+2. **`get_order` arma `receipt.explorer_url`** desde el `settlementTxHash` del recibo **firmado** (precisado tras
+   `/revisar`: no desde el campo suelto `settlement_tx_hash` que la tienda manda al lado, que nadie firma).
 3. **`open_claim` no cambia.**
+4. **Precisado tras `/revisar`: una cotización que no se paga devuelve su reserva.** Firmar el intent de `quote`
+   reserva el presupuesto del día (`M-15`); con el tope del MCP (3 por compra, 5 por día), un par de carritos sin
+   pagar dejaban al servidor sin cupo hasta reiniciar. Ahora se libera si la tienda no abre el checkout, y cuando la
+   cotización vence o se desaloja sin pagarse (`QuoteBook` avisa con `onDrop`; `quote` barre las vencidas antes de
+   firmar). Una cotización tomada para pagar nunca se libera por esta vía: ahí manda `pay` (`C-113`).
 
 **Motivo.** En el video, Claude compra más de un producto en una sola compra y muestra el enlace del pago sin
 inventarlo; las dos piezas ya existían en el agente (T148) y en `pay`.

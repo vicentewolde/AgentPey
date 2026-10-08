@@ -34,7 +34,7 @@ import {
 import type { AgentPayMandate } from "@agentpey/mandate";
 import { CLAIM_REASONS, signClaim, type ClaimReason } from "@agentpey/resolve";
 import { getUcpProduct, searchUcpStore, type ReceiptVerification } from "@vitrinee/anchor";
-import { checkReceiptSignature, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
+import { checkReceiptSignature, stellarExpertTxUrl, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
 import type { Keypair } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
@@ -221,15 +221,24 @@ export class Shopper {
         : input.items.map((item) => ({ productId: item.product_id, quantity: item.quantity }));
     const single = lines.length === 1 ? lines[0] : undefined;
     const { registry, store } = await this.store(input.store);
+    // Expired quotes give their reserved budget back before this one is decided.
+    await this.deps.quotes.sweep();
     const intent = await this.deps.signIntent({ venueId: store.venueId, registry, lines });
     const destination: UcpDestination = input.destination;
-    const quote = await quoteUcpCheckout(this.fetchOption(), {
-      storeUrl: store.url,
-      // A one-line checkout is sent exactly as before T150; more lines are a cart (T148).
-      ...(single === undefined ? { lines } : { productId: single.productId, quantity: single.quantity }),
-      buyer: { first_name: destination.first_name ?? "", last_name: destination.last_name ?? "", ...(input.email === undefined ? {} : { email: input.email }) },
-      destination,
-    });
+    let quote: Awaited<ReturnType<typeof quoteUcpCheckout>>;
+    try {
+      quote = await quoteUcpCheckout(this.fetchOption(), {
+        storeUrl: store.url,
+        // A one-line checkout is sent exactly as before T150; more lines are a cart (T148).
+        ...(single === undefined ? { lines } : { productId: single.productId, quantity: single.quantity }),
+        buyer: { first_name: destination.first_name ?? "", last_name: destination.last_name ?? "", ...(input.email === undefined ? {} : { email: input.email }) },
+        destination,
+      });
+    } catch (error) {
+      // Signing the intent reserved the day's budget; a checkout the store did not open pays nothing (T150 review).
+      await this.release(intent.intentId, error);
+      throw error;
+    }
     const entry = this.deps.quotes.issue({ quote, venueId: store.venueId, intent });
     this.log("quote issued", { quoteId: entry.id, store: store.name, checkoutId: quote.checkoutId, amountAtomic: quote.requirements.amount });
     return {
@@ -301,7 +310,7 @@ export class Shopper {
       paid_usdc: usdcAtomicToDecimal(BigInt(paid.paid.amount)),
       paid_to: paid.paid.payTo,
       transaction: paid.transaction ?? null,
-      explorer_url: paid.transaction === undefined ? null : `https://stellar.expert/explorer/testnet/tx/${paid.transaction}`,
+      explorer_url: paid.transaction === undefined ? null : stellarExpertTxUrl(paid.transaction),
       receipt: paid.receipt === undefined ? null : { hash: paid.receipt.hash, verify_url: paid.receipt.verify_url, anchor: paid.receipt.anchor.status },
     };
   }
@@ -313,6 +322,8 @@ export class Shopper {
     const receipt = order.receipt;
     const verification = receipt === undefined ? null : await this.deps.verifyReceipt(receipt.jws);
     const binding = receipt === undefined ? null : this.receiptBinding(store, order.id, receipt.jws);
+    // The link comes from the signed receipt, never from the loose field the store sends next to it (T150 review).
+    const signedTx = receipt === undefined ? undefined : checkReceiptSignature(receipt.jws).claims?.settlementTxHash;
     return {
       order_id: order.id,
       store: store.name,
@@ -328,7 +339,7 @@ export class Shopper {
               verify_url: receipt.verify_url ?? null,
               settlement_tx_hash: receipt.settlement_tx_hash ?? null,
               // Built here, not by the chat (T129 found Claude composing it by hand).
-              explorer_url: receipt.settlement_tx_hash === undefined ? null : `https://stellar.expert/explorer/testnet/tx/${receipt.settlement_tx_hash}`,
+              explorer_url: signedTx === undefined ? null : stellarExpertTxUrl(signedTx),
               anchor: receipt.anchor?.status ?? null,
               valid: verification.valid && binding?.ok === true,
               checks: {

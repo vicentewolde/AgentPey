@@ -25,6 +25,7 @@ import { z } from "zod";
 import type { McpEnv } from "./config.js";
 import { QuoteBook } from "./quotes.js";
 import { Shopper } from "./shopper.js";
+import { signLines } from "./sign-lines.js";
 
 const TESTNET = {
   network: "testnet",
@@ -102,6 +103,7 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
   const receiptRegistry = new ReceiptRegistryClient({ contractId: deployment.receiptRegistry.contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase });
 
   const ledger = createInMemorySpendLedger();
+  const policyRail = createLocalPolicyRail({ ledger });
   return new Shopper({
     venues: () => expandPlatformVenues(DEFAULT_VENUE_REGISTRY, { onIssue: (platform, issue) => log("directory issue", { platform, issue }) }),
     fixedVenues: DEFAULT_VENUE_REGISTRY,
@@ -117,26 +119,24 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
         ledger,
         now: new Date(),
       });
-      const [single] = lines;
-      // One product through the model's own tool, as before; a cart through the agent's cart signer, same checks (T148).
-      let result: unknown;
-      if (lines.length === 1 && single !== undefined) {
-        result = await agent.tools.invoke("create_purchase_intent", { product_id: single.productId, quantity: single.quantity });
-      } else {
-        if (agent.signCart === undefined) throw new AgentPassError("InvalidIntent", "this agent cannot sign a cart", { details: {} });
-        result = await agent.signCart(lines);
-      }
-      const signed = intentResultSchema.safeParse(result);
+      const signed = intentResultSchema.safeParse(await signLines(agent, lines));
       if (!signed.success) throw new AgentPassError("InvalidIntent", "the agent did not return a signed intent", { details: {} });
       return (await verifyIntent(signed.data.jws)).intent;
     },
     scope: credential.credential.credentialSubject.scope,
     mandate: mandate.mandate,
-    policyRail: createLocalPolicyRail({ ledger }),
+    policyRail,
     payment: { signerSecret: env.MCP_AGENT_SECRET_KEY, payer: { contractId: env.MCP_POLICY_RAIL_CONTRACT_ID, ownerSecret: env.MCP_AGENT_SECRET_KEY } },
     agentKey,
     verifyReceipt: (jws) => verifyReceipt(jws, { registry: receiptRegistry, horizonUrl: TESTNET.horizonUrl, settlementAttempts: 3 }),
-    quotes: new QuoteBook(),
+    // Signing a quote's intent reserves the day's budget (M-15). A quote that expires or is evicted unpaid
+    // signed nothing that pays, so its reservation goes back (T150 review).
+    quotes: new QuoteBook({
+      onDrop: (entry, reason) =>
+        policyRail.release({ intentId: entry.intent.intentId, reason: reason === "expired" ? "QuoteExpired" : "QuoteEvicted" }).catch((error: unknown) => {
+          log("spend not released", { intentId: entry.intent.intentId, error: error instanceof Error ? error.message : String(error) });
+        }),
+    }),
     log,
   });
 }

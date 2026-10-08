@@ -65,10 +65,10 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
 | T146 Demo de presupuesto de equipo | en revisión |
-| T150 Pulido del MCP | en revisión |
 | T147 Webhooks de orden | cerrada |
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |
+| T150 Pulido del MCP | en revisión |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.

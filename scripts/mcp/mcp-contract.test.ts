@@ -499,6 +499,52 @@ describe("pay refuses what changed or what the limits do not allow (T128)", () =
       await mcp.close();
     }
   });
+
+  it("refuses a cart whose lines each fit the per-purchase limit but whose total does not, before anything is signed (T150)", async () => {
+    const mcp = await startMcp({ perTx: "14.00" });
+    try {
+      const quoted = await mcp.call("quote", {
+        store: storeName(),
+        items: [
+          { product_id: "gorro-andes", quantity: 1 },
+          { product_id: "stickers-cordillera", quantity: 2 },
+        ],
+        destination: DESTINATION,
+      });
+      expect(quoted.isError).toBeFalsy();
+      const settled = facilitator.settleCalls.length;
+      const refused = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+      expect(refused.isError).toBe(true);
+      expect(errorOf(refused).error).toMatch(/Exceeded/);
+      expect(errorOf(refused).payment_may_have_been_sent).toBe(false);
+      expect(mcp.scheme.calls).toEqual([]);
+      expect(facilitator.settleCalls).toHaveLength(settled);
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it("gives back the day's budget a quote's intent reserved when the store does not open the checkout (T150 review)", async () => {
+    const released: string[] = [];
+    const rail = createLocalPolicyRail({ ledger: createInMemorySpendLedger() });
+    const mcp = await startMcp({
+      policyRail: { ...rail, release: async (input) => void released.push(input.intentId) },
+    });
+    try {
+      const quoted = await mcp.call("quote", {
+        store: storeName(),
+        items: [
+          { product_id: "gorro-andes", quantity: 1 },
+          { product_id: "no-such-product", quantity: 1 },
+        ],
+        destination: DESTINATION,
+      });
+      expect(quoted.isError).toBe(true);
+      expect(released).toHaveLength(1);
+    } finally {
+      await mcp.close();
+    }
+  });
 });
 
 describe("an order's receipt must be that order's, from that store (T128)", () => {

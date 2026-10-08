@@ -8383,3 +8383,14 @@ Qué: T150 (a pedido del usuario, `R-28`, agregada al spec). `quote` del MCP ace
 Pendiente: `/revisar`, push, PR y merge con OK; una cotización de carrito desde Claude tras el deploy. El 8-oct,
 `team:pay -- --times 4` contra SignalDesk en producción para cerrar T146. `AGENTS.md`: sin cambios. Exponential: T150
 sin ticket propio (anotado en `SYNC.md`).
+
+## 2026-10-07 (10) — cc/t150-pulido-mcp
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T150 sin bloqueantes. Corregido: `explorer_url` desde el recibo firmado; una cotización que no se
+paga (checkout rechazado, vencida o desalojada) devuelve su reserva del día; `sign-lines.ts` con tests; test de
+carrito que pasa el tope por compra. `R-28` precisado. Push, PR y merge con OK del usuario.
+
+Pendiente: una cotización de carrito desde Claude tras el deploy. `AGENTS.md`: sin cambios. Exponential: T150 sin
+ticket propio.

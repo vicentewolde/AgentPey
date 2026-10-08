@@ -154,7 +154,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Quote a purchase",
       description:
-        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. One product (product_id, quantity) or several from the same store in one checkout (items, up to 10 lines), paid with one payment. The agent signs a purchase intent for it, but nothing is paid and no money moves. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
+        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. Give either one product (product_id, quantity) or several from the same store in one checkout (items, up to 10 lines, each with its own quantity), never both; a cart is paid with one payment. The agent signs a purchase intent for it, but nothing is paid and no money moves. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
       inputSchema: quoteInputSchema,
       outputSchema: outputSchemas.quote,
       annotations: { title: "Quote a purchase", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
