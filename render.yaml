@@ -71,9 +71,12 @@ services:
       - key: COREPACK_INTEGRITY_KEYS
         value: ""
       # The gateway's public port, stated rather than left for Render to
-      # detect: on 2026-10-08 Render scanned while the apps were starting,
-      # found RealOps on 4102 first and routed every host to it, past the
-      # gateway. With PORT set, Render uses it and never scans.
+      # detect: on 2026-10-08, while the gateway waited for its apps before
+      # listening, Render picked up RealOps on 4102 and routed every host to
+      # it, past the gateway (P-17). Render routes to PORT when it is set.
+      # The service does not sync this file (see apps/gateway/src/hosts.ts):
+      # the value that counts is the one set in the dashboard on 2026-10-08;
+      # this entry records it.
       - key: PORT
         value: "10000"
 

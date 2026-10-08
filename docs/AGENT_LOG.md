@@ -8414,9 +8414,9 @@ Agente: Claude Code.
 Qué: desde las 13:22 (hora de Chile) todos los dominios del servicio AgentPey en Render servían RealOps: el deploy
 de `4ad8d9e` falló y Render detectó el puerto 4102 de RealOps antes de que el gateway abriera el 10000. Con OK del
 usuario, se agregó `PORT=10000` en el panel de Render (vía Chrome); el redeploy dejó todo en 200 a las ~16:00. En la
-rama: el gateway abre su puerto antes de esperar a las apps (503 "starting" mientras suben) y `render.yaml` declara
-`PORT`. `P-17`. `pnpm check` verde. No se pudo levantar el gateway completo en local sin que las apps lean
-`.env.local` y se conecten a la base de producción, así que la prueba es el próximo deploy.
+rama se probó que el gateway abriera su puerto antes de esperar a las apps; `/revisar` mostró que, sin health check,
+eso deja cada deploy en 503 y convierte una app que no sube en una caída total, así que se descartó: queda solo
+`PORT` anotado en `render.yaml` y `P-17` con el health check como pendiente para después de la hackatón.
 
-Pendiente: `/revisar`, PR y merge con OK; tras el deploy, ver en los logs de Render "listening" antes de
-"waiting". `AGENTS.md`: sin cambios. Exponential: sin ticket.
+Pendiente: health check del gateway y `healthCheckPath` en Render (con OK del usuario), después del 12-oct.
+`AGENTS.md`: sin cambios. Exponential: sin ticket.

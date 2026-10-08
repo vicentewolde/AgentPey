@@ -10,13 +10,10 @@
  * is the wiring between the three, plus the two policies that only make
  * sense at the process-supervision level:
  *
- * - **The gateway owns the public port from its first second, and routes to
- *   a child only once that child is confirmed listening.** Until then its host
- *   answers `503` "starting", never a hang or a `502`. The order matters on
- *   Render: while nothing listens on `PORT`, Render scans for any open port,
- *   and on 2026-10-08 it found RealOps on 4102 before the gateway opened
- *   10000 and sent every host straight to RealOps, past the gateway. Listening
- *   first leaves nothing to find (`PORT` is also set in `render.yaml`).
+ * - **The gateway does not accept a single public request until every
+ *   child it started is confirmed listening.** Racing a request against a child
+ *   still starting up would either hang or answer `502` for no reason a
+ *   person watching could tell apart from a real outage.
  * - **Any child exiting unexpectedly — or the gateway's own listener failing
  *   to start — brings this whole process down**, taking every other child
  *   with it rather than orphaning them. Not a respawn loop: Render already
@@ -122,8 +119,20 @@ for (const { target, child } of spawned) {
   });
 }
 
-/** Apps spawned and not yet confirmed listening: their hosts answer `503` "starting", not "not running". */
-const starting = new Set<AppName>(toStart.map((target) => target.name));
+process.stdout.write(`gateway: waiting for ${toStart.map((target) => `${target.name}:${target.port}`).join(", ")}...\n`);
+await Promise.all(
+  toStart.map(async (target) => {
+    try {
+      await waitForPort(target.port, READY_TIMEOUT_MS);
+      running.add(target.name);
+    } catch (error) {
+      // A critical app that never came up is the old failure, unchanged.
+      if (target.critical) throw error;
+      process.stderr.write(`gateway: ${target.name} did not come up; its host answers 503\n`);
+    }
+  }),
+);
+process.stdout.write(`gateway: up: ${[...running].join(", ")}\n`);
 
 server = createServer((req, res) => {
   const target = resolveTarget(hostMap, req.headers.host, vitrineeHost);
@@ -133,9 +142,8 @@ server = createServer((req, res) => {
     return;
   }
   if (!running.has(target.name)) {
-    const isStarting = starting.has(target.name);
-    res.writeHead(503, { "content-type": "text/plain; charset=utf-8", "retry-after": isStarting ? "10" : "300" });
-    res.end(isStarting ? `${target.name} is starting; try again in a few seconds\n` : `${target.name} is not running on this deployment\n`);
+    res.writeHead(503, { "content-type": "text/plain; charset=utf-8", "retry-after": "300" });
+    res.end(`${target.name} is not running on this deployment\n`);
     return;
   }
   proxyRequest(req, res, { host: "127.0.0.1", port: target.port });
@@ -159,26 +167,3 @@ server.listen(PORT, () => {
   process.stdout.write(`gateway: listening on :${PORT}\n`);
   for (const [host, target] of hostMap) process.stdout.write(`  ${host} -> ${target.name} (:${target.port})\n`);
 });
-
-process.stdout.write(`gateway: waiting for ${toStart.map((target) => `${target.name}:${target.port}`).join(", ")}...\n`);
-try {
-  await Promise.all(
-    toStart.map(async (target) => {
-      try {
-        await waitForPort(target.port, READY_TIMEOUT_MS);
-        running.add(target.name);
-      } catch (error) {
-        // A critical app that never came up is the old failure, unchanged: the whole service goes down.
-        if (target.critical) throw error;
-        process.stderr.write(`gateway: ${target.name} did not come up; its host answers 503\n`);
-      } finally {
-        starting.delete(target.name);
-      }
-    }),
-  );
-} catch (error) {
-  process.stderr.write(`gateway: a critical app did not come up: ${error instanceof Error ? error.message : String(error)}\n`);
-  process.exitCode = 1;
-  shutdown("a critical app did not come up");
-}
-process.stdout.write(`gateway: up: ${[...running].join(", ")}\n`);

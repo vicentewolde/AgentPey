@@ -841,26 +841,28 @@ de la fase con prefijo `R-`.
 
 ---
 
-### P-17 · El puerto público del servicio de Render se fija en `PORT=10000` y el gateway lo abre antes de levantar las apps · `Vigente`
-**Fecha:** 2026-10-08 · **Origen:** incidente en producción · **Aprobado por el usuario** (las dos partes)
+### P-17 · El puerto público del servicio de Render se fija en `PORT=10000` · `Vigente`
+**Fecha:** 2026-10-08 · **Origen:** incidente en producción · **Aprobado por el usuario**
 
 **Qué pasó.** El deploy automático de `4ad8d9e` (solo documentación) falló el 8-oct a las 13:22 (hora de Chile). El
-gateway abría el puerto público recién cuando las cinco apps respondían, y esta vez tardaron. Mientras tanto, Render
-buscó un puerto abierto, encontró RealOps en 4102 ("Detected service running on port 4102") y desde ese momento
-mandó **todo** el tráfico de todos los dominios a RealOps, sin pasar por el gateway: agentpey.com, el MCP,
-SignalDesk, Vitrinee y las tiendas respondían con el login de RealOps (`/entrar`). Duró unas dos horas y media; no
-se perdió ni se movió nada.
+gateway abre el puerto público recién cuando las cinco apps responden, y esta vez tardaron. Mientras tanto, Render
+tomó el puerto de RealOps ("Detected service running on port 4102") y desde ese momento mandó **todo** el tráfico de
+todos los dominios a RealOps, sin pasar por el gateway: agentpey.com, el MCP, SignalDesk, Vitrinee y las tiendas
+respondían con el login de RealOps (`/entrar`). Duró unas dos horas y media; no se perdió ni se movió nada.
 
-**Se decide:**
+**Se decide:** `PORT=10000` como variable del servicio, puesta desde el panel de Render el 8-oct (lo que manda,
+porque el servicio no sincroniza `render.yaml`) y anotada en `render.yaml`. Con `PORT` definido, Render enruta a ese
+puerto. Tras ponerla y redesplegar, los nueve chequeos de los dominios respondieron como se espera.
 
-1. **`PORT=10000` como variable del servicio en Render** (puesta desde el panel el 8-oct y escrita en
-   `render.yaml`). Con `PORT` definido, Render usa ese puerto y no busca otro.
-2. **El gateway abre el puerto público primero** y después espera a las apps. Mientras una app arranca, su dominio
-   responde `503` "starting" con `Retry-After: 10`, en vez de que el gateway no escuche. Una app crítica que no sube
-   sigue tirando el servicio entero, como antes (ahora con un mensaje y `shutdown`, no con una excepción suelta).
+**El arreglo de código que se probó y se descartó (tras `/revisar`, el mismo día):** que el gateway abra el puerto
+antes de esperar a las apps y responda `503` "starting" mientras suben. Sin un health check configurado, Render da
+una instancia por lista apenas escucha: cada deploy dejaría todos los dominios en `503` hasta 45 s, y una app crítica
+que no sube dejaría de ser un deploy fallido (con la versión anterior sirviendo) para ser una caída total. El orden
+original, esperar y después escuchar, se mantiene.
 
-**Motivo.** Las dos protegen contra lo mismo por caminos distintos: la variable le dice a Render dónde mirar, y
-escuchar primero no le deja nada que encontrar por error. Antes funcionaba por suerte de tiempos.
+**Pendiente, después de la hackatón:** un health check propio del gateway (por ejemplo `/__gateway/health`, 200 solo
+con todas las apps críticas arriba) y `healthCheckPath` en Render. Con eso sí conviene escuchar primero, porque Render
+esperaría a que la instancia nueva esté sana antes de pasarle el tráfico. Toca la configuración del servicio y pide
+el OK del usuario.
 
-**Alternativa descartada.** Solo la variable (un servicio nuevo, o alguien que la borre, vuelve al problema). Solo
-el cambio de código (el gateway sigue arrancando hijos antes de escuchar, aunque sea por milisegundos).
+**Alternativa descartada.** Dejar el puerto a la detección de Render (funcionaba por suerte de tiempos).
