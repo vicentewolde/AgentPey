@@ -8580,8 +8580,11 @@ sitio real en el Demo Day y el video. Todo se hizo en el panel de Shopify, sin t
 
 Por qué: la demo muestra a un agente comprando en una tienda; si la tienda se ve genérica, no convence.
 
-Pendiente: (1) una compra real desde Claude para confirmar que el pedido sigue llegando a Shopify como pagado sin
-PayPal; (2) la dirección `agenticom.myshopify.com` **no se cambió**: la usan el adaptador de Shopify, el token de la
+Verificado el 8-oct en la noche: una compra real desde Claude, un imán (`ord_mv0bfvfcf83e182ff5`, 0,5157895 USDC,
+tx `a3200a4c…`), llegó a Shopify como **Pagado** con PayPal desactivado y apareció en `/en-vivo` (33 compras). El
+envío no se cobró.
+
+Pendiente: (1) hecho, ver arriba; (2) la dirección `agenticom.myshopify.com` **no se cambió**: la usan el adaptador de Shopify, el token de la
 app y la configuración de `agentcommerce` en la base y en Render, y cambiarla rompería las compras de los agentes;
 si se quiere una dirección más bonita, lo seguro es un dominio propio apuntado a Shopify (no cambia la dirección
 `myshopify.com` que usa la API); (3) las fotos de producto miden 90 a 256 px y se ven algo borrosas en tarjetas
