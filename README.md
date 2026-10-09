@@ -17,15 +17,15 @@ disputes with refunds (AgentResolve).
 
 ## Evidence
 
-As of 2026-10-09, from `/api/live`, which counts only purchases whose signed receipt could be read and whose payment
+As of 2026-10-09 (14:49 UTC), from `/api/live`, which counts only purchases whose signed receipt could be read and whose payment
 transaction is known:
 
 | | |
 |---|---|
 | Purchases | 26, at 3 test stores |
 | USDC paid | 52.7157903 |
-| Disputes | 2, both resolved |
-| Refunded | 1.5684211 USDC (1 refund; the other claim was rejected, 0 refunded) |
+| Disputes | 3, all resolved |
+| Refunded | 2.0842106 USDC (2 refunds; the other claim was rejected, 0 refunded) |
 
 Every purchase has a receipt signed by the store, anchored in the
 [`receipt-registry`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5)
