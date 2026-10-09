@@ -12,6 +12,12 @@
  * signature verifies, it names this store, and its SHA-256 is the hash the
  * registry anchored: then it is exactly what the network vouches for.
  *
+ * **What counts as a purchase.** Only one whose receipt could be read and
+ * checked, so its payment transaction is known. A hash the registry holds whose
+ * receipt cannot be read (the store no longer has the order, or did not answer)
+ * has an anchor but no proof of payment: it is listed apart under `incomplete`
+ * and is in none of the totals. Nothing anchored is deleted or hidden.
+ *
  * It only **shows** disputes. Nothing here opens, answers or resolves one, and
  * nothing connects a dispute to a chat, a payment, a dispatch or a webhook.
  *
@@ -103,7 +109,10 @@ export interface LivePage {
     readonly disputes_resolved: number;
     readonly refunded_usdc: string;
   };
+  /** Purchases that count: each has its receipt checked, so a payment transaction. Newest first. */
   readonly purchases: readonly LivePurchase[];
+  /** Anchored hashes whose receipt could not be read (`items` and `payment_tx` are `null`). Not counted in `totals`. */
+  readonly incomplete: readonly LivePurchase[];
 }
 
 const DEFAULT_TTL_MS = 8_000;
@@ -231,20 +240,8 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
         }),
     );
 
-    let usdc = 0n;
-    let refunded = 0n;
-    let open = 0;
-    let resolved = 0;
-    const purchases: LivePurchase[] = shown.map((c) => {
-      usdc += c.receipt.amount;
+    const all: LivePurchase[] = shown.map((c) => {
       const d = ledger.disputes.get(c.hash);
-      if (d !== undefined) {
-        if (d.status === "open") open += 1;
-        else {
-          resolved += 1;
-          refunded += d.refundAtomic;
-        }
-      }
       const facts = factsCache.get(c.hash);
       return {
         store: new URL(c.base).host,
@@ -272,6 +269,25 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
               },
       };
     });
+    // A record without a payment transaction is not a purchase this page can vouch for (see the header).
+    const purchases = all.filter((p) => p.payment_tx !== null);
+    const incomplete = all.filter((p) => p.payment_tx === null);
+
+    let usdc = 0n;
+    let refunded = 0n;
+    let open = 0;
+    let resolved = 0;
+    for (const c of shown) {
+      if (!factsCache.has(c.hash)) continue;
+      usdc += c.receipt.amount;
+      const d = ledger.disputes.get(c.hash);
+      if (d === undefined) continue;
+      if (d.status === "open") open += 1;
+      else {
+        resolved += 1;
+        refunded += d.refundAtomic;
+      }
+    }
 
     return {
       generated_at: new Date(now()).toISOString(),
@@ -281,6 +297,7 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
       stores: perStoreAnchors.map(({ store, ok }) => ({ slug: store.slug, name: store.name, url: store.url.replace(/\/+$/, ""), ok })),
       totals: { purchases: purchases.length, usdc: formatUsdc(usdc), disputes_open: open, disputes_resolved: resolved, refunded_usdc: formatUsdc(refunded) },
       purchases,
+      incomplete,
     };
   }
 

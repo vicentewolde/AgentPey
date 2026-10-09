@@ -866,3 +866,30 @@ esperaría a que la instancia nueva esté sana antes de pasarle el tráfico. Toc
 el OK del usuario.
 
 **Alternativa descartada.** Dejar el puerto a la detección de Render (funcionaba por suerte de tiempos).
+
+### P-18 · `/api/live` cuenta como compra solo lo que tiene su pago comprobado; el README pasa a describir el AgentPey de hoy · `Vigente`
+**Fecha:** 2026-10-09 · **Origen:** revisión previa a contactar socios (Trustless Work, StellarSight, Fermah) · **Aprobado por el usuario**
+
+**Qué pasó.** `/api/live` devolvía 33 compras, pero siete registros de Bazar Cordillera (22 y 23-sep) tenían
+`items` y `payment_tx` en `null`. Están anclados en `receipt-registry`, pero la tienda ya no guarda esas órdenes
+(404 en `/orders`, en el pedido UCP y en `/receipts/<hash>`), así que el recibo firmado, que es lo único que dice
+cuál fue la transacción de pago, no se puede leer. El registro on-chain guarda solo comercio, monto, orden y hora.
+
+**Se decide.**
+1. Un registro sin `payment_tx` no es una compra: sale de `purchases` y de los totales, y se lista aparte en
+   `incomplete` (con una nota en `/en-vivo`). No se borra ni se oculta nada anclado. Totales nuevos: 26 compras,
+   52,7157903 USDC, 2 disputas resueltas, 1,5684211 USDC reembolsados.
+2. **No se rellenan** los pagos. Sí se pueden *adivinar* en la red (monto igual y hora cercana: los siete tienen un
+   candidato en la cuenta del comercio), pero sería una inferencia, no algo que la red avale con el hash del recibo;
+   dos de ellos, además, tienen el mismo monto con un minuto de diferencia. `/api/live` solo muestra lo que se
+   comprueba (`live-activity.ts`, encabezado).
+3. El README de la raíz deja de describir solo la Fase 1: dice qué es AgentPey hoy, con evidencia, conformidad y
+   limitaciones. El README anterior se conserva entero en `docs/README-ANTERIOR.md`.
+4. Auditoría del facilitator x402 en `docs/partners/auditoria-facilitator.md`: es de un tercero (OpenZeppelin),
+   global por proceso; cambiarlo es configuración si el otro es compatible.
+
+**Alternativa descartada.** Rellenar `payment_tx` con la transacción más probable: parece completo, pero afirma algo
+que la red no vincula a ese recibo.
+
+**Límite conocido.** Un recibo que no se pudo leer *de forma pasajera* (la tienda no contestó) también queda en
+`incomplete` hasta la siguiente lectura (reintento a los 10 minutos); vuelve a los totales solo.

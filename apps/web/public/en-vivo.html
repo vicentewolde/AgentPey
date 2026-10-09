@@ -140,6 +140,7 @@
     <li class="state"><span data-tr="en">Reading the network…</span><span data-tr="es">Leyendo la red…</span></li>
   </ul>
 
+  <p class="source" id="incomplete" hidden></p>
   <p class="source" id="source" hidden></p>
 
   <footer>
@@ -166,6 +167,7 @@
         productsUnknown: "a purchase", none: "No purchases yet.", error: "The network could not be read right now; showing the last answer.",
         down: "The live feed could not be loaded right now. Try again in a minute.",
         refresh: "Updated {ago}. Refreshes every 10 s.",
+        incomplete: "{n} older anchored records are not counted above: their receipt can no longer be read, so their payment cannot be shown. They are listed at /api/live under incomplete.",
         source: "Sources: purchases from Horizon and {reg}; disputes from {res}; products and payment from each anchored receipt, whose signature and hash are checked against the network. "
       },
       es: {
@@ -174,6 +176,7 @@
         productsUnknown: "una compra", none: "Todavía no hay compras.", error: "No se pudo leer la red ahora; se muestra la última respuesta.",
         down: "No se pudo cargar el feed ahora. Prueba de nuevo en un minuto.",
         refresh: "Actualizado {ago}. Se refresca cada 10 s.",
+        incomplete: "{n} registros anclados más antiguos no se cuentan arriba: su recibo ya no se puede leer, así que no se puede mostrar su pago. Están en /api/live, en incomplete.",
         source: "Fuentes: las compras, de Horizon y {reg}; las disputas, de {res}; los productos y el pago, de cada recibo anclado, con su firma y su hash comprobados contra la red. "
       }
     };
@@ -239,6 +242,10 @@
       document.getElementById("s-refunded").textContent = num(data.totals.refunded_usdc);
       if (data.purchases.length === 0) feed.replaceChildren(el("li", "state", t("none")));
       else feed.replaceChildren.apply(feed, data.purchases.map(row));
+      var inc = document.getElementById("incomplete");
+      var nInc = Array.isArray(data.incomplete) ? data.incomplete.length : 0;
+      inc.hidden = nInc === 0;
+      inc.textContent = nInc === 0 ? "" : t("incomplete").replace("{n}", String(nInc));
       var r = document.getElementById("refresh");
       r.textContent = (failedAt ? t("error") + " " : "") + t("refresh").replace("{ago}", ago(data.generated_at));
       var source = document.getElementById("source");

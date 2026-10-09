@@ -1,433 +1,128 @@
 # AgentPey
 
-An agentic payments stack on **Stellar testnet**, built in seven phases: from
-verifiable agent identity through spending policy, signed mandates, real
-commerce, and verifiable evidence. See **[ROADMAP.md](ROADMAP.md)** for the
-phases, what is done, and what comes next.
+AI agents buy from online stores and pay in USDC on **Stellar testnet**. AgentPey builds on existing standards:
+[UCP](https://ucp.dev) for checkout, AP2 for the user's authorization and x402 for payment. It adds what they lack: a
+Stellar payment handler for UCP, signed receipts anchored on-chain, spend limits enforced on-chain (`policy_rail`), and
+disputes with refunds (AgentResolve).
 
-## Buy from Claude or ChatGPT
-
-AgentPey runs an MCP server that Claude and ChatGPT connect to as a custom
-connector or app:
-
-```
-https://mcp.agentpey.com/mcp
-```
-
-The chat searches Vitrinee stores, quotes, and reads the order with its
-verified receipt; the payment comes from the MCP's own `policy_rail` on
-Stellar testnet, whose limits the network enforces. Only the wallet that owns
-that rail can sign in. Exact steps to connect each one, and to press `pay`
-yourself when the chat will not: [`apps/mcp/README.md`](apps/mcp/README.md).
-
-## Buy from your own agent
-
-[`@agentpey/ucp-stellar`](packages/ucp-stellar/README.md) is the same buyer's
-side as a package: read a UCP store's profile, check its Stellar payment
-handler, quote a checkout and pay it from a classic account or a
-`policy_rail`, on testnet. It never holds a key; a payer takes a function that
-signs. AgentPey's own agent pays through it. The example in its README buys a
-magnet (after `pnpm build`):
-
-```bash
-node packages/ucp-stellar/example/buy.mjs
-```
-
-To check that a store implements the Stellar handler, run the conformance kit
-([`scripts/ucp-stellar-conformance/`](scripts/ucp-stellar-conformance/README.md)),
-one line per check:
-
-```bash
-pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --profile-only
-```
-
-## A team budget on the network
-
-A team gives its agent a budget, and the agent spends it on a pay-per-use
-service: `signaldesk:ai-credits-1000` (0.10 USDC), paid from an already
-deployed `policy_rail` (`policyRailUcp`). The team's credential and Mandate
-allow 0.10 per purchase and 0.30 per UTC day, checked before anything is
-signed; the rail's own limits (5 and 10 USDC, shared with `ucp:buy`) are
-enforced by the network inside the transfer. With four purchases on a fresh
-day, three settle and the fourth is refused before anything is signed. It
-moves testnet USDC, and needs `.env.local` with `AGENT_SECRET_KEY` as the
-owner of `policyRailUcp`:
-
-```bash
-pnpm run team:pay -- --times 4
-```
-
-Every PolicyRail decision lands in a hash-chained vault
-(`.team-budget/vault.jsonl`, local; the day's budget holds across runs that
-share it). `TEAM_SIGNALDESK_URL` points the purchase at a local SignalDesk
-instead of the live one. The month's spending, with each payment's
-transaction and the rail's limits read from the network:
-
-```bash
-pnpm run team:summary -- --month 2026-10
-```
-
-The same month as a page, written next to the vault and opened in the default browser
-(the path is printed if it cannot be opened):
-
-```bash
-pnpm run team:summary -- --html
-```
-
-## Vitrinee: real stores join without writing code
-
-AgentPey is the **buyer** with rules: identity, a signed Mandate, a
-`policy_rail` smart account that enforces spending limits inside the transfer
-itself, and an evidence vault. **Vitrinee is the seller's door.** It connects
-to a real e-commerce platform (Jumpseller today) through the store's own API,
-publishes the catalogue as `/.well-known/agent-storefront.json`, charges via
-x402 in USDC on Stellar testnet, creates the real order on the platform, and
-returns a signed receipt whose SHA-256 is anchored in a Soroban contract.
-
-The store installs nothing. The only thing it hands over is its platform API
-credentials. Anyone can verify a receipt without trusting the store or
-Vitrinee: the signature against the merchant's `did:stellar`, the anchor in
-[`receipt-registry`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5),
-and the settlement transaction on Stellar.
-
-```bash
-pnpm run vitrinee
-```
-
-```bash
-pnpm run vitrinee:buy -- "compra un pack de stickers"
-```
-
-```bash
-pnpm run vitrinee:verify
-```
-
-Secrets live in `.env.vitrinee.local` (template:
-[`.env.vitrinee.example`](.env.vitrinee.example)). A live instance runs at
-<https://vitrinee-gateway.onrender.com> (manifest at
-[`/.well-known/agent-storefront.json`](https://vitrinee-gateway.onrender.com/.well-known/agent-storefront.json),
-orders and one-click verification at
-[`/dashboard/`](https://vitrinee-gateway.onrender.com/dashboard/)). The free
-Render plan sleeps after ~15 minutes idle; the first request then takes ~50 s.
-
-**Status.** Vitrinee was built in its own repository and merged here with its
-full history on 2026-09-23 (`P-12`). It already sells to any standard x402
-client, and real purchases settle and anchor on testnet. Since T99 AgentPey's
-own buyer can pay it too, from a `policy_rail` smart account: Vitrinee serves
-its catalogue as `ServiceCard`s at `GET /api/discovery/search`, takes checkout
-by `GET` with the shipping details in the query (kept out of what is sent to
-the facilitator), and accepts a `C…` payer in the receipt and its
-verification (`VT-22`–`VT-25`). Tested end to end on
-testnet against the mock store. The Render deploy above still runs the code
-from before T99 until it moves here (T102), and registering Vitrinee as an
-AgentPey venue is the next milestone (T100, `C-130`). Full walkthrough, in Spanish:
-[`docs/fase-6-agentguard-comercializacion/vitrinee/README.md`](docs/fase-6-agentguard-comercializacion/vitrinee/README.md).
-Manifest format:
-[`SPEC-agent-storefront.md`](docs/fase-6-agentguard-comercializacion/vitrinee/SPEC-agent-storefront.md).
-
-Everything below describes **Phase 1 — AgentPass**, which is complete and runs
-end to end. Its code lives at the root of this repo (`packages/`, `contracts/`);
-later phases add siblings there rather than parallel trees.
-
----
-
-# Phase 1 — AgentPass
-
-Identity credentials for AI agents, issued and verified against **Stellar
-testnet**. An agent proves cryptographically who operates it and what it is
-authorised to do; that authorisation can be cut from outside the agent, so no
-prompt injection can talk its way past it.
-
-Testnet only. No mainnet, no fiat rails, no PSP — deliberately.
-
-## How it fits together
-
-| Piece | What it does |
-|---|---|
-| `packages/core` | Typed errors, `did:stellar` derivation, VC-JWT sign/verify. **No I/O.** |
-| `packages/sdk` | `issue()` / `verify()` / `revoke()` — core plus Soroban RPC. |
-| `packages/cli` | The `agentpass` binary. |
-| `packages/mandate` | Phase 3: `@agentpey/mandate` — the principal's signed consent. Depends on core, nothing depends on it. |
-| `packages/vault` | Phase 5: `@agentpey/vault` — the hash-chained record of every grant, refusal and anchor. |
-| `packages/tenancy` | Phase 6: `@agentpey/tenancy` — one Stellar keypair per derived identity, from a single master seed (SEP-0005). **No I/O.** |
-| `packages/directory` | Phase 6: `@agentpey/directory` — the durable record of partners, tenants, principals, agents, credentials and mandates. |
-| `contracts/policy-rail` | Soroban smart account that enforces `per_tx` / `per_day` inside the transfer itself. |
-| `contracts/agent-registry` | Soroban contract holding credential hashes, their status, and the issuer set. |
-| `deployments/testnet.json` | The only artefact shared between the TypeScript and Rust sides. |
-
-A credential is **never** stored on-chain. On-chain there is only the SHA-256 of
-the compact JWS, its status, and the issuer registry.
-
-Verifying a credential is exactly three checks:
-
-1. the JWS verifies against the public key derived from the issuer's DID;
-2. `now` falls within `validFrom` / `validUntil`;
-3. `status(sha256(jws)) == Active` and the issuer is active.
-
-Checks 1 and 2 need no network at all — `did:stellar:testnet:<G-address>`
-resolves deterministically, because the Stellar account's public key *is* the
-`Ed25519VerificationKey2020`.
-
-## Project documentation
-
-Written in Spanish, because that is the language its readers use. Code,
-comments and commit messages are in English.
+## See it live
 
 | | |
 |---|---|
-| [docs/fase-1-agentpass/CONTEXTO.md](docs/fase-1-agentpass/CONTEXTO.md) | What AgentPass is, the thesis, what it is **not** |
-| [docs/fase-1-agentpass/BITACORA.md](docs/fase-1-agentpass/BITACORA.md) | Running log: current state, what each milestone delivered |
-| [docs/fase-1-agentpass/DECISIONES.md](docs/fase-1-agentpass/DECISIONES.md) | Every significant decision, with its rationale and the rejected alternative |
-| [docs/fase-1-agentpass/evidencia/](docs/fase-1-agentpass/evidencia/) | Raw command output for each milestone |
+| MCP server (connect Claude or ChatGPT) | `https://mcp.agentpey.com/mcp` ([setup steps](apps/mcp/README.md)) |
+| Stores an agent can buy from | [agentpey.com/tiendas](https://agentpey.com/tiendas) |
+| What agents are buying right now, read from the network | [agentpey.com/en-vivo](https://agentpey.com/en-vivo) (data: [`/api/live`](https://agentpey.com/api/live)) |
+| The buyer's SDK | [`@agentpey/ucp-stellar`](https://www.npmjs.com/package/@agentpey/ucp-stellar) on npm |
+| The Stellar payment handler for UCP | [spec](https://agentpey.com/ucp/handlers/stellar-x402/spec) |
 
-## Requirements
+## Evidence
 
-- Node ≥ 22 and pnpm 11 (`brew install pnpm`)
-- Rust stable with the `wasm32v1-none` target (`brew install rustup && rustup default stable`)
-- `stellar` CLI 28 (`brew install stellar-cli`)
+As of 2026-10-09 (14:49 UTC), from `/api/live`, which counts only purchases whose signed receipt could be read and whose payment
+transaction is known:
 
-Homebrew installs rustup keg-only, so add it to your shell:
+| | |
+|---|---|
+| Purchases | 26, at 3 test stores |
+| USDC paid | 52.7157903 |
+| Disputes | 3, all resolved |
+| Refunded | 2.0842106 USDC (2 refunds; the other claim was rejected, 0 refunded) |
+
+Every purchase has a receipt signed by the store, anchored in the
+[`receipt-registry`](https://stellar.expert/explorer/testnet/contract/CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5)
+contract, and a payment transaction you can open:
+
+- An example purchase (a magnet, 0.5157895 USDC, 2026-10-09): [payment](https://stellar.expert/explorer/testnet/tx/a3200a4c2d745d6efefc97b80607905a5558dc446256d6096bcc30844f7ce8dd), [receipt anchor](https://stellar.expert/explorer/testnet/tx/7b9bce5030658e78d58e3f43861cff21938587d5772df329cc00cbfb67c9fde1).
+- The refund of 2026-10-08, 1.5684211 USDC returned to the payer by the
+  [AgentResolve](https://stellar.expert/explorer/testnet/contract/CCYMGX56FJ65EVXUY2M4BTVBCCOBXBTAMGSCWN5X4TQLQTCCEAHDCD3F)
+  contract: [transaction](https://stellar.expert/explorer/testnet/tx/fbdd6e741ba92122fd3c5221b429048787166d8b9bdfacaececc6c6d917ee22a).
+  The run, step by step: [`T124-reembolso-real.md`](docs/fase-8-agentes-reales/evidencia/T124-reembolso-real.md) (in Spanish).
+
+Seven older records (Bazar Cordillera, 22 and 23 September) are anchored but their store no longer holds the orders,
+so no payment can be shown for them. They are not counted; `/api/live` lists them apart under `incomplete`.
+
+## Quickstart for builders
+
+**Connect an agent to the MCP server.** In Claude: Customize, Connectors, Add custom connector, URL
+`https://mcp.agentpey.com/mcp`. Only the wallet that owns the MCP's `policy_rail` can sign in. Steps for Claude and
+ChatGPT: [`apps/mcp/README.md`](apps/mcp/README.md).
+
+**Buy from your own agent with the SDK** (Node 22 or later, ESM). Quoting opens a checkout and moves no money:
 
 ```bash
-echo 'export PATH="/opt/homebrew/opt/rustup/bin:$PATH"' >> ~/.zshrc
+npm install @agentpey/ucp-stellar
 ```
 
-## Getting a working testnet environment
+```js
+// quote.mjs
+import { fromAtomic, quote } from "@agentpey/ucp-stellar";
 
-```bash
-pnpm install
-```
-
-```bash
-pnpm run bootstrap
-```
-
-```bash
-pnpm run deploy:registry
-```
-
-`bootstrap` generates the admin / issuer / agent keypairs, funds them through
-Friendbot, writes `.env.local` (mode 600, gitignored, secrets never printed) and
-reports the network's live protocol version. It is idempotent: re-running reuses
-every existing keypair, skips accounts that are already funded, and preserves
-keys it does not own — including the contract id `deploy:registry` writes.
-
-`deploy:registry` builds, uploads and deploys `agent_registry`, then reads the
-contract back through the SDK to confirm what landed on chain is what was meant,
-and records it in `deployments/testnet.json` and `.env.local`. Re-running is a
-no-op when the deployed contract matches the built wasm. Any drift stops the
-script and asks for `--redeploy`, because a redeploy means a **new contract id**
-and every credential anchored against the old one would be orphaned.
-
-The live testnet deployment is
-`CARC2SIQ3GTL34LVHSTGFRKDNNBYUXCSMGAUGKWGMT6Z2SDY6FXPP2DT`.
-
-`deploy:registry` also registers the pilot's issuer in that contract if it
-is not already active, which is what lets the walkthrough below run with no
-manual setup beyond the three commands above.
-
-## Build the CLI
-
-```bash
-pnpm build
-```
-
-## Full walkthrough: issue → verify → revoke → verify fails
-
-Everything above — `pnpm install`, `bootstrap`, `deploy:registry`, `build` —
-must have already run. Every command below is run from the repo root.
-
-Pull the demo agent's address out of `.env.local` (written by `bootstrap`):
-
-```bash
-AGENT_PUBLIC_KEY=$(grep '^AGENT_PUBLIC_KEY=' .env.local | cut -d'"' -f2)
-```
-
-Issue it a credential. [examples/scope.json](examples/scope.json) is a ready-made
-scope file — what the agent may do, and its spending limits:
-
-```bash
-node packages/cli/dist/bin.js issue --subject "$AGENT_PUBLIC_KEY" --scope examples/scope.json --out credential.jws
-```
-
-This prints a summary including the credential's hash, and anchors that hash in
-the registry. Verify the credential — this runs all three checks: signature,
-validity window, and the registry:
-
-```bash
-node packages/cli/dist/bin.js verify credential.jws
-```
-
-`status` should be `Active`. Pull the hash out of that same output, so nothing
-needs to be copied by hand:
-
-```bash
-HASH=$(node packages/cli/dist/bin.js verify credential.jws | grep '^hash' | awk '{print $2}')
-```
-
-Confirm it directly against the registry:
-
-```bash
-node packages/cli/dist/bin.js status "$HASH"
-```
-
-Now revoke it — this is the principal cutting the agent's authorisation from
-**outside** the agent:
-
-```bash
-node packages/cli/dist/bin.js revoke "$HASH"
+const q = await quote({
+  storeUrl: "https://agentcommerce.vitrinee.agentpey.com",
+  productId: "67624104591666",
+  quantity: 1,
+  buyer: { email: "buyer@example.com", first_name: "Ada", last_name: "Lovelace" },
+  destination: { first_name: "Ada", last_name: "Lovelace", street_address: "Av. Providencia 1234", address_locality: "Providencia", address_country: "CL" },
+});
+console.log(`checkout ${q.checkoutId}: ${fromAtomic(BigInt(q.requirements.amount), q.asset.decimals)} ${q.asset.code} to ${q.requirements.payTo}`);
 ```
 
 ```bash
-node packages/cli/dist/bin.js status "$HASH"
+node quote.mjs
 ```
 
-That should now print `Revoked`. Verify the exact same file again — the same
-JWS, the same valid signature, nothing about the credential itself changed:
+Paying takes a payer that signs with your key (a classic account or a `policy_rail`). The full example:
+[`packages/ucp-stellar/README.md`](packages/ucp-stellar/README.md).
 
-```bash
-node packages/cli/dist/bin.js verify credential.jws
-```
+## Conformance
 
-This must fail with `CredentialRevoked: the registry reports this credential as
-revoked`, exit code 1. That failure is the whole point of the project: an
-agent's authorisation was cut without touching the agent, the credential, or
-its signature — only the registry.
+Two checks, both runnable from this repo (run `pnpm install` and `pnpm build` beforehand):
 
-## Test
+- **Stellar payment handler kit**: 20 checks (profile, requirements, charge, receipt) that a UCP store implements the
+  handler. Profile checks, which only read:
 
-```bash
-pnpm typecheck
-```
+  ```bash
+  pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --profile-only
+  ```
 
-```bash
-pnpm test
-```
+  The other groups, and the store broken on purpose: [`scripts/ucp-stellar-conformance/`](scripts/ucp-stellar-conformance/README.md).
+- **The official UCP conformance suite**, against a local Vitrinee store (needs [`uv`](https://docs.astral.sh/uv/)):
 
-```bash
-pnpm run test:integration
-```
+  ```bash
+  pnpm run ucp:conformance
+  ```
 
-```bash
-cd contracts && cargo test
-```
+  Last recorded result, 2026-10-05: 49 pass, 8 fail with a stated reason, 20 skipped, of 77.
+  Test by test: [`T131.md`](docs/fase-8-agentes-reales/evidencia/T131.md).
 
-`pnpm test` is the fast suite and needs no keys. `test:integration` runs the
-full cycle against live testnet with nothing mocked — issue, verify, revoke,
-then confirm the same JWS no longer verifies — so it needs `.env.local` and a
-deployed registry.
+## Limitations
 
-## Status
+- **Testnet only.** Nothing here moves real money.
+- So far, purchases happened only on our own test stores.
+- MPP payments from a `policy_rail` don't work yet: the official SDK rejects them ([stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)).
+- Card subscriptions are design only.
+- Disputes are opened and resolved by one fixed arbiter account, by hand; the contract has no way to change it.
 
-T1 through T8 are complete. The pilot's full loop — install, bootstrap, deploy,
-build, then issue / verify / revoke / status from the CLI — runs end to end
-against live Stellar testnet, following nothing but this README.
+## Repo map
 
-Out of scope for this phase, deliberately: enforcing `scope.limits` (signed and
-transported, not yet enforced by anything), PolicyRail, Mandato, MandateGate,
-MandateVault, any web UI, mainnet, and fiat rails. See
-[docs/fase-1-agentpass/CONTEXTO.md](docs/fase-1-agentpass/CONTEXTO.md).
+| Path | What is there |
+|---|---|
+| `apps/` | The runnable pieces: `mcp` (the MCP server), `web` (agentpey.com, `/en-vivo`, `/tiendas`), `gateway` (one service that hosts the apps on Render), `agent` (a buying agent), `vitrinee-*` (the seller's side), `realops` and `signaldesk` (a pilot platform and merchant) |
+| `packages/` | Libraries: `ucp-stellar` (buyer SDK), `vitrinee-*` (store gateway, receipts, anchoring), `resolve` (disputes), `ap2`, `mandate`, `vault`, `sdk` and `core` (credentials), `wallet-kit` |
+| `contracts/` | Soroban contracts: `policy-rail` (spend limits), `receipt-registry`, `agent-resolve` (disputes and refunds), `agent-registry` (credentials) |
+| `docs/` | Design, decisions and a log per phase, in Spanish. Start at [`ROADMAP.md`](ROADMAP.md). Facilitator audit: [`docs/partners/auditoria-facilitator.md`](docs/partners/auditoria-facilitator.md) |
 
-This file documents phase 1 (AgentPass) specifically — see
-[ROADMAP.md](ROADMAP.md) for where the project stands as a whole.
-[`apps/agent`](apps/agent/README.md) is phase 2, the minimal purchasing agent
-built on top of AgentPass; from the repo root, after `bootstrap` and
-`deploy:registry`, `pnpm demo` runs its full walkthrough — issue a credential,
-a Spanish purchase instruction, a signed intent, a real revocation, a rejected
-retry — against live testnet in about twelve seconds.
-[`packages/mandate`](packages/mandate/README.md) is phase 3, complete: the
-principal's signed consent, the document that says what the agent is actually
-allowed to spend.
+Every command from earlier phases (setup, team budget, Vitrinee, UCP purchases): [`docs/README-ANTERIOR.md`](docs/README-ANTERIOR.md).
 
-Phases 4 and 5 add real payments and their evidence. A purchase can be paid two
-ways, and both settle a real x402 invoice against the bazaar on testnet:
+## History
 
-```bash
-pnpm run demo:pay-real
-```
+AgentPey started as **AgentPass** (phase 1): identity credentials for agents, issued and verified against Stellar
+testnet. An agent proves who operates it and what it may do; only a hash of the credential is on-chain, in
+`agent-registry`, and the operator can revoke it from outside the agent, so the same signed file stops verifying.
+Later phases added spend limits (`policy_rail`), a signed Mandate, x402 payments, an evidence vault, stores that join
+without writing code (Vitrinee), and the UCP, AP2 and MCP work above. The phase 1 walkthrough (issue, verify, revoke,
+verify fails) is in [`docs/README-ANTERIOR.md`](docs/README-ANTERIOR.md); its design is in
+[`docs/fase-1-agentpass/`](docs/fase-1-agentpass/CONTEXTO.md).
 
-pays from the agent's own classic account (T24). Deploy the `policy_rail` smart
-account once, naming the wallet that owns the money in it:
+## License and contact
 
-```bash
-pnpm run deploy:policy-rail -- --principal GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-```
-
-`--principal` is required and has no default. That wallet is the only one that
-can withdraw the rail's balance or rotate the key allowed to spend from it
-(T57); the agent's key can spend within the limits and nothing else. Once
-deployed, the same purchase can be paid by the contract instead, with its
-`perTx` and `perDay` limits enforced by the network inside the transfer itself
-(T31):
-
-```bash
-pnpm run demo:pay-real -- --payer=policy-rail
-```
-
-Phase 7 makes the same purchase through the
-[Universal Commerce Protocol](https://ucp.dev): every Vitrinee store publishes
-`/.well-known/ucp`, and AgentPey pays its UCP checkout with the
-[`com.agentpey.stellar_x402`](https://agentpey.com/ucp/handlers/stellar-x402/spec)
-payment handler, from a `policy_rail` of its own (5.00 USDC per purchase, 10.00
-per day since T148). Deploy that rail once, then buy:
-
-```bash
-pnpm run deploy:policy-rail -- --profile ucp --principal G...
-```
-
-```bash
-pnpm run ucp:buy -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666
-```
-
-With the buyer's marketing consent (T149): the agent confirms it once the store has advertised its consent options,
-and the store takes it to the Shopify order (`buyerAcceptsMarketing`):
-
-```bash
-pnpm run ucp:buy -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --ucp-version 2026-08-25 --marketing yes
-```
-
-The official UCP conformance suite, against a local Vitrinee store that pays with the suite's test method (T131; needs [`uv`](https://docs.astral.sh/uv/)). Results, test by test, in [`docs/fase-8-agentes-reales/evidencia/T131.md`](docs/fase-8-agentes-reales/evidencia/T131.md):
-
-```bash
-pnpm run ucp:conformance
-```
-
-To see the network refuse a purchase above the rail's per-transaction limit
-(nothing is sent; the checkout is canceled):
-
-```bash
-pnpm run ucp:probe-per-tx -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --quantity 2
-```
-
-The signing pages (the Mandate, its revocation, a dispute answer, the merchant
-portal, the MCP sign-in) take any Stellar wallet that signs messages, through
-one wallet layer served from each site
-([`packages/wallet-kit`](packages/wallet-kit/README.md)). Locally it exists
-once `pnpm build` has run; `http://localhost:8787/wallet-lab.html` checks a
-wallet against the server.
-
-`pnpm run web` puts both behind buttons, alongside the MandateVault log that
-records every decision and anchors each payment on chain. It is deployed live
-at [agentpey.com](https://agentpey.com), alongside the F9 pilot's
-platform at [realops.agentpey.com](https://realops.agentpey.com) and its
-merchant at [signaldesk.agentpey.com](https://signaldesk.agentpey.com) — three
-apps on one Render service, see `apps/gateway/README.md`.
-
-Phase 6 turns the pilot into something a third party can integrate: a
-partner gets an API key (`pnpm run partner:create` for a new partner,
-`pnpm run partner:key` to inspect or rotate an existing partner's key —
-note that `partner:create` mints a *new* partner, and tenants are
-partner-scoped), calls `/v1` to create
-tenants and propose a spending grant, and a principal reviews and signs that
-grant by connecting their own wallet at a hosted `/consent/{id}` link — no
-partner ever touches a private key. Each tenant gets its own `policy_rail`,
-funded and owned by that tenant's own wallet, not a shared account.
-`packages/partner-api`, `packages/partner-sdk` and `packages/webhooks` are
-the pieces; [`examples/cloudops-partner-integration.md`](examples/cloudops-partner-integration.md)
-is a full walkthrough with exact `curl` commands. See
-[docs/fase-6-agentguard-comercializacion/](docs/fase-6-agentguard-comercializacion/)
-for the design and current state.
-
-## License
-
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0, see [LICENSE](LICENSE). [agentpey.com](https://agentpey.com) · X [@agentpeyai](https://x.com/agentpeyai) · Discord: @vicentewolde
