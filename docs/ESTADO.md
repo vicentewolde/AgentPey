@@ -5,7 +5,7 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-08
+**Actualizado:** 2026-10-09
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T151 · Página "En vivo": una compra nueva de Claude apareció sola (`ord_mv079z6634dbf7e9d1`)
 **Siguiente paso:** T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
@@ -84,6 +84,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Notas de la última sesión
 
+- 2026-10-09: preparación para socios (PR #76 y #77, `P-18`): `/api/live` cuenta solo compras con pago comprobado (26, 7 en `incomplete`), auditoría del facilitator x402 en `docs/partners/` y README nuevo. Comprobado en vivo; las cifras del README cuadran con `/api/live` y la red ([evidencia](fase-8-agentes-reales/evidencia/partner-readiness.md)). El MCP sigue abierto solo a la wallet dueña del rail.
 - 2026-10-07: `R-24` (no se corta nada para la hackatón; T138 y T139 al final de la fase). T145 cerrada: cobro por uso desde un `policy_rail` sí; suscripciones con tarjeta solo diseño (el rail actual no puede cargar una tarjeta y Cards402 prohíbe cobros recurrentes); T146 aprobada sobre un rail ya desplegado (`R-25`).
 - 2026-09-30, T120: UCP **sí** admite un handler x402 de Stellar (`com.agentpey.stellar_x402`), con el pago dentro de `complete` y sin HTTP 402. El perfil no lleva productos: T121 es perfil más catálogo. Estimación: T121 16 h, T122 29 h (opción A). Hallazgo para T123: AP2 en UCP exige ECDSA y SD-JWT; el Mandato usa Ed25519.
 - 2026-09-30: `P-14` (reposicionamiento: UCP, AP2 y x402 sobre Stellar) y `P-15` (método fase → spec → tareas, con `/estado`, `/tarea` y `/revisar`). Spec de la Fase 7 **aprobado** por el usuario, que también confirmó la extensión de Find Your Way. Exponential se mantiene como espejo.

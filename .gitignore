@@ -39,3 +39,6 @@ credential.jws
 
 # The team's MandateVault from pnpm run team:pay (T146): local evidence, never versioned
 .team-budget/
+
+# Dispute answers downloaded from the answer page: local, signed, never versioned
+agentresolve-response-*.json
