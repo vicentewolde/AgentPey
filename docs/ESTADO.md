@@ -86,6 +86,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Notas de la última sesión
 
+- 2026-10-09: `R-33` (el usuario decide abrir el MCP a más wallets con un `policy_rail` por persona y llave de agente derivada por persona; se construye después del 12-oct, con tarea nueva en el spec antes). Hoy sigue abierto solo a la wallet dueña del rail.
 - 2026-10-09: preparación para socios (PR #76 y #77, `P-18`): `/api/live` cuenta solo compras con pago comprobado (26, 7 en `incomplete`), auditoría del facilitator x402 en `docs/partners/` y README nuevo. Comprobado en vivo; las cifras del README cuadran con `/api/live` y la red ([evidencia](fase-8-agentes-reales/evidencia/partner-readiness.md)). El MCP sigue abierto solo a la wallet dueña del rail.
 - 2026-10-07: `R-24` (no se corta nada para la hackatón; T138 y T139 al final de la fase). T145 cerrada: cobro por uso desde un `policy_rail` sí; suscripciones con tarjeta solo diseño (el rail actual no puede cargar una tarjeta y Cards402 prohíbe cobros recurrentes); T146 aprobada sobre un rail ya desplegado (`R-25`).
 - 2026-09-30, T120: UCP **sí** admite un handler x402 de Stellar (`com.agentpey.stellar_x402`), con el pago dentro de `complete` y sin HTTP 402. El perfil no lleva productos: T121 es perfil más catálogo. Estimación: T121 16 h, T122 29 h (opción A). Hallazgo para T123: AP2 en UCP exige ECDSA y SD-JWT; el Mandato usa Ed25519.
