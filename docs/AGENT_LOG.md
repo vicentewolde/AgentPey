@@ -8697,3 +8697,15 @@ testnet a la garantía de agentcommerce en AgentResolve (`resolve:deposit`, tx `
 `~/Library/Application Support/AgentPey/cupo.sh`, fuera del repo.
 
 Pendiente: ninguno nuevo. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (6) — tienda Shopify de la demo (sin código)
+
+Agente: Claude Code.
+
+Qué: **precio temporal.** Con OK del usuario, el imán de cobre Atacama de `agenticom.myshopify.com` pasó de 490 a **50 CLP**
+en el admin de Shopify (producto `15396480123186`), para poder hacer varias compras de prueba antes de las 21:00 de Chile
+con el cupo que queda en el rail del MCP (0,8526 USDC de 5,00). El catálogo UCP ya publica 50. **Hay que volver a 490
+antes de la demo y antes de grabar**: el guion, la escaleta y las cotizaciones dicen 490 pesos y unos 0,52 USDC, y la
+compra en vivo necesita 0,5158 USDC de cupo (máximo 6 pruebas a 50 pesos antes de ella si es antes de las 21:00).
+
+Pendiente: restaurar el precio a 490. `AGENTS.md`: sin cambios.
