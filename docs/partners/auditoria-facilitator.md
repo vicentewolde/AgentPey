@@ -2,7 +2,7 @@
 
 Solo lectura, 2026-10-09. Rama `chore/partner-readiness`, sin cambios de código. Las referencias son `archivo:línea` del repo en esa fecha.
 
-**Recomendación: cambio chico (< 1 día)**, con una condición: que el facilitator externo hable el mismo protocolo x402 v2 que el actual y soporte pagadores de contrato `C…` (el `policy_rail`). Si no, pasa a 1-2 días. Detalle en §4. Nadie de este documento probó todavía contra StellarSight: **no hay ninguna referencia a StellarSight en el repo**, así que la compatibilidad se deduce del contrato genérico de x402, no de su documentación.
+**Recomendación: cambio chico (< 1 día)**, con una condición: que el facilitator externo hable el mismo protocolo x402 v2 que el actual y soporte pagadores de contrato `C…` (el `policy_rail`). Si no, pasa a 1-2 días. Detalle en §4. Todavía no se probó contra StellarSight: **no hay ninguna referencia a StellarSight en el repo**, así que la compatibilidad se deduce del contrato genérico de x402, no de su documentación.
 
 ## 1. Dónde se configura el facilitator
 
