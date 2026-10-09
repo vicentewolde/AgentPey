@@ -267,5 +267,5 @@ contra testnet real y necesita `.env.local` con el contrato desplegado.
 
 El binario del CLI, tras `pnpm build`, se invoca como
 `node packages/cli/dist/bin.js <comando>`. El recorrido completo (emitir →
-verificar → revocar → verificar falla) está en el README raíz, sección
+verificar → revocar → verificar falla) está en `docs/README-ANTERIOR.md`, sección
 "Full walkthrough".
