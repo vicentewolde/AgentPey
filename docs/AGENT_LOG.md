@@ -8555,3 +8555,18 @@ Por qué: revisión antes de contactar a los socios: lo primero que miran es el 
 
 Pendiente: el PR no se mergea ni se despliega sin OK del usuario; los totales del README coinciden con `/api/live`
 solo tras el deploy. Sin cambios en contratos, llaves ni datos anclados. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (2) — cc/partner-readiness-fixes
+
+Agente: Claude Code.
+
+Qué: comprobación en vivo tras el PR #76 y #77: `/api/live` da 26 compras, 52,7157903 USDC, 3 disputas resueltas y
+2,0842106 USDC reembolsados, con 7 en `incomplete`; la tercera disputa existe en la red (evidencia en
+`docs/fase-8-agentes-reales/evidencia/partner-readiness.md`). El MCP sigue abierto solo a la wallet dueña del rail.
+Se borraron las ramas `chore/partner-readiness` y `chore/readme-totals` (su contenido ya está en `main`). Se ignoran
+las respuestas `agentresolve-response-*.json`; `.agents/` y `.codex/` (skills y revisor de Codex) entran al repo.
+
+Por qué: cerrar la revisión previa a contactar a los socios.
+
+Pendiente: `cc/demo-day-escaleta` sigue sin mergear (tiene 4 commits sin subir y un conflicto en este archivo; esperar al
+video). Sin cambios de código, contratos, llaves ni datos anclados. `AGENTS.md`: sin cambios.
