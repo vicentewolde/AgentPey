@@ -8541,3 +8541,17 @@ Corregida en `ESTADO.md` la URL para comprobar el MCP (la anterior da 404 aunque
 
 Pendiente: T130 cuando haya tienda; el 11-oct, guion de T142 (con chequeo previo de que todo está vivo,
 incluido el MCP) y tabla de T144; al final T138, T139 y T140. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (1) — chore/partner-readiness
+
+Agente: Claude Code.
+
+Qué: (1) `/api/live` ya no cuenta como compra un registro sin `payment_tx`: va aparte en `incomplete`, fuera de los
+totales (26 compras, 52,7157903 USDC); test nuevo y nota en `/en-vivo` (`P-18`). (2) Auditoría del facilitator x402 en
+`docs/partners/auditoria-facilitator.md`. (3) README de la raíz reescrito para lectores externos; el anterior quedó
+entero en `docs/README-ANTERIOR.md`.
+
+Por qué: revisión antes de contactar a los socios: lo primero que miran es el README y `/en-vivo`.
+
+Pendiente: el PR no se mergea ni se despliega sin OK del usuario; los totales del README coinciden con `/api/live`
+solo tras el deploy. Sin cambios en contratos, llaves ni datos anclados. `AGENTS.md`: sin cambios.
