@@ -156,17 +156,20 @@ durante 10 minutos. El día UTC empieza a las 21:00 de Chile (UTC-3).
 ### 2.6 La pantalla del árbitro
 
 Es una página en tu propio computador (T155, `R-34`) con los pasos del árbitro, para no mostrar una terminal. Por
-detrás ejecuta los mismos comandos; las llaves siguen en tu `.env.local`. Hasta que T155 se mergee a `main`, se
-inicia desde su carpeta (que ya tiene el enlace a tu `.env.local`):
+detrás ejecuta los mismos comandos; las llaves siguen en tu `.env.local`.
+
+**Para encenderla: doble clic en `Árbitro AgentPey` del escritorio.** No abre ninguna ventana de terminal: en unos 3
+segundos se abre sola la página en el navegador, con una dirección como `http://127.0.0.1:4747/?k=…` (la clave cambia
+cada vez). Si la abres otra vez, reinicia el servidor y abre una página nueva (la anterior ya no sirve). Déjala en la
+pestaña 6. Comprueba que carga: debe decir "Una disputa, paso a paso." y los pasos 2 a 4 se ven apagados. Si no se
+abre, el registro está en `/tmp/arbiter-console.log`.
+
+La app arranca la pantalla desde `~/dev/AgentPay-t155`, que ya tiene el enlace a tu `.env.local`. Si ese worktree
+cambia de lugar, la app deja de funcionar. Sin la app, lo mismo desde una terminal:
 
 ```bash
 cd ~/dev/AgentPay-t155 && pnpm run arbiter:console
 ```
-
-Se abre sola en el navegador con una dirección como `http://127.0.0.1:4747/?k=…` (la clave cambia cada vez). Déjala en
-la pestaña 6 y **no cierres la ventana de la terminal** que la inició: ahí vive el servidor; ponla detrás del
-navegador, que no se vea. Comprueba que carga: debe decir "Una disputa, paso a paso." y los pasos 2 a 4 se ven
-apagados.
 
 Si la pantalla falla, queda el plan antiguo: los mismos pasos con los atajos de [reclamo.zsh](reclamo.zsh) (`source
 …/reclamo.zsh`, después `reclamo_guardar`, `reclamo_abrir`, `reclamo_decidir` y `reclamo_pagar <hash>`).
