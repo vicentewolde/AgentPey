@@ -404,7 +404,7 @@ más rápido que lo estimado.
   - [x] los cuatro pasos se hacen desde la página y muestran lo mismo que la terminal, con el razonamiento del árbitro a la vista (la página probada con las salidas reales del ensayo del 9-oct; [evidencia](evidencia/T155.md))
   - [x] el pago no se ejecuta sin el hash del veredicto escrito por la persona (el botón se habilita solo con el hash exacto)
   - [x] solo escucha en `127.0.0.1`, y responde solo a su propia página (Host, Origin y clave)
-  - [ ] una corrida real, con un reclamo nuevo de punta a punta desde esta página
+  - [x] una corrida real, con un reclamo nuevo de punta a punta desde esta página (9-oct, `ord_mv1hp08c432548f9ed`; [evidencia](evidencia/T155.md) §3)
 
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)
