@@ -8637,3 +8637,15 @@ Por qué: cerrar la revisión previa a contactar a los socios.
 
 Pendiente: `cc/demo-day-escaleta` sigue sin mergear (tiene 4 commits sin subir y un conflicto en este archivo; esperar al
 video). Sin cambios de código, contratos, llaves ni datos anclados. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (3) — cc/r-33-mcp-varias-wallets
+
+Agente: Claude Code.
+
+Qué: decisión `R-33` en `docs/fase-8-agentes-reales/DECISIONES.md` y nota en `ESTADO.md`: el MCP se abrirá a más wallets con un
+`policy_rail` por persona y una llave de agente derivada por persona, después del 12-oct. Solo documentación, sin código.
+
+Por qué: pregunta del usuario antes de contactar a socios; nada en el spec lo cubría.
+
+Pendiente: escribir y aprobar la tarea en el spec antes de construir; hasta entonces el MCP sigue abierto solo a la wallet
+dueña del rail. `AGENTS.md`: sin cambios.

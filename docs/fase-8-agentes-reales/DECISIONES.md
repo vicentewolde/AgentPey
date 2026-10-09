@@ -1047,3 +1047,37 @@ deploy.
 
 **Alternativas descartadas.** Subir el límite a 90 s (cada deploy tarda más en quedar arriba, y vuelve a fallar si el
 MCP pasa de 90 s). Redesplegar a mano hasta que llegue (perdió dos veces seguidas el 8-oct).
+
+### R-33 · El MCP se abrirá a más wallets con un `policy_rail` por persona y una llave de agente derivada por persona; se construye después del 12-oct · `Vigente` — extiende `R-7`
+**Fecha:** 2026-10-09 · **Origen:** pregunta del usuario antes de contactar a socios · Comparación de Claude Code, **decidido por el usuario**
+
+**Contexto.** Hoy el MCP sirve a una sola wallet: el servidor no arranca si `MCP_ALLOWED_WALLET` no es el `principal`
+del rail (`apps/mcp/src/runtime.ts`), hay una sola llave de agente (`MCP_AGENT_SECRET_KEY`) y el inicio de sesión
+OAuth acepta exactamente esa wallet (`apps/mcp/src/oauth/server.ts`). El rail fija su dueño, su `principal` y sus
+topes al desplegarse (`contracts/policy-rail/src/lib.rs`). Nada en el spec de la Fase 8 abría esto.
+
+**Se decide.**
+1. **Modelo A:** cada persona que entra tiene su propio `policy_rail`, con su wallet como `principal`. Los topes por
+   persona los aplica la red en cada pago, y `R-7` se mantiene: quien usa el servidor es dueño de la plata que gasta.
+2. **Llave de agente derivada por persona** (derivación de `packages/tenancy`, SEP-0005), no una llave única para todos
+   los rails: si una llave se compromete, solo se compromete el rail de esa persona.
+3. **Por etapas.** Primero una lista cerrada de wallets, cada una con su rail desplegado por el usuario con
+   `deploy:policy-rail --profile mcp --principal G...`; el alta automática solo si esa etapa funciona y el usuario la
+   quiere.
+4. **Cuándo.** No antes del 12-oct: el código está congelado desde el 10-oct para el video. La tarea se escribe en el
+   spec (o en el de la fase siguiente) y se aprueba antes de construirse.
+
+**Lo que no cambia hoy.** El MCP sigue abierto solo a la wallet dueña del rail; el README, la landing y `/tiendas`
+dicen eso y siguen siendo ciertos.
+
+**Por qué.** Mantiene cierto lo central de AgentPey, que los límites los aplica la red y el dinero es de quien lo usa.
+Un tercero puede probar de verdad sin que la custodia pase a ser de AgentPey.
+
+**Alternativas descartadas.**
+- **Rail compartido con topes por sesión (B):** más rápido (1-2 días), pero el tope por persona lo aplicaría el servidor,
+  no la red; la plata sería del operador; y todos los reclamos de disputa los firmaría la misma llave.
+- **Llave de agente única para todos los rails:** más simple, pero un solo secreto comprometido afectaría a todos.
+
+**Abierto para el spec.** Dónde se guarda qué rail es de qué wallet (hoy el MCP no tiene base propia y su registro de
+gasto vive en memoria); quién paga el despliegue de cada rail; el Mandato y la credencial por persona; el costo, que
+es una estimación de Claude Code, sin medir: 2-3 días la lista cerrada, 1-2 semanas el alta automática.
