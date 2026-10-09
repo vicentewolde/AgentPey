@@ -106,9 +106,18 @@ function deps(over: Partial<LiveDeps> & { receipts?: Map<string, ReceiptEntry>; 
   };
 }
 
+/** Every store answers for its receipt: beta's order too, which `deps()` leaves down. */
+function allAnswer(d: LiveDeps): LiveDeps {
+  const base = d.fetchImpl;
+  const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) =>
+    String(input) === "https://beta.vitrinee.agentpey.com/ucp/v1/orders/ord_beta1" ? Response.json({ id: "ord_beta1", receipt: { jws: RB.jws } }) : base(input, init),
+  ) as unknown as typeof fetch;
+  return { ...d, fetchImpl };
+}
+
 describe("createLiveActivity (T151)", () => {
   it("lists every store's purchases newest first, with the registry's amount, order and time", async () => {
-    const page = await createLiveActivity(deps()).read();
+    const page = await createLiveActivity(allAnswer(deps())).read();
     expect(page.purchases.map((p) => [p.store, p.order_ref, p.amount_usdc, p.at])).toEqual([
       ["beta.vitrinee.agentpey.com", "ord_beta1", "1.0421053", new Date(1_791_500_000 * 1000).toISOString()],
       ["alpha.vitrinee.agentpey.com", "ord_alpha1", "1.5684211", new Date(1_791_400_000 * 1000).toISOString()],
@@ -140,7 +149,7 @@ describe("createLiveActivity (T151)", () => {
       [h("a"), { status: "resolved", amountAtomic: 15_684_211n, refundAtomic: 15_684_211n, openedAt: 1_791_410_000, resolvedAt: 1_791_420_000, verdictHash: "9".repeat(64) }],
       [h("b"), { status: "open", amountAtomic: 10_421_053n, refundAtomic: 0n, openedAt: 1_791_510_000, resolvedAt: null, verdictHash: null }],
     ]);
-    const page = await createLiveActivity(deps({ disputes })).read();
+    const page = await createLiveActivity(allAnswer(deps({ disputes }))).read();
     expect(page.purchases.find((p) => p.order_ref === "ord_alpha1")?.dispute).toMatchObject({ status: "resolved", refund_usdc: "1.5684211", verdict_hash: "9".repeat(64) });
     expect(page.purchases.find((p) => p.order_ref === "ord_beta1")?.dispute).toMatchObject({ status: "open", resolved_at: null });
     expect(page.totals).toMatchObject({ disputes_open: 1, disputes_resolved: 1, refunded_usdc: "1.5684211" });
@@ -151,13 +160,21 @@ describe("createLiveActivity (T151)", () => {
       [h("a"), receipt(B, "ord_alpha1", 1n, 1)],
       [h("b"), receipt(B, "ord_beta1", 10_421_053n, 1_791_500_000)],
     ]);
-    const page = await createLiveActivity(deps({ receipts })).read();
+    const page = await createLiveActivity(allAnswer(deps({ receipts }))).read();
     expect(page.purchases.map((p) => p.order_ref)).toEqual(["ord_beta1"]);
   });
 
-  it("keeps a purchase whose store did not answer for its receipt, without inventing products or payment", async () => {
-    const page = await createLiveActivity(deps()).read();
-    expect(page.purchases.find((p) => p.order_ref === "ord_beta1")).toMatchObject({ items: null, payment_tx: null, payment_url: null });
+  it("does not count a record without a payment transaction: it is listed apart, in no total", async () => {
+    // Beta's store does not answer for its receipt, so the registry holds an anchor with no proof of payment.
+    const disputes = new Map<string, DisputeEntry>([
+      [h("b"), { status: "resolved", amountAtomic: 10_421_053n, refundAtomic: 10_421_053n, openedAt: 1_791_510_000, resolvedAt: 1_791_520_000, verdictHash: "9".repeat(64) }],
+    ]);
+    const page = await createLiveActivity(deps({ disputes })).read();
+    expect(page.purchases.map((p) => p.order_ref)).toEqual(["ord_alpha1"]);
+    expect(page.purchases.every((p) => p.payment_tx !== null)).toBe(true);
+    expect(page.incomplete.map((p) => p.order_ref)).toEqual(["ord_beta1"]);
+    expect(page.incomplete[0]).toMatchObject({ items: null, payment_tx: null, payment_url: null });
+    expect(page.totals).toEqual({ purchases: 1, usdc: "1.5684211", disputes_open: 0, disputes_resolved: 0, refunded_usdc: "0.0000000" });
   });
 
   it("reads the receipt from the store's own order route for a sale made before UCP", async () => {
@@ -180,7 +197,8 @@ describe("createLiveActivity (T151)", () => {
         /\/orders\/ord_alpha1$/.test(String(input)) ? Response.json({ receipt: { jws } }) : base(input, init),
       ) as unknown as typeof fetch;
       const page = await createLiveActivity({ ...d, fetchImpl }).read();
-      expect(page.purchases.find((p) => p.order_ref === "ord_alpha1")).toMatchObject({ items: null, payment_tx: null });
+      expect(page.purchases.find((p) => p.order_ref === "ord_alpha1")).toBeUndefined();
+      expect(page.incomplete.find((p) => p.order_ref === "ord_alpha1")).toMatchObject({ items: null, payment_tx: null });
     }
   });
 
@@ -275,8 +293,9 @@ describe("createLiveActivity (T151)", () => {
       "https://alpha.vitrinee.agentpey.com/orders/ord_alpha1": { receipt: { jws: strangerReceipt.jws } },
     });
     const page = await createLiveActivity({ ...d, fetchImpl }).read();
-    expect(page.purchases).toHaveLength(1);
-    expect(page.purchases[0]).toMatchObject({ order_ref: "ord_alpha1", items: null, payment_tx: null });
+    expect(page.purchases).toHaveLength(0);
+    expect(page.incomplete).toHaveLength(1);
+    expect(page.incomplete[0]).toMatchObject({ order_ref: "ord_alpha1", items: null, payment_tx: null });
   });
 });
 
