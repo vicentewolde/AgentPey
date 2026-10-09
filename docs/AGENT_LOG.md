@@ -8669,3 +8669,18 @@ pantalla en vez de la terminal. El archivo entre árbitro y tienda queda como es
 
 Pendiente: merge de T154 con OK del usuario antes de la demo; una corrida real de la pantalla con un reclamo nuevo;
 T155 no se mergea hasta después de la demo. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (4) — cc/demo-day-escaleta
+
+Agente: Claude Code.
+
+Qué: T154 mergeada a `main` ([PR #81](https://github.com/vicentewolde/AgentPey/pull/81), CI en verde, deploy sin caídas del MCP).
+Corrida real de la pantalla del árbitro (T155) de punta a punta con `ord_mv1hp08c432548f9ed`: reembolso de 0,5157895
+USDC confirmado por el usuario con el hash. Con OK del usuario, `pnpm run team:pay -- --times 4` en producción (3 pagos de
+0,10 USDC desde el rail UCP y la cuarta rechazada por el presupuesto del equipo) y `team:summary -- --html` para que la
+página del presupuesto tenga el día de hoy. El usuario decidió dejar para después que el reclamo llegue solo a la tienda y
+la respuesta llegue sola al árbitro (`E-21`, sin cambios).
+
+Pendiente: T155 sin mergear hasta después de la demo. Si el botón de la wallet en `/resolve/responder` muestra otra cuenta
+que `GD2M…K5GN` al salir el aviso rojo, es que Freighter conectó con otra cuenta activa (la página compara la cuenta
+conectada con la del recibo); si muestra `GD2M…K5GN`, sería un error de la página. `AGENTS.md`: sin cambios.
