@@ -8537,5 +8537,7 @@ Qué: `R-32` en producción: el MCP volvió (`/.well-known/oauth-protected-resou
 Claude compró un imán (`ord_mv079z6634dbf7e9d1`) y la compra apareció sola: T151 cerrada (criterio 2, evidencia §6).
 Corregida en `ESTADO.md` la URL para comprobar el MCP (la anterior da 404 aunque esté arriba).
 
-Pendiente: merge con OK; T130 cuando haya tienda; el 11-oct, guion de T142 (con chequeo previo de que todo está vivo,
+[PR #75](https://github.com/vicentewolde/AgentPey/pull/75), fast-forward a `main` con OK del usuario.
+
+Pendiente: T130 cuando haya tienda; el 11-oct, guion de T142 (con chequeo previo de que todo está vivo,
 incluido el MCP) y tabla de T144; al final T138, T139 y T140. `AGENTS.md`: sin cambios.
