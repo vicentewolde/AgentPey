@@ -125,4 +125,4 @@ verify fails) is in [`docs/README-ANTERIOR.md`](docs/README-ANTERIOR.md); its de
 
 ## License and contact
 
-Apache License 2.0, see [LICENSE](LICENSE). [agentpey.com](https://agentpey.com) · X [@agentpeyai](https://x.com/agentpeyai) · Discord: TODO
+Apache License 2.0, see [LICENSE](LICENSE). [agentpey.com](https://agentpey.com) · X [@agentpeyai](https://x.com/agentpeyai) · Discord: @vicentewolde
