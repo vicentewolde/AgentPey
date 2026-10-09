@@ -8557,3 +8557,34 @@ Por qué: el saldo y el tope del rail eran la falla más probable en vivo.
 Pendiente: **no mergear esta rama a `main` hasta después de grabar el video** (Render despliega con cada push a `main`,
 también si solo cambia un documento). El guion de T142: el usuario decide si se escribe antes del 11-oct (`R-29`).
 `AGENTS.md`: sin cambios.
+
+## 2026-10-08 (14) — cc/demo-day-escaleta (solo la tienda Shopify, sin código)
+
+Agente: Claude Code.
+
+Qué: rediseño de la tienda de demo `agenticom.myshopify.com` (la que vende `agentcommerce`) para que se vea como un
+sitio real en el Demo Day y el video. Todo se hizo en el panel de Shopify, sin tocar el repo:
+- Tema: "Copy of Horizon" es ahora el tema **publicado** (el "Horizon" original quedó como borrador, por si hay que
+  volver). Paleta crema, café y cobre; títulos en serif (Playfair Display); portada con foto de cordillera, título y
+  bajada en español; "Nuestra historia"; barra de envíos; productos en 3 columnas con marcos cuadrados iguales y
+  fotos completas (CSS `object-fit: contain` en la sección de portada, de "Productos" y del carrito), nombres
+  a ~22 px y precios a ~20 px en cobre.
+- Español: nombre de la tienda "AgentCommerce", idioma por defecto español, menú Inicio · Productos · Contacto,
+  textos del tema y del carrito traducidos, precios con punto de miles ($2.850).
+- Envío: la tarifa de Chile pasó de $4.000 a $0 ("Envío gratis"); la internacional ($18.000) sigue igual.
+- Pagos: **PayPal Express Checkout desactivado** (era el único método y estaba incompleto). El checkout de la web
+  ahora dice "Esta tienda no puede aceptar pagos en este momento". No afecta a los agentes: el adaptador crea el
+  pedido por la API (`orderCreate`, `PAID`, transacción "Vitrinee x402"), pero **no se probó una compra real después
+  del cambio**. Para reactivar PayPal: Configuración, Pagos, PayPal, Activate.
+- Los precios del imán (490 CLP) y la taza (1.490 CLP) los bajó el usuario, ver entrada (13).
+
+Por qué: la demo muestra a un agente comprando en una tienda; si la tienda se ve genérica, no convence.
+
+Pendiente: (1) una compra real desde Claude para confirmar que el pedido sigue llegando a Shopify como pagado sin
+PayPal; (2) la dirección `agenticom.myshopify.com` **no se cambió**: la usan el adaptador de Shopify, el token de la
+app y la configuración de `agentcommerce` en la base y en Render, y cambiarla rompería las compras de los agentes;
+si se quiere una dirección más bonita, lo seguro es un dominio propio apuntado a Shopify (no cambia la dirección
+`myshopify.com` que usa la API); (3) las fotos de producto miden 90 a 256 px y se ven algo borrosas en tarjetas
+grandes, sobre todo la taza; (4) el posavasos, el imán y la taza se ven bien, pero "Nuestra historia" usa una foto
+oscura de manos con greda, cambiable. **No tocar** el tema publicado ni los pagos sin avisar al usuario antes de
+grabar. `AGENTS.md`: sin cambios.
