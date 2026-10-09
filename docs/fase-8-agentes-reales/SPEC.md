@@ -371,7 +371,7 @@ más rápido que lo estimado.
 - **Descripción:** `agentpey.com/en-vivo` (alias `/live`): lo que hacen los agentes en las tiendas del directorio, refrescado cada 10 s. Cada compra con su tienda, productos, monto y hora, enlace al recibo y a la transacción; si tiene disputa, su estado (abierta o reembolsada, con el monto) y el hash del veredicto. Arriba, totales. Solo **muestra** disputas: no abre, responde ni resuelve ninguna, ni las conecta con el chat, el pago, el despacho o webhooks.
 - **Hecho cuando:**
   - [x] la página lista las compras recientes de las tiendas reales con su recibo y su transacción, y las disputas con su estado leído del contrato (local contra la red real, [evidencia](evidencia/T151.md) §2)
-  - [ ] una compra nueva aparece sola en menos de 30 s, sin recargar
+  - [x] una compra nueva aparece sola en menos de 30 s, sin recargar (Claude compró un imán en producción, `ord_mv079z6634dbf7e9d1`, [evidencia](evidencia/T151.md) §6)
   - [x] lo que muestra sale de la red (registro de recibos, AgentResolve, Horizon) o del directorio; los productos y el pago, del recibo firmado cuyo hash es el anclado, y la página lo dice (`R-30`; **precisado**: el borrador decía "de la orden UCP", pero el recibo firmado es verificable contra la red)
 
 #### T152 · Portada de agentpey.com al día (`R-29`)

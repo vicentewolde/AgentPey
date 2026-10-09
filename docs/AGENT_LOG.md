@@ -8528,3 +8528,14 @@ Push, [PR #74](https://github.com/vicentewolde/AgentPey/pull/74) y fast-forward 
 
 Pendiente: tras el deploy, ver `gateway: up: …, mcp` o `mcp came up late` en el log y que
 `mcp.agentpey.com` responda. Después, la compra desde Claude para cerrar T151. `AGENTS.md`: sin cambios.
+
+## 2026-10-08 (12) — cc/t151-cierre
+
+Agente: Claude Code.
+
+Qué: `R-32` en producción: el MCP volvió (`/.well-known/oauth-protected-resource/mcp` en 200). Con `/en-vivo` abierta,
+Claude compró un imán (`ord_mv079z6634dbf7e9d1`) y la compra apareció sola: T151 cerrada (criterio 2, evidencia §6).
+Corregida en `ESTADO.md` la URL para comprobar el MCP (la anterior da 404 aunque esté arriba).
+
+Pendiente: merge con OK; T130 cuando haya tienda; el 11-oct, guion de T142 (con chequeo previo de que todo está vivo,
+incluido el MCP) y tabla de T144; al final T138, T139 y T140. `AGENTS.md`: sin cambios.

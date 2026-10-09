@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-08
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T153 · Página local del presupuesto de equipo (`team:summary -- --html`)
-**Siguiente paso:** ver una compra nueva aparecer sola en `/en-vivo` (cierra T151); T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** T151 · Página "En vivo": una compra nueva de Claude apareció sola (`ord_mv079z6634dbf7e9d1`)
+**Siguiente paso:** T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -37,7 +37,7 @@
 | T148 Varios productos por compra (`R-12`) | si alcanza | ✅ terminada: checkout de varias líneas, recibo que suma el total, intención con líneas (`R-18`, `VT-45`, `VT-46`), rail UCP nuevo (`R-19`); suite 48/9/20; compra real `ord_muvewqqmddbf40c81d` (imán + taza, AP2) | [PR #57](https://github.com/vicentewolde/AgentPey/pull/57), mergeado; evidencia en `cc/t148-evidencia` |
 | T149 Consentimiento hasta la tienda (`R-12`) | si alcanza | ✅ terminada: el consentimiento llega al pedido (Shopify: marketing en su campo, el resto como atributos; Jumpseller no lo ofrece), `VT-47`; suite 49/8/20; compra real `ord_muvlkwxp66c0327a66` con `customerAcceptsMarketing` en Shopify | [PR #59](https://github.com/vicentewolde/AgentPey/pull/59), mergeado; evidencia en `cc/t149-evidencia` |
 | T150 Pulido del MCP para el video (`R-28`) | para el video | ✅ terminada: Claude cotizó y pagó un carrito (imán y posavasos) en `mcp.agentpey.com`, `ord_muzwp0qecb2904cfc8`, recibo con los tres checks; `get_order` trae el enlace al pago | [PR #69](https://github.com/vicentewolde/AgentPey/pull/69) |
-| T151 Página "En vivo" (`R-29`, `R-30`) | para el video | 👀 en revisión: `/en-vivo` (alias `/live`) muestra 31 compras y 2 disputas resueltas leídas de la red, refrescadas cada 10 s; falta ver una compra nueva aparecer sola tras el deploy | [PR #71](https://github.com/vicentewolde/AgentPey/pull/71) |
+| T151 Página "En vivo" (`R-29`, `R-30`) | para el video | ✅ terminada: `/en-vivo` (alias `/live`) lista compras y disputas leídas de la red, refrescadas cada 10 s; una compra nueva de Claude (`ord_mv079z6634dbf7e9d1`) apareció sola | [PR #71](https://github.com/vicentewolde/AgentPey/pull/71) |
 | T152 Portada al día (`R-29`, `R-31`) | para el video | ✅ terminada, en vivo en agentpey.com: la Fase 8, números en vivo desde `/api/live`, sección con cada pieza y su enlace | [PR #72](https://github.com/vicentewolde/AgentPey/pull/72) |
 | T153 Página del presupuesto de equipo (`R-29`) | para el video | ✅ terminada: `pnpm run team:summary -- --html` genera y abre la página local con gasto por día, pagos (solo los anclados cuentan como pagados en Stellar), rechazos y topes del rail | [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) |
 
@@ -71,7 +71,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 8-oct: reembolso real de T124 hecho (veredicto `refund_full`, 1,5684211 USDC, confirmado por el usuario con `E-18`) y `ord_muq1…` con su disputa resuelta en vivo (cierra el pendiente de T127).
 - 8-oct: tras el deploy de T153, `mcp.agentpey.com` quedó en `503`: el MCP arrancó a los 46 y 48 s y el gateway
   espera 45. Arreglado con `R-32` (una app no crítica tardía se suma cuando responde, [PR #74](https://github.com/vicentewolde/AgentPey/pull/74)). Antes de grabar, abrir
-  `https://mcp.agentpey.com/.well-known/oauth-protected-resource`.
+  `https://mcp.agentpey.com/.well-known/oauth-protected-resource/mcp` (200 = arriba).
 - 8-oct: Claude llamó a `pay` él mismo al pedírselo (T150); hasta ahora no lo hacía (`R-11`). Observación, sin cambiar la decisión. El posavasos de agentcommerce quedó en 990 CLP para el video.
 - T129 (`/revisar`): resuelto en T150 (`get_order` trae `receipt.explorer_url`). Y el disco local estuvo al 100 % durante `pnpm check` (`ENOSPC`): liberar espacio antes de T131.
 - T128 (`/revisar` del PR 1, sugerencias que quedaron): un pago incierto no se reintenta con la misma clave (la cotización ya se consumió); `recheck` apagado por defecto en `payUcpQuote`; la relectura no compara el id del checkout; una cotización con fecha inválida no vence; la tienda por primera etiqueta no avisa ambigüedad; `open_claim` no comprueba que el rail del MCP pagó el recibo (el árbitro sí); total 0 si la tienda no manda línea `total`; `start` apunta a `main.ts` (llega en el PR 2) y tres dependencias sin usar; tests con `any`.

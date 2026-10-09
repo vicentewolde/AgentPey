@@ -37,7 +37,7 @@ de Stellar (`R-22`). **T143 cerrada** ([PR #65](https://github.com/vicentewolde/
 las cinco pantallas de firma aceptan Freighter y xBull, y las que solo firman
 un mensaje también LOBSTR, probado por el usuario en agentpey.com (`R-23`).
 El 7-oct el usuario decidió **no cortar nada** para la hackatón y dejar GenLayer y
-Trustless Work (T138, T139) para el final de la fase (`R-24`). El 8-oct: el reembolso real de T124 (pedido #1006), T150 cerrada con Claude comprando un carrito, `/en-vivo` en producción (T151), la portada al día (T152, en producción) y la página del presupuesto de equipo (T153, [PR #73](https://github.com/vicentewolde/AgentPey/pull/73)). **T145 cerrada**:
+Trustless Work (T138, T139) para el final de la fase (`R-24`). El 8-oct: el reembolso real de T124 (pedido #1006), T150 cerrada con Claude comprando un carrito, `/en-vivo` en producción y cerrada (T151), la portada al día (T152, en producción) y la página del presupuesto de equipo (T153, [PR #73](https://github.com/vicentewolde/AgentPey/pull/73)). **T145 cerrada**:
 un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
@@ -69,7 +69,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T148 Varios productos | cerrada |
 | T149 Consentimiento | cerrada |
 | T150 Pulido del MCP | cerrada |
-| T151 Página En vivo | en revisión |
+| T151 Página En vivo | cerrada |
 | T152 Portada al día | cerrada |
 | T153 Página del presupuesto de equipo | cerrada |
 
@@ -734,6 +734,10 @@ En inglés y español, y en celular.
 **Por qué se puede confiar.** Nada sale de la base de datos de AgentPey: las compras y las disputas se leen de los
 contratos en Stellar, y los productos y el pago, del recibo firmado por la tienda cuyo hash es el que está anclado
 (`R-30`). La página solo muestra disputas; no abre ni resuelve ninguna.
+
+**Cierre de T151 (8-oct).** Con la página abierta y sin recargar, Claude compró un imán en producción
+(`ord_mv079z6634dbf7e9d1`, 1,5684211 USDC) y la compra apareció sola arriba de la lista. Antes hubo que arreglar el
+arranque del MCP, que llegaba tarde al gateway tras cada deploy (`R-32`).
 
 Evidencia: [`evidencia/T151.md`](evidencia/T151.md).
 
