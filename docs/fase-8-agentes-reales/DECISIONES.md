@@ -1081,3 +1081,19 @@ Un tercero puede probar de verdad sin que la custodia pase a ser de AgentPey.
 **Abierto para el spec.** Dónde se guarda qué rail es de qué wallet (hoy el MCP no tiene base propia y su registro de
 gasto vive en memoria); quién paga el despliegue de cada rail; el Mandato y la credencial por persona; el costo, que
 es una estimación de Claude Code, sin medir: 2-3 días la lista cerrada, 1-2 semanas el alta automática.
+
+---
+
+### R-34 · Dos tareas más para la demo (T154 y T155): el recibo con el diseño del sitio y una pantalla local del árbitro · `Vigente`
+**Fecha:** 2026-10-09 · **Decidido por el usuario**
+
+Al ensayar la demo completa, el usuario vio tres cosas que dan mala impresión: la terminal en medio de una demo de producto, una página de recibo que no se parece al resto del sitio, y un archivo que viaja entre el árbitro y la tienda. Decidió:
+
+1. **T154, página del recibo con el diseño del sitio**, desplegada antes de la demo.
+2. **T155, pantalla del árbitro en `localhost`** para los tres pasos que hoy son comandos. Las llaves siguen en el Mac y no se despliega nada.
+3. **El archivo entre árbitro y tienda queda como está** (`E-21`): se explica en la demo como la carta firmada que el árbitro entrega a la tienda. La bandeja de reclamos en el portal sigue para después de la fase.
+
+**Motivo de T155 en `localhost` y no en `agentpey.com`.** Una pantalla pública del árbitro obligaría a poner en el servidor la llave del árbitro y la de Anthropic y a exponer un botón que mueve fondos: custodia de llaves y flujo de fondos (`P-10`), que no se decide a las prisas. En `localhost` el árbitro sigue siendo una persona con su llave, solo que con botones.
+
+**Alternativa descartada.** Mostrar la terminal con otro tema: sigue siendo una terminal.
+
