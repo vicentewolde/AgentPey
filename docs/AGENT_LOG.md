@@ -8652,3 +8652,20 @@ veinte". Garantía de agentcommerce en AgentResolve: 2,3999999 USDC. Detalle en 
 
 Pendiente: esta rama no se mergea a `main` hasta después de grabar el video. `main` cambió el 9-oct (conteo de
 `/api/live`, README): volver a correr el chequeo del MCP (escaleta §2.2) antes de la demo. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (3) — cc/t154-recibo-diseno, cc/t155-consola-arbitro, cc/demo-day-escaleta
+
+Agente: Claude Code.
+
+Qué: tras el ensayo, el usuario pidió (`R-34`) que la demo no muestre una terminal y que la página del recibo se vea
+como el resto del sitio. **T154** (`cc/t154-recibo-diseno`): `receipt-page.ts` con los tokens, fuentes, cabecera y
+pie de agentpey.com, e idioma por la cookie `agentpey_lang`; `/revisar` sin bloqueantes, `vitrinee:check` en verde;
+sin push ni merge (espera el OK del usuario; Render despliega con cada push a `main`, volver a comprobar el MCP
+después). **T155** (`cc/t155-consola-arbitro`, parte de la rama de T154): `pnpm run arbiter:console`, una página en
+`127.0.0.1:4747` con los pasos del árbitro (abrir, respuesta de la tienda, veredicto, confirmar y pagar con el hash);
+ejecuta los mismos `resolve:*` sin tocarlos; probada con las salidas reales del ensayo, falta una corrida real. Su
+worktree `~/dev/AgentPay-t155` tiene `.env.local` como enlace al del repo principal. La escaleta y el guion usan la
+pantalla en vez de la terminal. El archivo entre árbitro y tienda queda como está (`E-21`).
+
+Pendiente: merge de T154 con OK del usuario antes de la demo; una corrida real de la pantalla con un reclamo nuevo;
+T155 no se mergea hasta después de la demo. `AGENTS.md`: sin cambios.

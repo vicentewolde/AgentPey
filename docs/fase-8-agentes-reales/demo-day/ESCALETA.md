@@ -23,7 +23,7 @@
 | 3 · Claude compra | 1:30 | claude.ai | El agente cotiza, tú dices sí, el contrato paga |
 | 4 · Aparece sola | 0:30 | `/en-vivo` | La red lo registra, nadie actualiza nada |
 | 5 · El recibo | 0:30 | Página del recibo | Firmado, anclado y pagado, en verde |
-| 6 · El reclamo en vivo | 3:30 | claude.ai, terminal, página de la tienda, `/en-vivo` | Si sale mal, el dinero vuelve, y se ve cómo |
+| 6 · El reclamo en vivo | 3:30 | claude.ai, pantalla del árbitro, página de la tienda, `/en-vivo` | Si sale mal, el dinero vuelve, y se ve cómo |
 | 7 · El presupuesto | 0:30 | Página del equipo | Un equipo pone el tope; la cuarta compra no pasa |
 | 8 · Cierre | 0:30 | Portada | Estándar abierto, en testnet, lo que sigue |
 
@@ -34,7 +34,7 @@
 3. `https://claude.ai`, chat nuevo, con el conector **AgentPey** activo en el menú de herramientas
 4. `https://agentpey.com/en-vivo` (en ES, abierta **antes** de la compra, para que la compra aparezca sola)
 5. `https://agentpey.com/resolve/responder` (la página donde la tienda responde un reclamo)
-6. Terminal con letra grande y los atajos del reclamo cargados (§2.6)
+6. La pantalla del árbitro, `http://127.0.0.1:4747` (§2.6)
 7. `.team-budget/resumen-2026-10.html` (la abre `team:summary -- --html`, §2.7)
 
 Pestañas de plan B, en otra ventana (§3):
@@ -153,27 +153,23 @@ durante 10 minutos. El día UTC empieza a las 21:00 de Chile (UTC-3).
    Y después: "Sí, paga." Anota el número de orden (`ord_…`): es el que reclamas en el bloque 6. Esta compra es
    también el ensayo del bloque 3. No reclames esta compra antes de la demo: cada recibo admite un solo reclamo.
 
-### 2.6 La terminal y los atajos del reclamo
+### 2.6 La pantalla del árbitro
 
-Carga los atajos del árbitro ([reclamo.zsh](reclamo.zsh)). Guardan el reclamo en el escritorio, sacan el recibo del
-mismo reclamo y toman la respuesta más reciente de Descargas, así que en vivo no escribes ningún hash salvo el del
-veredicto, que se pega:
-
-```bash
-source ~/dev/AgentPay-demo/docs/fase-8-agentes-reales/demo-day/reclamo.zsh
-```
-
-Comprueba que cargaron, con el reclamo del ensayo:
+Es una página en tu propio computador (T155, `R-34`) con los pasos del árbitro, para no mostrar una terminal. Por
+detrás ejecuta los mismos comandos; las llaves siguen en tu `.env.local`. Hasta que T155 se mergee a `main`, se
+inicia desde su carpeta (que ya tiene el enlace a tu `.env.local`):
 
 ```bash
-recibo_del_reclamo ~/dev/AgentPay/.vitrinee/claims/ensayo-mv0bfv.jws
+cd ~/dev/AgentPay-t155 && pnpm run arbiter:console
 ```
 
-Espera `713447e843396dfed591b7b1554d9cc9c821ba5718d928b6411bde7ff5e9958a`. Después, `clear`. La terminal queda en la
-pestaña 6.
+Se abre sola en el navegador con una dirección como `http://127.0.0.1:4747/?k=…` (la clave cambia cada vez). Déjala en
+la pestaña 6 y **no cierres la ventana de la terminal** que la inició: ahí vive el servidor; ponla detrás del
+navegador, que no se vea. Comprueba que carga: debe decir "Una disputa, paso a paso." y los pasos 2 a 4 se ven
+apagados.
 
-Los mensajes de los comandos del árbitro están en español: son los del CLI y no se cambian antes de la demo (el código
-se congela el 10-oct).
+Si la pantalla falla, queda el plan antiguo: los mismos pasos con los atajos de [reclamo.zsh](reclamo.zsh) (`source
+…/reclamo.zsh`, después `reclamo_guardar`, `reclamo_abrir`, `reclamo_decidir` y `reclamo_pagar <hash>`).
 
 ### 2.7 El presupuesto del equipo de hoy
 
@@ -207,7 +203,7 @@ Saca también una captura de cada pestaña (Cmd+Shift+4) a una carpeta `demo-day
 - Prueba el wifi del lugar con 2.2. Ten el hotspot del celular listo y probado: si el wifi falla, cambias de red y
   sigues.
 - Cargador, "No molestar" activado, notificaciones de Slack y correo cerradas.
-- Zoom del navegador en 125 % y la terminal con letra grande.
+- Zoom del navegador en 125 %. La ventana de la terminal que inició la pantalla del árbitro, detrás del navegador.
 - `/en-vivo` y la portada en ES.
 
 ## 3. Escaleta
@@ -330,6 +326,12 @@ tienda: corrida real el 8-oct sobre `ord_mv079z6634dbf7e9d1`.
 Sobre la compra de la mañana (§2.5.3), no sobre la que se acaba de hacer. Ensayado el 9-oct de punta a punta
 ([ENSAYO-RECLAMO.md](ENSAYO-RECLAMO.md)).
 
+**Los tres papeles, para que los expliques:** el **comprador** es Claude, que firma el reclamo con la llave del agente
+que pagó. La **tienda** responde en su página, con su wallet. El **árbitro** revisa, pide un veredicto y, con la
+confirmación de una persona, hace que el contrato devuelva el dinero: hoy es una persona con esta pantalla. La tienda no
+puede entrar al chat del comprador: el árbitro le entrega el reclamo firmado, y como está firmado nadie puede cambiarlo
+en el camino.
+
 **6a · Claude firma el reclamo.** Pestaña 3, claude.ai, en el mismo chat o en uno nuevo. Escribe, con la orden de la
 mañana:
 
@@ -350,81 +352,71 @@ escribirlo entero.
 > avisó que no tiene stock. Le pido a Claude que abra un reclamo. Claude lo firma con la llave del agente que pagó:
 > nadie más puede reclamar por esta compra.
 
-**6b · El árbitro abre la disputa.** Pestaña 6, la terminal:
-
-```bash
-reclamo_guardar
-```
-
-```bash
-reclamo_abrir
-```
-
-Salen tres ✅ (`recibo`, `firmante`, `plazo`) y `disputa Open`. Pasa a la pestaña 4, `/en-vivo`: la compra de la
-mañana muestra **Disputa abierta · 0,52 USDC bloqueados** (aparece en unos segundos).
+**6b · El árbitro abre la disputa.** Pestaña 6, la pantalla del árbitro. En el paso 1, pega el reclamo (`Cmd+V`) y
+pulsa **Abrir la disputa**. Tarda unos 20 s. Salen tres ✅ (recibo, firmante, plazo), el monto bloqueado y la garantía
+de la tienda. Pasa a la pestaña 4, `/en-vivo`: la compra de la mañana muestra **Disputa abierta · 0,52 USDC
+bloqueados** (aparece en unos segundos).
 
 **Voz:**
 
-> Hoy el árbitro soy yo, con esta herramienta. Revisa que el recibo sea válido, que quien reclama controle la cuenta
+> Hoy el árbitro soy yo, con esta pantalla. Revisa que el recibo sea válido, que quien reclama controle la cuenta
 > que pagó y que esté dentro del plazo. Y abre la disputa en Stellar: el monto queda bloqueado en una garantía que la
 > tienda dejó en el contrato.
 
-**6c · La tienda responde.** Pestaña 5, `agentpey.com/resolve/responder`:
+**6c · La tienda responde.** Pestaña 5, `agentpey.com/resolve/responder` (también la abre el botón del paso 2 de la
+pantalla del árbitro):
 
-1. Carga `~/Desktop/reclamo.jws` (lo dejó ahí `reclamo_guardar`).
-2. Conecta Freighter (cuenta `GD2MCESI…K5GN`, la de cobro de la tienda).
-3. Pulsa **Leer el reclamo** (la página muestra motivo, descripción, evidencia, monto y hash). Elige "Lo acepto
-   completo" y escribe: "Confirmo que no tengo stock del imán y que el pedido no se
-   despachó. Acepto devolver el monto completo."
-4. Firma con Freighter y descarga el archivo.
+1. Pega el reclamo en el cuadro "O pega el reclamo aquí" (`Cmd+V`: sigue en tu portapapeles) y pulsa **Leer el
+   reclamo**. La página muestra el motivo, lo que dice el comprador, la evidencia y el monto.
+2. Pulsa **Conectar wallet** (arriba a la derecha) y aprueba en Freighter, con la cuenta `GD2MCESI…K5GN`, que es la
+   de cobro de la tienda.
+3. Elige "Lo acepto completo" y escribe: "Confirmo que no tengo stock del imán y que el pedido no se despachó. Acepto
+   devolver el monto completo."
+4. **Firmar con tu wallet**, aprueba en Freighter y descarga el archivo de respuesta.
 
 **Voz:**
 
-> Ahora soy la tienda. Respondo con mi propia firma, desde la cuenta que recibió el pago: acepto, no tengo stock.
+> Ahora soy la tienda. Yo no puedo entrar al chat del comprador: el árbitro me entrega su reclamo firmado, y como
+> está firmado nadie pudo cambiarlo. Lo leo y respondo con mi propia firma, desde la cuenta que recibió el pago:
+> acepto, no tengo stock.
 
-**6d · El árbitro de IA decide.** Pestaña 6:
-
-```bash
-reclamo_decidir
-```
-
-Tarda entre 30 y 60 segundos. Sale `resultado refund_full`, el razonamiento y el hash del veredicto.
+**6d · El árbitro de IA decide.** Pestaña 6. En el paso 2 pulsa **Usar la última descarga**: sale ✅ la firma de la
+tienda, ✅ que responde a esa disputa, su posición y sus descargos. En el paso 3 pulsa **Pedir el veredicto**. Tarda
+entre 30 y 90 segundos. Sale **"Reembolso completo"**, el razonamiento del árbitro y el hash del veredicto.
 
 **Voz, mientras piensa:**
 
 > Un árbitro de IA lee el recibo, el reclamo y la respuesta firmada, y escribe un veredicto con sus razones. No mueve
 > dinero: solo propone.
 
-**Voz, cuando sale:** lee en voz alta una o dos frases del razonamiento (en el ensayo: "La falta de stock es
-responsabilidad del comercio, así que corresponde el reembolso total del monto disputado").
+**Voz, cuando sale:** lee en voz alta una o dos frases del razonamiento (en el ensayo: "No entregar un producto ya
+pagado es una falla de la que responde el comercio, así que corresponde el reembolso total").
 
-**6e · Una persona confirma y el contrato paga.** Doble clic sobre el hash del veredicto (la línea `sha256`), Cmd+C, y:
-
-```bash
-reclamo_pagar <pega el hash>
-```
-
-Sale `disputa Resolved, reembolsado 0.5157895 USDC`. Pestaña 4, `/en-vivo`: la compra muestra **Reembolsados 0,52
-USDC**.
+**6e · Una persona confirma y el contrato paga.** En el paso 3 pulsa **Copiar el hash**; en el paso 4 pégalo
+(`Cmd+V`). El botón **Confirmar y pagar el reembolso** se activa solo cuando el hash es el exacto. Púlsalo (unos 20 s).
+Sale "Reembolso pagado", el estado `Resolved` y las comprobaciones en la red. Pestaña 4, `/en-vivo`: la compra muestra
+**Reembolsados 0,52 USDC**.
 
 **Voz:**
 
 > Una persona confirma el veredicto escribiendo su hash, y recién ahí el contrato devuelve el dinero a la cuenta que
 > pagó. Todo quedó en la red: la disputa, el veredicto y el reembolso.
 
-**Respaldo:** [ENSAYO-RECLAMO.md](ENSAYO-RECLAMO.md) (los cinco pasos, con sus salidas y transacciones); el reembolso
-real del 8-oct, [evidencia/T124-reembolso-real.md](../evidencia/T124-reembolso-real.md); la confirmación humana antes
-de pagar, `E-18`; el plazo de 48 h para la tienda, `E-22`.
+**Respaldo:** [ENSAYO-RECLAMO.md](ENSAYO-RECLAMO.md) (los pasos, con sus salidas y transacciones; la pantalla ejecuta
+los mismos comandos, [evidencia/T155.md](../evidencia/T155.md)); el reembolso real del 8-oct,
+[evidencia/T124-reembolso-real.md](../evidencia/T124-reembolso-real.md); la confirmación humana antes de pagar, `E-18`;
+el plazo de 48 h para la tienda, `E-22`; que la respuesta de la tienda viaja como archivo firmado, `E-21`.
 
 **Plan B:**
 
 | Si pasa esto | Haz esto y di esto |
 |---|---|
-| Claude no firma el reclamo | Pestaña 4, la fila de `ord_mv0bfv…` con **Reembolsados 0,52 USDC**: "Este es el mismo reclamo, hecho esta madrugada desde Claude." Cuenta los pasos con la pestaña 9 |
-| `reclamo_abrir` falla | Lee el error en voz alta (dice qué prueba falló) y sigue con el plan B de arriba |
+| Claude no firma el reclamo | Pestaña 4, la fila de `ord_mv17vh…` con **Reembolsados 0,52 USDC**: "Este es el mismo reclamo, hecho hoy desde Claude." Cuenta los pasos con la pestaña 9 |
+| La pantalla del árbitro no abre la disputa | Lee el error que muestra (dice qué prueba falló) y sigue con el plan B de arriba |
 | Freighter no firma | El plan B de arriba |
-| `reclamo_decidir` tarda más de 90 s o falla | Pestaña 9, el veredicto del ensayo: "Así razonó el árbitro esta madrugada" |
-| `reclamo_pagar` falla | La disputa queda abierta y con el monto bloqueado: no se pierde nada. Muestra el reembolso del ensayo |
+| El veredicto tarda más de 90 s o falla | Pestaña 9, el veredicto del ensayo: "Así razonó el árbitro hoy" |
+| El pago falla | La disputa queda abierta y con el monto bloqueado: no se pierde nada. Muestra el reembolso del ensayo |
+| La pantalla del árbitro no carga | Los mismos pasos con los atajos de `reclamo.zsh` (§2.6), sin mostrar la terminal hasta el veredicto |
 
 ### Bloque 7 · Un equipo pone el presupuesto
 
@@ -475,6 +467,7 @@ confirmación ([evidencia/T129.md](../evidencia/T129.md) §2); `@agentpey/ucp-st
 | ¿Es dinero real? | No: USDC de testnet. Mainnet está fuera de alcance por ahora | `CLAUDE.md`, regla 5 |
 | ¿Puedo conectar mi Claude? | En el piloto solo entra la wallet dueña del rail; la guía para conectar está en el README del MCP | `R-11`, revisión de T152 |
 | ¿Qué pasa si el agente intenta gastar más? | El contrato rechaza la transferencia: la red rechazó un pago sobre el tope, en simulación y sin enviar nada | [evidencia/T128.md](../evidencia/T128.md) §4 |
+| ¿Por qué la tienda recibe el reclamo como un texto o un archivo? | La tienda no entra al chat del comprador: el árbitro le entrega el reclamo firmado, y la firma impide que alguien lo cambie. Hoy se pega a mano; una bandeja automática de reclamos está anotada para después | `E-21` |
 | ¿Quién decide una disputa? | Un árbitro de IA propone un veredicto con sus razones y una persona lo confirma antes de pagar | `E-18`, [ENSAYO-RECLAMO.md](ENSAYO-RECLAMO.md) |
 | ¿De dónde sale el reembolso? | De una garantía que la tienda deja en el contrato de disputas | [ENSAYO-RECLAMO.md](ENSAYO-RECLAMO.md) §0 y §5 |
 | ¿Y si la tienda no responde? | Tiene 48 horas; después, el árbitro decide sin su respuesta | `E-22` |
@@ -492,7 +485,7 @@ confirmación ([evidencia/T129.md](../evidencia/T129.md) §2); `@agentpey/ucp-st
 - **Que Claude siempre paga solo.** Pagó él mismo **después del sí de la persona** (`R-28`), y antes se negaba
   (`R-11`). Si hoy se niega, es el diseño, no una falla.
 - **Que Claude abre la disputa.** Claude **firma** el reclamo; la disputa la abre el árbitro, que hoy es una persona
-  con la herramienta de la terminal. Lo mismo con la respuesta de la tienda: se sube como archivo en la página.
+  con su pantalla. Lo mismo con la respuesta de la tienda: se sube como archivo en la página.
 - **Que el pago quedó retenido.** El pago fue directo a la tienda; el reembolso sale de una garantía que la tienda
   dejó en el contrato de disputas.
 - **Que la compra recién hecha es la del reclamo.** El reclamo es sobre la compra de la mañana. Cada pieza se muestra

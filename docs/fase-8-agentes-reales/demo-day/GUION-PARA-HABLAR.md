@@ -26,9 +26,9 @@ La tienda firma un recibo de cada venta y lo ancla en Stellar. Esta página lo c
 
 Ahora lo más importante: ¿qué pasa si una compra sale mal? Esta mañana Claude compró otro imán, y la tienda me avisó que no tiene stock. Le pido a Claude que abra un reclamo. Claude lo firma con la llave del agente que pagó: nadie más puede reclamar por esta compra.
 
-Hoy el árbitro soy yo, con esta herramienta. Revisa que el recibo sea válido, que quien reclama controle la cuenta que pagó y que esté dentro del plazo. Y abre la disputa en Stellar: el monto queda bloqueado en una garantía que la tienda dejó en el contrato.
+Hoy el árbitro soy yo, con esta pantalla. Revisa que el recibo sea válido, que quien reclama controle la cuenta que pagó y que esté dentro del plazo. Y abre la disputa en Stellar: el monto queda bloqueado en una garantía que la tienda dejó en el contrato.
 
-Ahora soy la tienda. Respondo con mi propia firma, desde la cuenta que recibió el pago: acepto, no tengo stock.
+Ahora soy la tienda. Yo no puedo entrar al chat del comprador: el árbitro me entrega su reclamo firmado, y como está firmado nadie pudo cambiarlo. Lo leo y respondo con mi propia firma, desde la cuenta que recibió el pago: acepto, no tengo stock.
 
 Un árbitro de IA lee el recibo, el reclamo y la respuesta firmada, y escribe un veredicto con sus razones. No mueve dinero: solo propone. Dice que la falta de stock es responsabilidad del comercio, así que corresponde el reembolso total.
 
@@ -56,10 +56,10 @@ AgentPey: agentes que compran, con límites que pone la red. Gracias.
 | "Esta página lee la red" | 4 · `/en-vivo` | 4 |
 | "La tienda firma un recibo" | 4 · clic en **Recibo**: la página del recibo | 5 |
 | "Ahora lo más importante" | 3 · claude.ai: pides el reclamo | 6a |
-| "Hoy el árbitro soy yo" | 6 · Terminal: `reclamo_guardar` y `reclamo_abrir`; después 4 · `/en-vivo` | 6b |
+| "Hoy el árbitro soy yo" | 6 · Pantalla del árbitro, paso 1; después 4 · `/en-vivo` | 6b |
 | "Ahora soy la tienda" | 5 · `/resolve/responder` con Freighter | 6c |
-| "Un árbitro de IA" | 6 · Terminal: `reclamo_decidir` | 6d |
-| "Una persona confirma" | 6 · Terminal: `reclamo_pagar <hash>`; después 4 · `/en-vivo` | 6e |
+| "Un árbitro de IA" | 6 · Pantalla del árbitro, pasos 2 y 3 | 6d |
+| "Una persona confirma" | 6 · Pantalla del árbitro, paso 4; después 4 · `/en-vivo` | 6e |
 | "Lo mismo sirve para una empresa" | 7 · Página del presupuesto del equipo | 7 |
 | "¿Por qué Stellar?" hasta "Gracias" | 1 · Portada, sección "Lo que los agentes ya pueden hacer" | 8 |
 
