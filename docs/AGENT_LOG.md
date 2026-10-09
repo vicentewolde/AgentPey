@@ -8541,3 +8541,19 @@ Corregida en `ESTADO.md` la URL para comprobar el MCP (la anterior da 404 aunque
 
 Pendiente: T130 cuando haya tienda; el 11-oct, guion de T142 (con chequeo previo de que todo está vivo,
 incluido el MCP) y tabla de T144; al final T138, T139 y T140. `AGENTS.md`: sin cambios.
+
+## 2026-10-08 (13) — cc/demo-day-escaleta
+
+Agente: Claude Code.
+
+Qué: escaleta del Demo Day de Tellus del 9-oct (`docs/fase-8-agentes-reales/demo-day/ESCALETA.md`): 5 minutos,
+compra en vivo desde Claude con plan B por bloque, chequeo previo con comandos y respuestas esperadas, y lo que no se
+dice (incluye lo corregido en la revisión de T152). Chequeo corrido en producción: todo arriba. Con OK del usuario,
+los dos rails recargados con 20 USDC de testnet; el usuario bajó en Shopify el imán a 490 CLP y la taza a 1.490 CLP,
+para que el tope diario del rail del MCP no corte la demo ni el video.
+
+Por qué: el saldo y el tope del rail eran la falla más probable en vivo.
+
+Pendiente: **no mergear esta rama a `main` hasta después de grabar el video** (Render despliega con cada push a `main`,
+también si solo cambia un documento). El guion de T142: el usuario decide si se escribe antes del 11-oct (`R-29`).
+`AGENTS.md`: sin cambios.
