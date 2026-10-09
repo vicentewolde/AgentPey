@@ -75,7 +75,7 @@ Paying takes a payer that signs with your key (a classic account or a `policy_ra
 
 ## Conformance
 
-Two checks, both runnable from this repo (`pnpm install` and `pnpm build` first):
+Two checks, both runnable from this repo (run `pnpm install` and `pnpm build` beforehand):
 
 - **Stellar payment handler kit**: 20 checks (profile, requirements, charge, receipt) that a UCP store implements the
   handler. Profile checks, which only read:
