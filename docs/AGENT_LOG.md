@@ -8591,3 +8591,21 @@ si se quiere una dirección más bonita, lo seguro es un dominio propio apuntado
 grandes, sobre todo la taza; (4) el posavasos, el imán y la taza se ven bien, pero "Nuestra historia" usa una foto
 oscura de manos con greda, cambiable. **No tocar** el tema publicado ni los pagos sin avisar al usuario antes de
 grabar. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (1) — cc/demo-day-escaleta (worktree `~/dev/AgentPay-demo`)
+
+Agente: Claude Code.
+
+Qué: la escaleta y el guion del Demo Day pasan a español (lo que se escribe en Claude incluido), muestran la tienda de
+Shopify antes de Claude, cambian la terminal del recibo por la página del recibo y suman un bloque de **reclamo en
+vivo**. Ensayado de punta a punta (`demo-day/ENSAYO-RECLAMO.md`): Claude firmó el reclamo con `open_claim` y el árbitro
+lo abrió con `resolve:open -- --claim` (primera vez en la red; antes solo había tests), la tienda respondió en
+`/resolve/responder`, el árbitro de IA dio `refund_full` y, con el hash confirmado por el usuario (`E-18`), el
+contrato devolvió 0,5157895 USDC (`ord_mv0bfvfcf83e182ff5`). Con OK del usuario, 2 USDC de testnet a la garantía de
+agentcommerce. Atajos del árbitro para la demo en `demo-day/reclamo.zsh`. Video guiado con voz, local y fuera de git.
+
+Por qué: el usuario quiere el reclamo en vivo, que es lo que más distingue al proyecto, y la sala habla español.
+
+Pendiente: la compra de la mañana del 9-oct que se reclama en vivo (escaleta §2.5). Esta rama no se mergea a `main`
+hasta después de grabar el video. Se trabajó en un worktree aparte porque la carpeta principal está en
+`chore/partner-readiness` (otra sesión). `AGENTS.md`: sin cambios.
