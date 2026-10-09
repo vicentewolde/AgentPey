@@ -96,3 +96,44 @@ AgentResolve · ejecutar el veredicto confirmado · testnet
 
 `resolve:verify`: estado `Resolved`, ✅ respuesta archivada, ✅ hash del veredicto en la red, garantía 2,9157894
 USDC sin nada bloqueado. `/api/live`: `disputes_resolved` 3, `refunded_usdc` 2.0842106.
+
+
+---
+
+# Segundo ensayo · 9-oct-2026, 14:00 a 14:30 (hora de Chile), hecho por Claude Code controlando el Chrome del usuario
+
+Mismo recorrido, ahora de punta a punta desde las pantallas reales y con los atajos de `reclamo.zsh`. Compra nueva:
+`ord_mv17vhdc3e47d4a7ad`, un imán, 0,5157895 USDC (490 CLP), recibo `62aaedda…faca`.
+
+1. **Tienda, claude.ai y conector:** la tienda de Shopify cargó, el imán a $490, y el botón "Agregar al carrito" marcó
+   1 producto. En claude.ai el conector **AgentPey** estaba encendido (Connectors desde el menú "+").
+2. **Cotización:** Claude (Sonnet 5.5) buscó el imán y **pidió los datos de envío antes de cotizar**; con ellos
+   cotizó 0,5157895 USDC desde el rail `CB4WVTJ4…FRQ6L` a la cuenta de cobro de la tienda, válida 10 minutos.
+3. **Primer intento de pago, bloqueado:** con el chat en modo **Auto**, claude.ai bloqueó la llamada a `pay`
+   ("el clasificador de permisos del modo automático bloqueó la llamada a `pay`… la transacción real no cumplía el
+   requisito de confirmación explícita con los datos exactos"). No se movió dinero y no hubo orden. Es el riesgo
+   principal del bloque 3 en vivo (escaleta §2.5, paso 2b).
+4. **Pago:** el usuario cambió el modo de permisos del chat; con "Reintenta el pago de esa cotización" Claude pagó,
+   sin cuadro de permiso. El recibo salió `valid: false` unos segundos (ancla pendiente) y al rato válido.
+5. **`/en-vivo`:** la compra apareció arriba a los 30 s de pagada; contadores 27 compras. **Recibo** (pestaña nueva):
+   "Valid receipt: all three checks pass".
+6. **Reclamo:** Claude firmó con `open_claim` (`not_delivered`, 0,5157895 USDC) y devolvió el `claim_jws` en un bloque
+   de código (3.473 caracteres). Se copió con el botón del bloque y `reclamo_guardar`; `reclamo_abrir`:
+   ✅ recibo, ✅ firmante, ✅ plazo, tx
+   [`b4685a62…7f7f`](https://stellar.expert/explorer/testnet/tx/b4685a625b05d2863de084491609a1067368b0b323bf05d3eb3ee37640e67f7f),
+   disputa `Open`. `/en-vivo`: "Disputa abierta · 0,52 USDC bloqueados".
+7. **La tienda responde:** `/resolve/responder` leyó el reclamo (archivo subido), "Lo acepto completo", descargos
+   escritos; el usuario conectó Freighter, firmó y se descargó `agentresolve-response-c3e665e95a02.json`.
+   `resolve:check-response`: ✅ firma SEP-53 de `GD2MCESI…K5GN`, ✅ disputa abierta, `accept_full`.
+8. **Árbitro de IA** (`reclamo_decidir`): `refund_full`, 0,5157895 USDC. Anotó que el reclamo usa el número de orden de
+   AgentPey y no el de Shopify, y que eso no le resta peso. Hash del veredicto
+   `ac618810c3dec4af6d478758f370acb568bee115b5164ff5a6e176dcf030ca27`.
+9. **El usuario confirmó el hash en el chat (`E-18`) y `reclamo_pagar`:** tx
+   [`68d764b4…0ff6`](https://stellar.expert/explorer/testnet/tx/68d764b47c257754a8d52650dbfb430f3184fcb17f2a2ac13e6b74c6400c0ff6),
+   `Resolved`, reembolso 0,5157895 USDC al rail. `resolve:verify`: ✅ respuesta, ✅ veredicto; garantía de la tienda
+   2,3999999 USDC sin nada bloqueado. `/en-vivo`: "Reembolsados 0,52 USDC" y "Veredicto en la red"; 4 disputas
+   resueltas, 2,60 USDC reembolsados.
+
+Lo que Claude Code no pudo hacer solo: firmar con Freighter (contraseña y clic del usuario) y confirmar el hash del
+veredicto (`E-18`). La lectura de la página con `javascript_tool` bloqueó devolver el `claim_jws` por ser texto en
+base64; el reclamo se pasó con el botón de copiar y el portapapeles, como lo hará el usuario en vivo.

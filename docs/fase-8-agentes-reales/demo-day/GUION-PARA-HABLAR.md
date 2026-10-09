@@ -40,7 +40,7 @@ Lo mismo sirve para una empresa. Este equipo le da a su agente treinta centavos 
 
 Todo esto habla estándares abiertos: UCP, para que un agente compre en cualquier tienda que lo hable, y los mandatos de AP2. ChatGPT también compró por el mismo conector. Y publicamos un paquete en npm para que cualquier agente pague así en Stellar.
 
-Hoy es testnet, con tres tiendas nuestras y más de treinta compras hechas por agentes, cada una con su recibo anclado en la red. Lo que sigue es una tienda que no es nuestra, vendiéndoles a agentes. Si tienes un comercio y quieres probarlo, hablemos.
+Hoy es testnet, con tres tiendas nuestras y más de veinte compras hechas por agentes, cada una con su recibo anclado en la red. Lo que sigue es una tienda que no es nuestra, vendiéndoles a agentes. Si tienes un comercio y quieres probarlo, hablemos.
 
 AgentPey: agentes que compran, con límites que pone la red. Gracias.
 ```

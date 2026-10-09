@@ -85,8 +85,9 @@ tarde se suma cuando responde.
 curl -s https://agentpey.com/api/live | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['totals']);print([(s['slug'],s['ok']) for s in d['stores']])"
 ```
 
-Espera las tres tiendas en `True` y `disputes_open` en 0. El 9-oct en la madrugada: `purchases` 33,
-`disputes_resolved` 3 y `refunded_usdc` 2.0842106 (crecen con cada compra y cada reembolso).
+Espera las tres tiendas en `True` y `disputes_open` en 0. El 9-oct a las 14:30: `purchases` 27 (desde el 9-oct
+`/api/live` cuenta solo compras con pago comprobado; antes decía 33), `disputes_resolved` 4 y `refunded_usdc` 2.60
+(crecen con cada compra y cada reembolso).
 
 ### 2.4 Saldo de los rails y de la garantía
 
@@ -139,9 +140,15 @@ durante 10 minutos. El día UTC empieza a las 21:00 de Chile (UTC-3).
 1. En claude.ai: Settings → Connectors. **AgentPey** dice conectado.
 2. Freighter desbloqueado, en **Testnet**, con la cuenta `GD2MCESI…K5GN` seleccionada: es la única wallet que inicia
    sesión en el MCP, y también la cuenta de cobro de la tienda que firma la respuesta del bloque 6.
+2b. **El modo de permisos del chat no puede ser Auto.** En el ensayo del 9-oct, con el chat en Auto, claude.ai
+   bloqueó la llamada a `pay` ("la transacción real no cumplía el requisito de confirmación explícita con los datos
+   exactos"), aunque el monto ya estaba a la vista y el usuario había dicho "Sí, paga": no se movió dinero. Cambia el
+   modo del chat (selector abajo a la derecha) a uno que no use el clasificador automático y repite el ensayo de
+   §2.5.3 en ese mismo modo. Con el modo cambiado, Claude pagó al pedirle "Reintenta el pago de esa cotización" y
+   no apareció ningún cuadro de permiso. Si en vivo vuelve a bloquearse, es el plan B del bloque 3.
 3. **En la mañana, la compra que vas a reclamar en vivo.** En un chat nuevo con el conector:
 
-   > Con AgentPey, compra un imán de cobre Atacama en agentcommerce. Muéstrame el monto exacto antes de pagar.
+   > Con AgentPey, compra un imán de cobre Atacama en agentcommerce. Envíalo a Vicente Wolde, Carmen 123, Ñuñoa, Región Metropolitana, Chile; cantidad 1, sin email. Muéstrame el monto exacto antes de pagar.
 
    Y después: "Sí, paga." Anota el número de orden (`ord_…`): es el que reclamas en el bloque 6. Esta compra es
    también el ensayo del bloque 3. No reclames esta compra antes de la demo: cada recibo admite un solo reclamo.
@@ -244,9 +251,9 @@ límites que aplica la red."*
 
 ### Bloque 3 · Claude compra
 
-**Pantalla:** pestaña 3, claude.ai. Escribe:
+**Pantalla:** pestaña 3, claude.ai. Escribe (los datos de envío van en el primer mensaje: si no, Claude los pide antes de cotizar, como en el ensayo del 9-oct):
 
-> Con AgentPey, compra un imán de cobre Atacama en agentcommerce. Muéstrame el monto exacto antes de pagar.
+> Con AgentPey, compra un imán de cobre Atacama en agentcommerce. Envíalo a Vicente Wolde, Carmen 123, Ñuñoa, Región Metropolitana, Chile; cantidad 1, sin email. Muéstrame el monto exacto antes de pagar.
 
 **Voz, mientras Claude busca y cotiza:**
 
@@ -282,6 +289,7 @@ límites que aplica la red."*
 |---|---|
 | Claude no cotiza en 60 s, o el conector pide iniciar sesión y no entra | Sigue con la compra de la mañana (§2.5): "Esta compra la hizo Claude esta mañana, con este mismo conector." |
 | Claude cotiza pero no quiere pagar | "Esto también es diseño: el agente no mueve dinero sin que una persona apriete el botón." Sigue con la compra de la mañana (`R-11`) |
+| Claude responde que "el clasificador de permisos del modo automático bloqueó `pay`" | Cambia el modo de permisos del chat (§2.5 paso 2b) y escribe "Reintenta el pago de esa cotización". Si pasa de 10 minutos la cotización vence: Claude genera otra y la muestra antes |
 | `pay` falla con `RailInsufficientFunds` o un tope | "El contrato acaba de decir que no: así se ve un límite que pone la red." Sigue con la compra de la mañana |
 | No hay internet | Video del ensayo (§2.8) |
 
@@ -301,8 +309,9 @@ aparece en unos segundos más."
 
 ### Bloque 5 · El recibo
 
-**Pantalla:** en la fila de la compra, clic en **Recibo**. Se abre la página del recibo de la tienda, con la
-verificación en verde y las tres pruebas.
+**Pantalla:** en la fila de la compra, clic en **Recibo**. Se abre, en una pestaña nueva, la página del recibo de la
+tienda, con la verificación en verde y las tres pruebas. Abre en inglés ("Valid receipt: all three checks pass"):
+pulsa **ES** arriba a la derecha.
 
 **Voz:**
 
@@ -327,11 +336,13 @@ mañana:
 > Con AgentPey, abre un reclamo de reembolso por mi orden ord_… en agentcommerce. Motivo: no me llegó; la tienda me
 > avisó que no tiene stock. Pide el monto completo.
 
-Si Claude pregunta antes de firmar, dile que sí. Después:
+Si Claude pregunta antes de firmar, dile que sí. Claude firma el reclamo y dice que no lo abre (lo abre el árbitro).
+Después:
 
 > Muéstrame el claim_jws completo en un bloque de código.
 
-Copia el bloque con el botón de copiar.
+Copia el bloque con su botón de copiar (arriba a la derecha del bloque). En el ensayo del 9-oct tardó unos 30 s en
+escribirlo entero.
 
 **Voz:**
 
@@ -362,7 +373,8 @@ mañana muestra **Disputa abierta · 0,52 USDC bloqueados** (aparece en unos seg
 
 1. Carga `~/Desktop/reclamo.jws` (lo dejó ahí `reclamo_guardar`).
 2. Conecta Freighter (cuenta `GD2MCESI…K5GN`, la de cobro de la tienda).
-3. Elige aceptar el reembolso completo y escribe: "Confirmo que no tengo stock del imán y que el pedido no se
+3. Pulsa **Leer el reclamo** (la página muestra motivo, descripción, evidencia, monto y hash). Elige "Lo acepto
+   completo" y escribe: "Confirmo que no tengo stock del imán y que el pedido no se
    despachó. Acepto devolver el monto completo."
 4. Firma con Freighter y descarga el archivo.
 
@@ -443,7 +455,7 @@ rail.
 > mandatos de AP2. ChatGPT también compró por el mismo conector. Y publicamos un paquete en npm para que cualquier
 > agente pague así en Stellar.
 >
-> Hoy es testnet, con tres tiendas nuestras y más de treinta compras hechas por agentes, cada una con su recibo
+> Hoy es testnet, con tres tiendas nuestras y más de veinte compras hechas por agentes, cada una con su recibo
 > anclado en la red. Lo que sigue es una tienda que no es nuestra, vendiéndoles a agentes. Si tienes un comercio y
 > quieres probarlo, hablemos.
 >
@@ -453,7 +465,7 @@ rail.
 ([evidencia/T128.md](../evidencia/T128.md) §7); UCP en dos versiones ([evidencia/T133.md](../evidencia/T133.md)); AP2
 verificado por la librería oficial ([evidencia/T134.md](../evidencia/T134.md)); ChatGPT llamó `pay` tras la
 confirmación ([evidencia/T129.md](../evidencia/T129.md) §2); `@agentpey/ucp-stellar` en npm
-([evidencia/T136.md](../evidencia/T136.md)); "más de treinta compras", `GET /api/live` (§2.3; si da menos de 30, di
+([evidencia/T136.md](../evidencia/T136.md)); "más de veinte compras", `GET /api/live` (§2.3; si da menos de 20, di
 "decenas de compras"); la tienda de terceros es T130, pendiente (`SPEC.md`).
 
 ## 4. Preguntas probables

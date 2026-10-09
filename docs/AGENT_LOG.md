@@ -8637,3 +8637,18 @@ Por qué: cerrar la revisión previa a contactar a los socios.
 
 Pendiente: `cc/demo-day-escaleta` sigue sin mergear (tiene 4 commits sin subir y un conflicto en este archivo; esperar al
 video). Sin cambios de código, contratos, llaves ni datos anclados. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (2) — cc/demo-day-escaleta (worktree `~/dev/AgentPay-demo`)
+
+Agente: Claude Code.
+
+Qué: segundo ensayo del Demo Day, completo y desde las pantallas reales (Chrome del usuario controlado con Claude in
+Chrome): compra de un imán (`ord_mv17vhdc3e47d4a7ad`, 0,5157895 USDC) desde claude.ai, `/en-vivo`, recibo en verde,
+reclamo firmado por Claude, disputa abierta con `reclamo_abrir`, respuesta de la tienda firmada por el usuario con
+Freighter, veredicto `refund_full` y reembolso confirmado por el usuario con el hash (`E-18`). Dos hallazgos para la
+demo: el modo **Auto** de claude.ai bloqueó `pay` (hay que cambiar el modo del chat), y Claude pide los datos de
+envío antes de cotizar (van en el primer mensaje). `/api/live` ahora cuenta 27 compras, no 33: el guion dice "más de
+veinte". Garantía de agentcommerce en AgentResolve: 2,3999999 USDC. Detalle en `demo-day/ENSAYO-RECLAMO.md`.
+
+Pendiente: esta rama no se mergea a `main` hasta después de grabar el video. `main` cambió el 9-oct (conteo de
+`/api/live`, README): volver a correr el chequeo del MCP (escaleta §2.2) antes de la demo. `AGENTS.md`: sin cambios.
