@@ -218,6 +218,9 @@ describe("POST /checkout/:productId — payment and order", () => {
     expect(cookieWins).toContain('<html lang="en">');
     const junk = await (await fetch(`${env.url}/receipts/${hash}`, { headers: { cookie: "agentpey_lang=fr" } })).text();
     expect(junk).toContain('<html lang="en">');
+    // Only the whole value counts: `es-xyz` is not Spanish.
+    const prefix = await (await fetch(`${env.url}/receipts/${hash}`, { headers: { cookie: "agentpey_lang=es-xyz" } })).text();
+    expect(prefix).toContain('<html lang="en">');
   });
 });
 

@@ -316,7 +316,7 @@ export function createApp({
     }
     const asked = typeof req.query["lang"] === "string" ? req.query["lang"] : undefined;
     // `?lang=` first, then the language chosen on agentpey.com (its cookie is shared by the subdomains), then the browser's.
-    const cookieLang = /(?:^|;\s*)agentpey_lang=(en|es)\b/.exec(req.get("cookie") ?? "")?.[1];
+    const cookieLang = /(?:^|;\s*)agentpey_lang=(en|es)(?=;|$)/.exec(req.get("cookie") ?? "")?.[1];
     const lang =
       asked === "es" || asked === "en"
         ? asked
