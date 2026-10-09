@@ -401,9 +401,10 @@ más rápido que lo estimado.
 - **Prioridad:** para el video · **Estimación:** 4 h · **Delegable a Codex:** no (usa la llave del árbitro y mueve fondos)
 - **Descripción:** `pnpm run arbiter:console` abre en el navegador una página en `localhost` con los tres pasos del árbitro (abrir la disputa, pedir el veredicto, confirmar y pagar), para no mostrar una terminal. Por detrás ejecuta los mismos `resolve:open`, `resolve:decide` y `resolve:execute`, sin tocarlos; las llaves siguen en `.env.local` del Mac y no se despliega nada. El pago exige escribir el hash del veredicto (`E-18`).
 - **Hecho cuando:**
-  - [ ] los tres pasos se hacen desde la página y muestran lo mismo que la terminal, con el razonamiento del árbitro a la vista
-  - [ ] el pago no se ejecuta sin el hash del veredicto escrito por la persona
-  - [ ] solo escucha en `127.0.0.1`
+  - [x] los cuatro pasos se hacen desde la página y muestran lo mismo que la terminal, con el razonamiento del árbitro a la vista (la página probada con las salidas reales del ensayo del 9-oct; [evidencia](evidencia/T155.md))
+  - [x] el pago no se ejecuta sin el hash del veredicto escrito por la persona (el botón se habilita solo con el hash exacto)
+  - [x] solo escucha en `127.0.0.1`, y responde solo a su propia página (Host, Origin y clave)
+  - [ ] una corrida real, con un reclamo nuevo de punta a punta desde esta página
 
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)
