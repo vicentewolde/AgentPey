@@ -8542,6 +8542,73 @@ Corregida en `ESTADO.md` la URL para comprobar el MCP (la anterior da 404 aunque
 Pendiente: T130 cuando haya tienda; el 11-oct, guion de T142 (con chequeo previo de que todo está vivo,
 incluido el MCP) y tabla de T144; al final T138, T139 y T140. `AGENTS.md`: sin cambios.
 
+## 2026-10-08 (13) — cc/demo-day-escaleta
+
+Agente: Claude Code.
+
+Qué: escaleta del Demo Day de Tellus del 9-oct (`docs/fase-8-agentes-reales/demo-day/ESCALETA.md`): 5 minutos,
+compra en vivo desde Claude con plan B por bloque, chequeo previo con comandos y respuestas esperadas, y lo que no se
+dice (incluye lo corregido en la revisión de T152). Chequeo corrido en producción: todo arriba. Con OK del usuario,
+los dos rails recargados con 20 USDC de testnet; el usuario bajó en Shopify el imán a 490 CLP y la taza a 1.490 CLP,
+para que el tope diario del rail del MCP no corte la demo ni el video.
+
+Por qué: el saldo y el tope del rail eran la falla más probable en vivo.
+
+Pendiente: esta rama se mergeó a `main` el 9-oct con OK explícito del usuario, antes de grabar el video, aunque Render despliega con cada push a `main` (también si solo cambia un documento). El guion de T142: el usuario decide si se escribe antes del 11-oct (`R-29`).
+`AGENTS.md`: sin cambios.
+
+## 2026-10-08 (14) — cc/demo-day-escaleta (solo la tienda Shopify, sin código)
+
+Agente: Claude Code.
+
+Qué: rediseño de la tienda de demo `agenticom.myshopify.com` (la que vende `agentcommerce`) para que se vea como un
+sitio real en el Demo Day y el video. Todo se hizo en el panel de Shopify, sin tocar el repo:
+- Tema: "Copy of Horizon" es ahora el tema **publicado** (el "Horizon" original quedó como borrador, por si hay que
+  volver). Paleta crema, café y cobre; títulos en serif (Playfair Display); portada con foto de cordillera, título y
+  bajada en español; "Nuestra historia"; barra de envíos; productos en 3 columnas con marcos cuadrados iguales y
+  fotos completas (CSS `object-fit: contain` en la sección de portada, de "Productos" y del carrito), nombres
+  a ~22 px y precios a ~20 px en cobre.
+- Español: nombre de la tienda "AgentCommerce", idioma por defecto español, menú Inicio · Productos · Contacto,
+  textos del tema y del carrito traducidos, precios con punto de miles ($2.850).
+- Envío: la tarifa de Chile pasó de $4.000 a $0 ("Envío gratis"); la internacional ($18.000) sigue igual.
+- Pagos: **PayPal Express Checkout desactivado** (era el único método y estaba incompleto). El checkout de la web
+  ahora dice "Esta tienda no puede aceptar pagos en este momento". No afecta a los agentes: el adaptador crea el
+  pedido por la API (`orderCreate`, `PAID`, transacción "Vitrinee x402"), pero **no se probó una compra real después
+  del cambio**. Para reactivar PayPal: Configuración, Pagos, PayPal, Activate.
+- Los precios del imán (490 CLP) y la taza (1.490 CLP) los bajó el usuario, ver entrada (13).
+
+Por qué: la demo muestra a un agente comprando en una tienda; si la tienda se ve genérica, no convence.
+
+Verificado el 8-oct en la noche: una compra real desde Claude, un imán (`ord_mv0bfvfcf83e182ff5`, 0,5157895 USDC,
+tx `a3200a4c…`), llegó a Shopify como **Pagado** con PayPal desactivado y apareció en `/en-vivo` (33 compras). El
+envío no se cobró.
+
+Pendiente: (1) hecho, ver arriba; (2) la dirección `agenticom.myshopify.com` **no se cambió**: la usan el adaptador de Shopify, el token de la
+app y la configuración de `agentcommerce` en la base y en Render, y cambiarla rompería las compras de los agentes;
+si se quiere una dirección más bonita, lo seguro es un dominio propio apuntado a Shopify (no cambia la dirección
+`myshopify.com` que usa la API); (3) las fotos de producto miden 90 a 256 px y se ven algo borrosas en tarjetas
+grandes, sobre todo la taza; (4) el posavasos, el imán y la taza se ven bien, pero "Nuestra historia" usa una foto
+oscura de manos con greda, cambiable. **No tocar** el tema publicado ni los pagos sin avisar al usuario antes de
+grabar. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (1) — cc/demo-day-escaleta (worktree `~/dev/AgentPay-demo`)
+
+Agente: Claude Code.
+
+Qué: la escaleta y el guion del Demo Day pasan a español (lo que se escribe en Claude incluido), muestran la tienda de
+Shopify antes de Claude, cambian la terminal del recibo por la página del recibo y suman un bloque de **reclamo en
+vivo**. Ensayado de punta a punta (`demo-day/ENSAYO-RECLAMO.md`): Claude firmó el reclamo con `open_claim` y el árbitro
+lo abrió con `resolve:open -- --claim` (primera vez en la red; antes solo había tests), la tienda respondió en
+`/resolve/responder`, el árbitro de IA dio `refund_full` y, con el hash confirmado por el usuario (`E-18`), el
+contrato devolvió 0,5157895 USDC (`ord_mv0bfvfcf83e182ff5`). Con OK del usuario, 2 USDC de testnet a la garantía de
+agentcommerce. Atajos del árbitro para la demo en `demo-day/reclamo.zsh`. Video guiado con voz, local y fuera de git.
+
+Por qué: el usuario quiere el reclamo en vivo, que es lo que más distingue al proyecto, y la sala habla español.
+
+Pendiente: la compra de la mañana del 9-oct que se reclama en vivo (escaleta §2.5). Esta rama no se mergea a `main`
+hasta después de grabar el video. Se trabajó en un worktree aparte porque la carpeta principal está en
+`chore/partner-readiness` (otra sesión). `AGENTS.md`: sin cambios.
+
 ## 2026-10-09 (1) — chore/partner-readiness
 
 Agente: Claude Code.
