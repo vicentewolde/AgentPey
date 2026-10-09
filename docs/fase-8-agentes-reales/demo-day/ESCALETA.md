@@ -122,6 +122,8 @@ pnpm -s run resolve:verify -- --receipt 713447e843396dfed591b7b1554d9cc9c821ba57
 Espera en la última línea `garantía 2.9157894 USDC (bloqueado 0.0000000 USDC)`: alcanza para el reclamo en vivo
 (0,52) y varios más.
 
+**Para ver cuánto cupo queda, doble clic en `Cupo del día` del escritorio:** lee el gasto de hoy en la red, dice cuántos imanes caben y en cuánto se reinicia (a las 21:00 de Chile). No envía nada.
+
 **El tope del rail del MCP no cambia con plata: 3,00 por compra y 5,00 por día UTC.** Desde el 8-oct en la noche el
 imán cuesta **490 CLP** (0,5157895 USDC) y la taza 1.490 CLP (1,5684211 USDC). El usuario bajó los precios en Shopify
 para que el tope no corte la demo ni las tomas del video.

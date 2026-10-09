@@ -8684,3 +8684,16 @@ la respuesta llegue sola al árbitro (`E-21`, sin cambios).
 Pendiente: T155 sin mergear hasta después de la demo. Si el botón de la wallet en `/resolve/responder` muestra otra cuenta
 que `GD2M…K5GN` al salir el aviso rojo, es que Freighter conectó con otra cuenta activa (la página compara la cuenta
 conectada con la del recibo); si muestra `GD2M…K5GN`, sería un error de la página. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (5) — cc/demo-day-escaleta
+
+Agente: Claude Code.
+
+Qué: para que las pruebas del usuario no fallen por límites: leído de la red, el rail del MCP lleva 4,1473686 de 5,00
+USDC de tope diario (el contrato no tiene función para cambiarlo: solo `withdraw` y `set_owner`; subirlo es desplegar un
+rail nuevo, que no se hace); se reinicia a las 00:00 UTC (21:00 de Chile). Con la delegación del usuario, +4 USDC de
+testnet a la garantía de agentcommerce en AgentResolve (`resolve:deposit`, tx `5a88c6da…7d1a`; queda en 5,8842104). App
+`Cupo del día` en el escritorio (lee `spent_on` y `per_day` del rail, sin enviar nada); su script vive en
+`~/Library/Application Support/AgentPey/cupo.sh`, fuera del repo.
+
+Pendiente: ninguno nuevo. `AGENTS.md`: sin cambios.
