@@ -41,7 +41,7 @@
 | T152 Portada al día (`R-29`, `R-31`) | para el video | ✅ terminada, en vivo en agentpey.com: la Fase 8, números en vivo desde `/api/live`, sección con cada pieza y su enlace | [PR #72](https://github.com/vicentewolde/AgentPey/pull/72) |
 | T153 Página del presupuesto de equipo (`R-29`) | para el video | ✅ terminada: `pnpm run team:summary -- --html` genera y abre la página local con gasto por día, pagos (solo los anclados cuentan como pagados en Stellar), rechazos y topes del rail | [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) |
 | T154 La página del recibo con el diseño del sitio (`R-34`) | para el video | ✅ terminada, en producción desde el 9-oct: misma cabecera, fuentes y colores que `agentpey.com`, e idioma por la cookie del sitio | [PR #81](https://github.com/vicentewolde/AgentPey/pull/81) |
-| T155 Pantalla local del árbitro (`R-34`) | para el video | 👀 en revisión: `pnpm run arbiter:console`, los pasos del árbitro en una página en `localhost`; corrida real hecha el 9-oct (`ord_mv1hp08c432548f9ed`, reembolso de 0,5157895 USDC); sin mergear hasta después de la demo | `cc/t155-consola-arbitro` |
+| T155 Pantalla local del árbitro (`R-34`) | para el video | ✅ terminada: `pnpm run arbiter:console`, los pasos del árbitro en una página en `localhost`; corrida real el 9-oct (`ord_mv1hp08c432548f9ed`, reembolso de 0,5157895 USDC), usada en la demo del Demo Day; mergeada el 10-oct | `cc/t155-consola-arbitro` |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 
