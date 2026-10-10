@@ -388,6 +388,24 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] la página muestra lo mismo que `team:summary` en la terminal, sin pedir nada a un servidor de AgentPey ([evidencia](evidencia/T153.md))
 
+#### T154 · La página del recibo, con el diseño del sitio (`R-34`)
+- **Prioridad:** para el video · **Estimación:** 2 h · **Delegable a Codex:** no (el recibo es lo que se verifica; se revisa)
+- **Descripción:** la página `/receipts/{hash}` de cada tienda (la que se abre desde `/en-vivo`) tenía su propia tipografía y cabecera, distinta de `agentpey.com`. Pasa a llevar los mismos colores, fuentes, cabecera y pie, y abre en el idioma que la persona eligió en el sitio (la cookie `agentpey_lang`, compartida con los subdominios). Solo presentación: no cambia qué se verifica ni el JSON.
+- **Archivos principales:** `packages/vitrinee-gateway/src/receipt-page.ts`, `app.ts` (idioma), `checkout.test.ts`
+- **Hecho cuando:**
+  - [x] la página usa los tokens, Instrument Serif e Inter, y la cabecera con logo y enlaces absolutos al sitio ([evidencia](evidencia/T154.md))
+  - [x] `?lang=` manda sobre la cookie, la cookie sobre el idioma del navegador, y una cookie ajena se ignora (test)
+  - [x] los tres checks, la tabla, los datos y los enlaces siguen iguales; el estado inválido se ve en rojo
+
+#### T155 · Pantalla local del árbitro (`R-34`)
+- **Prioridad:** para el video · **Estimación:** 4 h · **Delegable a Codex:** no (usa la llave del árbitro y mueve fondos)
+- **Descripción:** `pnpm run arbiter:console` abre en el navegador una página en `localhost` con los tres pasos del árbitro (abrir la disputa, pedir el veredicto, confirmar y pagar), para no mostrar una terminal. Por detrás ejecuta los mismos `resolve:open`, `resolve:decide` y `resolve:execute`, sin tocarlos; las llaves siguen en `.env.local` del Mac y no se despliega nada. El pago exige escribir el hash del veredicto (`E-18`).
+- **Hecho cuando:**
+  - [x] los cuatro pasos se hacen desde la página y muestran lo mismo que la terminal, con el razonamiento del árbitro a la vista (la página probada con las salidas reales del ensayo del 9-oct; [evidencia](evidencia/T155.md))
+  - [x] el pago no se ejecuta sin el hash del veredicto escrito por la persona (el botón se habilita solo con el hash exacto)
+  - [x] solo escucha en `127.0.0.1`, y responde solo a su propia página (Host, Origin y clave)
+  - [x] una corrida real, con un reclamo nuevo de punta a punta desde esta página (9-oct, `ord_mv1hp08c432548f9ed`; [evidencia](evidencia/T155.md) §3)
+
 #### T142 · Guion y grabación de la demo
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa)
 - **Depende de:** Bloque A

@@ -8709,3 +8709,29 @@ antes de la demo y antes de grabar**: el guion, la escaleta y las cotizaciones d
 compra en vivo necesita 0,5158 USDC de cupo (máximo 6 pruebas a 50 pesos antes de ella si es antes de las 21:00).
 
 Pendiente: restaurar el precio a 490. `AGENTS.md`: sin cambios.
+
+## 2026-10-09 (3) — cc/r-33-mcp-varias-wallets
+
+Agente: Claude Code.
+
+Qué: decisión `R-33` en `docs/fase-8-agentes-reales/DECISIONES.md` y nota en `ESTADO.md`: el MCP se abrirá a más wallets con un
+`policy_rail` por persona y una llave de agente derivada por persona, después del 12-oct. Solo documentación, sin código.
+
+Por qué: pregunta del usuario antes de contactar a socios; nada en el spec lo cubría.
+
+Pendiente: escribir y aprobar la tarea en el spec antes de construir; hasta entonces el MCP sigue abierto solo a la wallet
+dueña del rail. `AGENTS.md`: sin cambios.
+
+## 2026-10-10 (1) — cc/demo-day-escaleta, cc/t155-consola-arbitro
+
+Agente: Claude Code.
+
+Qué: pasada la demo del Demo Day (salió bien; el usuario mostró lo más simple). Con OK del usuario: **precio del imán
+restaurado a 490 CLP** en Shopify (catálogo UCP y tienda pública lo confirman; el 50 temporal del 9-oct ya no rige).
+**T155 mergeada a `main`** ([PR #82](https://github.com/vicentewolde/AgentPey/pull/82), sin CI que esperar: solo cambia
+`scripts/` y docs) y la rama de la escaleta y el guion se une a `main` (en `main` estaba la versión vieja del PR #79, que
+se mergeó con squash; los tres archivos de `demo-day/` se resolvieron a favor de la versión final). El día UTC cambió: el
+rail del MCP volvió a 0,00 de 5,00 USDC de tope.
+
+Pendiente: grabar el video de la hackatón (T142, 11-oct) y la tabla de T144; el guion de T142 se escribe el 11-oct (`R-29`).
+`AGENTS.md`: sin cambios.

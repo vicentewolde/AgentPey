@@ -315,7 +315,16 @@ export function createApp({
       throw new VitrineeError("ReceiptNotFound", "this gateway issued no receipt with that hash", { details: { hash } });
     }
     const asked = typeof req.query["lang"] === "string" ? req.query["lang"] : undefined;
-    const lang = asked === "es" || asked === "en" ? asked : /^es\b/i.test(req.get("accept-language") ?? "") ? "es" : "en";
+    // `?lang=` first, then the language chosen on agentpey.com (its cookie is shared by the subdomains), then the browser's.
+    const cookieLang = /(?:^|;\s*)agentpey_lang=(en|es)(?=;|$)/.exec(req.get("cookie") ?? "")?.[1];
+    const lang =
+      asked === "es" || asked === "en"
+        ? asked
+        : cookieLang === "es" || cookieLang === "en"
+          ? cookieLang
+          : /^es\b/i.test(req.get("accept-language") ?? "")
+            ? "es"
+            : "en";
     const anchorTxHash = record.anchor?.txHash;
     res
       .type("html")

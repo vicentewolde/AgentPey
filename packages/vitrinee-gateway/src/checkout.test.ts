@@ -191,6 +191,37 @@ describe("POST /checkout/:productId — payment and order", () => {
     const unknown = await fetch(`${env.url}/receipts/${"0".repeat(64)}`);
     expect(unknown.status).toBe(404);
   });
+
+  it("wears the site's header and follows the language chosen on agentpey.com (T154)", async () => {
+    const [order] = ((await (await fetch(`${env.url}/orders`)).json()) as { orders: Array<Record<string, any>> }).orders;
+    const { hash } = order!["receipt"] as { hash: string };
+    env.horizon.allow("36.8315789");
+
+    const en = await (await fetch(`${env.url}/receipts/${hash}`)).text();
+    // The same header as the other pages, with absolute links: this page lives on a store's subdomain.
+    expect(en).toContain('href="https://agentpey.com/"');
+    expect(en).toContain('href="https://agentpey.com/en-vivo"');
+    expect(en).toContain('href="https://agentpey.com/tiendas"');
+    expect(en).toContain("Instrument+Serif");
+    expect(en).not.toContain("<script");
+
+    // The cookie agentpey.com sets for its subdomains picks the language when the URL does not.
+    const byCookie = await (await fetch(`${env.url}/receipts/${hash}`, { headers: { cookie: "agentpey_lang=es; other=1" } })).text();
+    expect(byCookie).toContain('<html lang="es">');
+    expect(byCookie).toContain("Recibo válido: pasan las tres comprobaciones");
+    expect(byCookie).toContain(">En vivo<");
+
+    // `?lang=` beats the cookie, and the cookie beats the browser's language.
+    const urlWins = await (await fetch(`${env.url}/receipts/${hash}?lang=en`, { headers: { cookie: "agentpey_lang=es" } })).text();
+    expect(urlWins).toContain('<html lang="en">');
+    const cookieWins = await (await fetch(`${env.url}/receipts/${hash}`, { headers: { cookie: "agentpey_lang=en", "accept-language": "es-CL" } })).text();
+    expect(cookieWins).toContain('<html lang="en">');
+    const junk = await (await fetch(`${env.url}/receipts/${hash}`, { headers: { cookie: "agentpey_lang=fr" } })).text();
+    expect(junk).toContain('<html lang="en">');
+    // Only the whole value counts: `es-xyz` is not Spanish.
+    const prefix = await (await fetch(`${env.url}/receipts/${hash}`, { headers: { cookie: "agentpey_lang=es-xyz" } })).text();
+    expect(prefix).toContain('<html lang="en">');
+  });
 });
 
 describe("POST /checkout/:productId — idempotency, duplicates, stock", () => {
