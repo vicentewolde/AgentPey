@@ -1097,3 +1097,21 @@ Al ensayar la demo completa, el usuario vio tres cosas que dan mala impresión: 
 
 **Alternativa descartada.** Mostrar la terminal con otro tema: sigue siendo una terminal.
 
+
+---
+
+### R-35 · El video de la hackatón: voz en inglés lenta, subtítulos en español, y tres afirmaciones decididas por el usuario · `Vigente`
+**Fecha:** 2026-10-13 · **Decidido por el usuario**
+
+Al montar el video de T142, el usuario decidió:
+
+1. **La voz va en inglés y los subtítulos en español** (invierte lo decidido el 10-oct: voz en español, subtítulos en inglés). La pantalla va en inglés.
+2. **La voz, más lenta y con pausas**: velocidad 0,85 de ElevenLabs y 0,4 s de pausa entre frases, porque a velocidad normal era difícil de entender. Para que cupiera en 2:59 se recortaron frases de las escenas 0, 1, 2, 3 y 5, y la escena 4 pasó de 53 a 79 s.
+3. **La escena 4 abre con la postventa**: *«AgentPey is the only agentic payments stack on Stellar with after-sales protection built in»*. **No se verificó que sea cierto** y se dijo **sin salvaguarda** («as far as we know»), a pedido explícito del usuario. Se le avisó que existe Trustless Work (escrows y disputas en Stellar, T139), que un juez del ecosistema podría conocer. Es una afirmación sin respaldo en el repo.
+4. **La escena 5 dice el escrow como lo que sigue**: *«Next: an escrow that holds each payment until the order is settled, and GenLayer as the standard AI arbiter»*. Son planes: ninguno está construido (T138 y T139 siguen siendo pruebas técnicas).
+
+**Motivo.** Que un juez que ve el video una sola vez entienda cada paso (la voz lenta y una frase por pantalla) y que el diferenciador, la postventa, sea lo primero que se dice de la escena 4.
+
+**Alternativas descartadas.** (a) Mantener la voz en español con subtítulos en inglés: el usuario quiso que la voz fuera en el idioma del jurado. (b) Decir «as far as we know» en la frase de la postventa, o describir lo que se ve («the first stack that connects an agent's purchase to an on-chain refund claim»): más difícil de refutar, pero el usuario eligió la frase sin salvaguarda. (c) Acercamiento fijo sobre las pantallas para leer mejor: ocultaba secciones de la página; se usan acercamientos suaves y temporales, con pantalla completa el resto del tiempo.
+
+Evidencia: [`evidencia/T142.md`](evidencia/T142.md). Guion: [`video/GUION-VIDEO.md`](video/GUION-VIDEO.md).

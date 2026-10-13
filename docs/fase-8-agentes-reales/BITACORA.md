@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-08 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-13 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -42,7 +42,7 @@ un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
-muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`).
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code.
 
 | Tarea | Estado |
 |---|---|
@@ -60,7 +60,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T139 Prueba técnica: Trustless Work | pendiente, al final de la fase (`R-24`) |
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
 | T141 Página de tiendas | cerrada |
-| T142 Guion y grabación | pendiente |
+| T142 Guion y grabación | cerrada (entregado el 13-oct, `R-35`) |
 | T143 Más wallets | cerrada |
 | T144 dots, Muse y Grok Bot | pendiente |
 | T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
@@ -72,6 +72,8 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T151 Página En vivo | cerrada |
 | T152 Portada al día | cerrada |
 | T153 Página del presupuesto de equipo | cerrada |
+| T154 Página del recibo con el diseño del sitio | cerrada |
+| T155 Pantalla local del árbitro | cerrada |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -775,3 +777,39 @@ vista.
 
 Evidencia: [`evidencia/T153.md`](evidencia/T153.md).
 
+---
+
+## T142 · Guion y video de la hackatón — 2026-10-13, cerrada
+
+**Qué quedó funcionando.** El video de "Find Your Way" está grabado y entregado: **2:59**, en 1080p. Una voz en inglés
+(la voz clonada del usuario, hablando más lento y con pausas) cuenta qué pasa en cada pantalla, y los subtítulos van
+en español. Muestra, en este orden: el problema de darle una tarjeta a un agente; el estándar (UCP, explicado como
+*Universal Commerce Protocol*) y las tiendas que lo hablan; a Claude comprando un imán, con la cotización a la vista y
+un pago real; la compra apareciendo sola en `/live` y su recibo con las tres pruebas en verde; **qué pasa si la
+compra sale mal** (un reclamo firmado por Claude, un árbitro que abre la disputa, la tienda que responde con su
+firma, un árbitro de IA que propone y una persona que confirma, y el reembolso pagado); y el cierre con el SEP, el
+escrow y GenLayer como lo que sigue.
+
+**Cómo se hizo.** El usuario grabó cada escena sin voz. Claude Code escribió el texto, generó la voz con ElevenLabs
+(una llamada por escena, con el tiempo de cada letra) y montó el video: cada frase cae justo sobre su pantalla, las
+esperas largas van aceleradas, los resultados clave van en tiempo real con un acercamiento suave, y se cortaron los
+errores, la pantalla negra de Freighter y un diálogo del sistema. Los scripts están en
+[`video/herramientas/`](video/herramientas/README.md).
+
+**Lo que cambió en el camino.** Hubo cuatro versiones del texto. La primera, de 2:23, iba demasiado rápida y la
+escena 4 no se alcanzaba a leer; el usuario pidió voz más lenta, la postventa primero y más tiempo en la escena 4
+(de 53 a 79 s), y quitar frases del resto para que cupiera. Eso está en `R-35`.
+
+**Lo que hay que saber.**
+
+- **Una afirmación sin respaldo, decidida por el usuario:** *«the only agentic payments stack on Stellar with
+  after-sales protection»*. No se verificó, y se dijo sin salvaguarda. Existe Trustless Work (escrows y disputas en
+  Stellar). Está anotada en el guion §3 y en `R-35`.
+- **El escrow y GenLayer son planes**, no algo construido.
+- **El árbitro vuelve a español al llegar el veredicto** (la traducción de Chrome se pierde al recargar la página), y
+  las cifras de la portada de las escenas 0 y 5 son de antes del reembolso.
+- **El video y la voz no están en git** (pesan, y la voz es un clon): quedan en `video/entrega/` y
+  `video/herramientas/audio2/`, solo en la máquina del usuario.
+- **T130 sigue pendiente**: el video usa la tienda de Shopify de AgentPey y lo dice.
+
+Evidencia: [`evidencia/T142.md`](evidencia/T142.md). Guion: [`video/GUION-VIDEO.md`](video/GUION-VIDEO.md).

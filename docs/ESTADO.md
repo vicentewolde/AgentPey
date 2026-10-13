@@ -5,10 +5,10 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-09
+**Actualizado:** 2026-10-13
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T151 · Página "En vivo": una compra nueva de Claude apareció sola (`ord_mv079z6634dbf7e9d1`)
-**Siguiente paso:** T130 cuando haya tienda; el guion de T142 y la tabla de T144 el 11-oct, antes de grabar en la tarde; al final T138, T139 y T140. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** T142 · el video de la hackatón, entregado el 13-oct (2:59, voz en inglés y subtítulos en español; `R-35`)
+**Siguiente paso:** T130, que ya tiene tienda ([casastock.cl](https://casastock.cl/), 13-oct): falta decidir cómo comprarle (sus precios superan el tope del rail del MCP, ver los pendientes); la tabla de T144; al final T138, T139 y T140. `R-33` (el MCP con más wallets) pide escribir y aprobar su tarea en el spec antes de construir. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | T128 Servidor MCP de AgentPey | imprescindible | ✅ terminada: en vivo en `mcp.agentpey.com`; orden `ord_muszfkwz2604255e03` cotizada por Claude y pagada por la persona (`R-11`) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; evidencia de cierre en [PR #47](https://github.com/vicentewolde/AgentPey/pull/47), mergeado |
 | T129 Claude y ChatGPT conectados | imprescindible | ✅ terminada: guía en el README; compras desde Claude (`R-11`) y desde ChatGPT, que paga él mismo | `cc/t129-conectar-claude-chatgpt`, mergeada |
-| T130 Tienda de terceros real | imprescindible | ⏳ pendiente | |
+| T130 Tienda de terceros real | imprescindible | ⏳ pendiente: el usuario consiguió una tienda real el 13-oct, [casastock.cl](https://casastock.cl/) (Shopify, precios en CLP); falta el alta y una compra | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ✅ terminada: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp`, mergeada ([PR #49](https://github.com/vicentewolde/AgentPey/pull/49)) |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
@@ -28,7 +28,7 @@
 | T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
 | T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
 | T141 Página "Tiendas comprables por agentes" | para el video | ✅ terminada, en vivo en [agentpey.com/tiendas](https://agentpey.com/tiendas): `/tiendas` (alias `/stores`) lista las tres tiendas del directorio con su perfil UCP, sus recibos anclados y el último, leído de Horizon y confirmado en el registro (`R-26`); probada contra la red real | [PR #67](https://github.com/vicentewolde/AgentPey/pull/67) |
-| T142 Guion y grabación de la demo | imprescindible | ⏳ pendiente | |
+| T142 Guion y grabación de la demo | imprescindible | ✅ terminada: video entregado el 13-oct, 2:59, voz en inglés más lenta y subtítulos en español (`R-35`); guion en [`video/GUION-VIDEO.md`](fase-8-agentes-reales/video/GUION-VIDEO.md), evidencia en [`T142.md`](fase-8-agentes-reales/evidencia/T142.md) | `cc/t142-guion-video` (sin PR: solo documentos) |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ queda como tabla sin compra (`R-29`: Grok Bot pide plan pago): el usuario solo tiene Grok (sin dots ni Muse, 5-oct); el corte del 7-oct no se aplica (`R-24`) | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ✅ terminada: cobro por uso viable en testnet con lo que existe; suscripciones sin emisor recomendable (Cards402 prohíbe cobros recurrentes, ASGCard no publica términos ni KYC); el usuario aprobó T146 sin desplegar nada nuevo y las suscripciones solo como diseño (`R-25`) | [PR #66](https://github.com/vicentewolde/AgentPey/pull/66) |
@@ -49,7 +49,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Bloqueos y pendientes del usuario
 
-- [ ] Para T130: conseguir la tienda de terceros (en proceso, 5-oct). T144: el usuario confirmó que tiene Grok, no dots ni Muse
+- [ ] T130: el 13-oct el usuario consiguió una tienda real, [casastock.cl](https://casastock.cl/) (Shopify, 10 productos, precios en CLP: casas prefabricadas, kits por m² y servicios). Falta confirmar con su dueño que da acceso para crear la app (`read_products`, `write_orders`) y que acepta un producto de prueba barato: el más barato cuesta 30.000 CLP (unos 31 USDC) y el rail del MCP tiene tope de 3 USDC por compra. T144: el usuario confirmó que tiene Grok, no dots ni Muse
 - [ ] Exportar el borrador del SEP a `docs/fase-8-agentes-reales/SEP-borrador.md`
 - [ ] Fuera del código: publicar el borrador del SEP en GitHub Discussions de `stellar/stellar-protocol` y avisar en el Discord; enviar las preguntas a communityfund@stellar.org; escribirles a Trustless Work, Cards402 y ASGCard
 - [x] 8 o 9 de octubre (hecho el 8-oct, [evidencia](fase-8-agentes-reales/evidencia/T124-reembolso-real.md)): confirmar si el pedido Shopify `18952373174578` sigue sin despacho, y después confirmar el hash del veredicto (`E-18`); el mismo día, responder como comercio desde la página; después, comprobar que `ord_muq1gqhycf4961492c` muestra la disputa abierta y luego resuelta (cierra T127)
@@ -149,3 +149,4 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - 2026-10-05, T135 `/revisar`: sin bloqueantes; corregidos los 9 hallazgos a pedido del usuario, sin mover plata. El principal: el veredicto de la prueba podía dar un falso "rechazado"; ahora exige el motivo exacto del SDK en cada intento y que el saldo del rail se lea igual antes y después. Un paso nuevo simula en modo estricto la transferencia firmada por el rail y la red la acepta: la firma es buena y el único obstáculo es el tipo de pagador. Aclarado que el servidor patrocinado no tuvo control; el issue cita las líneas del SDK.
 - 2026-10-05, T135 cerrada: [PR #61](https://github.com/vicentewolde/AgentPey/pull/61) en `main` por fast-forward, con OK del usuario (sin CI: solo corre el de Vitrinee, que T135 no toca; `pnpm check` en verde en local). Con OK del usuario, issue publicado: [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90).
 - 2026-10-06: T143 cerrada ([PR #65](https://github.com/vicentewolde/AgentPey/pull/65)). La capa de wallets es propia (`packages/wallet-kit`), sin CDN; LOBSTR firma transacciones para mainnet y Hana no firma SEP-53. El usuario probó aprobar, revocar y el portal en agentpey.com. Siguiente: las pruebas técnicas del 8-oct.
+- 2026-10-13: **T142 cerrada.** El usuario entregó el video de la hackatón (2:59). Claude Code escribió el guion, generó la voz con la voz clonada del usuario (velocidad 0,85) y lo montó; `R-35` registra la voz en inglés con subtítulos en español y dos afirmaciones decididas por el usuario sin respaldo en el repo (la postventa como única, y el escrow y GenLayer como lo que sigue). El video y la voz quedan solo en la máquina del usuario. Rama `cc/t142-guion-video`, sin mergear: Render despliega con cada push a `main`.

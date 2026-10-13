@@ -8735,3 +8735,25 @@ rail del MCP volvió a 0,00 de 5,00 USDC de tope.
 
 Pendiente: grabar el video de la hackatón (T142, 11-oct) y la tabla de T144; el guion de T142 se escribe el 11-oct (`R-29`).
 `AGENTS.md`: sin cambios.
+
+## 2026-10-13 (1) — cc/t142-guion-video
+
+Agente: Claude Code.
+
+Qué: **T142 cerrada.** El usuario entregó el video de la hackatón (2:59, voz en inglés más lenta con la voz clonada del
+usuario, subtítulos en español). Claude Code escribió el guion, generó la voz con ElevenLabs y montó el video con ffmpeg.
+Quedan en `docs/fase-8-agentes-reales/video/`: `GUION-VIDEO.md` (texto y tiempos finales, con la evidencia de cada
+afirmación), `HOJA-DE-MARCAS.md`, `PROPUESTA-V3.md` y `herramientas/` (los scripts y su README). Evidencia en
+`evidencia/T142.md`; decisión `R-35`. El video y la voz **no están en git**: `video/entrega/` y
+`video/herramientas/audio2/*.mp3` están en `.git/info/exclude` (pesan, y la voz es un clon); solo existen en la máquina
+del usuario. Las grabaciones originales siguen en su escritorio.
+
+Por qué: la hackatón se entregó el 13-oct. El usuario pidió voz más lenta, la postventa primero en la escena 4 y más
+tiempo para leer las pantallas; para que cupiera en 2:59 se recortaron frases del resto.
+
+Pendiente: (1) la rama **no se mergea a `main` sin OK del usuario**, y Render despliega con cada push a `main`, también si
+solo cambia un documento; no se hizo push de la rama. (2) T130 ya tiene tienda, `https://casastock.cl/` (Shopify, CLP):
+falta el alta por el portal y una compra; sus precios (el más barato, 30.000 CLP, unos 31 USDC) superan el tope de 3 USDC
+por compra del rail del MCP, que no se puede cambiar sin desplegar un rail nuevo. (3) Una afirmación del video no tiene
+respaldo (la postventa como única en Stellar): `R-35` y `GUION-VIDEO.md` §3. (4) No tocar `contracts/*`, AgentResolve,
+`open_claim` ni el `payTo` de Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
