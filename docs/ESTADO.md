@@ -5,7 +5,7 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-13
+**Actualizado:** 2026-10-14
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
 **Última tarea terminada:** T142 · el video de la hackatón, entregado el 13-oct (2:59, voz en inglés y subtítulos en español; `R-35`)
 **Siguiente paso:** la tabla de T144; al final T138, T139 y T140. **T130 queda en pausa** hasta que pase el periodo de la hackatón (`R-36`): la tienda real ya existe ([casastock.cl](https://casastock.cl/)), pero el rail del MCP tiene topes fijos de 3 y 5 USDC y los productos reales cuestan más. `R-33` (el MCP con más wallets) pide escribir y aprobar su tarea en el spec antes de construir. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
@@ -28,7 +28,7 @@
 | T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
 | T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
 | T141 Página "Tiendas comprables por agentes" | para el video | ✅ terminada, en vivo en [agentpey.com/tiendas](https://agentpey.com/tiendas): `/tiendas` (alias `/stores`) lista las tres tiendas del directorio con su perfil UCP, sus recibos anclados y el último, leído de Horizon y confirmado en el registro (`R-26`); probada contra la red real | [PR #67](https://github.com/vicentewolde/AgentPey/pull/67) |
-| T142 Guion y grabación de la demo | imprescindible | ✅ terminada: video entregado el 13-oct, 2:59, voz en inglés más lenta y subtítulos en español (`R-35`); guion en [`video/GUION-VIDEO.md`](fase-8-agentes-reales/video/GUION-VIDEO.md), evidencia en [`T142.md`](fase-8-agentes-reales/evidencia/T142.md) | `cc/t142-guion-video` (sin PR: solo documentos) |
+| T142 Guion y grabación de la demo | imprescindible | ✅ terminada: video entregado el 13-oct, 2:59, voz en inglés más lenta y subtítulos en español (`R-35`); guion en [`video/GUION-VIDEO.md`](fase-8-agentes-reales/video/GUION-VIDEO.md), evidencia en [`T142.md`](fase-8-agentes-reales/evidencia/T142.md) | `cc/t142-guion-video`, solo documentos, mergeada a `main` el 14-oct; ticket en `DONE` |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
 | T144 dots, Muse y Grok Bot | si alcanza | ⏳ queda como tabla sin compra (`R-29`: Grok Bot pide plan pago): el usuario solo tiene Grok (sin dots ni Muse, 5-oct); el corte del 7-oct no se aplica (`R-24`) | |
 | T145 Tesorería de equipos SCF (prueba técnica) | si alcanza | ✅ terminada: cobro por uso viable en testnet con lo que existe; suscripciones sin emisor recomendable (Cards402 prohíbe cobros recurrentes, ASGCard no publica términos ni KYC); el usuario aprobó T146 sin desplegar nada nuevo y las suscripciones solo como diseño (`R-25`) | [PR #66](https://github.com/vicentewolde/AgentPey/pull/66) |
@@ -88,6 +88,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Notas de la última sesión
 
+- 2026-10-14: T142 mergeada a `main` con OK del usuario; casillas de T142 y criterio 5 de la fase marcados en el spec; ticket T142 en `DONE`; T154 y T155 con fila en `SYNC.md`. Orden aprobado por el usuario para lo que queda: T144, T138, T139 (solo documentos; T139 evalúa Trustless Work como opción externa), la tarea de `R-33` en el spec, y después el borrador del SEP y los mensajes.
 - 2026-10-09: `R-33` (el usuario decide abrir el MCP a más wallets con un `policy_rail` por persona y llave de agente derivada por persona; se construye después del 12-oct, con tarea nueva en el spec antes). Hoy sigue abierto solo a la wallet dueña del rail.
 - 2026-10-09: preparación para socios (PR #76 y #77, `P-18`): `/api/live` cuenta solo compras con pago comprobado (26, 7 en `incomplete`), auditoría del facilitator x402 en `docs/partners/` y README nuevo. Comprobado en vivo; las cifras del README cuadran con `/api/live` y la red ([evidencia](fase-8-agentes-reales/evidencia/partner-readiness.md)). El MCP sigue abierto solo a la wallet dueña del rail.
 - 2026-10-07: `R-24` (no se corta nada para la hackatón; T138 y T139 al final de la fase). T145 cerrada: cobro por uso desde un `policy_rail` sí; suscripciones con tarjeta solo diseño (el rail actual no puede cargar una tarjeta y Cards402 prohíbe cobros recurrentes); T146 aprobada sobre un rail ya desplegado (`R-25`).

@@ -411,8 +411,8 @@ más rápido que lo estimado.
 - **Depende de:** Bloque A
 - **Descripción:** guion de unos 3:30 minutos: el problema, el estándar, Claude comprando en la tienda de terceros, el recibo verificado, una disputa y el SEP. Es el plan de demo de la sección 7. Congelar el código el 10-oct.
 - **Hecho cuando:**
-  - [ ] el guion está escrito como pasos exactos y cada afirmación tiene su evidencia en el repo
-  - [ ] el usuario grabó el video
+  - [x] el guion está escrito como pasos exactos y cada afirmación tiene su evidencia en el repo, salvo las que el usuario decidió decir sin respaldo, anotadas en [`video/GUION-VIDEO.md`](video/GUION-VIDEO.md) §3 y en `R-35`
+  - [x] el usuario grabó el video (entregado el 13-oct, 2:59; [evidencia](evidencia/T142.md))
 
 ### Pendientes con fecha, heredados de la Fase 7 (`E-25`)
 
@@ -427,7 +427,7 @@ No son tareas: no hay nada que construir. Su evidencia va a la carpeta de la Fas
 - [x] La red rechaza un pago del servidor MCP que excede su tope (T128, [evidencia](evidencia/T128.md) §4)
 - [x] La salida de la suite oficial de conformidad de UCP está en el repo, con su alcance escrito (T131, [evidencia](evidencia/T131.md); hoy 49/8/20)
 - [x] El verificador rechaza un recibo incoherente (T132, [evidencia](evidencia/T132.md))
-- [ ] El video está grabado y entregado (T142; lo hace el usuario)
+- [x] El video está grabado y entregado (T142, 13-oct, [evidencia](evidencia/T142.md))
 
 Lo del Bloque B, C y E no es criterio de cierre: lo que no alcance queda
 cortado con su motivo.
@@ -517,6 +517,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-06 | T143: a pedido del usuario, el inicio de sesión OAuth del MCP entra en la tarea (también firmaba solo con Freighter) |
 | 2026-10-06 | T143: el usuario ajustó el criterio 2 (opción A): donde se firma una transacción de testnet bastan las wallets que la firman bien (hoy xBull), porque LOBSTR firma para mainnet y Hana no firma SEP-53. Criterios 1, 3 y 4 marcados |
 | 2026-10-06 | T143 cerrada: el usuario probó en agentpey.com aprobar y revocar un Mandato con Freighter y con xBull, y entrar al portal; criterio 2 marcado ([PR #65](https://github.com/vicentewolde/AgentPey/pull/65)) |
+| 2026-10-14 | T142 cerrada: los dos criterios de la tarea y el criterio 5 de la fase marcados; el primero, con las afirmaciones sin respaldo de `R-35` como excepción |
 
 ## 11. Fuentes externas
 

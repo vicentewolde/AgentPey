@@ -8772,3 +8772,17 @@ nuevo, y es mejor resolverlo con `R-33` (el tope se elige al desplegar el rail) 
 
 Pendiente: lo de `R-36`, «Para retomar». Siguen sin tocarse `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de
 Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (1) — cc/t142-guion-video
+
+Agente: Claude Code.
+
+Qué: cierre de T142 antes del merge. `SPEC.md`: las dos casillas de T142 y el criterio 5 de la fase marcados (el primero,
+con las afirmaciones sin respaldo de `R-35` como excepción). `SYNC.md`: T142 en `DONE` y filas para T154 y T155, que no
+estaban. `ESTADO.md` al día. Con OK del usuario: push, PR y fast-forward a `main`, y el ticket T142 a `DONE`.
+
+Por qué: el spec seguía diciendo que el video no estaba entregado; el usuario pidió cerrar T142 en todos lados.
+
+Pendiente: el orden aprobado por el usuario el 14-oct: T144, T138 y T139 (solo documentos), la tarea de `R-33` en el
+spec, y después el borrador del SEP y los mensajes. No tocar `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de
+Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
