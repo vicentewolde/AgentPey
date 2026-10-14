@@ -68,9 +68,10 @@ descubrimiento que pide el servidor (la página no dice qué autenticación
 admite), y si Grok llama a `pay` él mismo o lo deja a la persona, como Claude
 (`R-11`).
 
-No es Grok Bot (es el chat), así que no está en los criterios de T144. Probarlo
-es una decisión del usuario: no mueve nada hasta `pay`, y una compra del imán
-gasta unos 0,52 USDC de testnet del rail del MCP.
+No es Grok Bot (es el chat). **El 14-oct el usuario pidió probarlo** y se
+agregó como criterio de T144: no mueve nada hasta `pay`, y una compra del imán
+gasta unos 0,52 USDC de testnet del rail del MCP, solo con su OK. El resultado
+va en la §8.
 
 ## 5. Contraste con `R-29`
 
@@ -91,6 +92,8 @@ La conclusión de `R-29` (T144 queda como tabla, sin compra) no cambia.
   falta, evidencia (este documento, §3)
 - [ ] ~~una compra real desde dots~~: no aplica, el usuario no tiene acceso
   (§3, `R-29`)
+- [ ] (agregado el 14-oct) el chat de Grok conectado a `mcp.agentpey.com`:
+  qué funciona, y con OK del usuario una compra real (§8)
 
 ## 7. Fuentes (leídas el 2026-10-14)
 
@@ -107,3 +110,7 @@ La conclusión de `R-29` (T144 queda como tabla, sin compra) no cambia.
 Una guía de un tercero sobre Grok Bot y MCP (2slides.com, septiembre de 2026)
 cita a alguien de Cursor diciendo que Grok Bot admite "remote HTTP/SSE MCP";
 no se usó como evidencia porque no es una fuente oficial.
+
+## 8. Prueba del chat de Grok
+
+Pendiente: la conexión la hace el usuario en `grok.com/connectors`.
