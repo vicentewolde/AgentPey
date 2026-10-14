@@ -11,10 +11,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createMcpApp } from "../http.js";
 import type { Shopper } from "../shopper.js";
-import { createOAuthServer } from "./server.js";
+import { createOAuthServer, DEFAULT_REDIRECT_URIS, loggableRedirectUri } from "./server.js";
 
 const CLAUDE = "https://claude.ai/api/mcp/auth_callback";
 const GROK = "https://grok.com/connectors-oauth-exchange-code/";
+const CHATGPT = "https://chatgpt.com/connector_platform_oauth_redirect";
 const SECRET = "test-secret-that-is-at-least-32-bytes-long!!";
 
 interface Started {
@@ -253,6 +254,8 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(page.status).toBe(200);
     const request = requestOf(await page.text());
     const asked = await post(`${s.url}/authorize/challenge`, { request, account: s.wallet.publicKey() });
+    // The warning the wallet signs names the chat the person should have started from.
+    expect(asked.json["message"]).toContain("Continue only if you started this connection yourself, from your own Claude, ChatGPT or Grok.");
     const approved = await post(`${s.url}/authorize/approve`, { request, account: s.wallet.publicKey(), challenge: asked.json["challenge"], signature: signStellarMessage(s.wallet, asked.json["message"] as string) });
     const back = new URL(approved.json["redirect"] as string);
     expect(back.origin + back.pathname).toBe(GROK);
@@ -275,10 +278,38 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     ];
     for (const uri of lookalikes) {
       expect((await post(`${s.url}/register`, { redirect_uris: [uri] })).json, uri).toMatchObject({ error: "invalid_redirect_uri" });
+      // Nor can Grok's own client be sent there: an error page, never a redirect.
+      const res = await authorizePage(s, grok, pkce().challenge, { redirect_uri: uri });
+      expect(res.status, uri).toBe(400);
+      expect(res.headers.get("location"), uri).toBeNull();
     }
     // A client registered for Grok cannot be sent anywhere else, and Claude's client cannot be sent to Grok.
     expect((await authorizePage(s, grok, pkce().challenge)).status).toBe(400);
     expect((await authorizePage(s, await register(s), pkce().challenge, { redirect_uri: GROK })).status).toBe(400);
+  });
+
+  it("trusts exactly Claude's, ChatGPT's and Grok's callbacks, and still registers ChatGPT (T156)", async () => {
+    // A new entry has to change this test: the list is the authorization perimeter (R-7, R-37).
+    expect(DEFAULT_REDIRECT_URIS).toEqual([CLAUDE, CHATGPT, GROK]);
+    const s = await start();
+    expect((await post(`${s.url}/register`, { redirect_uris: [CHATGPT], client_name: "ChatGPT" })).status).toBe(201);
+  });
+
+  it("reads a client document from grok.com, and still refuses a callback it names that is not trusted (T156, R-37)", async () => {
+    const cimd = "https://grok.com/oauth/client.json";
+    const docs: typeof fetch = async () => Response.json({ client_id: cimd, client_name: "Grok", redirect_uris: [GROK, "https://attacker.example/cb"] });
+    const s = await start({ fetchImpl: docs });
+    expect((await authorizePage(s, cimd, pkce().challenge, { redirect_uri: GROK })).status).toBe(200);
+    const res = await authorizePage(s, cimd, pkce().challenge, { redirect_uri: "https://attacker.example/cb" });
+    expect(res.status).toBe(400);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("keeps only scheme, host and path of a refused callback in the log, and flags what it dropped (T156)", () => {
+    expect(loggableRedirectUri("https://user:pass@grok.com/cb?token=abc#f")).toBe("https://grok.com/cb [dropped: userinfo, query, fragment]");
+    expect(loggableRedirectUri("https://grok.com/connectors/oauth/callback")).toBe("https://grok.com/connectors/oauth/callback");
+    expect(loggableRedirectUri(`https://attacker.example/${"a".repeat(500)}`)).toHaveLength(200);
+    expect(loggableRedirectUri("not a url")).toBe("[not a URL]");
   });
 
   it("logs which redirect URIs a refused registration asked for, cut short, and nothing for an accepted one (T156)", async () => {
@@ -386,7 +417,7 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(served.headers.get("content-type")).toContain("javascript");
     expect(`sha384-${createHash("sha384").update(Buffer.from(await served.arrayBuffer())).digest("base64")}`).toBe(tag![3]);
     expect(html).not.toMatch(/unpkg|freighter-api/);
-    expect(html).toContain("Continue only if you started this connection yourself");
+    expect(html).toContain("Continue only if you started this connection yourself, from your own Claude, ChatGPT or Grok.");
   });
 
   it("serves the wallets' icons from this origin, and nothing outside the closed list (T143)", async () => {

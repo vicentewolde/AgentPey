@@ -1,9 +1,9 @@
 # @agentpey/mcp
 
-AgentPey's MCP server (T128): Claude, ChatGPT and the Grok chat connect to it to search
-Vitrinee stores, quote, pay on Stellar testnet from the MCP's own
-`policy_rail`, read the order with its verified receipt, and sign a refund
-claim. OAuth 2.1 in front of `/mcp`; the only person who can sign in is the
+AgentPey's MCP server (T128): Claude and ChatGPT connect to it (the Grok chat
+should too, see below) to search Vitrinee stores, quote, pay on Stellar testnet
+from the MCP's own `policy_rail`, read the order with its verified receipt, and
+sign a refund claim. OAuth 2.1 in front of `/mcp`; the only person who can sign in is the
 wallet that owns the rail, by signing a message with a Stellar wallet.
 
 Connect a client to:

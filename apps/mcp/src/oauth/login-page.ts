@@ -1,5 +1,5 @@
 /**
- * The page a person sees when Claude or ChatGPT asks to connect to AgentPey's
+ * The page a person sees when Claude, ChatGPT or Grok asks to connect to AgentPey's
  * MCP server (`R-7`): sign a message with the wallet that owns the spending
  * account, and only that wallet gets in. English by default, neutral Latin
  * American Spanish when the browser asks for it.
@@ -65,7 +65,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
     <p><strong>${escapeHtml(input.clientName)}</strong> <span data-t="asks">wants to search, quote and pay in AgentPey stores for you, from your spending account on Stellar testnet, within its limits.</span></p>
     <p><span data-t="returns">After you sign in you go back to</span> <strong>${escapeHtml(input.redirectHost)}</strong>.</p>
     <p><span data-t="only">Only this wallet can sign in:</span> <code>${escapeHtml(input.walletHint)}</code></p>
-    <p class="warn" data-t="yours">Continue only if you started this connection yourself, from your own Claude or ChatGPT. If someone sent you this link, close it.</p>
+    <p class="warn" data-t="yours">Continue only if you started this connection yourself, from your own Claude, ChatGPT or Grok. If someone sent you this link, close it.</p>
     ${input.loopback ? '<p class="warn" data-t="local">The app asking runs on this computer. Any program here could claim to be it.</p>' : ""}
     <button id="sign" type="button" data-t="sign">Sign in with your wallet</button>
     <a id="deny" class="deny" href="#" data-t="deny">Cancel</a>
@@ -76,7 +76,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
 const DATA = ${data};
 const TEXT = {
   en: { missing: "The wallet connection did not load. Reload the page.", waiting: "Choose your wallet and sign…", wrong: "That wallet cannot sign in here.", failed: "Sign-in failed. Try again.", done: "Signed in. Going back…" },
-  es: { yours: "Continúa solo si tú iniciaste esta conexión, desde tu propio Claude o ChatGPT. Si alguien te mandó este enlace, ciérralo.", local: "La app que pide acceso corre en este computador. Cualquier programa aquí podría hacerse pasar por ella.", title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", sign: "Iniciar sesión con tu wallet", deny: "Cancelar", missing: "No se cargó la conexión con las wallets. Vuelve a cargar la página.", waiting: "Elige tu wallet y firma…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
+  es: { yours: "Continúa solo si tú iniciaste esta conexión, desde tu propio Claude, ChatGPT o Grok. Si alguien te mandó este enlace, ciérralo.", local: "La app que pide acceso corre en este computador. Cualquier programa aquí podría hacerse pasar por ella.", title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", sign: "Iniciar sesión con tu wallet", deny: "Cancelar", missing: "No se cargó la conexión con las wallets. Vuelve a cargar la página.", waiting: "Elige tu wallet y firma…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
 };
 const lang = (navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en";
 const t = (key) => (TEXT[lang] && TEXT[lang][key]) || TEXT.en[key] || key;

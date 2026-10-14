@@ -8844,3 +8844,16 @@ Pendiente: `/revisar` (perímetro de autorización); merge y despliegue de `mcp.
 conexión desde grok.com y, con OK, la compra. No tocar `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de
 Vitrinee hasta nuevo aviso del usuario. Exponential: sin cambios (T156 sin ticket propio). `AGENTS.md`: sin cambios.
 
+## 2026-10-14 (6) — cc/t156-mcp-grok
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T156, sin bloqueantes; los siete hallazgos corregidos a pedido del usuario. Tests nuevos: las
+parecidas también en `/authorize`, la lista fija (Claude, ChatGPT, Grok), un CIMD de `grok.com` que nombra una vuelta
+no permitida, y el log. El log de registros rechazados guarda solo esquema, host y camino (`loggableRedirectUri`). El
+aviso contra suplantación, en la página y en el mensaje firmado, nombra a Grok. README sin afirmar de más.
+`pnpm check` en verde (`apps/mcp` 40 tests).
+
+Pendiente: merge y despliegue de `mcp.agentpey.com` solo con OK del usuario; la conexión desde grok.com y, con OK, la
+compra. `AGENTS.md`: sin cambios.
+

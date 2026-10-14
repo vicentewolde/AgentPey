@@ -50,6 +50,18 @@ export const DEFAULT_REDIRECT_URIS = [
 /** How much of each refused redirect URI a log line keeps. */
 const LOGGED_URI_MAX = 200;
 
+/**
+ * A refused redirect URI as a log line keeps it: scheme, host and path, cut short. Credentials, a query or a fragment
+ * a client put in it are dropped and only flagged, so the log shows a new client's callback and nothing it carried.
+ */
+export function loggableRedirectUri(uri: string): string {
+  if (!URL.canParse(uri)) return "[not a URL]";
+  const url = new URL(uri);
+  const dropped = [url.username !== "" || url.password !== "" ? "userinfo" : null, url.search !== "" ? "query" : null, url.hash !== "" ? "fragment" : null].filter((part) => part !== null);
+  const kept = `${url.protocol}//${url.host}${url.pathname}`.slice(0, LOGGED_URI_MAX);
+  return dropped.length === 0 ? kept : `${kept} [dropped: ${dropped.join(", ")}]`;
+}
+
 export interface OAuthServerOptions {
   /** This server's public origin, e.g. `https://mcp.agentpey.com`. The issuer. */
   readonly publicUrl: string;
@@ -58,7 +70,7 @@ export interface OAuthServerOptions {
   /** The only Stellar account that can sign in: the principal of the MCP's rail. */
   readonly allowedWallet: string;
   readonly secret: string;
-  /** Exact redirect URIs a client may register, besides loopback ones. Defaults to Claude's and ChatGPT's. */
+  /** Exact redirect URIs a client may register, besides loopback ones. Defaults to `DEFAULT_REDIRECT_URIS`: Claude's, ChatGPT's and the Grok chat's. */
   readonly redirectUris?: readonly string[];
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => Date;
@@ -152,7 +164,7 @@ function challengeMessage(host: string, claims: { account: string; client_name: 
     claims.account,
     "",
     `Allow ${claims.client_name} to search, quote and pay in AgentPey stores for you, from your spending account on Stellar testnet, within its limits.`,
-    "Continue only if you started this connection yourself, from your own Claude or ChatGPT.",
+    "Continue only if you started this connection yourself, from your own Claude, ChatGPT or Grok.",
     "",
     `Nonce: ${claims.nonce}`,
     `Expires: ${claims.expires}`,
@@ -272,8 +284,8 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     if (!body.success) return oauthFail(res, 400, "invalid_client_metadata", "redirect_uris is required");
     const refused = body.data.redirect_uris.filter((uri) => !redirectAllowed(uri));
     if (refused.length > 0) {
-      // Only the URIs, cut short: they are what a client asked for, never a secret. The schema caps them at five.
-      log("oauth registration refused", { refused: refused.map((uri) => uri.slice(0, LOGGED_URI_MAX)) });
+      // What a client asked for, without anything it carried (`loggableRedirectUri`). The schema caps them at five.
+      log("oauth registration refused", { refused: refused.map(loggableRedirectUri) });
       return oauthFail(res, 400, "invalid_redirect_uri", "this server only sends people back to Claude, ChatGPT, Grok or a loopback address");
     }
     // A `jti` so two identical registrations still get two ids (RFC 7591).
