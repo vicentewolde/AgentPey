@@ -1,7 +1,7 @@
 import { hasErrorCode } from "@agentpass/core";
 import { describe, expect, it } from "vitest";
 
-import { escrowConfigSchema, escrowPurchaseSchema, orderRefHex, parseWindows, storeAccountsFromProfile } from "./purchase-escrow.js";
+import { escrowConfigSchema, escrowDrift, escrowPurchaseSchema, orderRefHex, parseWindows, storeAccountsFromProfile } from "./purchase-escrow.js";
 
 const OPERATOR = "GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ";
 const PAYEE = "GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN";
@@ -82,14 +82,37 @@ describe("CLI output schemas", () => {
       response_hash: null,
       verdict_hash: null,
       refund: "0",
+      refund_owed: "0",
       closed_at: 0,
     });
     expect(purchase.amount).toBe(500_000n);
     expect(Buffer.from(purchase.order_ref, "hex").toString("utf8")).toBe("ord_001");
   });
 
-  it("refuses an order reference out of bounds", () => {
+  it("refuses an order reference out of bounds, and hex of odd length", () => {
     expect(codeOf(() => orderRefHex(""))).toBe("InvalidArguments");
     expect(codeOf(() => orderRefHex("x".repeat(65)))).toBe("InvalidArguments");
+    expect(escrowPurchaseSchema.shape.order_ref.safeParse("abc").success).toBe(false);
+    expect(escrowPurchaseSchema.shape.order_ref.safeParse("ab".repeat(65)).success).toBe(false);
+  });
+});
+
+describe("escrowDrift", () => {
+  const base = {
+    operator: OPERATOR,
+    payee: PAYEE,
+    arbiter: "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+    token: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    releaseWindowSeconds: 600,
+    responseWindowSeconds: 900,
+    resolveWindowSeconds: 3600,
+  };
+
+  it("is empty when the recorded escrow is the one asked for", () => {
+    expect(escrowDrift(base, { ...base })).toEqual([]);
+  });
+
+  it("names each field a re-run would silently not change", () => {
+    expect(escrowDrift(base, { ...base, releaseWindowSeconds: 604_800, payee: OPERATOR })).toEqual(["payee", "releaseWindowSeconds"]);
   });
 });

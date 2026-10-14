@@ -3,12 +3,11 @@ extern crate std;
 
 use super::{Error, PurchaseEscrow, PurchaseEscrowClient, Status, OPEN_DOMAIN, STORAGE_SCHEMA_VERSION};
 use ed25519_dalek::{Signer, SigningKey};
-use rand::rngs::OsRng;
 use soroban_sdk::{
     contract, contractimpl,
-    testutils::{Address as _, Ledger as _},
+    testutils::{Address as _, IssuerFlags, Ledger as _, MockAuth, MockAuthInvoke},
     token::{StellarAssetClient, TokenClient},
-    Address, Bytes, BytesN, Env,
+    Address, Bytes, BytesN, Env, IntoVal,
 };
 
 const NOW: u64 = 1_790_000_000; // a fixed "now" so tests never depend on the clock
@@ -82,14 +81,18 @@ impl Fixture {
         let operator = Address::generate(&env);
         let payee = Address::generate(&env);
         let arbiter = Address::generate(&env);
-        let token_address = env.register_stellar_asset_contract_v2(Address::generate(&env)).address();
+        let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+        // Revocable, so a test can deauthorise a balance and see a refund that cannot be delivered (X-19).
+        asset.issuer().set_flag(IssuerFlags::RevocableFlag);
+        let token_address = asset.address();
         let args = (operator.clone(), payee.clone(), arbiter.clone(), token_address.clone(), RELEASE, RESPONSE, RESOLVE);
         let contract = match at {
             Some(id) => env.register_at(&Address::from_str(&env, id), PurchaseEscrow, args),
             None => env.register(PurchaseEscrow, args),
         };
 
-        let rail_owner = SigningKey::generate(&mut OsRng);
+        // Fixed keys: the snapshots stay the same from one `cargo test` to the next.
+        let rail_owner = SigningKey::from_bytes(&[7; 32]);
         let rail = env.register(MockRail, (BytesN::from_array(&env, &rail_owner.verifying_key().to_bytes()),));
 
         Fixture {
@@ -312,9 +315,9 @@ fn a_signature_from_another_key_is_refused_by_the_host() {
     let f = Fixture::setup();
     let order_ref = f.held(1);
     let claim = hash(&f.env, 42);
-    let stranger = SigningKey::generate(&mut OsRng);
+    let stranger = SigningKey::from_bytes(&[8; 32]);
     let sig = f.sign_open(&stranger, &order_ref, &claim);
-    assert!(f.client.try_open(&order_ref, &claim, &Some(sig)).is_err());
+    assert!(matches!(f.client.try_open(&order_ref, &claim, &Some(sig)), Err(Err(_))));
     assert_eq!(f.status(&order_ref), Status::Held);
 }
 
@@ -326,9 +329,9 @@ fn a_signature_for_another_order_or_claim_or_escrow_does_not_open_this_one() {
     let claim = hash(&f.env, 42);
 
     let for_other_order = f.sign_open(&f.rail_owner, &other, &claim);
-    assert!(f.client.try_open(&target, &claim, &Some(for_other_order)).is_err());
+    assert!(matches!(f.client.try_open(&target, &claim, &Some(for_other_order)), Err(Err(_))));
     let for_other_claim = f.sign_open(&f.rail_owner, &target, &hash(&f.env, 43));
-    assert!(f.client.try_open(&target, &claim, &Some(for_other_claim)).is_err());
+    assert!(matches!(f.client.try_open(&target, &claim, &Some(for_other_claim)), Err(Err(_))));
 
     // The same order and claim in another store's escrow: the contract id is part of the message.
     let config = f.client.config();
@@ -338,7 +341,7 @@ fn a_signature_for_another_order_or_claim_or_escrow_does_not_open_this_one() {
     assert_eq!(message.slice(0..32), Bytes::from_array(&f.env, OPEN_DOMAIN));
     assert_ne!(message, f.client.open_message(&target, &claim));
     let for_other_escrow = BytesN::from_array(&f.env, &f.rail_owner.sign(&to_vec(&message)).to_bytes());
-    assert!(f.client.try_open(&target, &claim, &Some(for_other_escrow)).is_err());
+    assert!(matches!(f.client.try_open(&target, &claim, &Some(for_other_escrow)), Err(Err(_))));
     assert_eq!(f.status(&target), Status::Held);
 }
 
@@ -361,7 +364,7 @@ fn a_classic_payer_opens_with_its_own_stellar_auth() {
 
     let second = f.held_by(2, &buyer, PRICE);
     f.env.set_auths(&[]);
-    assert!(f.client.try_open(&second, &hash(&f.env, 42), &None).is_err());
+    assert!(matches!(f.client.try_open(&second, &hash(&f.env, 42), &None), Err(Err(_))));
     assert_eq!(f.status(&second), Status::Held);
 }
 
@@ -535,12 +538,118 @@ fn only_the_operator_holds_and_ships_only_the_payee_answers_only_the_arbiter_res
     let fresh = f.held(4);
     f.pay(PRICE);
     f.env.set_auths(&[]);
-    assert!(f.client.try_hold(&order(&f.env, 5), &f.rail, &PRICE, &hash(&f.env, 5), &hash(&f.env, 105)).is_err());
-    assert!(f.client.try_mark_shipped(&fresh).is_err());
-    assert!(f.client.try_respond(&disputed, &hash(&f.env, 50)).is_err());
-    assert!(f.client.try_resolve(&answered, &hash(&f.env, 60), &PRICE).is_err());
+    assert!(matches!(f.client.try_hold(&order(&f.env, 5), &f.rail, &PRICE, &hash(&f.env, 5), &hash(&f.env, 105)), Err(Err(_))));
+    assert!(matches!(f.client.try_mark_shipped(&fresh), Err(Err(_))));
+    assert!(matches!(f.client.try_respond(&disputed, &hash(&f.env, 50)), Err(Err(_))));
+    assert!(matches!(f.client.try_resolve(&answered, &hash(&f.env, 60), &PRICE), Err(Err(_))));
     assert!(f.client.get(&order(&f.env, 5)).is_none());
     assert_eq!((f.status(&fresh), f.status(&disputed), f.status(&answered)), (Status::Held, Status::Disputed, Status::Responded));
+}
+
+#[test]
+fn the_arbiter_cannot_touch_a_purchase_nobody_disputed() {
+    let f = Fixture::setup();
+    let held = f.held(1);
+    let shipped = f.shipped(2);
+    f.advance(RESPONSE + RESOLVE + 1);
+    for order_ref in [&held, &shipped] {
+        assert_eq!(f.client.try_resolve(order_ref, &hash(&f.env, 60), &PRICE), Err(Ok(Error::WrongStatus)));
+        assert_eq!(f.client.try_expire(order_ref), Err(Ok(Error::WrongStatus)));
+    }
+    assert_eq!(f.token.balance(&f.rail), 0);
+    assert_eq!((f.status(&held), f.status(&shipped)), (Status::Held, Status::Shipped));
+}
+
+#[test]
+fn a_disputed_purchase_cannot_be_shipped_into_a_release() {
+    let f = Fixture::setup();
+    let order_ref = f.held(1);
+    f.opened(&order_ref);
+    assert_eq!(f.client.try_mark_shipped(&order_ref), Err(Ok(Error::WrongStatus)));
+}
+
+#[test]
+fn another_account_signing_for_the_operator_is_refused_by_the_host() {
+    let f = Fixture::setup();
+    f.pay(PRICE);
+    let args = (order(&f.env, 1), f.rail.clone(), PRICE, hash(&f.env, 1), hash(&f.env, 101));
+    let invoke = MockAuthInvoke { contract: &f.contract, fn_name: "hold", args: args.clone().into_val(&f.env), sub_invokes: &[] };
+    f.env.mock_auths(&[MockAuth { address: &f.payee, invoke: &invoke }]);
+    assert!(matches!(f.client.try_hold(&args.0, &args.1, &args.2, &args.3, &args.4), Err(Err(_))));
+    assert!(f.client.get(&args.0).is_none());
+}
+
+// ------------------------------------------------- a refund nobody can deliver
+
+#[test]
+fn a_refund_the_payer_cannot_receive_is_owed_instead_of_blocking_the_verdict() {
+    let f = Fixture::setup();
+    let order_ref = f.held(1);
+    f.opened(&order_ref);
+    f.client.respond(&order_ref, &hash(&f.env, 50));
+    f.minter.set_authorized(&f.rail, &false); // the payer's balance can no longer receive
+
+    f.client.resolve(&order_ref, &hash(&f.env, 60), &1_000_000);
+    let purchase = f.client.get(&order_ref).unwrap();
+    assert_eq!((purchase.status, purchase.refund, purchase.refund_owed), (Status::Resolved, 1_000_000, 1_000_000));
+    assert_eq!(f.token.balance(&f.payee), PRICE - 1_000_000); // the store got its part anyway
+    assert_eq!(f.token.balance(&f.contract), 1_000_000);
+    assert_eq!(f.client.unallocated(), 0); // the owed refund stays allocated: no hold can take it
+
+    assert_eq!(f.client.try_claim_refund(&order_ref), Err(Ok(Error::RefundUndeliverable)));
+    f.minter.set_authorized(&f.rail, &true);
+    f.env.set_auths(&[]); // anyone may send it, and it only goes to the payer
+    f.client.claim_refund(&order_ref);
+    assert_eq!(f.token.balance(&f.rail), 1_000_000);
+    assert_eq!(f.client.get(&order_ref).unwrap().refund_owed, 0);
+    assert_eq!(f.client.try_claim_refund(&order_ref), Err(Ok(Error::NoRefundOwed)));
+}
+
+#[test]
+fn a_classic_payer_without_a_trustline_cannot_freeze_the_money_through_expire() {
+    let f = Fixture::setup();
+    // An account this ledger has never seen: the same refusal as a dropped USDC trustline.
+    let buyer = Address::from_str(&f.env, CLASSIC_PAYER);
+    let order_ref = f.held_by(1, &buyer, PRICE);
+    f.client.open(&order_ref, &hash(&f.env, 42), &None);
+    f.advance(RESPONSE + RESOLVE + 1);
+
+    f.client.expire(&order_ref);
+    let purchase = f.client.get(&order_ref).unwrap();
+    assert_eq!((purchase.status, purchase.refund_owed), (Status::Expired, PRICE));
+    assert_eq!(f.client.unallocated(), 0);
+    assert_eq!(f.client.try_claim_refund(&order_ref), Err(Ok(Error::RefundUndeliverable)));
+}
+
+#[test]
+fn a_payee_that_cannot_receive_only_delays_its_own_payment() {
+    let f = Fixture::setup();
+    let released = f.shipped(1);
+    let disputed = f.held(2);
+    f.opened(&disputed);
+    f.minter.set_authorized(&f.payee, &false);
+
+    f.advance(RESPONSE + RESOLVE + 1);
+    assert_eq!(f.client.try_release(&released), Err(Ok(Error::PayeeCannotReceive)));
+    assert_eq!(f.status(&released), Status::Shipped); // nothing changed
+    f.client.expire(&disputed); // the buyer is refunded in full regardless
+    assert_eq!(f.token.balance(&f.rail), PRICE);
+
+    f.minter.set_authorized(&f.payee, &true);
+    f.client.release(&released);
+    assert_eq!(f.token.balance(&f.payee), PRICE);
+}
+
+#[test]
+fn a_delivered_refund_owes_nothing() {
+    let f = Fixture::setup();
+    let order_ref = f.held(1);
+    f.opened(&order_ref);
+    f.client.respond(&order_ref, &hash(&f.env, 50));
+    f.client.resolve(&order_ref, &hash(&f.env, 60), &PRICE);
+    assert_eq!(f.client.get(&order_ref).unwrap().refund_owed, 0);
+    assert_eq!(f.client.try_claim_refund(&order_ref), Err(Ok(Error::NoRefundOwed)));
+    assert_eq!(f.client.try_claim_refund(&order(&f.env, 9)), Err(Ok(Error::PurchaseNotFound)));
 }
 
 // ------------------------------------------------------------ shared formats

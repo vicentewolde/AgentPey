@@ -18,6 +18,7 @@ authorise a `transfer`, and does not check who receives it.
 | `respond(order_ref, response_hash)` | payee | The store's answer, inside the response window |
 | `resolve(order_ref, verdict_hash, refund)` | arbiter | Refund to the payer, the rest to the payee. Not while the store may still answer, not after the arbiter's deadline |
 | `expire(order_ref)` | anyone | Full refund once the arbiter's deadline (response + resolve windows after `open`) has passed |
+| `claim_refund(order_ref)` | anyone | Sends a refund that could not be delivered at close (`refund_owed`) to that same payer |
 | `get`, `by_tx`, `unallocated`, `config`, `open_message`, `schema_version` | anyone | Reads |
 
 `operator` is the store's signing account, whose key the store's server holds.
@@ -45,14 +46,28 @@ signature aborts the call. `escrowOpenMessage` and `signEscrowOpen` in
 `@agentpey/resolve` build the same bytes. A shared test vector in both test
 suites keeps them in step.
 
-## Known limit
+## When a party cannot receive
 
-`payer` is what the operator says it is. A stolen operator key plus an absent
-arbiter could `hold` with a fake payer and collect through `expire`. The receipt
-verifier compares the payer with the settled transaction, and the arbiter's
-deadline is the backstop.
+A refund the payer cannot receive (a classic account that dropped its USDC
+trustline, or a deauthorised balance) does not block the outcome: the purchase
+closes, the store gets its part, and the refund stays here as `refund_owed`
+until `claim_refund` delivers it. A payee that cannot receive makes its own
+`release` or `resolve` fail with `PayeeCannotReceive` and nothing changes;
+`expire` still refunds the payer in full. Token failures surface under this
+contract's own codes (`RefundUndeliverable`, `PayeeCannotReceive`), never as
+the token's numbers read as this contract's.
 
-Decisions: `X-1` to `X-18` in `docs/fase-9-compra-protegida/DECISIONES.md`.
+## Known limits
+
+- A payment that lands here and is never held has no way out for the buyer:
+  only the operator can allocate it. The store holds right after settling, and
+  retries (T159, T160).
+- `payer` is what the operator says it is. A stolen operator key plus an absent
+  arbiter could `hold` with a fake payer and collect through `expire`. The
+  receipt verifier compares the payer with the settled transaction, and the
+  arbiter's deadline is the backstop.
+
+Decisions: `X-1` to `X-20` in `docs/fase-9-compra-protegida/DECISIONES.md`.
 
 ```bash
 cd contracts && cargo test -p purchase-escrow

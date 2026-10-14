@@ -25,7 +25,7 @@ export const ESCROW_STATUSES = ["Held", "Shipped", "Released", "Disputed", "Resp
 
 /** `get` / `by_tx` as the CLI prints a `Purchase`: bytes in hex, i128 as a string, `None` as null. */
 export const escrowPurchaseSchema = z.object({
-  order_ref: z.string().regex(/^[0-9a-f]{2,128}$/),
+  order_ref: z.string().regex(/^(?:[0-9a-f]{2}){1,64}$/),
   payer: z.union([stellarAddressSchema, stellarContractIdSchema]),
   amount: z.coerce.bigint(),
   tx_hash: hex32,
@@ -38,6 +38,7 @@ export const escrowPurchaseSchema = z.object({
   response_hash: hex32.nullable(),
   verdict_hash: hex32.nullable(),
   refund: z.coerce.bigint(),
+  refund_owed: z.coerce.bigint(),
   closed_at: z.coerce.number().int(),
 });
 export type EscrowPurchase = z.infer<typeof escrowPurchaseSchema>;
@@ -99,6 +100,19 @@ export function storeAccountsFromProfile(profile: unknown, handlerId = "com.agen
   if (!payee.success) throw new AgentPassError("ConfigError", "the store's pay_to is not a Stellar account", { details: { payTo: handler.config.pay_to } });
   if (payee.data === operator) throw new AgentPassError("ConfigError", "the store signs and collects with the same account; X-4 expects two", { details: { operator } });
   return { operator, payee: payee.data };
+}
+
+/**
+ * What a re-run would change about a recorded escrow: every field the
+ * constructor fixed that differs from what was asked. Empty means the record
+ * is the escrow asked for.
+ */
+export function escrowDrift(
+  recorded: StoreAccounts & EscrowWindows & { readonly arbiter: string; readonly token: string },
+  asked: StoreAccounts & EscrowWindows & { readonly arbiter: string; readonly token: string },
+): string[] {
+  const fields = ["operator", "payee", "arbiter", "token", "releaseWindowSeconds", "responseWindowSeconds", "resolveWindowSeconds"] as const;
+  return fields.filter((field) => recorded[field] !== asked[field]);
 }
 
 /** An order reference as the CLI takes `Bytes`: hex of its UTF-8. */

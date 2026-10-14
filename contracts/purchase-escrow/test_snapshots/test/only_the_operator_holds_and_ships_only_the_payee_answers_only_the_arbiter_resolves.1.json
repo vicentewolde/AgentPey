@@ -384,7 +384,7 @@
               "seq_num": "0",
               "num_sub_entries": 0,
               "inflation_dest": null,
-              "flags": 0,
+              "flags": 2,
               "home_domain": "",
               "thresholds": "01010101",
               "signers": [],
@@ -877,6 +877,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "refund_owed"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "response_hash"
                     },
                     "val": {
@@ -1014,6 +1022,14 @@
                   {
                     "key": {
                       "symbol": "refund"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "refund_owed"
                     },
                     "val": {
                       "i128": "0"
@@ -1161,6 +1177,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "refund_owed"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "response_hash"
                     },
                     "val": {
@@ -1294,6 +1318,14 @@
                   {
                     "key": {
                       "symbol": "refund"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "refund_owed"
                     },
                     "val": {
                       "i128": "0"
@@ -1472,7 +1504,7 @@
                         "u32": 0
                       },
                       "val": {
-                        "bytes": "b72ce8d0b0f51fc53e7ccdbb1c716475e688c667ea5ec8170b8dd6fddf704b73"
+                        "bytes": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c"
                       }
                     }
                   ]

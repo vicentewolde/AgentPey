@@ -61,7 +61,7 @@ export const agentResolveDeploymentSchema = z.strictObject({
 });
 
 /**
- * A `purchase-escrow` (T157, `X-1` to `X-16`): one per store (`X-11`), so the
+ * A `purchase-escrow` (T157, `X-1` to `X-19`): one per store (`X-11`), so the
  * record is keyed by the store's slug. `rehearsal` is the instance whose keys
  * live in `.env.local`, used to prove the contract on testnet without the
  * store's own signing key.
@@ -86,6 +86,15 @@ export const purchaseEscrowDeploymentSchema = z.strictObject({
 
 export const escrowSlugSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
 
+/**
+ * An escrow replaced by `--redeploy`. It keeps whatever it held, so its id is
+ * never dropped from the record: a retired escrow can still be read and closed.
+ */
+export const retiredPurchaseEscrowSchema = purchaseEscrowDeploymentSchema.extend({
+  slug: escrowSlugSchema,
+  retiredAt: z.iso.datetime(),
+});
+
 export const deploymentSchema = z.strictObject({
   network: z.literal("testnet"),
   networkPassphrase: z.string().min(1),
@@ -100,6 +109,7 @@ export const deploymentSchema = z.strictObject({
   agentResolve: agentResolveDeploymentSchema.nullable().default(null),
   /** T157: one escrow per store slug (`X-11`). */
   purchaseEscrows: z.record(escrowSlugSchema, purchaseEscrowDeploymentSchema).default({}),
+  retiredPurchaseEscrows: z.array(retiredPurchaseEscrowSchema).default([]),
 });
 
 export type Deployment = z.infer<typeof deploymentSchema>;
@@ -119,6 +129,7 @@ export const EMPTY_DEPLOYMENT: Deployment = {
   policyRailMcp: null,
   agentResolve: null,
   purchaseEscrows: {},
+  retiredPurchaseEscrows: [],
 };
 
 export async function readDeployment(path: string): Promise<Deployment> {

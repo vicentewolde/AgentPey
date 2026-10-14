@@ -8906,3 +8906,16 @@ Por qué: primera tarea de la Fase 9 (`P-19`).
 Pendiente: `/revisar`; merge con OK del usuario; después `/tarea T158`. La llave de firma de `agentcommerce` vive
 solo en producción, así que su primer `hold` llega en T160 (`X-17`). Exponential: ticket T157 en `IN_PROGRESS`.
 `AGENTS.md`: la lista de lo que Codex no toca suma `scripts/*escrow*` y `escrow-open.ts`.
+
+## 2026-10-14 (10) — cc/t157-escrow-contrato
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T157, sin bloqueantes; el usuario pidió corregir todo. Un reembolso que no se puede entregar queda
+como deuda cobrable (`claim_refund`) en vez de trabar la plata (`X-19`); las fallas del token salen con códigos propios.
+Escrows redesplegados con OK del usuario: `agentcommerce` `CBQFELK5…DO27A`, ensayo `CCTVYTWF…YLDO` (wasm
+`f5c6bbb6…`); los anteriores quedan en `retiredPurchaseEscrows`, en cero. Ensayo repetido: un pago liberado y uno
+reembolsado. Tests nuevos (35 en el contrato), llaves fijas en los tests, el script de despliegue compara con lo
+registrado. El pago sin `hold` queda como límite, cubierto en T159 y T160 (`X-20`).
+
+Pendiente: merge con OK del usuario; después `/tarea T158`. Exponential: sin cambios. `AGENTS.md`: sin cambios.

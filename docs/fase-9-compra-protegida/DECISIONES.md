@@ -235,6 +235,10 @@ instancias del mismo wasm (`d0d1d877…`):
 
 El mismo hash de wasm prueba que el ensayo corre el mismo código que el escrow de la tienda.
 
+**Actualización (14-oct, `X-19`):** los dos se redesplegaron con el wasm corregido (`f5c6bbb6…`): `agentcommerce`
+pasó a `CBQFELK5…DO27A` y el ensayo a `CCTVYTWF…YLDO`, con las mismas cuentas y ventanas. Los ids de arriba quedan en
+`retiredPurchaseEscrows`, en cero.
+
 **Motivo.** Saca la evidencia sin mover la llave de firma de una tienda en producción.
 
 **Alternativas descartadas.** Descifrar en local la llave de `agentcommerce` con la `MASTER_KEY` de Render: saca una
@@ -256,3 +260,48 @@ la orden impide usar una firma en otro escrow o para otra orden.
 
 **Alternativa descartada: el XDR de una tupla.** Es más difícil de reproducir exacto fuera de la red, y el formato
 dependería de cómo cada SDK codifica los tipos.
+
+---
+
+### X-19 · Un reembolso que no se puede entregar queda como deuda cobrable, y no traba el resultado · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 (`/revisar`) · Decidido por el usuario
+
+`/revisar` encontró que `close` hacía las dos transferencias en la misma llamada. Si el pagador era una cuenta clásica
+que, después de reclamar, quitaba su trustline de USDC (o el emisor desautorizaba su saldo), fallaban `resolve` con
+reembolso y también `expire`. Si el árbitro no resolvía con reembolso 0 a tiempo, la plata quedaba trabada para
+siempre y un comprador podía bloquearle el cobro a la tienda.
+
+**Se decide.**
+1. El reembolso se intenta con `try_transfer`. Si no se puede entregar, la compra igual se cierra, la tienda cobra su
+   parte, y el reembolso queda asignado en el contrato como `refund_owed`.
+2. `claim_refund(order_ref)` lo entrega más tarde. Cualquiera puede llamarlo, y solo paga a ese pagador.
+3. Las fallas del token salen con códigos propios del escrow (`RefundUndeliverable`, `PayeeCannotReceive`). Sin eso,
+   el número de error del token se leía como uno del escrow: en un test, un reembolso sin entregar aparecía como
+   `MissingSignature`.
+4. Si la cuenta de cobro no puede recibir, la llamada falla sin cambiar nada: solo espera el cobro de la tienda, y
+   `expire` igual le devuelve todo al comprador.
+5. Como el contrato no se puede actualizar, se redesplegaron los dos escrows (`X-17`) y se repitió el ensayo.
+   `deploy:purchase-escrow` ahora guarda el escrow reemplazado en `retiredPurchaseEscrows`, y no da por bueno uno
+   registrado con otras cuentas o ventanas.
+
+**Motivo.** Ningún participante puede trabar la plata del otro: quien no puede recibir solo demora lo suyo.
+
+**Alternativas descartadas.**
+- **Reembolso siempre por retiro:** la devolución necesitaría dos transacciones aun en el caso normal.
+- **Dejarlo como límite de v0:** el riesgo era de fondos y el arreglo cabía en la misma tarea.
+
+---
+
+### X-20 · Un pago que llega sin `hold` es un límite de v0, y T159 y T160 lo cubren desde la tienda · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 (`/revisar`), T159, T160 · Decidido por el usuario
+
+Si la tienda nunca llama `hold` (el servidor se cae entre la liquidación y el registro), o si llega un sobrepago, la
+plata queda como no asignada. El comprador no puede reclamarla (`open` exige una compra registrada) y solo el operador
+puede asignarla. En la red no hay forma de saber de quién es un pago sin `hold`, así que el contrato no lo resuelve.
+
+**Se decide.** Queda escrito como límite en el README del contrato y en el §4.2 del spec. T159 registra la compra
+justo después de liquidar y reintenta el `hold`. T160 hace que el agente avise si `by_tx` no encuentra la compra de su
+pago.
+
+**Alternativa descartada: una función para que el operador devuelva saldo no asignado a una dirección.** Le daría al
+operador un camino para mandar plata a cualquier lado.

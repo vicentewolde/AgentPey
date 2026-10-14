@@ -90,11 +90,12 @@ cada cambio de estado.
 | `hold(order_ref, payer, amount, tx_hash, receipt_hash)` | `operator` | Registra una compra pagada al escrow. Rechaza un `tx_hash` repetido (un pago, un recibo), un `order_ref` repetido y un monto mayor que el saldo no asignado del contrato |
 | `mark_shipped(order_ref)` | `operator` | Abre la ventana de liberación |
 | `release(order_ref)` | Cualquiera | Paga `amount` a `payee` si la compra está despachada, la ventana cerró y no hay reclamo |
-| `open(order_ref, claim_hash, sig)` | Nadie en particular: `sig` es la firma Ed25519 de `payer.owner()` sobre el mensaje de 4.3 | Abre la disputa y congela la liberación. Vale mientras la compra no esté liberada (`X-12`) |
+| `open(order_ref, claim_hash, sig)` | Nadie en particular: `sig` es la firma Ed25519 de `payer.owner()` sobre el mensaje de 4.3; un pagador con cuenta clásica firma la llamada (`X-16`) | Abre la disputa y congela la liberación. Vale hasta que cierra la ventana de liberación (`X-12`, `X-15`) |
 | `respond(order_ref, response_hash)` | `payee`, dentro de `response_window` desde la apertura | Una respuesta tardía se rechaza en la red |
 | `resolve(order_ref, verdict_hash, refund)` | `arbiter` | Reembolsa `refund` al pagador (el rail que pagó) y paga el resto a `payee`. Se rechaza si el comercio no respondió y `response_window` sigue abierta |
 | `expire(order_ref)` | Cualquiera | Si el árbitro no resolvió dentro de `response_window + resolve_window` desde la apertura: reembolso completo al pagador (`X-7`) |
-| Lecturas: `config()`, `get(order_ref)`, `by_tx(tx_hash)`, `unallocated()` | — | Para el verificador, la orden UCP, el MCP y el agente |
+| `claim_refund(order_ref)` | Cualquiera | Entrega al pagador un reembolso que no se pudo entregar al cerrar (`X-19`) |
+| Lecturas: `config()`, `get(order_ref)`, `by_tx(tx_hash)`, `unallocated()`, `open_message(...)` | — | Para el verificador, la orden UCP, el MCP y el agente |
 
 Estados: `Held → Shipped → Released`, o `Held|Shipped → Disputed → (Responded) → Resolved|Expired`.
 Una compra admite una sola disputa, como en `agent-resolve`.
@@ -102,8 +103,13 @@ Una compra admite una sola disputa, como en `agent-resolve`.
 Con esto el recibo queda atado a su pago en la red (`tx_hash` → compra → `receipt_hash`) sin redesplegar
 `receipt-registry`, que sigue anclando el recibo como hoy.
 
-**Límite de v0, a la vista:** si la tienda nunca despacha, el pago queda retenido hasta que el comprador reclame
-(`not_delivered`). No hay liberación ni reembolso automáticos sin despacho.
+**Límites de v0, a la vista:**
+- Si la tienda nunca despacha, el pago queda retenido hasta que el comprador reclame (`not_delivered`). No hay
+  liberación ni reembolso automáticos sin despacho.
+- Un pago que llega sin `hold`, o un sobrepago, queda como no asignado: el comprador no puede reclamarlo y solo el
+  operador puede asignarlo (`X-20`). T159 y T160 lo cubren desde la tienda y el agente.
+- Quien no puede recibir (sin trustline, saldo desautorizado) solo demora lo suyo: un reembolso queda como deuda
+  cobrable con `claim_refund`, y una tienda que no puede cobrar no impide `expire` (`X-19`).
 
 ### 4.3 El reclamo en la red
 
@@ -156,7 +162,8 @@ sin tocar esta interfaz.
 ### 4.7 Decisiones
 
 Las de esta fase van a [`DECISIONES.md`](DECISIONES.md) con prefijo `X-` (`X-1` a `X-13`, respondidas por el
-usuario el 14-oct; `X-14`, el resultado del chequeo del día 1). Las que tocan Vitrinee por dentro siguen con `VT-`.
+usuario el 14-oct; `X-14`, el resultado del chequeo del día 1; `X-15` a `X-20`, precisiones de T157 aprobadas por el
+usuario). Las que tocan Vitrinee por dentro siguen con `VT-`.
 
 ## 5. Tareas
 
@@ -173,7 +180,7 @@ explícito del usuario.
 - **Descripción:** el contrato de 4.2 y el mensaje de 4.3.
 - **Hecho cuando:**
   - [x] hay tests de liberación al vencer, reembolso total y parcial, respuesta tardía rechazada, `release` antes de tiempo rechazado, `open` con firma inválida o de otra llave rechazado, `hold` duplicado (mismo `tx_hash` o mismo `order_ref`) rechazado, `hold` sin saldo rechazado, `resolve` antes de tiempo rechazado, `expire` y llamadas sin autorización rechazadas
-  - [x] el contrato está desplegado en testnet para `agentcommerce` con el OK del usuario y registrado en `deployments/testnet.json` (`CDQLUZUR…TNJH`, más un escrow de ensayo del mismo wasm, `X-17`)
+  - [x] el contrato está desplegado en testnet para `agentcommerce` con el OK del usuario y registrado en `deployments/testnet.json` (`CBQFELK5…DO27A`, más un escrow de ensayo del mismo wasm, `X-17`; redesplegados por `X-19`)
   - [x] hay hashes de **un pago liberado y uno reembolsado** (todavía con un `hold` manual), en el escrow de ensayo (`X-17`, [evidencia](evidencia/T157.md))
 
 #### T158 · El veredicto actúa sobre el pago retenido
@@ -190,7 +197,7 @@ explícito del usuario.
 #### T159 · Un pago, un recibo, en la red
 - **Estimación:** 6 h · **Delegable a Codex:** no · **Depende de:** T157
 - **Archivos principales:** `packages/vitrinee-gateway/` (`hold` tras liquidar), `packages/vitrinee-anchor/src/verify.ts` y `settlement.ts`, `packages/vitrinee-core/src/receipt.ts`
-- **Descripción:** la tienda llama `hold` con `tx_hash`, pagador y `receipt_hash` tras liquidar. `verifyReceipt` suma la comprobación del vínculo cuando el recibo declara escrow (4.4, paso 5).
+- **Descripción:** la tienda llama `hold` con `tx_hash`, pagador y `receipt_hash` justo después de liquidar, y lo reintenta si falla (`X-20`). `verifyReceipt` suma la comprobación del vínculo cuando el recibo declara escrow (4.4, paso 5).
 - **Hecho cuando:**
   - [ ] hay un hash de un **recibo duplicado rechazado** por la red
   - [ ] el verificador da inválido un recibo cuyo `tx_hash` no coincide, con el motivo
@@ -203,7 +210,8 @@ explícito del usuario.
 - **Descripción:** 4.4, pasos 1 a 4:
   - la tienda con escrow declara el contrato en el handler (versión nueva) y pone `payTo` = escrow;
   - registra la compra con `hold` después de liquidar;
-  - el agente, al releer el perfil, exige que el `payTo` sea el escrow declarado y que corra el wasm conocido.
+  - el agente, al releer el perfil, exige que el `payTo` sea el escrow declarado y que corra el wasm conocido;
+  - después de pagar, el agente avisa si `by_tx` no encuentra la compra de su pago (`X-20`).
   Sin cambios en `policy_rail`, `checkMandate` ni los topes.
 - **Hecho cuando:**
   - [ ] **una compra real en testnet queda retenida** en el escrow (hash del pago y del `hold`)
@@ -334,6 +342,7 @@ push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por
 | 2026-10-14 | **Aprobado** por el usuario, sin cambios en las tareas. Tickets T157 a T167 en Exponential |
 | 2026-10-14 | Chequeo del día 1 con OK del usuario: el facilitator liquida hacia un contrato (`X-14`) |
 | 2026-10-14 | T157 en revisión: contrato `purchase-escrow` con 28 tests, desplegado para `agentcommerce` y como ensayo; un pago liberado y uno reembolsado en testnet. Precisiones aprobadas por el usuario: `X-15` a `X-18` |
+| 2026-10-14 | `/revisar` de T157: reembolso no entregable como deuda cobrable y escrows redesplegados (`X-19`); el pago sin `hold` queda como límite, cubierto en T159 y T160 (`X-20`) |
 
 ---
 

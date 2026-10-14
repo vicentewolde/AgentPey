@@ -16,9 +16,10 @@
  *
  * The arbiter is AgentResolve's (`RESOLVE_ARBITER_SECRET_KEY`, `E-16`). The
  * deployer pays fees from `ADMIN_SECRET_KEY`. Re-runnable: a recorded escrow
- * built from the same wasm is left alone; different wasm stops and asks for
- * `--redeploy`, because that is a new contract id and the old one keeps
- * whatever it holds.
+ * built from the same wasm and with the same accounts and windows is left
+ * alone. Anything else stops and asks for `--redeploy`, because that is a new
+ * contract id: the old one keeps whatever it holds, and is moved to
+ * `retiredPurchaseEscrows` rather than dropped.
  */
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -32,7 +33,7 @@ import { z } from "zod";
 import { escrowSlugSchema, readDeployment, writeDeployment } from "./lib/deployment.js";
 import { readEnvFile } from "./lib/env-file.js";
 import { TESTNET, getLiveVersion, getTrustline, openTrustline } from "./lib/network.js";
-import { escrowConfigSchema, parseWindows, storeAccountsFromProfile, type StoreAccounts } from "./lib/purchase-escrow.js";
+import { escrowConfigSchema, escrowDrift, parseWindows, storeAccountsFromProfile, type StoreAccounts } from "./lib/purchase-escrow.js";
 import { CONTRACTS_ROOT, lastLine, stellarCli } from "./lib/stellar-cli.js";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -122,15 +123,18 @@ async function main(): Promise<void> {
   out(`  wasm         ${wasm.byteLength} bytes · ${wasmHash.slice(0, 16)}…`);
 
   const previous = recorded.purchaseEscrows[slug];
+  const asked = { ...accounts, arbiter, token, ...windows };
   if (previous !== undefined && !REDEPLOY) {
-    if (previous.wasmHash !== wasmHash) {
-      throw new AgentPassError("ConfigError", "the source builds a different wasm than the deployed escrow; re-run with --redeploy", {
-        details: { deployed: previous.wasmHash, built: wasmHash, warning: "a redeploy creates a NEW contract id; the old one keeps what it holds" },
+    const drift = escrowDrift(previous, asked);
+    if (previous.wasmHash !== wasmHash || drift.length > 0) {
+      throw new AgentPassError("ConfigError", "the recorded escrow is not the one asked for; re-run with --redeploy", {
+        details: { contractId: previous.contractId, wasm: { deployed: previous.wasmHash, built: wasmHash }, differs: drift, warning: "a redeploy creates a NEW contract id; the old one keeps what it holds" },
       });
     }
     out(`\n  already deployed: ${previous.contractId}`);
     return;
   }
+  if (previous !== undefined) out(`  retiring     ${previous.contractId} (kept in retiredPurchaseEscrows)`);
 
   const uploaded = lastLine(await stellarCli(["contract", "upload", "--wasm", WASM_PATH], admin.secret()));
   if (uploaded !== wasmHash) throw new AgentPassError("CommandFailed", "the uploaded wasm hash differs from the local one", { details: { uploaded, local: wasmHash } });
@@ -153,14 +157,19 @@ async function main(): Promise<void> {
   if (!StrKey.isValidContract(contractId)) throw new AgentPassError("CommandFailed", "the CLI did not return a contract id", { details: { output: contractId } });
 
   const live = escrowConfigSchema.parse(JSON.parse(lastLine(await stellarCli(["contract", "invoke", "--id", contractId, "--send", "no", "--", "config"], admin.secret()))));
-  const asked = { ...accounts, arbiter, token, release_window: windows.releaseWindowSeconds, response_window: windows.responseWindowSeconds, resolve_window: windows.resolveWindowSeconds };
-  if (JSON.stringify(live) !== JSON.stringify({ ...live, ...asked })) {
-    throw new AgentPassError("ConfigError", "the deployed escrow does not match what was asked for", { details: { contractId, live, asked } });
+  const liveDrift = escrowDrift(
+    { ...live, releaseWindowSeconds: live.release_window, responseWindowSeconds: live.response_window, resolveWindowSeconds: live.resolve_window },
+    asked,
+  );
+  if (liveDrift.length > 0) {
+    throw new AgentPassError("ConfigError", "the deployed escrow does not match what was asked for", { details: { contractId, live, differs: liveDrift } });
   }
 
   await writeDeployment(DEPLOYMENT_PATH, {
     ...recorded,
     protocolVersion: version.protocolVersion,
+    retiredPurchaseEscrows:
+      previous === undefined ? recorded.retiredPurchaseEscrows : [...recorded.retiredPurchaseEscrows, { ...previous, slug, retiredAt: new Date().toISOString() }],
     purchaseEscrows: {
       ...recorded.purchaseEscrows,
       [slug]: {

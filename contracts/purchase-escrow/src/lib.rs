@@ -1,6 +1,6 @@
 //! PurchaseEscrow — one store's agent purchases, held until they ship and
 //! released or refunded by the contract's own deadlines (Fase 9, T157;
-//! decisions X-1 to X-18).
+//! decisions X-1 to X-19).
 //!
 //! A buyer's x402 payment lands here as a plain token `transfer` (the
 //! `policy_rail` can authorise nothing else, `X-3`). The store then records
@@ -15,6 +15,10 @@
 //! - `respond` is the store's answer, accepted only inside the response window.
 //! - `resolve` is the arbiter's verdict: a refund to the payer, the rest to the
 //!   store. `expire` refunds everything if the arbiter misses its deadline (`X-7`).
+//! - A refund the payer cannot receive (a classic account that dropped its
+//!   USDC trustline, or a deauthorised balance) does not block the outcome: the
+//!   purchase closes, the store gets its part, and the refund stays here, owed,
+//!   until anyone calls `claim_refund` to send it to that same payer (`X-19`).
 //!
 //! One contract per store (`X-11`): a contract cannot read another
 //! transaction's hash, so with a shared escrow one store could `hold` a
@@ -26,7 +30,9 @@
 //! its server holds (`hold`, `mark_shipped`); `payee` is its payout account,
 //! the merchant's own wallet (`respond`, and where releases go).
 //!
-//! Known limit: `payer` is what the operator says it is. A stolen operator key
+//! Known limits: a payment that lands here and is never held has no way out
+//! for the buyer (only the operator can allocate it), and `payer` is what the
+//! operator says it is. A stolen operator key
 //! plus an absent arbiter could `hold` with a fake payer and collect through
 //! `expire`. The receipt verifier compares the payer with the settled
 //! transaction (T159), and the arbiter's deadline is the backstop.
@@ -88,6 +94,12 @@ pub enum Error {
     ResolveWindowOpen = 16,
     /// The refund is larger than the purchase.
     RefundExceedsAmount = 17,
+    /// This purchase owes no refund.
+    NoRefundOwed = 18,
+    /// The payer still cannot receive the owed refund (no trustline, or a deauthorised balance).
+    RefundUndeliverable = 19,
+    /// The payee cannot receive its payment (no trustline, or a deauthorised balance). Nothing changed.
+    PayeeCannotReceive = 20,
 }
 
 /// The one function of `policy_rail` this contract calls: its owner's raw Ed25519 key.
@@ -146,8 +158,10 @@ pub struct Purchase {
     pub opened_at: u64,
     pub response_hash: Option<BytesN<32>>,
     pub verdict_hash: Option<BytesN<32>>,
-    /// What went back to the payer, once the purchase is closed.
+    /// What the outcome refunds to the payer, once the purchase is closed.
     pub refund: i128,
+    /// The part of `refund` that could not be delivered yet; `claim_refund` sends it (`X-19`).
+    pub refund_owed: i128,
     /// When it was released, resolved or expired; 0 while open.
     pub closed_at: u64,
 }
@@ -222,6 +236,24 @@ pub struct DisputeExpired {
     #[topic]
     pub order_ref: Bytes,
     pub refund: i128,
+}
+
+#[contractevent(topics = ["escrow", "refund_owed"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RefundOwed {
+    #[topic]
+    pub order_ref: Bytes,
+    pub payer: Address,
+    pub amount: i128,
+}
+
+#[contractevent(topics = ["escrow", "refund_paid"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RefundPaid {
+    #[topic]
+    pub order_ref: Bytes,
+    pub payer: Address,
+    pub amount: i128,
 }
 
 #[contract]
@@ -320,6 +352,7 @@ impl PurchaseEscrow {
             response_hash: None,
             verdict_hash: None,
             refund: 0,
+            refund_owed: 0,
             closed_at: 0,
         };
         Self::save(&env, &purchase);
@@ -356,7 +389,7 @@ impl PurchaseEscrow {
         if now < purchase.shipped_at.saturating_add(config.release_window) {
             return Err(Error::ReleaseTooEarly);
         }
-        Self::close(&env, &config, &mut purchase, Status::Released, 0, now);
+        Self::close(&env, &config, &mut purchase, Status::Released, 0, now)?;
         Released { order_ref, payee: config.payee, amount: purchase.amount }.publish(&env);
         Ok(())
     }
@@ -404,9 +437,11 @@ impl PurchaseEscrow {
     /// reference. Everything but the last part has a fixed length.
     pub fn open_message(env: Env, order_ref: Bytes, claim_hash: BytesN<32>) -> Bytes {
         let mut message = Bytes::from_array(&env, OPEN_DOMAIN);
-        if let Some(AddressPayload::ContractIdHash(id)) = env.current_contract_address().to_payload() {
-            message.append(&id.into());
-        }
+        // A contract's own address is always a contract id; anything else would be a host bug, so fail closed.
+        let Some(AddressPayload::ContractIdHash(id)) = env.current_contract_address().to_payload() else {
+            panic!("a contract address without a contract id");
+        };
+        message.append(&id.into());
         message.append(&claim_hash.into());
         message.append(&order_ref);
         message
@@ -457,7 +492,7 @@ impl PurchaseEscrow {
             return Err(Error::RefundExceedsAmount);
         }
         purchase.verdict_hash = Some(verdict_hash.clone());
-        Self::close(&env, &config, &mut purchase, Status::Resolved, refund, now);
+        Self::close(&env, &config, &mut purchase, Status::Resolved, refund, now)?;
         DisputeResolved { order_ref, verdict_hash, refund }.publish(&env);
         Ok(())
     }
@@ -475,8 +510,28 @@ impl PurchaseEscrow {
             return Err(Error::ResolveWindowOpen);
         }
         let refund = purchase.amount;
-        Self::close(&env, &config, &mut purchase, Status::Expired, refund, now);
+        Self::close(&env, &config, &mut purchase, Status::Expired, refund, now)?;
         DisputeExpired { order_ref, refund }.publish(&env);
+        Ok(())
+    }
+
+    /// Sends a refund that could not be delivered at close to the payer it is
+    /// owed to. Anyone may call it; the money only ever goes to that payer (`X-19`).
+    pub fn claim_refund(env: Env, order_ref: Bytes) -> Result<(), Error> {
+        let config = Self::load_config(&env);
+        let mut purchase = Self::load(&env, &order_ref)?;
+        let amount = purchase.refund_owed;
+        if amount <= 0 {
+            return Err(Error::NoRefundOwed);
+        }
+        // A token error would otherwise surface under this contract's own codes: name it.
+        if !matches!(token::Client::new(&env, &config.token).try_transfer(&env.current_contract_address(), &purchase.payer, &amount), Ok(Ok(()))) {
+            return Err(Error::RefundUndeliverable);
+        }
+        purchase.refund_owed = 0;
+        Self::set_allocated(&env, Self::allocated(&env) - amount);
+        Self::save(&env, &purchase);
+        RefundPaid { order_ref, payer: purchase.payer, amount }.publish(&env);
         Ok(())
     }
 
@@ -485,22 +540,30 @@ impl PurchaseEscrow {
     }
 
     /// Pays `refund` to the payer and the rest to the payee, frees the allocation and records the outcome.
-    fn close(env: &Env, config: &Config, purchase: &mut Purchase, status: Status, refund: i128, now: u64) {
-        purchase.status = status;
-        purchase.refund = refund;
-        purchase.closed_at = now;
-        Self::set_allocated(env, Self::allocated(env) - purchase.amount);
-        Self::save(env, purchase);
-
+    /// A refund the payer cannot receive stays allocated here as `refund_owed` instead of failing the
+    /// whole outcome (`X-19`). If the payee cannot receive, the call fails with `PayeeCannotReceive` and
+    /// nothing changes: only the payee's own outcome waits, and `expire` still refunds the payer in full.
+    fn close(env: &Env, config: &Config, purchase: &mut Purchase, status: Status, refund: i128, now: u64) -> Result<(), Error> {
         let token = token::Client::new(env, &config.token);
         let this = env.current_contract_address();
-        if refund > 0 {
-            token.transfer(&this, &purchase.payer, &refund);
-        }
+        let delivered = refund == 0 || matches!(token.try_transfer(&this, &purchase.payer, &refund), Ok(Ok(())));
+        let owed = if delivered { 0 } else { refund };
+
+        purchase.status = status;
+        purchase.refund = refund;
+        purchase.refund_owed = owed;
+        purchase.closed_at = now;
+        Self::set_allocated(env, Self::allocated(env) - purchase.amount + owed);
+        Self::save(env, purchase);
+
         let to_store = purchase.amount - refund;
-        if to_store > 0 {
-            token.transfer(&this, &config.payee, &to_store);
+        if to_store > 0 && !matches!(token.try_transfer(&this, &config.payee, &to_store), Ok(Ok(()))) {
+            return Err(Error::PayeeCannotReceive);
         }
+        if owed > 0 {
+            RefundOwed { order_ref: purchase.order_ref.clone(), payer: purchase.payer.clone(), amount: owed }.publish(env);
+        }
+        Ok(())
     }
 
     fn load_config(env: &Env) -> Config {

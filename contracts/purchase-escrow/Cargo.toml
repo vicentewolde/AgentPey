@@ -17,6 +17,5 @@ soroban-sdk = { workspace = true, features = ["hazmat-address"] }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-# Signs the `open` message the way the rail's owner does off chain (same versions as policy-rail's tests).
-ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
-rand = "0.8.5"
+# Signs the `open` message the way the rail's owner does off chain, with fixed keys (same version as policy-rail's tests).
+ed25519-dalek = "2.1.1"

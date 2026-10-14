@@ -15,7 +15,7 @@
 **Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow, **en revisión**: el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. Siguiente: `/revisar` de T157.
+contrato de escrow, **revisada y corregida**: el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. Siguiente: merge de T157 y `/tarea T158`.
 
 ## Progreso
 
@@ -69,5 +69,12 @@ En el camino se precisaron cuatro cosas, todas aprobadas por el usuario: hasta c
 un comprador con cuenta clásica también pueda reclamar (`X-16`), el ensayo (`X-17`) y el mensaje exacto que firma el
 dueño del rail (`X-18`), que Rust y TypeScript comparten con un vector de prueba.
 
-**Evidencia.** [`evidencia/T157.md`](evidencia/T157.md): 28 tests del contrato, los dos despliegues, y los hashes del
-pago liberado (`9a8a5bb6…` → `8d84f1f0…`) y del reembolsado (`ff2761da…` → `a952a0f1…`).
+**Lo que corrigió la revisión.** Si un comprador que pagó desde una cuenta clásica quitaba después su permiso para
+recibir USDC, un reembolso podía dejar la plata trabada para siempre. Ahora la compra se cierra igual, la tienda cobra
+su parte y el reembolso queda guardado para el comprador, que lo recibe cuando vuelva a poder (`X-19`). Como un
+contrato desplegado no se puede cambiar, se desplegaron de nuevo los dos escrows y se repitió el ensayo; los
+anteriores quedaron registrados como retirados, sin plata. Un pago que llega y la tienda nunca registra queda como
+límite conocido, que cubren T159 y T160 (`X-20`).
+
+**Evidencia.** [`evidencia/T157.md`](evidencia/T157.md): 35 tests del contrato, los despliegues vigentes, y los hashes
+del pago liberado (`81f106e0…` → `61ab6640…`) y del reembolsado (`97e71975…` → `3ef3185f…`).

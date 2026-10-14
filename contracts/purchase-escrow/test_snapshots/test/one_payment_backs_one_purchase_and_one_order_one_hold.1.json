@@ -126,7 +126,7 @@
               "seq_num": "0",
               "num_sub_entries": 0,
               "inflation_dest": null,
-              "flags": 0,
+              "flags": 2,
               "home_domain": "",
               "thresholds": "01010101",
               "signers": [],
@@ -336,6 +336,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "refund_owed"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "response_hash"
                     },
                     "val": "void"
@@ -507,7 +515,7 @@
                         "u32": 0
                       },
                       "val": {
-                        "bytes": "e80b03f05fdf524a04bc1d9242c941617706555d29f50c4ace316d252fdd1fad"
+                        "bytes": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c"
                       }
                     }
                   ]

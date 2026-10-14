@@ -136,8 +136,8 @@ async function released(r: Rehearsal, orderRef: string): Promise<void> {
       step("release", await invoke(r, r.operator, ["release", "--order_ref", orderRefHex(orderRef)]));
       break;
     } catch (error) {
-      // The ledger's clock trails the wall clock by a few seconds: ReleaseTooEarly is #9.
-      if (attempt >= 5 || !(isAgentPassError(error) && JSON.stringify(error.details).includes("#9"))) throw error;
+      // The ledger's clock trails the wall clock by a few seconds: ReleaseTooEarly is the contract's error #9.
+      if (attempt >= 5 || !(isAgentPassError(error) && JSON.stringify(error.details).includes("Error(Contract, #9)"))) throw error;
       await sleep(10_000);
     }
   }
@@ -169,7 +169,7 @@ async function refunded(r: Rehearsal, orderRef: string, resume: boolean): Promis
     "resolve", "--order_ref", orderRefHex(orderRef), "--verdict_hash", sha256(`rehearsal verdict: refund_full ${orderRef}`), "--refund", r.amountAtomic.toString(),
   ]));
   const purchase = await get(r, orderRef);
-  out(`  status       ${purchase.status} · refund ${purchase.refund} back to ${r.rail}`);
+  out(`  status       ${purchase.status} · refund ${purchase.refund} back to ${r.rail} · owed ${purchase.refund_owed}`);
 }
 
 async function main(): Promise<void> {

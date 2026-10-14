@@ -174,8 +174,15 @@ describe("purchaseEscrows (T157)", () => {
   });
 
   it("reads a record written before T157 as having no escrows", async () => {
-    const { purchaseEscrows: _omitted, ...before } = VALID;
-    await expect(readDeployment(await tempFile(JSON.stringify(before)))).resolves.toMatchObject({ purchaseEscrows: {} });
+    const { purchaseEscrows: _omitted, retiredPurchaseEscrows: _none, ...before } = VALID;
+    await expect(readDeployment(await tempFile(JSON.stringify(before)))).resolves.toMatchObject({ purchaseEscrows: {}, retiredPurchaseEscrows: [] });
+  });
+
+  it("keeps a retired escrow's id, slug and retirement date", async () => {
+    const path = await tempFile();
+    const withRetired: Deployment = { ...VALID, retiredPurchaseEscrows: [{ ...escrow, slug: "agentcommerce", retiredAt: "2026-10-14T20:00:00.000Z" }] };
+    await writeDeployment(path, withRetired);
+    await expect(readDeployment(path)).resolves.toEqual(withRetired);
   });
 
   it("rejects a slug that is not a store slug, and a window of zero", async () => {

@@ -252,7 +252,7 @@
               "seq_num": "0",
               "num_sub_entries": 0,
               "inflation_dest": null,
-              "flags": 0,
+              "flags": 2,
               "home_domain": "",
               "thresholds": "01010101",
               "signers": [],
@@ -618,6 +618,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "refund_owed"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "response_hash"
                     },
                     "val": "void"
@@ -758,6 +766,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "refund_owed"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "response_hash"
                     },
                     "val": "void"
@@ -889,6 +905,14 @@
                   {
                     "key": {
                       "symbol": "refund"
+                    },
+                    "val": {
+                      "i128": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "refund_owed"
                     },
                     "val": {
                       "i128": "0"
@@ -1067,7 +1091,7 @@
                         "u32": 0
                       },
                       "val": {
-                        "bytes": "fb7f1408b967c05b2f0f9fdb4d10e7cc1474be87e4e4f9cff1613185cf6ba64b"
+                        "bytes": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c"
                       }
                     }
                   ]

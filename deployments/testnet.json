@@ -60,6 +60,36 @@
   },
   "purchaseEscrows": {
     "rehearsal": {
+      "contractId": "CCTVYTWFGOBD23UF7A2AX6CMCKF7ACHENU6YNFJPG6S3O5P3FBKCYLDO",
+      "wasmHash": "f5c6bbb6a54a017b71efd62e1aa87bd9b1babf5a688c74e253100586d6602fc5",
+      "operator": "GARBTKFQEX325HDOWL3KQT7PDCENLOYMXF7D6B6SB54LDKCHCRYFUY2K",
+      "payee": "GCTTRJIYYRHAOYTEG2YWKYSBKIQOMX7RX7SAJXQAM3QY2J7J453BOZD6",
+      "arbiter": "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+      "token": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "releaseWindowSeconds": 120,
+      "responseWindowSeconds": 120,
+      "resolveWindowSeconds": 300,
+      "schemaVersion": 1,
+      "deployedAt": "2026-10-14T19:08:53.882Z",
+      "protocolVersion": 29
+    },
+    "agentcommerce": {
+      "contractId": "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A",
+      "wasmHash": "f5c6bbb6a54a017b71efd62e1aa87bd9b1babf5a688c74e253100586d6602fc5",
+      "operator": "GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ",
+      "payee": "GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN",
+      "arbiter": "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+      "token": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "releaseWindowSeconds": 600,
+      "responseWindowSeconds": 900,
+      "resolveWindowSeconds": 3600,
+      "schemaVersion": 1,
+      "deployedAt": "2026-10-14T19:09:03.377Z",
+      "protocolVersion": 29
+    }
+  },
+  "retiredPurchaseEscrows": [
+    {
       "contractId": "CBKBYMWKMHHCYO76SHPYZJCJ6RVI4E3WOXOSAPABJNXLJYSUQ3Q2LYA5",
       "wasmHash": "d0d1d877ac479aa6367833f467e35ff90be581236c4c2b688dd313ca4cf802c4",
       "operator": "GARBTKFQEX325HDOWL3KQT7PDCENLOYMXF7D6B6SB54LDKCHCRYFUY2K",
@@ -71,9 +101,11 @@
       "resolveWindowSeconds": 300,
       "schemaVersion": 1,
       "deployedAt": "2026-10-14T18:10:52.971Z",
-      "protocolVersion": 29
+      "protocolVersion": 29,
+      "slug": "rehearsal",
+      "retiredAt": "2026-10-14T19:08:53.880Z"
     },
-    "agentcommerce": {
+    {
       "contractId": "CDQLUZUR2SQI7J3LRUVLQSPC5B4CADZVY7WQN6Z4UQXYBS76O2EETNJH",
       "wasmHash": "d0d1d877ac479aa6367833f467e35ff90be581236c4c2b688dd313ca4cf802c4",
       "operator": "GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ",
@@ -85,7 +117,9 @@
       "resolveWindowSeconds": 3600,
       "schemaVersion": 1,
       "deployedAt": "2026-10-14T18:11:07.715Z",
-      "protocolVersion": 29
+      "protocolVersion": 29,
+      "slug": "agentcommerce",
+      "retiredAt": "2026-10-14T19:09:03.376Z"
     }
-  }
+  ]
 }

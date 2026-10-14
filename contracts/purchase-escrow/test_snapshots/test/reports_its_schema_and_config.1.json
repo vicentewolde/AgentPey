@@ -51,7 +51,7 @@
               "seq_num": "0",
               "num_sub_entries": 0,
               "inflation_dest": null,
-              "flags": 0,
+              "flags": 2,
               "home_domain": "",
               "thresholds": "01010101",
               "signers": [],
@@ -207,7 +207,7 @@
                         "u32": 0
                       },
                       "val": {
-                        "bytes": "cd58e7d850691ca1def83b142924b8695ed164a0e0b590db538c63efb2d7526c"
+                        "bytes": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c"
                       }
                     }
                   ]
