@@ -8786,3 +8786,18 @@ Por qué: el spec seguía diciendo que el video no estaba entregado; el usuario 
 Pendiente: el orden aprobado por el usuario el 14-oct: T144, T138 y T139 (solo documentos), la tarea de `R-33` en el
 spec, y después el borrador del SEP y los mensajes. No tocar `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de
 Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (2) — cc/t144-tabla-agentes
+
+Agente: Claude Code.
+
+Qué: **T144 escrita**, en revisión. `evidencia/T144-agentes.md`: tabla de dots, Grok Bot y Muse con fuentes oficiales
+leídas hoy. Ninguno puede comprar con las cuentas del usuario (dots pide ChatGPT Pro, Grok Bot un plan pago, Muse solo
+EE. UU. y paga con tarjeta); la compra desde dots no aplica (`R-29`). Hallazgo fuera de los criterios: el chat de Grok
+acepta un servidor MCP propio para todos los usuarios (docs de xAI, 10-oct). Solo documentos; sin código ni red.
+
+Por qué: orden aprobado por el usuario el 14-oct (T144, T138, T139, la tarea de `R-33`).
+
+Pendiente: `/revisar`; decidir si se prueba el chat de Grok contra `mcp.agentpey.com` (una compra gasta unos 0,52 USDC
+de testnet del rail del MCP). No tocar `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de Vitrinee hasta nuevo
+aviso del usuario. Exponential: T144 a `IN_PROGRESS` con su rama. `AGENTS.md`: sin cambios.

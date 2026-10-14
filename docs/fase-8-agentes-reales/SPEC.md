@@ -331,8 +331,8 @@ más rápido que lo estimado.
 - **Prioridad:** si alcanza (el corte no se aplica, `R-24`) · **Estimación:** 5 h · **Delegable a Codex:** no
 - **Depende de:** T128; de los accesos del usuario
 - **Hecho cuando:**
-  - [ ] `T144-agentes.md` con una tabla agente por agente: qué funciona, qué falta, evidencia
-  - [ ] una compra real desde dots, si el usuario tiene acceso y dots acepta el conector
+  - [x] `T144-agentes.md` con una tabla agente por agente: qué funciona, qué falta, evidencia ([evidencia](evidencia/T144-agentes.md) §3)
+  - [ ] ~~una compra real desde dots, si el usuario tiene acceso y dots acepta el conector~~: no aplica, el usuario no tiene acceso a dots (pide ChatGPT Pro) y ninguna fuente confirma que use un conector propio (`R-29`)
 
 #### T145 · Equipos SCF pagando IA y servicios con Stellar · prueba técnica, parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 5 h · **Delegable a Codex:** no (regulación, `P-10`)
@@ -518,6 +518,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-06 | T143: el usuario ajustó el criterio 2 (opción A): donde se firma una transacción de testnet bastan las wallets que la firman bien (hoy xBull), porque LOBSTR firma para mainnet y Hana no firma SEP-53. Criterios 1, 3 y 4 marcados |
 | 2026-10-06 | T143 cerrada: el usuario probó en agentpey.com aprobar y revocar un Mandato con Freighter y con xBull, y entrar al portal; criterio 2 marcado ([PR #65](https://github.com/vicentewolde/AgentPey/pull/65)) |
 | 2026-10-14 | T142 cerrada: los dos criterios de la tarea y el criterio 5 de la fase marcados; el primero, con las afirmaciones sin respaldo de `R-35` como excepción |
+| 2026-10-14 | T144: la tabla queda escrita y la compra desde dots no aplica (`R-29`). Hallazgo fuera de los criterios: el chat de Grok acepta un servidor MCP propio para todos los usuarios |
 
 ## 11. Fuentes externas
 

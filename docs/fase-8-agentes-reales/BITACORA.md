@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-13 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-14 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -42,7 +42,7 @@ un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
-muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code.
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 en revisión** (14-oct): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`).
 
 | Tarea | Estado |
 |---|---|
@@ -62,7 +62,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T141 Página de tiendas | cerrada |
 | T142 Guion y grabación | cerrada (entregado el 13-oct, `R-35`) |
 | T143 Más wallets | cerrada |
-| T144 dots, Muse y Grok Bot | pendiente |
+| T144 dots, Muse y Grok Bot | en revisión (tabla sin compra, `R-29`) |
 | T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
 | T146 Demo de presupuesto de equipo | cerrada |
 | T147 Webhooks de orden | cerrada |
@@ -813,3 +813,26 @@ escena 4 no se alcanzaba a leer; el usuario pidió voz más lenta, la postventa 
 - **T130 sigue pendiente**: el video usa la tienda de Shopify de AgentPey y lo dice.
 
 Evidencia: [`evidencia/T142.md`](evidencia/T142.md). Guion: [`video/GUION-VIDEO.md`](video/GUION-VIDEO.md).
+
+---
+
+## T144 · dots, Muse y Grok Bot — 2026-10-14, en revisión
+
+**Qué quedó.** Una tabla que responde, para cada uno de los tres agentes nuevos de
+OpenAI, xAI y Meta, si puede comprar en AgentPey: ninguno puede hoy con las cuentas del
+usuario. dots pide ChatGPT Pro (el usuario tiene Plus); Grok Bot pide un plan pago de
+Grok o de Cursor; Muse solo existe en Estados Unidos y paga con tarjeta. dots y Grok Bot
+podrían conectarse al servidor MCP de AgentPey, porque los dos usan conectores MCP, pero
+ninguna fuente oficial lo confirma del todo para dots. AgentPey no necesita nada nuevo:
+el servidor MCP de T128 es lo que usarían.
+
+**Un hallazgo fuera de los criterios.** La documentación de Grok, actualizada el 10-oct,
+dice que el chat de Grok (no Grok Bot) acepta un servidor MCP propio para todos sus
+usuarios. Con la cuenta que el usuario ya tiene, Grok podría cotizar en AgentPey como
+Claude y ChatGPT. No se probó: es decisión del usuario.
+
+**Contraste con `R-29`.** "dots no acepta conectores propios" era más fuerte que las
+fuentes: lo correcto es "sin confirmar". La conclusión de `R-29` no cambia.
+
+Evidencia: [`evidencia/T144-agentes.md`](evidencia/T144-agentes.md).
+
