@@ -10,8 +10,8 @@
 - **Fase 9 (principal)** · Una compra protegida, de punta a punta ([spec](fase-9-compra-protegida/SPEC.md), **aprobado**, `P-19`): los entregables del Instaward, 13-oct → 11-nov.
 - **Fase 8 (cierre)** · Agentes reales comprando en Stellar ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`), en el worktree `~/dev/AgentPay-fase8`. La Fase 7 se cerró el 2026-10-03 (`E-25`)
 
-**Última tarea terminada:** Fase 9: T157, el contrato de escrow en testnet ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)). Fase 8: T156, el chat de Grok inicia sesión en el MCP (`R-37`)
-**Siguiente paso:** Fase 9: `/revisar` de T159; después `/tarea T160` (el orden es T159 → T160 → T158, `X-21`). Fase 8: T138 y T139 como documentos (evaluaciones para después de la Fase 9, sin cambiar el árbitro, `E-18` ni el diseño del escrow); después la tarea de `R-33` en el spec, respetando la interfaz del escrow (spec de la Fase 9, §4.6). **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** Fase 9: T159, un pago, un recibo, en la red ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)); en producción desde el 14-oct, 21:46 UTC. Fase 8: T156, el chat de Grok inicia sesión en el MCP (`R-37`)
+**Siguiente paso:** Fase 9: `/tarea T160`, el checkout paga al escrow (el orden es T159 → T160 → T158, `X-21`). Fase 8: T138 y T139 como documentos (evaluaciones para después de la Fase 9, sin cambiar el árbitro, `E-18` ni el diseño del escrow); después la tarea de `R-33` en el spec, respetando la interfaz del escrow (spec de la Fase 9, §4.6). **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 **Convivencia (`P-19`).** La Fase 9 es dueña de `contracts/*` y `deployments/*.json`, de `open_claim` en el MCP, de `packages/resolve/`, `scripts/resolve*` y `apps/web/public/resolve/`, y del `payTo`, `hold`, webhooks y despacho de Vitrinee. La Fase 8, de `docs/fase-8-agentes-reales/*` y del borrador del SEP. Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
 
@@ -22,7 +22,7 @@
 | Chequeo del día 1 | ✅ hecho: 0,01 USDC liquidados hacia un contrato por el facilitator ([evidencia](fase-9-compra-protegida/evidencia/chequeo-dia-1.md), `X-14`) | `cc/fase-9-plan` |
 | T157 Contrato de escrow | ✅ terminada: contrato con 35 tests; escrow de `agentcommerce` `CBQFELK5…DO27A` (10/15/60 min) y de ensayo `CCTVYTWF…YLDO`, redesplegados por `X-19`; un pago liberado y uno reembolsado en testnet ([evidencia](fase-9-compra-protegida/evidencia/T157.md), `X-15` a `X-20`) | [PR #88](https://github.com/vicentewolde/AgentPey/pull/88) |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente, después de T160 (`X-21`) | |
-| T159 Un pago, un recibo, en la red | 👀 en revisión: recibo con `escrow`, cuarto chequeo «retenido», `hold` antes del anclaje; recibo duplicado rechazado por la red ([`87a80cc1…`](https://stellar.expert/explorer/testnet/tx/87a80cc144eb35a12b5112fa1be01afd24d38d27ab3e5b8e0af5f0beb142b102)); 9 recibos anteriores siguen válidos ([evidencia](fase-9-compra-protegida/evidencia/T159.md), `X-21`, `X-22`) | `cc/t159-recibo-pago` |
+| T159 Un pago, un recibo, en la red | ✅ terminada: recibo con `escrow`, cuarto chequeo «retenido», `hold` antes del anclaje; recibo duplicado rechazado por la red ([`87a80cc1…`](https://stellar.expert/explorer/testnet/tx/87a80cc144eb35a12b5112fa1be01afd24d38d27ab3e5b8e0af5f0beb142b102)); 9 recibos anteriores siguen válidos ([evidencia](fase-9-compra-protegida/evidencia/T159.md), `X-21`, `X-22`) | [PR #89](https://github.com/vicentewolde/AgentPey/pull/89) |
 | T160 El checkout paga al escrow | ⏳ pendiente | |
 | T161 La orden muestra el estado del escrow (se corta segundo) | ⏳ pendiente | |
 | T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente | |
@@ -79,6 +79,11 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 
 ## Deuda y pendientes fuera de la fase
+
+- 14-oct, deploys de Render: el gateway espera 45 s a que levante `web` (`apps/gateway/src/supervisor.ts`) y aborta si
+  tarda más. Así fallaron `cdde180` y `3492508` ("Exited with status 1"); Render deja la versión anterior en vivo, así
+  que el sitio no cae, pero ese commit no llega a producción sin aviso. Es lo de `R-32`, que se arregló solo para el MCP.
+  Después de cada merge hay que confirmar que el código nuevo esté en vivo (`T159` lo confirmó con `checks.held`).
 
 - T123 (brecha 14 del anexo): la misma intención se puede exportar a AP2 más de una vez mientras no vence. Cada par está acotado al mismo tope y a la vida de la intención. Hacerlo cumplir pide memoria por `intentId`.
 

@@ -15,7 +15,7 @@
 **Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 en revisión. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`).
+contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). Siguiente: T160.
 
 ## Progreso
 
@@ -24,7 +24,7 @@ contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentP
 | Chequeo del día 1 | ✅ hecho (`X-14`) |
 | T157 Contrato de escrow | ✅ terminada |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente, después de T160 (`X-21`) |
-| T159 Un pago, un recibo, en la red | 👀 en revisión |
+| T159 Un pago, un recibo, en la red | ✅ terminada |
 | T160 El checkout paga al escrow | ⏳ pendiente |
 | T161 La orden muestra el estado del escrow | ⏳ pendiente |
 | T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente |

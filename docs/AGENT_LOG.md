@@ -8967,3 +8967,15 @@ T161). El bloqueante: con el cambio de la cola, una tienda que cobra directo ya 
 `X-22` precisada. `pnpm check` y `vitrinee:check` en verde.
 
 Pendiente: merge con OK del usuario; después `/tarea T160`. Exponential: sin cambios. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (14) — cc/t159-cierre
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, **T159 mergeada a `main`** ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)),
+fast-forward. Render la desplegó con 14 minutos de cola; en vivo a las 21:46 UTC. Recorrido de producción: 28/28
+superficies bien, la verificación trae `held: null`, la página del recibo y `get_order` del MCP sin cambios. En el panel
+de Render (con el usuario, en su Chrome) aparecieron dos deploys fallidos de hoy, `cdde180` y `3492508`: el gateway
+espera 45 s a `web` y aborta si tarda más; anotado en `ESTADO.md` como deuda. Ticket T159 a `DONE`. Solo documentos.
+
+Pendiente: `/tarea T160`. Después de cada merge, confirmar que el código nuevo esté en vivo. `AGENTS.md`: sin cambios.
