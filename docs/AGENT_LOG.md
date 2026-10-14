@@ -8801,3 +8801,22 @@ Por qué: orden aprobado por el usuario el 14-oct (T144, T138, T139, la tarea de
 Pendiente: `/revisar`; decidir si se prueba el chat de Grok contra `mcp.agentpey.com` (una compra gasta unos 0,52 USDC
 de testnet del rail del MCP). No tocar `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de Vitrinee hasta nuevo
 aviso del usuario. Exponential: T144 a `IN_PROGRESS` con su rama. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (3) — cc/t144-tabla-agentes
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T144 y todas sus correcciones, a pedido del usuario. El bloqueante: el inicio de sesión del MCP solo
+devuelve a Claude, ChatGPT o una dirección local (`DEFAULT_REDIRECT_URIS` en `apps/mcp/src/oauth/server.ts`), así que
+rechazaría al chat de Grok. El usuario eligió abrirle la puerta: `R-37` y una tarea nueva en el spec, **T156** (agregar
+la dirección exacta `https://grok.com/connectors-oauth-exchange-code/`, con tests, y probar una compra con su OK).
+`R-29` precisada sobre dots ("sin confirmar"). La evidencia corrige Grok Bot (planes, plataformas, "sin confirmar",
+aprobaciones). Solo documentos; el código de T156 todavía no se escribe.
+
+Por qué: el criterio de Grok no se podía cumplir sin cambiar quién recibe códigos de autorización (perímetro, `R-7`).
+
+Pendiente: que el usuario apruebe el spec de T156; merge de T144 con su OK; después `/tarea T156`. No tocar
+`contracts/*`, AgentResolve, `open_claim` ni el `payTo` de Vitrinee hasta nuevo aviso del usuario. Exponential: sin
+cambios (T156 sin ticket propio, como T150 a T155). `AGENTS.md`: sin cambios (Codex no toca el MCP ni la autorización,
+`P-10`).
+

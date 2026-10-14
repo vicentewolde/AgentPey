@@ -989,6 +989,11 @@ sin abrir, responder ni resolver disputas, ni conectarlas con el chat, el pago, 
 
 **Alternativa descartada.** Escribir el guion primero (cambiaría con cada mejora).
 
+**Precisado el 14-oct (`R-37`, con OK del usuario).** "dots no acepta conectores propios" era más fuerte que las
+fuentes: lo que está confirmado es que dots pide ChatGPT Pro, que el usuario no tiene, y que usa "supported plugins";
+que acepte un conector propio está **sin confirmar** ([`evidencia/T144-agentes.md`](evidencia/T144-agentes.md) §5).
+La conclusión para T144 (tabla, sin compra) no cambia.
+
 ---
 
 ### R-30 · La página "En vivo" toma productos y pago del recibo anclado, y lee la red en lote desde `@vitrinee/anchor` · `Vigente`
@@ -1130,4 +1135,38 @@ El usuario decidió **dejar T130 en pausa hasta que pase el periodo de la hackat
 **Alternativa descartada.** Pedirle al amigo un producto de prueba a 490 CLP (o bajar un precio por una hora) y comprar con los topes de hoy: funcionaba sin desplegar nada, pero no probaba que el MCP sirva para tiendas reales.
 
 Evidencia: nada que cerrar; la tienda se vio solo en su catálogo público (`/products.json`).
+
+---
+
+### R-37 · El chat de Grok entra al MCP con su dirección de vuelta exacta, en una tarea propia (T156) · `Vigente` — extiende `R-7`, precisa `R-29`
+**Fecha:** 2026-10-14 · **Tarea:** T144 → T156 · **Decidido por el usuario** (opción b)
+
+Al escribir T144 apareció que el chat de Grok acepta un servidor MCP propio (documentación de xAI del 10-oct). El
+usuario pidió probarlo, y `/revisar` encontró que **el inicio de sesión del MCP lo rechazaría**: solo devuelve a la
+persona a Claude, a ChatGPT o a una dirección local (`DEFAULT_REDIRECT_URIS` en `apps/mcp/src/oauth/server.ts`), y
+Grok vuelve a `grok.com`. El usuario eligió abrirle la puerta:
+
+1. **Una tarea propia, T156**, y no un criterio de T144: cambia quién puede recibir un código de autorización, que es
+   perímetro (extiende `R-7`). T144 se cierra como tabla.
+2. **Se agrega una sola dirección, exacta:** `https://grok.com/connectors-oauth-exchange-code/`, en la lista fija del
+   código, con tests de que las parecidas siguen rechazadas. La documentación de xAI no la publica; sale de dos
+   reportes de terceros tomados de logs reales ([dinglebear-ai/unraid#390](https://github.com/dinglebear-ai/unraid/issues/390)
+   y [norman-finance/norman-mcp-server#136](https://github.com/norman-finance/norman-mcp-server/pull/136)). Para
+   confirmarla con tráfico propio, un registro rechazado deja en el log qué direcciones rechazó. **Si Grok envía otra,
+   se para y se muestra**; no se agrega otra sin OK del usuario.
+3. **Los hosts de los que se lee un documento de cliente (CIMD) siguen derivándose de esa lista**, así que suma
+   `grok.com`. Un documento leído de ahí igual tiene que nombrar una dirección permitida.
+4. **Una compra real desde el chat de Grok, con OK del usuario** (precisa `R-29`: "sin compra" vale para T144). Quién
+   aprieta `pay`, Grok o la persona, se anota como en `R-11`.
+5. **No cambian:** la única wallet que entra (`R-33`), las herramientas, el rail y sus topes.
+
+**Motivo.** Un tercer chat comprando por el mismo servidor, sin código nuevo de pago, es la prueba más barata de que el
+MCP no está atado a Claude y ChatGPT.
+
+**Alternativas descartadas.** (a) Documentar el rechazo y no tocar el código: no prueba nada nuevo. (b) Una variable
+de entorno con direcciones extra: ensancharía el perímetro por configuración, sin pasar por revisión ni tests. (c)
+Aceptar cualquier dirección de `grok.com`: confiaría en todo el dominio por una sola vuelta. (d) Un `client_id`
+estático para Grok: según el mismo reporte, su formulario solo admite registro dinámico.
+
+Evidencia: [`evidencia/T144-agentes.md`](evidencia/T144-agentes.md) §2 y §4.
 

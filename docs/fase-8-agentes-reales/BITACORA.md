@@ -42,7 +42,7 @@ un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
-muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 en revisión** (14-oct): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`).
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 en revisión** (14-oct): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`).
 
 | Tarea | Estado |
 |---|---|
@@ -74,6 +74,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T153 Página del presupuesto de equipo | cerrada |
 | T154 Página del recibo con el diseño del sitio | cerrada |
 | T155 Pantalla local del árbitro | cerrada |
+| T156 El chat de Grok compra por el MCP | pendiente (`R-37`) |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -827,12 +828,21 @@ ninguna fuente oficial lo confirma del todo para dots. AgentPey no necesita nada
 el servidor MCP de T128 es lo que usarían.
 
 **Un hallazgo fuera de los criterios.** La documentación de Grok, actualizada el 10-oct,
-dice que el chat de Grok (no Grok Bot) acepta un servidor MCP propio para todos sus
-usuarios. Con la cuenta que el usuario ya tiene, Grok podría cotizar en AgentPey como
-Claude y ChatGPT. No se probó: es decisión del usuario.
+dice que el chat de Grok (no Grok Bot) acepta un servidor MCP propio. El usuario pidió
+probarlo, y `/revisar` encontró que hoy no se puede: el inicio de sesión del MCP solo
+devuelve a la persona a Claude, a ChatGPT o a una dirección local, y Grok vuelve a
+`grok.com`. El primer borrador decía "nada nuevo del lado de AgentPey", y estaba mal. El
+usuario eligió abrirle la puerta en una tarea propia, **T156** (`R-37`): agregar la
+dirección exacta de Grok, con tests, y probar una compra con su OK.
+
+**Lo que corrigió `/revisar`.** Además de lo anterior: Grok Bot viene incluido en los
+planes pagos de Cursor o con una cuenta SuperGrok y está en cinco plataformas; que use un
+servidor MCP propio está sin confirmar (no "probable"); y su documentación recomienda poner
+las compras detrás de una aprobación.
 
 **Contraste con `R-29`.** "dots no acepta conectores propios" era más fuerte que las
-fuentes: lo correcto es "sin confirmar". La conclusión de `R-29` no cambia.
+fuentes: lo correcto es "sin confirmar". `R-29` quedó precisada (`R-37`); su conclusión
+para T144 no cambia.
 
 Evidencia: [`evidencia/T144-agentes.md`](evidencia/T144-agentes.md).
 

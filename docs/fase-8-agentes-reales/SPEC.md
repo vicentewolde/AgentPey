@@ -333,7 +333,18 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] `T144-agentes.md` con una tabla agente por agente: qué funciona, qué falta, evidencia ([evidencia](evidencia/T144-agentes.md) §3)
   - [ ] ~~una compra real desde dots, si el usuario tiene acceso y dots acepta el conector~~: no aplica, el usuario no tiene acceso a dots (pide ChatGPT Pro) y ninguna fuente confirma que use un conector propio (`R-29`)
-  - [ ] (agregado a pedido del usuario el 14-oct) el chat de Grok conectado a `mcp.agentpey.com` como conector MCP propio: qué funciona (inicio de sesión con wallet, cotizar, pagar), y con OK del usuario una compra real con recibo con los tres checks en verde
+- **Nota:** la prueba del chat de Grok, agregada aquí a pedido del usuario el 14-oct, pasó a T156 (`R-37`): el inicio de sesión del MCP lo rechaza hoy
+
+#### T156 · El chat de Grok compra por el MCP (`R-37`)
+- **Prioridad:** a pedido del usuario · **Estimación:** 3 h · **Delegable a Codex:** no (autorización, `P-10`)
+- **Depende de:** T128 y T144; de la cuenta de Grok del usuario
+- **Descripción:** agregar a la lista de direcciones de vuelta del inicio de sesión del MCP (`DEFAULT_REDIRECT_URIS` en `apps/mcp/src/oauth/server.ts`) la de Grok, exacta: `https://grok.com/connectors-oauth-exchange-code/`. Sin comodines ni variable de entorno. Un registro rechazado deja en el log qué direcciones rechazó, recortadas, y el mensaje de rechazo nombra a Grok. Desplegar `mcp.agentpey.com` (push a `main`) solo con OK del usuario. No cambian la wallet que entra (`R-33`), las herramientas, el rail ni sus topes.
+- **Perímetro:** cambia quién puede recibir un código de autorización (extiende `R-7`); `/revisar` lo mira línea por línea.
+- **Hecho cuando:**
+  - [ ] el registro y `/authorize` aceptan exactamente esa dirección y siguen rechazando las parecidas (sin barra final, `www.grok.com`, `http://`, otro camino, otro puerto, con query o fragmento, un host parecido), con tests; Claude, ChatGPT y las locales siguen igual
+  - [ ] un registro rechazado escribe en el log qué direcciones rechazó, recortadas y sin nada secreto
+  - [ ] desplegado con OK del usuario, el usuario conecta Grok en `grok.com/connectors`: inicia sesión con su wallet, Grok descubre las herramientas y cotiza (capturas en la evidencia). Si Grok envía otra dirección, se para y se muestra
+  - [ ] con OK del usuario, una compra real desde el chat de Grok con recibo con los tres checks en verde, anotando quién apretó `pay` (`R-11`)
 
 #### T145 · Equipos SCF pagando IA y servicios con Stellar · prueba técnica, parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 5 h · **Delegable a Codex:** no (regulación, `P-10`)
@@ -521,6 +532,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | T142 cerrada: los dos criterios de la tarea y el criterio 5 de la fase marcados; el primero, con las afirmaciones sin respaldo de `R-35` como excepción |
 | 2026-10-14 | T144: la tabla queda escrita y la compra desde dots no aplica (`R-29`). Hallazgo fuera de los criterios: el chat de Grok acepta un servidor MCP propio para todos los usuarios |
 | 2026-10-14 | T144: a pedido del usuario, un criterio más: probar el chat de Grok contra `mcp.agentpey.com`; la compra real, solo con su OK |
+| 2026-10-14 | `/revisar` de T144: el inicio de sesión del MCP rechaza a Grok. El usuario eligió abrirle la puerta: la prueba sale de T144 a una tarea nueva, **T156** (`R-37`), y `R-29` queda precisada sobre dots |
 
 ## 11. Fuentes externas
 
@@ -542,7 +554,8 @@ fuente al empezar la tarea que las usa, como en T120.
 | Stellar Wallets Kit 2.7.0 | https://stellarwalletskit.dev/installation.html |
 | dots (OpenAI) | https://learn.chatgpt.com/docs/dots |
 | Muse (Meta) | https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/ |
-| Grok Bot (xAI) | https://x.ai/news/introducing-grok-bot |
+| Grok Bot (xAI) | https://x.ai/news/introducing-grok-bot · https://docs.x.ai/grok-bot |
+| Grok, conectores MCP propios (T144, T156) | https://docs.x.ai/grok/connectors |
 | GenLayer e Internet Court | https://genlayer.com/ |
 | Trustless Work | https://docs.trustlesswork.com/trustless-work/introduction/technology-overview · https://stellar.gitbook.io/scf-handbook/scf-awards/build-award/integration-track |
 | Cards402 y ASGCard (solo mainnet) | https://cards402.com/docs · https://asgcard.dev/docs |
