@@ -1115,3 +1115,19 @@ Al montar el video de T142, el usuario decidió:
 **Alternativas descartadas.** (a) Mantener la voz en español con subtítulos en inglés: el usuario quiso que la voz fuera en el idioma del jurado. (b) Decir «as far as we know» en la frase de la postventa, o describir lo que se ve («the first stack that connects an agent's purchase to an on-chain refund claim»): más difícil de refutar, pero el usuario eligió la frase sin salvaguarda. (c) Acercamiento fijo sobre las pantallas para leer mejor: ocultaba secciones de la página; se usan acercamientos suaves y temporales, con pantalla completa el resto del tiempo.
 
 Evidencia: [`evidencia/T142.md`](evidencia/T142.md). Guion: [`video/GUION-VIDEO.md`](video/GUION-VIDEO.md).
+
+---
+
+### R-36 · T130 (la tienda de terceros) queda en pausa hasta que pase el periodo de la hackatón · `Vigente`
+**Fecha:** 2026-10-13 · **Decidido por el usuario**
+
+El 13-oct el usuario consiguió una tienda real, [casastock.cl](https://casastock.cl/), de un amigo suyo (Shopify, precios en CLP). Para comprarle desde Claude hay que subir el tope del rail del MCP: sus productos más baratos valen unos 31 USDC y el rail permite 3 por compra y 5 por día, y esos topes **quedan fijos en el contrato** al desplegarlo. Subirlos es **desplegar un rail nuevo** (un contrato nuevo en testnet), **volver a emitir el Mandato** del agente (también hace falta para sumar la tienda a su lista) y cambiar la dirección del rail en Render.
+
+El usuario decidió **dejar T130 en pausa hasta que pase el periodo de la hackatón**. Su razonamiento: si el MCP ha de servir para tiendas reales, ninguna vende solo productos de menos de 3 USD; no vale la pena una solución puntual (pedirle al dueño un producto de prueba barato) para esta tienda.
+
+**Para retomar.** (a) Un rail del MCP con topes altos, o mejor, que **el tope se elija al desplegar el rail**, que es lo que `R-33` ya prevé (un `policy_rail` por persona): hoy el perfil `mcp` de `deploy:policy-rail` fija 3 y 5. (b) El dueño de la tienda da el acceso a Shopify, su wallet y su acuerdo para recibir un pedido que aparece «Pagado» con USDC de testnet. (c) `/tarea T130`, con plan y OK.
+
+**Alternativa descartada.** Pedirle al amigo un producto de prueba a 490 CLP (o bajar un precio por una hora) y comprar con los topes de hoy: funcionaba sin desplegar nada, pero no probaba que el MCP sirva para tiendas reales.
+
+Evidencia: nada que cerrar; la tienda se vio solo en su catálogo público (`/products.json`).
+

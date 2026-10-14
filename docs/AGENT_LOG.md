@@ -8757,3 +8757,18 @@ falta el alta por el portal y una compra; sus precios (el más barato, 30.000 CL
 por compra del rail del MCP, que no se puede cambiar sin desplegar un rail nuevo. (3) Una afirmación del video no tiene
 respaldo (la postventa como única en Stellar): `R-35` y `GUION-VIDEO.md` §3. (4) No tocar `contracts/*`, AgentResolve,
 `open_claim` ni el `payTo` de Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
+
+## 2026-10-13 (2) — cc/t142-guion-video
+
+Agente: Claude Code.
+
+Qué: **T130 en pausa** hasta que pase el periodo de la hackatón (`R-36`), decisión del usuario. La tienda real
+`https://casastock.cl/` (de un amigo del usuario; Shopify, CLP) no se puede comprar con los topes del rail del MCP (3 por
+compra, 5 por día, fijos en el contrato). Solo documentos: `ESTADO.md` y `DECISIONES.md`. No se tocó la tienda ni
+nada en la red.
+
+Por qué: ninguna tienda real vende solo productos de menos de 3 USD; subir los topes pide un rail nuevo y un Mandato
+nuevo, y es mejor resolverlo con `R-33` (el tope se elige al desplegar el rail) que con un parche para esta tienda.
+
+Pendiente: lo de `R-36`, «Para retomar». Siguen sin tocarse `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de
+Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
