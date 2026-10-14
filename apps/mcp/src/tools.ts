@@ -73,7 +73,7 @@ export const outputSchemas = {
         explorer_url: z.string().nullable(),
         anchor: z.string().nullable(),
         valid: z.boolean(),
-        checks: z.object({ order: check, signature: check, anchored: check, settlement: check }),
+        checks: z.object({ order: check, signature: check, anchored: check, settlement: check, held: check.optional() }),
       })
       .nullable(),
   }),

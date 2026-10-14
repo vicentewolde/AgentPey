@@ -1,4 +1,5 @@
 import { Keypair } from "@stellar/stellar-sdk";
+import { PURCHASE_ESCROW_WASM_HASHES } from "@vitrinee/anchor";
 import type { AnchorInput, AnchorResult, AnchoredRecord, EscrowConfig, EscrowPurchase, EscrowReader, EscrowReaderFactory, HoldInput, HoldResult } from "@vitrinee/anchor";
 import { USDC_TESTNET } from "@vitrinee/core";
 
@@ -93,6 +94,7 @@ export function fakeEscrow(options: { failTimes?: number; config?: Partial<Escro
     releaseWindowSeconds: 600,
     responseWindowSeconds: 900,
     resolveWindowSeconds: 3600,
+    wasmHash: PURCHASE_ESCROW_WASM_HASHES[0] ?? null,
     ...options.config,
   };
   const reader: EscrowReader = {

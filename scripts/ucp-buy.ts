@@ -359,7 +359,7 @@ async function main(): Promise<void> {
   line(`${mark(result.checks.settlement.ok)} pago`, result.checks.settlement.ok ? `confirmado en Horizon · ledger ${result.checks.settlement.ledger ?? "?"}` : (result.checks.settlement.reason ?? "no confirmado"));
   if (result.checks.held !== null) line(`${mark(result.checks.held.ok)} retenido`, result.checks.held.ok ? `en el escrow ${result.checks.held.escrow}` : (result.checks.held.reason ?? "no retenido"));
   line("recibo", RECEIPT_OUT);
-  out(result.valid ? "\n✅ Compra UCP de punta a punta: pagada en Stellar, pedido creado, recibo válido.\n" : "\n❌ El recibo no pasó los tres checks.\n");
+  out(result.valid ? "\n✅ Compra UCP de punta a punta: pagada en Stellar, pedido creado, recibo válido.\n" : "\n❌ El recibo no pasó sus checks.\n");
   process.exitCode = result.valid ? 0 : 1;
 }
 

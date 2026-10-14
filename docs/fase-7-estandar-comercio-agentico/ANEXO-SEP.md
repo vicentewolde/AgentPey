@@ -261,9 +261,11 @@ más de 64 bytes, y no acepta anclar dos veces el mismo hash
    (`contract_credited`, con el contrato en el campo `contract`).
 4. **Retenido** (solo si el recibo declara `escrow`, Fase 9, T159): el
    `by_tx(settlementTxHash)` del escrow devuelve este mismo recibo, esta orden,
-   este pagador y este monto; y el escrow es de la tienda que firmó: su
-   operador es la cuenta del DID y su cuenta de cobro es `merchantAccount`
-   (`checkHeld` en `packages/vitrinee-anchor/src/verify.ts`).
+   este pagador y este monto; el contrato corre el código conocido de
+   `purchase-escrow` (hash del wasm fijado en el verificador); y el escrow es
+   de la tienda que firmó: su operador es la cuenta del DID y su cuenta de
+   cobro es `merchantAccount` (`checkHeld` en
+   `packages/vitrinee-anchor/src/verify.ts`).
 
 Lo que los tres primeros checks no miran: que una misma transacción respalde
 un solo recibo (brecha 10). Para un recibo pagado a un escrow lo mira el

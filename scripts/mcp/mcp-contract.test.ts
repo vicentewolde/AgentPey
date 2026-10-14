@@ -269,6 +269,8 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
     });
     // T150: the chat gets the transaction's link from the server, not by composing it.
     const receipt = read.structuredContent!["receipt"];
+    // T159: a receipt paid straight to the store has no fourth check, and its order reads exactly as before.
+    expect(receipt.checks).not.toHaveProperty("held");
     expect(receipt.explorer_url).toBe(`https://stellar.expert/explorer/testnet/tx/${receipt.settlement_tx_hash}`);
 
     const claimed = await mcp.call("open_claim", { store: storeName(), order_id: order["order_id"], reason: "not_delivered", description: "Never arrived" });

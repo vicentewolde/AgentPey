@@ -344,6 +344,21 @@ en el registro público.
    plataforma, porque si no todas las tiendas nombrarían el mismo escrow. Cómo se le asigna a `agentcommerce` es de
    T160, junto con el `payTo`, el perfil y la comprobación del agente.
 
+**Ajustes de `/revisar` (14-oct, aprobados por el usuario).**
+- **El cuarto chequeo exige el código conocido.** El contrato que el recibo nombra tiene que correr el wasm de
+  `purchase-escrow` (`PURCHASE_ESCROW_WASM_HASHES`, `f5c6bbb6…`, fijado contra `deployments/testnet.json` por un test).
+  Sin eso, un contrato que imitara el formato pasaría como "retenido" sin las reglas del escrow. El wasm retirado
+  (`d0d1d877…`) no se acepta.
+- **Reintentos al reiniciar.** Al reiniciar, la cola vuelve a intentar todo lo no retenido y todo lo no anclado,
+  incluido lo que quedó `failed`, como antes de T159. Un `hold` que se va a reintentar espera su reintento antes de
+  que salga el anclaje, para no chocar en el número de secuencia. Uno que falló del todo no frena el anclaje.
+- **`ESCROW_CONTRACT_ID` se rechaza en la configuración hasta T160**, porque hasta entonces el checkout cobra a la
+  cuenta de la tienda y cada recibo fallaría el cuarto chequeo. T160 levanta la guarda junto con el `payTo`, y al
+  arrancar comprueba que el operador y la cuenta de cobro del escrow sean los de la tienda.
+- **El cuarto chequeo se ve donde se ven los otros tres:** `get_order` del MCP, el panel de Vitrinee y el kit de
+  conformidad. Solo aparece cuando el recibo tiene escrow, así que para las órdenes de hoy nada cambia.
+- **El lector de escrows no guarda caché:** cualquiera puede pedir verificar un recibo que nombre cualquier contrato.
+
 **Motivo.** Cierra la brecha 10 para los recibos con escrow, con la red imponiendo la unicidad y cualquiera pudiendo
 comprobarla, sin cambiar nada para las tiendas que cobran directo.
 

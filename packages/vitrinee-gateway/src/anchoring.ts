@@ -8,7 +8,7 @@
  * `failed`).
  */
 import type { AnchorInput, AnchorResult, HoldInput, HoldResult } from "@vitrinee/anchor";
-import { stellarExpertTxUrl } from "@vitrinee/core";
+import { VitrineeError, stellarExpertTxUrl } from "@vitrinee/core";
 
 import type { OrderRecord, OrderStore } from "./orders.js";
 
@@ -56,8 +56,7 @@ export class AnchorWorker {
   resume(): number {
     let queued = 0;
     for (const order of this.options.orders.list()) {
-      const unheld = order.hold !== undefined && order.hold.status !== "held";
-      if (order.receipt !== null && order.anchor !== null && (order.anchor.status !== "anchored" || unheld)) {
+      if (needsWork(order)) {
         this.enqueue(order.orderId);
         queued += 1;
       }
@@ -80,21 +79,35 @@ export class AnchorWorker {
     this.timers.clear();
   }
 
+  /**
+   * One pass over an order: everything not held or not anchored is tried, `failed` included, so a
+   * restart (`resume`) gives a step that ran out of retries one more attempt, as it always has.
+   */
   private async process(orderId: string): Promise<void> {
     const order = this.options.orders.get(orderId);
-    if (order === undefined || order.receipt === null || order.anchor === null) return;
-    // Held first (X-20): until `hold` lands, the payment sits in the escrow unallocated.
-    const retryHold = order.hold !== undefined && order.hold.status === "pending" ? await this.hold(order) : undefined;
-    const retryAnchor = order.anchor.status === "pending" ? await this.anchor(order) : undefined;
-    const delay = [retryHold, retryAnchor].filter((d): d is number => d !== undefined).sort((a, b) => a - b)[0];
-    if (delay !== undefined && !this.stopped) {
-      const timer = setTimeout(() => {
-        this.timers.delete(timer);
-        this.enqueue(orderId);
-      }, delay);
-      timer.unref();
-      this.timers.add(timer);
+    if (order === undefined || !needsWork(order)) return;
+    // Held first (X-20): until `hold` lands, the payment sits in the escrow unallocated. A hold that will be
+    // retried waits for its own retry before the anchor goes out: both are signed by the same account, and a
+    // hold still pending on chain would collide with the anchor on its sequence number.
+    if (order.hold !== undefined && order.hold.status !== "held") {
+      const retry = await this.hold(order);
+      if (retry !== undefined) return this.retryIn(orderId, retry);
     }
+    const current = this.options.orders.get(orderId);
+    if (current?.anchor !== null && current?.anchor !== undefined && current.anchor.status !== "anchored") {
+      const retry = await this.anchor(current);
+      if (retry !== undefined) this.retryIn(orderId, retry);
+    }
+  }
+
+  private retryIn(orderId: string, delay: number): void {
+    if (this.stopped) return;
+    const timer = setTimeout(() => {
+      this.timers.delete(timer);
+      this.enqueue(orderId);
+    }, delay);
+    timer.unref();
+    this.timers.add(timer);
   }
 
   /** One `hold` attempt. Returns the wait before the next one, or `undefined` when there is none. */
@@ -103,7 +116,7 @@ export class AnchorWorker {
     const hold = order.hold!;
     const attempt = hold.attempts + 1;
     try {
-      if (this.options.holder === undefined) throw new Error("this store has no escrow holder configured");
+      if (this.options.holder === undefined) throw new VitrineeError("EscrowError", "this store has no escrow holder configured");
       const result = await this.options.holder.hold({
         orderRef: orderId,
         payer: order.settlement.payer,
@@ -168,4 +181,10 @@ export class AnchorWorker {
       return delay;
     }
   }
+}
+
+/** Whether an order still has a step to do: a hold not yet held, or a receipt not yet anchored. */
+function needsWork(order: OrderRecord): boolean {
+  if (order.receipt === null || order.anchor === null) return false;
+  return order.anchor.status !== "anchored" || (order.hold !== undefined && order.hold.status !== "held");
 }

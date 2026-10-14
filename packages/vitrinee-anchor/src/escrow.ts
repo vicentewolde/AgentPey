@@ -20,6 +20,15 @@ import { hashToBytes } from "./scval.js";
 
 export const ESCROW_STORAGE_SCHEMA_VERSION = 1;
 
+/**
+ * The `purchase-escrow` code a verifier trusts: the SHA-256 of the deployed
+ * wasm (`deployments/testnet.json`, `purchaseEscrows`). A contract that merely
+ * stores the same layout would pass every other read; this is what makes "held"
+ * mean the contract's own rules apply. The retired `d0d1d877…` is left out: it
+ * could freeze a refund (`X-19`). A test pins this list to the deployments.
+ */
+export const PURCHASE_ESCROW_WASM_HASHES: readonly string[] = ["f5c6bbb6a54a017b71efd62e1aa87bd9b1babf5a688c74e253100586d6602fc5"];
+
 export const ESCROW_STATUSES = ["held", "shipped", "released", "disputed", "responded", "resolved", "expired"] as const;
 export type EscrowStatus = (typeof ESCROW_STATUSES)[number];
 
@@ -33,6 +42,8 @@ export interface EscrowConfig {
   releaseWindowSeconds: number;
   responseWindowSeconds: number;
   resolveWindowSeconds: number;
+  /** SHA-256 of the code the contract runs, hex; `null` when it is not a wasm contract. */
+  wasmHash: string | null;
 }
 
 export interface EscrowPurchase {
@@ -84,10 +95,14 @@ export interface HoldResult {
   alreadyHeld: boolean;
 }
 
+/** The part of `rpc.Server` the client uses: tests pass a fake. */
+export type EscrowRpc = Pick<rpc.Server, "getLedgerEntries" | "getAccount" | "prepareTransaction" | "sendTransaction" | "pollTransaction">;
+
 export interface EscrowClientConfig {
   contractId: string;
   rpcUrl: string;
   networkPassphrase: string;
+  server?: EscrowRpc;
 }
 
 /** `DataKey::Purchase(Bytes)`: a contracttype enum encodes as `Vec[Symbol, ..fields]`. */
@@ -172,7 +187,7 @@ export function decodePurchase(value: xdr.ScVal): EscrowPurchase {
   };
 }
 
-export function decodeEscrowConfig(value: xdr.ScVal): EscrowConfig {
+export function decodeEscrowConfig(value: xdr.ScVal, wasmHash: string | null = null): EscrowConfig {
   const parsed = configScSchema.safeParse(scValToNative(value));
   if (!parsed.success) {
     throw new VitrineeError("EscrowError", "purchase-escrow instance does not hold a Config", { details: { issues: parsed.error.issues.map((issue) => issue.message) } });
@@ -186,7 +201,17 @@ export function decodeEscrowConfig(value: xdr.ScVal): EscrowConfig {
     releaseWindowSeconds: c.release_window,
     responseWindowSeconds: c.response_window,
     resolveWindowSeconds: c.resolve_window,
+    wasmHash,
   };
+}
+
+/** The wasm hash of a contract instance's executable, in stellar-sdk 17's `{ type, <field> }` shape (Vitrinee rule 5). */
+function wasmHashOf(executable: unknown): string | null {
+  if (typeof executable !== "object" || executable === null) return null;
+  const { type, wasmHash } = executable as { type?: unknown; wasmHash?: unknown };
+  if (type !== "contractExecutableWasm" || typeof wasmHash !== "object" || wasmHash === null) return null;
+  const hex = String((wasmHash as { toString(encoding: string): unknown }).toString("hex"));
+  return /^[0-9a-f]{64}$/.test(hex) ? hex : null;
 }
 
 /** The contract's own errors a `hold` can meet when an earlier attempt already landed. */
@@ -199,12 +224,12 @@ function isAlreadyHeld(error: unknown): boolean {
 /** Soroban RPC client for one store's `purchase-escrow`. */
 export class EscrowClient implements EscrowReader {
   readonly contractId: string;
-  private readonly server: rpc.Server;
+  private readonly server: EscrowRpc;
   private readonly contract: Contract;
 
   constructor(private readonly config_: EscrowClientConfig) {
     this.contractId = config_.contractId;
-    this.server = new rpc.Server(config_.rpcUrl, { allowHttp: config_.rpcUrl.startsWith("http://") });
+    this.server = config_.server ?? new rpc.Server(config_.rpcUrl, { allowHttp: config_.rpcUrl.startsWith("http://") });
     this.contract = new Contract(config_.contractId);
   }
 
@@ -227,7 +252,7 @@ export class EscrowClient implements EscrowReader {
     const storage = instance !== null && instance.type === "scvContractInstance" ? (instance.instance.storage ?? []) : [];
     const stored = storage.find((item) => JSON.stringify(scValToNative(item.key)) === JSON.stringify(["Config"]));
     if (stored === undefined) throw new VitrineeError("EscrowError", "this contract is not a deployed purchase-escrow", { details: { contractId: this.contractId } });
-    return decodeEscrowConfig(stored.val);
+    return decodeEscrowConfig(stored.val, instance !== null && instance.type === "scvContractInstance" ? wasmHashOf(instance.instance.executable) : null);
   }
 
   async get(orderRef: string): Promise<EscrowPurchase | null> {
@@ -302,15 +327,11 @@ export function sameHold(held: EscrowPurchase, input: HoldInput): boolean {
   return held.orderRef === input.orderRef && held.payer === input.payer && held.amountAtomic === input.amount && held.txHash === input.txHash && held.receiptHash === input.receiptHash;
 }
 
-/** A factory for verifiers: one client per escrow a receipt names. */
+/**
+ * A factory for verifiers: a client for whichever escrow a receipt names. No
+ * cache: anyone can ask a store to verify a receipt naming any contract, and a
+ * cache keyed by those would grow without bound.
+ */
 export function escrowReaders(options: { rpcUrl: string; networkPassphrase: string }): EscrowReaderFactory {
-  const cache = new Map<string, EscrowClient>();
-  return (contractId) => {
-    let client = cache.get(contractId);
-    if (client === undefined) {
-      client = new EscrowClient({ contractId, ...options });
-      cache.set(contractId, client);
-    }
-    return client;
-  };
+  return (contractId) => new EscrowClient({ contractId, ...options });
 }

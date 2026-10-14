@@ -282,9 +282,17 @@ dice el resultado de cada una por separado ([VT-13](DECISIONES.md)):
    al pagador y acreditó al merchant exactamente el monto del recibo. Un
    pagador `C…` aparece en Horizon como `contract_debited`, con el contrato en
    `contract`; el campo `account` de ese efecto es quien envió la transacción
-   (el facilitator), y no cuenta como pagador ([VT-22](DECISIONES.md)).
+   (el facilitator), y no cuenta como pagador ([VT-22](DECISIONES.md)). Si el
+   recibo declara `escrow`, el abono es al contrato del escrow
+   (`contract_credited`), no a `merchantAccount`.
+4. **Retenido** (solo si el recibo declara `escrow`, Fase 9, T159): el
+   `purchase-escrow` de la tienda guarda este pago para este recibo, esta
+   orden, este pagador y este monto; corre el código conocido de
+   `purchase-escrow`; y es de la tienda que firmó (operador = cuenta del DID,
+   cuenta de cobro = `merchantAccount`). Ver `X-22` en
+   `docs/fase-9-compra-protegida/DECISIONES.md`.
 
-Las tres se pueden correr **sin la tienda**: el DID da la llave, el contrato
+Las tres (cuatro con escrow) se pueden correr **sin la tienda**: el DID da la llave, el contrato
 es público y la transacción está en Stellar. Una tienda que desaparece no
 invalida un recibo emitido, y ese es el punto. Un verificador **debería**
 correr las tres por su cuenta y no confiar en el veredicto agregado de quien
@@ -303,7 +311,8 @@ emitió el recibo.
   "settlementTxHash": "…",
   "items": [{ "productId": "…", "sku": "…", "name": "…", "quantity": 1,
               "unitPriceUSDC": "…", "unitPriceUSDCAtomic": "…" }],
-  "issuedAt": "…", "refundWindowEndsAt": "…"
+  "issuedAt": "…", "refundWindowEndsAt": "…",
+  "escrow": { "contract": "C…" }   // opcional (T159): solo si el pago entró al escrow de la tienda
 }
 ```
 

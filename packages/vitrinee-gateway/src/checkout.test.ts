@@ -721,7 +721,8 @@ describe("GET /checkout/:productId — the door x402 clients use (VT-23)", () =>
 describe("a store with an escrow: one payment, one receipt (T159)", () => {
   async function escrowStore(escrow = fakeEscrow()) {
     const horizon = fakeHorizon({ creditContract: ESCROW_ID }) as typeof fetch & { allow(amount: string): void };
-    const env = await start({ config: testConfig({ ESCROW_CONTRACT_ID: ESCROW_ID }), holder: escrow.holder, escrows: escrow.escrows, horizonFetch: horizon });
+    // Set in code: until T160 the environment variable is refused (the checkout does not pay into the escrow yet).
+    const env = await start({ config: { ...testConfig(), escrowId: ESCROW_ID }, holder: escrow.holder, escrows: escrow.escrows, horizonFetch: horizon });
     return { ...env, escrow, horizon };
   }
 
@@ -790,33 +791,68 @@ describe("a store with an escrow: one payment, one receipt (T159)", () => {
     }
   });
 
-  it("retries a failed hold, anchors meanwhile, and records the reason when it gives up", async () => {
+  it("retries a failed hold before anchoring, so the two never race on the signing account's sequence", async () => {
     const flaky = await escrowStore(fakeEscrow({ failTimes: 1 }));
     try {
       const order = (await (await buy(flaky.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
       await flaky.app.anchors.idle();
-      expect(flaky.deps.orders!.get(order["orderId"])!.anchor).toMatchObject({ status: "anchored", attempts: 1 });
+      expect(flaky.deps.orders!.get(order["orderId"])!.hold).toMatchObject({ status: "pending", attempts: 1 });
+      expect(flaky.deps.orders!.get(order["orderId"])!.anchor).toMatchObject({ status: "pending", attempts: 0 });
       await new Promise((r) => setTimeout(r, 30));
       await flaky.app.anchors.idle();
       expect(flaky.deps.orders!.get(order["orderId"])!.hold).toMatchObject({ status: "held", attempts: 2 });
+      expect(flaky.deps.orders!.get(order["orderId"])!.anchor).toMatchObject({ status: "anchored", attempts: 1 });
     } finally {
       flaky.app.anchors.stop();
       await flaky.close();
     }
+  });
 
-    const dead = await escrowStore(fakeEscrow({ failTimes: 10 }));
+  it("anchors anyway when a hold fails for good, and a restart tries the hold again until it lands", async () => {
+    const escrow = fakeEscrow({ failTimes: 3 });
+    const env = await escrowStore(escrow);
     try {
-      const order = (await (await buy(dead.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      const order = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
       for (let i = 0; i < 5; i += 1) {
-        await dead.app.anchors.idle();
+        await env.app.anchors.idle();
         await new Promise((r) => setTimeout(r, 20));
       }
-      expect(dead.deps.orders!.get(order["orderId"])!.hold).toMatchObject({ status: "failed", attempts: 3, lastError: "rpc: txBadSeq" });
-      expect(dead.app.anchors.resume()).toBe(1); // a restart picks it up again
+      const record = env.deps.orders!.get(order["orderId"])!;
+      expect(record.hold).toMatchObject({ status: "failed", attempts: 3, lastError: "rpc: txBadSeq" });
+      expect(record.anchor).toMatchObject({ status: "anchored" });
+
+      // A restart: the hold, out of retries, gets one more attempt, and this time the escrow answers.
+      expect(env.app.anchors.resume()).toBe(1);
+      await env.app.anchors.idle();
+      expect(env.deps.orders!.get(order["orderId"])!.hold).toMatchObject({ status: "held", attempts: 4 });
+      expect(escrow.calls).toHaveLength(4);
     } finally {
-      dead.app.anchors.stop();
-      await dead.close();
+      env.app.anchors.stop();
+      await env.close();
     }
+  });
+
+  it("a store without an escrow: a restart anchors a receipt whose anchor ran out of retries, as before T159", async () => {
+    const dead = fakeRegistry({ failTimes: 3 });
+    const env = await start({ anchorer: dead.anchorer, registry: dead.registry });
+    try {
+      const order = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      for (let i = 0; i < 5; i += 1) {
+        await env.app.anchors.idle();
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      expect(env.deps.orders!.get(order["orderId"])!.anchor).toMatchObject({ status: "failed", attempts: 3 });
+      expect(env.app.anchors.resume()).toBe(1);
+      await env.app.anchors.idle();
+      expect(env.deps.orders!.get(order["orderId"])!.anchor).toMatchObject({ status: "anchored", attempts: 4 });
+    } finally {
+      env.app.anchors.stop();
+      await env.close();
+    }
+  });
+
+  it("refuses ESCROW_CONTRACT_ID in the environment until the checkout pays into the escrow (T160)", () => {
+    expect(() => testConfig({ ESCROW_CONTRACT_ID: ESCROW_ID })).toThrow(expect.objectContaining({ code: "ConfigError" }));
   });
 
   it("a store without an escrow: no hold, no escrow in the receipt, three checks", async () => {

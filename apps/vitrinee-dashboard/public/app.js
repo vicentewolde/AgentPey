@@ -213,6 +213,8 @@ const CHECK_NAMES = {
   anchored: ["Anclaje", "Su hash está escrito en el contrato de Stellar, por ese merchant."],
   settlement: ["Pago", "La transacción existe en la red y movió ese USDC."],
 };
+// Only for a receipt paid into the store's escrow (T159).
+const HELD_CHECK = ["Retenido", "El escrow de la tienda guarda este pago para este recibo: un pago, un recibo."];
 
 function renderChecks(container, verification) {
   const nodes = [
@@ -221,11 +223,12 @@ function renderChecks(container, verification) {
       { className: `check ${verification.valid ? "ok" : "bad"}` },
       el("div", {}, [
         el("div", { className: "check-name" }, verification.valid ? "Recibo válido" : "Recibo inválido"),
-        el("div", { className: "check-why" }, verification.valid ? "Las tres comprobaciones pasaron." : "Al menos una comprobación falló."),
+        el("div", { className: "check-why" }, verification.valid ? (verification.checks.held ? "Las cuatro comprobaciones pasaron." : "Las tres comprobaciones pasaron.") : "Al menos una comprobación falló."),
       ]),
     ),
   ];
-  for (const [key, [name, why]] of Object.entries(CHECK_NAMES)) {
+  const names = verification.checks?.held ? { ...CHECK_NAMES, held: HELD_CHECK } : CHECK_NAMES;
+  for (const [key, [name, why]] of Object.entries(names)) {
     const check = verification.checks?.[key];
     const ok = check?.ok === true;
     nodes.push(

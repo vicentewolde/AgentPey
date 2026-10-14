@@ -8950,3 +8950,20 @@ Qué: **reorden aprobado por el usuario** (T159 → T160 → T158, `X-21`; ticke
 Pendiente: `/revisar`; merge con OK del usuario; después `/tarea T160`. Nada se enciende en producción con este merge:
 ninguna tienda tiene `ESCROW_CONTRACT_ID`. Exponential: T159 en `IN_PROGRESS`, T158 en `READY_TO_PLAN`. `AGENTS.md`:
 sin cambios (los archivos de Vitrinee que toca ya están en la lista de la Fase 9).
+
+## 2026-10-14 (13) — cc/t159-recibo-pago
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T159; el usuario pidió corregir todo menos el texto de la página del recibo según el estado (va con
+T161). El bloqueante: con el cambio de la cola, una tienda que cobra directo ya no reintentaba al reiniciar un anclaje
+`failed`; corregido con tests de reinicio con y sin escrow. Además:
+- el cuarto chequeo exige el wasm conocido de `purchase-escrow`;
+- `ESCROW_CONTRACT_ID` se rechaza hasta T160;
+- el chequeo se ve en `get_order` del MCP, el panel y el kit (solo si el recibo tiene escrow);
+- el lector de escrows ya no guarda caché, y `hold` tiene tests de idempotencia;
+- documentos de Vitrinee al día.
+
+`X-22` precisada. `pnpm check` y `vitrinee:check` en verde.
+
+Pendiente: merge con OK del usuario; después `/tarea T160`. Exponential: sin cambios. `AGENTS.md`: sin cambios.

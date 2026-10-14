@@ -1,6 +1,6 @@
 import { checkReceiptSignature, parseStellarDid, type ReceiptClaims } from "@vitrinee/core";
 
-import type { EscrowReaderFactory } from "./escrow.js";
+import { PURCHASE_ESCROW_WASM_HASHES, type EscrowReaderFactory } from "./escrow.js";
 import type { RegistryReader } from "./registry.js";
 import type { AnchoredRecord } from "./scval.js";
 import { checkSettlement, type SettlementCheck } from "./settlement.js";
@@ -8,7 +8,8 @@ import { checkSettlement, type SettlementCheck } from "./settlement.js";
 /**
  * Check 4, only for a receipt that declares an escrow (T159): the escrow
  * holds this exact receipt next to the payment it cites, for the payer and the
- * amount it names, and the escrow belongs to the store that signed it.
+ * amount it names, the escrow runs the `purchase-escrow` code this verifier
+ * knows, and it belongs to the store that signed it.
  */
 export interface HeldCheck {
   ok: boolean;
@@ -100,9 +101,10 @@ export async function verifyReceipt(jws: string, options: VerifyOptions): Promis
 /**
  * One payment, one receipt (brecha 10): the escrow's `by_tx` for the payment
  * this receipt cites must return this receipt, this order, this payer and this
- * amount. And the escrow must be the signing store's: its operator the receipt's
- * signer and its payee the receipt's `merchantAccount`, or a receipt could point
- * at someone else's escrow.
+ * amount. The escrow must run the known `purchase-escrow` code, or "held" would
+ * promise rules nobody enforces. And it must be the signing store's: its
+ * operator the receipt's signer and its payee the receipt's `merchantAccount`,
+ * or a receipt could point at someone else's escrow.
  */
 export async function checkHeld(
   claims: Pick<ReceiptClaims, "escrow" | "settlementTxHash" | "orderId" | "payerAccount" | "amountUSDCAtomic" | "merchantDid" | "merchantAccount">,
@@ -115,6 +117,8 @@ export async function checkHeld(
     const reader = escrows(escrow);
     const [config, purchase] = await Promise.all([reader.config(), reader.byTx(claims.settlementTxHash)]);
     const fail = (reason: string): HeldCheck => ({ ok: false, escrow, reason, ...(purchase === null ? {} : { status: purchase.status }) });
+    // Same layout is not same rules: a look-alike contract could skip `hold`'s checks or pay itself.
+    if (config.wasmHash === null || !PURCHASE_ESCROW_WASM_HASHES.includes(config.wasmHash)) return fail("the escrow does not run the purchase-escrow code this verifier knows");
     if (config.operator !== safeAccount(claims.merchantDid)) return fail("the escrow's operator is not the account that signed the receipt");
     if (config.payee !== claims.merchantAccount) return fail("the escrow pays another account than the receipt's merchantAccount");
     if (purchase === null) return fail("the escrow holds no purchase for this payment");

@@ -111,6 +111,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
   } catch {
     throw new VitrineeError("ConfigError", "invalid environment: MERCHANT_SIGNING_SECRET: not a Stellar secret seed");
   }
+  // Until T160 the checkout still pays the store's own account: a store naming an escrow would issue receipts
+  // that fail their escrow checks and holds that fail for want of funds. T160 lifts this with the payTo change.
+  if (e.ESCROW_CONTRACT_ID !== undefined) {
+    throw new VitrineeError("ConfigError", "ESCROW_CONTRACT_ID is not accepted yet: the checkout does not pay into the escrow until T160", {
+      details: { escrow: e.ESCROW_CONTRACT_ID },
+    });
+  }
   if (e.ADAPTER === "jumpseller" && (e.JUMPSELLER_LOGIN === undefined || e.JUMPSELLER_AUTHTOKEN === undefined)) {
     throw new VitrineeError(
       "ConfigError",

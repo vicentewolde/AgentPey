@@ -1,9 +1,22 @@
 import { readFileSync } from "node:fs";
 
-import { Address, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
-import { describe, expect, it } from "vitest";
+import { Account, Address, Keypair, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { describe, expect, it, vi } from "vitest";
 
-import { ESCROW_STORAGE_SCHEMA_VERSION, configKey, decodeEscrowConfig, decodePurchase, paymentKey, purchaseKey, sameHold, type EscrowPurchase, type EscrowReader } from "./escrow.js";
+import {
+  ESCROW_STORAGE_SCHEMA_VERSION,
+  EscrowClient,
+  PURCHASE_ESCROW_WASM_HASHES,
+  configKey,
+  decodeEscrowConfig,
+  decodePurchase,
+  paymentKey,
+  purchaseKey,
+  sameHold,
+  type EscrowPurchase,
+  type EscrowReader,
+  type EscrowRpc,
+} from "./escrow.js";
 import { checkSettlement } from "./settlement.js";
 import { checkHeld } from "./verify.js";
 
@@ -157,9 +170,9 @@ describe("check 4, held: one payment, one receipt (T159, brecha 10)", () => {
     merchantDid: `did:stellar:testnet:${OPERATOR}`,
     merchantAccount: PAYEE,
   };
-  const reader = (held: EscrowPurchase | null, payee = PAYEE, operator = OPERATOR): EscrowReader => ({
+  const reader = (held: EscrowPurchase | null, payee = PAYEE, operator = OPERATOR, wasmHash: string | null = PURCHASE_ESCROW_WASM_HASHES[0] ?? null): EscrowReader => ({
     contractId: ESCROW,
-    config: async () => ({ operator, payee, arbiter: OPERATOR, token: PAYER, releaseWindowSeconds: 1, responseWindowSeconds: 1, resolveWindowSeconds: 1 }),
+    config: async () => ({ operator, payee, arbiter: OPERATOR, token: PAYER, releaseWindowSeconds: 1, responseWindowSeconds: 1, resolveWindowSeconds: 1, wasmHash }),
     get: async () => held,
     byTx: async (tx) => (tx === held?.txHash ? held : null),
   });
@@ -184,6 +197,19 @@ describe("check 4, held: one payment, one receipt (T159, brecha 10)", () => {
   it("fails when the escrow is another store's: other operator, or other payee", async () => {
     expect(await checkHeld(claims, RECEIPT, () => reader(purchase, PAYEE, PAYEE))).toMatchObject({ ok: false, reason: "the escrow's operator is not the account that signed the receipt" });
     expect(await checkHeld(claims, RECEIPT, () => reader(purchase, OPERATOR))).toMatchObject({ ok: false, reason: "the escrow pays another account than the receipt's merchantAccount" });
+  });
+
+  it("fails for a look-alike contract: same layout, other code, or no wasm at all", async () => {
+    const reason = "the escrow does not run the purchase-escrow code this verifier knows";
+    expect(await checkHeld(claims, RECEIPT, () => reader(purchase, PAYEE, OPERATOR, "0".repeat(64)))).toMatchObject({ ok: false, reason });
+    // The retired escrow code (d0d1d877…) could freeze a refund (X-19): it is not trusted either.
+    expect(await checkHeld(claims, RECEIPT, () => reader(purchase, PAYEE, OPERATOR, "d0d1d877ac479aa6367833f467e35ff90be581236c4c2b688dd313ca4cf802c4"))).toMatchObject({ ok: false, reason });
+    expect(await checkHeld(claims, RECEIPT, () => reader(purchase, PAYEE, OPERATOR, null))).toMatchObject({ ok: false, reason });
+  });
+
+  it("trusts exactly the code the deployed escrows run", () => {
+    const deployments = JSON.parse(readFileSync(new URL("../../../deployments/testnet.json", import.meta.url), "utf8")) as { purchaseEscrows: Record<string, { wasmHash: string }> };
+    expect([...new Set(Object.values(deployments.purchaseEscrows).map((e) => e.wasmHash))].sort()).toEqual([...PURCHASE_ESCROW_WASM_HASHES].sort());
   });
 
   it("fails closed without a reader, or when the escrow cannot be read", async () => {
@@ -233,5 +259,43 @@ describe("check 3 for a receipt paid into an escrow (T159, X-14)", () => {
     const direct = { settlementTxHash: TX, payerAccount: PAYER, merchantAccount: PAYEE, amountUSDCAtomic: "500000" };
     expect(await checkSettlement(direct, { horizonUrl: "https://h.test", fetchImpl: horizon({ type: "account_credited", account: PAYEE }) })).toMatchObject({ ok: true });
     expect(await checkSettlement(direct, { horizonUrl: "https://h.test", fetchImpl: horizon(toEscrow) })).toMatchObject({ ok: false });
+  });
+});
+
+describe("EscrowClient.hold, when an earlier attempt already landed (T159)", () => {
+  const operator = Keypair.random();
+  const input = { orderRef: "rehearsal-mv8hh8i3-f", payer: PAYER, amount: 500_000n, txHash: TX, receiptHash: RECEIPT };
+  const rpcRefusing = (message: string): EscrowRpc =>
+    ({
+      getAccount: async () => new Account(operator.publicKey(), "1"),
+      prepareTransaction: () => Promise.reject(new Error(message)),
+    }) as unknown as EscrowRpc;
+  const client = (message: string) => new EscrowClient({ contractId: ESCROW, rpcUrl: "https://rpc.test", networkPassphrase: "Test SDF Network ; September 2015", server: rpcRefusing(message) });
+  const simulation = (code: number) => `HostError: Error(Contract, #${code})\nEvent log (newest first): ["contract call failed", hold]`;
+
+  it.each([4, 5])("reports the same purchase as already held when the contract answers #%i", async (code) => {
+    const c = client(simulation(code));
+    vi.spyOn(c, "byTx").mockResolvedValue(decodePurchase(purchaseScVal()));
+    expect(await c.hold(input, operator.secret())).toEqual({ txHash: undefined, ledger: 0, alreadyHeld: true });
+  });
+
+  it("refuses when the payment is held as a different purchase", async () => {
+    const c = client(simulation(5));
+    vi.spyOn(c, "byTx").mockResolvedValue({ ...decodePurchase(purchaseScVal()), receiptHash: "e".repeat(64) });
+    await expect(c.hold(input, operator.secret())).rejects.toMatchObject({ code: "EscrowError", message: "this payment or order is already held as a different purchase" });
+  });
+
+  it("refuses when the order is held with another payment: nothing on chain backs this one", async () => {
+    const c = client(simulation(4));
+    vi.spyOn(c, "byTx").mockResolvedValue(null);
+    await expect(c.hold(input, operator.secret())).rejects.toMatchObject({ code: "EscrowError" });
+  });
+
+  it("does not read any other contract error as already held", async () => {
+    const c = client(simulation(6)); // InsufficientUnallocated
+    const byTx = vi.spyOn(c, "byTx");
+    await expect(c.hold(input, operator.secret())).rejects.toMatchObject({ code: "EscrowError", message: expect.stringContaining("simulation of hold failed") });
+    expect(byTx).not.toHaveBeenCalled();
+    await expect(client(simulation(45)).hold(input, operator.secret())).rejects.toMatchObject({ message: expect.stringContaining("simulation of hold failed") });
   });
 });

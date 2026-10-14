@@ -710,7 +710,10 @@ async function receiptChecks(report: Report, options: KitOptions, deps: KitDeps,
     return;
   }
   const parts = [`signature ${verification.checks.signature.ok ? "ok" : `no (${verification.checks.signature.reason ?? ""})`}`, `anchor ${verification.checks.anchored.ok ? "ok" : `no (${verification.checks.anchored.reason ?? order.anchor.status})`}`, `settlement ${verification.checks.settlement.ok ? "ok" : `no (${verification.checks.settlement.reason ?? ""})`}`];
-  report.add("E4", "receipt", "receipt's three checks", verification.valid ? "pass" : "fail", parts.join(", "));
+  // A receipt paid into the store's escrow has a fourth check (T159): without it in the line, a failure would read as all ok.
+  const held = verification.checks.held ?? null;
+  if (held !== null) parts.push(`held ${held.ok ? "ok" : `no (${held.reason ?? ""})`}`);
+  report.add("E4", "receipt", held === null ? "receipt's three checks" : "receipt's four checks", verification.valid ? "pass" : "fail", parts.join(", "));
 }
 
 /** The base64url Ed25519 key a `did:stellar:<network>:G…[#fragment]` names; undefined when it names none. */

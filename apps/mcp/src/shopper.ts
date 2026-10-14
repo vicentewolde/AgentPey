@@ -347,6 +347,8 @@ export class Shopper {
                 signature: { ok: verification.checks.signature.ok, reason: verification.checks.signature.reason ?? null },
                 anchored: { ok: verification.checks.anchored.ok, reason: verification.checks.anchored.reason ?? null },
                 settlement: { ok: verification.checks.settlement.ok, reason: verification.checks.settlement.reason ?? null },
+                // Only for a receipt paid into the store's escrow (T159): absent otherwise, so other orders read as before.
+                ...(verification.checks.held == null ? {} : { held: { ok: verification.checks.held.ok, reason: verification.checks.held.reason ?? null } }),
               },
             },
     };

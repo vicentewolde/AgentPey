@@ -40,7 +40,7 @@ Vitrinee es un comercio x402 más, que se agrega por configuración (`F7`).
 |---|---|
 | `packages/vitrinee-core` | Esquemas del manifest y del recibo, dinero en enteros, `VitrineeError`, `did:stellar`. Sin I/O |
 | `packages/vitrinee-adapters` | `StoreAdapter`: `mock` y `jumpseller` |
-| `packages/vitrinee-anchor` | Cliente Soroban del `receipt-registry` y verificación de tres checks |
+| `packages/vitrinee-anchor` | Cliente Soroban del `receipt-registry` y del `purchase-escrow` de cada tienda; verificación de tres checks, cuatro si el recibo se pagó a un escrow (Fase 9, T159, `X-22`) |
 | `packages/vitrinee-gateway` | Express: manifest, checkout x402, órdenes, verificación, discovery, y sirve el panel |
 | `apps/vitrinee-agent` | Cliente x402 de prueba (`pnpm vitrinee:buy`). No es el agente de AgentPey |
 | `apps/vitrinee-dashboard` | Panel de pedidos y verificación, HTML/JS estático |
