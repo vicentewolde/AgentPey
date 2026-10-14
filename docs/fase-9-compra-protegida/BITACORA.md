@@ -15,14 +15,14 @@
 **Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow, **revisada y corregida**: el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. Siguiente: merge de T157 y `/tarea T158`.
+contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. Siguiente: T158, el veredicto sobre el pago retenido.
 
 ## Progreso
 
 | Tarea | Estado |
 |---|---|
 | Chequeo del día 1 | ✅ hecho (`X-14`) |
-| T157 Contrato de escrow | 👀 en revisión |
+| T157 Contrato de escrow | ✅ terminada |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente |
 | T159 Un pago, un recibo, en la red | ⏳ pendiente |
 | T160 El checkout paga al escrow | ⏳ pendiente |

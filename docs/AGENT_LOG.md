@@ -8919,3 +8919,12 @@ reembolsado. Tests nuevos (35 en el contrato), llaves fijas en los tests, el scr
 registrado. El pago sin `hold` queda como límite, cubierto en T159 y T160 (`X-20`).
 
 Pendiente: merge con OK del usuario; después `/tarea T158`. Exponential: sin cambios. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (11) — cc/t157-cierre
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, **T157 mergeada a `main`** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)),
+fast-forward. Ticket T157 a `DONE`; `ESTADO.md`, `SYNC.md` y la bitácora al día. Solo documentos.
+
+Pendiente: `/tarea T158`. Exponential: T157 en `DONE`. `AGENTS.md`: sin cambios.
