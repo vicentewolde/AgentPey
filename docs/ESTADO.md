@@ -42,7 +42,7 @@
 | T153 Página del presupuesto de equipo (`R-29`) | para el video | ✅ terminada: `pnpm run team:summary -- --html` genera y abre la página local con gasto por día, pagos (solo los anclados cuentan como pagados en Stellar), rechazos y topes del rail | [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) |
 | T154 La página del recibo con el diseño del sitio (`R-34`) | para el video | ✅ terminada, en producción desde el 9-oct: misma cabecera, fuentes y colores que `agentpey.com`, e idioma por la cookie del sitio | [PR #81](https://github.com/vicentewolde/AgentPey/pull/81) |
 | T155 Pantalla local del árbitro (`R-34`) | para el video | ✅ terminada: `pnpm run arbiter:console`, los pasos del árbitro en una página en `localhost`; corrida real el 9-oct (`ord_mv1hp08c432548f9ed`, reembolso de 0,5157895 USDC), usada en la demo del Demo Day; mergeada el 10-oct | `cc/t155-consola-arbitro` |
-| T156 El chat de Grok compra por el MCP (`R-37`) | a pedido del usuario | ⏳ pendiente: spec aprobado por el usuario el 14-oct; agrega la dirección de vuelta exacta de Grok al inicio de sesión del MCP y prueba una compra | |
+| T156 El chat de Grok compra por el MCP (`R-37`) | a pedido del usuario | 🔨 en curso: código y tests listos (la dirección exacta de Grok y el log de registros rechazados); faltan `/revisar`, el despliegue y la prueba con Grok ([evidencia](fase-8-agentes-reales/evidencia/T156.md)) | `cc/t156-mcp-grok` |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 

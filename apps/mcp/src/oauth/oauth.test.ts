@@ -14,6 +14,7 @@ import type { Shopper } from "../shopper.js";
 import { createOAuthServer } from "./server.js";
 
 const CLAUDE = "https://claude.ai/api/mcp/auth_callback";
+const GROK = "https://grok.com/connectors-oauth-exchange-code/";
 const SECRET = "test-secret-that-is-at-least-32-bytes-long!!";
 
 interface Started {
@@ -242,6 +243,59 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(res.headers.get("location")).toBeNull();
     const forged = await authorizePage(s, `${clientId}x`, pkce().challenge);
     expect(forged.status).toBe(400);
+  });
+
+  it("lets the Grok chat in through its exact callback, and nothing that only looks like it (T156, R-37)", async () => {
+    const s = await start();
+    const grok = (await post(`${s.url}/register`, { redirect_uris: [GROK], client_name: "Grok" })).json["client_id"] as string;
+    const { verifier, challenge } = pkce();
+    const page = await authorizePage(s, grok, challenge, { redirect_uri: GROK });
+    expect(page.status).toBe(200);
+    const request = requestOf(await page.text());
+    const asked = await post(`${s.url}/authorize/challenge`, { request, account: s.wallet.publicKey() });
+    const approved = await post(`${s.url}/authorize/approve`, { request, account: s.wallet.publicKey(), challenge: asked.json["challenge"], signature: signStellarMessage(s.wallet, asked.json["message"] as string) });
+    const back = new URL(approved.json["redirect"] as string);
+    expect(back.origin + back.pathname).toBe(GROK);
+    const exchange = await post(`${s.url}/token`, { grant_type: "authorization_code", code: back.searchParams.get("code")!, code_verifier: verifier, redirect_uri: GROK, client_id: grok, resource: s.resource }, true);
+    expect(exchange.status).toBe(200);
+    expect(exchange.json["access_token"]).toEqual(expect.any(String));
+
+    const lookalikes = [
+      "https://grok.com/connectors-oauth-exchange-code",
+      "https://www.grok.com/connectors-oauth-exchange-code/",
+      "http://grok.com/connectors-oauth-exchange-code/",
+      "https://grok.com/connectors/oauth/callback",
+      "https://grok.com:443/connectors-oauth-exchange-code/",
+      "https://grok.com:8443/connectors-oauth-exchange-code/",
+      "https://grok.com/connectors-oauth-exchange-code/?x=1",
+      "https://grok.com/connectors-oauth-exchange-code/#f",
+      "https://grok.com.attacker.example/connectors-oauth-exchange-code/",
+      "https://user@grok.com/connectors-oauth-exchange-code/",
+      "https://GROK.com/connectors-oauth-exchange-code/",
+    ];
+    for (const uri of lookalikes) {
+      expect((await post(`${s.url}/register`, { redirect_uris: [uri] })).json, uri).toMatchObject({ error: "invalid_redirect_uri" });
+    }
+    // A client registered for Grok cannot be sent anywhere else, and Claude's client cannot be sent to Grok.
+    expect((await authorizePage(s, grok, pkce().challenge)).status).toBe(400);
+    expect((await authorizePage(s, await register(s), pkce().challenge, { redirect_uri: GROK })).status).toBe(400);
+  });
+
+  it("logs which redirect URIs a refused registration asked for, cut short, and nothing for an accepted one (T156)", async () => {
+    const s = await start();
+    await register(s);
+    expect(s.logs.filter((line) => line.includes("refused"))).toEqual([]);
+    const long = `https://attacker.example/${"a".repeat(500)}`;
+    const many = Array.from({ length: 5 }, (_, i) => `https://attacker.example/${i}`);
+    const refused = await post(`${s.url}/register`, { redirect_uris: [GROK, long, ...many.slice(0, 3)] });
+    expect(refused.json).toMatchObject({ error: "invalid_redirect_uri" });
+    expect(refused.json["error_description"]).toContain("Grok");
+    const line = JSON.parse(s.logs.at(-1)!) as { message: string; refused: string[] };
+    expect(line.message).toBe("oauth registration refused");
+    expect(line.refused).toEqual([long.slice(0, 200), ...many.slice(0, 3)]);
+    expect(line.refused).not.toContain(GROK);
+    // The registration schema takes five URIs at most, so the line never grows past five.
+    expect((await post(`${s.url}/register`, { redirect_uris: [...many, "https://attacker.example/6"] })).json).toMatchObject({ error: "invalid_client_metadata" });
   });
 
   it("refuses a token request for another resource, and an authorization for another resource", async () => {

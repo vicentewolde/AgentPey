@@ -75,7 +75,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T153 | — (sin ticket Exponential propio) | Página local del presupuesto de equipo | SPEC | `DONE` | 2026-10-08 | 2026-10-08 | 2026-10-08 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-29](../fase-8-agentes-reales/DECISIONES.md) | [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) |
 | T154 | — (sin ticket Exponential propio) | La página del recibo con el diseño del sitio | SPEC | `DONE` | 2026-10-09 | 2026-10-09 | 2026-10-09 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-34](../fase-8-agentes-reales/DECISIONES.md) | [PR #81](https://github.com/vicentewolde/AgentPey/pull/81) |
 | T155 | — (sin ticket Exponential propio) | Pantalla local del árbitro | SPEC | `DONE` | 2026-10-09 | 2026-10-09 | 2026-10-10 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-34](../fase-8-agentes-reales/DECISIONES.md) | [PR #82](https://github.com/vicentewolde/AgentPey/pull/82) |
-| T156 | — (sin ticket Exponential propio) | El chat de Grok compra por el MCP | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-37](../fase-8-agentes-reales/DECISIONES.md) | |
+| T156 | — (sin ticket Exponential propio) | El chat de Grok compra por el MCP | SPEC | `IN_PROGRESS` | 2026-10-14 | 2026-10-14 | | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-37](../fase-8-agentes-reales/DECISIONES.md) | `cc/t156-mcp-grok` |
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y

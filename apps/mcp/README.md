@@ -1,6 +1,6 @@
 # @agentpey/mcp
 
-AgentPey's MCP server (T128): Claude and ChatGPT connect to it to search
+AgentPey's MCP server (T128): Claude, ChatGPT and the Grok chat connect to it to search
 Vitrinee stores, quote, pay on Stellar testnet from the MCP's own
 `policy_rail`, read the order with its verified receipt, and sign a refund
 claim. OAuth 2.1 in front of `/mcp`; the only person who can sign in is the
@@ -62,6 +62,24 @@ developer mode is on Plus, Pro, Business, Enterprise and Education.
 ChatGPT asks you to confirm before it pays, and then calls `pay` itself: no
 need for the Inspector. Write calls (`quote`, `pay`, `open_claim`) may also
 show their arguments for approval first.
+
+## Connect Grok
+
+The Grok chat (not Grok Bot) takes a custom MCP server (T156, `R-37`). Not
+tested end to end yet: this section is updated after the first real sign-in.
+
+1. Go to [grok.com/connectors](https://grok.com/connectors), click **New
+   Connector**, then **Custom**. Name: `AgentPey`. URL:
+   `https://mcp.agentpey.com/mcp`.
+2. Grok registers itself and opens the sign-in page. Sign in with your wallet
+   as above.
+3. In a chat with the connector on, ask for example: `Using AgentPey, search
+   agentcommerce for a magnet and quote one`.
+
+The server only sends a code back to Grok's exact callback,
+`https://grok.com/connectors-oauth-exchange-code/`. If Grok sends another, the
+registration fails with `invalid_redirect_uri` and the server logs
+`oauth registration refused` with the URI it asked for.
 
 ## One product or a cart
 

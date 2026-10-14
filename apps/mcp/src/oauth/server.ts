@@ -6,9 +6,11 @@
  *   registration itself, signed; or they present a Client ID Metadata
  *   Document (CIMD), fetched only from hosts this server already trusts to
  *   receive codes, and cached a few minutes. Either way a redirect URI must
- *   be one of the allowed ones: Claude's, ChatGPT's, or a loopback address
- *   for local clients, matched without its port (RFC 8252 §7.3; Claude Code
- *   uses a new port each session).
+ *   be one of the allowed ones: Claude's, ChatGPT's, the Grok chat's (T156,
+ *   `R-37`), or a loopback address for local clients, matched without its
+ *   port (RFC 8252 §7.3; Claude Code uses a new port each session). A refused
+ *   registration logs the URIs it asked for, so a new client's callback shows
+ *   up in the logs.
  * - `GET /authorize` shows a page where the person signs a message with their
  *   wallet (SEP-53). Only the configured wallet, the principal of the MCP's
  *   spending account, gets a code. The challenge to sign is itself a signed
@@ -34,8 +36,19 @@ import { RedeemedCodes, TokenSigner, TOKEN_TTL_SECONDS } from "./tokens.js";
 
 export const MCP_SCOPE = "shop";
 
-/** Where Claude and ChatGPT send people back after signing in (their docs, read 2026-10-03). */
-export const DEFAULT_REDIRECT_URIS = ["https://claude.ai/api/mcp/auth_callback", "https://chatgpt.com/connector_platform_oauth_redirect"] as const;
+/**
+ * Where Claude and ChatGPT send people back after signing in (their docs, read 2026-10-03), and the Grok chat's custom
+ * connector (T156, `R-37`): xAI does not publish it, so it is the callback two third parties saw in their own logs.
+ * Each one is matched whole, never by host.
+ */
+export const DEFAULT_REDIRECT_URIS = [
+  "https://claude.ai/api/mcp/auth_callback",
+  "https://chatgpt.com/connector_platform_oauth_redirect",
+  "https://grok.com/connectors-oauth-exchange-code/",
+] as const;
+
+/** How much of each refused redirect URI a log line keeps. */
+const LOGGED_URI_MAX = 200;
 
 export interface OAuthServerOptions {
   /** This server's public origin, e.g. `https://mcp.agentpey.com`. The issuer. */
@@ -258,7 +271,11 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     const body = registrationSchema.safeParse(req.body);
     if (!body.success) return oauthFail(res, 400, "invalid_client_metadata", "redirect_uris is required");
     const refused = body.data.redirect_uris.filter((uri) => !redirectAllowed(uri));
-    if (refused.length > 0) return oauthFail(res, 400, "invalid_redirect_uri", "this server only sends people back to Claude, ChatGPT or a loopback address");
+    if (refused.length > 0) {
+      // Only the URIs, cut short: they are what a client asked for, never a secret. The schema caps them at five.
+      log("oauth registration refused", { refused: refused.map((uri) => uri.slice(0, LOGGED_URI_MAX)) });
+      return oauthFail(res, 400, "invalid_redirect_uri", "this server only sends people back to Claude, ChatGPT, Grok or a loopback address");
+    }
     // A `jti` so two identical registrations still get two ids (RFC 7591).
     const clientId = await signer.sign("client", { redirect_uris: body.data.redirect_uris, ...(body.data.client_name === undefined ? {} : { client_name: body.data.client_name }) }, { jti: randomUUID() });
     log("oauth client registered", { clientName: body.data.client_name ?? null });

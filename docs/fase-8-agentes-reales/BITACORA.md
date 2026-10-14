@@ -74,7 +74,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T153 Página del presupuesto de equipo | cerrada |
 | T154 Página del recibo con el diseño del sitio | cerrada |
 | T155 Pantalla local del árbitro | cerrada |
-| T156 El chat de Grok compra por el MCP | pendiente, spec aprobado (`R-37`) |
+| T156 El chat de Grok compra por el MCP | en curso (`R-37`) |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -845,4 +845,19 @@ fuentes: lo correcto es "sin confirmar". `R-29` quedó precisada (`R-37`); su co
 para T144 no cambia.
 
 Evidencia: [`evidencia/T144-agentes.md`](evidencia/T144-agentes.md).
+
+---
+
+## T156 · El chat de Grok compra por el MCP — en curso
+
+**Qué hay hasta ahora (14-oct).** El inicio de sesión del servidor MCP acepta una cuarta forma de volver: además de
+Claude, ChatGPT y una dirección local, la del chat de Grok, escrita completa y comparada letra por letra. Once
+direcciones parecidas (otro subdominio, sin la barra final, otro puerto, un host que la imita) siguen rechazadas, con
+tests. Si un cliente pide volver a una dirección que no está en la lista, el servidor lo anota en su log, para que la
+dirección real de Grok aparezca si no es la que creemos.
+
+**Falta.** La revisión, el despliegue (con OK del usuario) y la prueba de verdad: el usuario conecta Grok, inicia
+sesión con su wallet, cotiza y, con su OK, compra.
+
+Evidencia: [`evidencia/T156.md`](evidencia/T156.md).
 

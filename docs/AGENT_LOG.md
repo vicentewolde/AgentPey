@@ -8829,3 +8829,18 @@ Qué: con OK del usuario, **T144 cerrada y mergeada a `main`**, y **T156 aprobad
 Pendiente: `/tarea T156` en su propia rama desde `origin/main`. No tocar `contracts/*`, AgentResolve, `open_claim` ni el
 `payTo` de Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
 
+## 2026-10-14 (5) — cc/t156-mcp-grok
+
+Agente: Claude Code.
+
+Qué: T156 en código. `apps/mcp/src/oauth/server.ts`: la dirección de vuelta exacta del chat de Grok en
+`DEFAULT_REDIRECT_URIS`, y un log `oauth registration refused` con las direcciones rechazadas (recortadas). Dos tests
+nuevos en `oauth.test.ts` (Grok entra, once parecidas no; el log). Sección "Connect Grok" en `apps/mcp/README.md`.
+`pnpm check` en verde.
+
+Por qué: `R-37`; el chat de Grok acepta un servidor MCP propio y el inicio de sesión lo rechazaba.
+
+Pendiente: `/revisar` (perímetro de autorización); merge y despliegue de `mcp.agentpey.com` solo con OK del usuario; la
+conexión desde grok.com y, con OK, la compra. No tocar `contracts/*`, AgentResolve, `open_claim` ni el `payTo` de
+Vitrinee hasta nuevo aviso del usuario. Exponential: sin cambios (T156 sin ticket propio). `AGENTS.md`: sin cambios.
+
