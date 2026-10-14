@@ -1,21 +1,30 @@
 /**
  * Anchors receipt hashes in receipt-registry after the checkout has already
- * answered (VT-5). One queue, one transaction at a time: every anchor is
- * signed by the same account, and two in flight would collide on its
- * sequence number. Failures retry with backoff; the order record always says
- * where it stands (`pending` → `anchored` | `failed`).
+ * answered (VT-5), and, for a store with an escrow (T159), first records the
+ * purchase there with `hold`. One queue, one transaction at a time: both are
+ * signed by the same account, and two in flight would collide on its sequence
+ * number. Failures retry with backoff, each step on its own count; the order
+ * record always says where each stands (`pending` → `held` | `anchored` |
+ * `failed`).
  */
-import type { AnchorInput, AnchorResult } from "@vitrinee/anchor";
+import type { AnchorInput, AnchorResult, HoldInput, HoldResult } from "@vitrinee/anchor";
 import { stellarExpertTxUrl } from "@vitrinee/core";
 
-import type { OrderStore } from "./orders.js";
+import type { OrderRecord, OrderStore } from "./orders.js";
 
 export interface Anchorer {
   anchor(input: AnchorInput): Promise<AnchorResult>;
 }
 
+/** Records a paid purchase in the store's escrow, signed by the store's signing account. */
+export interface Holder {
+  hold(input: HoldInput): Promise<HoldResult>;
+}
+
 export interface AnchorWorkerOptions {
   anchorer: Anchorer;
+  /** Required for orders that carry a `hold`; without it they stay `pending` and say why. */
+  holder?: Holder;
   orders: OrderStore;
   retryDelaysMs?: readonly number[];
   now?: () => Date;
@@ -43,11 +52,12 @@ export class AnchorWorker {
     });
   }
 
-  /** Re-queues everything not yet anchored, e.g. after a restart. */
+  /** Re-queues everything not yet held or anchored, e.g. after a restart. */
   resume(): number {
     let queued = 0;
     for (const order of this.options.orders.list()) {
-      if (order.receipt !== null && order.anchor !== null && order.anchor.status !== "anchored") {
+      const unheld = order.hold !== undefined && order.hold.status !== "held";
+      if (order.receipt !== null && order.anchor !== null && (order.anchor.status !== "anchored" || unheld)) {
         this.enqueue(order.orderId);
         queued += 1;
       }
@@ -72,11 +82,66 @@ export class AnchorWorker {
 
   private async process(orderId: string): Promise<void> {
     const order = this.options.orders.get(orderId);
-    if (order === undefined || order.receipt === null || order.anchor === null || order.anchor.status === "anchored") return;
-    const attempt = order.anchor.attempts + 1;
+    if (order === undefined || order.receipt === null || order.anchor === null) return;
+    // Held first (X-20): until `hold` lands, the payment sits in the escrow unallocated.
+    const retryHold = order.hold !== undefined && order.hold.status === "pending" ? await this.hold(order) : undefined;
+    const retryAnchor = order.anchor.status === "pending" ? await this.anchor(order) : undefined;
+    const delay = [retryHold, retryAnchor].filter((d): d is number => d !== undefined).sort((a, b) => a - b)[0];
+    if (delay !== undefined && !this.stopped) {
+      const timer = setTimeout(() => {
+        this.timers.delete(timer);
+        this.enqueue(orderId);
+      }, delay);
+      timer.unref();
+      this.timers.add(timer);
+    }
+  }
+
+  /** One `hold` attempt. Returns the wait before the next one, or `undefined` when there is none. */
+  private async hold(order: OrderRecord): Promise<number | undefined> {
+    const orderId = order.orderId;
+    const hold = order.hold!;
+    const attempt = hold.attempts + 1;
+    try {
+      if (this.options.holder === undefined) throw new Error("this store has no escrow holder configured");
+      const result = await this.options.holder.hold({
+        orderRef: orderId,
+        payer: order.settlement.payer,
+        amount: BigInt(order.amountUSDCAtomic),
+        txHash: order.settlement.txHash,
+        receiptHash: order.receipt!.hash,
+      });
+      await this.options.orders.update(orderId, (o) => {
+        o.hold = {
+          ...o.hold!,
+          status: "held",
+          attempts: attempt,
+          heldAt: this.now().toISOString(),
+          ...(result.alreadyHeld ? {} : { ledger: result.ledger }),
+          ...(result.txHash === undefined ? {} : { txHash: result.txHash, explorerUrl: stellarExpertTxUrl(result.txHash) }),
+        };
+        delete o.hold.lastError;
+      });
+      this.log("purchase held in escrow", { orderId, escrow: hold.escrow, txHash: result.txHash, attempt });
+      return undefined;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const delay = this.retryDelaysMs[attempt - 1];
+      await this.options.orders.update(orderId, (o) => {
+        o.hold = { ...o.hold!, status: delay === undefined ? "failed" : "pending", attempts: attempt, lastError: message.slice(0, 500) };
+      });
+      this.log(delay === undefined ? "hold failed for good" : "hold failed, will retry", { orderId, attempt, error: message.slice(0, 300), retryInMs: delay });
+      return delay;
+    }
+  }
+
+  /** One anchor attempt. Returns the wait before the next one, or `undefined` when there is none. */
+  private async anchor(order: OrderRecord): Promise<number | undefined> {
+    const orderId = order.orderId;
+    const attempt = order.anchor!.attempts + 1;
     try {
       const result = await this.options.anchorer.anchor({
-        hash: order.receipt.hash,
+        hash: order.receipt!.hash,
         amount: BigInt(order.amountUSDCAtomic),
         orderRef: order.orderId,
       });
@@ -91,7 +156,8 @@ export class AnchorWorker {
         };
         delete o.anchor.lastError;
       });
-      this.log("receipt anchored", { orderId, hash: order.receipt.hash, txHash: result.txHash, ledger: result.ledger, attempt });
+      this.log("receipt anchored", { orderId, hash: order.receipt!.hash, txHash: result.txHash, ledger: result.ledger, attempt });
+      return undefined;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const delay = this.retryDelaysMs[attempt - 1];
@@ -99,14 +165,7 @@ export class AnchorWorker {
         o.anchor = { ...o.anchor!, status: delay === undefined ? "failed" : "pending", attempts: attempt, lastError: message.slice(0, 500) };
       });
       this.log(delay === undefined ? "anchor failed for good" : "anchor failed, will retry", { orderId, attempt, error: message.slice(0, 300), retryInMs: delay });
-      if (delay !== undefined && !this.stopped) {
-        const timer = setTimeout(() => {
-          this.timers.delete(timer);
-          this.enqueue(orderId);
-        }, delay);
-        timer.unref();
-        this.timers.add(timer);
-      }
+      return delay;
     }
   }
 }

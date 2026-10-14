@@ -305,3 +305,47 @@ pago.
 
 **Alternativa descartada: una función para que el operador devuelva saldo no asignado a una dirección.** Le daría al
 operador un camino para mandar plata a cualquier lado.
+
+---
+
+### X-21 · T158 va después de T160: el veredicto necesita una compra real retenida, con su recibo · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T158, T159, T160 · Decidido por el usuario
+
+Al planificar T158 apareció que el árbitro solo decide sobre una compra con un recibo válido, y que hasta T160
+ninguna compra real paga al escrow. Además, hasta T159 el verificador rechazaba un pago abonado a un contrato. Las
+compras del ensayo de T157 no tienen recibo de tienda. El orden pasa a ser T159 → T160 → T158: la semana 1 queda con
+T157 y T159, y la semana 2 con T160, T158 y T161. El entregable D1 sigue cerrando al final de la semana 2.
+
+**Motivo.** El veredicto real de T158 reembolsa una compra de verdad, con su recibo y su pago, sin recibos de ensayo
+en el registro público.
+
+**Alternativas descartadas.**
+- **T158 con un recibo de ensayo firmado y anclado por `ADMIN`:** cerraba la tarea esa semana, pero dejaba un recibo
+  falso en el `receipt-registry` que ven los jueces, y adelantaba trabajo de T159.
+- **T158 con solo código y tests, y el criterio del veredicto pendiente:** dejaba la tarea abierta sin necesidad.
+
+---
+
+### X-22 · Cómo se ata un recibo a su pago: campo `escrow` en el recibo, cuarto chequeo y `hold` antes del anclaje · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T159 · Plan aprobado por el usuario
+
+1. **El recibo** suma un campo opcional, `escrow: { contract }`. Los recibos sin él no cambian, y todos los anteriores
+   siguen verificando (evidencia de T159: nueve recibos reales de las tres tiendas).
+2. **El verificador** pide, para un recibo con escrow, que el pago abone al contrato (`contract_credited`, leyendo
+   el campo `contract`, `X-14`), y suma un cuarto chequeo, **retenido**: `by_tx` del pago devuelve este recibo, esta
+   orden, este pagador y este monto. Además, el escrow tiene que ser de la tienda que firmó: su operador es la cuenta
+   del DID y su cuenta de cobro es `merchantAccount`. Sin eso, un recibo podría declarar el escrow de otra tienda.
+   Sin lector de escrows, el chequeo falla cerrado; los seis lugares que verifican recibos reciben uno.
+3. **La tienda**, con `ESCROW_CONTRACT_ID`, nombra el escrow en el recibo y registra la compra con `hold` en la
+   misma cola del anclaje, primero el `hold` (`X-20`). Va en una sola cola porque los dos firman con la misma cuenta y
+   chocarían en el número de secuencia. Cada paso tiene sus propios reintentos y su estado en la orden. `hold` es
+   idempotente si la misma compra ya estaba retenida.
+4. **En modo plataforma**, `ESCROW_CONTRACT_ID` es una variable de comercio: nunca se hereda del entorno de la
+   plataforma, porque si no todas las tiendas nombrarían el mismo escrow. Cómo se le asigna a `agentcommerce` es de
+   T160, junto con el `payTo`, el perfil y la comprobación del agente.
+
+**Motivo.** Cierra la brecha 10 para los recibos con escrow, con la red imponiendo la unicidad y cualquiera pudiendo
+comprobarla, sin cambiar nada para las tiendas que cobran directo.
+
+**Alternativa descartada: un recibo nuevo (`vitrinee-receipt/0.2`) para las compras con escrow.** Obligaba a todos
+los verificadores a conocer dos tipos para agregar un solo campo opcional.

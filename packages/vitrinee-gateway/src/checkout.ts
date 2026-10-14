@@ -377,6 +377,7 @@ export function buildReceiptClaims(record: OrderRecord, config: GatewayConfig, i
     })),
     issuedAt: issuedAt.toISOString(),
     refundWindowEndsAt: new Date(issuedAt.getTime() + config.policies.refundWindowSeconds * 1000).toISOString(),
+    ...(config.escrowId === undefined ? {} : { escrow: { contract: config.escrowId } }),
   };
 }
 
@@ -534,6 +535,8 @@ async function createPaidOrder(deps: CheckoutDeps, purchase: PaidPurchase): Prom
 
   record.receipt = signReceipt(buildReceiptClaims(record, deps.config, deps.now()), deps.config.signing.secret);
   record.anchor = { status: "pending", attempts: 0, registry: deps.config.receiptRegistryId };
+  // Held before anchored (X-20): until `hold` lands, the payment sits in the escrow unallocated.
+  if (deps.config.escrowId !== undefined) record.hold = { status: "pending", attempts: 0, escrow: deps.config.escrowId };
 
   await deps.orders.put(record);
   deps.anchors.enqueue(orderId);

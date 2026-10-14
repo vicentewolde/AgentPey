@@ -1,8 +1,8 @@
 import { Keypair } from "@stellar/stellar-sdk";
-import type { AnchorInput, AnchorResult, AnchoredRecord } from "@vitrinee/anchor";
+import type { AnchorInput, AnchorResult, AnchoredRecord, EscrowConfig, EscrowPurchase, EscrowReader, EscrowReaderFactory, HoldInput, HoldResult } from "@vitrinee/anchor";
 import { USDC_TESTNET } from "@vitrinee/core";
 
-import type { Anchorer } from "../anchoring.js";
+import type { Anchorer, Holder } from "../anchoring.js";
 import { loadConfig, type GatewayConfig } from "../config.js";
 import type { OutboundRequest, PlatformClient, PlatformProfileSummary, ProfileResult, SendResult } from "../ucp/platform-profile.js";
 import { FAKE_PAYER, FAKE_TX_HASH } from "./fake-facilitator.js";
@@ -45,8 +45,75 @@ export function fakeRegistry(options: { failTimes?: number } = {}) {
   return { anchorer, calls, records, registry: { contractId: REGISTRY_ID, get: async (hash: string) => records.get(hash) ?? null } };
 }
 
-/** A Horizon that confirms any settlement for FAKE_TX_HASH of `amount` from FAKE_PAYER to MERCHANT. */
-export function fakeHorizon(): typeof fetch {
+/** The test store's escrow (T159). */
+export const ESCROW_ID = "CCTVYTWFGOBD23UF7A2AX6CMCKF7ACHENU6YNFJPG6S3O5P3FBKCYLDO";
+
+/**
+ * An in-memory `purchase-escrow`: holds land in a map its reader serves, so
+ * hold → verify runs without a network. `failTimes` makes the first holds throw.
+ */
+export function fakeEscrow(options: { failTimes?: number; config?: Partial<EscrowConfig> } = {}) {
+  const purchases = new Map<string, EscrowPurchase>();
+  const calls: HoldInput[] = [];
+  let failures = options.failTimes ?? 0;
+  let ledger = 5_000_000;
+  const holder: Holder = {
+    async hold(input: HoldInput): Promise<HoldResult> {
+      calls.push(input);
+      if (failures > 0) {
+        failures -= 1;
+        throw new Error("rpc: txBadSeq");
+      }
+      ledger += 1;
+      purchases.set(input.txHash, {
+        orderRef: input.orderRef,
+        payer: input.payer,
+        amountAtomic: input.amount,
+        txHash: input.txHash,
+        receiptHash: input.receiptHash,
+        status: "held",
+        heldAt: 1_790_000_000,
+        shippedAt: null,
+        claimHash: null,
+        openedAt: null,
+        responseHash: null,
+        verdictHash: null,
+        refundAtomic: 0n,
+        refundOwedAtomic: 0n,
+        closedAt: null,
+      });
+      return { txHash: `${ledger.toString(16)}`.padStart(64, "b"), ledger, alreadyHeld: false };
+    },
+  };
+  const config: EscrowConfig = {
+    operator: SIGNER.publicKey(),
+    payee: MERCHANT,
+    arbiter: Keypair.random().publicKey(),
+    token: USDC_TESTNET.contractId,
+    releaseWindowSeconds: 600,
+    responseWindowSeconds: 900,
+    resolveWindowSeconds: 3600,
+    ...options.config,
+  };
+  const reader: EscrowReader = {
+    contractId: ESCROW_ID,
+    config: async () => config,
+    get: async (orderRef) => [...purchases.values()].find((p) => p.orderRef === orderRef) ?? null,
+    byTx: async (txHash) => purchases.get(txHash) ?? null,
+  };
+  const escrows: EscrowReaderFactory = (contractId) => {
+    if (contractId !== ESCROW_ID) throw new Error(`no such escrow ${contractId}`);
+    return reader;
+  };
+  return { holder, calls, purchases, escrows };
+}
+
+/**
+ * A Horizon that confirms any settlement for FAKE_TX_HASH of `amount` from FAKE_PAYER to MERCHANT, or, with
+ * `creditContract`, to that contract (an escrow, T159) as Horizon reports it: `contract_credited`, with the
+ * transaction's source in `account` (X-14).
+ */
+export function fakeHorizon(options: { creditContract?: string } = {}): typeof fetch {
   const amounts = new Map<string, string>();
   const fn = (async (input: string | URL | Request) => {
     const url = String(input);
@@ -54,7 +121,9 @@ export function fakeHorizon(): typeof fetch {
     if (url.includes(`/transactions/${FAKE_TX_HASH}/effects`)) {
       const records = [...amounts.values()].flatMap((amount) => [
         { type: "account_debited", account: FAKE_PAYER, amount, asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
-        { type: "account_credited", account: MERCHANT, amount, asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+        options.creditContract === undefined
+          ? { type: "account_credited", account: MERCHANT, amount, asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer }
+          : { type: "contract_credited", account: FAKE_PAYER, contract: options.creditContract, amount, asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
       ]);
       return Response.json({ _embedded: { records } });
     }

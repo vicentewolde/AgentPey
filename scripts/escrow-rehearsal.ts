@@ -27,19 +27,18 @@ import { fileURLToPath } from "node:url";
 
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
 import { Keypair } from "@stellar/stellar-sdk";
-import { x402Client } from "@x402/core/client";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { z } from "zod";
 
-import { STELLAR_DECIMALS, policyRailPayer, railOwnerSigner, toAtomic } from "../packages/ucp-stellar/src/index.js";
+import { STELLAR_DECIMALS, toAtomic } from "../packages/ucp-stellar/src/index.js";
 import { signEscrowOpen } from "../packages/resolve/src/escrow-open.js";
 import { readDeployment } from "./lib/deployment.js";
+import { payIntoEscrow } from "./lib/escrow-pay.js";
 import { readEnvFile } from "./lib/env-file.js";
 import { escrowPurchaseSchema, orderRefHex, type EscrowPurchase } from "./lib/purchase-escrow.js";
 import { lastLine, stellarCli, stellarCliTx } from "./lib/stellar-cli.js";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
-const NETWORK = "stellar:testnet";
 const EXPLORER = "https://stellar.expert/explorer/testnet/tx";
 const ARGV = process.argv.slice(2);
 
@@ -75,30 +74,8 @@ interface Rehearsal {
 }
 
 /** One x402 payment from the UCP rail into the escrow, settled by the facilitator. Returns the transaction hash. */
-async function pay(r: Rehearsal, orderRef: string): Promise<string> {
-  const supported = await r.facilitator.getSupported();
-  const kind = supported.kinds.find((k) => k.x402Version === 2 && k.scheme === "exact" && k.network === NETWORK);
-  if (kind === undefined) throw new AgentPassError("NetworkError", "the facilitator offers no exact scheme on stellar:testnet", { details: { kinds: supported.kinds } });
-  const requirements = {
-    scheme: "exact",
-    network: NETWORK,
-    amount: r.amountAtomic.toString(),
-    asset: r.token,
-    payTo: r.escrow,
-    maxTimeoutSeconds: 120,
-    extra: { ...(kind.extra ?? {}), paymentFlow: "upfront" },
-  } as const;
-  const client = new x402Client().register(NETWORK, policyRailPayer({ contractId: r.rail, signAuthPayload: railOwnerSigner(r.railOwner.secret()) }));
-  const payload = await client.createPaymentPayload({
-    x402Version: 2,
-    resource: { url: `https://agentpey.com/escrow-rehearsal/${orderRef}`, description: "purchase-escrow rehearsal (T157)", mimeType: "application/json" },
-    accepts: [requirements],
-  });
-  const verified = await r.facilitator.verify(payload, requirements);
-  if (!verified.isValid) throw new AgentPassError("CommandFailed", "the facilitator refused the payment", { details: { verified } });
-  const settled = await r.facilitator.settle(payload, requirements);
-  if (!settled.success) throw new AgentPassError("CommandFailed", "the facilitator did not settle the payment", { details: { settled } });
-  return z.string().regex(/^[0-9a-f]{64}$/).parse(settled.transaction);
+function pay(r: Rehearsal, orderRef: string): Promise<string> {
+  return payIntoEscrow({ facilitator: r.facilitator, rail: r.rail, railOwner: r.railOwner, token: r.token, escrow: r.escrow, amountAtomic: r.amountAtomic, label: orderRef });
 }
 
 async function invoke(r: Rehearsal, signer: Keypair, args: readonly string[]): Promise<string> {

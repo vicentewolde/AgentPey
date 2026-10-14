@@ -30,7 +30,7 @@ import { Networks } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
 import { USDC_TESTNET, classicPayer, keypairSigner, policyRailPayer, railOwnerSigner, readTokenBalance, type UcpStellarPayer } from "../../packages/ucp-stellar/src/index.js";
-import { ReceiptRegistryClient, verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
+import { ReceiptRegistryClient, escrowReaders, verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
 import { DEFAULT_PLATFORM_PROFILE, formatReport, runConformance, type KitDeps } from "./checks.js";
 
 const RPC_URL = "https://soroban-testnet.stellar.org";
@@ -57,7 +57,7 @@ function liveDeps(): KitDeps {
     fetch,
     readBalance: readTokenBalance,
     registry: (contractId) => new ReceiptRegistryClient({ contractId, rpcUrl: RPC_URL, networkPassphrase: Networks.TESTNET }),
-    verifyReceipt: (jws, registry) => verifyReceipt(jws, { registry, horizonUrl: HORIZON_URL }),
+    verifyReceipt: (jws, registry) => verifyReceipt(jws, { registry, horizonUrl: HORIZON_URL, escrows: escrowReaders({ rpcUrl: RPC_URL, networkPassphrase: Networks.TESTNET }) }),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   };
 }

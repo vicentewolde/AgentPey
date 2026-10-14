@@ -1,7 +1,8 @@
 /**
- * Check 3 of 3: the settlement transaction the receipt cites exists on
- * Stellar, succeeded, and moved exactly the receipt's USDC from the payer to
- * the merchant. Read from Horizon, which exposes per-transaction effects.
+ * Check 3: the settlement transaction the receipt cites exists on Stellar,
+ * succeeded, and moved exactly the receipt's USDC from the payer to the
+ * merchant, or, when the receipt declares an escrow (T159), to that escrow
+ * contract. Read from Horizon, which exposes per-transaction effects.
  */
 import { USDC_TESTNET, parseDecimal, type ReceiptClaims } from "@vitrinee/core";
 
@@ -25,7 +26,7 @@ interface HorizonEffect {
 const usdc = (e: HorizonEffect): boolean => e.asset_code === USDC_TESTNET.code && e.asset_issuer === USDC_TESTNET.issuer;
 
 export async function checkSettlement(
-  claims: Pick<ReceiptClaims, "settlementTxHash" | "payerAccount" | "merchantAccount" | "amountUSDCAtomic">,
+  claims: Pick<ReceiptClaims, "settlementTxHash" | "payerAccount" | "merchantAccount" | "amountUSDCAtomic" | "escrow">,
   options: { horizonUrl: string; fetchImpl?: typeof fetch; attempts?: number },
 ): Promise<SettlementCheck> {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -61,7 +62,14 @@ export async function checkSettlement(
   if (!payerDebited) {
     return { ok: false, reason: "the payer was not debited the receipt's USDC amount in that transaction", ledger: tx.ledger };
   }
-  if (!moved("account_credited", claims.merchantAccount)) {
+  if (claims.escrow !== undefined) {
+    // A contract is credited as `contract_credited`, the contract in `contract` and the transaction's source in
+    // `account` (X-14): matching on `account` would credit the payment to whoever submitted it.
+    const escrow = claims.escrow.contract;
+    if (!effects.some((e) => e.type === "contract_credited" && e.contract === escrow && amountMatches(e))) {
+      return { ok: false, reason: "the store's escrow was not credited the receipt's USDC amount in that transaction", ledger: tx.ledger };
+    }
+  } else if (!moved("account_credited", claims.merchantAccount)) {
     return { ok: false, reason: "the merchant was not credited the receipt's USDC amount in that transaction", ledger: tx.ledger };
   }
   return { ok: true, ledger: tx.ledger, closedAt: tx.created_at };

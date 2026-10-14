@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
-import { ReceiptRegistryClient, verifyReceipt, type ReceiptVerification } from "@vitrinee/anchor";
+import { ReceiptRegistryClient, escrowReaders, verifyReceipt, type ReceiptVerification } from "@vitrinee/anchor";
 
 import { LAST_RECEIPT_PATH, loadRepoEnv, registryId } from "./env.js";
 import { reportVerification } from "./report.js";
@@ -74,6 +74,7 @@ if (values["via-gateway"] !== undefined) {
     }),
     horizonUrl: process.env["STELLAR_HORIZON_URL"] ?? "https://horizon-testnet.stellar.org",
     settlementAttempts: 3,
+    escrows: escrowReaders({ rpcUrl: process.env["STELLAR_RPC_URL"] ?? "https://soroban-testnet.stellar.org", networkPassphrase: "Test SDF Network ; September 2015" }),
   });
 }
 if (result.receipt !== null) {

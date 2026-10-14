@@ -38,6 +38,7 @@ function short(value: string): string {
 const COPY = {
   title: { en: "Sale receipt", es: "Recibo de venta" },
   valid: { en: "Valid receipt: all three checks pass", es: "Recibo válido: pasan las tres comprobaciones" },
+  validHeld: { en: "Valid receipt: all four checks pass", es: "Recibo válido: pasan las cuatro comprobaciones" },
   invalid: { en: "This receipt does not pass every check", es: "Este recibo no pasa todas las comprobaciones" },
   signature: { en: "Signed by the store", es: "Firmado por la tienda" },
   signatureWhat: {
@@ -53,6 +54,15 @@ const COPY = {
   settlementWhat: {
     en: "The Stellar transaction really moved this USDC to the store.",
     es: "La transacción de Stellar de verdad movió estos USDC a la tienda.",
+  },
+  settlementHeldWhat: {
+    en: "The Stellar transaction really moved this USDC into the store's escrow, which holds it until the order ships.",
+    es: "La transacción de Stellar de verdad movió estos USDC al escrow de la tienda, que los retiene hasta el despacho.",
+  },
+  held: { en: "Held for this receipt", es: "Retenido para este recibo" },
+  heldWhat: {
+    en: "The store's escrow holds this payment for this receipt, this order, this payer and this amount. One payment, one receipt.",
+    es: "El escrow de la tienda retiene este pago para este recibo, este pedido, este pagador y este monto. Un pago, un recibo.",
   },
   pass: { en: "valid", es: "válido" },
   fail: { en: "failed", es: "falló" },
@@ -78,6 +88,8 @@ export function receiptPage(input: ReceiptPageInput): string {
   const t = (key: keyof typeof COPY): string => escape(COPY[key][lang]);
   const r = v.receipt;
 
+  // A verification from before T159 has no `held`: read as a receipt paid directly.
+  const held = v.checks.held ?? null;
   const check = (ok: boolean, title: keyof typeof COPY, what: keyof typeof COPY, reason?: string): string => `
     <li class="check ${ok ? "ok" : "bad"}">
       <span class="tick" aria-hidden="true">${ok ? "✓" : "✕"}</span>
@@ -191,11 +203,12 @@ export function receiptPage(input: ReceiptPageInput): string {
       <p class="eyebrow"><i aria-hidden="true"></i>${t("eyebrow")}</p>
       <h1>${t("title")}</h1>
     </header>
-    <p class="verdict ${v.valid ? "ok" : "bad"}">${v.valid ? t("valid") : t("invalid")}</p>
+    <p class="verdict ${v.valid ? "ok" : "bad"}">${v.valid ? t(held === null ? "valid" : "validHeld") : t("invalid")}</p>
     <ul class="checks">
       ${check(v.checks.signature.ok, "signature", "signatureWhat", v.checks.signature.reason)}
       ${check(v.checks.anchored.ok, "anchored", "anchoredWhat", v.checks.anchored.reason)}
-      ${check(v.checks.settlement.ok, "settlement", "settlementWhat", v.checks.settlement.reason)}
+      ${check(v.checks.settlement.ok, "settlement", held === null ? "settlementWhat" : "settlementHeldWhat", v.checks.settlement.reason)}
+      ${held === null ? "" : check(held.ok, "held", "heldWhat", held.reason)}
     </ul>
     ${
       r === null

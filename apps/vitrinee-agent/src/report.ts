@@ -15,5 +15,8 @@ export function reportVerification(result: Pick<ReceiptVerification, "valid" | "
     }`,
   );
   log(`  ${mark(settlement.ok)} pago       ${settlement.ok ? `tx de settlement confirmada en Stellar · ledger ${settlement.ledger ?? "?"}` : (settlement.reason ?? "no confirmado")}`);
+  // A receipt paid into a store's escrow has a fourth check (T159). `held` is absent in a verification from before it.
+  const held = result.checks.held ?? null;
+  if (held !== null) log(`  ${mark(held.ok)} retenido   ${held.ok ? `en el escrow ${held.escrow} (${held.status ?? "?"}): un pago, un recibo` : (held.reason ?? "no retenido")}`);
   log(`  ${result.valid ? "✅ RECIBO VÁLIDO" : "❌ RECIBO INVÁLIDO"}`);
 }

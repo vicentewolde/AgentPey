@@ -184,7 +184,7 @@ explícito del usuario.
   - [x] hay hashes de **un pago liberado y uno reembolsado** (todavía con un `hold` manual), en el escrow de ensayo (`X-17`, [evidencia](evidencia/T157.md))
 
 #### T158 · El veredicto actúa sobre el pago retenido
-- **Estimación:** 8 h · **Delegable a Codex:** no · **Depende de:** T157
+- **Estimación:** 8 h · **Delegable a Codex:** no · **Depende de:** T157, T159 y T160: necesita una compra real retenida, con su recibo (`X-21`)
 - **Archivos principales:** `scripts/resolve.ts`, `packages/resolve/`, `scripts/arbiter-console.ts`
 - **Descripción:** `resolve:decide` y `resolve:verify` reconocen las compras con escrow y resuelven en `purchase-escrow`. Las compras sin escrow siguen en `agent-resolve`. El veredicto, el `verdict_hash` y la confirmación humana (`E-18`, `X-10`) no cambian.
 - **Hecho cuando:**
@@ -199,10 +199,10 @@ explícito del usuario.
 - **Archivos principales:** `packages/vitrinee-gateway/` (`hold` tras liquidar), `packages/vitrinee-anchor/src/verify.ts` y `settlement.ts`, `packages/vitrinee-core/src/receipt.ts`
 - **Descripción:** la tienda llama `hold` con `tx_hash`, pagador y `receipt_hash` justo después de liquidar, y lo reintenta si falla (`X-20`). `verifyReceipt` suma la comprobación del vínculo cuando el recibo declara escrow (4.4, paso 5).
 - **Hecho cuando:**
-  - [ ] hay un hash de un **recibo duplicado rechazado** por la red
-  - [ ] el verificador da inválido un recibo cuyo `tx_hash` no coincide, con el motivo
-  - [ ] los recibos anteriores siguen verificando
-  - [ ] la brecha 10 queda cerrada en el anexo
+  - [x] hay un hash de un **recibo duplicado rechazado** por la red ([`87a80cc1…`](https://stellar.expert/explorer/testnet/tx/87a80cc144eb35a12b5112fa1be01afd24d38d27ab3e5b8e0af5f0beb142b102), `PaymentAlreadyHeld`; [evidencia](evidencia/T159.md))
+  - [x] el verificador da inválido un recibo cuyo `tx_hash` no coincide, con el motivo
+  - [x] los recibos anteriores siguen verificando
+  - [x] la brecha 10 queda cerrada en el anexo (para recibos pagados a un escrow)
 
 #### T160 · El checkout paga al escrow
 - **Estimación:** 12 h · **Delegable a Codex:** no · **Depende de:** T157, T159
@@ -300,8 +300,8 @@ avisa para que el chat de la Fase 8 no mergee.
 
 | Semana | Tareas |
 |---|---|
-| 1 (13–19 oct) | Chequeo 4.5, T157, T158 |
-| 2 (20–26 oct) | T159, T160, T161 |
+| 1 (13–19 oct) | Chequeo 4.5, T157, T159 |
+| 2 (20–26 oct) | T160, T158, T161 (`X-21`) |
 | 3 (27-oct – 2-nov) | T162, T163, T164, T165 |
 | 4 (3–11 nov) | T166, T167 |
 
@@ -343,6 +343,8 @@ push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por
 | 2026-10-14 | Chequeo del día 1 con OK del usuario: el facilitator liquida hacia un contrato (`X-14`) |
 | 2026-10-14 | T157 en revisión: contrato `purchase-escrow` con 28 tests, desplegado para `agentcommerce` y como ensayo; un pago liberado y uno reembolsado en testnet. Precisiones aprobadas por el usuario: `X-15` a `X-18` |
 | 2026-10-14 | `/revisar` de T157: reembolso no entregable como deuda cobrable y escrows redesplegados (`X-19`); el pago sin `hold` queda como límite, cubierto en T159 y T160 (`X-20`) |
+| 2026-10-14 | Reorden aprobado por el usuario: T159 → T160 → T158, porque el veredicto necesita una compra real retenida con su recibo (`X-21`) |
+| 2026-10-14 | T159 en revisión: recibo con `escrow`, cuarto chequeo «retenido», `hold` antes del anclaje; recibo duplicado rechazado por la red (`X-22`) |
 
 ---
 

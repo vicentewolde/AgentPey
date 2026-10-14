@@ -31,6 +31,21 @@ export interface OrderAnchor {
 }
 
 /**
+ * The purchase recorded in the store's `purchase-escrow` (T159): `hold` ties
+ * this payment to this receipt on chain. Absent for a store paid directly.
+ */
+export interface OrderHold {
+  status: "pending" | "held" | "failed";
+  attempts: number;
+  escrow: string;
+  txHash?: string;
+  ledger?: number;
+  heldAt?: string;
+  explorerUrl?: string;
+  lastError?: string;
+}
+
+/**
  * One entry of the order's fulfillment log (UCP `fulfillment.events[]`, T147):
  * append-only, never edited. Today only `shipped`, from the store's platform
  * (Shopify, Jumpseller) or from the local conformance store's simulation.
@@ -119,6 +134,8 @@ export interface OrderRecord {
   platformError: string | null;
   receipt: { jws: string; hash: string } | null;
   anchor: OrderAnchor | null;
+  /** The purchase in the store's escrow (T159). Absent for a store paid directly. */
+  hold?: OrderHold;
   /** The UCP checkout session that produced this order (T122). Absent for the x402 checkout. */
   ucpCheckoutId?: string;
   /** What happened to the parcel (T147). Absent until something did. */
@@ -200,6 +217,18 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
       lastError: z.string().optional(),
     })
     .nullable(),
+  hold: z
+    .object({
+      status: z.enum(["pending", "held", "failed"]),
+      attempts: z.number().int().nonnegative(),
+      escrow: z.string(),
+      txHash: z.string().optional(),
+      ledger: z.number().int().optional(),
+      heldAt: z.string().optional(),
+      explorerUrl: z.string().optional(),
+      lastError: z.string().optional(),
+    })
+    .optional(),
   ucpCheckoutId: z.string().optional(),
   fulfillmentEvents: z
     .array(

@@ -15,7 +15,7 @@
 **Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. Siguiente: T158, el veredicto sobre el pago retenido.
+contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 en revisión. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`).
 
 ## Progreso
 
@@ -23,8 +23,8 @@ contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentP
 |---|---|
 | Chequeo del día 1 | ✅ hecho (`X-14`) |
 | T157 Contrato de escrow | ✅ terminada |
-| T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente |
-| T159 Un pago, un recibo, en la red | ⏳ pendiente |
+| T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente, después de T160 (`X-21`) |
+| T159 Un pago, un recibo, en la red | 👀 en revisión |
 | T160 El checkout paga al escrow | ⏳ pendiente |
 | T161 La orden muestra el estado del escrow | ⏳ pendiente |
 | T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente |
@@ -78,3 +78,25 @@ límite conocido, que cubren T159 y T160 (`X-20`).
 
 **Evidencia.** [`evidencia/T157.md`](evidencia/T157.md): 35 tests del contrato, los despliegues vigentes, y los hashes
 del pago liberado (`81f106e0…` → `61ab6640…`) y del reembolsado (`97e71975…` → `3ef3185f…`).
+
+---
+
+## 2026-10-14 · Reorden: T158 pasa después de T160
+
+Al planificar T158 apareció que el árbitro solo puede decidir sobre una compra con un recibo válido, y que todavía
+ninguna compra real paga al escrow. El usuario eligió cambiar el orden: primero T159 (atar el recibo a su pago) y T160
+(que el checkout pague al escrow), y después T158, con una compra de verdad (`X-21`). El entregable D1 sigue cerrando
+al final de la semana 2.
+
+## 2026-10-14 · T159 · Un pago, un recibo, en la red
+
+**Qué quedó funcionando, en llano.** Cuando una tienda cobra a través de su escrow, el recibo dice en qué escrow
+quedó la plata, y la tienda registra la compra en el contrato justo después del pago. Desde ahí la red no deja que
+ese mismo pago respalde un segundo recibo: se probó con dinero de testnet, y la red rechazó el segundo. Cualquiera que
+verifique un recibo comprueba además ese vínculo: si el recibo apunta a otro pago, o a un escrow de otra tienda, sale
+inválido y dice por qué. Las tiendas que cobran directo no cambian, y sus recibos anteriores siguen verificando. La
+tienda todavía no cobra al escrow; eso se enciende en T160.
+
+**Evidencia.** [`evidencia/T159.md`](evidencia/T159.md): el recibo duplicado rechazado
+(`87a80cc1…`, error `PaymentAlreadyHeld`), el chequeo "retenido" contra el escrow real y nueve recibos anteriores
+válidos con el código nuevo.

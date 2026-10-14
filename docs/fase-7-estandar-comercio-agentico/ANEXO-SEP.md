@@ -224,6 +224,7 @@ Cuerpo (`typ` fijo `vitrinee-receipt/0.1`, objeto estricto):
 | `settlementTxHash` | hash de la transacción de pago, hex en minúsculas |
 | `items[]` | `productId`, `sku`, `name`, `quantity`, `unitPriceUSDC`, `unitPriceUSDCAtomic` |
 | `issuedAt`, `refundWindowEndsAt` | ISO 8601 |
+| `escrow` | opcional (Fase 9, T159): `{ contract: C… }`, el `purchase-escrow` de la tienda cuando el pago entró ahí y no directo a `merchantAccount` |
 
 **Hash anclado:** `sha256` del JWS compacto (UTF-8), hex en minúsculas
 (`receiptHash`).
@@ -256,10 +257,19 @@ más de 64 bytes, y no acepta anclar dos veces el mismo hash
    `settlementTxHash` existe, fue exitosa, y movió exactamente
    `amountUSDCAtomic` del pagador a `merchantAccount`, en el USDC que el
    verificador tiene fijo, que por el check 1 es el mismo `asset` del recibo.
+   Si el recibo declara `escrow`, el abono tiene que ser al contrato del escrow
+   (`contract_credited`, con el contrato en el campo `contract`).
+4. **Retenido** (solo si el recibo declara `escrow`, Fase 9, T159): el
+   `by_tx(settlementTxHash)` del escrow devuelve este mismo recibo, esta orden,
+   este pagador y este monto; y el escrow es de la tienda que firmó: su
+   operador es la cuenta del DID y su cuenta de cobro es `merchantAccount`
+   (`checkHeld` en `packages/vitrinee-anchor/src/verify.ts`).
 
-Lo que estos checks no miran: que una misma transacción respalde un solo
-recibo (brecha 10). La tienda de Vitrinee lo garantiza al emitir
-(`fulfilPaidPurchase`: un pago, un pedido, un recibo, también con dos
+Lo que los tres primeros checks no miran: que una misma transacción respalde
+un solo recibo (brecha 10). Para un recibo pagado a un escrow lo mira el
+cuarto, y la red lo impone: `hold` rechaza un segundo recibo sobre el mismo
+pago. Para un recibo pagado directo, la tienda de Vitrinee lo garantiza al
+emitir (`fulfilPaidPurchase`: un pago, un pedido, un recibo, también con dos
 solicitudes simultáneas dentro de un mismo proceso), pero quien verifica un
 recibo suelto no puede comprobarlo.
 
@@ -688,7 +698,15 @@ construir, más quince que aparecieron después:
    perfil referencia `../schemas/ucp.json` desde
    `https://ucp.dev/schemas/discovery/profile.json`, que no resuelve
    ([evidencia de T121](evidencia/T121.md)).
-10. **Una transacción, un recibo: la red no lo impide.** Desde T132 el
+10. **Una transacción, un recibo: la red no lo impide.** **Cerrada para los
+    recibos pagados a un escrow** (Fase 9, T159): el `purchase-escrow` de la
+    tienda guarda cada pago junto a su `receipt_hash` y rechaza un segundo
+    `hold` sobre el mismo `tx_hash`, y el verificador lo comprueba (check 4,
+    sección 3.3). En testnet, un segundo recibo sobre un mismo pago fue
+    rechazado por la red con `PaymentAlreadyHeld`: transacción
+    [`87a80cc1…`](https://stellar.expert/explorer/testnet/tx/87a80cc144eb35a12b5112fa1be01afd24d38d27ab3e5b8e0af5f0beb142b102)
+    ([evidencia de T159](../fase-9-compra-protegida/evidencia/T159.md)). Sigue
+    abierta para los pagados directo. Desde T132 el
     verificador sí exige que el recibo no se contradiga (los dos montos dicen lo
     mismo y `asset` es el USDC confiado), y la tienda no emite dos recibos sobre
     un pago. Pero `receipt-registry` guarda el recibo por su hash y no guarda el

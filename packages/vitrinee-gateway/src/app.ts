@@ -1,5 +1,5 @@
 import type { StoreAdapter } from "@vitrinee/adapters";
-import { AgentResolveReader, ReceiptRegistryClient, verifyReceipt, type DisputeReader, type RegistryReader } from "@vitrinee/anchor";
+import { AgentResolveReader, EscrowClient, ReceiptRegistryClient, escrowReaders, verifyReceipt, type DisputeReader, type EscrowReaderFactory, type RegistryReader } from "@vitrinee/anchor";
 import { MANIFEST_PATH, UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError, stellarDid } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddlewareFromHTTPServer } from "@x402/express";
@@ -8,7 +8,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z, ZodError } from "zod";
 
-import { AnchorWorker, type Anchorer } from "./anchoring.js";
+import { AnchorWorker, type Anchorer, type Holder } from "./anchoring.js";
 import { checkoutRoutes, completeCheckout, fulfilOrder, orderResponse, preflightCheckout, type CheckoutDeps } from "./checkout.js";
 import type { GatewayConfig } from "./config.js";
 import { SERVICE_CARD_PATH, listResources, listServiceCards, paginationFrom } from "./discovery.js";
@@ -49,6 +49,10 @@ export interface AppDeps {
   anchorer?: Anchorer;
   /** Defaults to receipt-registry over Soroban RPC (read-only). */
   registry?: RegistryReader & { contractId?: string };
+  /** Defaults to the store's `purchase-escrow` over Soroban RPC, signed by the signing key, when `config.escrowId` is set (T159). */
+  holder?: Holder;
+  /** How verification reads the escrow a receipt names. Defaults to Soroban RPC (read-only). */
+  escrows?: EscrowReaderFactory;
   /** Disputes over receipts, shown on UCP orders (T127). Defaults to `agent-resolve` over Soroban RPC when configured; `null` turns it off. */
   disputes?: DisputeReader | null;
   /** How long an order waits for the dispute read before answering without it (default 3 s). */
@@ -99,6 +103,8 @@ export function createApp({
   sessions = new MemoryCheckoutSessions(),
   anchorer,
   registry,
+  holder,
+  escrows,
   disputes,
   disputeTimeoutMs,
   horizonFetch,
@@ -126,8 +132,15 @@ export function createApp({
         })
       : undefined;
   const reader = registry ?? registryClient!;
+  const escrowReader = escrows ?? escrowReaders({ rpcUrl: config.stellar.rpcUrl, networkPassphrase: config.stellar.networkPassphrase });
+  const escrowId = config.escrowId;
+  const escrowClient =
+    holder === undefined && escrowId !== undefined
+      ? new EscrowClient({ contractId: escrowId, rpcUrl: config.stellar.rpcUrl, networkPassphrase: config.stellar.networkPassphrase })
+      : undefined;
   const anchors = new AnchorWorker({
     anchorer: anchorer ?? { anchor: (input) => registryClient!.anchor(input, config.signing.secret) },
+    ...(holder !== undefined ? { holder } : escrowClient === undefined ? {} : { holder: { hold: (input) => escrowClient.hold(input, config.signing.secret) } }),
     orders,
     ...(anchorRetryDelaysMs === undefined ? {} : { retryDelaysMs: anchorRetryDelaysMs }),
     now,
@@ -151,6 +164,7 @@ export function createApp({
       registry: reader,
       horizonUrl: config.stellar.horizonUrl,
       settlementAttempts: 3,
+      escrows: escrowReader,
       ...(horizonFetch === undefined ? {} : { fetchImpl: horizonFetch }),
     });
 

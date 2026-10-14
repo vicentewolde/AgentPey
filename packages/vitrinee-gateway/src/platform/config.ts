@@ -58,6 +58,8 @@ const MERCHANT_KEYS = [
   "MERCHANT_SIGNING_SECRET",
   "MERCHANT_COUNTRY",
   "MERCHANT_CURRENCY",
+  // One store's escrow (T159): never inherited from the platform's environment, or every store would name it.
+  "ESCROW_CONTRACT_ID",
   "ORDERS_FILE",
   "MOCK_ORDERS_FILE",
   "DATABASE_URL",

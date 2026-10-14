@@ -60,7 +60,7 @@ import {
 import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
-import { ReceiptRegistryClient, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
+import { ReceiptRegistryClient, escrowReaders, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
 import { readEnvFile } from "./lib/env-file.js";
 import { TESTNET } from "./lib/network.js";
 import { lastLine, stellarCli, stellarCliTx } from "./lib/stellar-cli.js";
@@ -160,9 +160,10 @@ async function verifiedReceipt(jws: string) {
     registry: new ReceiptRegistryClient({ contractId: deployment.receiptRegistry.contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
     horizonUrl: HORIZON,
     settlementAttempts: 5,
+    escrows: escrowReaders({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
   });
   if (!result.valid || result.receipt === null) {
-    throw new AgentPassError("ResolveReceiptInvalid", "the receipt did not pass its three checks", { details: { hash: result.hash, checks: result.checks } });
+    throw new AgentPassError("ResolveReceiptInvalid", "the receipt did not pass its checks", { details: { hash: result.hash, checks: result.checks } });
   }
   return { valid: true as const, hash: result.hash, receipt: result.receipt };
 }

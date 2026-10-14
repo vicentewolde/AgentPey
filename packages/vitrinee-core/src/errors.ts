@@ -18,6 +18,8 @@ export const ERROR_CODES = [
   // payer did nothing wrong and must not be invited to pay again.
   "SettlementUnaccounted",
   "AnchorError",
+  // A store's purchase-escrow refused or failed a write, or holds what a read did not expect (T159).
+  "EscrowError",
   "NetworkError",
   // Multi-merchant platform (T103, C-140).
   "ComercioNotFound",
@@ -49,6 +51,7 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   ReceiptInvalid: 422,
   SettlementUnaccounted: 500,
   AnchorError: 502,
+  EscrowError: 502,
   NetworkError: 503,
   ComercioNotFound: 404,
   ComercioConflict: 409,

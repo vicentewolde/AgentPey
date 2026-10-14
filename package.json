@@ -15,6 +15,7 @@
     "deploy:agent-resolve": "tsx --tsconfig tsconfig.scripts.json scripts/deploy-agent-resolve.ts",
     "deploy:purchase-escrow": "tsx --tsconfig tsconfig.scripts.json scripts/deploy-purchase-escrow.ts",
     "escrow:rehearsal": "tsx --tsconfig tsconfig.scripts.json scripts/escrow-rehearsal.ts",
+    "escrow:binding": "tsx --tsconfig tsconfig.scripts.json scripts/escrow-binding.ts",
     "resolve:deposit": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts deposit",
     "resolve:open": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts open",
     "resolve:decide": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts decide",

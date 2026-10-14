@@ -95,7 +95,15 @@ describe("platform settings", () => {
     const signer = Keypair.random();
     const comercio = sealComercio({ slug: "b", name: "B", payTo: Keypair.random().publicKey(), signingSecret: signer.secret(), credentials: { kind: "mock" } }, box, now);
     const config = comercioConfig(
-      { RECEIPT_REGISTRY_ID: REGISTRY_ID, MERCHANT_STELLAR_ACCOUNT: Keypair.random().publicKey(), MERCHANT_SIGNING_SECRET: Keypair.random().secret(), PUBLIC_BASE_URL: "https://vitrinee.agentpey.com", ADAPTER: "jumpseller" },
+      {
+        RECEIPT_REGISTRY_ID: REGISTRY_ID,
+        MERCHANT_STELLAR_ACCOUNT: Keypair.random().publicKey(),
+        MERCHANT_SIGNING_SECRET: Keypair.random().secret(),
+        PUBLIC_BASE_URL: "https://vitrinee.agentpey.com",
+        ADAPTER: "jumpseller",
+        // One store's escrow (T159): set on the platform, it must reach no store.
+        ESCROW_CONTRACT_ID: "CCTVYTWFGOBD23UF7A2AX6CMCKF7ACHENU6YNFJPG6S3O5P3FBKCYLDO",
+      },
       comercio,
       openComercioSecrets(comercio, box),
     );
@@ -103,6 +111,7 @@ describe("platform settings", () => {
     expect(config.signing.account).toBe(signer.publicKey());
     expect(config.adapter).toBe("mock");
     expect(config.publicBaseUrl).toBeUndefined();
+    expect(config.escrowId).toBeUndefined();
   });
 });
 

@@ -68,7 +68,7 @@ import { z } from "zod";
 import { deriveP256, p256FromScalar } from "../packages/ap2/src/keys.js";
 import { PLATFORM_AP2_KID } from "./lib/ap2-platform.js";
 
-import { ReceiptRegistryClient, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
+import { ReceiptRegistryClient, escrowReaders, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
 import { readDeployment } from "./lib/deployment.js";
 import { readEnvFile } from "./lib/env-file.js";
 import { TESTNET } from "./lib/network.js";
@@ -350,12 +350,14 @@ async function main(): Promise<void> {
     registry: new ReceiptRegistryClient({ contractId: deployment.receiptRegistry.contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
     horizonUrl: HORIZON,
     settlementAttempts: 5,
+    escrows: escrowReaders({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
   });
   const mark = (ok: boolean) => (ok ? "✅" : "❌");
   line("hash", result.hash);
   line(`${mark(result.checks.signature.ok)} firma`, result.checks.signature.ok ? "Ed25519 del did:stellar de la tienda" : (result.checks.signature.reason ?? "inválida"));
   line(`${mark(result.checks.anchored.ok)} anclaje`, result.checks.anchored.ok ? `receipt-registry · ledger ${result.checks.anchored.record?.ledger ?? "?"}` : (result.checks.anchored.reason ?? "no anclado"));
   line(`${mark(result.checks.settlement.ok)} pago`, result.checks.settlement.ok ? `confirmado en Horizon · ledger ${result.checks.settlement.ledger ?? "?"}` : (result.checks.settlement.reason ?? "no confirmado"));
+  if (result.checks.held !== null) line(`${mark(result.checks.held.ok)} retenido`, result.checks.held.ok ? `en el escrow ${result.checks.held.escrow}` : (result.checks.held.reason ?? "no retenido"));
   line("recibo", RECEIPT_OUT);
   out(result.valid ? "\n✅ Compra UCP de punta a punta: pagada en Stellar, pedido creado, recibo válido.\n" : "\n❌ El recibo no pasó los tres checks.\n");
   process.exitCode = result.valid ? 0 : 1;

@@ -18,7 +18,7 @@ import {
 } from "@agentpey/agent";
 import { verifyMandate } from "@agentpey/mandate";
 import { Keypair, Networks, StrKey, contract } from "@stellar/stellar-sdk";
-import { ReceiptRegistryClient, verifyReceipt } from "@vitrinee/anchor";
+import { ReceiptRegistryClient, escrowReaders, verifyReceipt } from "@vitrinee/anchor";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 
@@ -128,7 +128,14 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
     policyRail,
     payment: { signerSecret: env.MCP_AGENT_SECRET_KEY, payer: { contractId: env.MCP_POLICY_RAIL_CONTRACT_ID, ownerSecret: env.MCP_AGENT_SECRET_KEY } },
     agentKey,
-    verifyReceipt: (jws) => verifyReceipt(jws, { registry: receiptRegistry, horizonUrl: TESTNET.horizonUrl, settlementAttempts: 3 }),
+    // A receipt paid into a store's escrow is checked against that escrow too (T159).
+    verifyReceipt: (jws) =>
+      verifyReceipt(jws, {
+        registry: receiptRegistry,
+        horizonUrl: TESTNET.horizonUrl,
+        settlementAttempts: 3,
+        escrows: escrowReaders({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
+      }),
     // Signing a quote's intent reserves the day's budget (M-15). A quote that expires or is evicted unpaid
     // signed nothing that pays, so its reservation goes back (T150 review).
     quotes: new QuoteBook({

@@ -41,6 +41,11 @@ const envSchema = z.object({
   FACILITATOR_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   CHECKOUT_MAX_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
   RECEIPT_REGISTRY_ID: stellarContractIdSchema,
+  /**
+   * The store's `purchase-escrow` (Fase 9, T159). Set: every receipt names it and every paid purchase is
+   * recorded there with `hold` before its receipt is anchored. Unset (the default): nothing changes.
+   */
+  ESCROW_CONTRACT_ID: optionalString.pipe(stellarContractIdSchema.optional()),
   /** AgentPey's AgentResolve contract (T127): the UCP order shows its dispute. Unset: orders say nothing about disputes. */
   AGENT_RESOLVE_CONTRACT_ID: optionalString.pipe(stellarContractIdSchema.optional()),
   STELLAR_RPC_URL: z.url().default("https://soroban-testnet.stellar.org"),
@@ -64,6 +69,8 @@ export interface GatewayConfig {
   checkout: { maxTimeoutSeconds: number };
   stellar: { rpcUrl: string; horizonUrl: string; networkPassphrase: string };
   receiptRegistryId: string;
+  /** The store's `purchase-escrow`, or `undefined` for a store paid directly (T159). */
+  escrowId: string | undefined;
   agentResolveId: string | undefined;
   manifestCacheSeconds: number;
   mockOrdersFile: string | undefined;
@@ -136,6 +143,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     checkout: { maxTimeoutSeconds: e.CHECKOUT_MAX_TIMEOUT_SECONDS },
     stellar: { rpcUrl: e.STELLAR_RPC_URL, horizonUrl: e.STELLAR_HORIZON_URL, networkPassphrase: e.STELLAR_NETWORK_PASSPHRASE },
     receiptRegistryId: e.RECEIPT_REGISTRY_ID,
+    escrowId: e.ESCROW_CONTRACT_ID,
     agentResolveId: e.AGENT_RESOLVE_CONTRACT_ID,
     manifestCacheSeconds: e.MANIFEST_CACHE_SECONDS,
     mockOrdersFile: e.MOCK_ORDERS_FILE,

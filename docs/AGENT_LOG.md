@@ -8928,3 +8928,25 @@ Qué: con OK del usuario, **T157 mergeada a `main`** ([PR #88](https://github.co
 fast-forward. Ticket T157 a `DONE`; `ESTADO.md`, `SYNC.md` y la bitácora al día. Solo documentos.
 
 Pendiente: `/tarea T158`. Exponential: T157 en `DONE`. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (12) — cc/t159-recibo-pago
+
+Agente: Claude Code.
+
+Qué: **reorden aprobado por el usuario** (T159 → T160 → T158, `X-21`; ticket T158 de vuelta a `READY_TO_PLAN`) y
+**T159 en revisión**:
+- el recibo puede nombrar el escrow (`escrow` opcional);
+- `verifyReceipt` suma un cuarto chequeo, "retenido", y exige que el pago abone al escrow (`X-22`);
+- la tienda, con `ESCROW_CONTRACT_ID`, hace `hold` antes de anclar, en la misma cola;
+- `EscrowClient` en `@vitrinee/anchor`, y lector de escrows en los seis verificadores (MCP, árbitro, gateway, CLI,
+  `ucp:buy`, kit);
+- la página del recibo muestra el cuarto chequeo;
+- `escrow:binding`: en testnet, un recibo duplicado rechazado por la red (`87a80cc1…`), con OK del usuario (0,05 USDC
+  liberados a `ISSUER`);
+- anexo del SEP, brecha 10 cerrada para recibos con escrow.
+
+`pnpm check` y `vitrinee:check` en verde.
+
+Pendiente: `/revisar`; merge con OK del usuario; después `/tarea T160`. Nada se enciende en producción con este merge:
+ninguna tienda tiene `ESCROW_CONTRACT_ID`. Exponential: T159 en `IN_PROGRESS`, T158 en `READY_TO_PLAN`. `AGENTS.md`:
+sin cambios (los archivos de Vitrinee que toca ya están en la lista de la Fase 9).

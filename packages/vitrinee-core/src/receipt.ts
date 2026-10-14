@@ -58,6 +58,13 @@ export const receiptClaimsSchema = z.strictObject({
   items: z.array(receiptItemSchema).min(1),
   issuedAt: z.iso.datetime(),
   refundWindowEndsAt: z.iso.datetime(),
+  /**
+   * Set when the payment went into the store's `purchase-escrow` instead of
+   * straight to `merchantAccount` (Fase 9, T159). The escrow holds it, records
+   * this receipt next to the payment (`hold`), and pays `merchantAccount` on
+   * release. Absent on every receipt paid directly.
+   */
+  escrow: z.strictObject({ contract: stellarContractIdSchema }).optional(),
 });
 
 export type ReceiptItem = z.infer<typeof receiptItemSchema>;

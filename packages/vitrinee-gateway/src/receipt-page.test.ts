@@ -29,4 +29,24 @@ describe("receiptPage (T154)", () => {
       expect(html).not.toContain("—");
     }
   });
+
+  it("adds a fourth check, held, for a receipt paid into the store's escrow (T159)", () => {
+    const ok = { ok: true };
+    const held = (heldOk: boolean): ReceiptVerification =>
+      ({
+        valid: heldOk,
+        hash: "ab".repeat(32),
+        receipt: null,
+        checks: { signature: ok, anchored: ok, settlement: ok, held: { ok: heldOk, escrow: "C", ...(heldOk ? {} : { reason: "the escrow holds another receipt for this payment" }) } },
+      }) as unknown as ReceiptVerification;
+    const good = receiptPage({ orderId: "ord_1", verification: held(true), lang: "en" });
+    expect(good).toContain("all four checks pass");
+    expect(good.match(/class="check ok"/g)).toHaveLength(4);
+    expect(good).toContain("Held for this receipt");
+    expect(good).toContain("into the store&#39;s escrow");
+    const bad = receiptPage({ orderId: "ord_1", verification: held(false), lang: "es" });
+    expect(bad).toContain("Retenido para este recibo");
+    expect(bad).toContain("the escrow holds another receipt for this payment");
+    expect(bad).not.toContain("—");
+  });
 });

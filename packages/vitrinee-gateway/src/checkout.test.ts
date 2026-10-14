@@ -10,7 +10,7 @@ import { OrderStore, type OrderPersistence } from "./orders.js";
 import { Reservations } from "./reservations.js";
 import { SettlementLedger } from "./settlements.js";
 import { FAKE_PAYER, FAKE_TX_HASH, fakeFacilitator } from "./test/fake-facilitator.js";
-import { MERCHANT, REGISTRY_ID, SIGNER, fakeHorizon, fakeRegistry, testConfig, fakePlatformProfiles } from "./test/fixtures.js";
+import { ESCROW_ID, MERCHANT, REGISTRY_ID, SIGNER, fakeEscrow, fakeHorizon, fakeRegistry, testConfig, fakePlatformProfiles } from "./test/fixtures.js";
 import { listen } from "./test/listen.js";
 
 const JSON_HEADERS = { "content-type": "application/json" };
@@ -713,6 +713,125 @@ describe("GET /checkout/:productId — the door x402 clients use (VT-23)", () =>
       expect(env.deps.orders!.list()).toHaveLength(0);
       expect(facilitator.settleCalls).toHaveLength(0);
     } finally {
+      await env.close();
+    }
+  });
+});
+
+describe("a store with an escrow: one payment, one receipt (T159)", () => {
+  async function escrowStore(escrow = fakeEscrow()) {
+    const horizon = fakeHorizon({ creditContract: ESCROW_ID }) as typeof fetch & { allow(amount: string): void };
+    const env = await start({ config: testConfig({ ESCROW_CONTRACT_ID: ESCROW_ID }), holder: escrow.holder, escrows: escrow.escrows, horizonFetch: horizon });
+    return { ...env, escrow, horizon };
+  }
+
+  it("names the escrow in the receipt and holds the purchase before anchoring it", async () => {
+    const env = await escrowStore();
+    try {
+      const order = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      await env.app.anchors.idle();
+      const { jws, hash } = order["receipt"] as { jws: string; hash: string };
+      expect(checkReceiptSignature(jws).claims).toMatchObject({ escrow: { contract: ESCROW_ID }, merchantAccount: MERCHANT });
+      expect(env.escrow.calls).toEqual([{ orderRef: order["orderId"], payer: FAKE_PAYER, amount: BigInt(order["amountUSDCAtomic"]), txHash: FAKE_TX_HASH, receiptHash: hash }]);
+      const record = env.deps.orders!.get(order["orderId"])!;
+      expect(record.hold).toMatchObject({ status: "held", attempts: 1, escrow: ESCROW_ID });
+      expect(record.anchor).toMatchObject({ status: "anchored" });
+    } finally {
+      env.app.anchors.stop();
+      await env.close();
+    }
+  });
+
+  it("verifies its receipt with a fourth check, held; a receipt naming another payment fails it, with the reason", async () => {
+    const env = await escrowStore();
+    try {
+      const order = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      await env.app.anchors.idle();
+      const { hash } = order["receipt"] as { hash: string };
+      env.horizon.allow(order["amountUSDC"]);
+
+      const good = (await (await fetch(`${env.url}/receipts/${hash}/verify`)).json()) as Record<string, any>;
+      expect(good).toMatchObject({ valid: true, checks: { settlement: { ok: true }, held: { ok: true, escrow: ESCROW_ID, status: "held" } } });
+
+      // The escrow on chain now holds another receipt for this same payment: this one no longer verifies.
+      env.escrow.purchases.set(FAKE_TX_HASH, { ...env.escrow.purchases.get(FAKE_TX_HASH)!, receiptHash: "e".repeat(64) });
+      const other = (await (await fetch(`${env.url}/receipts/${hash}/verify`)).json()) as Record<string, any>;
+      expect(other).toMatchObject({ valid: false, checks: { held: { ok: false, reason: "the escrow holds another receipt for this payment" } } });
+
+      env.escrow.purchases.clear();
+      const none = (await (await fetch(`${env.url}/receipts/${hash}/verify`)).json()) as Record<string, any>;
+      expect(none).toMatchObject({ valid: false, checks: { held: { ok: false, reason: "the escrow holds no purchase for this payment" } } });
+    } finally {
+      env.app.anchors.stop();
+      await env.close();
+    }
+  });
+
+  it("refuses an escrow that pays someone else, and a payment credited to the merchant instead of the escrow", async () => {
+    const elsewhere = fakeEscrow({ config: { payee: FAKE_PAYER } });
+    const env = await escrowStore(elsewhere);
+    try {
+      const order = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      await env.app.anchors.idle();
+      const { hash, jws } = order["receipt"] as { hash: string; jws: string };
+      env.horizon.allow(order["amountUSDC"]);
+      const result = (await (await fetch(`${env.url}/receipts/${hash}/verify`)).json()) as Record<string, any>;
+      expect(result).toMatchObject({ valid: false, checks: { held: { ok: false, reason: "the escrow pays another account than the receipt's merchantAccount" } } });
+
+      // The same receipt checked against a Horizon where the money reached the merchant directly.
+      const direct = fakeHorizon() as typeof fetch & { allow(amount: string): void };
+      direct.allow(order["amountUSDC"]);
+      const { verifyReceipt } = await import("@vitrinee/anchor");
+      const check = await verifyReceipt(jws, { registry: env.registry.registry, horizonUrl: "https://horizon.test", fetchImpl: direct, escrows: elsewhere.escrows });
+      expect(check.checks.settlement).toMatchObject({ ok: false, reason: "the store's escrow was not credited the receipt's USDC amount in that transaction" });
+    } finally {
+      env.app.anchors.stop();
+      await env.close();
+    }
+  });
+
+  it("retries a failed hold, anchors meanwhile, and records the reason when it gives up", async () => {
+    const flaky = await escrowStore(fakeEscrow({ failTimes: 1 }));
+    try {
+      const order = (await (await buy(flaky.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      await flaky.app.anchors.idle();
+      expect(flaky.deps.orders!.get(order["orderId"])!.anchor).toMatchObject({ status: "anchored", attempts: 1 });
+      await new Promise((r) => setTimeout(r, 30));
+      await flaky.app.anchors.idle();
+      expect(flaky.deps.orders!.get(order["orderId"])!.hold).toMatchObject({ status: "held", attempts: 2 });
+    } finally {
+      flaky.app.anchors.stop();
+      await flaky.close();
+    }
+
+    const dead = await escrowStore(fakeEscrow({ failTimes: 10 }));
+    try {
+      const order = (await (await buy(dead.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      for (let i = 0; i < 5; i += 1) {
+        await dead.app.anchors.idle();
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      expect(dead.deps.orders!.get(order["orderId"])!.hold).toMatchObject({ status: "failed", attempts: 3, lastError: "rpc: txBadSeq" });
+      expect(dead.app.anchors.resume()).toBe(1); // a restart picks it up again
+    } finally {
+      dead.app.anchors.stop();
+      await dead.close();
+    }
+  });
+
+  it("a store without an escrow: no hold, no escrow in the receipt, three checks", async () => {
+    const env = await start();
+    try {
+      const order = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as Record<string, any>;
+      await env.app.anchors.idle();
+      const { jws, hash } = order["receipt"] as { jws: string; hash: string };
+      expect(checkReceiptSignature(jws).claims).not.toHaveProperty("escrow");
+      expect(env.deps.orders!.get(order["orderId"])!.hold).toBeUndefined();
+      env.horizon.allow(order["amountUSDC"]);
+      const result = (await (await fetch(`${env.url}/receipts/${hash}/verify`)).json()) as Record<string, any>;
+      expect(result).toMatchObject({ valid: true, checks: { held: null } });
+    } finally {
+      env.app.anchors.stop();
       await env.close();
     }
   });
