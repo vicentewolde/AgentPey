@@ -104,6 +104,16 @@ pantallas de firma (consentimiento, revocación, respuesta a una disputa, portal
 de comercios, inicio de sesión del MCP): firma de wallet, perímetro de `P-10`.
 Ninguna pantalla carga scripts de un CDN; no agregues uno.
 
+**Fase 9, desde 2026-10-14 (`P-19`):** el spec es
+[`docs/fase-9-compra-protegida/SPEC.md`](docs/fase-9-compra-protegida/SPEC.md).
+Es un contrato de escrow que retiene pagos y lo que lo conecta al checkout, al
+MCP, a las disputas y al despacho: contrato, fondos, firma y autorización.
+**Ninguna tarea es delegable.** No toques `contracts/*` (incluido
+`contracts/purchase-escrow/`), `deployments/*.json`, `apps/mcp/src/shopper.ts`
+ni `tools.ts`, `packages/resolve/`, `scripts/resolve*`,
+`apps/web/public/resolve/`, ni el `payTo`, el `hold`, los webhooks o el despacho
+de `packages/vitrinee-*`, aunque el cambio parezca mecánico.
+
 **Vitrinee, desde 2026-09-23 (T98):** Vitrinee se fusionó en este repo
 (`docs/DECISIONES.md § P-12`) y es la puerta del vendedor para comercios reales.
 Antes de tocar cualquier ruta con `vitrinee` en el nombre, leé

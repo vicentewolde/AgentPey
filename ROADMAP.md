@@ -1,6 +1,6 @@
 # AgentPey — Plan maestro del proyecto
 
-> Vista de conjunto de **todo** el proyecto, de la Fase 0 a la Fase 8. Los demás
+> Vista de conjunto de **todo** el proyecto, de la Fase 0 a la Fase 9. Los demás
 > documentos (`docs/fase-1-agentpass/CONTEXTO.md`, `docs/fase-1-agentpass/ARQUITECTURA.md`, `docs/fase-1-agentpass/BITACORA.md`,
 > `docs/fase-1-agentpass/DECISIONES.md`) describen **AgentPass**, que es la Fase 1 — la primera
 > pieza ya construida. Este archivo es el nivel por encima: dónde está AgentPass
@@ -10,7 +10,7 @@
 > cualquiera —humano o Claude Code— que necesite entender el proyecto entero
 > antes de tocar una fase específica.
 
-Última revisión: 2026-10-03 · Fase actual: **Fase 8, en curso, spec aprobado** — agentes reales (Claude, ChatGPT) comprando en Stellar por un servidor MCP, y el estándar completo (conformidad UCP, AP2, MPP; ver `P-16` en [docs/DECISIONES.md](docs/DECISIONES.md)) — Fases 1 a 7 cerradas (T1–T127)
+Última revisión: 2026-10-14 · Fases en curso: **Fase 9, principal, spec aprobado** — una compra protegida de punta a punta, con escrow en la red, para el Instaward (`P-19`) — y **Fase 8, en cierre** — agentes reales (Claude, ChatGPT) comprando en Stellar por un servidor MCP, y el estándar completo (`P-16`; ver [docs/DECISIONES.md](docs/DECISIONES.md)) — Fases 1 a 7 cerradas (T1–T127)
 
 ---
 
@@ -109,7 +109,8 @@ las decisiones estratégicas que llevaron al código, y para SCF eso es evidenci
 | 5 | **MandateVault + cierre de piloto** | Cada decisión del sistema queda como evidencia verificable; el MVP y la landing funcionan bien de cara al mensaje a Tellus, que gestiona la Instaward | ✅ Completa (T27–T31) — mensaje a Tellus enviado 2026-09-08 | — |
 | 6 | **Después: AgentGuard + comercialización** | Convertir el piloto en un producto real con partners en testnet, mientras se espera la resolución de SCF | ✅ Cerrada 2026-10-02 (T32–T119, `C-161`): plataforma para partners, piloto F9 y Vitrinee; AgentGuard sin alcance | — |
 | 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | ✅ Cerrada 2026-10-03 (T120–T127, `E-25`): perfil y catálogo UCP, compra UCP pagada en Stellar, mandatos AP2, AgentResolve y anexo del SEP; el reembolso real de T124 pasa a la Fase 8 con fecha | — |
-| 8 | **Agentes reales comprando en Stellar** | Que un agente que la gente ya usa (Claude, ChatGPT) compra en una tienda de terceros pagando en Stellar con topes aplicados por la red, y qué cumple AgentPey, con evidencia, de UCP, AP2 y MPP | 🔄 En curso desde 2026-10-03 (`P-16`), spec aprobado, T128–T146 | — |
+| 8 | **Agentes reales comprando en Stellar** | Que un agente que la gente ya usa (Claude, ChatGPT) compra en una tienda de terceros pagando en Stellar con topes aplicados por la red, y qué cumple AgentPey, con evidencia, de UCP, AP2 y MPP | 🔄 En cierre desde 2026-10-14 (`P-16`, `P-19`): T128–T156; quedan T138 y T139 como documentos y la tarea de `R-33` | — |
+| 9 | **Una compra protegida, de punta a punta** | Que las piezas que ya existen (compra desde el chat, recibos anclados, despacho, disputas) se conectan en una sola compra: el pago queda retenido en un contrato y el veredicto lo libera o reembolsa | 🔄 En curso desde 2026-10-14 (`P-19`), spec aprobado, T157–T167, hasta el 11-nov | — |
 
 Las Fases 0 a 5 están cerradas — el piloto técnico completo.
 La Fase 6 hizo la mitad de "comercialización" y se cerró el 2026-10-02; la
@@ -661,6 +662,23 @@ resolutores externos y de pagos de servicios desde una tesorería. Objetivo
 inmediato: el video de Find Your Way, el 11-oct. Alcance, tareas (T128 a
 T146), línea de corte y preguntas abiertas en
 [docs/fase-8-agentes-reales/SPEC.md](docs/fase-8-agentes-reales/SPEC.md).
+
+Desde el 14-oct la Fase 8 está en cierre, en paralelo con la Fase 9 (`P-19`):
+quedan T138 y T139 como documentos, la tarea de `R-33` en el spec y el
+borrador del SEP. T140 queda cortada.
+
+### 4.9 · Fase 9 — Una compra protegida, de punta a punta 🔄 en curso, abierta 2026-10-14
+
+La abre `P-19`: los tres entregables del Instaward enviado a Stellar Chile el
+7-oct. Las piezas de una compra hecha por un agente ya existen, pero funcionan
+por separado: el pago va directo a la tienda, el reclamo del chat lo abre el
+árbitro a mano, la respuesta del comercio viaja como archivo, el despacho no
+afecta el pago y nada en la red ata un recibo a su pago. La fase las conecta
+con un contrato nuevo, `purchase-escrow`, uno por tienda, que retiene el pago y
+lo libera o reembolsa por veredicto, con plazos aplicados por la red. Termina
+con una compra grabada de punta a punta, el 11-nov. Tareas T157 a T167,
+decisiones con prefijo `X-`, en
+[docs/fase-9-compra-protegida/SPEC.md](docs/fase-9-compra-protegida/SPEC.md).
 
 ---
 

@@ -893,3 +893,41 @@ que la red no vincula a ese recibo.
 
 **Límite conocido.** Un recibo que no se pudo leer *de forma pasajera* (la tienda no contestó) también queda en
 `incomplete` hasta la siguiente lectura (reintento a los 10 minutos); vuelve a los totales solo.
+
+---
+
+### P-19 · Se abre la Fase 9: una compra protegida de punta a punta, con escrow en la red, para el Instaward · `Vigente`
+**Fecha:** 2026-10-14 · **Hito:** ninguno; rige desde T157 · Decidido por el usuario
+
+**Qué cambia.** El 7-oct se envió a Stellar Chile un Instaward (Stellar Passport, USD 4.000, 30 días desde el
+13-oct) con tres entregables: pago y postventa conectados en la red, chat, comercio y despacho en un solo flujo de
+postventa, y una compra protegida grabada de punta a punta. Hasta hoy las piezas que conecta (compra desde el chat,
+recibos anclados, despacho, disputas) funcionan por separado, y las conexiones quedaron sin construir a propósito
+para que su fecha pública fuera posterior al envío. El 14-oct el usuario dio inicio a la fase.
+
+**Entra en alcance** (todo en testnet):
+
+1. Un contrato nuevo, `purchase-escrow`, uno por tienda, que retiene el pago y lo libera o reembolsa por veredicto,
+   con plazos aplicados por la red, y que ata cada recibo a su pago.
+2. El checkout UCP que paga a ese contrato, y el agente que lo comprueba antes de firmar.
+3. `open_claim` del MCP que abre la disputa en la red; la respuesta del comercio firmada como transacción desde su
+   página; el despacho que abre la ventana de liberación; y los cambios de la disputa como webhooks firmados.
+4. Despliegues nuevos en testnet para esto, cada uno con el OK del usuario.
+
+**Sigue fuera.** Lo mismo que el texto enviado: mainnet, dinero real, rieles fiat, comercios o compradores reales,
+áreas de producto nuevas (entre ellas el MCP con varias wallets, `R-33`, que diseña la Fase 8), resolutores
+externos, plataformas de tienda nuevas, auditoría externa. No se tocan `checkMandate`, los topes ni `policy_rail`, ni
+se redesplegan `agent-resolve` ni `receipt-registry`. T140 queda cortada. `P-10` no cambia: nada de esta fase se
+delega a Codex.
+
+**Convivencia.** La Fase 8 sigue en curso hasta su cierre (T138 y T139 como documentos, la tarea de `R-33` en el
+spec, el borrador del SEP), en su propio worktree. `ESTADO.md` muestra las dos fases. La Fase 8 numera sus tareas
+nuevas desde T171; esta fase usa T157 a T167 y reserva hasta T170.
+
+**Motivo.** Es el compromiso enviado, y lo que falta para que AgentPey muestre una compra protegida entera en vez
+de piezas sueltas, antes de postular al Build Award de SCF.
+
+**Alternativa descartada: construir las conexiones dentro de la Fase 8.** Mezcla el cierre de la hackatón con un
+compromiso aparte, con otros plazos y otra evidencia.
+
+Spec en [`fase-9-compra-protegida/SPEC.md`](fase-9-compra-protegida/SPEC.md). Decisiones de la fase con prefijo `X-`.

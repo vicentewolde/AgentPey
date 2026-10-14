@@ -1,0 +1,186 @@
+# Decisiones — Fase 9 (Una compra protegida, de punta a punta)
+
+> Prefijo `X-`. Cada decisión con su motivo y la alternativa descartada. Las
+> que cruzan fases van a [`docs/DECISIONES.md`](../DECISIONES.md) con prefijo
+> `P-` (la que abre esta fase es `P-19`); las que tocan Vitrinee por dentro,
+> a su `DECISIONES.md` con prefijo `VT-`.
+
+`X-1` a `X-13` las propuso Claude Code a partir del plan del 7-oct, verificado contra el código el 14-oct, y las
+**decidió el usuario** el 14-oct, todas como se recomendaron.
+
+---
+
+### X-1 · Un solo contrato nuevo, `purchase-escrow`, que retiene el pago y guarda su vínculo con el recibo · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+**Motivo.** La compra retenida ya es el registro del pago: guardar ahí `tx_hash` y `receipt_hash` cierra la brecha 10
+sin un libro de recibos aparte. Menos despliegues y menos superficie.
+
+**Alternativa descartada: dos contratos (escrow y libro de recibos).** Duplica estado que tiene que coincidir.
+
+---
+
+### X-2 · El escrow es un contrato nuevo; `agent-resolve` sigue intacto · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+**Motivo.** `agent-resolve` sostiene las disputas existentes, incluido el reembolso de T124. Un contrato nuevo no
+obliga a migrar nada ni a redesplegar.
+
+**Alternativa descartada: un sucesor de `agent-resolve`.** Obliga a migrar o a mantener dos versiones del mismo
+contrato con reglas distintas.
+
+---
+
+### X-3 · El pago entra como un `transfer` x402 normal con `payTo` = el escrow, y la tienda lo registra con `hold` · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T159, T160 · Decidido por el usuario
+
+`policy_rail.__check_auth` solo autoriza un `transfer` de su activo y no revisa el destinatario
+(`contracts/policy-rail/src/lib.rs` l.361–388): el rail puede pagarle al contrato, pero no llamar a un `deposit`.
+`hold` rechaza un monto mayor que el saldo no asignado y un `tx_hash` repetido. Hay que aceptar `C…` en el handler,
+el recibo y la verificación (`X-13`).
+
+**Motivo.** No toca `policy_rail`, `checkMandate` ni el handler en su forma.
+
+**Alternativa descartada: que el rail llame a `escrow.deposit`.** Exige cambiar y redesplegar `policy_rail`, que está
+fuera de alcance.
+
+---
+
+### X-4 · `hold` y `mark_shipped` los firma la cuenta de firma de la tienda; `respond`, la cuenta de cobro · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157, T163 · Decidido por el usuario
+
+El plan del 7-oct decía que todo lo firmaba la cuenta de cobro (`merchantAccount`). El código muestra dos cuentas:
+la de firma, que firma y ancla los recibos y cuya llave guarda el servidor (`vitrinee-gateway/src/app.ts:130`), y la
+de cobro, que en el portal es la wallet del comercio, sin llave en el servidor (`platform/portal.ts:160`). Los
+pagos al comercio van a la cuenta de cobro; `respond` lo firma el comercio desde la página con Freighter o xBull.
+
+**Motivo.** `hold` y `mark_shipped` ocurren solos, en el servidor, que solo tiene la llave de firma. La respuesta
+es del comercio, y hoy ya la firma su cuenta de cobro (`verifyMerchantResponse`).
+
+**Alternativa descartada: todo con la cuenta de cobro.** Obliga al servidor a guardar la llave de la wallet del
+comercio, o al comercio a firmar cada `hold` a mano.
+
+---
+
+### X-5 · El escrow es opcional por tienda, encendido en `agentcommerce` · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T160 · Decidido por el usuario
+
+La tienda lo declara en el `business_config` del handler.
+
+**Motivo.** No rompe a clientes ni a tiendas actuales.
+
+**Alternativa descartada: escrow obligatorio.** Rompe a toda tienda y cliente que hoy funciona.
+
+---
+
+### X-6 · La ventana de liberación es configurable: minutos en la demo, 7 días por defecto · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157, T164 · Decidido por el usuario
+
+**Motivo.** La demo necesita ver la liberación en vivo; una tienda real necesita días.
+
+**Alternativa descartada: un valor fijo.** O no se ve en la demo, o no sirve fuera de ella.
+
+---
+
+### X-7 · Si el árbitro no resuelve a tiempo, `expire` reembolsa completo al pagador · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+Cualquiera puede llamar `expire` pasado `response_window + resolve_window` desde la apertura. Cierra la brecha 18:
+en `agent-resolve`, `resolve` no tiene plazo y una disputa puede quedar abierta para siempre.
+
+**Motivo.** Protege al comprador, que es el punto del entregable.
+
+**Alternativa descartada: liberar al comercio al vencer.** Premia al árbitro ausente a costa del comprador.
+
+---
+
+### X-8 · El contrato nuevo usa soroban-sdk 27, en el workspace principal · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+**Motivo.** Un workspace menos que mantener. Nada del contrato pide 28.
+
+**Alternativa descartada: un workspace propio con 28, como `receipt-registry`.** Solo se justifica si algo lo pide.
+
+---
+
+### X-9 · El agente comprueba, antes de firmar, que el `payTo` sea el escrow declarado y que ese contrato corra el wasm conocido · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T160 · Decidido por el usuario
+
+Se hace en la relectura del perfil que ya hace `pay()` (`ucp-stellar/src/checkout.ts:425–452`). La comprobación del
+wasm se agregó al verificar el plan contra el código.
+
+**Motivo.** Sin la primera, una tienda podría declarar escrow y cobrar directo. Sin la segunda, podría declarar un
+contrato propio que imite la interfaz y reenvíe la plata.
+
+**Alternativa descartada: confiar en lo que declara la tienda.** Deja el escrow como una promesa sin respaldo.
+
+---
+
+### X-10 · Sigue la confirmación humana del veredicto (`E-18`) · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T158 · Decidido por el usuario
+
+**Motivo.** No se cambia la regla de confianza del árbitro durante la fase.
+
+**Alternativa descartada: veredicto automático.** Cambia a la vez quién decide y cómo se paga.
+
+---
+
+### X-11 · Un escrow por tienda, no uno compartido · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+El constructor fija la cuenta de firma (`operator`) y la de cobro (`payee`). En la fase se despliega uno solo, para
+`agentcommerce`, a mano y con el OK del usuario.
+
+**Motivo.** En Soroban un contrato no puede leer el hash de otra transacción. Con un escrow compartido, una tienda
+registrada podría hacer `hold` sobre un pago que llegó para otra y quedarse con él; el chequeo de saldo no asignado
+no lo impide. Con uno por tienda, todo el saldo del contrato es de esa tienda.
+
+**Alternativa descartada: un escrow compartido con una lista de tiendas que lleva un admin.** Un despliegue menos por
+tienda, pero deja ese riesgo abierto y agrega un admin.
+
+---
+
+### X-12 · Se puede reclamar mientras el pago no se haya liberado · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+Como la liberación exige un despacho más la ventana, siempre hay un plazo para reclamar antes. Desaparece el
+`claim_window` aparte que tiene `agent-resolve`.
+
+**Motivo.** Un plazo menos que configurar, y ningún caso en que el comprador pierda el derecho a reclamar antes de
+que el comercio cobre.
+
+**Alternativa descartada: un `claim_window` contado desde `hold`.** Podría cerrarse antes del despacho.
+
+---
+
+### X-13 · El handler `stellar_x402` y la extensión del recibo pasan a una versión nueva que acepta `C…` y `escrow` · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T160, T161 · Decidido por el usuario
+
+Hoy todo `pay_to` de tienda y el `merchantAccount` del recibo aceptan solo `G…` (`ucp-stellar/src/wire.ts:44`,
+`vitrinee-core/src/ucp.ts:104`, `apps/web/public/ucp/handlers/stellar-x402/schema.json:63`). La versión
+`2026-09-30` sigue válida para las tiendas sin escrow.
+
+**Motivo.** Cambiar el esquema público sin cambiar la versión rompería a cualquier cliente que valide contra él.
+
+**Alternativa descartada: ampliar la versión `2026-09-30`.** Cambia en silencio un contrato público.
+
+---
+
+### X-14 · El facilitator x402 acepta un `payTo` contrato: el pago al escrow va por el facilitator, sin plan B · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** chequeo del día 1, antes de T157 · Corrido con el OK del usuario
+
+Con las mismas librerías que la tienda (`@x402/core` y `@x402/stellar` 2.26), OpenZeppelin Channels en testnet
+dio `verify` válido y liquidó 0,01 USDC desde una cuenta `G…` hacia el contrato `policyRailUcp`, con la comisión
+patrocinada (`areFeesSponsored: true`). Transacción `84611558ffea12348a87aa23f9428749efcbba74e30f0d3bae04d61841cb077f`.
+El saldo del contrato subió exactamente 100000 unidades. Evidencia en
+[`evidencia/chequeo-dia-1.md`](evidencia/chequeo-dia-1.md).
+
+**Consecuencia para T159.** En Horizon, el abono a un contrato es `contract_credited` con el destinatario en el
+campo `contract`; el campo `account` trae la cuenta que envió la transacción (la del facilitator). La verificación
+del escrow tiene que leer `contract`, no `account`.
+
+**Motivo.** Era el riesgo principal del diseño (`X-3`): si el facilitator no aceptaba un contrato, la tienda tendría
+que liquidar sola.
+
+**Alternativa descartada: plan B, que la tienda liquide directo.** Ya no hace falta, y habría sumado una forma de
+liquidar que hoy no existe.

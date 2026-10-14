@@ -6,11 +6,33 @@
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
 **Actualizado:** 2026-10-14
-**Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T156 · el chat de Grok inicia sesión en el MCP (`R-37`); sin compra por un límite de Grok
-**Siguiente paso:** T138 y T139 como documentos; después la tarea de `R-33` en el spec. **T130 queda en pausa** hasta que pase el periodo de la hackatón (`R-36`): la tienda real ya existe ([casastock.cl](https://casastock.cl/)), pero el rail del MCP tiene topes fijos de 3 y 5 USDC y los productos reales cuestan más. `R-33` (el MCP con más wallets) pide escribir y aprobar su tarea en el spec antes de construir. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Fases en curso:** dos, desde el 14-oct (`P-19`).
+- **Fase 9 (principal)** · Una compra protegida, de punta a punta ([spec](fase-9-compra-protegida/SPEC.md), **aprobado**, `P-19`): los entregables del Instaward, 13-oct → 11-nov.
+- **Fase 8 (cierre)** · Agentes reales comprando en Stellar ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`), en el worktree `~/dev/AgentPay-fase8`. La Fase 7 se cerró el 2026-10-03 (`E-25`)
 
-## Progreso de la fase
+**Última tarea terminada:** Fase 9: chequeo del día 1, el facilitator x402 liquida hacia un contrato (`X-14`). Fase 8: T156, el chat de Grok inicia sesión en el MCP (`R-37`)
+**Siguiente paso:** Fase 9: `/tarea T157`, el contrato de escrow. Fase 8: T138 y T139 como documentos (evaluaciones para después de la Fase 9, sin cambiar el árbitro, `E-18` ni el diseño del escrow); después la tarea de `R-33` en el spec, respetando la interfaz del escrow (spec de la Fase 9, §4.6). **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+
+**Convivencia (`P-19`).** La Fase 9 es dueña de `contracts/*` y `deployments/*.json`, de `open_claim` en el MCP, de `packages/resolve/`, `scripts/resolve*` y `apps/web/public/resolve/`, y del `payTo`, `hold`, webhooks y despacho de Vitrinee. La Fase 8, de `docs/fase-8-agentes-reales/*` y del borrador del SEP. Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
+
+## Progreso de la Fase 9
+
+| Tarea | Estado | Rama / PR |
+|---|---|---|
+| Chequeo del día 1 | ✅ hecho: 0,01 USDC liquidados hacia un contrato por el facilitator ([evidencia](fase-9-compra-protegida/evidencia/chequeo-dia-1.md), `X-14`) | `cc/fase-9-plan` |
+| T157 Contrato de escrow | ⏳ pendiente | |
+| T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente | |
+| T159 Un pago, un recibo, en la red | ⏳ pendiente | |
+| T160 El checkout paga al escrow | ⏳ pendiente | |
+| T161 La orden muestra el estado del escrow (se corta segundo) | ⏳ pendiente | |
+| T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente | |
+| T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente | |
+| T164 El despacho abre la ventana de liberación | ⏳ pendiente | |
+| T165 Cada cambio de la disputa llega al agente (se corta primero) | ⏳ pendiente | |
+| T166 Corrida completa y QA | ⏳ pendiente | |
+| T167 Video, mapa de tiempos e informe final | ⏳ pendiente | |
+
+## Progreso de la Fase 8 (cierre)
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
@@ -26,7 +48,7 @@
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ✅ terminada: `pnpm run ucp:stellar:conformance -- <url>`, 20 comprobaciones (`R-22`); agentcommerce 20/20 con cobro real y una sola firma (`ord_muws1afd200277f471`); la tienda rota, 6 fallas con su motivo | [PR #64](https://github.com/vicentewolde/AgentPey/pull/64), mergeado |
 | T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
 | T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
-| T140 Resolutor intercambiable | se corta primero | ⏳ pendiente, pide aprobación tras T138 o T139 | |
+| T140 Resolutor intercambiable | se corta primero | ✂️ cortada (`P-19`): se cruza con el diseño del escrow de la Fase 9 | |
 | T141 Página "Tiendas comprables por agentes" | para el video | ✅ terminada, en vivo en [agentpey.com/tiendas](https://agentpey.com/tiendas): `/tiendas` (alias `/stores`) lista las tres tiendas del directorio con su perfil UCP, sus recibos anclados y el último, leído de Horizon y confirmado en el registro (`R-26`); probada contra la red real | [PR #67](https://github.com/vicentewolde/AgentPey/pull/67) |
 | T142 Guion y grabación de la demo | imprescindible | ✅ terminada: video entregado el 13-oct, 2:59, voz en inglés más lenta y subtítulos en español (`R-35`); guion en [`video/GUION-VIDEO.md`](fase-8-agentes-reales/video/GUION-VIDEO.md), evidencia en [`T142.md`](fase-8-agentes-reales/evidencia/T142.md) | `cc/t142-guion-video`, solo documentos, mergeada a `main` el 14-oct; ticket en `DONE` |
 | T143 Más wallets que Freighter (`C-160`) | si alcanza | ✅ terminada: Freighter y xBull en las cinco pantallas, LOBSTR en las tres de solo mensaje, Hana, Albedo y Rabet en ninguna (`R-23`); criterio 2 ajustado por el usuario (opción A); probado por el usuario en agentpey.com (aprobar, revocar, portal) y el MCP en local | [PR #65](https://github.com/vicentewolde/AgentPey/pull/65) |
@@ -64,11 +86,11 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 - T127 (`/revisar`, sugerencias que quedaron): la orden no cruza `dispute.merchant` con la cuenta firmante de la tienda; el esquema de la extensión no exige `verdict_hash`, `refund_atomic` y `resolved_at` cuando `status` es `resolved`; cada GET de una orden anclada lee la red sin caché (una disputa resuelta es inmutable y se podría cachear); `zod` de `vitrinee-anchor` en `^4.5.4` frente a `^4.6.0` del resto.
 
-- T147 (`R-17`): Jumpseller no informa despachos (`reportsShipments` en falso) hasta comprobar sus campos con un pedido real. Una tienda de la plataforma se arma con su primer tráfico tras un deploy: hasta entonces no lee despachos ni retoma webhooks pendientes. El receptor de agentpey.com guarda lo recibido en memoria (se pierde en un deploy; la firma de menos de 5 minutos evita que un aviso viejo se cuele después). Un cambio de disputa no dispara un webhook.
+- T147 (`R-17`): Jumpseller no informa despachos (`reportsShipments` en falso) hasta comprobar sus campos con un pedido real. Una tienda de la plataforma se arma con su primer tráfico tras un deploy: hasta entonces no lee despachos ni retoma webhooks pendientes. El receptor de agentpey.com guarda lo recibido en memoria (se pierde en un deploy; la firma de menos de 5 minutos evita que un aviso viejo se cuele después). Un cambio de disputa no dispara un webhook (lo agrega T165 de la Fase 9).
 - T148 (`R-18`): `ap2:export` (T123) sigue con un producto y no ofrece un carrito. El `quote` del MCP ya acepta carritos (T150, `R-28`).
 - `C-154`: dos comercios en una cuenta, opción (a) aprobada. Toca autorización, no delegable. Después de la Fase 7.
 - `C-160`: conectar más wallets que Freighter. Toca las tres pantallas de firma. Es T143 de la Fase 8.
-- Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción (pide un contrato nuevo, fuera de alcance). Brecha 14: es parte de T134.
+- Brecha 10 del anexo: la coherencia quedó hecha en T132; lo que sigue abierto es que `receipt-registry` no guarda el hash de la transacción; lo cierra el escrow de la Fase 9 (T159, `X-1`). Brecha 14: es parte de T134.
 - T128 (PR 2): el servidor guarda en memoria qué tokens de renovación ya se usaron; tras un reinicio, uno usado sirve una vez más hasta vencer (una semana). Y el rail `mcp` tiene como principal la misma cuenta que cobra en `agentcommerce` y `mycokit`.
 - T131: la memoria de `Idempotency-Key` vive en el proceso un día, con tope (`VT-42`); tras un reinicio, o con dos creaciones simultáneas con la misma clave, puede quedar otra sesión `incomplete` (nunca un segundo cobro). La simulación de despacho de la tienda de conformidad solo comprueba el secreto; el evento llega con T147. Y conformance#116 abierto en la suite: cuando lo corrijan, se quita el renombre de `locality` de la tienda de prueba.
 - 8-oct: reembolso real de T124 hecho (veredicto `refund_full`, 1,5684211 USDC, confirmado por el usuario con `E-18`) y `ord_muq1…` con su disputa resuelta en vivo (cierra el pendiente de T127).

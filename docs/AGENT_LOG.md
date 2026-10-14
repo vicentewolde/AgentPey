@@ -8871,3 +8871,21 @@ Pendiente: T138 y T139 como documentos, y la tarea de `R-33`. No tocar `contract
 `payTo` de Vitrinee hasta nuevo aviso del usuario. Exponential: sin cambios (T156 sin ticket propio). `AGENTS.md`: sin
 cambios.
 
+
+## 2026-10-14 (8) — cc/fase-9-plan
+
+Agente: Claude Code.
+
+Qué: **se abre la Fase 9** (`P-19`), una compra protegida de punta a punta, en paralelo con el cierre de la Fase 8.
+Spec aprobado por el usuario (`docs/fase-9-compra-protegida/SPEC.md`, T157 a T167, reserva hasta T170; la Fase 8
+numera desde T171), decisiones `X-1` a `X-14`, `BITACORA.md`, Feature y once tickets en Exponential, filas en
+`SYNC.md`. `ESTADO.md` muestra las dos fases; `ROADMAP.md`, `CLAUDE.md` y `AGENTS.md` al día. Chequeo del día 1 con
+OK del usuario: el facilitator x402 liquidó 0,01 USDC hacia un contrato (`X-14`, tx `84611558…077f`). T140 cortada.
+
+Por qué: el usuario dio inicio a la fase el 14-oct.
+
+Pendiente: merge de `cc/fase-9-plan` con OK del usuario; después `/tarea T157`. **Se levanta el aviso anterior**: la
+Fase 9 es dueña de `contracts/*`, `deployments/*.json`, `open_claim` (`apps/mcp/src/shopper.ts`, `tools.ts`),
+`packages/resolve/`, `scripts/resolve*`, `apps/web/public/resolve/` y del `payTo`, `hold`, webhooks y despacho de
+`packages/vitrinee-*`; la Fase 8 no los toca. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin
+preguntar al usuario. `AGENTS.md`: párrafo nuevo de la Fase 9 (nada delegable).

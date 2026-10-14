@@ -76,6 +76,19 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T154 | — (sin ticket Exponential propio) | La página del recibo con el diseño del sitio | SPEC | `DONE` | 2026-10-09 | 2026-10-09 | 2026-10-09 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-34](../fase-8-agentes-reales/DECISIONES.md) | [PR #81](https://github.com/vicentewolde/AgentPey/pull/81) |
 | T155 | — (sin ticket Exponential propio) | Pantalla local del árbitro | SPEC | `DONE` | 2026-10-09 | 2026-10-09 | 2026-10-10 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-34](../fase-8-agentes-reales/DECISIONES.md) | [PR #82](https://github.com/vicentewolde/AgentPey/pull/82) |
 | T156 | — (sin ticket Exponential propio) | El chat de Grok compra por el MCP | SPEC | `DONE` | 2026-10-14 | 2026-10-14 | 2026-10-14 | [SPEC](../fase-8-agentes-reales/SPEC.md), [R-37](../fase-8-agentes-reales/DECISIONES.md) | [PR #85](https://github.com/vicentewolde/AgentPey/pull/85) |
+| T157 | `cmv8by4g20005ic06pvqn7q52` | Contrato de escrow: retener, liberar, reembolsar y plazos | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T158 | `cmv8by5ox0009ic06b4wbabz6` | El veredicto actúa sobre el pago retenido | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T159 | `cmv8by6rv000dic06mybrqhz8` | Un pago, un recibo, en la red | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T160 | `cmv8by7zt000hic06q7h5n0qs` | El checkout paga al escrow | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T161 | `cmv8by9bq000lic06r27r3hq9` | La orden muestra el estado del escrow | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T162 | `cmv8byan7000pic06cec9t1v4` | El reclamo desde el chat abre la disputa en la red | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T163 | `cmv8bybsf000tic06w37zgev9` | El comercio recibe el aviso y responde desde su página | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T164 | `cmv8bycz2000xic06t4lwk257` | El despacho abre la ventana de liberación | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T165 | `cmv8byee70001ld06ix35vq8h` | Cada cambio de la disputa llega al agente | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T166 | `cmv8byfub0005ld06lcbfhzjf` | Corrida completa y QA | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T167 | `cmv8byh250001jt06ag21gkol` | Video, mapa de tiempos e informe final | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+
+Fase 9 (Feature `cmv8by3co0001ic06hxa77oa2`, `P-19`): T157 a T167, una rama por tarea (`cc/t<n>-<slug>`, seteada en cada ticket).
 
 Dependencias en Exponential, **reordenadas el 2026-09-23** (`C-134`, opción (a)
 elegida por el usuario): T102 bloqueado por T100; T101 bloqueado por T100 y
