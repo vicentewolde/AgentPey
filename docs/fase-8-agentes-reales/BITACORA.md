@@ -42,7 +42,7 @@ un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
-muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 en revisión** (14-oct): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`).
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 cerrada** (14-oct): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`).
 
 | Tarea | Estado |
 |---|---|
@@ -62,7 +62,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T141 Página de tiendas | cerrada |
 | T142 Guion y grabación | cerrada (entregado el 13-oct, `R-35`) |
 | T143 Más wallets | cerrada |
-| T144 dots, Muse y Grok Bot | en revisión (tabla sin compra, `R-29`) |
+| T144 dots, Muse y Grok Bot | cerrada (tabla sin compra, `R-29`) |
 | T145 Tesorería de equipos (prueba técnica) | cerrada (`R-25`) |
 | T146 Demo de presupuesto de equipo | cerrada |
 | T147 Webhooks de orden | cerrada |
@@ -74,7 +74,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T153 Página del presupuesto de equipo | cerrada |
 | T154 Página del recibo con el diseño del sitio | cerrada |
 | T155 Pantalla local del árbitro | cerrada |
-| T156 El chat de Grok compra por el MCP | pendiente (`R-37`) |
+| T156 El chat de Grok compra por el MCP | pendiente, spec aprobado (`R-37`) |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -817,7 +817,7 @@ Evidencia: [`evidencia/T142.md`](evidencia/T142.md). Guion: [`video/GUION-VIDEO.
 
 ---
 
-## T144 · dots, Muse y Grok Bot — 2026-10-14, en revisión
+## T144 · dots, Muse y Grok Bot — 2026-10-14, cerrada
 
 **Qué quedó.** Una tabla que responde, para cada uno de los tres agentes nuevos de
 OpenAI, xAI y Meta, si puede comprar en AgentPey: ninguno puede hoy con las cuentas del

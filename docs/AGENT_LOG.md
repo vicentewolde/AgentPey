@@ -8820,3 +8820,12 @@ Pendiente: que el usuario apruebe el spec de T156; merge de T144 con su OK; desp
 cambios (T156 sin ticket propio, como T150 a T155). `AGENTS.md`: sin cambios (Codex no toca el MCP ni la autorización,
 `P-10`).
 
+## 2026-10-14 (4) — cc/t144-tabla-agentes
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, **T144 cerrada y mergeada a `main`**, y **T156 aprobada** en el spec. Ticket T144 a `DONE`.
+
+Pendiente: `/tarea T156` en su propia rama desde `origin/main`. No tocar `contracts/*`, AgentResolve, `open_claim` ni el
+`payTo` de Vitrinee hasta nuevo aviso del usuario. `AGENTS.md`: sin cambios.
+

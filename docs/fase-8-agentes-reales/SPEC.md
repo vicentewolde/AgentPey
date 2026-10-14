@@ -533,6 +533,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | T144: la tabla queda escrita y la compra desde dots no aplica (`R-29`). Hallazgo fuera de los criterios: el chat de Grok acepta un servidor MCP propio para todos los usuarios |
 | 2026-10-14 | T144: a pedido del usuario, un criterio más: probar el chat de Grok contra `mcp.agentpey.com`; la compra real, solo con su OK |
 | 2026-10-14 | `/revisar` de T144: el inicio de sesión del MCP rechaza a Grok. El usuario eligió abrirle la puerta: la prueba sale de T144 a una tarea nueva, **T156** (`R-37`), y `R-29` queda precisada sobre dots |
+| 2026-10-14 | T156 aprobada por el usuario; T144 cerrada |
 
 ## 11. Fuentes externas
 
