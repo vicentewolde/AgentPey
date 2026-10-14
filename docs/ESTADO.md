@@ -11,7 +11,7 @@
 - **Fase 8 (cierre)** · Agentes reales comprando en Stellar ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`), en el worktree `~/dev/AgentPay-fase8`. La Fase 7 se cerró el 2026-10-03 (`E-25`)
 
 **Última tarea terminada:** Fase 9: T159, un pago, un recibo, en la red ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)); en producción desde el 14-oct, 21:46 UTC. Fase 8: T156, el chat de Grok inicia sesión en el MCP (`R-37`)
-**Siguiente paso:** Fase 9: `/tarea T160`, el checkout paga al escrow (el orden es T159 → T160 → T158, `X-21`). Fase 8: T138 y T139 como documentos (evaluaciones para después de la Fase 9, sin cambiar el árbitro, `E-18` ni el diseño del escrow); después la tarea de `R-33` en el spec, respetando la interfaz del escrow (spec de la Fase 9, §4.6). **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** Fase 9: `/revisar` de T160; después merge con OK del usuario (cuando Render esté normal), `COMERCIO_ESCROWS=agentcommerce=CBQFELK5…DO27A` en Render y la compra real. Luego T158 (`X-21`). Fase 8: T138 y T139 como documentos (evaluaciones para después de la Fase 9, sin cambiar el árbitro, `E-18` ni el diseño del escrow); después la tarea de `R-33` en el spec, respetando la interfaz del escrow (spec de la Fase 9, §4.6). **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 **Convivencia (`P-19`).** La Fase 9 es dueña de `contracts/*` y `deployments/*.json`, de `open_claim` en el MCP, de `packages/resolve/`, `scripts/resolve*` y `apps/web/public/resolve/`, y del `payTo`, `hold`, webhooks y despacho de Vitrinee. La Fase 8, de `docs/fase-8-agentes-reales/*` y del borrador del SEP. Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
 
@@ -23,7 +23,7 @@
 | T157 Contrato de escrow | ✅ terminada: contrato con 35 tests; escrow de `agentcommerce` `CBQFELK5…DO27A` (10/15/60 min) y de ensayo `CCTVYTWF…YLDO`, redesplegados por `X-19`; un pago liberado y uno reembolsado en testnet ([evidencia](fase-9-compra-protegida/evidencia/T157.md), `X-15` a `X-20`) | [PR #88](https://github.com/vicentewolde/AgentPey/pull/88) |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente, después de T160 (`X-21`) | |
 | T159 Un pago, un recibo, en la red | ✅ terminada: recibo con `escrow`, cuarto chequeo «retenido», `hold` antes del anclaje; recibo duplicado rechazado por la red ([`87a80cc1…`](https://stellar.expert/explorer/testnet/tx/87a80cc144eb35a12b5112fa1be01afd24d38d27ab3e5b8e0af5f0beb142b102)); 9 recibos anteriores siguen válidos ([evidencia](fase-9-compra-protegida/evidencia/T159.md), `X-21`, `X-22`) | [PR #89](https://github.com/vicentewolde/AgentPey/pull/89) |
-| T160 El checkout paga al escrow | ⏳ pendiente | |
+| T160 El checkout paga al escrow | 👀 en revisión: código y tests listos; tienda tramposa rechazada contra contratos reales de testnet; suite UCP 49/8/20. Falta la compra real, después del merge y de `COMERCIO_ESCROWS` en Render (`X-23` a `X-25`, [evidencia](fase-9-compra-protegida/evidencia/T160.md)) | `cc/t160-checkout-escrow` |
 | T161 La orden muestra el estado del escrow (se corta segundo) | ⏳ pendiente | |
 | T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente | |
 | T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente | |
@@ -115,6 +115,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - Fase 6 (`C-161`): `C-122` (MPP Session) y `C-130` pendientes, `C-156` en investigación; mejora anotada en T117 (revisar el saldo de XLM antes de pedir la firma).
 
 ## Notas de la última sesión
+
+- 2026-10-14: T160 en revisión. El merge no enciende nada: el escrow de `agentcommerce` se enciende con `COMERCIO_ESCROWS` en el entorno de la plataforma en Render (`X-25`). `@agentpey/ucp-stellar` en `0.2.0` en el repo (con `verifyEscrow` y `EscrowUnverified`); la `0.1.0` de npm no paga a una tienda con escrow, y publicar la `0.2.0` le queda al usuario. Render seguía degradado a las 22:00 UTC (builds y deploys).
 
 - 2026-10-14: T156 desplegada y cerrada por el usuario: Grok conectado e inicio de sesión firmado con Freighter; la cotización no se pudo pedir ("High Demand" de Grok). Si se reintenta con capacidad, una cotización y una compra con OK quedarían como evidencia extra, sin código.
 - 2026-10-14: T144 escrita (tabla sin compra) y revisada. Hallazgo: el chat de Grok acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza (solo vuelve a Claude, ChatGPT o una dirección local). El usuario eligió abrirle la puerta: T156 y `R-37`; `R-29` precisada sobre dots.

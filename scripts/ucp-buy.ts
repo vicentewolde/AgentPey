@@ -68,7 +68,7 @@ import { z } from "zod";
 import { deriveP256, p256FromScalar } from "../packages/ap2/src/keys.js";
 import { PLATFORM_AP2_KID } from "./lib/ap2-platform.js";
 
-import { ReceiptRegistryClient, escrowReaders, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
+import { ReceiptRegistryClient, escrowPolicy, escrowReaders, verifyReceipt } from "../packages/vitrinee-anchor/src/index.js";
 import { readDeployment } from "./lib/deployment.js";
 import { readEnvFile } from "./lib/env-file.js";
 import { TESTNET } from "./lib/network.js";
@@ -288,9 +288,21 @@ async function main(): Promise<void> {
     : undefined;
   if (ap2 !== undefined) line("ap2", `perfil ${AGENTPEY_PLATFORM_PROFILE_AP2}`);
 
+  // A store with an escrow is paid into it only once it checks out on chain, with AgentResolve's arbiter (T160, X-9).
+  const arbiter = (await readDeployment(AGENTPEY_DEPLOYMENT)).agentResolve?.arbiter;
+  const escrows = escrowReaders({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase });
+  const escrow = arbiter === undefined ? undefined : escrowPolicy(escrows, [arbiter]);
+
   step(3, "Checkout UCP, reconciliado contra el Mandato y pagado desde el policy_rail");
   const paid = await executeUcpPayment(
-    { policyRail: createLocalPolicyRail({ ledger }), signerSecret: agentKeypair.secret(), payer: { contractId: railId, ownerSecret: agentKeypair.secret() }, platformProfile, ...(ap2 === undefined ? {} : { ap2 }) },
+    {
+      policyRail: createLocalPolicyRail({ ledger }),
+      signerSecret: agentKeypair.secret(),
+      payer: { contractId: railId, ownerSecret: agentKeypair.secret() },
+      platformProfile,
+      ...(ap2 === undefined ? {} : { ap2 }),
+      ...(escrow === undefined ? {} : { escrow }),
+    },
     {
       storeUrl,
       ...(lines.length === 1 && single !== undefined ? { productId: single.productId, quantity: single.quantity } : { lines }),
@@ -311,6 +323,14 @@ async function main(): Promise<void> {
   line("pagado", `${(Number(paid.paid.amount) / 1e7).toFixed(7)} USDC a ${paid.paid.payTo}`);
   line("tx", paid.transaction ?? "(sin hash)");
   if (paid.transaction !== undefined) line("explorer", `https://stellar.expert/explorer/testnet/tx/${paid.transaction}`);
+  if (paid.escrowHold !== undefined) {
+    line("escrow", paid.escrowHold.held ? `retenido en ${paid.escrowHold.contract}` : `NO retenido en ${paid.escrowHold.contract}: ${paid.escrowHold.warning ?? ""}`);
+    // The hold's own transaction, from the escrow's ledger entry (T160 evidence).
+    if (paid.escrowHold.held && paid.transaction !== undefined) {
+      const held = await escrows(paid.escrowHold.contract).byTx(paid.transaction);
+      if (held !== null) line("hold", `orden ${held.orderRef}, ${(Number(held.amountAtomic) / 1e7).toFixed(7)} USDC de ${held.payer}, recibo ${held.receiptHash}, estado ${held.status}`);
+    }
+  }
   if (ap2 !== undefined) {
     // With --ap2 the agent refuses to pay without closing a mandate; a paid purchase without one is a bug.
     if (paid.ap2Mandate === undefined) throw new AgentPassError("Ap2MandateInvalid", "the purchase was paid without an AP2 mandate", { details: { orderId: paid.orderId } });
@@ -350,7 +370,7 @@ async function main(): Promise<void> {
     registry: new ReceiptRegistryClient({ contractId: deployment.receiptRegistry.contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
     horizonUrl: HORIZON,
     settlementAttempts: 5,
-    escrows: escrowReaders({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
+    escrows,
   });
   const mark = (ok: boolean) => (ok ? "✅" : "❌");
   line("hash", result.hash);

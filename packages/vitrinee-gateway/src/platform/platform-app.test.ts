@@ -231,3 +231,53 @@ describe("a storefront rebuilt after its comercio changes (T147)", () => {
   });
 });
 
+
+describe("a comercio with an escrow (T160)", () => {
+  const ESCROW = "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A";
+  const box = createSecretBox(generateMasterKey());
+  const comercios = new MemoryComercioStore();
+  const now = new Date("2026-10-14T12:00:00.000Z");
+  const payTo = Keypair.random().publicKey();
+  const signer = Keypair.random();
+
+  it("opens only once its escrow checks out on chain, tries again after a failure, and charges into it", async () => {
+    await comercios.create(sealComercio({ slug: "agentcommerce", name: "Agent Commerce", payTo, signingSecret: signer.secret(), credentials: { kind: "mock" } }, box, now));
+    await comercios.create(sealComercio({ slug: "bazar", name: "Bazar", payTo: Keypair.random().publicKey(), signingSecret: Keypair.random().secret(), credentials: { kind: "mock" } }, box, now));
+    let rpcUp = false;
+    const checked: string[] = [];
+    const pool = new StorefrontPool({
+      comercios,
+      box,
+      env: { ...ENV, COMERCIO_ESCROWS: `agentcommerce=${ESCROW}` },
+      ordersFor: () => new Table().for({ id: "x" } as Comercio),
+      verifyEscrow: async (config) => {
+        if (config.escrowId === undefined) return config;
+        checked.push(config.escrowId);
+        if (!rpcUp) throw new Error("rpc: 503");
+        return {
+          ...config,
+          escrow: { contract: config.escrowId, payee: config.merchant.stellarAccount, arbiter: "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6", releaseWindowSeconds: 600, responseWindowSeconds: 900, resolveWindowSeconds: 3600 },
+        };
+      },
+      appDeps: () => {
+        const registry = fakeRegistry();
+        return { facilitator: fakeFacilitator(), anchorer: registry.anchorer, registry: registry.registry, now: () => now, platformProfiles: null };
+      },
+    });
+    const { url, close } = await listen(createPlatformApp({ platformHost: PLATFORM, pool, comercios, rootComercio: undefined }));
+    try {
+      expect((await call(url, "agentcommerce.vitrinee.test", UCP_PROFILE_PATH)).status).toBe(500);
+      // The store with no escrow is not held up by the other's.
+      const bazar = await call(url, "bazar.vitrinee.test", UCP_PROFILE_PATH);
+      expect(JSON.stringify(bazar.body)).not.toContain(ESCROW);
+      rpcUp = true;
+      const profile = await call(url, "agentcommerce.vitrinee.test", UCP_PROFILE_PATH);
+      expect(profile.status).toBe(200);
+      const handler = (profile.body as { ucp: { payment_handlers: Record<string, Array<{ version: string; config: { pay_to: string; escrow: { payee: string } } }>> } }).ucp.payment_handlers["com.agentpey.stellar_x402"]?.[0];
+      expect(handler).toMatchObject({ version: "2026-10-15", config: { pay_to: ESCROW, escrow: { payee: payTo } } });
+      expect(checked).toEqual([ESCROW, ESCROW]);
+    } finally {
+      await close();
+    }
+  });
+});

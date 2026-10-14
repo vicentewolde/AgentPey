@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createAdapter } from "./adapters.js";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
+import { verifyStoreEscrow } from "./escrow.js";
 import { seedComercioFromEnv, type Comercio } from "./platform/comercios.js";
 import { loadPlatformSettings, type PlatformSettings } from "./platform/config.js";
 import { storeCatalogueReader } from "./platform/onboarding.js";
@@ -79,9 +80,10 @@ function log(message: string, fields: Record<string, unknown> = {}): void {
 }
 
 /** The single-store gateway, exactly as before T103: one merchant, from the environment. */
-function runSingleStore(): void {
+async function runSingleStore(): Promise<void> {
   useLocalFiles();
-  const config = loadConfig();
+  // With ESCROW_CONTRACT_ID, the store opens only once its escrow checks out on chain (T160).
+  const config = await verifyStoreEscrow(loadConfig());
   const adapter = createAdapter(config, log);
   const app = createApp({ config, adapter, log });
   const resumed = app.anchors.resume();
@@ -92,6 +94,7 @@ function runSingleStore(): void {
       port: config.port,
       adapter: adapter.name,
       merchant: config.merchant.stellarAccount,
+      escrow: config.escrow?.contract ?? null,
       signing: config.signing.account,
       receiptRegistry: config.receiptRegistryId,
       facilitator: config.facilitator.url,
@@ -150,6 +153,7 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
       port: settings.port,
       platformHost: settings.platformHost,
       rootComercio: settings.rootComercio ?? null,
+      escrows: Object.fromEntries(settings.escrows),
       comercios: listed.map((c) => c.slug),
       manifest: MANIFEST_PATH,
     });
@@ -167,7 +171,7 @@ function fail(error: unknown): never {
 
 try {
   const settings = loadPlatformSettings(process.env);
-  if (settings === undefined) runSingleStore();
+  if (settings === undefined) runSingleStore().catch(fail);
   else runPlatform(settings).catch(fail);
 } catch (error) {
   fail(error);

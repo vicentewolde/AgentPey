@@ -117,6 +117,10 @@ export function createApp({
   now = () => new Date(),
   log = () => {},
 }: AppDeps): VitrineeApp {
+  // An escrow nobody checked is never charged into (T160): `verifyStoreEscrow` reads it on chain first.
+  if (config.escrowId !== undefined && config.escrow?.contract !== config.escrowId) {
+    throw new VitrineeError("ConfigError", "the store's escrow was not verified on chain: run verifyStoreEscrow before createApp", { details: { escrow: config.escrowId } });
+  }
   const app = express() as unknown as VitrineeApp;
   app.disable("x-powered-by");
   // Render and every other PaaS terminate TLS in front of the app.

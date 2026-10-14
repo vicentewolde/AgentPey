@@ -15,7 +15,6 @@ import {
   STELLAR_TESTNET_CAIP2,
   STELLAR_X402_HANDLER,
   STELLAR_X402_HANDLER_ID,
-  STELLAR_X402_HANDLER_VERSION,
   STELLAR_X402_INSTRUMENT_TYPE,
   UCP_AP2_MANDATE,
   UCP_BUYER_CONSENT,
@@ -57,7 +56,8 @@ import { isDeliverableUrl, type OrderEvents } from "./order-events.js";
 import type { PlatformP256Key } from "./platform-profile.js";
 import { IdempotencyCache, requestHash } from "./idempotency.js";
 import { ucpPlatformOf, ucpVersionOf } from "./negotiation.js";
-import { stellarX402Config } from "./profile.js";
+import { stellarX402Config, stellarX402HandlerVersion } from "./profile.js";
+import { payToOf } from "../escrow.js";
 
 
 /** The business names each line by its position (T148): `li_1`, `li_2`, … */
@@ -243,7 +243,8 @@ async function requirementsFor(deps: UcpCheckoutDeps, quote: PurchaseQuote): Pro
   const [requirements] = await deps.x402.buildPaymentRequirements({
     scheme: "exact",
     network: STELLAR_TESTNET_CAIP2,
-    payTo: deps.config.merchant.stellarAccount,
+    // Into the store's escrow when it has one (T160): the same contract its profile declares as `pay_to`.
+    payTo: payToOf(deps.config),
     price: { amount: quote.totalAtomic.toString(), asset: USDC_TESTNET.contractId },
     maxTimeoutSeconds: deps.config.checkout.maxTimeoutSeconds,
     // Settle before the order exists, as the x402 checkout does (VT-10).
@@ -378,7 +379,7 @@ function handlerFor(deps: UcpCheckoutDeps, session: CheckoutSession) {
           fx: { base: session.quote.fx.base, quote: session.quote.fx.quote, rate: session.quote.fx.rate, as_of: session.quote.fx.asOf },
           binding: { checkout_id: session.id },
         };
-  return { id: STELLAR_X402_HANDLER_ID, version: STELLAR_X402_HANDLER_VERSION, config };
+  return { id: STELLAR_X402_HANDLER_ID, version: stellarX402HandlerVersion(deps.config), config };
 }
 
 /** Who a response is for: the origin its links use, and the UCP version it is shaped in (T133). */

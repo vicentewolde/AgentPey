@@ -56,7 +56,9 @@ The same file is [`example/buy.mjs`](example/buy.mjs).
 - is on a network other than `stellar:testnet`;
 - declares an asset with other than Stellar's seven decimals;
 - asks, in the checkout, to pay another account, asset or network than its profile declares;
-- opens the checkout for other lines than the ones asked for, or not `ready_for_complete`.
+- opens the checkout for other lines than the ones asked for, or not `ready_for_complete`;
+- declares an escrow that does not hold together: `pay_to` other than `escrow.contract`, an escrow outside handler
+  version `2026-10-15`, or a contract as `pay_to` with no escrow.
 
 `pay()` then, before signing:
 
@@ -65,6 +67,10 @@ The same file is [`example/buy.mjs`](example/buy.mjs).
 - refuses an amount above your `maxAmount` (`AmountAboveLimit`), read with Stellar's seven decimals, never with a
   number the store declares;
 - refuses, when you name it with `asset`, a checkout priced in another asset (`InvalidProduct`);
+- for a store that charges into its escrow (handler version `2026-10-15`), calls your `verifyEscrow` with the
+  declared escrow: read the contract on chain there and throw unless it runs code you trust and says what the store
+  declares. Without `verifyEscrow`, such a payment is refused (`EscrowUnverified`), as is a contract as recipient that
+  the store does not declare as its escrow;
 - calls your `beforeSign` hook, if any, with a frozen copy of what will be signed: throw there to stop the payment,
   or return extension members for the Complete Checkout body.
 
@@ -76,7 +82,7 @@ It signs exactly the checked requirement, capped at its own amount, and complete
 |---|---|
 | `readStoreProfile(storeUrl, options?)` | Reads and checks the store's profile and handler |
 | `quote(input, options?)` | Opens a checkout for `productId` and `quantity`, or `lines` (1 to 10), with a `destination` and an optional `buyer` (with `consent`, sent in an update after the create) |
-| `pay(quote, options)` | Pays a quote. `payer` and `maxAmount` (a decimal string like `"2.00"`, or atomic units as a `bigint`) are required. Optional: `asset` (the contract you accept, such as `USDC_TESTNET`), `recheck`, `idempotencyKey`, `beforeSign` |
+| `pay(quote, options)` | Pays a quote. `payer` and `maxAmount` (a decimal string like `"2.00"`, or atomic units as a `bigint`) are required. Optional: `asset` (the contract you accept, such as `USDC_TESTNET`), `recheck`, `idempotencyKey`, `verifyEscrow` (required to pay a store with an escrow), `beforeSign` |
 | `classicPayer(signer)` | Pays from a classic account (`G...`), with a SEP-43 signer such as a wallet's |
 | `policyRailPayer({ contractId, signAuthPayload })` | Pays from an AgentPey `policy_rail` (`C...`); `signAuthPayload` signs the 32-byte authorization payload as the rail's owner |
 | `keypairSigner(secret)`, `railOwnerSigner(secret)` | Build those signing functions from a secret you already hold. The secret stays in your process; the package never reads the environment or writes to disk |
@@ -95,7 +101,7 @@ which UCP version to answer in. It defaults to AgentPey's public platform profil
 
 Every failure is a `UcpStellarError` with a `code` and `paymentSent`. `paymentSent: false` means nothing left your
 process. With `true`, the store may have settled the payment: read the checkout before retrying. An error thrown by
-your own payer or `beforeSign` reaches you as you threw it, and nothing was sent.
+your own payer, `verifyEscrow` or `beforeSign` reaches you as you threw it, and nothing was sent.
 
 | `code` | When |
 |---|---|
@@ -104,6 +110,7 @@ your own payer or `beforeSign` reaches you as you threw it, and nothing was sent
 | `MerchantRejectedRequest` | No usable profile or handler, or no payable checkout |
 | `InvalidProduct` | The checkout pays someone else, or is for other lines |
 | `QuoteChanged` | Read again, the store no longer says what it quoted |
+| `EscrowUnverified` | The store charges into an escrow, and no `verifyEscrow` was given, or the recipient is a contract it does not declare |
 | `AmountAboveLimit` | The checkout costs more than `maxAmount` |
 | `PaymentNotCreated` | The payment could not be built or signed |
 | `RailInsufficientFunds` | The `policy_rail` does not hold enough |

@@ -58,7 +58,8 @@ export interface ShopperDeps {
   readonly mandate: AgentPayMandate;
   readonly policyRail: PolicyRail;
   /** How the payment leaves: the MCP's own rail (`payer`), signed by its owner key. */
-  readonly payment: Pick<ExecuteUcpPaymentDeps, "signerSecret" | "payer" | "schemeForTests">;
+  /** `escrow`: what the agent trusts in a store's escrow, and how it reads it on chain (T160). Without it, such a store is refused. */
+  readonly payment: Pick<ExecuteUcpPaymentDeps, "signerSecret" | "payer" | "schemeForTests" | "escrow">;
   /** The rail's owner, which is also the agent: it signs claims over what the rail paid. */
   readonly agentKey: Keypair;
   readonly verifyReceipt: (jws: string) => Promise<ReceiptVerification>;
@@ -255,6 +256,17 @@ export class Shopper {
         asset: quote.requirements.asset,
         from: this.deps.payment.payer?.contractId ?? null,
       },
+      // A store with an escrow (T160): the money waits in the contract until the order ships and the release window
+      // closes, and a claim can be opened until then. Checked on chain when paying, not here.
+      protection:
+        quote.escrow === undefined
+          ? null
+          : {
+              escrow: quote.escrow.contract,
+              releases_to: quote.escrow.payee,
+              release_window_minutes: Math.round(quote.escrow.release_window_seconds / 60),
+              note: "The payment is held in the store's escrow contract. It goes to the store only after the order ships and the release window closes; until then a claim can be opened.",
+            },
       expires_at: entry.expiresAt.toISOString(),
     };
   }
@@ -311,6 +323,8 @@ export class Shopper {
       paid_to: paid.paid.payTo,
       transaction: paid.transaction ?? null,
       explorer_url: paid.transaction === undefined ? null : stellarExpertTxUrl(paid.transaction),
+      // Paid into the store's escrow (T160): whether the store recorded the purchase there (X-20).
+      escrow: paid.escrowHold === undefined ? null : { contract: paid.escrowHold.contract, held: paid.escrowHold.held, warning: paid.escrowHold.warning ?? null },
       receipt: paid.receipt === undefined ? null : { hash: paid.receipt.hash, verify_url: paid.receipt.verify_url, anchor: paid.receipt.anchor.status },
     };
   }

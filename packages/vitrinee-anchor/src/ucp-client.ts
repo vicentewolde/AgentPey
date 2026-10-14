@@ -15,11 +15,11 @@ import {
   UCP_SHOPPING_SERVICE,
   VitrineeError,
   originMatchesNamespace,
-  stellarX402BusinessConfigSchema,
+  stellarX402AnyBusinessConfigSchema,
   ucpBusinessProfileSchema,
   ucpProductSchema,
   ucpSearchResponseSchema,
-  type StellarX402BusinessConfig,
+  type StellarX402AnyBusinessConfig,
   type UcpBusinessProfile,
   type UcpProduct,
 } from "@vitrinee/core";
@@ -35,7 +35,7 @@ const MAX_PAGES = 50;
 export interface UcpStorefront {
   profile: UcpBusinessProfile;
   endpoint: string;
-  handler: StellarX402BusinessConfig;
+  handler: StellarX402AnyBusinessConfig;
   products: UcpProduct[];
 }
 
@@ -95,7 +95,7 @@ export function assertNamespaceBinding(profile: UcpBusinessProfile): void {
 export interface UcpStoreProfile {
   profile: UcpBusinessProfile;
   endpoint: string;
-  handler: StellarX402BusinessConfig;
+  handler: StellarX402AnyBusinessConfig;
 }
 
 /** The store's business profile, checked the way UCP asks a platform to. */
@@ -113,7 +113,7 @@ export async function readUcpStoreProfile(baseUrl: string, options: UcpClientOpt
   if (profile.ucp.capabilities?.[UCP_CATALOG_SEARCH] === undefined) {
     throw new VitrineeError("ValidationError", `the profile does not declare ${UCP_CATALOG_SEARCH}`, {});
   }
-  const handlerConfig = stellarX402BusinessConfigSchema.safeParse(profile.ucp.payment_handlers[STELLAR_X402_HANDLER]?.[0]?.config);
+  const handlerConfig = stellarX402AnyBusinessConfigSchema.safeParse(profile.ucp.payment_handlers[STELLAR_X402_HANDLER]?.[0]?.config);
   if (!handlerConfig.success) {
     throw new VitrineeError("ValidationError", `the profile does not declare a usable ${STELLAR_X402_HANDLER}`, {
       details: { issues: handlerConfig.error.issues },

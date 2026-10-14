@@ -18,7 +18,7 @@ import {
 } from "@agentpey/agent";
 import { verifyMandate } from "@agentpey/mandate";
 import { Keypair, Networks, StrKey, contract } from "@stellar/stellar-sdk";
-import { ReceiptRegistryClient, escrowReaders, verifyReceipt } from "@vitrinee/anchor";
+import { ReceiptRegistryClient, escrowPolicy, escrowReaders, verifyReceipt } from "@vitrinee/anchor";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 
@@ -35,6 +35,8 @@ const TESTNET = {
 } as const;
 
 const deploymentSchema = z.object({ receiptRegistry: z.object({ contractId: z.string() }) });
+/** AgentResolve's arbiter: the one arbiter the MCP accepts in a store's escrow (T160). */
+const agentResolveSchema = z.object({ agentResolve: z.object({ arbiter: z.string().regex(/^G[A-Z2-7]{55}$/) }) });
 const intentResultSchema = z.looseObject({ jws: z.string().min(1) });
 
 interface RailGetters {
@@ -101,6 +103,13 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
     throw new AgentPassError("ConfigError", "deployments/vitrinee-testnet.json is missing or does not name the receipt registry", { cause: error, details: {} });
   }
   const receiptRegistry = new ReceiptRegistryClient({ contractId: deployment.receiptRegistry.contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase });
+  let arbiter: string;
+  try {
+    arbiter = agentResolveSchema.parse(JSON.parse(readFileSync(new URL("../../../deployments/testnet.json", import.meta.url), "utf8"))).agentResolve.arbiter;
+  } catch (error) {
+    throw new AgentPassError("ConfigError", "deployments/testnet.json is missing or does not name AgentResolve's arbiter", { cause: error, details: {} });
+  }
+  const escrows = escrowReaders({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase });
 
   const ledger = createInMemorySpendLedger();
   const policyRail = createLocalPolicyRail({ ledger });
@@ -126,7 +135,13 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
     scope: credential.credential.credentialSubject.scope,
     mandate: mandate.mandate,
     policyRail,
-    payment: { signerSecret: env.MCP_AGENT_SECRET_KEY, payer: { contractId: env.MCP_POLICY_RAIL_CONTRACT_ID, ownerSecret: env.MCP_AGENT_SECRET_KEY } },
+    payment: {
+      signerSecret: env.MCP_AGENT_SECRET_KEY,
+      payer: { contractId: env.MCP_POLICY_RAIL_CONTRACT_ID, ownerSecret: env.MCP_AGENT_SECRET_KEY },
+      // A store's escrow is paid only once it checks out on chain: known code, AgentResolve's arbiter, releasing to
+      // the store's own account (T160, X-9).
+      escrow: escrowPolicy(escrows, [arbiter]),
+    },
     agentKey,
     // A receipt paid into a store's escrow is checked against that escrow too (T159).
     verifyReceipt: (jws) =>
@@ -134,7 +149,7 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
         registry: receiptRegistry,
         horizonUrl: TESTNET.horizonUrl,
         settlementAttempts: 3,
-        escrows: escrowReaders({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
+        escrows,
       }),
     // Signing a quote's intent reserves the day's budget (M-15). A quote that expires or is evicted unpaid
     // signed nothing that pays, so its reservation goes back (T150 review).

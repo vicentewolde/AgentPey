@@ -8979,3 +8979,24 @@ de Render (con el usuario, en su Chrome) aparecieron dos deploys fallidos de hoy
 espera 45 s a `web` y aborta si tarda más; anotado en `ESTADO.md` como deuda. Ticket T159 a `DONE`. Solo documentos.
 
 Pendiente: `/tarea T160`. Después de cada merge, confirmar que el código nuevo esté en vivo. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (15) — cc/t160-checkout-escrow
+
+Agente: Claude Code.
+
+Qué: **T160 en revisión** (plan y cinco decisiones aprobados por el usuario):
+- handler `stellar_x402` versión `2026-10-15` publicada en `agentpey.com` (`pay_to` = escrow, bloque `escrow`);
+- las dos puertas de la tienda cobran al escrow, y el manifest suma `settlement.escrow`;
+- la tienda comprueba su escrow en la red al armarse (`verifyStoreEscrow`) y no abre si no calza;
+- interruptor `COMERCIO_ESCROWS` en la plataforma;
+- `@agentpey/ucp-stellar` 0.2.0 con `verifyEscrow` y el código `EscrowUnverified`;
+- el agente comprueba wasm, árbitro, `payee` = cuenta fijada por el directorio, ventanas y token antes de firmar
+  (`toPaymentTerms` acepta ese escrow, `C-141` ampliado), y busca el `hold` con `by_tx` después de pagar;
+- MCP: `quote.protection` y `pay.escrow`; `ucp:buy` y el kit (P8) conectados; `deploy:purchase-escrow` lee
+  `escrow.payee`.
+
+Decisiones `X-23` a `X-25`. `pnpm check`, `vitrinee:check` y la suite UCP (49/8/20) en verde. Tienda tramposa
+rechazada contra contratos reales de testnet, solo lectura.
+
+Pendiente: `/revisar`; merge con OK del usuario cuando Render esté normal; `COMERCIO_ESCROWS` en Render; compra real
+(criterio 1). Exponential: T160 en `IN_PROGRESS`. `AGENTS.md`: sin cambios (Codex no toca la Fase 9).

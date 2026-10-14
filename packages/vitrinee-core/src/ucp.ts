@@ -84,6 +84,13 @@ export const STELLAR_X402_HANDLER_VERSION = "2026-09-30";
 export const STELLAR_X402_INSTRUMENT_TYPE = "stellar_x402";
 export const STELLAR_X402_SPEC_URL = "https://agentpey.com/ucp/handlers/stellar-x402/spec";
 export const STELLAR_X402_SCHEMA_URL = "https://agentpey.com/ucp/handlers/stellar-x402/schema.json";
+/**
+ * The version a store with a `purchase-escrow` declares (Fase 9, T160, X-13): `pay_to` is the escrow contract and an
+ * `escrow` block says whose it is. A store paid directly keeps declaring {@link STELLAR_X402_HANDLER_VERSION}.
+ */
+export const STELLAR_X402_ESCROW_HANDLER_VERSION = "2026-10-15";
+export const STELLAR_X402_ESCROW_SPEC_URL = `https://agentpey.com/ucp/handlers/stellar-x402/${STELLAR_X402_ESCROW_HANDLER_VERSION}/spec`;
+export const STELLAR_X402_ESCROW_SCHEMA_URL = `https://agentpey.com/ucp/handlers/stellar-x402/${STELLAR_X402_ESCROW_HANDLER_VERSION}/schema.json`;
 
 const reverseDomainName = z.string().regex(/^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_]*)+$/);
 const versionSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -105,6 +112,36 @@ export const stellarX402BusinessConfigSchema = z.strictObject({
   facilitator: z.url(),
 });
 export type StellarX402BusinessConfig = z.infer<typeof stellarX402BusinessConfigSchema>;
+
+/**
+ * What a store with a `purchase-escrow` declares about it (T160): the contract the payment goes to, the account a
+ * release pays (the store's payout account), the arbiter that settles disputes, and the contract's windows. A platform
+ * reads the contract on chain and pays only if it says the same and runs the known code (X-9).
+ */
+export const stellarX402EscrowSchema = z.strictObject({
+  contract: z.string().regex(/^C[A-Z2-7]{55}$/),
+  payee: z.string().regex(/^G[A-Z2-7]{55}$/),
+  arbiter: z.string().regex(/^G[A-Z2-7]{55}$/),
+  release_window_seconds: z.number().int().positive(),
+  response_window_seconds: z.number().int().positive(),
+  resolve_window_seconds: z.number().int().positive(),
+});
+export type StellarX402Escrow = z.infer<typeof stellarX402EscrowSchema>;
+
+/** The {@link STELLAR_X402_ESCROW_HANDLER_VERSION} business config: the payment goes to the escrow, never past it. */
+export const stellarX402EscrowBusinessConfigSchema = z
+  .strictObject({
+    ...stellarX402BusinessConfigSchema.shape,
+    /** The escrow contract: always `escrow.contract`. */
+    pay_to: z.string().regex(/^C[A-Z2-7]{55}$/),
+    escrow: stellarX402EscrowSchema,
+  })
+  .refine((config) => config.pay_to === config.escrow.contract, { message: "pay_to must be the escrow contract", path: ["pay_to"] });
+export type StellarX402EscrowBusinessConfig = z.infer<typeof stellarX402EscrowBusinessConfigSchema>;
+
+/** The handler config a store publishes in either version: paid directly, or into its escrow. */
+export const stellarX402AnyBusinessConfigSchema = z.union([stellarX402BusinessConfigSchema, stellarX402EscrowBusinessConfigSchema]);
+export type StellarX402AnyBusinessConfig = z.infer<typeof stellarX402AnyBusinessConfigSchema>;
 
 const entitySchema = z.looseObject({
   version: versionSchema,

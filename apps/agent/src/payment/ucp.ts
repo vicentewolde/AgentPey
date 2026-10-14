@@ -15,7 +15,10 @@
  * 2. The checkout is for the signed intent's lines (T148).
  * 3. AP2, when asked for (T134).
  * 4. `toPaymentTerms` pins the recipient to the venue's own account and maps
- *    the asset through the venue registry, as for any x402 venue.
+ *    the asset through the venue registry, as for any x402 venue. A store with
+ *    a `purchase-escrow` (T160) is paid into it only after `escrowVerifier`
+ *    checked it on chain, and only if it releases to that same account; after
+ *    paying, `awaitHeld` looks for the purchase the store must hold (X-20).
  * 5. `policyRail.authorise` reconciles them against the signed intent, the
  *    scope and the Mandate. Untouched by this module (P-14).
  *
@@ -39,6 +42,7 @@ import {
   pay,
   quote as quoteCheckout,
   type UcpBusinessProfile,
+  type StellarX402Escrow,
   type UcpReceipt,
   type UcpStellarError,
 } from "@agentpey/ucp-stellar";
@@ -52,6 +56,7 @@ import type { VenueId } from "../catalog/ids.js";
 import type { VenueRegistry } from "../catalog/registry.js";
 import { intentLines, type PurchaseIntent } from "../intent/intent.js";
 import { policyRailError, type PolicyRail } from "../policy/policy-rail.js";
+import { awaitHeld, escrowVerifier, type EscrowHold, type EscrowPolicy } from "./escrow.js";
 import { PolicyRailStellarScheme, type PolicyRailPayer } from "./policy-rail-payer.js";
 import { toPaymentTerms, withPaymentSent } from "./x402.js";
 
@@ -183,6 +188,11 @@ export interface ExecuteUcpPaymentDeps {
    * not offer AP2, or does not sign its checkout, is refused before anything is authorised or signed.
    */
   readonly ap2?: UcpAp2Options;
+  /**
+   * What the agent trusts in a store's escrow, and the on-chain reads to check it (T160). Without it, a store that
+   * charges into an escrow is refused before anything is signed (`EscrowUnverified`).
+   */
+  readonly escrow?: EscrowPolicy;
   /** Tests only: the scheme that builds the payment, in place of the real Stellar one. */
   readonly schemeForTests?: SchemeNetworkClient;
 }
@@ -248,6 +258,8 @@ export interface UcpPaymentReceipt {
   readonly receipt: UcpReceipt | undefined;
   /** The closed AP2 checkout mandate sent in `complete`, when the store asked for one (T134). */
   readonly ap2Mandate?: string;
+  /** Where the payment stands in the store's escrow, for a store that has one (T160, X-20). */
+  readonly escrowHold?: EscrowHold;
 }
 
 /** UCP's spec-URL binding: HTTPS, default port, exactly the name's domain. */
@@ -275,6 +287,8 @@ export interface UcpQuote {
   readonly checkout: Readonly<Record<string, unknown>>;
   /** The store offers AP2 mandates, and these are the P-256 keys its profile publishes (T134). */
   readonly ap2: { readonly offered: boolean; readonly keys: ReadonlyArray<z.infer<typeof storeP256KeySchema>> };
+  /** The store's escrow, as its profile declares it (T160): checked on chain only when paying. */
+  readonly escrow: StellarX402Escrow | undefined;
 }
 
 export interface QuoteUcpCheckoutInput extends UcpPurchaseLines {
@@ -330,6 +344,7 @@ export async function quoteUcpCheckout(deps: { readonly fetchImpl?: typeof fetch
       total: quoted.total,
       checkout: quoted.checkout,
       ap2: ap2Of(quoted.profile),
+      escrow: quoted.escrow,
     };
   } catch (error) {
     throw isUcpStellarError(error) ? fromPackage(error) : error;
@@ -368,8 +383,11 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
     const scheme: SchemeNetworkClient =
       deps.schemeForTests ??
       (deps.payer === undefined ? new ExactStellarScheme(createEd25519Signer(deps.signerSecret, STELLAR_TESTNET_CAIP2)) : new PolicyRailStellarScheme(deps.payer));
+    const registry = input.registry ?? DEFAULT_VENUE_REGISTRY;
     const paid = await pay(quote, {
       payer: reportingSigned(scheme, () => (signed = true)),
+      // A store's escrow, checked on chain before anything is signed (T160, X-9). Absent: such a store is refused.
+      ...(deps.escrow === undefined ? {} : { verifyEscrow: escrowVerifier(deps.escrow, input.venueId, registry) }),
       // The ceiling here is `authorise()`, which reconciles the amount with the signed intent: the package's own
       // cap is the quoted amount, which `recheck` already holds the store to.
       maxAmount: BigInt(quote.requirements.amount),
@@ -377,7 +395,7 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
       platformProfile: deps.platformProfile ?? AGENTPEY_PLATFORM_PROFILE,
       ...(deps.fetchImpl === undefined ? {} : { fetch: deps.fetchImpl }),
       ...(input.idempotencyKey === undefined ? {} : { idempotencyKey: input.idempotencyKey }),
-      beforeSign: async ({ requirements, checkout, lines, profile }) => {
+      beforeSign: async ({ requirements, checkout, lines, profile, escrow }) => {
         // The same total can be another cart: the lines the store would charge now must still be the intent's.
         forIntent(lines);
         // AP2 (T134, R-15): before the rail authorises or anything is signed. The intent is taken first (brecha 14),
@@ -385,14 +403,20 @@ export async function payUcpQuote(deps: ExecuteUcpPaymentDeps, quote: UcpQuote, 
         if (deps.ap2 !== undefined) {
           ap2Mandate = await closeMandate(deps.ap2, profile === undefined ? quote.ap2 : ap2Of(profile), checkout, quote, input, requirements);
         }
-        // With the venue's pinned account and assets, and with the Mandate.
-        const terms = toPaymentTerms(requirements, input.venueId, input.registry ?? DEFAULT_VENUE_REGISTRY);
+        // With the venue's pinned account (or its verified escrow) and assets, and with the Mandate.
+        const terms = toPaymentTerms(requirements, input.venueId, registry, escrow);
         const decision = await deps.policyRail.authorise({ intent: input.intent, scope: input.scope, mandate: input.mandate, terms });
         if (!decision.authorised) throw policyRailError(decision);
         return ap2Mandate === undefined ? undefined : { completeExtensions: { ap2: { checkout_mandate: ap2Mandate } } };
       },
     });
-    return { ...paid, ...(ap2Mandate === undefined ? {} : { ap2Mandate }) };
+    // Paid into an escrow: is the purchase held? Never throws, the money already moved (X-20).
+    const escrowHold =
+      paid.escrow === undefined || deps.escrow === undefined
+        ? undefined
+        : await awaitHeld(deps.escrow, { contract: paid.escrow.contract, transaction: paid.transaction, orderId: paid.orderId, amount: paid.paid.amount, receiptHash: paid.receipt?.hash });
+    const { escrow: _declared, ...receipt } = paid;
+    return { ...receipt, ...(ap2Mandate === undefined ? {} : { ap2Mandate }), ...(escrowHold === undefined ? {} : { escrowHold }) };
   } catch (error) {
     throw settled(error, signed);
   }

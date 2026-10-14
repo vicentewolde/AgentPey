@@ -15,7 +15,9 @@
 **Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). Siguiente: T160.
+contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 en revisión**: el código está listo y
+probado sin red; falta `/revisar`, el merge con OK del usuario y, ya en producción, encender el escrow de
+`agentcommerce` y hacer la compra real.
 
 ## Progreso
 
@@ -25,7 +27,7 @@ contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentP
 | T157 Contrato de escrow | ✅ terminada |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente, después de T160 (`X-21`) |
 | T159 Un pago, un recibo, en la red | ✅ terminada |
-| T160 El checkout paga al escrow | ⏳ pendiente |
+| T160 El checkout paga al escrow | 👀 en revisión; falta la compra real después del merge |
 | T161 La orden muestra el estado del escrow | ⏳ pendiente |
 | T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente |
 | T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente |
@@ -100,3 +102,30 @@ tienda todavía no cobra al escrow; eso se enciende en T160.
 **Evidencia.** [`evidencia/T159.md`](evidencia/T159.md): el recibo duplicado rechazado
 (`87a80cc1…`, error `PaymentAlreadyHeld`), el chequeo "retenido" contra el escrow real y nueve recibos anteriores
 válidos con el código nuevo.
+
+## 2026-10-14 · T160 · El checkout paga al escrow (en revisión)
+
+**Qué quedó funcionando, en llano.** Una tienda ya puede cobrar a su escrow en vez de a su cuenta. Lo anuncia en su
+perfil con una versión nueva del medio de pago, que dice qué contrato guarda la plata, a qué cuenta la entrega y
+quién arbitra. Antes de firmar, el agente lee ese contrato en la red y paga solo si:
+- corre el código del escrow que conoce;
+- su árbitro es el de AgentResolve;
+- entrega la plata a la misma cuenta que AgentPey ya tenía registrada para esa tienda.
+
+Una tienda tramposa (otro contrato, el escrow viejo, el de otra tienda) se rechaza sin firmar nada; se probó contra
+contratos reales de testnet. La tienda también se revisa a sí misma: si su escrow no es suyo, no abre, y nunca vuelve a
+cobrar directo a escondidas. Después de pagar, el agente confirma que la tienda registró la compra en el escrow y avisa
+si no. En el chat, la cotización dice que la plata queda retenida hasta el despacho.
+
+**Lo que no cambia.** Las tiendas sin escrow publican y cobran exactamente igual, y la suite oficial de UCP da lo mismo
+que antes (49 · 8 · 20). El recibo sigue nombrando la cuenta de cobro, así que `get_order` y `open_claim` del MCP no
+cambian. No se toca el Mandato, los topes ni el `policy_rail`.
+
+**Cómo se enciende.** El merge no enciende nada. En la plataforma, el escrow de `agentcommerce` se asigna con la
+variable `COMERCIO_ESCROWS` en Render (`X-25`); se pone y se quita sin deploy. Decisiones: `X-23` (la versión nueva y
+las dos puertas), `X-24` (qué comprueba el agente) y `X-25` (el interruptor y la comprobación al arrancar).
+
+**Lo que falta para cerrar.** `/revisar`, el merge, el interruptor y una compra real retenida, con el hash del pago y
+del `hold`. `@agentpey/ucp-stellar` queda en `0.2.0` en el repo; publicarla en npm es del usuario.
+
+**Evidencia.** [`evidencia/T160.md`](evidencia/T160.md).

@@ -13,7 +13,7 @@ import { verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { MERCHANT, fakePlatformProfiles, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakePlatformProfiles, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 import { BREAKS, startBrokenStore, type Break } from "./broken-store.js";
 import { DEFAULT_PLATFORM_PROFILE, formatReport, runConformance, type CheckResult, type KitDeps, type KitOptions } from "./checks.js";
@@ -40,6 +40,9 @@ function localFetch(options: { requests?: Array<{ method: string; url: string; b
     options.requests?.push({ method: init?.method ?? "GET", url, ...(body === undefined ? {} : { body }) });
     if (url === "https://agentpey.com/ucp/handlers/stellar-x402/spec") return new Response(readFileSync(new URL("spec.md", HANDLER_DIR), "utf8"), { status: 200 });
     if (url === "https://agentpey.com/ucp/handlers/stellar-x402/schema.json") return new Response(readFileSync(new URL("schema.json", HANDLER_DIR), "utf8"), { status: 200 });
+    // The escrow version (T160).
+    if (url === "https://agentpey.com/ucp/handlers/stellar-x402/2026-10-15/spec") return new Response(readFileSync(new URL("2026-10-15/spec.md", HANDLER_DIR), "utf8"), { status: 200 });
+    if (url === "https://agentpey.com/ucp/handlers/stellar-x402/2026-10-15/schema.json") return new Response(readFileSync(new URL("2026-10-15/schema.json", HANDLER_DIR), "utf8"), { status: 200 });
     const host = new URL(url).hostname;
     if (host !== "localhost" && host !== "127.0.0.1") throw new TypeError(`a test asked for ${url}`);
     if (options.fail?.(url, body) === true) throw new TypeError("socket hang up");
@@ -358,5 +361,32 @@ describe("formatReport", () => {
       { id: "R6", group: "requirements", title: "refuses", outcome: "fail", detail: "completed" },
     ]);
     expect(text.split("\n")).toEqual(["✔ P1  business profile: ok", "✘ R6  refuses: completed", "", "1 pass · 1 fail · 0 warn · 0 skipped"]);
+  });
+});
+
+describe("the kit against a store with an escrow (T160)", () => {
+  it("checks the escrow on chain as P8, only for a store that declares one, and fails one that is not what it says", async () => {
+    const escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    const escrowStore = createApp({ platformProfiles: fakePlatformProfiles(), config: escrowConfig(), adapter: new MockStoreAdapter(), facilitator: fakeFacilitator(), anchorer: registry.anchorer, registry: registry.registry, holder: escrow.holder, escrows: escrow.escrows });
+    const escrowServer = await listen(escrowStore);
+    try {
+      const kit = (read?: KitDeps["escrow"]) =>
+        runConformance(options({ storeUrl: escrowServer.url, profileOnly: true }), deps(read === undefined ? {} : { escrow: read, readBalance: async () => 0n }));
+      const passing = byId(await kit(async () => escrow.reader.config()));
+      expect(Object.values(passing).filter((r) => r.outcome !== "pass")).toEqual([]);
+      expect(passing["P8"]).toMatchObject({ outcome: "pass", detail: expect.stringContaining(ESCROW_ID) });
+
+      const otherCode = byId(await kit(async () => ({ ...(await escrow.reader.config()), wasmHash: "d0d1d877ac479aa6367833f467e35ff90be581236c4c2b688dd313ca4cf802c4" })));
+      expect(otherCode["P8"]).toMatchObject({ outcome: "fail", detail: expect.stringContaining("purchase-escrow code") });
+      const otherPayee = byId(await kit(async () => ({ ...(await escrow.reader.config()), payee: PAYER })));
+      expect(otherPayee["P8"]).toMatchObject({ outcome: "fail", detail: expect.stringContaining("payee") });
+      expect(byId(await kit())["P8"]).toMatchObject({ outcome: "fail" });
+    } finally {
+      escrowStore.anchors.stop();
+      await escrowServer.close();
+    }
+    // A store paid directly has no P8 at all: its run reads as before.
+    expect(byId(await runConformance(options({ profileOnly: true }), deps()))["P8"]).toBeUndefined();
   });
 });

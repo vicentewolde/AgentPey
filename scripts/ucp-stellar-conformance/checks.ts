@@ -39,7 +39,7 @@ import {
   type UcpDestination,
   type UcpStellarPayer,
 } from "../../packages/ucp-stellar/src/index.js";
-import type { RegistryReader, ReceiptVerification } from "../../packages/vitrinee-anchor/src/index.js";
+import { PURCHASE_ESCROW_WASM_HASHES, type EscrowConfig, type RegistryReader, type ReceiptVerification } from "../../packages/vitrinee-anchor/src/index.js";
 
 export const RECEIPT_EXTENSION = "com.agentpey.shopping.receipt";
 export const DEFAULT_PLATFORM_PROFILE = "https://agentpey.com/ucp/platform/agentpey.json";
@@ -66,6 +66,8 @@ export interface KitDeps {
   /** The three receipt checks (`verifyReceipt` of `@vitrinee/anchor`). */
   readonly verifyReceipt: (jws: string, registry: RegistryReader) => Promise<ReceiptVerification>;
   readonly sleep: (ms: number) => Promise<void>;
+  /** A store's `purchase-escrow`, read on chain (T160): P8, for a store that declares one. Absent: P8 fails. */
+  readonly escrow?: (contractId: string) => Promise<EscrowConfig>;
 }
 
 export interface KitOptions {
@@ -111,6 +113,16 @@ const usableConfig = z.looseObject({
   pay_to: z.string(),
 });
 type UsableConfig = z.infer<typeof usableConfig>;
+
+const P8_TITLE = "escrow is the purchase-escrow it declares";
+const escrowDeclaration = z.looseObject({
+  contract: z.string(),
+  payee: z.string(),
+  arbiter: z.string(),
+  release_window_seconds: z.number(),
+  response_window_seconds: z.number(),
+  resolve_window_seconds: z.number(),
+});
 
 const requirementsShape = z.looseObject({
   scheme: z.string(),
@@ -347,6 +359,47 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
   const ownEndpoint = endpoint !== undefined && URL.canParse(endpoint) && new URL(endpoint).origin === origin;
   report.add("P7", "profile", "REST endpoint on the store's origin", ownEndpoint ? "pass" : "fail", ownEndpoint ? endpoint! : `dev.ucp.shopping declares ${endpoint ?? "no REST endpoint"}, not on ${origin}`);
 
+  // P8, only for a store that charges into an escrow (handler 2026-10-15, T160): the contract on chain is the
+  // purchase-escrow the store declares. A platform pays such a store only after this same check (X-9).
+  const escrowDeclared = escrowDeclaration.safeParse((handler.data.config as { escrow?: unknown } | undefined)?.escrow);
+  let escrowVerified = false;
+  if ((handler.data.config as { escrow?: unknown } | undefined)?.escrow !== undefined) {
+    if (!escrowDeclared.success) {
+      report.add("P8", "profile", P8_TITLE, "fail", "the escrow block is malformed");
+    } else if (deps.escrow === undefined) {
+      report.add("P8", "profile", P8_TITLE, "fail", "this run cannot read contracts on chain");
+    } else {
+      const declaredEscrow = escrowDeclared.data;
+      try {
+        const onChain = await deps.escrow(declaredEscrow.contract);
+        const problems = [
+          onChain.wasmHash === null || !PURCHASE_ESCROW_WASM_HASHES.includes(onChain.wasmHash) ? "it does not run the purchase-escrow code AgentPey knows" : undefined,
+          declared !== undefined && declared.pay_to !== declaredEscrow.contract ? "pay_to is not the escrow" : undefined,
+          onChain.payee !== declaredEscrow.payee ? "its payee is not the declared one" : undefined,
+          onChain.arbiter !== declaredEscrow.arbiter ? "its arbiter is not the declared one" : undefined,
+          declared !== undefined && onChain.token !== declared.asset.contract ? "it holds another asset than the handler's" : undefined,
+          onChain.releaseWindowSeconds !== declaredEscrow.release_window_seconds ||
+          onChain.responseWindowSeconds !== declaredEscrow.response_window_seconds ||
+          onChain.resolveWindowSeconds !== declaredEscrow.resolve_window_seconds
+            ? "its windows are not the declared ones"
+            : undefined,
+        ].filter((problem): problem is string => problem !== undefined);
+        escrowVerified = problems.length === 0;
+        report.add(
+          "P8",
+          "profile",
+          P8_TITLE,
+          escrowVerified ? "pass" : "fail",
+          escrowVerified
+            ? `${declaredEscrow.contract}: purchase-escrow ${onChain.wasmHash?.slice(0, 8)}…, releases to ${onChain.payee}, arbiter ${onChain.arbiter}`
+            : `${declaredEscrow.contract}: ${problems.join("; ")}`,
+        );
+      } catch (error) {
+        report.add("P8", "profile", P8_TITLE, "fail", `could not read ${declaredEscrow.contract} on chain: ${why(error)}`);
+      }
+    }
+  }
+
   if (options.profileOnly === true) return;
   // The requirement checks sign nothing, so they run on a profile with errors too, to report every one of them. The
   // charge is the one that needs a profile a platform could pay against.
@@ -460,6 +513,7 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
     lines: lines.data.map((line) => ({ productId: line.item.id, quantity: line.quantity })),
     raw: opened.json as Record<string, unknown>,
     profile,
+    escrowVerified,
   });
 }
 
@@ -513,6 +567,8 @@ interface Opened {
   readonly lines: ReadonlyArray<{ readonly productId: string; readonly quantity: number }>;
   readonly raw: Record<string, unknown>;
   readonly profile: Profile;
+  /** The store's escrow passed P8 (T160); false for a store without one, whose payment never needs it. */
+  readonly escrowVerified: boolean;
 }
 
 /** The longest a signed authorization may stay valid: whoever saw it can settle it until it expires. */
@@ -631,7 +687,17 @@ async function charge(report: Report, options: KitOptions, deps: KitDeps, opened
   let orderId: string;
   let receipt: unknown;
   try {
-    const paid = await pay(quoteToPay, { payer: presigned, maxAmount, asset: options.charge!.asset, platformProfile: options.platformProfile, fetch: deps.fetch });
+    const paid = await pay(quoteToPay, {
+      payer: presigned,
+      maxAmount,
+      asset: options.charge!.asset,
+      platformProfile: options.platformProfile,
+      fetch: deps.fetch,
+      // Into the store's escrow only if P8 checked it (T160).
+      verifyEscrow: () => {
+        if (!opened.escrowVerified) throw new UcpStellarError("EscrowUnverified", "the store's escrow did not pass P8", { details: {} });
+      },
+    });
     orderId = paid.orderId;
     receipt = paid.receipt;
     report.add("C2", "charge", C_TITLES.C2, "pass", `order ${paid.orderId}, ${fromAtomic(BigInt(paid.paid.amount), 7)} paid to ${paid.paid.payTo}${paid.transaction === undefined ? "" : `, tx ${paid.transaction}`}`);

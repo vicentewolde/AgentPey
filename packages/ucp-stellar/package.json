@@ -1,6 +1,6 @@
 {
   "name": "@agentpey/ucp-stellar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Buy from a UCP store that accepts Stellar: read its profile, check its com.agentpey.stellar_x402 payment handler, quote a checkout and pay it, on Stellar testnet.",
   "license": "Apache-2.0",
   "author": "AgentPey",

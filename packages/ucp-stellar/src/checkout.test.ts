@@ -29,6 +29,12 @@ interface StoreState {
   endpoint: string;
   /** The id the checkout answers with when read again. */
   answerId: string;
+  /** The handler version the profile declares. */
+  handlerVersion: string;
+  /** `pay_to` as the profile declares it, when not `payTo` (T160). */
+  declaredPayTo?: string;
+  /** The escrow block the profile declares (T160). */
+  escrow?: Record<string, unknown>;
 }
 
 function profileOf(state: StoreState) {
@@ -40,10 +46,17 @@ function profileOf(state: StoreState) {
         "com.agentpey.stellar_x402": [
           {
             id: "stellar_x402_1",
-            version: "2026-04-08",
+            version: state.handlerVersion,
             spec: state.spec,
             schema: "https://agentpey.com/ucp/handlers/stellar_x402/schema.json",
-            config: { x402_version: 2, scheme: "exact", network: state.network, asset: { code: "USDC", contract: USDC, decimals: state.decimals }, pay_to: PAY_TO },
+            config: {
+              x402_version: 2,
+              scheme: "exact",
+              network: state.network,
+              asset: { code: "USDC", contract: USDC, decimals: state.decimals },
+              pay_to: state.declaredPayTo ?? PAY_TO,
+              ...(state.escrow === undefined ? {} : { escrow: state.escrow }),
+            },
           },
         ],
       },
@@ -90,6 +103,7 @@ function fakeStore(overrides: Partial<StoreState> = {}) {
     decimals: 7,
     endpoint: ENDPOINT,
     answerId: "chk_1",
+    handlerVersion: "2026-09-30",
     ...overrides,
   };
   const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -478,5 +492,97 @@ describe("pay", () => {
     const unconfirmed: typeof fetch = async (input, init) =>
       String(input).endsWith("/complete") ? new Response(JSON.stringify({ messages: [{ type: "error", code: "payment_failed" }] }), { status: 402 }) : original(input, init);
     expect(await codeOf(pay(q, { payer: fakePayer(), maxAmount: "2.00", fetch: unconfirmed }))).toMatchObject({ code: "NetworkError", paymentSent: true });
+  });
+});
+
+describe("a store that charges into its escrow (T160, X-9)", () => {
+  const ESCROW = "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A";
+  const ARBITER = "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6";
+  const escrow = { contract: ESCROW, payee: PAY_TO, arbiter: ARBITER, release_window_seconds: 600, response_window_seconds: 900, resolve_window_seconds: 3600 };
+  const escrowStore = (overrides: Partial<StoreState> = {}) => fakeStore({ handlerVersion: "2026-10-15", payTo: ESCROW, declaredPayTo: ESCROW, escrow, ...overrides });
+  const order = { storeUrl: STORE, productId: "iman", quantity: 1, destination: DESTINATION };
+
+  it("quotes with the declared escrow, and pays it once verifyEscrow passes, with the escrow in the hook and the receipt", async () => {
+    const { state, fetchImpl } = escrowStore();
+    const quoted = await quote(order, { fetch: fetchImpl });
+    expect(quoted.escrow).toEqual(escrow);
+    expect(quoted.requirements.payTo).toBe(ESCROW);
+    const verified: Array<{ escrow: unknown; context: unknown }> = [];
+    const seen: unknown[] = [];
+    const payer = fakePayer();
+    const paid = await pay(quoted, {
+      fetch: fetchImpl,
+      payer,
+      maxAmount: "5",
+      verifyEscrow: (declared, context) => {
+        verified.push({ escrow: declared, context });
+      },
+      beforeSign: ({ escrow: inHook }) => {
+        seen.push(inHook);
+      },
+    });
+    expect(verified).toEqual([{ escrow, context: { storeUrl: STORE, asset: USDC } }]);
+    expect(seen).toEqual([escrow]);
+    expect(payer.calls[0]?.payTo).toBe(ESCROW);
+    expect(paid).toMatchObject({ escrow, paid: { payTo: ESCROW } });
+    expect(state.completed).toBe(1);
+  });
+
+  it("refuses to pay an escrow without verifyEscrow, and lets verifyEscrow's refusal through as thrown, nothing signed", async () => {
+    const { state, fetchImpl } = escrowStore();
+    const quoted = await quote(order, { fetch: fetchImpl });
+    const payer = fakePayer();
+    expect(await codeOf(pay(quoted, { fetch: fetchImpl, payer, maxAmount: "5" }))).toMatchObject({ code: "EscrowUnverified", paymentSent: false });
+    const refusal = new Error("another wasm");
+    await expect(pay(quoted, { fetch: fetchImpl, payer, maxAmount: "5", verifyEscrow: () => Promise.reject(refusal) })).rejects.toBe(refusal);
+    expect(payer.calls).toHaveLength(0);
+    expect(state.completed).toBe(0);
+  });
+
+  it("refuses a store that declares an escrow but charges its account, before signing", async () => {
+    const { state, fetchImpl } = escrowStore();
+    const quoted = await quote(order, { fetch: fetchImpl });
+    state.payTo = PAY_TO;
+    const payer = fakePayer();
+    expect(await codeOf(pay(quoted, { fetch: fetchImpl, payer, maxAmount: "5", verifyEscrow: () => {} }))).toMatchObject({ code: "QuoteChanged", paymentSent: false });
+    // A quote kept without recheck: the declared escrow and the requirement must still agree.
+    const forged = { ...quoted, requirements: { ...quoted.requirements, payTo: PAY_TO } };
+    expect(await codeOf(pay(forged, { fetch: fetchImpl, payer, maxAmount: "5", recheck: false, verifyEscrow: () => {} }))).toMatchObject({ code: "EscrowUnverified", paymentSent: false });
+    expect(payer.calls).toHaveLength(0);
+  });
+
+  it("refuses a contract as payTo with no escrow declared, even on a kept quote", async () => {
+    const { fetchImpl } = fakeStore();
+    const quoted = await quote(order, { fetch: fetchImpl });
+    const payer = fakePayer();
+    const toContract = { ...quoted, escrow: undefined, requirements: { ...quoted.requirements, payTo: ESCROW } };
+    expect(await codeOf(pay(toContract, { fetch: fetchImpl, payer, maxAmount: "5", recheck: false, verifyEscrow: () => {} }))).toMatchObject({ code: "EscrowUnverified" });
+    expect(payer.calls).toHaveLength(0);
+  });
+
+  it("refuses a profile whose escrow does not hold together: pay_to not the escrow, the escrow in 2026-09-30, a contract with no escrow", async () => {
+    for (const overrides of [
+      { declaredPayTo: PAY_TO },
+      { handlerVersion: "2026-09-30" },
+      { escrow: undefined },
+      { escrow: { ...escrow, release_window_seconds: 0 } },
+    ] satisfies Array<Partial<StoreState>>) {
+      const { fetchImpl } = escrowStore(overrides);
+      expect(await codeOf(quote(order, { fetch: fetchImpl })), JSON.stringify(overrides)).toMatchObject({ code: "MerchantRejectedRequest" });
+    }
+    // And the escrow version with no escrow at all.
+    const { fetchImpl } = fakeStore({ handlerVersion: "2026-10-15" });
+    expect(await codeOf(quote(order, { fetch: fetchImpl }))).toMatchObject({ code: "MerchantRejectedRequest" });
+  });
+
+  it("pays a store paid directly exactly as before: no verifyEscrow needed, none called", async () => {
+    const { fetchImpl } = fakeStore();
+    const quoted = await quote(order, { fetch: fetchImpl });
+    expect(quoted.escrow).toBeUndefined();
+    let called = false;
+    const paid = await pay(quoted, { fetch: fetchImpl, payer: fakePayer(), maxAmount: "5", verifyEscrow: () => { called = true; } });
+    expect(called).toBe(false);
+    expect(paid.escrow).toBeUndefined();
+    expect(paid.paid.payTo).toBe(PAY_TO);
   });
 });

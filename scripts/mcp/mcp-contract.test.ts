@@ -24,7 +24,8 @@ import { verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { MERCHANT, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { ARBITER, ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakeHorizon, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { escrowPolicy } from "../../packages/vitrinee-anchor/src/index.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 
 type SchemeNetworkClient = NonNullable<ExecuteUcpPaymentDeps["schemeForTests"]>;
@@ -595,6 +596,83 @@ describe("an order's receipt must be that order's, from that store (T128)", () =
     } finally {
       await buyer.close();
       await reader.close();
+    }
+  });
+});
+
+describe("a store with an escrow, through the MCP (T160)", () => {
+  it("quotes with its protection, pays into the escrow, sees the purchase held, and reads the order with four green checks", async () => {
+    const escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    const horizon = fakeHorizon({ creditContract: ESCROW_ID }) as typeof fetch & { allow(amount: string): void };
+    const escrowStore = createApp({
+      platformProfiles: fakePlatformProfiles(),
+      config: escrowConfig(),
+      adapter: new MockStoreAdapter(),
+      facilitator: fakeFacilitator(),
+      anchorer: registry.anchorer,
+      registry: registry.registry,
+      holder: escrow.holder,
+      escrows: escrow.escrows,
+      anchorRetryDelaysMs: [1],
+    });
+    const escrowServer = await listen(escrowStore);
+    const name = new URL(escrowServer.url).host;
+    const mcp = await startMcp({
+      venues: () => Promise.resolve(loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: escrowServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }])),
+      payment: {
+        signerSecret: agent.secret(),
+        payer: { contractId: RAIL, ownerSecret: agent.secret() },
+        schemeForTests: fakeScheme(),
+        escrow: { ...escrowPolicy(escrow.escrows, [ARBITER]), heldWaitMs: 2_000, heldPollMs: 20 },
+      },
+      verifyReceipt: (jws) => verifyReceipt(jws, { registry: registry.registry, horizonUrl: "https://horizon.test", fetchImpl: horizon, escrows: escrow.escrows }),
+    });
+    try {
+      const quoted = await mcp.call("quote", { store: name, product_id: "gorro-andes", quantity: 1, destination: DESTINATION });
+      expect(quoted.isError).toBeFalsy();
+      expect(quoted.structuredContent).toMatchObject({
+        pays: { to: ESCROW_ID },
+        protection: { escrow: ESCROW_ID, releases_to: MERCHANT, release_window_minutes: 10, note: expect.stringContaining("escrow") },
+      });
+
+      const paid = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+      expect(paid.isError).toBeFalsy();
+      expect(paid.structuredContent).toMatchObject({ paid_to: ESCROW_ID, escrow: { contract: ESCROW_ID, held: true, warning: null } });
+
+      await escrowStore.anchors.idle();
+      horizon.allow("13.6736842");
+      const orderId = paid.structuredContent!["order_id"] as string;
+      const read = await mcp.call("get_order", { store: name, order_id: orderId });
+      // The receipt still names the payout account, so it binds to the store the directory lists (T160).
+      expect(read.structuredContent!["receipt"]).toMatchObject({
+        valid: true,
+        checks: { order: { ok: true }, signature: { ok: true }, anchored: { ok: true }, settlement: { ok: true }, held: { ok: true } },
+      });
+      const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived" });
+      expect(claimed.isError).toBeFalsy();
+    } finally {
+      await mcp.close();
+      escrowStore.anchors.stop();
+      await escrowServer.close();
+    }
+  });
+
+  it("refuses the store's escrow before signing when the server has no way to check it", async () => {
+    const escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    const escrowStore = createApp({ platformProfiles: fakePlatformProfiles(), config: escrowConfig(), adapter: new MockStoreAdapter(), facilitator: fakeFacilitator(), anchorer: registry.anchorer, registry: registry.registry, holder: escrow.holder, escrows: escrow.escrows });
+    const escrowServer = await listen(escrowStore);
+    const mcp = await startMcp({ venues: () => Promise.resolve(loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: escrowServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }])) });
+    try {
+      const quoted = await mcp.call("quote", { store: new URL(escrowServer.url).host, product_id: "gorro-andes", destination: DESTINATION });
+      const paid = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+      expect(errorOf(paid)).toMatchObject({ error: "EscrowUnverified", payment_may_have_been_sent: false });
+      expect(mcp.scheme.calls).toEqual([]);
+    } finally {
+      await mcp.close();
+      escrowStore.anchors.stop();
+      await escrowServer.close();
     }
   });
 });

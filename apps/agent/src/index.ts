@@ -329,6 +329,18 @@ export {
 } from "./payment/ucp.js";
 
 export {
+  awaitHeld,
+  escrowVerifier,
+  pinnedAccountOf,
+  type AwaitHeldInput,
+  type EscrowHeldPurchase,
+  type EscrowHold,
+  type EscrowLedger,
+  type EscrowOnChain,
+  type EscrowPolicy,
+} from "./payment/escrow.js";
+
+export {
   PolicyRailStellarScheme,
   authorizeAsPolicyRailOwner,
   type PolicyRailPayer,

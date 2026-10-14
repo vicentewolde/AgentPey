@@ -17,6 +17,7 @@ import type { StoreAdapter } from "@vitrinee/adapters";
 import { createAdapter } from "../adapters.js";
 import { createApp, type AppDeps, type VitrineeApp } from "../app.js";
 import type { GatewayConfig } from "../config.js";
+import { verifyStoreEscrow } from "../escrow.js";
 import { OrderStore, type OrderPersistence } from "../orders.js";
 import type { CheckoutSessionPersistence } from "../ucp/sessions.js";
 import { openComercioSecrets, type Comercio, type ComercioStore } from "./comercios.js";
@@ -36,6 +37,8 @@ export interface StorefrontPoolOptions {
   /** Tests inject a fake facilitator, registry and Horizon per store. */
   appDeps?: (comercio: Comercio, config: GatewayConfig) => Partial<Omit<AppDeps, "config" | "adapter" | "orders">>;
   createAdapter?: (config: GatewayConfig) => StoreAdapter;
+  /** Checks a store's escrow on chain before it opens (T160). Tests inject a fake reader. */
+  verifyEscrow?: (config: GatewayConfig) => Promise<GatewayConfig>;
   lookupTtlMs?: number;
   now?: () => number;
   log?: Log;
@@ -94,7 +97,8 @@ export class StorefrontPool {
 
   private async build(comercio: Comercio): Promise<Built> {
     const secrets = openComercioSecrets(comercio, this.options.box);
-    const config = comercioConfig(this.options.env, comercio, secrets);
+    // A store with an escrow opens only once its contract checks out on chain (T160); a failure is not cached.
+    const config = await (this.options.verifyEscrow ?? verifyStoreEscrow)(comercioConfig(this.options.env, comercio, secrets));
     const adapter = this.options.createAdapter?.(config) ?? createAdapter(config, this.log);
     const orders = await OrderStore.open(this.options.ordersFor(comercio));
     const app = createApp({
@@ -107,7 +111,7 @@ export class StorefrontPool {
     });
     const resumed = app.anchors.resume();
     const webhooksResumed = app.orderEvents.resume();
-    this.log("store ready", { comercio: comercio.slug, payTo: comercio.payTo, signing: comercio.signingAccount, orders: orders.list().length, anchorsResumed: resumed, webhooksResumed });
+    this.log("store ready", { comercio: comercio.slug, payTo: comercio.payTo, escrow: config.escrow?.contract ?? null, signing: comercio.signingAccount, orders: orders.list().length, anchorsResumed: resumed, webhooksResumed });
     return { comercioId: comercio.id, updatedAt: comercio.updatedAt, app };
   }
 }

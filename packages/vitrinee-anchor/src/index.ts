@@ -9,6 +9,7 @@ export {
   configKey,
   decodeEscrowConfig,
   decodePurchase,
+  escrowPolicy,
   escrowReaders,
   paymentKey,
   purchaseKey,

@@ -60,6 +60,7 @@ export function buildManifest({ config, products, baseUrl, now }: BuildManifestI
       assetContract: USDC_TESTNET.contractId,
       decimals: USDC_TESTNET.decimals,
       facilitator: config.facilitator.url,
+      ...(config.escrow === undefined ? {} : { escrow: { contract: config.escrow.contract } }),
     },
     fx: { base: "USD", quote: config.fx.quote, rate: config.fx.rate, source: "demo-fixed", asOf },
     policies: config.policies,

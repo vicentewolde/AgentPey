@@ -19,6 +19,11 @@ export const UCP_STELLAR_ERROR_CODES = [
   "InvalidProduct",
   /** Read again before paying, the store's profile or checkout no longer says what it quoted. */
   "QuoteChanged",
+  /**
+   * The store charges into an escrow, and `pay` was given no `verifyEscrow`, or the escrow failed it: another code,
+   * another payee, a declaration that does not hold together. Nothing was signed.
+   */
+  "EscrowUnverified",
   /** The checkout costs more than the `maxAmount` the caller allowed. */
   "AmountAboveLimit",
   /** The payment could not be built or signed; nothing was sent. */

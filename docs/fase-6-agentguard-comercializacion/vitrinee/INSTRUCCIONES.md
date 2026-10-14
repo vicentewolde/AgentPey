@@ -135,6 +135,18 @@ pnpm run vitrinee:test:contracts
 stickers). `pnpm check` de AgentPey también corre los tests de Vitrinee, porque
 sus paquetes están en el mismo workspace.
 
+## Escrow de una tienda (Fase 9, T160)
+
+Una tienda puede cobrar a su `purchase-escrow` en vez de a su cuenta de cobro (`X-23` a `X-25`):
+
+- **Modo de una tienda:** `ESCROW_CONTRACT_ID=<C…>` en `.env.vitrinee.local`.
+- **Modo plataforma:** `COMERCIO_ESCROWS=<slug>=<C…>` (pares separados por coma) en el entorno de la plataforma, en
+  Render. Es el interruptor: se pone y se quita sin deploy. `ESCROW_CONTRACT_ID` nunca se hereda de la plataforma.
+
+Antes de abrir, la tienda lee el escrow en la red y no abre si no es suyo: código `purchase-escrow` conocido, operador
+= cuenta de firma, `payee` = cuenta de cobro y token USDC. Nunca vuelve en silencio a cobrar directo. Con escrow, el
+perfil declara el handler en su versión `2026-10-15` y el manifest suma `settlement.escrow`.
+
 ## Shopify (T112)
 
 Un comercio Shopify se da de alta igual que uno Jumpseller (portal, cuatro

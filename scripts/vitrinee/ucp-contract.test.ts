@@ -25,7 +25,9 @@ import { MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js"
 import { USDC_TESTNET, checkReceiptSignature } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_TX_HASH, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { MERCHANT, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { ARBITER, ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import type { EscrowPolicy } from "../../apps/agent/src/payment/escrow.js";
+import { PURCHASE_ESCROW_WASM_HASHES } from "../../packages/vitrinee-anchor/src/index.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 
 type SchemeNetworkClient = NonNullable<ExecuteUcpPaymentDeps["schemeForTests"]>;
@@ -610,6 +612,155 @@ describe("AgentPey pays a Vitrinee store with AP2 mandates (T134, R-15)", () => 
       expect(scheme.calls).toEqual([]);
     } finally {
       await stop();
+    }
+  });
+});
+
+/** The fake facilitator, with a transaction hash of its own per settlement, as on the network: one payment, one order (VT-40). */
+function uniqueFacilitator(): FakeFacilitator {
+  const base = fakeFacilitator({ settle: { payer: RAIL } });
+  let n = 0;
+  return {
+    ...base,
+    async settle(payload, requirements) {
+      n += 1;
+      return { ...(await base.settle(payload, requirements)), transaction: n.toString(16).padStart(64, "e") };
+    },
+  };
+}
+
+describe("AgentPey pays a Vitrinee store into its escrow (T160, X-9)", () => {
+  let escrowServer: { url: string; close: () => Promise<void> };
+  let escrowApp: VitrineeApp;
+  let escrow: ReturnType<typeof fakeEscrow>;
+  const escrowFacilitator = uniqueFacilitator();
+
+  beforeAll(async () => {
+    escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    escrowApp = createApp({
+      platformProfiles: fakePlatformProfiles({ [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08" }),
+      config: escrowConfig(),
+      adapter: new MockStoreAdapter(),
+      facilitator: escrowFacilitator,
+      anchorer: registry.anchorer,
+      registry: registry.registry,
+      holder: escrow.holder,
+      escrows: escrow.escrows,
+      anchorRetryDelaysMs: [1],
+    });
+    escrowServer = await listen(escrowApp);
+  });
+  afterAll(async () => {
+    escrowApp.anchors.stop();
+    await escrowServer.close();
+  });
+
+  /** What the agent trusts, reading the store's fake escrow as it would read the real one on chain. */
+  const policy = (overrides: Partial<Awaited<ReturnType<typeof escrow.reader.config>>> = {}, extra: Partial<EscrowPolicy> = {}): EscrowPolicy => ({
+    ledger: {
+      config: async (contract) => {
+        if (contract !== ESCROW_ID) throw new Error(`no escrow ${contract}`);
+        return { ...(await escrow.reader.config()), ...overrides };
+      },
+      byTx: async (_contract, tx) => escrow.reader.byTx(tx),
+    },
+    wasmHashes: PURCHASE_ESCROW_WASM_HASHES,
+    arbiters: [ARBITER],
+    heldWaitMs: 2_000,
+    heldPollMs: 20,
+    ...extra,
+  });
+
+  const escrowVenue = (pinned: string = MERCHANT) => {
+    const base = loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: escrowServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }]);
+    const venueId = makeVenueId("vitrinee", MERCHANT);
+    const entry = base.venues.get(venueId)!;
+    return { venueId, registry: { ...base, venues: new Map([[venueId, { ...entry, payTo: pinned }]]) } };
+  };
+
+  const buyHat = (deps: Partial<ExecuteUcpPaymentDeps>, scheme: SchemeNetworkClient, pinned?: string) => {
+    const grant = scope();
+    return executeUcpPayment(
+      { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme, ...deps },
+      { storeUrl: escrowServer.url, productId: "gorro-andes", quantity: 1, destination: DESTINATION, intent: intent("gorro-andes", 1, HAT, HAT), scope: grant, mandate: mandate(grant), ...escrowVenue(pinned) },
+    );
+  };
+
+  it("pays into the verified escrow, the store holds the purchase, and the receipt still names the payout account", async () => {
+    const scheme = fakeScheme();
+    const paid = await buyHat({ escrow: policy() }, scheme);
+    expect(scheme.calls).toEqual([expect.objectContaining({ payTo: ESCROW_ID, amount: "136736842" })]);
+    expect(paid.paid.payTo).toBe(ESCROW_ID);
+    expect(paid.escrowHold).toEqual({ contract: ESCROW_ID, held: true });
+    // get_order binds a receipt to its store by merchantAccount: with the escrow it is still the payout account.
+    expect(checkReceiptSignature(paid.receipt?.jws ?? "").claims).toMatchObject({ merchantAccount: MERCHANT, escrow: { contract: ESCROW_ID }, payerAccount: RAIL });
+  });
+
+  it("refuses before signing when the agent was given no way to check the escrow", async () => {
+    const scheme = fakeScheme();
+    const error = await attempt(() => buyHat({}, scheme));
+    expect(error).toMatchObject({ code: "EscrowUnverified" });
+    expect(mayHaveBeenPaid(error)).toBe(false);
+    expect(scheme.calls).toEqual([]);
+  });
+
+  it("refuses before signing an escrow with other code, another arbiter, or one that releases to another account than the venue pins", async () => {
+    for (const [what, deps, pinned] of [
+      ["another wasm", { escrow: policy({ wasmHash: "d0d1d877ac479aa6367833f467e35ff90be581236c4c2b688dd313ca4cf802c4" }) }, undefined],
+      ["not a wasm contract", { escrow: policy({ wasmHash: null }) }, undefined],
+      ["an arbiter the agent does not accept", { escrow: policy({}, { arbiters: [Keypair.random().publicKey()] }) }, undefined],
+      ["on chain, another payee than declared", { escrow: policy({ payee: Keypair.random().publicKey() }) }, undefined],
+      ["a store paid at another account", { escrow: policy() }, Keypair.random().publicKey()],
+    ] as const) {
+      const scheme = fakeScheme();
+      const error = await attempt(() => buyHat(deps, scheme, pinned));
+      expect(error, what).toMatchObject({ code: "EscrowUnverified" });
+      expect(mayHaveBeenPaid(error), what).toBe(false);
+      expect(scheme.calls, what).toEqual([]);
+    }
+  });
+
+  it("refuses before signing a store that declares its escrow but charges its own account", async () => {
+    const scheme = fakeScheme();
+    const direct: typeof fetch = async (input, init) => {
+      const res = await fetch(input, init);
+      if (!String(input).endsWith("/checkout-sessions") || init?.method !== "POST") return res;
+      const body = (await res.json()) as { ucp: { payment_handlers: Record<string, Array<{ config: { payment_requirements: { payTo: string } } }>> } };
+      body.ucp.payment_handlers["com.agentpey.stellar_x402"]![0]!.config.payment_requirements.payTo = MERCHANT;
+      return Response.json(body, { status: res.status });
+    };
+    const error = await attempt(() => buyHat({ escrow: policy(), fetchImpl: direct }, scheme));
+    expect(error).toMatchObject({ code: "InvalidProduct" });
+    expect(scheme.calls).toEqual([]);
+  });
+
+  it("warns, without failing, when the store never records the purchase in its escrow (X-20)", async () => {
+    const scheme = fakeScheme();
+    const paid = await buyHat({ escrow: policy({}, { ledger: { config: async () => escrow.reader.config(), byTx: async () => null }, heldWaitMs: 50, heldPollMs: 10 }) }, scheme);
+    expect(paid.paid.payTo).toBe(ESCROW_ID);
+    expect(paid.escrowHold).toMatchObject({ contract: ESCROW_ID, held: false, warning: expect.stringContaining("has not recorded the purchase") });
+  });
+
+  it("a store paid directly is paid exactly as before, escrow policy or not", async () => {
+    const registry = fakeRegistry();
+    const direct = createApp({ platformProfiles: fakePlatformProfiles({ [AGENTPEY_PLATFORM_PROFILE]: "2026-04-08" }), config: testConfig(), adapter: new MockStoreAdapter(), facilitator: uniqueFacilitator(), anchorer: registry.anchorer, registry: registry.registry });
+    const directServer = await listen(direct);
+    try {
+      const scheme = fakeScheme();
+      const grant = scope();
+      const base = loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: directServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }]);
+      const venueId = makeVenueId("vitrinee", MERCHANT);
+      const paid = await executeUcpPayment(
+        { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme, escrow: policy() },
+        { storeUrl: directServer.url, productId: "gorro-andes", quantity: 1, destination: DESTINATION, intent: intent("gorro-andes", 1, HAT, HAT), scope: grant, mandate: mandate(grant), venueId, registry: { ...base, venues: new Map([[venueId, { ...base.venues.get(venueId)!, payTo: MERCHANT }]]) } },
+      );
+      expect(scheme.calls).toEqual([expect.objectContaining({ payTo: MERCHANT })]);
+      expect(paid.paid.payTo).toBe(MERCHANT);
+      expect(paid.escrowHold).toBeUndefined();
+    } finally {
+      direct.anchors.stop();
+      await directServer.close();
     }
   });
 });

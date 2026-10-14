@@ -58,6 +58,7 @@ function liveDeps(): KitDeps {
     readBalance: readTokenBalance,
     registry: (contractId) => new ReceiptRegistryClient({ contractId, rpcUrl: RPC_URL, networkPassphrase: Networks.TESTNET }),
     verifyReceipt: (jws, registry) => verifyReceipt(jws, { registry, horizonUrl: HORIZON_URL, escrows: escrowReaders({ rpcUrl: RPC_URL, networkPassphrase: Networks.TESTNET }) }),
+    escrow: (contractId) => escrowReaders({ rpcUrl: RPC_URL, networkPassphrase: Networks.TESTNET })(contractId).config(),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   };
 }

@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 
 import { REGISTRY_ID } from "../test/fixtures.js";
 import { MemoryComercioStore, openComercioSecrets, sealComercio, seedComercioFromEnv } from "./comercios.js";
-import { comercioConfig, loadPlatformSettings } from "./config.js";
+import { comercioConfig, loadPlatformSettings, parseComercioEscrows } from "./config.js";
 import { createSecretBox, generateMasterKey } from "./secret-box.js";
 
 const now = new Date("2026-09-24T12:00:00.000Z");
+const MERCHANT_LIKE = "GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN";
 const box = createSecretBox(generateMasterKey());
 
 async function code(p: Promise<unknown> | (() => unknown)): Promise<string | undefined> {
@@ -112,6 +113,38 @@ describe("platform settings", () => {
     expect(config.adapter).toBe("mock");
     expect(config.publicBaseUrl).toBeUndefined();
     expect(config.escrowId).toBeUndefined();
+  });
+});
+
+describe("COMERCIO_ESCROWS: the platform gives one store its escrow (T160)", () => {
+  const ESCROW = "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A";
+  const OTHER = "CCTVYTWFGOBD23UF7A2AX6CMCKF7ACHENU6YNFJPG6S3O5P3FBKCYLDO";
+  const comercio = (slug: string) => sealComercio({ slug, name: slug, payTo: Keypair.random().publicKey(), signingSecret: Keypair.random().secret(), credentials: { kind: "mock" } }, box, now);
+
+  it("reads slug=contract pairs, and nothing when unset", () => {
+    expect(parseComercioEscrows(` agentcommerce=${ESCROW} , bazar=${OTHER}`)).toEqual(new Map([["agentcommerce", ESCROW], ["bazar", OTHER]]));
+    expect(parseComercioEscrows(undefined).size).toBe(0);
+    expect(parseComercioEscrows(" ").size).toBe(0);
+  });
+
+  it("refuses a malformed pair, a repeated store, and one escrow for two stores (X-11)", async () => {
+    for (const value of [`agentcommerce:${ESCROW}`, `agentcommerce=${MERCHANT_LIKE}`, `Agent Commerce=${ESCROW}`, `a=${ESCROW}=x`, `a=${ESCROW},a=${OTHER}`, `a=${ESCROW},b=${ESCROW}`]) {
+      expect(await code(() => parseComercioEscrows(value)), value).toBe("ConfigError");
+    }
+  });
+
+  it("is checked when the platform starts", async () => {
+    const env = { DATABASE_URL: "postgres://x", MASTER_KEY: generateMasterKey() };
+    expect(loadPlatformSettings({ ...env, COMERCIO_ESCROWS: `agentcommerce=${ESCROW}` })?.escrows.get("agentcommerce")).toBe(ESCROW);
+    expect(await code(() => loadPlatformSettings({ ...env, COMERCIO_ESCROWS: "agentcommerce" }))).toBe("ConfigError");
+  });
+
+  it("reaches the listed store alone, and never through ESCROW_CONTRACT_ID", () => {
+    const env = { RECEIPT_REGISTRY_ID: REGISTRY_ID, COMERCIO_ESCROWS: `agentcommerce=${ESCROW}`, ESCROW_CONTRACT_ID: OTHER };
+    const listed = comercio("agentcommerce");
+    expect(comercioConfig(env, listed, openComercioSecrets(listed, box)).escrowId).toBe(ESCROW);
+    const other = comercio("bazar");
+    expect(comercioConfig(env, other, openComercioSecrets(other, box)).escrowId).toBeUndefined();
   });
 });
 

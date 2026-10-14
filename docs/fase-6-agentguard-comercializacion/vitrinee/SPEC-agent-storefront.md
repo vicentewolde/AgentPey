@@ -90,6 +90,7 @@ usa `did`; un agente que decide si confía en dónde aterriza su dinero mira
 | `assetContract` | `C…` | Contrato SEP-41 del activo. Es lo que el agente verifica, no el código. |
 | `decimals` | `7` | Decimales del activo. |
 | `facilitator` | URL | Facilitator x402 que la tienda usa para verificar y liquidar. |
+| `escrow` | `{ contract: C… }`, opcional | El `purchase-escrow` de la tienda (Fase 9, T160, `X-23`). Si está, el checkout cobra a ese contrato y no a `merchant.stellarAccount`; el contrato libera el pago a esa cuenta cuando la orden se despacha y vence la ventana. Un agente que fija la cuenta de la tienda rechaza el cobro antes de firmar, salvo que compruebe el escrow en la red. |
 
 El agente **no debe** confiar en `asset` como identificador: dos activos
 pueden llamarse "USDC". El identificador es `assetContract`.

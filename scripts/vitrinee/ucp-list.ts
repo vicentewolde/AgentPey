@@ -23,6 +23,8 @@ try {
   out(`✓ every spec and schema URL is on its namespace's domain`);
   out(`✓ REST endpoint ${store.endpoint}`);
   out(`✓ pays with com.agentpey.stellar_x402: ${store.handler.asset.code} on ${store.handler.network}, to ${store.handler.pay_to}`);
+  // A store with an escrow (T160): the payment waits there until the order ships, then goes to the payout account.
+  if ("escrow" in store.handler) out(`✓ held in escrow ${store.handler.escrow.contract}, released to ${store.handler.escrow.payee}`);
   out(`\n${store.products.length} product(s):`);
   for (const product of store.products) {
     const [variant] = product.variants;

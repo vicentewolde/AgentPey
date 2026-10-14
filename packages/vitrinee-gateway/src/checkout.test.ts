@@ -1,5 +1,5 @@
 import { MockStoreAdapter, type StoreAdapter } from "@vitrinee/adapters";
-import { USDC_TESTNET, VitrineeError, checkReceiptSignature, receiptHash } from "@vitrinee/core";
+import { USDC_TESTNET, VitrineeError, checkReceiptSignature, isVitrineeError, receiptHash } from "@vitrinee/core";
 import { decodePaymentRequiredHeader, decodePaymentResponseHeader, encodePaymentSignatureHeader } from "@x402/core/http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -10,7 +10,7 @@ import { OrderStore, type OrderPersistence } from "./orders.js";
 import { Reservations } from "./reservations.js";
 import { SettlementLedger } from "./settlements.js";
 import { FAKE_PAYER, FAKE_TX_HASH, fakeFacilitator } from "./test/fake-facilitator.js";
-import { ESCROW_ID, MERCHANT, REGISTRY_ID, SIGNER, fakeEscrow, fakeHorizon, fakeRegistry, testConfig, fakePlatformProfiles } from "./test/fixtures.js";
+import { ESCROW_ID, MERCHANT, REGISTRY_ID, SIGNER, escrowConfig, fakeEscrow, fakeHorizon, fakeRegistry, testConfig, fakePlatformProfiles } from "./test/fixtures.js";
 import { listen } from "./test/listen.js";
 
 const JSON_HEADERS = { "content-type": "application/json" };
@@ -721,8 +721,7 @@ describe("GET /checkout/:productId — the door x402 clients use (VT-23)", () =>
 describe("a store with an escrow: one payment, one receipt (T159)", () => {
   async function escrowStore(escrow = fakeEscrow()) {
     const horizon = fakeHorizon({ creditContract: ESCROW_ID }) as typeof fetch & { allow(amount: string): void };
-    // Set in code: until T160 the environment variable is refused (the checkout does not pay into the escrow yet).
-    const env = await start({ config: { ...testConfig(), escrowId: ESCROW_ID }, holder: escrow.holder, escrows: escrow.escrows, horizonFetch: horizon });
+    const env = await start({ config: escrowConfig(), holder: escrow.holder, escrows: escrow.escrows, horizonFetch: horizon });
     return { ...env, escrow, horizon };
   }
 
@@ -851,8 +850,11 @@ describe("a store with an escrow: one payment, one receipt (T159)", () => {
     }
   });
 
-  it("refuses ESCROW_CONTRACT_ID in the environment until the checkout pays into the escrow (T160)", () => {
-    expect(() => testConfig({ ESCROW_CONTRACT_ID: ESCROW_ID })).toThrow(expect.objectContaining({ code: "ConfigError" }));
+  it("reads ESCROW_CONTRACT_ID from the environment, and no store opens on it until it is verified (T160)", async () => {
+    const config = testConfig({ ESCROW_CONTRACT_ID: ESCROW_ID });
+    expect(config.escrowId).toBe(ESCROW_ID);
+    expect(config.escrow).toBeUndefined();
+    await expect(start({ config })).rejects.toSatisfy((error: unknown) => isVitrineeError(error) && error.code === "ConfigError");
   });
 
   it("a store without an escrow: no hold, no escrow in the receipt, three checks", async () => {

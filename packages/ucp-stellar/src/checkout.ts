@@ -14,6 +14,10 @@
  * network must be Stellar testnet, and the amount must be within the caller's
  * `maxAmount`. Paying from a `policy_rail`, the network then checks the rail's
  * own limits inside the transfer.
+ *
+ * A store with a `purchase-escrow` (handler version 2026-10-15, T160) is paid
+ * into that contract, and only after the caller's `verifyEscrow` has checked
+ * it on chain: a payment never goes to a contract nobody verified.
  */
 import type { PaymentPayloadResult, PaymentRequired, PaymentRequirements, SchemeNetworkClient } from "@x402/core/types";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
@@ -24,6 +28,7 @@ import { UcpStellarError, isUcpStellarError } from "./errors.js";
 import {
   STELLAR_DECIMALS,
   STELLAR_TESTNET,
+  STELLAR_X402_ESCROW_HANDLER_VERSION,
   STELLAR_X402_HANDLER,
   checkoutHandlerConfigSchema,
   checkoutLinesSchema,
@@ -33,6 +38,7 @@ import {
   quoteInputSchema,
   storeUrlSchema,
   ucpBusinessProfileSchema,
+  type StellarX402Escrow,
   type StellarX402HandlerConfig,
   type UcpBusinessProfile,
   type UcpBuyer,
@@ -95,11 +101,13 @@ export interface UcpStellarQuote {
   readonly checkout: Readonly<Record<string, unknown>>;
   /** The store's profile, as read when quoting. */
   readonly profile: UcpBusinessProfile;
+  /** The store's escrow, as its profile declares it (T160): `requirements.payTo` is its contract. `undefined` for a store paid directly. */
+  readonly escrow: StellarX402Escrow | undefined;
 }
 
 /** What {@link pay} reads of a quote. A quote kept as JSON and read back is checked again here. */
 export type PayableQuote = Pick<UcpStellarQuote, "storeUrl" | "endpoint" | "handlerId" | "checkoutId" | "lines" | "requirements" | "checkout"> &
-  Partial<Pick<UcpStellarQuote, "asset">>;
+  Partial<Pick<UcpStellarQuote, "asset" | "escrow">>;
 
 /** What the `beforeSign` hook sees: what is about to be signed. */
 export interface BeforeSignContext {
@@ -111,6 +119,16 @@ export interface BeforeSignContext {
   readonly lines: readonly Readonly<UcpLine>[];
   /** The store's profile, when `recheck` read it again. */
   readonly profile?: UcpBusinessProfile;
+  /** The escrow the payment goes into, already through `verifyEscrow` (T160); absent for a store paid directly. */
+  readonly escrow?: Readonly<StellarX402Escrow>;
+}
+
+/** What `verifyEscrow` is told about the payment it is asked to let into an escrow. */
+export interface VerifyEscrowContext {
+  /** The store's origin. */
+  readonly storeUrl: string;
+  /** The asset contract being paid: the escrow's token must be it. */
+  readonly asset: string;
 }
 
 export interface BeforeSignResult {
@@ -142,6 +160,13 @@ export interface PayOptions extends UcpClientOptions {
   /** Sent on Complete Checkout, so a retried request cannot pay twice. */
   readonly idempotencyKey?: string;
   /**
+   * Checks a store's escrow before anything is signed (T160): read the contract on chain and throw unless it runs
+   * code you trust and says what the store declares (payee, arbiter, windows, token = `asset`). Called only for a
+   * store that charges into an escrow, and required for one: without it, such a payment is refused with
+   * `EscrowUnverified`. Your error reaches you as you threw it; nothing was sent.
+   */
+  readonly verifyEscrow?: (escrow: Readonly<StellarX402Escrow>, context: VerifyEscrowContext) => Promise<void> | void;
+  /**
    * Your last word before signing: throw to stop the payment (nothing is sent, and your error reaches the caller
    * as you threw it), or return extension members for the Complete Checkout body.
    */
@@ -156,6 +181,8 @@ export interface UcpStellarReceipt {
   readonly total: { readonly amount: number; readonly currency: string };
   /** What was paid: the requirement that was signed. */
   readonly paid: { readonly amount: string; readonly asset: string; readonly payTo: string };
+  /** The escrow the payment went into (T160): `paid.payTo`. `undefined` for a store paid directly. */
+  readonly escrow: StellarX402Escrow | undefined;
   /** The settlement transaction, when the store reports it. */
   readonly transaction: string | undefined;
   /** The store's signed receipt, when it issues one. */
@@ -225,6 +252,12 @@ async function readProfile(call: UcpCall, origin: string): Promise<UcpStoreProfi
   const declared = handlerConfigSchema.safeParse(handler.config);
   if (!declared.success) {
     throw new UcpStellarError("MerchantRejectedRequest", "the store's Stellar x402 handler config is malformed", { details: { storeUrl: origin } });
+  }
+  // The escrow version and the escrow block come together: a store does not charge a contract under 2026-09-30 (T160).
+  if ((declared.data.escrow !== undefined) !== (handler.version === STELLAR_X402_ESCROW_HANDLER_VERSION)) {
+    throw new UcpStellarError("MerchantRejectedRequest", `the store's Stellar x402 handler declares an escrow only in version ${STELLAR_X402_ESCROW_HANDLER_VERSION}`, {
+      details: { storeUrl: origin, version: handler.version, escrow: declared.data.escrow?.contract ?? null },
+    });
   }
   if (declared.data.asset.decimals !== STELLAR_DECIMALS) {
     throw new UcpStellarError("MerchantRejectedRequest", `the store's handler declares an asset with ${declared.data.asset.decimals} decimals; Stellar assets have ${STELLAR_DECIMALS}`, {
@@ -362,6 +395,7 @@ export async function quote(input: QuoteInput, options: UcpClientOptions = {}): 
     total: totalOf(checkout),
     checkout: raw,
     profile: store.profile,
+    escrow: store.handler.escrow,
   };
 }
 
@@ -422,6 +456,7 @@ export async function pay(quoteToPay: PayableQuote, options: PayOptions): Promis
   let latest: Readonly<Record<string, unknown>> = quoteToPay.checkout;
   let lines: readonly UcpLine[] = q.lines;
   let profile: UcpBusinessProfile | undefined;
+  let escrow: StellarX402Escrow | undefined = q.escrow;
   if (options.recheck ?? true) {
     let store: UcpStoreProfile;
     try {
@@ -460,6 +495,7 @@ export async function pay(quoteToPay: PayableQuote, options: PayOptions): Promis
     latest = fresh.raw;
     lines = fresh.lines;
     profile = store.profile;
+    escrow = store.handler.escrow;
   }
   if (BigInt(requirements.amount) > maxAtomic) {
     throw new UcpStellarError("AmountAboveLimit", "the checkout costs more than the maxAmount allowed", { details: { checkoutId: q.checkoutId, amount: requirements.amount, maxAmount: maxAtomic.toString() } });
@@ -468,10 +504,27 @@ export async function pay(quoteToPay: PayableQuote, options: PayOptions): Promis
     throw new UcpStellarError("InvalidProduct", "the checkout is priced in another asset than the one accepted", { details: { checkoutId: q.checkoutId, asset: requirements.asset, accepted: options.asset } });
   }
 
+  // Into a contract only through a declared escrow the caller verified (T160, X-9). An account is paid as before.
+  if (escrow !== undefined || requirements.payTo.startsWith("C")) {
+    if (escrow === undefined || requirements.payTo !== escrow.contract) {
+      throw new UcpStellarError("EscrowUnverified", "the checkout pays a contract the store does not declare as its escrow", {
+        details: { checkoutId: q.checkoutId, payTo: requirements.payTo, escrow: escrow?.contract ?? null },
+      });
+    }
+    if (options.verifyEscrow === undefined) {
+      throw new UcpStellarError("EscrowUnverified", "the store charges into an escrow, and pay() was given no verifyEscrow to check it", {
+        details: { checkoutId: q.checkoutId, escrow: escrow.contract },
+      });
+    }
+    escrow = Object.freeze({ ...escrow });
+    await options.verifyEscrow(escrow, { storeUrl: q.storeUrl, asset: requirements.asset });
+  }
+
   // The hook sees frozen copies: whatever it does, the requirement signed below is the one checked above.
   const seen = Object.freeze({ ...requirements, ...(requirements.extra === undefined ? {} : { extra: Object.freeze({ ...requirements.extra }) }) });
   const seenLines = Object.freeze(lines.map((line) => Object.freeze({ ...line })));
-  const extensions = (await options.beforeSign?.({ requirements: seen, checkout: latest, lines: seenLines, ...(profile === undefined ? {} : { profile }) }))?.completeExtensions ?? {};
+  const extensions =
+    (await options.beforeSign?.({ requirements: seen, checkout: latest, lines: seenLines, ...(profile === undefined ? {} : { profile }), ...(escrow === undefined ? {} : { escrow }) }))?.completeExtensions ?? {};
   if ("payment" in extensions) {
     throw new UcpStellarError("InvalidArguments", "beforeSign may add extensions, not replace the payment", { details: { checkoutId: q.checkoutId } });
   }
@@ -532,6 +585,7 @@ export async function pay(quoteToPay: PayableQuote, options: PayOptions): Promis
       permalinkUrl: done.data.order.permalink_url,
       total: totalOf(done.data),
       paid: { amount: requirements.amount, asset: requirements.asset, payTo: requirements.payTo },
+      escrow,
       transaction: done.data.receipt?.settlement_tx_hash,
       receipt: done.data.receipt,
     };

@@ -45,6 +45,7 @@ import type { PurchaseIntent } from "../intent/intent.js";
 import { fromScaledAmount } from "../scope/amount.js";
 import { policyRailError, type PolicyRail } from "../policy/policy-rail.js";
 import type { PaymentTerms } from "../policy/terms.js";
+import { pinnedAccountOf } from "./escrow.js";
 import { PolicyRailStellarScheme, type PolicyRailPayer } from "./policy-rail-payer.js";
 
 function networkError(message: string, extra?: Record<string, unknown>, cause?: unknown): AgentPassError {
@@ -55,13 +56,19 @@ function networkError(message: string, extra?: Record<string, unknown>, cause?: 
  * Maps a live x402 `PaymentRequirements` to the `PaymentTerms` `authorise()`
  * already understands. Pure — no network, no signing.
  *
+ * `escrow` is a store's `purchase-escrow` the agent has already checked on
+ * chain (`escrowVerifier`, T160, X-9). Only with it may the payee be a
+ * contract: that escrow, releasing to the venue's own account.
+ *
  * @throws AgentPassError `InvalidProduct` for a scheme/network this adapter
- * does not speak, or an asset contract it has no issuer for (`mapAssetContract`).
+ * does not speak, an asset contract it has no issuer for (`mapAssetContract`),
+ * or a payee other than the venue's account or its verified escrow.
  */
 export function toPaymentTerms(
   requirements: PaymentRequirements,
   venueId: VenueId,
   registry: VenueRegistry = DEFAULT_VENUE_REGISTRY,
+  escrow?: { readonly contract: string; readonly payee: string },
 ): PaymentTerms {
   if (requirements.scheme !== "exact") {
     throw new AgentPassError(
@@ -95,7 +102,16 @@ export function toPaymentTerms(
   // (T104, `C-141`). Checked here, before `authorise()` and before anything is
   // signed, so it holds even for a Mandate that names no payee.
   const pinned = registry.venues.get(venueId)?.payTo;
-  if (pinned !== undefined && requirements.payTo !== pinned) {
+  if (escrow !== undefined) {
+    // Into the store's verified escrow (T160): it must release to the account this venue is paid at, exactly
+    // the account a direct payment would have gone to.
+    const owner = pinnedAccountOf(venueId, registry);
+    if (requirements.payTo !== escrow.contract || escrow.payee !== owner) {
+      throw new AgentPassError("InvalidProduct", "the payment challenge names an escrow that does not release to this merchant's own account", {
+        details: { venueId, payTo: requirements.payTo, escrow: escrow.contract, payee: escrow.payee, expected: owner },
+      });
+    }
+  } else if (pinned !== undefined && requirements.payTo !== pinned) {
     throw new AgentPassError("InvalidProduct", "the payment challenge names a payee other than this merchant's own account", {
       details: { venueId, payTo: requirements.payTo, expected: pinned },
     });

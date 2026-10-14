@@ -46,6 +46,8 @@ export function fakeRegistry(options: { failTimes?: number } = {}) {
   return { anchorer, calls, records, registry: { contractId: REGISTRY_ID, get: async (hash: string) => records.get(hash) ?? null } };
 }
 
+/** The arbiter the test store's escrow names. */
+export const ARBITER = "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6";
 /** The test store's escrow (T159). */
 export const ESCROW_ID = "CCTVYTWFGOBD23UF7A2AX6CMCKF7ACHENU6YNFJPG6S3O5P3FBKCYLDO";
 
@@ -89,7 +91,7 @@ export function fakeEscrow(options: { failTimes?: number; config?: Partial<Escro
   const config: EscrowConfig = {
     operator: SIGNER.publicKey(),
     payee: MERCHANT,
-    arbiter: Keypair.random().publicKey(),
+    arbiter: ARBITER,
     token: USDC_TESTNET.contractId,
     releaseWindowSeconds: 600,
     responseWindowSeconds: 900,
@@ -107,7 +109,23 @@ export function fakeEscrow(options: { failTimes?: number; config?: Partial<Escro
     if (contractId !== ESCROW_ID) throw new Error(`no such escrow ${contractId}`);
     return reader;
   };
-  return { holder, calls, purchases, escrows };
+  return { holder, calls, purchases, escrows, reader };
+}
+
+/** A test config whose escrow `verifyStoreEscrow` already read (T160): what `createApp` takes for a store with one. */
+export function escrowConfig(env: Record<string, string> = {}): GatewayConfig {
+  return {
+    ...testConfig(env),
+    escrowId: ESCROW_ID,
+    escrow: {
+      contract: ESCROW_ID,
+      payee: MERCHANT,
+      arbiter: ARBITER,
+      releaseWindowSeconds: 600,
+      responseWindowSeconds: 900,
+      resolveWindowSeconds: 3600,
+    },
+  };
 }
 
 /**

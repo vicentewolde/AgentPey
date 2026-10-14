@@ -335,3 +335,18 @@ export function sameHold(held: EscrowPurchase, input: HoldInput): boolean {
 export function escrowReaders(options: { rpcUrl: string; networkPassphrase: string }): EscrowReaderFactory {
   return (contractId) => new EscrowClient({ contractId, ...options });
 }
+
+/**
+ * What a buyer reads to trust a store's escrow before paying into it (T160, X-9): the on-chain reads, the code it
+ * knows and the arbiters it accepts. Shaped as `@agentpey/agent`'s `EscrowPolicy`, which this package does not import.
+ */
+export function escrowPolicy(readers: EscrowReaderFactory, arbiters: readonly string[]) {
+  return {
+    ledger: {
+      config: (contract: string) => readers(contract).config(),
+      byTx: (contract: string, txHash: string) => readers(contract).byTx(txHash),
+    },
+    wasmHashes: PURCHASE_ESCROW_WASM_HASHES,
+    arbiters,
+  };
+}

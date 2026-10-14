@@ -12,6 +12,8 @@ describe("the UCP documents agentpey.com publishes (Fase 7, E-1)", () => {
   const published = [
     { url: "https://agentpey.com/ucp/handlers/stellar-x402/spec", file: "/ucp/handlers/stellar-x402/spec.md" },
     { url: "https://agentpey.com/ucp/handlers/stellar-x402/schema.json", file: "/ucp/handlers/stellar-x402/schema.json" },
+    { url: "https://agentpey.com/ucp/handlers/stellar-x402/2026-10-15/spec", file: "/ucp/handlers/stellar-x402/2026-10-15/spec.md" },
+    { url: "https://agentpey.com/ucp/handlers/stellar-x402/2026-10-15/schema.json", file: "/ucp/handlers/stellar-x402/2026-10-15/schema.json" },
     { url: "https://agentpey.com/ucp/extensions/receipt/spec", file: "/ucp/extensions/receipt/spec.md" },
     { url: "https://agentpey.com/ucp/extensions/receipt/schema.json", file: "/ucp/extensions/receipt/schema.json" },
     { url: "https://agentpey.com/ucp/platform/agentpey.json", file: "/ucp/platform/agentpey.json" },
@@ -37,6 +39,8 @@ describe("the UCP documents agentpey.com publishes (Fase 7, E-1)", () => {
     expect(ucpPublicPath("/ucp/handlers/other/spec")).toBeUndefined();
     expect(ucpPublicPath("/ucp/handlers/stellar-x402/spec/../../../../.env")).toBeUndefined();
     expect(ucpPublicPath("/ucp/handlers/stellar-x402/")).toBeUndefined();
+    expect(ucpPublicPath("/ucp/handlers/stellar-x402/2026-10-16/spec")).toBeUndefined();
+    expect(ucpPublicPath("/ucp/handlers/stellar-x402/2026-10-15/../../../.env")).toBeUndefined();
     expect(ucpPublicPath("/landing")).toBeUndefined();
   });
 });

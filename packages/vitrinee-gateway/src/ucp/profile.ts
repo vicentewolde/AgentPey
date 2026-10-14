@@ -6,6 +6,9 @@ import {
   RECEIPT_EXTENSION_VERSION,
   STELLAR_X402_HANDLER,
   STELLAR_X402_HANDLER_ID,
+  STELLAR_X402_ESCROW_HANDLER_VERSION,
+  STELLAR_X402_ESCROW_SCHEMA_URL,
+  STELLAR_X402_ESCROW_SPEC_URL,
   STELLAR_X402_HANDLER_VERSION,
   STELLAR_X402_INSTRUMENT_TYPE,
   STELLAR_X402_SCHEMA_URL,
@@ -26,24 +29,49 @@ import {
   ucpSpecUrls,
   stellarDid,
   stellarX402BusinessConfigSchema,
+  stellarX402EscrowBusinessConfigSchema,
   ucpBusinessProfileSchema,
+  type StellarX402AnyBusinessConfig,
   type StellarX402BusinessConfig,
+  type StellarX402EscrowBusinessConfig,
   type UcpBusinessProfile,
   type UcpVersion,
 } from "@vitrinee/core";
 
 import type { GatewayConfig } from "../config.js";
 
-/** Where and in what this storefront settles: the same facts the agent-storefront manifest publishes. */
-export function stellarX402Config(config: GatewayConfig): StellarX402BusinessConfig {
-  return stellarX402BusinessConfigSchema.parse({
+/**
+ * Where and in what this storefront settles: the same facts the agent-storefront manifest publishes. A store with an
+ * escrow (T160, X-13) declares the escrow version: `pay_to` is the contract, and `escrow` says whose it is, as the
+ * contract itself said when the store checked it.
+ */
+export function stellarX402Config(config: GatewayConfig): StellarX402AnyBusinessConfig {
+  const base = {
     x402_version: 2,
     scheme: "exact",
     network: "stellar:testnet",
     asset: { code: USDC_TESTNET.code, contract: USDC_TESTNET.contractId, decimals: USDC_TESTNET.decimals },
-    pay_to: config.merchant.stellarAccount,
     facilitator: config.facilitator.url,
-  } satisfies StellarX402BusinessConfig);
+  } as const;
+  const escrow = config.escrow;
+  if (escrow === undefined) return stellarX402BusinessConfigSchema.parse({ ...base, pay_to: config.merchant.stellarAccount } satisfies StellarX402BusinessConfig);
+  return stellarX402EscrowBusinessConfigSchema.parse({
+    ...base,
+    pay_to: escrow.contract,
+    escrow: {
+      contract: escrow.contract,
+      payee: escrow.payee,
+      arbiter: escrow.arbiter,
+      release_window_seconds: escrow.releaseWindowSeconds,
+      response_window_seconds: escrow.responseWindowSeconds,
+      resolve_window_seconds: escrow.resolveWindowSeconds,
+    },
+  } satisfies StellarX402EscrowBusinessConfig);
+}
+
+/** The handler version this storefront speaks: the escrow one when it has an escrow (T160). */
+export function stellarX402HandlerVersion(config: GatewayConfig): string {
+  return config.escrow === undefined ? STELLAR_X402_HANDLER_VERSION : STELLAR_X402_ESCROW_HANDLER_VERSION;
 }
 
 export interface BuildUcpProfileInput {
@@ -134,9 +162,9 @@ export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Ke
         [STELLAR_X402_HANDLER]: [
           {
             id: STELLAR_X402_HANDLER_ID,
-            version: STELLAR_X402_HANDLER_VERSION,
-            spec: STELLAR_X402_SPEC_URL,
-            schema: STELLAR_X402_SCHEMA_URL,
+            version: stellarX402HandlerVersion(config),
+            spec: config.escrow === undefined ? STELLAR_X402_SPEC_URL : STELLAR_X402_ESCROW_SPEC_URL,
+            schema: config.escrow === undefined ? STELLAR_X402_SCHEMA_URL : STELLAR_X402_ESCROW_SCHEMA_URL,
             available_instruments: [{ type: STELLAR_X402_INSTRUMENT_TYPE }],
             config: stellarX402Config(config),
           },

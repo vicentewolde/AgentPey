@@ -364,3 +364,89 @@ comprobarla, sin cambiar nada para las tiendas que cobran directo.
 
 **Alternativa descartada: un recibo nuevo (`vitrinee-receipt/0.2`) para las compras con escrow.** Obligaba a todos
 los verificadores a conocer dos tipos para agregar un solo campo opcional.
+
+---
+
+### X-23 · La tienda con escrow declara el handler `2026-10-15` y cobra al escrow por las dos puertas · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T160 · Plan aprobado por el usuario
+
+1. **Versión nueva del handler (`X-13`).** `2026-10-15`, publicada en
+   `agentpey.com/ucp/handlers/stellar-x402/2026-10-15/{spec,schema.json}`. `pay_to` es el contrato del escrow y un
+   bloque `escrow` dice de quién es: `contract`, `payee` (la cuenta de cobro), `arbiter` y las tres ventanas, tal como
+   las devuelve el `config()` del contrato. `pay_to` tiene que ser `escrow.contract`; un `C…` sin bloque, o un bloque en
+   `2026-09-30`, se rechaza. La `2026-09-30` queda igual, en su ruta de siempre, para las tiendas que cobran directo.
+2. **Las dos puertas cobran al escrow.** El checkout UCP y el x402 (`/checkout/:productId`) piden `payTo` = escrow. El
+   manifest suma `settlement.escrow`, opcional. Un cliente x402 que fija la cuenta de la tienda rechaza ese cobro antes
+   de firmar, sin perder plata. El agente de AgentPey compra por UCP.
+3. **El recibo no cambia de cobrador.** `merchantAccount` sigue siendo la cuenta de cobro, y el recibo nombra el
+   escrow (`X-22`). Por eso `get_order` y `open_claim` del MCP, que atan el recibo a la tienda por `merchantAccount`,
+   siguen funcionando sin cambios.
+
+**Motivo.** Un solo camino de pago por tienda: todos sus recibos quedan protegidos, y el `hold` de T159 vale para las dos
+puertas.
+
+**Alternativas descartadas.**
+- **Que la puerta x402 siga cobrando directo:** dos clases de recibo en la misma tienda, y una rama por puerta en el
+  recibo y en el `hold`.
+- **Ampliar `2026-09-30` para aceptar `C…`:** cambia en silencio un contrato público (`X-13`).
+
+---
+
+### X-24 · Qué comprueba el agente antes de pagar a un escrow, y qué hace después · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T160 · Precisa `X-9`, plan aprobado por el usuario
+
+Antes de firmar, el agente lee el contrato en la red y paga solo si:
+- corre el wasm de `purchase-escrow` que conoce (`PURCHASE_ESCROW_WASM_HASHES`, `f5c6bbb6…`);
+- su árbitro es uno que acepta: el de AgentResolve (`GAEB2EG3…`, de `deployments/testnet.json`);
+- su `config()` dice lo mismo que la tienda declara (`payee`, árbitro y ventanas) y su token es el activo que se paga;
+- su `payee` es **la misma cuenta que el directorio fija para esa tienda** (`C-141`).
+
+Con eso, `toPaymentTerms` acepta como destinatario ese escrow y nada más. El escrow pasa a ser la cuenta de la tienda
+bajo las reglas del contrato: una liberación le paga a la misma cuenta que antes cobraba directo, y un reembolso
+vuelve al rail. El Mandato del MCP no fija destinatarios (`grant.payTo` vacío), así que no hace falta otro Mandato ni
+tocar `checkMandate`, `scope.limits` ni el `policy_rail`. Un Mandato que sí fije destinatarios (`M-14`) rechazaría el
+escrow al reconciliar, que es lo correcto: el mandante consintió otra cuenta.
+
+`@agentpey/ucp-stellar` pasa a `0.2.0` con la opción `verifyEscrow`. Sin ella, pagarle a una tienda con escrow, o a
+un contrato que la tienda no declara como escrow, se rechaza con `EscrowUnverified`, un código nuevo en los dos
+paquetes. La comprobación en la red queda en quien paga (el agente, el kit, `ucp:buy`), con el lector de
+`@vitrinee/anchor` (`escrowPolicy`): una sola decodificación del contrato. La `0.1.0` publicada lee el perfil nuevo
+como mal formado y no paga. Publicar la `0.2.0` en npm le queda al usuario.
+
+**Después de pagar (`X-20`).** El agente busca la compra con `by_tx` durante 30 s. Si no la encuentra, o la encuentra
+con otra orden, otro monto u otro recibo, la respuesta trae un aviso y no falla: la plata ya salió. `pay` del MCP lo
+devuelve en `escrow.held` y `escrow.warning`, y `quote` muestra la protección (`protection`) para que el chat la
+explique antes de pagar.
+
+**Motivo.** Fijar el `payee` a la cuenta que el directorio ya conocía hace que la única diferencia con hoy sean las
+reglas del contrato. Exigir el árbitro conocido impide un escrow con el código bueno pero con la tienda como árbitro.
+
+**Alternativas descartadas.**
+- **Que `@agentpey/ucp-stellar` lea la red por su cuenta:** duplicaba la decodificación del contrato en un paquete
+  publicado, y aun así no conoce la cuenta que fija el directorio.
+- **Fallar el pago si no aparece el `hold`:** el pago ya salió, así que fallar solo confunde a quien reintenta.
+
+---
+
+### X-25 · El escrow se enciende con una variable de la plataforma, y una tienda con un escrow que no calza no abre · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T160 · Plan aprobado por el usuario (completa el punto 4 de `X-22`)
+
+- **El interruptor es `COMERCIO_ESCROWS`**, con pares `<slug>=<C…>` separados por coma, en el entorno de la
+  plataforma. Le asigna un escrow a esa tienda y a ninguna otra. Se pone y se quita en Render sin deploy, así que el
+  merge de T160 no enciende nada. Un valor mal formado, una tienda repetida o un escrow para dos tiendas (`X-11`)
+  impiden que la plataforma arranque. `ESCROW_CONTRACT_ID` sigue sin heredarse; en el modo de una tienda se usa
+  directo.
+- **La tienda comprueba su escrow al armarse** (`verifyStoreEscrow`): wasm conocido, operador = cuenta de firma,
+  `payee` = cuenta de cobro y token USDC. Si no calza, la tienda no abre y dice por qué; nunca cae en silencio a
+  cobrar directo. Si la RPC de Soroban no responde, el armado falla, no queda guardado y el próximo request lo
+  reintenta. `createApp` rechaza un `ESCROW_CONTRACT_ID` sin esa comprobación.
+
+**Motivo.** Encender el escrow para un comprador real es un cambio visible y reversible por separado del código. Una
+tienda que cobra a un contrato equivocado emitiría recibos que fallan el cuarto chequeo y `hold` sin fondos.
+
+**Alternativas descartadas.**
+- **Una columna en la base de comercios:** pide migrar producción para un solo comercio, y el alta de escrow desde
+  el portal está fuera de alcance.
+- **Leerlo de `deployments/testnet.json`:** se encendería con el merge, sin interruptor.
+- **Volver a cobrar directo si la comprobación falla:** esconde el error y deja a la tienda prometiendo una protección
+  que no da.

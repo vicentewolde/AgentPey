@@ -26,6 +26,7 @@ import { z } from "zod";
 
 import type { AnchorWorker } from "./anchoring.js";
 import type { GatewayConfig } from "./config.js";
+import { payToOf } from "./escrow.js";
 import type { OrderRecord, OrderStore } from "./orders.js";
 import { payerFromTransactionXdr } from "./payer.js";
 import type { Reservations } from "./reservations.js";
@@ -313,7 +314,7 @@ function checkoutRouteConfig(deps: Pick<CheckoutDeps, "config" | "adapter">): Ro
       {
         scheme: "exact",
         network: STELLAR_TESTNET_CAIP2,
-        payTo: config.merchant.stellarAccount,
+        payTo: payToOf(config),
         price: checkoutPrice(deps),
         maxTimeoutSeconds: config.checkout.maxTimeoutSeconds,
         // Settle before the handler runs: the platform order is only ever
@@ -340,7 +341,7 @@ function checkoutRouteConfig(deps: Pick<CheckoutDeps, "config" | "adapter">): Ro
             currency: quote.product.currency,
             amountUSDC: usdcAtomicToDecimal(quote.totalAtomic),
             amountUSDCAtomic: quote.totalAtomic.toString(),
-            payTo: config.merchant.stellarAccount,
+            payTo: payToOf(config),
             network: STELLAR_TESTNET_CAIP2,
           },
         },

@@ -11,8 +11,11 @@ export {
   MAX_UCP_LINES,
   STELLAR_DECIMALS,
   STELLAR_TESTNET,
+  STELLAR_X402_ESCROW_HANDLER_VERSION,
   STELLAR_X402_HANDLER,
+  STELLAR_X402_HANDLER_VERSION,
   USDC_TESTNET,
+  type StellarX402Escrow,
   type StellarX402HandlerConfig,
   type UcpBusinessProfile,
   type UcpBuyer,
@@ -36,6 +39,7 @@ export {
   type UcpStellarQuote,
   type UcpStellarReceipt,
   type UcpStoreProfile,
+  type VerifyEscrowContext,
 } from "./checkout.js";
 export {
   assertSimulationUsable,

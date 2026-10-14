@@ -3,13 +3,19 @@ import { describe, expect, it } from "vitest";
 import { isVitrineeError } from "./errors.js";
 import {
   STELLAR_X402_HANDLER,
+  STELLAR_X402_ESCROW_HANDLER_VERSION,
+  STELLAR_X402_ESCROW_SCHEMA_URL,
+  STELLAR_X402_ESCROW_SPEC_URL,
+  STELLAR_X402_HANDLER_VERSION,
   STELLAR_X402_SCHEMA_URL,
   STELLAR_X402_SPEC_URL,
   UCP_CATALOG_SEARCH,
   UCP_SPEC_URLS,
   namespaceAuthority,
   originMatchesNamespace,
+  stellarX402AnyBusinessConfigSchema,
   stellarX402BusinessConfigSchema,
+  stellarX402EscrowBusinessConfigSchema,
   toMinorUnits,
 } from "./ucp.js";
 
@@ -88,5 +94,47 @@ describe("stellarX402BusinessConfigSchema", () => {
   it("rejects a contract address as pay_to and any unknown field", () => {
     expect(stellarX402BusinessConfigSchema.safeParse({ ...config, pay_to: config.asset.contract }).success).toBe(false);
     expect(stellarX402BusinessConfigSchema.safeParse({ ...config, secret: "S..." }).success).toBe(false);
+  });
+});
+
+describe("stellarX402EscrowBusinessConfigSchema (T160)", () => {
+  const escrow = {
+    contract: "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A",
+    payee: "GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN",
+    arbiter: "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+    release_window_seconds: 600,
+    response_window_seconds: 900,
+    resolve_window_seconds: 3600,
+  };
+  const config = {
+    x402_version: 2,
+    scheme: "exact",
+    network: "stellar:testnet",
+    asset: { code: "USDC", contract: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA", decimals: 7 },
+    pay_to: escrow.contract,
+    facilitator: "https://channels.openzeppelin.com/x402/testnet",
+    escrow,
+  };
+
+  it("accepts a store that pays into its escrow, in both readers", () => {
+    expect(stellarX402EscrowBusinessConfigSchema.parse(config)).toEqual(config);
+    expect(stellarX402AnyBusinessConfigSchema.parse(config)).toEqual(config);
+  });
+
+  it("refuses a pay_to other than the escrow, an account as pay_to, and a contract with no escrow block", () => {
+    expect(stellarX402EscrowBusinessConfigSchema.safeParse({ ...config, pay_to: config.asset.contract }).success).toBe(false);
+    expect(stellarX402EscrowBusinessConfigSchema.safeParse({ ...config, pay_to: escrow.payee }).success).toBe(false);
+    expect(stellarX402AnyBusinessConfigSchema.safeParse({ ...config, escrow: undefined }).success).toBe(false);
+  });
+
+  it("refuses an escrow block in the direct version, and a window of zero", () => {
+    expect(stellarX402BusinessConfigSchema.safeParse({ ...config, pay_to: escrow.payee }).success).toBe(false);
+    expect(stellarX402EscrowBusinessConfigSchema.safeParse({ ...config, escrow: { ...escrow, release_window_seconds: 0 } }).success).toBe(false);
+  });
+
+  it("publishes the escrow version next to the direct one, on agentpey.com", () => {
+    expect(STELLAR_X402_ESCROW_HANDLER_VERSION).not.toBe(STELLAR_X402_HANDLER_VERSION);
+    expect(originMatchesNamespace(STELLAR_X402_HANDLER, STELLAR_X402_ESCROW_SPEC_URL)).toBe(true);
+    expect(originMatchesNamespace(STELLAR_X402_HANDLER, STELLAR_X402_ESCROW_SCHEMA_URL)).toBe(true);
   });
 });

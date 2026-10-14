@@ -69,7 +69,7 @@ export function parseWindows(argv: readonly string[]): EscrowWindows {
 
 const storeProfileSchema = z.object({
   ucp: z.object({
-    payment_handlers: z.record(z.string(), z.array(z.object({ config: z.object({ pay_to: z.string() }).loose() }).loose())),
+    payment_handlers: z.record(z.string(), z.array(z.object({ config: z.object({ pay_to: z.string(), escrow: z.object({ payee: z.string() }).loose().optional() }).loose() }).loose())),
   }).loose(),
   keys: z.array(z.object({ kid: z.string() }).loose()).min(1),
 }).loose();
@@ -77,7 +77,7 @@ const storeProfileSchema = z.object({
 export interface StoreAccounts {
   /** The signing account: the DID behind the profile's keys (`X-4`). */
   readonly operator: string;
-  /** The payout account: the Stellar handler's `pay_to` (`X-4`). */
+  /** The payout account: the Stellar handler's `pay_to`, or its `escrow.payee` once the store pays into an escrow (`X-4`, T160). */
   readonly payee: string;
 }
 
@@ -96,8 +96,10 @@ export function storeAccountsFromProfile(profile: unknown, handlerId = "com.agen
     throw new AgentPassError("ConfigError", "the store's keys do not name exactly one testnet signing account", { details: { kids: parsed.data.keys.map((key) => key.kid) } });
   }
   const operator = stellarAddressSchema.parse([...signers][0]);
-  const payee = stellarAddressSchema.safeParse(handler.config.pay_to);
-  if (!payee.success) throw new AgentPassError("ConfigError", "the store's pay_to is not a Stellar account", { details: { payTo: handler.config.pay_to } });
+  // A store already paying into an escrow (T160) declares the escrow as pay_to, and its payout account as escrow.payee.
+  const declaredPayee = handler.config.escrow?.payee ?? handler.config.pay_to;
+  const payee = stellarAddressSchema.safeParse(declaredPayee);
+  if (!payee.success) throw new AgentPassError("ConfigError", "the store's payout account is not a Stellar account", { details: { payTo: handler.config.pay_to, payee: declaredPayee } });
   if (payee.data === operator) throw new AgentPassError("ConfigError", "the store signs and collects with the same account; X-4 expects two", { details: { operator } });
   return { operator, payee: payee.data };
 }

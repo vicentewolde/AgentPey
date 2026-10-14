@@ -42,8 +42,9 @@ const envSchema = z.object({
   CHECKOUT_MAX_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
   RECEIPT_REGISTRY_ID: stellarContractIdSchema,
   /**
-   * The store's `purchase-escrow` (Fase 9, T159). Set: every receipt names it and every paid purchase is
-   * recorded there with `hold` before its receipt is anchored. Unset (the default): nothing changes.
+   * The store's `purchase-escrow` (Fase 9, T159, T160). Set: both checkouts charge into it, every receipt names it
+   * and every paid purchase is recorded there with `hold` before its receipt is anchored. The store checks it on
+   * chain before opening (`verifyStoreEscrow`). Unset (the default): nothing changes.
    */
   ESCROW_CONTRACT_ID: optionalString.pipe(stellarContractIdSchema.optional()),
   /** AgentPey's AgentResolve contract (T127): the UCP order shows its dispute. Unset: orders say nothing about disputes. */
@@ -71,6 +72,11 @@ export interface GatewayConfig {
   receiptRegistryId: string;
   /** The store's `purchase-escrow`, or `undefined` for a store paid directly (T159). */
   escrowId: string | undefined;
+  /**
+   * That escrow as read on chain by `verifyStoreEscrow` (T160): `createApp` refuses an `escrowId` without it, so no
+   * store charges into a contract nobody checked. `undefined` until verified, and for a store paid directly.
+   */
+  escrow?: StoreEscrow;
   agentResolveId: string | undefined;
   manifestCacheSeconds: number;
   mockOrdersFile: string | undefined;
@@ -80,6 +86,17 @@ export interface GatewayConfig {
   shopify: { shop: string; clientId: string; clientSecret: string } | undefined;
   /** Where the gateway's own order records live. `undefined` keeps them in memory only. */
   ordersFile: string | undefined;
+}
+
+/** The store's escrow as its own contract says it is (T160): published in the profile and the manifest. */
+export interface StoreEscrow {
+  contract: string;
+  /** The payout account: a release pays it. Always `merchant.stellarAccount`. */
+  payee: string;
+  arbiter: string;
+  releaseWindowSeconds: number;
+  responseWindowSeconds: number;
+  resolveWindowSeconds: number;
 }
 
 /**
@@ -110,13 +127,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     signingAccount = Keypair.fromSecret(e.MERCHANT_SIGNING_SECRET).publicKey();
   } catch {
     throw new VitrineeError("ConfigError", "invalid environment: MERCHANT_SIGNING_SECRET: not a Stellar secret seed");
-  }
-  // Until T160 the checkout still pays the store's own account: a store naming an escrow would issue receipts
-  // that fail their escrow checks and holds that fail for want of funds. T160 lifts this with the payTo change.
-  if (e.ESCROW_CONTRACT_ID !== undefined) {
-    throw new VitrineeError("ConfigError", "ESCROW_CONTRACT_ID is not accepted yet: the checkout does not pay into the escrow until T160", {
-      details: { escrow: e.ESCROW_CONTRACT_ID },
-    });
   }
   if (e.ADAPTER === "jumpseller" && (e.JUMPSELLER_LOGIN === undefined || e.JUMPSELLER_AUTHTOKEN === undefined)) {
     throw new VitrineeError(

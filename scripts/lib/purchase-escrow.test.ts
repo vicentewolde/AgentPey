@@ -31,6 +31,10 @@ describe("storeAccountsFromProfile", () => {
     expect(codeOf(() => storeAccountsFromProfile(profile(PAYEE, [`did:stellar:testnet:${OPERATOR}#key-1`, `did:stellar:testnet:${PAYEE}#key-2`])))).toBe("ConfigError");
     expect(codeOf(() => storeAccountsFromProfile(profile(PAYEE, ["did:web:example.com#key-1"])))).toBe("ConfigError");
     expect(codeOf(() => storeAccountsFromProfile(profile("CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA")))).toBe("ConfigError");
+    // A store already paying into its escrow (T160): the payout account is escrow.payee.
+    const withEscrow = profile("CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A") as { ucp: { payment_handlers: Record<string, Array<{ config: Record<string, unknown> }>> } };
+    withEscrow.ucp.payment_handlers["com.agentpey.stellar_x402"]![0]!.config["escrow"] = { payee: PAYEE };
+    expect(storeAccountsFromProfile(withEscrow)).toEqual({ operator: OPERATOR, payee: PAYEE });
     expect(codeOf(() => storeAccountsFromProfile({ ucp: { payment_handlers: {} }, keys: [{ kid: `did:stellar:testnet:${OPERATOR}#key-1` }] }))).toBe("ConfigError");
   });
 

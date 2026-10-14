@@ -144,6 +144,11 @@ export type AgentPassErrorCode =
   | "QuoteExpired"
   /** The store's checkout or profile no longer says what the quote said: recipient, asset, network or amount (T128). */
   | "QuoteChanged"
+  /**
+   * The store charges into an escrow that was not verified, or that is not what it declares: another code, another
+   * payee or arbiter, another token (Fase 9, T160, X-9). Nothing was signed.
+   */
+  | "EscrowUnverified"
   /** A payment was asked without the person's explicit confirmation (T128). */
   | "ConfirmationRequired"
   /** The agent's `policy_rail` does not hold enough USDC to pay for this purchase. */

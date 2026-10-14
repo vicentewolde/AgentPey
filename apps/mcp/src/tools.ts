@@ -45,6 +45,8 @@ export const outputSchemas = {
     items: z.array(z.object({ product_id: z.string(), quantity: z.number().int() })),
     total: z.object({ amount: z.number(), currency: z.string() }),
     pays: z.object({ amount_usdc: z.string(), to: z.string(), network: z.string(), asset: z.string(), from: z.string().nullable() }),
+    /** The store's escrow, when the payment waits there until the order ships (T160); null for a store paid directly. */
+    protection: z.object({ escrow: z.string(), releases_to: z.string(), release_window_minutes: z.number().int(), note: z.string() }).nullable(),
     expires_at: z.string(),
   }),
   pay: z.object({
@@ -56,6 +58,8 @@ export const outputSchemas = {
     paid_to: z.string(),
     transaction: z.string().nullable(),
     explorer_url: z.string().nullable(),
+    /** Paid into the store's escrow (T160): whether the store recorded the purchase there. null for a store paid directly. */
+    escrow: z.object({ contract: z.string(), held: z.boolean(), warning: z.string().nullable() }).nullable(),
     receipt: z.object({ hash: z.string(), verify_url: z.string(), anchor: z.string() }).nullable(),
   }),
   get_order: z.object({
@@ -154,7 +158,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Quote a purchase",
       description:
-        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. Give either one product (product_id, quantity) or several from the same store in one checkout (items, up to 10 lines, each with its own quantity), never both; a cart is paid with one payment. The agent signs a purchase intent for it, but nothing is paid and no money moves. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
+        "Open a checkout at the store and say exactly what paying would cost: the total in the store's currency, the USDC amount on Stellar testnet, who receives it, and until when the quote holds. When the store has an escrow, protection says so: the payment waits in that contract until the order ships and a release window closes, and a claim can be opened until then; tell the person. Give either one product (product_id, quantity) or several from the same store in one checkout (items, up to 10 lines, each with its own quantity), never both; a cart is paid with one payment. The agent signs a purchase intent for it, but nothing is paid and no money moves. Needs the shipping address; ask the person for it. Show the quote to the person before calling pay.",
       inputSchema: quoteInputSchema,
       outputSchema: outputSchemas.quote,
       annotations: { title: "Quote a purchase", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -167,7 +171,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Pay a quote",
       description:
-        "Pay a quote from AgentPey's spending account on Stellar testnet, whose limits the network enforces. Only after the person saw the quote and said yes: pass confirm: true. A quote pays once. Returns the order and its receipt.",
+        "Pay a quote from AgentPey's spending account on Stellar testnet, whose limits the network enforces. Only after the person saw the quote and said yes: pass confirm: true. A quote pays once. Returns the order and its receipt, and for a store with an escrow, whether the purchase is held there; pass on any warning.",
       inputSchema: z.object({
         quote_id: z.string().trim().min(1).max(100),
         // Optional on purpose: a call without it must reach `pay` and be refused with its typed code.

@@ -35,14 +35,46 @@ export const ucpBusinessProfileSchema = z.looseObject({
 });
 export type UcpBusinessProfile = z.infer<typeof ucpBusinessProfileSchema>;
 
-/** The Stellar x402 handler's business config: where the money goes, in what, on which network. */
-export const handlerConfigSchema = z.looseObject({
-  x402_version: z.literal(2),
-  scheme: z.literal("exact"),
-  network: z.string(),
-  asset: z.looseObject({ code: z.string(), contract: z.string().regex(/^C[A-Z2-7]{55}$/), decimals: z.number().int() }),
-  pay_to: z.string().regex(/^G[A-Z2-7]{55}$/),
+/** The handler version a store paid directly declares. */
+export const STELLAR_X402_HANDLER_VERSION = "2026-09-30";
+/** The handler version a store with a `purchase-escrow` declares: `pay_to` is the escrow contract (T160). */
+export const STELLAR_X402_ESCROW_HANDLER_VERSION = "2026-10-15";
+
+const account = z.string().regex(/^G[A-Z2-7]{55}$/);
+const contract = z.string().regex(/^C[A-Z2-7]{55}$/);
+const windowSeconds = z.number().int().positive();
+
+/**
+ * A store's escrow, as it declares it: the contract the payment goes to, the account a release pays, the arbiter of
+ * a dispute and the contract's windows. A declaration, not a proof: `pay` checks it on chain through `verifyEscrow`.
+ */
+export const escrowDeclarationSchema = z.looseObject({
+  contract,
+  payee: account,
+  arbiter: account,
+  release_window_seconds: windowSeconds,
+  response_window_seconds: windowSeconds,
+  resolve_window_seconds: windowSeconds,
 });
+export type StellarX402Escrow = z.infer<typeof escrowDeclarationSchema>;
+
+/**
+ * The Stellar x402 handler's business config: where the money goes, in what, on which network. `pay_to` is an
+ * account, or, with an `escrow` block (version 2026-10-15), exactly that escrow's contract; never a contract alone.
+ */
+export const handlerConfigSchema = z
+  .looseObject({
+    x402_version: z.literal(2),
+    scheme: z.literal("exact"),
+    network: z.string(),
+    asset: z.looseObject({ code: z.string(), contract, decimals: z.number().int() }),
+    pay_to: z.union([account, contract]),
+    escrow: escrowDeclarationSchema.optional(),
+  })
+  .refine((config) => (config.escrow === undefined ? account.safeParse(config.pay_to).success : config.pay_to === config.escrow.contract), {
+    message: "pay_to is an account, or the declared escrow's contract",
+    path: ["pay_to"],
+  });
 export type StellarX402HandlerConfig = z.infer<typeof handlerConfigSchema>;
 
 export const requirementsSchema = z.looseObject({
@@ -134,6 +166,8 @@ export const payableQuoteSchema = z
     requirements: requirementsSchema,
     checkout: z.record(z.string(), z.unknown()),
     asset: z.looseObject({ code: z.string(), contract: z.string(), decimals: z.number().int() }).optional(),
+    /** The store's escrow, as declared when quoting (T160). */
+    escrow: escrowDeclarationSchema.optional(),
   })
   // A kept quote is read back from storage: its signed payment may only go to the store it was quoted at.
   .refine((quote) => URL.canParse(quote.endpoint) && URL.canParse(quote.storeUrl) && new URL(quote.endpoint).origin === new URL(quote.storeUrl).origin, {

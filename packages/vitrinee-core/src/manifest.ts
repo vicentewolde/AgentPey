@@ -70,7 +70,10 @@ export const storefrontManifestSchema = z.strictObject({
     name: z.string().min(1),
     /** The merchant's receipt-signing key (VT-8). Verifies receipts; cannot move funds. */
     did: stellarDidSchema,
-    /** Where payments land (payTo). Vitrinee never holds this account's secret. */
+    /**
+     * The merchant's payout account. Payments land here, or in `settlement.escrow` when the store has one (T160),
+     * whose releases pay this account. Vitrinee never holds this account's secret.
+     */
     stellarAccount: stellarAccountSchema,
     country: countryCodeSchema,
     currency: currencyCodeSchema,
@@ -82,6 +85,11 @@ export const storefrontManifestSchema = z.strictObject({
     assetContract: stellarContractIdSchema,
     decimals: z.literal(7),
     facilitator: z.url(),
+    /**
+     * The store's `purchase-escrow` (Fase 9, T160): the checkout's payTo, holding each payment until it ships and the
+     * release window closes. Absent for a store paid directly.
+     */
+    escrow: z.strictObject({ contract: stellarContractIdSchema }).optional(),
   }),
   fx: z.strictObject({
     base: z.literal("USD"),
