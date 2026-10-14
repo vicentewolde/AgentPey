@@ -57,5 +57,35 @@
     "schemaVersion": 1,
     "deployedAt": "2026-10-01T20:49:17.675Z",
     "protocolVersion": 29
+  },
+  "purchaseEscrows": {
+    "rehearsal": {
+      "contractId": "CBKBYMWKMHHCYO76SHPYZJCJ6RVI4E3WOXOSAPABJNXLJYSUQ3Q2LYA5",
+      "wasmHash": "d0d1d877ac479aa6367833f467e35ff90be581236c4c2b688dd313ca4cf802c4",
+      "operator": "GARBTKFQEX325HDOWL3KQT7PDCENLOYMXF7D6B6SB54LDKCHCRYFUY2K",
+      "payee": "GCTTRJIYYRHAOYTEG2YWKYSBKIQOMX7RX7SAJXQAM3QY2J7J453BOZD6",
+      "arbiter": "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+      "token": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "releaseWindowSeconds": 120,
+      "responseWindowSeconds": 120,
+      "resolveWindowSeconds": 300,
+      "schemaVersion": 1,
+      "deployedAt": "2026-10-14T18:10:52.971Z",
+      "protocolVersion": 29
+    },
+    "agentcommerce": {
+      "contractId": "CDQLUZUR2SQI7J3LRUVLQSPC5B4CADZVY7WQN6Z4UQXYBS76O2EETNJH",
+      "wasmHash": "d0d1d877ac479aa6367833f467e35ff90be581236c4c2b688dd313ca4cf802c4",
+      "operator": "GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ",
+      "payee": "GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN",
+      "arbiter": "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+      "token": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "releaseWindowSeconds": 600,
+      "responseWindowSeconds": 900,
+      "resolveWindowSeconds": 3600,
+      "schemaVersion": 1,
+      "deployedAt": "2026-10-14T18:11:07.715Z",
+      "protocolVersion": 29
+    }
   }
 }

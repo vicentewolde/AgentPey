@@ -60,6 +60,32 @@ export const agentResolveDeploymentSchema = z.strictObject({
   protocolVersion: z.number().int().positive(),
 });
 
+/**
+ * A `purchase-escrow` (T157, `X-1` to `X-16`): one per store (`X-11`), so the
+ * record is keyed by the store's slug. `rehearsal` is the instance whose keys
+ * live in `.env.local`, used to prove the contract on testnet without the
+ * store's own signing key.
+ */
+export const purchaseEscrowDeploymentSchema = z.strictObject({
+  contractId: stellarContractIdSchema,
+  wasmHash: z.string().regex(/^[0-9a-f]{64}$/),
+  /** The store's signing account: `hold` and `mark_shipped` (`X-4`). */
+  operator: stellarAddressSchema,
+  /** The store's payout account: `respond`, and where releases go (`X-4`). */
+  payee: stellarAddressSchema,
+  /** The same arbiter as AgentResolve (`E-16`). */
+  arbiter: stellarAddressSchema,
+  token: stellarContractIdSchema,
+  releaseWindowSeconds: z.number().int().positive(),
+  responseWindowSeconds: z.number().int().positive(),
+  resolveWindowSeconds: z.number().int().positive(),
+  schemaVersion: z.number().int().nonnegative(),
+  deployedAt: z.iso.datetime(),
+  protocolVersion: z.number().int().positive(),
+});
+
+export const escrowSlugSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
+
 export const deploymentSchema = z.strictObject({
   network: z.literal("testnet"),
   networkPassphrase: z.string().min(1),
@@ -72,12 +98,15 @@ export const deploymentSchema = z.strictObject({
   /** T128 (R-9): the MCP server's own rail, owned by its agent key. */
   policyRailMcp: policyRailDeploymentSchema.nullable().default(null),
   agentResolve: agentResolveDeploymentSchema.nullable().default(null),
+  /** T157: one escrow per store slug (`X-11`). */
+  purchaseEscrows: z.record(escrowSlugSchema, purchaseEscrowDeploymentSchema).default({}),
 });
 
 export type Deployment = z.infer<typeof deploymentSchema>;
 export type AgentRegistryDeployment = z.infer<typeof agentRegistryDeploymentSchema>;
 export type PolicyRailDeployment = z.infer<typeof policyRailDeploymentSchema>;
 export type AgentResolveDeployment = z.infer<typeof agentResolveDeploymentSchema>;
+export type PurchaseEscrowDeployment = z.infer<typeof purchaseEscrowDeploymentSchema>;
 
 export const EMPTY_DEPLOYMENT: Deployment = {
   network: "testnet",
@@ -89,6 +118,7 @@ export const EMPTY_DEPLOYMENT: Deployment = {
   policyRailUcp: null,
   policyRailMcp: null,
   agentResolve: null,
+  purchaseEscrows: {},
 };
 
 export async function readDeployment(path: string): Promise<Deployment> {

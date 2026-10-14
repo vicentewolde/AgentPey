@@ -172,9 +172,9 @@ explícito del usuario.
 - **Archivos principales:** `contracts/purchase-escrow/`, `contracts/Cargo.toml`, `deployments/testnet.json`, un script de despliegue
 - **Descripción:** el contrato de 4.2 y el mensaje de 4.3.
 - **Hecho cuando:**
-  - [ ] hay tests de liberación al vencer, reembolso total y parcial, respuesta tardía rechazada, `release` antes de tiempo rechazado, `open` con firma inválida o de otra llave rechazado, `hold` duplicado (mismo `tx_hash` o mismo `order_ref`) rechazado, `hold` sin saldo rechazado, `resolve` antes de tiempo rechazado, `expire` y llamadas sin autorización rechazadas
-  - [ ] el contrato está desplegado en testnet para `agentcommerce` con el OK del usuario y registrado en `deployments/testnet.json`
-  - [ ] hay hashes de **un pago liberado y uno reembolsado** (todavía con un `hold` manual)
+  - [x] hay tests de liberación al vencer, reembolso total y parcial, respuesta tardía rechazada, `release` antes de tiempo rechazado, `open` con firma inválida o de otra llave rechazado, `hold` duplicado (mismo `tx_hash` o mismo `order_ref`) rechazado, `hold` sin saldo rechazado, `resolve` antes de tiempo rechazado, `expire` y llamadas sin autorización rechazadas
+  - [x] el contrato está desplegado en testnet para `agentcommerce` con el OK del usuario y registrado en `deployments/testnet.json` (`CDQLUZUR…TNJH`, más un escrow de ensayo del mismo wasm, `X-17`)
+  - [x] hay hashes de **un pago liberado y uno reembolsado** (todavía con un `hold` manual), en el escrow de ensayo (`X-17`, [evidencia](evidencia/T157.md))
 
 #### T158 · El veredicto actúa sobre el pago retenido
 - **Estimación:** 8 h · **Delegable a Codex:** no · **Depende de:** T157
@@ -333,6 +333,7 @@ push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por
 | 2026-10-14 | Borrador a partir del plan del 7-oct (tareas renumeradas a T157–T167), verificado contra el código: dos cuentas de comercio, `pay_to` solo `G…` hoy, un escrow por tienda, mensaje corto para `open`, comprobación del wasm del escrow. Decisiones `X-1` a `X-13` respondidas por el usuario |
 | 2026-10-14 | **Aprobado** por el usuario, sin cambios en las tareas. Tickets T157 a T167 en Exponential |
 | 2026-10-14 | Chequeo del día 1 con OK del usuario: el facilitator liquida hacia un contrato (`X-14`) |
+| 2026-10-14 | T157 en revisión: contrato `purchase-escrow` con 28 tests, desplegado para `agentcommerce` y como ensayo; un pago liberado y uno reembolsado en testnet. Precisiones aprobadas por el usuario: `X-15` a `X-18` |
 
 ---
 

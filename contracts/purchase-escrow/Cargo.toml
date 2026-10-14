@@ -1,0 +1,22 @@
+[package]
+name = "purchase-escrow"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["lib", "cdylib"]
+doctest = false
+
+[dependencies]
+# `hazmat-address` gives `Address::to_payload`: used only to tell a rail (C…) from a
+# classic account (G…), and for this contract's own id in the `open` message. An
+# account is never authenticated from its payload here: it signs with `require_auth`.
+soroban-sdk = { workspace = true, features = ["hazmat-address"] }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+# Signs the `open` message the way the rail's owner does off chain (same versions as policy-rail's tests).
+ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
+rand = "0.8.5"

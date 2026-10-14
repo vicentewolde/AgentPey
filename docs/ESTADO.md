@@ -11,7 +11,7 @@
 - **Fase 8 (cierre)** · Agentes reales comprando en Stellar ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`), en el worktree `~/dev/AgentPay-fase8`. La Fase 7 se cerró el 2026-10-03 (`E-25`)
 
 **Última tarea terminada:** Fase 9: chequeo del día 1, el facilitator x402 liquida hacia un contrato (`X-14`). Fase 8: T156, el chat de Grok inicia sesión en el MCP (`R-37`)
-**Siguiente paso:** Fase 9: `/tarea T157`, el contrato de escrow. Fase 8: T138 y T139 como documentos (evaluaciones para después de la Fase 9, sin cambiar el árbitro, `E-18` ni el diseño del escrow); después la tarea de `R-33` en el spec, respetando la interfaz del escrow (spec de la Fase 9, §4.6). **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** Fase 9: `/revisar` de T157; después `/tarea T158`. Fase 8: T138 y T139 como documentos (evaluaciones para después de la Fase 9, sin cambiar el árbitro, `E-18` ni el diseño del escrow); después la tarea de `R-33` en el spec, respetando la interfaz del escrow (spec de la Fase 9, §4.6). **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 **Convivencia (`P-19`).** La Fase 9 es dueña de `contracts/*` y `deployments/*.json`, de `open_claim` en el MCP, de `packages/resolve/`, `scripts/resolve*` y `apps/web/public/resolve/`, y del `payTo`, `hold`, webhooks y despacho de Vitrinee. La Fase 8, de `docs/fase-8-agentes-reales/*` y del borrador del SEP. Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
 
@@ -20,7 +20,7 @@
 | Tarea | Estado | Rama / PR |
 |---|---|---|
 | Chequeo del día 1 | ✅ hecho: 0,01 USDC liquidados hacia un contrato por el facilitator ([evidencia](fase-9-compra-protegida/evidencia/chequeo-dia-1.md), `X-14`) | `cc/fase-9-plan` |
-| T157 Contrato de escrow | ⏳ pendiente | |
+| T157 Contrato de escrow | 👀 en revisión: contrato con 28 tests; escrow de `agentcommerce` `CDQLUZUR…TNJH` (10/15/60 min) y de ensayo `CBKBYMWK…LYA5`; un pago liberado y uno reembolsado en testnet ([evidencia](fase-9-compra-protegida/evidencia/T157.md), `X-15` a `X-18`) | `cc/t157-escrow-contrato` |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente | |
 | T159 Un pago, un recibo, en la red | ⏳ pendiente | |
 | T160 El checkout paga al escrow | ⏳ pendiente | |

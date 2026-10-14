@@ -15,14 +15,14 @@
 **Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow.
+contrato de escrow, **en revisión**: el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. Siguiente: `/revisar` de T157.
 
 ## Progreso
 
 | Tarea | Estado |
 |---|---|
 | Chequeo del día 1 | ✅ hecho (`X-14`) |
-| T157 Contrato de escrow | ⏳ pendiente |
+| T157 Contrato de escrow | 👀 en revisión |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente |
 | T159 Un pago, un recibo, en la red | ⏳ pendiente |
 | T160 El checkout paga al escrow | ⏳ pendiente |
@@ -52,3 +52,22 @@ además del destino, que el contrato sea el escrow conocido y no una imitación 
 **Evidencia.** [`evidencia/chequeo-dia-1.md`](evidencia/chequeo-dia-1.md): transacción
 `84611558ffea12348a87aa23f9428749efcbba74e30f0d3bae04d61841cb077f`, efecto `contract_credited` sobre
 `CBDRI5B7…D3YA`.
+
+---
+
+## 2026-10-14 · T157 · El contrato de escrow
+
+**Qué quedó funcionando, en llano.** Existe en la red el contrato que guarda la plata de una compra hasta que la tienda
+despacha. Si nadie reclama, la plata pasa sola a la tienda cuando vence el plazo. Si el comprador reclama, la plata
+queda congelada hasta que el árbitro decide, y si el árbitro no decide a tiempo, vuelve completa al comprador. Para
+reclamar no hace falta pedirle nada al árbitro: basta la firma de quien pagó. Se probó con dos compras de 0,05 USDC
+de testnet: una terminó en la tienda y la otra volvió al rail que la pagó.
+
+**Lo que hay que saber.** Hay dos contratos con el mismo código: el de `agentcommerce`, que usará la tienda desde T160,
+y uno de ensayo con llaves del repo, porque la llave que firma por `agentcommerce` está solo en producción (`X-17`).
+En el camino se precisaron cuatro cosas, todas aprobadas por el usuario: hasta cuándo se puede reclamar (`X-15`), que
+un comprador con cuenta clásica también pueda reclamar (`X-16`), el ensayo (`X-17`) y el mensaje exacto que firma el
+dueño del rail (`X-18`), que Rust y TypeScript comparten con un vector de prueba.
+
+**Evidencia.** [`evidencia/T157.md`](evidencia/T157.md): 28 tests del contrato, los dos despliegues, y los hashes del
+pago liberado (`9a8a5bb6…` → `8d84f1f0…`) y del reembolsado (`ff2761da…` → `a952a0f1…`).

@@ -184,3 +184,75 @@ que liquidar sola.
 
 **Alternativa descartada: plan B, que la tienda liquide directo.** Ya no hace falta, y habría sumado una forma de
 liquidar que hoy no existe.
+
+---
+
+### X-15 · Se puede reclamar hasta que cierra la ventana de liberación; pasado el plazo del árbitro, solo vale `expire` · `Vigente` — precisa `X-12`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+`X-12` decía "mientras el pago no se haya liberado". En el contrato, `open` vale mientras la compra no esté despachada
+o, si lo está, hasta un segundo antes de que cierre la ventana de liberación. Pasado ese momento solo vale `release`.
+Del mismo modo, `resolve` se rechaza después de `response_window + resolve_window` desde la apertura, y entonces solo
+vale `expire` (`X-7`).
+
+**Motivo.** El resultado no depende de quién llama primero: con "hasta que alguien llame `release`", un comprador
+podría abrir una disputa días después de que venció la ventana solo porque nadie había liberado todavía.
+
+**Alternativa descartada: lo que decía `X-12` al pie de la letra.** Deja el plazo real en manos de quien llama.
+
+---
+
+### X-16 · Un pagador con cuenta clásica (`G…`) abre la disputa con su propia firma de Stellar · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+Si el pagador registrado en `hold` es un contrato (un `policy_rail`), `open` exige la firma Ed25519 de su `owner()`
+sobre el mensaje de `X-18`. Si es una cuenta clásica, `open` pide `payer.require_auth()` y no lleva firma aparte. El
+contrato distingue los dos casos con `Address::to_payload`, que en soroban-sdk 27 está detrás de la feature
+`hazmat-address`. Se usa solo para saber el tipo de dirección y para leer el id del propio contrato: una cuenta nunca
+se autentica por su payload.
+
+**Motivo.** `ucp-stellar` también paga desde cuentas clásicas (`classicPayer`), y esos compradores merecen la misma
+protección.
+
+**Alternativa descartada: solo pagadores que son rails, como decía el spec.** Deja sin reclamo a cualquier compra
+pagada desde una cuenta clásica.
+
+---
+
+### X-17 · La evidencia de T157 sale de un escrow de ensayo; el de `agentcommerce` queda desplegado con ventanas de 10, 15 y 60 minutos · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Decidido por el usuario
+
+`hold` lo firma la cuenta de firma de la tienda (`X-4`). La de `agentcommerce` (`GAPCCUMM…5YVZ`) vive cifrada en la
+base de producción y no en local, así que no se puede hacer a mano un `hold` en su escrow. Se despliegan dos
+instancias del mismo wasm (`d0d1d877…`):
+
+- **`agentcommerce`** (`CDQLUZUR…TNJH`): operador y cuenta de cobro leídos del perfil UCP en vivo, árbitro de
+  AgentResolve, ventanas de 600, 900 y 3600 segundos para la corrida grabada (`X-6`). Su primer `hold` real llega
+  con T160, desde la tienda.
+- **`rehearsal`** (`CBKBYMWK…LYA5`): operador `ADMIN` y cuenta de cobro `ISSUER`, llaves de `.env.local`, con
+  ventanas de 120, 120 y 300 segundos. El despliegue le abrió a `ISSUER` la trustline de USDC para poder recibir
+  una liberación. De aquí salen el pago liberado y el reembolsado.
+
+El mismo hash de wasm prueba que el ensayo corre el mismo código que el escrow de la tienda.
+
+**Motivo.** Saca la evidencia sin mover la llave de firma de una tienda en producción.
+
+**Alternativas descartadas.** Descifrar en local la llave de `agentcommerce` con la `MASTER_KEY` de Render: saca una
+llave de producción de su lugar. Desplegar solo el ensayo y dejar `agentcommerce` para T160: cambiaba el criterio de
+T157 sin necesidad.
+
+---
+
+### X-18 · El mensaje que firma el dueño del rail para `open` tiene un dominio fijo, el id del contrato, el `claim_hash` y la orden · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T157 · Precisa el §4.3 del spec
+
+Son 32 bytes con el texto `agentpey/purchase-escrow/open/v1`, los 32 bytes del id del contrato, los 32 del
+`claim_hash` y, al final, el `order_ref` en UTF-8 (de 1 a 64 bytes). Solo la última parte tiene largo variable, así
+que no hace falta prefijo de largo. El contrato lo expone como `open_message`, y `@agentpey/resolve` lo arma con
+`escrowOpenMessage`. Un vector común en los tests de Rust y de TypeScript impide que se separen.
+
+**Motivo.** El contrato no puede leer el JSON del JWS del reclamo. Un mensaje corto y fijo que nombra el contrato y
+la orden impide usar una firma en otro escrow o para otra orden.
+
+**Alternativa descartada: el XDR de una tupla.** Es más difícil de reproducir exacto fuera de la red, y el formato
+dependería de cómo cada SDK codifica los tipos.

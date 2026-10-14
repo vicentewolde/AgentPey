@@ -45,6 +45,8 @@ export {
 
 export { decideDispute, type DecideDisputeInput, type DecidedDispute } from "./decide.js";
 
+export { ESCROW_MAX_ORDER_REF_BYTES, ESCROW_OPEN_DOMAIN, escrowOpenMessage, signEscrowOpen } from "./escrow-open.js";
+
 export {
   AGENTRESOLVE_RESPONSE_TYPE,
   RESPONSE_POSITIONS,

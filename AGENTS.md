@@ -111,7 +111,7 @@ MCP, a las disputas y al despacho: contrato, fondos, firma y autorización.
 **Ninguna tarea es delegable.** No toques `contracts/*` (incluido
 `contracts/purchase-escrow/`), `deployments/*.json`, `apps/mcp/src/shopper.ts`
 ni `tools.ts`, `packages/resolve/`, `scripts/resolve*`,
-`apps/web/public/resolve/`, ni el `payTo`, el `hold`, los webhooks o el despacho
+`apps/web/public/resolve/`, `scripts/*escrow*`, `packages/resolve/src/escrow-open.ts`, ni el `payTo`, el `hold`, los webhooks o el despacho
 de `packages/vitrinee-*`, aunque el cambio parezca mecánico.
 
 **Vitrinee, desde 2026-09-23 (T98):** Vitrinee se fusionó en este repo

@@ -150,6 +150,41 @@ describe("readDeployment", () => {
   });
 });
 
+describe("purchaseEscrows (T157)", () => {
+  const escrow = {
+    contractId: "CCYMGX56FJ65EVXUY2M4BTVBCCOBXBTAMGSCWN5X4TQLQTCCEAHDCD3F",
+    wasmHash: "fbefa298e9f5554cc2cf8930c938680d493324a6cb5bd552340597626ca210b9",
+    operator: "GAPCCUMMA4VY55DUH5KBQUQDBWVD52YEJ72XKDECTVYD7B4GKSZ25YVZ",
+    payee: "GD2MCESI2DMMOU4F2SI6ZHDZDDCN5LA7PMKUVZSKTKVGU5RLTCNIK5GN",
+    arbiter: "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+    token: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+    releaseWindowSeconds: 600,
+    responseWindowSeconds: 900,
+    resolveWindowSeconds: 3600,
+    schemaVersion: 1,
+    deployedAt: "2026-10-14T18:00:00.000Z",
+    protocolVersion: 29,
+  };
+
+  it("round-trips one escrow per store slug", async () => {
+    const path = await tempFile();
+    const withEscrows: Deployment = { ...VALID, purchaseEscrows: { agentcommerce: escrow, rehearsal: { ...escrow, payee: escrow.operator } } };
+    await writeDeployment(path, withEscrows);
+    await expect(readDeployment(path)).resolves.toEqual(withEscrows);
+  });
+
+  it("reads a record written before T157 as having no escrows", async () => {
+    const { purchaseEscrows: _omitted, ...before } = VALID;
+    await expect(readDeployment(await tempFile(JSON.stringify(before)))).resolves.toMatchObject({ purchaseEscrows: {} });
+  });
+
+  it("rejects a slug that is not a store slug, and a window of zero", async () => {
+    for (const purchaseEscrows of [{ "Agent Commerce": escrow }, { agentcommerce: { ...escrow, releaseWindowSeconds: 0 } }, { agentcommerce: { ...escrow, payee: escrow.token } }]) {
+      await expect(readDeployment(await tempFile(JSON.stringify({ ...VALID, purchaseEscrows })))).rejects.toSatisfy((error: unknown) => hasErrorCode(error, "ConfigError"));
+    }
+  });
+});
+
 describe("writeDeployment", () => {
   it("refuses to write a malformed record rather than corrupting the shared artefact", async () => {
     const path = await tempFile();

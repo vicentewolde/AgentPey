@@ -8889,3 +8889,20 @@ Fase 9 es dueña de `contracts/*`, `deployments/*.json`, `open_claim` (`apps/mcp
 `packages/resolve/`, `scripts/resolve*`, `apps/web/public/resolve/` y del `payTo`, `hold`, webhooks y despacho de
 `packages/vitrinee-*`; la Fase 8 no los toca. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin
 preguntar al usuario. `AGENTS.md`: párrafo nuevo de la Fase 9 (nada delegable).
+
+## 2026-10-14 (9) — cc/t157-escrow-contrato
+
+Agente: Claude Code.
+
+Qué: **T157 en revisión.** Contrato `contracts/purchase-escrow` (28 tests): retiene el pago de una compra y lo libera
+o reembolsa con plazos aplicados por la red. Desplegado en testnet con OK del usuario: el de `agentcommerce`
+(`CDQLUZUR…TNJH`, ventanas de 10, 15 y 60 min) y uno de ensayo (`CBKBYMWK…LYA5`), del mismo wasm. En el ensayo, un
+pago de 0,05 USDC liberado y otro reembolsado al rail UCP. Nuevos: `deploy:purchase-escrow`, `escrow:rehearsal`,
+`escrowOpenMessage` en `@agentpey/resolve`, `purchaseEscrows` en `deployments/testnet.json`, `@x402/core` 2.26.0 como
+devDependency de la raíz. Decisiones `X-15` a `X-18`. `pnpm check` y `cargo test` en verde.
+
+Por qué: primera tarea de la Fase 9 (`P-19`).
+
+Pendiente: `/revisar`; merge con OK del usuario; después `/tarea T158`. La llave de firma de `agentcommerce` vive
+solo en producción, así que su primer `hold` llega en T160 (`X-17`). Exponential: ticket T157 en `IN_PROGRESS`.
+`AGENTS.md`: la lista de lo que Codex no toca suma `scripts/*escrow*` y `escrow-open.ts`.
