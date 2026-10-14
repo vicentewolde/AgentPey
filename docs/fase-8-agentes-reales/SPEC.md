@@ -341,10 +341,10 @@ más rápido que lo estimado.
 - **Descripción:** agregar a la lista de direcciones de vuelta del inicio de sesión del MCP (`DEFAULT_REDIRECT_URIS` en `apps/mcp/src/oauth/server.ts`) la de Grok, exacta: `https://grok.com/connectors-oauth-exchange-code/`. Sin comodines ni variable de entorno. Un registro rechazado deja en el log qué direcciones rechazó, recortadas, y el mensaje de rechazo nombra a Grok. Desplegar `mcp.agentpey.com` (push a `main`) solo con OK del usuario. No cambian la wallet que entra (`R-33`), las herramientas, el rail ni sus topes.
 - **Perímetro:** cambia quién puede recibir un código de autorización (extiende `R-7`); `/revisar` lo mira línea por línea.
 - **Hecho cuando:**
-  - [ ] el registro y `/authorize` aceptan exactamente esa dirección y siguen rechazando las parecidas (sin barra final, `www.grok.com`, `http://`, otro camino, otro puerto, con query o fragmento, un host parecido), con tests; Claude, ChatGPT y las locales siguen igual
-  - [ ] un registro rechazado escribe en el log qué direcciones rechazó, recortadas y sin nada secreto
-  - [ ] desplegado con OK del usuario, el usuario conecta Grok en `grok.com/connectors`: inicia sesión con su wallet, Grok descubre las herramientas y cotiza (capturas en la evidencia). Si Grok envía otra dirección, se para y se muestra
-  - [ ] con OK del usuario, una compra real desde el chat de Grok con recibo con los tres checks en verde, anotando quién apretó `pay` (`R-11`)
+  - [x] el registro y `/authorize` aceptan exactamente esa dirección y siguen rechazando las parecidas (sin barra final, `www.grok.com`, `http://`, otro camino, otro puerto, con query o fragmento, un host parecido), con tests; Claude, ChatGPT y las locales siguen igual ([evidencia](evidencia/T156.md) §2)
+  - [x] un registro rechazado escribe en el log qué direcciones rechazó, recortadas y sin nada secreto ([evidencia](evidencia/T156.md) §1)
+  - [x] desplegado con OK del usuario, el usuario conecta Grok en `grok.com/connectors`: inicia sesión con su wallet, Grok descubre las herramientas y cotiza (capturas en la evidencia). Si Grok envía otra dirección, se para y se muestra (**ajustado por el usuario el 14-oct**: el conector quedó instalado y el usuario inició sesión firmando con Freighter, con la dirección de Grok tal como se agregó; la cotización no se pudo pedir porque Grok respondió "High Demand" a todo mensaje, un límite de capacidad de su plan, ajeno a AgentPey; sin capturas, confirmado por el usuario; [evidencia](evidencia/T156.md) §3)
+  - [ ] ~~con OK del usuario, una compra real desde el chat de Grok~~: no se hizo, por el mismo límite de Grok; el usuario cerró la tarea sin ella (14-oct)
 
 #### T145 · Equipos SCF pagando IA y servicios con Stellar · prueba técnica, parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 5 h · **Delegable a Codex:** no (regulación, `P-10`)
@@ -534,6 +534,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | T144: a pedido del usuario, un criterio más: probar el chat de Grok contra `mcp.agentpey.com`; la compra real, solo con su OK |
 | 2026-10-14 | `/revisar` de T144: el inicio de sesión del MCP rechaza a Grok. El usuario eligió abrirle la puerta: la prueba sale de T144 a una tarea nueva, **T156** (`R-37`), y `R-29` queda precisada sobre dots |
 | 2026-10-14 | T156 aprobada por el usuario; T144 cerrada |
+| 2026-10-14 | T156 cerrada por el usuario: desplegada, Grok conectado e inicio de sesión firmado con Freighter; la cotización y la compra no se pudieron hacer por el límite "High Demand" de Grok |
 
 ## 11. Fuentes externas
 

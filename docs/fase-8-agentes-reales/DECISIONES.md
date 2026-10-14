@@ -1170,3 +1170,9 @@ estático para Grok: según el mismo reporte, su formulario solo admite registro
 
 Evidencia: [`evidencia/T144-agentes.md`](evidencia/T144-agentes.md) §2 y §4.
 
+**Precisado el 14-oct, al cerrar T156 (decidido por el usuario).** El punto 4 no se cumplió: con el servidor ya
+desplegado, el usuario instaló el conector e inició sesión firmando con Freighter, pero Grok respondió "High Demand"
+a cada mensaje (un límite de capacidad de su plan, que pide esperar o pagar uno con prioridad), así que no hubo
+cotización ni compra. El usuario cerró T156 con la conexión probada y sin pagar un plan de Grok para esto. La
+dirección de vuelta de terceros resultó ser la que Grok envía. Evidencia: [`evidencia/T156.md`](evidencia/T156.md) §3.
+

@@ -8857,3 +8857,17 @@ aviso contra suplantación, en la página y en el mensaje firmado, nombra a Grok
 Pendiente: merge y despliegue de `mcp.agentpey.com` solo con OK del usuario; la conexión desde grok.com y, con OK, la
 compra. `AGENTS.md`: sin cambios.
 
+## 2026-10-14 (7) — cc/t156-cierre
+
+Agente: Claude Code.
+
+Qué: **T156 cerrada** por el usuario. Desplegada (PR #85, Render en ~165 s): producción acepta el registro con la
+dirección de Grok y rechaza `www.grok.com`; Claude sigue igual. El usuario instaló el conector en grok.com e inició
+sesión firmando con Freighter. Grok respondió "High Demand" a cada mensaje (límite de su plan), así que no hubo
+cotización ni compra; criterio 3 ajustado y criterio 4 tachado por el usuario, `R-37` precisada. README de `apps/mcp`
+al día. Solo documentos.
+
+Pendiente: T138 y T139 como documentos, y la tarea de `R-33`. No tocar `contracts/*`, AgentResolve, `open_claim` ni el
+`payTo` de Vitrinee hasta nuevo aviso del usuario. Exponential: sin cambios (T156 sin ticket propio). `AGENTS.md`: sin
+cambios.
+

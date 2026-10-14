@@ -42,7 +42,7 @@ un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
-muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 cerrada** (14-oct): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`).
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 y T156 cerradas** (14-oct; el chat de Grok ya inicia sesión en el MCP, sin compra por un límite de Grok): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`).
 
 | Tarea | Estado |
 |---|---|
@@ -74,7 +74,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T153 Página del presupuesto de equipo | cerrada |
 | T154 Página del recibo con el diseño del sitio | cerrada |
 | T155 Pantalla local del árbitro | cerrada |
-| T156 El chat de Grok compra por el MCP | en curso (`R-37`) |
+| T156 El chat de Grok compra por el MCP | cerrada (conexión e inicio de sesión; sin compra por el límite de Grok) |
 
 Heredado de la Fase 7 (`E-25`), con fecha: el reembolso real de T124 y ver
 `ord_muq1gqhycf4961492c` con su disputa, el 8 o 9 de octubre.
@@ -848,7 +848,7 @@ Evidencia: [`evidencia/T144-agentes.md`](evidencia/T144-agentes.md).
 
 ---
 
-## T156 · El chat de Grok compra por el MCP — en curso
+## T156 · El chat de Grok compra por el MCP — 2026-10-14, cerrada
 
 **Qué hay hasta ahora (14-oct).** El inicio de sesión del servidor MCP acepta una cuarta forma de volver: además de
 Claude, ChatGPT y una dirección local, la del chat de Grok, escrita completa y comparada letra por letra. Once
@@ -856,8 +856,11 @@ direcciones parecidas (otro subdominio, sin la barra final, otro puerto, un host
 tests. Si un cliente pide volver a una dirección que no está en la lista, el servidor lo anota en su log, para que la
 dirección real de Grok aparezca si no es la que creemos.
 
-**Falta.** La revisión, el despliegue (con OK del usuario) y la prueba de verdad: el usuario conecta Grok, inicia
-sesión con su wallet, cotiza y, con su OK, compra.
+**Cómo terminó.** `/revisar` no encontró bloqueantes; se corrigieron sus siete hallazgos (más tests, el aviso que
+firma la wallet ahora nombra a Grok, y el log guarda solo sitio y camino). Desplegado el 14-oct. El usuario instaló el
+conector en grok.com e inició sesión firmando con Freighter: **el chat de Grok es el tercer cliente que entra al MCP**.
+No pudo pedir una cotización: Grok contestó "High Demand" a cada mensaje, un límite de capacidad de su plan. El usuario
+cerró la tarea así, sin compra.
 
 Evidencia: [`evidencia/T156.md`](evidencia/T156.md).
 

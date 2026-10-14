@@ -7,8 +7,8 @@
 
 **Actualizado:** 2026-10-14
 **Fase actual:** Fase 8 · Agentes reales comprando en Stellar, y el estándar completo ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`). La Fase 7 se cerró el 2026-10-03 (`E-25`)
-**Última tarea terminada:** T144 · la tabla de dots, Grok Bot y Muse, sin compra (`R-29`, `R-37`)
-**Siguiente paso:** `/tarea T156` (el chat de Grok compra por el MCP); después T138 y T139 como documentos. **T130 queda en pausa** hasta que pase el periodo de la hackatón (`R-36`): la tienda real ya existe ([casastock.cl](https://casastock.cl/)), pero el rail del MCP tiene topes fijos de 3 y 5 USDC y los productos reales cuestan más. `R-33` (el MCP con más wallets) pide escribir y aprobar su tarea en el spec antes de construir. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** T156 · el chat de Grok inicia sesión en el MCP (`R-37`); sin compra por un límite de Grok
+**Siguiente paso:** T138 y T139 como documentos; después la tarea de `R-33` en el spec. **T130 queda en pausa** hasta que pase el periodo de la hackatón (`R-36`): la tienda real ya existe ([casastock.cl](https://casastock.cl/)), pero el rail del MCP tiene topes fijos de 3 y 5 USDC y los productos reales cuestan más. `R-33` (el MCP con más wallets) pide escribir y aprobar su tarea en el spec antes de construir. Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 ## Progreso de la fase
 
@@ -42,7 +42,7 @@
 | T153 Página del presupuesto de equipo (`R-29`) | para el video | ✅ terminada: `pnpm run team:summary -- --html` genera y abre la página local con gasto por día, pagos (solo los anclados cuentan como pagados en Stellar), rechazos y topes del rail | [PR #73](https://github.com/vicentewolde/AgentPey/pull/73) |
 | T154 La página del recibo con el diseño del sitio (`R-34`) | para el video | ✅ terminada, en producción desde el 9-oct: misma cabecera, fuentes y colores que `agentpey.com`, e idioma por la cookie del sitio | [PR #81](https://github.com/vicentewolde/AgentPey/pull/81) |
 | T155 Pantalla local del árbitro (`R-34`) | para el video | ✅ terminada: `pnpm run arbiter:console`, los pasos del árbitro en una página en `localhost`; corrida real el 9-oct (`ord_mv1hp08c432548f9ed`, reembolso de 0,5157895 USDC), usada en la demo del Demo Day; mergeada el 10-oct | `cc/t155-consola-arbitro` |
-| T156 El chat de Grok compra por el MCP (`R-37`) | a pedido del usuario | 🔨 en curso: código y tests listos (la dirección exacta de Grok y el log de registros rechazados); faltan `/revisar`, el despliegue y la prueba con Grok ([evidencia](fase-8-agentes-reales/evidencia/T156.md)) | `cc/t156-mcp-grok` |
+| T156 El chat de Grok compra por el MCP (`R-37`) | a pedido del usuario | ✅ terminada: el inicio de sesión del MCP acepta la dirección exacta de Grok (desplegado el 14-oct); el usuario instaló el conector e inició sesión con Freighter; sin cotización ni compra porque Grok respondió "High Demand" (límite de su plan), cerrada así por el usuario ([evidencia](fase-8-agentes-reales/evidencia/T156.md)) | [PR #85](https://github.com/vicentewolde/AgentPey/pull/85) |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 
@@ -89,6 +89,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Notas de la última sesión
 
+- 2026-10-14: T156 desplegada y cerrada por el usuario: Grok conectado e inicio de sesión firmado con Freighter; la cotización no se pudo pedir ("High Demand" de Grok). Si se reintenta con capacidad, una cotización y una compra con OK quedarían como evidencia extra, sin código.
 - 2026-10-14: T144 escrita (tabla sin compra) y revisada. Hallazgo: el chat de Grok acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza (solo vuelve a Claude, ChatGPT o una dirección local). El usuario eligió abrirle la puerta: T156 y `R-37`; `R-29` precisada sobre dots.
 - 2026-10-14: T142 mergeada a `main` con OK del usuario; casillas de T142 y criterio 5 de la fase marcados en el spec; ticket T142 en `DONE`; T154 y T155 con fila en `SYNC.md`. Orden aprobado por el usuario para lo que queda: T144, T138, T139 (solo documentos; T139 evalúa Trustless Work como opción externa), la tarea de `R-33` en el spec, y después el borrador del SEP y los mensajes.
 - 2026-10-09: `R-33` (el usuario decide abrir el MCP a más wallets con un `policy_rail` por persona y llave de agente derivada por persona; se construye después del 12-oct, con tarea nueva en el spec antes). Hoy sigue abierto solo a la wallet dueña del rail.

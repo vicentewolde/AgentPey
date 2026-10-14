@@ -1,7 +1,7 @@
 # @agentpey/mcp
 
-AgentPey's MCP server (T128): Claude and ChatGPT connect to it (the Grok chat
-should too, see below) to search Vitrinee stores, quote, pay on Stellar testnet
+AgentPey's MCP server (T128): Claude, ChatGPT and the Grok chat connect to it
+(for Grok, sign-in only so far, see below) to search Vitrinee stores, quote, pay on Stellar testnet
 from the MCP's own `policy_rail`, read the order with its verified receipt, and
 sign a refund claim. OAuth 2.1 in front of `/mcp`; the only person who can sign in is the
 wallet that owns the rail, by signing a message with a Stellar wallet.
@@ -65,8 +65,10 @@ show their arguments for approval first.
 
 ## Connect Grok
 
-The Grok chat (not Grok Bot) takes a custom MCP server (T156, `R-37`). Not
-tested end to end yet: this section is updated after the first real sign-in.
+The Grok chat (not Grok Bot) takes a custom MCP server (T156, `R-37`). Sign-in
+was tested on 2026-10-14 (connector installed, signed in with Freighter); a
+quote was not, because Grok answered "High Demand" to every message on the
+plan used.
 
 1. Go to [grok.com/connectors](https://grok.com/connectors), click **New
    Connector**, then **Custom**. Name: `AgentPey`. URL:
