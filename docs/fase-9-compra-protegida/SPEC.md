@@ -214,7 +214,7 @@ explícito del usuario.
   - después de pagar, el agente avisa si `by_tx` no encuentra la compra de su pago (`X-20`).
   Sin cambios en `policy_rail`, `checkMandate` ni los topes.
 - **Hecho cuando:**
-  - [ ] **una compra real en testnet queda retenida** en el escrow (hash del pago y del `hold`)
+  - [x] **una compra real en testnet queda retenida** en el escrow: pago [`ed11e866…`](https://stellar.expert/explorer/testnet/tx/ed11e866b57004827165f3d7b8fd204f8f9df0cb12314c2894bd8ba970a0b754), `hold` [`6ae292d4…`](https://stellar.expert/explorer/testnet/tx/6ae292d4870d869446cb0bc9e88321e326662037043d0dd7362998222e1ef09f) ([evidencia](evidencia/T160.md))
   - [x] una tienda que declara escrow pero cobra a otra cuenta, o declara un contrato con otro wasm, es rechazada por el agente antes de firmar ([evidencia](evidencia/T160.md), `X-24`)
   - [x] las tiendas sin escrow compran igual que hoy, y la suite UCP sigue igual o mejor (49/8/20, [evidencia](evidencia/T160.md))
 
@@ -346,6 +346,7 @@ push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por
 | 2026-10-14 | Reorden aprobado por el usuario: T159 → T160 → T158, porque el veredicto necesita una compra real retenida con su recibo (`X-21`) |
 | 2026-10-14 | T159 en revisión: recibo con `escrow`, cuarto chequeo «retenido», `hold` antes del anclaje; recibo duplicado rechazado por la red (`X-22`) |
 | 2026-10-14 | T160 en revisión: handler `2026-10-15` con `pay_to` = escrow, las dos puertas cobran al escrow, el agente comprueba el escrow en la red antes de firmar y avisa si no hay `hold`, interruptor `COMERCIO_ESCROWS` (`X-23` a `X-25`). Criterios 2 y 3 demostrados; el 1 (compra real) después del merge |
+| 2026-10-15 | T160 cerrada: mergeada ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)), escrow encendido en `agentcommerce` con `VITRINEE_COMERCIO_ESCROWS` y una compra real retenida en el escrow |
 
 ---
 

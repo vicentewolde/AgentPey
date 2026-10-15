@@ -9000,3 +9000,19 @@ rechazada contra contratos reales de testnet, solo lectura.
 
 Pendiente: `/revisar`; merge con OK del usuario cuando Render esté normal; `VITRINEE_COMERCIO_ESCROWS` en Render; compra real
 (criterio 1). Exponential: T160 en `IN_PROGRESS`. `AGENTS.md`: sin cambios (Codex no toca la Fase 9).
+
+## 2026-10-15 (16) — cc/t160-cierre
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T160, sin bloqueantes; los 13 hallazgos corregidos a pedido del usuario (pagador del `hold`,
+operador del escrow, `VerifiedEscrow`, árbitro al arrancar, `hold` solo en el escrow pagado, P8 del kit,
+`vitrinee:buy`, textos, `render.yaml`, `VT-48`). Antes, el alias `VITRINEE_COMERCIO_ESCROWS` en
+`apps/gateway/src/hosts.ts` (sin él la variable no llegaba a Vitrinee). Con OK del usuario, **T160 mergeada a `main`**
+([PR #90](https://github.com/vicentewolde/AgentPey/pull/90), CI 4/4, fast-forward), en vivo a las 16:13 UTC, smoke
+28/28. El usuario puso `VITRINEE_COMERCIO_ESCROWS` en Render; compra real retenida en el escrow
+(`ord_mv9qzvka21f025d46d`, pago `ed11e866…`, `hold` `6ae292d4…`, anclaje `3c6b77c6…`). Solo documentos en esta rama.
+
+Pendiente: `/tarea T158`. Del usuario: publicar `@agentpey/ucp-stellar` 0.2.0. Exponential: T160 en `DONE`.
+`AGENTS.md`: sin cambios.
+

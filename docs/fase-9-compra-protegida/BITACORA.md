@@ -15,9 +15,8 @@
 **Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 en revisión**: el código está listo y
-probado sin red; falta `/revisar`, el merge con OK del usuario y, ya en producción, encender el escrow de
-`agentcommerce` y hacer la compra real.
+contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 cerrada** ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)): desde el 15-oct
+`agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. Siguiente: T158.
 
 ## Progreso
 
@@ -27,7 +26,7 @@ probado sin red; falta `/revisar`, el merge con OK del usuario y, ya en producci
 | T157 Contrato de escrow | ✅ terminada |
 | T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente, después de T160 (`X-21`) |
 | T159 Un pago, un recibo, en la red | ✅ terminada |
-| T160 El checkout paga al escrow | 👀 en revisión; falta la compra real después del merge |
+| T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ⏳ pendiente |
 | T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente |
 | T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente |
@@ -103,7 +102,7 @@ tienda todavía no cobra al escrow; eso se enciende en T160.
 (`87a80cc1…`, error `PaymentAlreadyHeld`), el chequeo "retenido" contra el escrow real y nueve recibos anteriores
 válidos con el código nuevo.
 
-## 2026-10-14 · T160 · El checkout paga al escrow (en revisión)
+## 2026-10-14 y 15 · T160 · El checkout paga al escrow
 
 **Qué quedó funcionando, en llano.** Una tienda ya puede cobrar a su escrow en vez de a su cuenta. Lo anuncia en su
 perfil con una versión nueva del medio de pago, que dice qué contrato guarda la plata, a qué cuenta la entrega y
@@ -125,7 +124,19 @@ cambian. No se toca el Mandato, los topes ni el `policy_rail`.
 variable `VITRINEE_COMERCIO_ESCROWS` en Render (`X-25`); se pone y se quita sin deploy. Decisiones: `X-23` (la versión nueva y
 las dos puertas), `X-24` (qué comprueba el agente) y `X-25` (el interruptor y la comprobación al arrancar).
 
-**Lo que falta para cerrar.** `/revisar`, el merge, el interruptor y una compra real retenida, con el hash del pago y
-del `hold`. `@agentpey/ucp-stellar` queda en `0.2.0` en el repo; publicarla en npm es del usuario.
+**Lo que corrigió la revisión.** Sin bloqueantes; trece hallazgos corregidos a pedido del usuario. El más importante:
+la tienda escribe quién pagó cuando registra la compra, y el contrato no lo revisa, así que el agente ahora comprueba
+que la compra quedó a nombre de quien pagó. Además, el escrow tiene que estar operado por la llave de recibos de la
+tienda, la tienda solo abre con el árbitro de AgentResolve, y apagar o cambiar el interruptor nunca mueve una compra
+pendiente a otro contrato. Antes del merge apareció otro problema: el gateway no le pasaba la variable a la tienda.
+Por eso en Render se llama `VITRINEE_COMERCIO_ESCROWS`.
+
+**Cómo se cerró.** Mergeada el 15-oct y en vivo a las 16:13 UTC, sin que nada cambiara para los compradores. El usuario
+puso la variable en Render, y a las 16:22 `agentcommerce` ya declaraba su escrow. Un imán de 490 CLP (0,52 USDC de
+testnet desde el rail UCP) quedó retenido en el escrow. El pago y el `hold` están en la red, y el recibo da sus cuatro
+chequeos en verde. Así quedó probado también que el servicio que liquida los pagos acepta que el rail le pague a un
+contrato. La plata sigue en el escrow: la liberan el despacho y la ventana (T164), o la reembolsa un veredicto (T158).
+
+`@agentpey/ucp-stellar` queda en `0.2.0` en el repo; publicarla en npm es del usuario.
 
 **Evidencia.** [`evidencia/T160.md`](evidencia/T160.md).
