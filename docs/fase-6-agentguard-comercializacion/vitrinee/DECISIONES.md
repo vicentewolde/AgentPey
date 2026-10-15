@@ -1423,3 +1423,21 @@ consentimiento). Anunciar también en las sesiones abiertas antes del deploy
 (se perdía sin aviso, y no cumple el "no completar" de UCP). Mandar el
 consentimiento a Shopify con `customer.toUpsert` (no tiene esos campos y
 pediría `write_customers`).
+
+---
+
+### VT-48 · El escrow de una tienda, por dentro de Vitrinee · `Vigente` — referencia a `X-23` a `X-25` de la Fase 9
+**Fecha:** 2026-10-14 · **Tarea:** T160 · Decidido por el usuario (plan de T160)
+
+Las decisiones viven en la Fase 9; aquí queda lo que cambia dentro de Vitrinee:
+- `ESCROW_CONTRACT_ID` (una tienda) o `COMERCIO_ESCROWS` (plataforma; en Render, `VITRINEE_COMERCIO_ESCROWS`) le dan
+  un escrow a una tienda. Antes de abrir, `verifyStoreEscrow` lo lee en la red: código conocido, operador = cuenta de
+  firma, `payee` = cuenta de cobro, token USDC y árbitro de AgentResolve. Si no calza, la tienda no abre.
+- Con escrow, el perfil declara el handler `2026-10-15` y las dos puertas cobran al escrow; el manifest suma
+  `settlement.escrow`; el recibo sigue nombrando la cuenta de cobro (`merchantAccount`).
+- Una orden se registra (`hold`) solo en el escrow al que se pagó: si el interruptor se apaga o cambia, sus `hold`
+  pendientes fallan con el motivo y no van a otro contrato.
+- `vitrinee:buy` paga solo a la cuenta del manifest o al escrow que nombra, comprobado en la red.
+
+Ver [`../../fase-9-compra-protegida/DECISIONES.md`](../../fase-9-compra-protegida/DECISIONES.md), `X-23` a `X-25`.
+

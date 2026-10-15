@@ -398,10 +398,12 @@ puertas.
 Antes de firmar, el agente lee el contrato en la red y paga solo si:
 - corre el wasm de `purchase-escrow` que conoce (`PURCHASE_ESCROW_WASM_HASHES`, `f5c6bbb6…`);
 - su árbitro es uno que acepta: el de AgentResolve (`GAEB2EG3…`, de `deployments/testnet.json`);
+- su operador es la llave con que la tienda firma sus recibos (el `did:stellar` de las `keys` de su perfil);
 - su `config()` dice lo mismo que la tienda declara (`payee`, árbitro y ventanas) y su token es el activo que se paga;
 - su `payee` es **la misma cuenta que el directorio fija para esa tienda** (`C-141`).
 
-Con eso, `toPaymentTerms` acepta como destinatario ese escrow y nada más. El escrow pasa a ser la cuenta de la tienda
+Con eso, `toPaymentTerms` acepta como destinatario ese escrow y nada más. Lo recibe como `VerifiedEscrow`, un tipo que
+solo arma la verificación, para que ningún llamador futuro pueda saltársela (la lección de `B-25`). El escrow pasa a ser la cuenta de la tienda
 bajo las reglas del contrato: una liberación le paga a la misma cuenta que antes cobraba directo, y un reembolso
 vuelve al rail. El Mandato del MCP no fija destinatarios (`grant.payTo` vacío), así que no hace falta otro Mandato ni
 tocar `checkMandate`, `scope.limits` ni el `policy_rail`. Un Mandato que sí fije destinatarios (`M-14`) rechazaría el
@@ -413,8 +415,10 @@ paquetes. La comprobación en la red queda en quien paga (el agente, el kit, `uc
 `@vitrinee/anchor` (`escrowPolicy`): una sola decodificación del contrato. La `0.1.0` publicada lee el perfil nuevo
 como mal formado y no paga. Publicar la `0.2.0` en npm le queda al usuario.
 
-**Después de pagar (`X-20`).** El agente busca la compra con `by_tx` durante 30 s. Si no la encuentra, o la encuentra
-con otra orden, otro monto u otro recibo, la respuesta trae un aviso y no falla: la plata ya salió. `pay` del MCP lo
+**Después de pagar (`X-20`).** El agente busca la compra con `by_tx` (30 s; 15 en el MCP, para que el chat no corte
+antes). Si no la encuentra, o la encuentra con otra orden, otro monto, otro recibo **u otro pagador**, la respuesta trae
+un aviso y no falla: la plata ya salió. El pagador importa porque `hold` lo escribe la tienda y el contrato no lo
+comprueba: registrado a otra cuenta, un reclamo o un reembolso no le llegarían a quien pagó (`/revisar`). `pay` del MCP lo
 devuelve en `escrow.held` y `escrow.warning`, y `quote` muestra la protección (`protection`) para que el chat la
 explique antes de pagar.
 
@@ -439,9 +443,13 @@ reglas del contrato. Exigir el árbitro conocido impide un escrow con el código
   gateway solo le pasa a Vitrinee sus variables con prefijo, y se la entrega como `COMERCIO_ESCROWS`
   (`apps/gateway/src/hosts.ts`).
 - **La tienda comprueba su escrow al armarse** (`verifyStoreEscrow`): wasm conocido, operador = cuenta de firma,
-  `payee` = cuenta de cobro y token USDC. Si no calza, la tienda no abre y dice por qué; nunca cae en silencio a
+  `payee` = cuenta de cobro, token USDC y árbitro de AgentResolve (con otro, todo comprador lo rechazaría). Si no calza, la tienda no abre y dice por qué; nunca cae en silencio a
   cobrar directo. Si la RPC de Soroban no responde, el armado falla, no queda guardado y el próximo request lo
   reintenta. `createApp` rechaza un `ESCROW_CONTRACT_ID` sin esa comprobación.
+- **Una orden se registra solo en el escrow al que se pagó.** Si el interruptor se apaga o apunta a otro contrato,
+  los `hold` pendientes fallan con el motivo, en vez de ir al contrato nuevo, donde podrían tomar saldo de otras
+  compras. El pago queda sin asignar en el escrow viejo (`X-20`): antes de apagar o cambiar el interruptor, conviene
+  que no queden `hold` pendientes.
 
 **Motivo.** Encender el escrow para un comprador real es un cambio visible y reversible por separado del código. Una
 tienda que cobra a un contrato equivocado emitiría recibos que fallan el cuarto chequeo y `hold` sin fondos.

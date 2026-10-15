@@ -19,6 +19,7 @@ import {
 } from "@vitrinee/core";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { createApp, type VitrineeApp } from "./app.js";
 import { payToOf, verifyStoreEscrow } from "./escrow.js";
@@ -32,7 +33,22 @@ const ESCROW_HANDLER_SCHEMA = JSON.parse(
 ) as { $id: string };
 addSchema(ESCROW_HANDLER_SCHEMA);
 
-const onChain = (overrides: Partial<EscrowConfig> = {}) => fakeEscrow({ config: overrides }).reader;
+/** The check a store runs, against its escrow as the chain would answer with `overrides`. */
+/** What the UCP test reads of a checkout reply. */
+const checkoutReply = z.looseObject({
+  id: z.string(),
+  status: z.string(),
+  ucp: z.looseObject({
+    payment_handlers: z.record(
+      z.string(),
+      z.array(z.looseObject({ version: z.string(), config: z.looseObject({ pay_to: z.string(), payment_requirements: z.looseObject({ payTo: z.string() }).optional() }) })),
+    ),
+  }),
+  order: z.looseObject({ id: z.string() }).optional(),
+  receipt: z.looseObject({ jws: z.string(), hash: z.string() }).optional(),
+});
+
+const onChain = (overrides: Partial<EscrowConfig> = {}) => ({ arbiters: [ARBITER], reader: fakeEscrow({ config: overrides }).reader });
 const configErrorWith = (text: string) => (error: unknown) => isVitrineeError(error) && error.code === "ConfigError" && error.message.includes(text);
 
 describe("verifyStoreEscrow (T160): no store charges into a contract that is not its own escrow", () => {
@@ -54,7 +70,7 @@ describe("verifyStoreEscrow (T160): no store charges into a contract that is not
   it("leaves a store paid directly untouched, without reading anything", async () => {
     const plain = testConfig();
     const reader = { config: async (): Promise<EscrowConfig> => { throw new Error("must not be read"); } };
-    await expect(verifyStoreEscrow(plain, reader)).resolves.toBe(plain);
+    await expect(verifyStoreEscrow(plain, { arbiters: [], reader })).resolves.toBe(plain);
     expect(payToOf(plain)).toBe(MERCHANT);
   });
 
@@ -69,9 +85,14 @@ describe("verifyStoreEscrow (T160): no store charges into a contract that is not
     await expect(verifyStoreEscrow(configured, onChain({ token: ESCROW_ID }))).rejects.toSatisfy(configErrorWith("token"));
   });
 
+  it("refuses an escrow whose arbiter buyers would not accept, and any escrow when no arbiter is known", async () => {
+    await expect(verifyStoreEscrow(configured, onChain({ arbiter: MERCHANT }))).rejects.toSatisfy(configErrorWith("arbiter"));
+    await expect(verifyStoreEscrow(configured, { ...onChain(), arbiters: [] })).rejects.toSatisfy(configErrorWith("arbiter"));
+  });
+
   it("lets an unreachable Soroban RPC fail as it failed, so the platform tries again on the next request", async () => {
     const down = { config: async (): Promise<EscrowConfig> => { throw new Error("rpc: 503"); } };
-    await expect(verifyStoreEscrow(configured, down)).rejects.toThrow("rpc: 503");
+    await expect(verifyStoreEscrow(configured, { arbiters: [ARBITER], reader: down })).rejects.toThrow("rpc: 503");
   });
 
   it("is what createApp needs: an escrow id without it opens no store", () => {
@@ -148,20 +169,20 @@ describe("a store with an escrow charges into it, at both doors (T160)", () => {
         headers: { "content-type": "application/json", "UCP-Agent": 'profile="https://agentpey.com/ucp/platform/agentpey.json"' },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
-      return (await res.json()) as Record<string, any>;
+      return checkoutReply.parse(await res.json());
     };
     const opened = await call("POST", "/checkout-sessions", {
       line_items: [{ item: { id: "gorro-andes" }, quantity: 1 }],
       fulfillment: { methods: [{ type: "shipping", destinations: [{ street_address: "Av. Providencia 1234", address_locality: "Santiago", address_country: "CL" }] }] },
     });
-    const handler = opened["ucp"]["payment_handlers"][STELLAR_X402_HANDLER][0];
-    expect(handler.version).toBe(STELLAR_X402_ESCROW_HANDLER_VERSION);
-    expect(handler.config.pay_to).toBe(ESCROW_ID);
-    const requirements = handler.config.payment_requirements;
-    expect(requirements.payTo).toBe(ESCROW_ID);
+    const handler = opened.ucp.payment_handlers[STELLAR_X402_HANDLER]?.[0];
+    expect(handler?.version).toBe(STELLAR_X402_ESCROW_HANDLER_VERSION);
+    expect(handler?.config.pay_to).toBe(ESCROW_ID);
+    const requirements = handler?.config.payment_requirements;
+    expect(requirements?.payTo).toBe(ESCROW_ID);
     expect(ucpErrors(`${ESCROW_HANDLER_SCHEMA.$id}#/$defs/payment_requirements`, requirements)).toEqual([]);
 
-    const done = await call("POST", `/checkout-sessions/${opened["id"]}/complete`, {
+    const done = await call("POST", `/checkout-sessions/${opened.id}/complete`, {
       payment: {
         instruments: [
           {
@@ -174,13 +195,13 @@ describe("a store with an escrow charges into it, at both doors (T160)", () => {
         ],
       },
     });
-    expect(done["status"]).toBe("completed");
+    expect(done.status).toBe("completed");
     await app.anchors.idle();
-    const claims = checkReceiptSignature(done["receipt"]["jws"]).claims;
+    const claims = checkReceiptSignature(done.receipt?.jws ?? "").claims;
     // The receipt still names the payout account: get_order's binding and the dispute's merchant do not move (T160).
     expect(claims).toMatchObject({ merchantAccount: MERCHANT, escrow: { contract: ESCROW_ID }, merchantDid: `did:stellar:testnet:${SIGNER.publicKey()}` });
     expect(escrow.calls).toHaveLength(1);
-    expect(escrow.calls[0]).toMatchObject({ orderRef: done["order"]["id"], payer: FAKE_PAYER, receiptHash: done["receipt"]["hash"] });
+    expect(escrow.calls[0]).toMatchObject({ orderRef: done.order?.id, payer: FAKE_PAYER, receiptHash: done.receipt?.hash });
   });
 });
 

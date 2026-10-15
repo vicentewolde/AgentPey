@@ -25,6 +25,12 @@ export interface AnchorWorkerOptions {
   anchorer: Anchorer;
   /** Required for orders that carry a `hold`; without it they stay `pending` and say why. */
   holder?: Holder;
+  /**
+   * The escrow `holder` writes to (T160). An order is held only in the escrow it was paid into: after the store's
+   * escrow is switched off or replaced, its pending holds fail with a reason instead of landing in another contract,
+   * where they could take funds that belong to other purchases.
+   */
+  escrow?: string;
   orders: OrderStore;
   retryDelaysMs?: readonly number[];
   now?: () => Date;
@@ -117,6 +123,11 @@ export class AnchorWorker {
     const attempt = hold.attempts + 1;
     try {
       if (this.options.holder === undefined) throw new VitrineeError("EscrowError", "this store has no escrow holder configured");
+      if (this.options.escrow !== hold.escrow) {
+        throw new VitrineeError("EscrowError", `this order was paid into escrow ${hold.escrow}; the store now holds into ${this.options.escrow ?? "no escrow"}`, {
+          details: { orderId, paidInto: hold.escrow, current: this.options.escrow ?? null },
+        });
+      }
       const result = await this.options.holder.hold({
         orderRef: orderId,
         payer: order.settlement.payer,

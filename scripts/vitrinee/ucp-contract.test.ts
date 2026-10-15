@@ -682,7 +682,8 @@ describe("AgentPey pays a Vitrinee store into its escrow (T160, X-9)", () => {
   const buyHat = (deps: Partial<ExecuteUcpPaymentDeps>, scheme: SchemeNetworkClient, pinned?: string) => {
     const grant = scope();
     return executeUcpPayment(
-      { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), schemeForTests: scheme, ...deps },
+      // The rail pays (the fake facilitator settles as RAIL): it is the payer the escrow must record.
+      { policyRail: createLocalPolicyRail({ ledger: createInMemorySpendLedger() }), signerSecret: agent.secret(), payer: { contractId: RAIL, ownerSecret: agent.secret() }, schemeForTests: scheme, ...deps },
       { storeUrl: escrowServer.url, productId: "gorro-andes", quantity: 1, destination: DESTINATION, intent: intent("gorro-andes", 1, HAT, HAT), scope: grant, mandate: mandate(grant), ...escrowVenue(pinned) },
     );
   };
@@ -711,6 +712,7 @@ describe("AgentPey pays a Vitrinee store into its escrow (T160, X-9)", () => {
       ["not a wasm contract", { escrow: policy({ wasmHash: null }) }, undefined],
       ["an arbiter the agent does not accept", { escrow: policy({}, { arbiters: [Keypair.random().publicKey()] }) }, undefined],
       ["on chain, another payee than declared", { escrow: policy({ payee: Keypair.random().publicKey() }) }, undefined],
+      ["an operator that is not the store's receipt key", { escrow: policy({ operator: Keypair.random().publicKey() }) }, undefined],
       ["a store paid at another account", { escrow: policy() }, Keypair.random().publicKey()],
     ] as const) {
       const scheme = fakeScheme();
@@ -733,6 +735,19 @@ describe("AgentPey pays a Vitrinee store into its escrow (T160, X-9)", () => {
     const error = await attempt(() => buyHat({ escrow: policy(), fetchImpl: direct }, scheme));
     expect(error).toMatchObject({ code: "InvalidProduct" });
     expect(scheme.calls).toEqual([]);
+  });
+
+  it("warns when the store records the payment under another payer than the rail that paid (T160 review)", async () => {
+    const scheme = fakeScheme();
+    const ledger: EscrowPolicy["ledger"] = {
+      config: async () => escrow.reader.config(),
+      byTx: async (_contract, tx) => {
+        const held = await escrow.reader.byTx(tx);
+        return held === null ? null : { ...held, payer: Keypair.random().publicKey() };
+      },
+    };
+    const paid = await buyHat({ escrow: policy({}, { ledger }) }, scheme);
+    expect(paid.escrowHold).toMatchObject({ contract: ESCROW_ID, held: false, warning: expect.stringContaining("another payer") });
   });
 
   it("warns, without failing, when the store never records the purchase in its escrow (X-20)", async () => {

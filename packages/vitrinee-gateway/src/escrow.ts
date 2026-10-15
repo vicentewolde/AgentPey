@@ -6,14 +6,23 @@
  * `hold` (T159). Before a single buyer is asked to pay, the store reads the
  * contract's own `config()` on chain and refuses to open unless it is this
  * store's escrow: the code AgentPey knows, the signing account as `operator`
- * (it signs `hold`, X-4), the payout account as `payee` (a release pays it)
- * and USDC as the token. A misconfigured escrow never falls back to charging
- * the payout account directly: the store stays closed and says why.
+ * (it signs `hold`, X-4), the payout account as `payee` (a release pays it),
+ * USDC as the token, and an arbiter AgentPey's buyers accept (AgentResolve's):
+ * with any other, every purchase would be refused at the buyer's end. A
+ * misconfigured escrow never falls back to charging the payout account
+ * directly: the store stays closed and says why.
  */
 import { EscrowClient, PURCHASE_ESCROW_WASM_HASHES, type EscrowReader } from "@vitrinee/anchor";
 import { USDC_TESTNET, VitrineeError } from "@vitrinee/core";
 
 import type { GatewayConfig, StoreEscrow } from "./config.js";
+
+export interface StoreEscrowCheck {
+  /** The arbiters an escrow may name: AgentResolve's, from `deployments/testnet.json`. Empty refuses every escrow. */
+  readonly arbiters: readonly string[];
+  /** Tests inject a fake; defaults to the escrow over Soroban RPC. */
+  readonly reader?: Pick<EscrowReader, "config">;
+}
 
 /**
  * The config with its escrow verified, ready for `createApp`. A store without
@@ -22,15 +31,16 @@ import type { GatewayConfig, StoreEscrow } from "./config.js";
  *
  * @throws VitrineeError `ConfigError` when the contract is not this store's escrow
  */
-export async function verifyStoreEscrow(config: GatewayConfig, reader?: Pick<EscrowReader, "config">): Promise<GatewayConfig> {
+export async function verifyStoreEscrow(config: GatewayConfig, options: StoreEscrowCheck): Promise<GatewayConfig> {
   if (config.escrowId === undefined) return config;
-  const escrow = reader ?? new EscrowClient({ contractId: config.escrowId, rpcUrl: config.stellar.rpcUrl, networkPassphrase: config.stellar.networkPassphrase });
+  const escrow = options.reader ?? new EscrowClient({ contractId: config.escrowId, rpcUrl: config.stellar.rpcUrl, networkPassphrase: config.stellar.networkPassphrase });
   const onChain = await escrow.config();
   const problems: string[] = [];
   if (onChain.wasmHash === null || !PURCHASE_ESCROW_WASM_HASHES.includes(onChain.wasmHash)) problems.push("it does not run the purchase-escrow code AgentPey knows");
   if (onChain.operator !== config.signing.account) problems.push("its operator is not the store's signing account");
   if (onChain.payee !== config.merchant.stellarAccount) problems.push("its payee is not the store's payout account");
   if (onChain.token !== USDC_TESTNET.contractId) problems.push("its token is not USDC");
+  if (!options.arbiters.includes(onChain.arbiter)) problems.push("its arbiter is not AgentResolve's, so buyers would refuse to pay into it");
   if (problems.length > 0) {
     throw new VitrineeError("ConfigError", `ESCROW_CONTRACT_ID is not this store's escrow: ${problems.join("; ")}`, {
       details: { escrow: config.escrowId, problems },

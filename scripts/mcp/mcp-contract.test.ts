@@ -24,7 +24,7 @@ import { verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { ARBITER, ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakeHorizon, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { ARBITER, ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { escrowPolicy } from "../../packages/vitrinee-anchor/src/index.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 
@@ -604,12 +604,25 @@ describe("a store with an escrow, through the MCP (T160)", () => {
   it("quotes with its protection, pays into the escrow, sees the purchase held, and reads the order with four green checks", async () => {
     const escrow = fakeEscrow();
     const registry = fakeRegistry();
-    const horizon = fakeHorizon({ creditContract: ESCROW_ID }) as typeof fetch & { allow(amount: string): void };
+    // The rail debited and the escrow credited, as Horizon reports a contract-to-contract transfer (X-14).
+    const horizon = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (/\/transactions\/[0-9a-f]{64}$/.test(url)) return Response.json({ successful: true, ledger: 4_899_999, created_at: "2026-10-14T12:00:00Z" });
+      if (/\/transactions\/[0-9a-f]{64}\/effects/.test(url)) {
+        const records = [
+          { type: "contract_debited", account: FAKE_PAYER, contract: RAIL, amount: "13.6736842", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+          { type: "contract_credited", account: FAKE_PAYER, contract: ESCROW_ID, amount: "13.6736842", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+        ];
+        return Response.json({ _embedded: { records } });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
     const escrowStore = createApp({
       platformProfiles: fakePlatformProfiles(),
       config: escrowConfig(),
       adapter: new MockStoreAdapter(),
-      facilitator: fakeFacilitator(),
+      // Settled as the rail that signed: the payer the escrow must record for the purchase to count as held.
+      facilitator: fakeFacilitator({ settle: { payer: RAIL } }),
       anchorer: registry.anchorer,
       registry: registry.registry,
       holder: escrow.holder,
@@ -641,7 +654,6 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       expect(paid.structuredContent).toMatchObject({ paid_to: ESCROW_ID, escrow: { contract: ESCROW_ID, held: true, warning: null } });
 
       await escrowStore.anchors.idle();
-      horizon.allow("13.6736842");
       const orderId = paid.structuredContent!["order_id"] as string;
       const read = await mcp.call("get_order", { store: name, order_id: orderId });
       // The receipt still names the payout account, so it binds to the store the directory lists (T160).

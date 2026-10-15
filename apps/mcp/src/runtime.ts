@@ -140,7 +140,9 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
       payer: { contractId: env.MCP_POLICY_RAIL_CONTRACT_ID, ownerSecret: env.MCP_AGENT_SECRET_KEY },
       // A store's escrow is paid only once it checks out on chain: known code, AgentResolve's arbiter, releasing to
       // the store's own account (T160, X-9).
-      escrow: escrowPolicy(escrows, [arbiter]),
+      // 15 s for the hold, not the default 30: pay already includes the settlement, and a chat client that gives up
+      // first shows an error for a payment that went through. get_order shows the hold either way (T161).
+      escrow: { ...escrowPolicy(escrows, [arbiter]), heldWaitMs: 15_000 },
     },
     agentKey,
     // A receipt paid into a store's escrow is checked against that escrow too (T159).

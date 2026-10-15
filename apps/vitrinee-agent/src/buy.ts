@@ -6,11 +6,12 @@
  */
 import { randomUUID } from "node:crypto";
 
-import type { ReceiptVerification } from "@vitrinee/anchor";
+import { EscrowClient, PURCHASE_ESCROW_WASM_HASHES, type EscrowConfig, type ReceiptVerification } from "@vitrinee/anchor";
 import {
   MANIFEST_PATH,
   VitrineeError,
   parseDecimal,
+  parseStellarDid,
   stellarExpertTxUrl,
   storefrontManifestSchema,
   usdcAtomicToDecimal,
@@ -43,6 +44,32 @@ export interface BuyOptions {
   anchorTimeoutMs?: number;
   log?: (line: string) => void;
   fetchImpl?: typeof fetch;
+  /** Reads a store's escrow on chain (T160). Defaults to Soroban testnet RPC; tests inject a fake. */
+  escrowConfig?: (contractId: string) => Promise<EscrowConfig>;
+}
+
+/**
+ * Where this buyer agrees to pay (T160): the merchant's own account, or the escrow its manifest names, once that
+ * escrow checks out on chain as a known `purchase-escrow` run by the store's receipt key, releasing to the merchant's
+ * account, in the manifest's asset. Anything else is refused before signing.
+ */
+async function checkPayee(manifest: StorefrontManifest, payTo: string, readEscrow: (contractId: string) => Promise<EscrowConfig>): Promise<void> {
+  const escrow = manifest.settlement.escrow?.contract;
+  const expected = escrow ?? manifest.merchant.stellarAccount;
+  if (payTo !== expected) {
+    throw new VitrineeError("PaymentError", "el 402 cobra a otra cuenta que la que declara el manifest", { details: { payTo, expected } });
+  }
+  if (escrow === undefined) return;
+  const onChain = await readEscrow(escrow);
+  const problems = [
+    onChain.wasmHash === null || !PURCHASE_ESCROW_WASM_HASHES.includes(onChain.wasmHash) ? "no corre el código de purchase-escrow conocido" : undefined,
+    onChain.payee !== manifest.merchant.stellarAccount ? "no le paga a la cuenta del comercio" : undefined,
+    onChain.operator !== parseStellarDid(manifest.merchant.did).account ? "su operador no es la llave de recibos de la tienda" : undefined,
+    onChain.token !== manifest.settlement.assetContract ? "guarda otro activo" : undefined,
+  ].filter((problem): problem is string => problem !== undefined);
+  if (problems.length > 0) {
+    throw new VitrineeError("PaymentError", `el escrow de la tienda no es lo que declara: ${problems.join("; ")}`, { details: { escrow, problems } });
+  }
 }
 
 interface OrderView {
@@ -169,6 +196,13 @@ export async function buy(options: BuyOptions): Promise<BuyResult> {
       details: { manifest: totalAtomic.toString(), challenge: requirements.amount },
     });
   }
+  // Before signing (T160): the payee is the merchant's account, or its escrow checked on chain.
+  await checkPayee(
+    manifest,
+    requirements.payTo,
+    options.escrowConfig ?? ((contractId) => new EscrowClient({ contractId, rpcUrl: "https://soroban-testnet.stellar.org", networkPassphrase: "Test SDF Network ; September 2015" }).config()),
+  );
+  if (manifest.settlement.escrow !== undefined) log(`  escrow       ${short(manifest.settlement.escrow.contract)} verificado en la red: libera a ${short(manifest.merchant.stellarAccount)}`);
 
   if (options.dryRun || options.signerSecret === undefined) {
     log("  (dry run: no se firma ni se paga)");

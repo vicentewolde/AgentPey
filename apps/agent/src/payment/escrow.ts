@@ -10,8 +10,11 @@
  * is that store's account under the escrow's rules: a release pays the store,
  * a refund pays the buyer, and nothing else can move the money.
  *
+ * The check hands back a {@link VerifiedEscrow}, the only thing
+ * `toPaymentTerms` accepts as a contract payee: a caller cannot skip it.
+ *
  * After the payment, {@link awaitHeld} looks for the purchase the store must
- * record with `hold`. A payment that reached the escrow but was never held is
+ * record with `hold`, for this order, amount, receipt and payer. A payment that reached the escrow but was never held is
  * unallocated: the buyer cannot claim it (X-20). It never throws: the money
  * already moved, and the answer is a warning the person can act on.
  *
@@ -64,6 +67,13 @@ export interface EscrowPolicy {
   readonly heldPollMs?: number;
 }
 
+declare const verifiedEscrowBrand: unique symbol;
+/**
+ * An escrow {@link escrowVerifier} checked on chain: the only contract `toPaymentTerms` accepts as payee. Made only
+ * by the verifier, so no caller can hand `toPaymentTerms` an escrow it did not check (the lesson of `B-25`).
+ */
+export type VerifiedEscrow = { readonly contract: string; readonly payee: string } & { readonly [verifiedEscrowBrand]: true };
+
 /** Where a payment into an escrow stands, right after paying (X-20). */
 export interface EscrowHold {
   readonly contract: string;
@@ -86,12 +96,27 @@ export function pinnedAccountOf(venueId: VenueId, registry: VenueRegistry): stri
 }
 
 /**
- * The check `pay()` runs before signing for a store that charges into an escrow (`verifyEscrow`).
+ * The Stellar accounts a store signs with, from its profile's keys (`did:stellar:testnet:G…#…`): the receipt key,
+ * which must also be its escrow's `operator` (X-4).
+ */
+export function storeSignersOf(keys: readonly unknown[] | undefined): string[] {
+  const accounts = (keys ?? []).flatMap((key) => {
+    const kid = typeof key === "object" && key !== null ? (key as { kid?: unknown }).kid : undefined;
+    const account = typeof kid === "string" ? /^did:stellar:testnet:(G[A-Z2-7]{55})#/.exec(kid)?.[1] : undefined;
+    return account === undefined ? [] : [account];
+  });
+  return [...new Set(accounts)];
+}
+
+/**
+ * The check `pay()` runs before signing for a store that charges into an escrow (`verifyEscrow`). `operators` are the
+ * store's signing accounts (`storeSignersOf`); `onVerified` receives the escrow once it passed, branded.
  *
  * @throws AgentPassError `EscrowUnverified` unless the contract on chain is a known `purchase-escrow` with a known
- * arbiter, in the asset being paid, saying exactly what the store declares, and releasing to the venue's account
+ * arbiter, run by the store's signing account, in the asset being paid, saying exactly what the store declares, and
+ * releasing to the venue's account
  */
-export function escrowVerifier(policy: EscrowPolicy, venueId: VenueId, registry: VenueRegistry) {
+export function escrowVerifier(policy: EscrowPolicy, venueId: VenueId, registry: VenueRegistry, operators: readonly string[], onVerified: (escrow: VerifiedEscrow) => void) {
   return async (declared: Readonly<StellarX402Escrow>, context: { readonly asset: string; readonly storeUrl: string }): Promise<void> => {
     const pinned = pinnedAccountOf(venueId, registry);
     const details = { venueId, escrow: declared.contract, storeUrl: context.storeUrl };
@@ -107,6 +132,7 @@ export function escrowVerifier(policy: EscrowPolicy, venueId: VenueId, registry:
     const problems: string[] = [];
     if (onChain.wasmHash === null || !policy.wasmHashes.includes(onChain.wasmHash)) problems.push("it does not run the purchase-escrow code the agent knows");
     if (!policy.arbiters.includes(onChain.arbiter)) problems.push("its arbiter is not one the agent accepts");
+    if (!operators.includes(onChain.operator)) problems.push("its operator is not the key the store signs its receipts with");
     if (onChain.payee !== declared.payee) problems.push("its payee is not the one the store declares");
     if (onChain.arbiter !== declared.arbiter) problems.push("its arbiter is not the one the store declares");
     if (onChain.token !== context.asset) problems.push("it holds another asset than the one being paid");
@@ -118,6 +144,7 @@ export function escrowVerifier(policy: EscrowPolicy, venueId: VenueId, registry:
       problems.push("its windows are not the ones the store declares");
     }
     if (problems.length > 0) throw unverified(`the store's escrow is not what it declares: ${problems.join("; ")}`, { ...details, problems, wasmHash: onChain.wasmHash });
+    onVerified({ contract: declared.contract, payee: onChain.payee } as VerifiedEscrow);
   };
 }
 
@@ -130,6 +157,8 @@ export interface AwaitHeldInput {
   readonly amount: string;
   /** The store's receipt hash, when it issued one. */
   readonly receiptHash: string | undefined;
+  /** Who paid: the rail, or the agent's own account. A refund goes to the `payer` the store recorded. */
+  readonly payer: string;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -157,7 +186,9 @@ export async function awaitHeld(policy: EscrowPolicy, input: AwaitHeldInput): Pr
               ? "another amount"
               : input.receiptHash !== undefined && held.receiptHash !== input.receiptHash
                 ? "another receipt"
-                : undefined;
+                : held.payer !== input.payer
+                  ? "another payer, so a claim or a refund would not reach whoever paid"
+                  : undefined;
         if (mismatch === undefined) return { contract, held: true };
         return { contract, held: false, warning: `the escrow holds this payment for ${mismatch}; open a claim with the order id` };
       }

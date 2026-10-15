@@ -138,7 +138,10 @@ The platform **MUST** treat `payment_requirements` as authoritative and
    * its `config()` says the same `payee`, `arbiter` and windows as the
      declaration, and its token is `asset.contract`;
    * its `payee` is the account the platform already knows the business by,
-     and its `arbiter` is one the platform accepts.
+     and its `arbiter` is one the platform accepts;
+   * its `operator` is the key the business signs its receipts with (the
+     `did:stellar` key in its profile), so the purchase it records is the
+     receipt's.
 
    A contract that merely imitates the interface could forward the payment
    anywhere; a declared escrow that does not hold together is not an escrow.
@@ -195,8 +198,10 @@ On Complete Checkout the business:
 5. Returns the checkout as `completed`, with the order.
 
 After paying, a platform **SHOULD** read the escrow's `by_tx(tx_hash)` and
-tell the buyer if the purchase is not recorded: a payment the business never
-holds is unassigned, and the buyer cannot open a dispute over it.
+tell the buyer if the purchase is not recorded, or is recorded for another
+order, amount, receipt or payer: a payment the business never holds is
+unassigned, and one held under another payer cannot be claimed or refunded to
+the buyer. The contract does not check `payer`; the platform does.
 
 ### The escrow's life
 

@@ -45,7 +45,7 @@ import type { PurchaseIntent } from "../intent/intent.js";
 import { fromScaledAmount } from "../scope/amount.js";
 import { policyRailError, type PolicyRail } from "../policy/policy-rail.js";
 import type { PaymentTerms } from "../policy/terms.js";
-import { pinnedAccountOf } from "./escrow.js";
+import { pinnedAccountOf, type VerifiedEscrow } from "./escrow.js";
 import { PolicyRailStellarScheme, type PolicyRailPayer } from "./policy-rail-payer.js";
 
 function networkError(message: string, extra?: Record<string, unknown>, cause?: unknown): AgentPassError {
@@ -57,8 +57,9 @@ function networkError(message: string, extra?: Record<string, unknown>, cause?: 
  * already understands. Pure — no network, no signing.
  *
  * `escrow` is a store's `purchase-escrow` the agent has already checked on
- * chain (`escrowVerifier`, T160, X-9). Only with it may the payee be a
- * contract: that escrow, releasing to the venue's own account.
+ * chain: a {@link VerifiedEscrow}, which only `escrowVerifier` makes (T160,
+ * X-9). Only with it may the payee be a contract: that escrow, releasing to
+ * the venue's own account.
  *
  * @throws AgentPassError `InvalidProduct` for a scheme/network this adapter
  * does not speak, an asset contract it has no issuer for (`mapAssetContract`),
@@ -68,7 +69,7 @@ export function toPaymentTerms(
   requirements: PaymentRequirements,
   venueId: VenueId,
   registry: VenueRegistry = DEFAULT_VENUE_REGISTRY,
-  escrow?: { readonly contract: string; readonly payee: string },
+  escrow?: VerifiedEscrow,
 ): PaymentTerms {
   if (requirements.scheme !== "exact") {
     throw new AgentPassError(
@@ -111,6 +112,11 @@ export function toPaymentTerms(
         details: { venueId, payTo: requirements.payTo, escrow: escrow.contract, payee: escrow.payee, expected: owner },
       });
     }
+  } else if (pinned !== undefined && requirements.payTo !== pinned && requirements.payTo.startsWith("C")) {
+    // A store that charges into its escrow (T160): only the UCP path checks an escrow on chain.
+    throw new AgentPassError("InvalidProduct", "this store charges into an escrow contract, which this payment path does not verify: buy from it over UCP", {
+      details: { venueId, payTo: requirements.payTo, expected: pinned },
+    });
   } else if (pinned !== undefined && requirements.payTo !== pinned) {
     throw new AgentPassError("InvalidProduct", "the payment challenge names a payee other than this merchant's own account", {
       details: { venueId, payTo: requirements.payTo, expected: pinned },

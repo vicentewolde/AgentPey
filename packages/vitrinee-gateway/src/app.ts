@@ -145,6 +145,7 @@ export function createApp({
   const anchors = new AnchorWorker({
     anchorer: anchorer ?? { anchor: (input) => registryClient!.anchor(input, config.signing.secret) },
     ...(holder !== undefined ? { holder } : escrowClient === undefined ? {} : { holder: { hold: (input) => escrowClient.hold(input, config.signing.secret) } }),
+    ...(escrowId === undefined ? {} : { escrow: escrowId }),
     orders,
     ...(anchorRetryDelaysMs === undefined ? {} : { retryDelaysMs: anchorRetryDelaysMs }),
     now,

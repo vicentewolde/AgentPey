@@ -831,6 +831,34 @@ describe("a store with an escrow: one payment, one receipt (T159)", () => {
     }
   });
 
+  it("holds an order only in the escrow it was paid into, after the switch is turned off or changed (T160)", async () => {
+    const stuck = fakeEscrow({ failTimes: 99 });
+    const env = await escrowStore(stuck);
+    try {
+      const order = (await (await buy(env.url, "/checkout/gorro-andes")).json()) as { orderId: string };
+      for (let i = 0; i < 5; i += 1) {
+        await env.app.anchors.idle();
+        await new Promise((r) => setTimeout(r, 20));
+      }
+      env.app.anchors.stop();
+      const OTHER = "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A";
+      for (const config of [testConfig(), { ...escrowConfig(), escrowId: OTHER, escrow: { ...escrowConfig().escrow!, contract: OTHER } }]) {
+        const other = fakeEscrow();
+        const restarted = createApp({ config, adapter: new MockStoreAdapter(), facilitator: fakeFacilitator(), orders: env.deps.orders!, anchorer: env.registry.anchorer, registry: env.registry.registry, holder: other.holder, anchorRetryDelaysMs: [1], platformProfiles: null });
+        restarted.anchors.resume();
+        for (let i = 0; i < 3; i += 1) {
+          await restarted.anchors.idle();
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        restarted.anchors.stop();
+        expect(other.calls).toEqual([]);
+        expect(env.deps.orders!.get(order.orderId)!.hold).toMatchObject({ status: "failed", escrow: ESCROW_ID, lastError: expect.stringContaining(`paid into escrow ${ESCROW_ID}`) });
+      }
+    } finally {
+      await env.close();
+    }
+  });
+
   it("a store without an escrow: a restart anchors a receipt whose anchor ran out of retries, as before T159", async () => {
     const dead = fakeRegistry({ failTimes: 3 });
     const env = await start({ anchorer: dead.anchorer, registry: dead.registry });

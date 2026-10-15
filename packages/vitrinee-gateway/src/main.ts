@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { MANIFEST_PATH, isVitrineeError, stellarContractIdSchema } from "@vitrinee/core";
+import { MANIFEST_PATH, isVitrineeError, stellarAccountSchema, stellarContractIdSchema } from "@vitrinee/core";
 import { z } from "zod";
 
 import { createAdapter } from "./adapters.js";
@@ -54,7 +54,19 @@ if (process.env["RECEIPT_REGISTRY_ID"] === undefined || process.env["RECEIPT_REG
 
 // AgentResolve (T127) is AgentPey's contract, so its id lives in AgentPey's
 // deployments file; the env var only overrides it, as with the registry above.
-const agentResolveDeploymentSchema = z.object({ agentResolve: z.object({ contractId: stellarContractIdSchema }).nullish() });
+const agentResolveDeploymentSchema = z.object({ agentResolve: z.object({ contractId: stellarContractIdSchema, arbiter: stellarAccountSchema.optional() }).nullish() });
+
+/**
+ * AgentResolve's arbiter, from AgentPey's deployments file: the one arbiter a store's escrow may name (T160). Empty
+ * when the file is missing or does not name it, and then a store with an escrow does not open.
+ */
+function escrowArbiters(): string[] {
+  const deployments = resolve(root, "deployments/testnet.json");
+  if (!existsSync(deployments)) return [];
+  const parsed = agentResolveDeploymentSchema.safeParse(JSON.parse(readFileSync(deployments, "utf8")));
+  const arbiter = parsed.success ? parsed.data.agentResolve?.arbiter : undefined;
+  return arbiter === undefined ? [] : [arbiter];
+}
 
 // A bad id must not keep a storefront from starting for a display-only
 // feature: anything that is not a contract id is dropped, and the orders
@@ -83,7 +95,7 @@ function log(message: string, fields: Record<string, unknown> = {}): void {
 async function runSingleStore(): Promise<void> {
   useLocalFiles();
   // With ESCROW_CONTRACT_ID, the store opens only once its escrow checks out on chain (T160).
-  const config = await verifyStoreEscrow(loadConfig());
+  const config = await verifyStoreEscrow(loadConfig(), { arbiters: escrowArbiters() });
   const adapter = createAdapter(config, log);
   const app = createApp({ config, adapter, log });
   const resumed = app.anchors.resume();
@@ -128,6 +140,7 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
     env: process.env,
     ordersFor,
     sessionsFor: (comercio) => new PostgresCheckoutSessions(pool, comercio.id),
+    escrowArbiters: escrowArbiters(),
     log,
   });
   const app = createPlatformApp({

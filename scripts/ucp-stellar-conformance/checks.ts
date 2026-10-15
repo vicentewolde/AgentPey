@@ -90,6 +90,8 @@ export interface KitOptions {
   readonly charge?: { readonly payer: UcpStellarPayer; readonly payerAddress: string; readonly maxAmount: string; readonly asset: string };
   /** How long to wait for a pending receipt anchor, in milliseconds. */
   readonly anchorWaitMs?: number;
+  /** The arbiters a store's escrow may name for P8 (T160): AgentResolve's. Empty or absent fails any escrow. */
+  readonly escrowArbiters?: readonly string[];
 }
 
 // ---------------------------------------------------------------- what is read from the store
@@ -115,6 +117,8 @@ const usableConfig = z.looseObject({
 type UsableConfig = z.infer<typeof usableConfig>;
 
 const P8_TITLE = "escrow is the purchase-escrow it declares";
+/** Whether the handler config carries an `escrow` block at all. */
+const escrowBlock = z.looseObject({ escrow: z.unknown().optional() });
 const escrowDeclaration = z.looseObject({
   contract: z.string(),
   payee: z.string(),
@@ -361,11 +365,14 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
 
   // P8, only for a store that charges into an escrow (handler 2026-10-15, T160): the contract on chain is the
   // purchase-escrow the store declares. A platform pays such a store only after this same check (X-9).
-  const escrowDeclared = escrowDeclaration.safeParse((handler.data.config as { escrow?: unknown } | undefined)?.escrow);
+  const withEscrow = escrowBlock.safeParse(handler.data.config);
+  const escrowDeclared = escrowDeclaration.safeParse(withEscrow.success ? withEscrow.data.escrow : undefined);
   let escrowVerified = false;
-  if ((handler.data.config as { escrow?: unknown } | undefined)?.escrow !== undefined) {
+  if (withEscrow.success && withEscrow.data.escrow !== undefined) {
     if (!escrowDeclared.success) {
       report.add("P8", "profile", P8_TITLE, "fail", "the escrow block is malformed");
+    } else if (declared === undefined) {
+      report.add("P8", "profile", P8_TITLE, "fail", "needs a readable config (P5) to compare pay_to and the asset");
     } else if (deps.escrow === undefined) {
       report.add("P8", "profile", P8_TITLE, "fail", "this run cannot read contracts on chain");
     } else {
@@ -374,10 +381,11 @@ async function run(report: Report, options: KitOptions, deps: KitDeps): Promise<
         const onChain = await deps.escrow(declaredEscrow.contract);
         const problems = [
           onChain.wasmHash === null || !PURCHASE_ESCROW_WASM_HASHES.includes(onChain.wasmHash) ? "it does not run the purchase-escrow code AgentPey knows" : undefined,
-          declared !== undefined && declared.pay_to !== declaredEscrow.contract ? "pay_to is not the escrow" : undefined,
+          declared.pay_to !== declaredEscrow.contract ? "pay_to is not the escrow" : undefined,
           onChain.payee !== declaredEscrow.payee ? "its payee is not the declared one" : undefined,
           onChain.arbiter !== declaredEscrow.arbiter ? "its arbiter is not the declared one" : undefined,
-          declared !== undefined && onChain.token !== declared.asset.contract ? "it holds another asset than the handler's" : undefined,
+          !(options.escrowArbiters ?? []).includes(onChain.arbiter) ? "its arbiter is not AgentResolve's" : undefined,
+          onChain.token !== declared.asset.contract ? "it holds another asset than the handler's" : undefined,
           onChain.releaseWindowSeconds !== declaredEscrow.release_window_seconds ||
           onChain.responseWindowSeconds !== declaredEscrow.response_window_seconds ||
           onChain.resolveWindowSeconds !== declaredEscrow.resolve_window_seconds

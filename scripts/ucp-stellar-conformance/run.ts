@@ -38,6 +38,14 @@ const HORIZON_URL = "https://horizon-testnet.stellar.org";
 const SECRET_ENV = "UCP_STELLAR_CONFORMANCE_SECRET";
 const CONTRACT = /^C[A-Z2-7]{55}$/;
 
+/** AgentResolve's arbiter, as the repo records it: the one arbiter a store's escrow may name (T160, P8). */
+function agentResolveArbiter(): string[] {
+  const deployment = z
+    .looseObject({ agentResolve: z.looseObject({ arbiter: z.string().regex(/^G[A-Z2-7]{55}$/) }).nullish() })
+    .parse(JSON.parse(readFileSync(new URL("../../deployments/testnet.json", import.meta.url), "utf8")));
+  return deployment.agentResolve?.arbiter === undefined ? [] : [deployment.agentResolve.arbiter];
+}
+
 /** AgentPey's receipt-registry on testnet, as the repo records its deployment. */
 function agentpeyRegistry(): string {
   const deployment = z
@@ -113,6 +121,7 @@ async function main(): Promise<void> {
       email: values.email,
       platformProfile: values["platform-profile"],
       registry,
+      escrowArbiters: agentResolveArbiter(),
       anchorWaitMs: Number(values["anchor-wait"]) * 1000,
       ...(charge === undefined ? {} : { charge }),
     },

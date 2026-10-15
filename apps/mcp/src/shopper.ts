@@ -265,7 +265,7 @@ export class Shopper {
               escrow: quote.escrow.contract,
               releases_to: quote.escrow.payee,
               release_window_minutes: Math.round(quote.escrow.release_window_seconds / 60),
-              note: "The payment is held in the store's escrow contract. It goes to the store only after the order ships and the release window closes; until then a claim can be opened.",
+              note: "The store declares an escrow: the payment would wait in that contract and go to the store only after the order ships and the release window closes, and a claim can be opened until then. The escrow is checked on chain before paying; if it is not what the store declares, nothing is paid.",
             },
       expires_at: entry.expiresAt.toISOString(),
     };

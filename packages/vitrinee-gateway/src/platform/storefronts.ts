@@ -37,8 +37,10 @@ export interface StorefrontPoolOptions {
   /** Tests inject a fake facilitator, registry and Horizon per store. */
   appDeps?: (comercio: Comercio, config: GatewayConfig) => Partial<Omit<AppDeps, "config" | "adapter" | "orders">>;
   createAdapter?: (config: GatewayConfig) => StoreAdapter;
-  /** Checks a store's escrow on chain before it opens (T160). Tests inject a fake reader. */
+  /** Checks a store's escrow on chain before it opens (T160). Tests inject a fake. */
   verifyEscrow?: (config: GatewayConfig) => Promise<GatewayConfig>;
+  /** The arbiters a store's escrow may name, for the default check: AgentResolve's (T160). */
+  escrowArbiters?: readonly string[];
   lookupTtlMs?: number;
   now?: () => number;
   log?: Log;
@@ -98,7 +100,8 @@ export class StorefrontPool {
   private async build(comercio: Comercio): Promise<Built> {
     const secrets = openComercioSecrets(comercio, this.options.box);
     // A store with an escrow opens only once its contract checks out on chain (T160); a failure is not cached.
-    const config = await (this.options.verifyEscrow ?? verifyStoreEscrow)(comercioConfig(this.options.env, comercio, secrets));
+    const verify = this.options.verifyEscrow ?? ((c: GatewayConfig) => verifyStoreEscrow(c, { arbiters: this.options.escrowArbiters ?? [] }));
+    const config = await verify(comercioConfig(this.options.env, comercio, secrets));
     const adapter = this.options.createAdapter?.(config) ?? createAdapter(config, this.log);
     const orders = await OrderStore.open(this.options.ordersFor(comercio));
     const app = createApp({

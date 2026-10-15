@@ -332,12 +332,14 @@ export {
   awaitHeld,
   escrowVerifier,
   pinnedAccountOf,
+  storeSignersOf,
   type AwaitHeldInput,
   type EscrowHeldPurchase,
   type EscrowHold,
   type EscrowLedger,
   type EscrowOnChain,
   type EscrowPolicy,
+  type VerifiedEscrow,
 } from "./payment/escrow.js";
 
 export {

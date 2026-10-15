@@ -13,7 +13,7 @@ import { verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
-import { ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakePlatformProfiles, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
+import { ARBITER, ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakePlatformProfiles, fakeRegistry, testConfig } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
 import { listen } from "../../packages/vitrinee-gateway/src/test/listen.js";
 import { BREAKS, startBrokenStore, type Break } from "./broken-store.js";
 import { DEFAULT_PLATFORM_PROFILE, formatReport, runConformance, type CheckResult, type KitDeps, type KitOptions } from "./checks.js";
@@ -372,7 +372,7 @@ describe("the kit against a store with an escrow (T160)", () => {
     const escrowServer = await listen(escrowStore);
     try {
       const kit = (read?: KitDeps["escrow"]) =>
-        runConformance(options({ storeUrl: escrowServer.url, profileOnly: true }), deps(read === undefined ? {} : { escrow: read, readBalance: async () => 0n }));
+        runConformance(options({ storeUrl: escrowServer.url, profileOnly: true, escrowArbiters: [ARBITER] }), deps(read === undefined ? {} : { escrow: read, readBalance: async () => 0n }));
       const passing = byId(await kit(async () => escrow.reader.config()));
       expect(Object.values(passing).filter((r) => r.outcome !== "pass")).toEqual([]);
       expect(passing["P8"]).toMatchObject({ outcome: "pass", detail: expect.stringContaining(ESCROW_ID) });
@@ -382,6 +382,9 @@ describe("the kit against a store with an escrow (T160)", () => {
       const otherPayee = byId(await kit(async () => ({ ...(await escrow.reader.config()), payee: PAYER })));
       expect(otherPayee["P8"]).toMatchObject({ outcome: "fail", detail: expect.stringContaining("payee") });
       expect(byId(await kit())["P8"]).toMatchObject({ outcome: "fail" });
+      // The code and the declaration are right, but the store is its own arbiter: a platform would refuse it.
+      const ownArbiter = byId(await kit(async () => ({ ...(await escrow.reader.config()), arbiter: MERCHANT })));
+      expect(ownArbiter["P8"]).toMatchObject({ outcome: "fail", detail: expect.stringContaining("not AgentResolve's") });
     } finally {
       escrowStore.anchors.stop();
       await escrowServer.close();

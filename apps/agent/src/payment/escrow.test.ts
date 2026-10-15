@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { makeVenueId } from "../catalog/ids.js";
 import { loadVenueRegistry } from "../catalog/registry.js";
-import { awaitHeld, escrowVerifier, type EscrowHeldPurchase, type EscrowOnChain, type EscrowPolicy } from "./escrow.js";
+import { awaitHeld, escrowVerifier, storeSignersOf, type EscrowHeldPurchase, type EscrowOnChain, type EscrowPolicy, type VerifiedEscrow } from "./escrow.js";
 import { toPaymentTerms } from "./x402.js";
 
 const ESCROW = "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A";
@@ -50,11 +50,24 @@ function policy(config: Partial<EscrowOnChain> | Error = {}, held: Array<EscrowH
   };
 }
 
-const verify = (p: EscrowPolicy, escrow = declared) => escrowVerifier(p, venueId, registry)(escrow, { asset: USDC, storeUrl: "https://agentcommerce.example" });
+/** The store's signing account: `onChain.operator`. */
+const SIGNERS = [OTHER];
+const verified: VerifiedEscrow[] = [];
+const verify = (p: EscrowPolicy, escrow = declared, operators: readonly string[] = SIGNERS) =>
+  escrowVerifier(p, venueId, registry, operators, (v) => verified.push(v))(escrow, { asset: USDC, storeUrl: "https://agentcommerce.example" });
 
 describe("escrowVerifier (T160, X-9)", () => {
-  it("passes a known escrow that says what the store declares and releases to the venue's account", async () => {
+  it("passes a known escrow that says what the store declares and releases to the venue's account, and hands it back verified", async () => {
+    verified.length = 0;
     await expect(verify(policy())).resolves.toBeUndefined();
+    expect(verified).toEqual([{ contract: ESCROW, payee: PAYEE }]);
+  });
+
+  it("refuses an escrow run by another key than the store signs its receipts with, and hands nothing back", async () => {
+    verified.length = 0;
+    await expect(verify(policy(), declared, [PAYEE])).rejects.toMatchObject({ code: "EscrowUnverified", message: expect.stringContaining("operator") });
+    await expect(verify(policy(), declared, [])).rejects.toMatchObject({ code: "EscrowUnverified" });
+    expect(verified).toEqual([]);
   });
 
   it("refuses, naming the problem, an escrow whose chain state differs from the store's word or the agent's trust", async () => {
@@ -86,21 +99,24 @@ describe("escrowVerifier (T160, X-9)", () => {
 describe("toPaymentTerms with an escrow (T160)", () => {
   const requirements = (payTo: string) => ({ scheme: "exact", network: "stellar:testnet", asset: USDC, amount: "5157895", payTo, maxTimeoutSeconds: 300, extra: {} }) as PaymentRequirements;
 
+  // Only `escrowVerifier` makes a VerifiedEscrow; the cast stands in for it here.
+  const checked = (payee: string) => ({ contract: ESCROW, payee }) as VerifiedEscrow;
+
   it("takes the verified escrow as payee only when it releases to the venue's account", () => {
-    expect(toPaymentTerms(requirements(ESCROW), venueId, registry, { contract: ESCROW, payee: PAYEE }).payTo).toBe(ESCROW);
-    expect(() => toPaymentTerms(requirements(ESCROW), venueId, registry, { contract: ESCROW, payee: OTHER })).toThrow(expect.objectContaining({ code: "InvalidProduct" }));
-    expect(() => toPaymentTerms(requirements(PAYEE), venueId, registry, { contract: ESCROW, payee: PAYEE })).toThrow(expect.objectContaining({ code: "InvalidProduct" }));
+    expect(toPaymentTerms(requirements(ESCROW), venueId, registry, checked(PAYEE)).payTo).toBe(ESCROW);
+    expect(() => toPaymentTerms(requirements(ESCROW), venueId, registry, checked(OTHER))).toThrow(expect.objectContaining({ code: "InvalidProduct" }));
+    expect(() => toPaymentTerms(requirements(PAYEE), venueId, registry, checked(PAYEE))).toThrow(expect.objectContaining({ code: "InvalidProduct" }));
   });
 
   it("without one, still pins the venue's own account, so a contract is never paid", () => {
     expect(toPaymentTerms(requirements(PAYEE), venueId, registry).payTo).toBe(PAYEE);
     const pinned = { ...registry, venues: new Map([[venueId, { ...registry.venues.get(venueId)!, payTo: PAYEE }]]) };
-    expect(() => toPaymentTerms(requirements(ESCROW), venueId, pinned)).toThrow(expect.objectContaining({ code: "InvalidProduct" }));
+    expect(() => toPaymentTerms(requirements(ESCROW), venueId, pinned)).toThrow(expect.objectContaining({ code: "InvalidProduct", message: expect.stringContaining("over UCP") }));
   });
 });
 
 describe("awaitHeld (X-20): after paying, is the purchase held?", () => {
-  const input = { contract: ESCROW, transaction: TX, orderId: "ord_1", amount: "5157895", receiptHash: "b".repeat(64) };
+  const input = { contract: ESCROW, transaction: TX, orderId: "ord_1", amount: "5157895", receiptHash: "b".repeat(64), payer: OTHER };
   const purchase: EscrowHeldPurchase = { orderRef: "ord_1", payer: OTHER, amountAtomic: 5157895n, receiptHash: "b".repeat(64) };
 
   it("finds the hold once the store records it", async () => {
@@ -113,9 +129,20 @@ describe("awaitHeld (X-20): after paying, is the purchase held?", () => {
     await expect(awaitHeld(policy({}, [purchase]), { ...input, transaction: undefined })).resolves.toMatchObject({ held: false });
   });
 
-  it("warns when the payment is held for another order, amount or receipt", async () => {
-    for (const other of [{ orderRef: "ord_2" }, { amountAtomic: 1n }, { receiptHash: "c".repeat(64) }]) {
+  it("warns when the payment is held for another order, amount, receipt or payer", async () => {
+    // Another payer: the store recorded the agent's payment under an account of its own, so a claim or a refund would
+    // not reach the buyer.
+    for (const other of [{ orderRef: "ord_2" }, { amountAtomic: 1n }, { receiptHash: "c".repeat(64) }, { payer: PAYEE }]) {
       await expect(awaitHeld(policy({}, [{ ...purchase, ...other }]), input)).resolves.toMatchObject({ held: false, warning: expect.stringContaining("holds this payment for another") });
     }
+  });
+});
+
+describe("storeSignersOf: the store's signing accounts, from its profile's keys", () => {
+  it("reads did:stellar:testnet kids, once each, and ignores everything else", () => {
+    expect(
+      storeSignersOf([{ kid: `did:stellar:testnet:${OTHER}#key-1` }, { kid: `did:stellar:testnet:${OTHER}#ucp-p256` }, { kid: "did:web:example.com#k" }, { kty: "EC" }, null, "x"]),
+    ).toEqual([OTHER]);
+    expect(storeSignersOf(undefined)).toEqual([]);
   });
 });
