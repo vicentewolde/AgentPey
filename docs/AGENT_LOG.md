@@ -8998,5 +8998,5 @@ Qué: **T160 en revisión** (plan y cinco decisiones aprobados por el usuario):
 Decisiones `X-23` a `X-25`. `pnpm check`, `vitrinee:check` y la suite UCP (49/8/20) en verde. Tienda tramposa
 rechazada contra contratos reales de testnet, solo lectura.
 
-Pendiente: `/revisar`; merge con OK del usuario cuando Render esté normal; `COMERCIO_ESCROWS` en Render; compra real
+Pendiente: `/revisar`; merge con OK del usuario cuando Render esté normal; `VITRINEE_COMERCIO_ESCROWS` en Render; compra real
 (criterio 1). Exponential: T160 en `IN_PROGRESS`. `AGENTS.md`: sin cambios (Codex no toca la Fase 9).

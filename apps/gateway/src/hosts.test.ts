@@ -131,6 +131,7 @@ describe("which secrets each child actually receives", () => {
     VITRINEE_JUMPSELLER_AUTHTOKEN: "store-token",
     VITRINEE_DATABASE_URL: "postgres://vitrinee-role",
     VITRINEE_MASTER_KEY: "master-key",
+    VITRINEE_COMERCIO_ESCROWS: "agentcommerce=CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A",
   };
   const VITRINEE_SECRETS = ["S-RECEIPTS", "oz-key", "store-login", "store-token", "postgres://vitrinee-role", "master-key"];
   const AGENTPEY_SECRETS = ["S-ISSUER", "S-AGENT", "S-ADMIN", "twelve words", "apk-realops", "re-key", "S-SIGNALDESK", "S-SD-FACILITATOR", "postgres://shared"];
@@ -150,6 +151,8 @@ describe("which secrets each child actually receives", () => {
       JUMPSELLER_AUTHTOKEN: "store-token",
       DATABASE_URL: "postgres://vitrinee-role",
       MASTER_KEY: "master-key",
+      // T160: the escrow switch reaches the platform under the name it reads.
+      COMERCIO_ESCROWS: "agentcommerce=CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A",
       PORT: "4104",
     });
     for (const secret of AGENTPEY_SECRETS) expect(Object.values(env)).not.toContain(secret);

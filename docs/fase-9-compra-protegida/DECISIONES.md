@@ -435,7 +435,9 @@ reglas del contrato. Exigir el árbitro conocido impide un escrow con el código
   plataforma. Le asigna un escrow a esa tienda y a ninguna otra. Se pone y se quita en Render sin deploy, así que el
   merge de T160 no enciende nada. Un valor mal formado, una tienda repetida o un escrow para dos tiendas (`X-11`)
   impiden que la plataforma arranque. `ESCROW_CONTRACT_ID` sigue sin heredarse; en el modo de una tienda se usa
-  directo.
+  directo. En producción la variable va en el servicio `AgentPey` de Render como `VITRINEE_COMERCIO_ESCROWS`: el
+  gateway solo le pasa a Vitrinee sus variables con prefijo, y se la entrega como `COMERCIO_ESCROWS`
+  (`apps/gateway/src/hosts.ts`).
 - **La tienda comprueba su escrow al armarse** (`verifyStoreEscrow`): wasm conocido, operador = cuenta de firma,
   `payee` = cuenta de cobro y token USDC. Si no calza, la tienda no abre y dice por qué; nunca cae en silencio a
   cobrar directo. Si la RPC de Soroban no responde, el armado falla, no queda guardado y el próximo request lo

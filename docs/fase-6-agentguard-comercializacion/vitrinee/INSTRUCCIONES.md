@@ -141,7 +141,8 @@ Una tienda puede cobrar a su `purchase-escrow` en vez de a su cuenta de cobro (`
 
 - **Modo de una tienda:** `ESCROW_CONTRACT_ID=<C…>` en `.env.vitrinee.local`.
 - **Modo plataforma:** `COMERCIO_ESCROWS=<slug>=<C…>` (pares separados por coma) en el entorno de la plataforma, en
-  Render. Es el interruptor: se pone y se quita sin deploy. `ESCROW_CONTRACT_ID` nunca se hereda de la plataforma.
+  Render, donde se llama `VITRINEE_COMERCIO_ESCROWS` (el gateway se la pasa a Vitrinee con el nombre sin prefijo,
+  `apps/gateway/src/hosts.ts`). Es el interruptor: se pone y se quita sin deploy. `ESCROW_CONTRACT_ID` nunca se hereda de la plataforma.
 
 Antes de abrir, la tienda lee el escrow en la red y no abre si no es suyo: código `purchase-escrow` conocido, operador
 = cuenta de firma, `payee` = cuenta de cobro y token USDC. Nunca vuelve en silencio a cobrar directo. Con escrow, el

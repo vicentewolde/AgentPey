@@ -175,6 +175,8 @@ export const VITRINEE_TARGET: AppTarget = {
     PLATFORM_HOST: "VITRINEE_PLATFORM_HOST",
     ROOT_COMERCIO: "VITRINEE_ROOT_COMERCIO",
     SEED_COMERCIO_SLUG: "VITRINEE_SEED_COMERCIO_SLUG",
+    // T160 (X-25): each store's purchase-escrow by slug, the platform's switch for charging into it.
+    COMERCIO_ESCROWS: "VITRINEE_COMERCIO_ESCROWS",
   },
   // `VITRINEE_ADAPTER` is here although it is not a secret: Vitrinee defaults
   // to its mock store when it is unset, and a production deploy quietly

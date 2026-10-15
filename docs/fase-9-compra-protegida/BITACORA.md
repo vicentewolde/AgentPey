@@ -122,7 +122,7 @@ que antes (49 · 8 · 20). El recibo sigue nombrando la cuenta de cobro, así qu
 cambian. No se toca el Mandato, los topes ni el `policy_rail`.
 
 **Cómo se enciende.** El merge no enciende nada. En la plataforma, el escrow de `agentcommerce` se asigna con la
-variable `COMERCIO_ESCROWS` en Render (`X-25`); se pone y se quita sin deploy. Decisiones: `X-23` (la versión nueva y
+variable `VITRINEE_COMERCIO_ESCROWS` en Render (`X-25`); se pone y se quita sin deploy. Decisiones: `X-23` (la versión nueva y
 las dos puertas), `X-24` (qué comprueba el agente) y `X-25` (el interruptor y la comprobación al arrancar).
 
 **Lo que falta para cerrar.** `/revisar`, el merge, el interruptor y una compra real retenida, con el hash del pago y
