@@ -110,6 +110,21 @@ describe("caseMessage — the claim cannot close its own delimiter", () => {
   });
 });
 
+describe("caseMessage — the facts the arbiter is given (T158)", () => {
+  it("names the order both ways, and the merchant's real window: the escrow's minutes, or 48 hours", async () => {
+    const { checked } = await caseFor("Nunca llegó.");
+    const receipt = { ...checked.receipt, orderId: "ord_mv9qzvka21f025d46d", platformOrderId: "19075044901170" };
+    const escrow = caseMessage({ claim: checked.claim, receipt, disputedAtomic: checked.disputedAtomic, response: null, responseWindowSeconds: 900 });
+    expect(escrow).toContain('"order": "ord_mv9qzvka21f025d46d"');
+    expect(escrow).toContain('"platformOrder": "19075044901170"');
+    expect(escrow).toContain("response window of 15 minutes");
+    expect(escrow).not.toContain("48 hours");
+    const agentResolve = caseMessage({ claim: checked.claim, receipt, disputedAtomic: checked.disputedAtomic, response: null });
+    expect(agentResolve).toContain("response window of 48 hours");
+    expect(ARBITER_SYSTEM_PROMPT).not.toContain("48 hours");
+  });
+});
+
 describe("decideDispute — a prompt injection gets no more than the receipt", () => {
   it("caps an arbiter that obeyed the injection at the disputed amount, and says it was adjusted", async () => {
     const { signed, checked, receipt } = await caseFor("No llegó.");

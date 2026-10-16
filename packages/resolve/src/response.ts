@@ -165,21 +165,26 @@ export function verifyMerchantResponse(file: unknown, context: ResponseContext):
   return { response, hash: responseHash(response), signature };
 }
 
-/** When a dispute opened at `openedAt` (seconds, the contract's ledger time) may be decided without a response. */
-export function responseDeadline(openedAt: number): Date {
-  return new Date((openedAt + RESPONSE_WINDOW_SECONDS) * 1000);
+/**
+ * When a dispute opened at `openedAt` (seconds, the contract's ledger time) may be decided without a response.
+ * `windowSeconds` is the merchant's time to answer: 48 h in `agent-resolve` (`E-22`), the contract's own
+ * `response_window` in a store's `purchase-escrow` (T158, `X-26`).
+ */
+export function responseDeadline(openedAt: number, windowSeconds: number = RESPONSE_WINDOW_SECONDS): Date {
+  return new Date((openedAt + windowSeconds) * 1000);
 }
 
 /**
  * A dispute is decided with the merchant's response, or, without one, only
- * after its 48 h (`E-22`). A response that arrives late but before the
- * decision still counts: the deadline only stops a one-sided decision.
+ * after its response window: 48 h in `agent-resolve` (`E-22`), the escrow's
+ * own in a `purchase-escrow` (`X-26`). A response that arrives late but before
+ * the decision still counts: the deadline only stops a one-sided decision.
  *
  * @throws AgentPassError `ResolveResponsePending` — no response, and the deadline has not passed
  */
-export function assertMayDecide(input: { readonly openedAt: number; readonly hasResponse: boolean; readonly now?: Date }): void {
+export function assertMayDecide(input: { readonly openedAt: number; readonly hasResponse: boolean; readonly now?: Date; readonly windowSeconds?: number }): void {
   if (input.hasResponse) return;
-  const deadline = responseDeadline(input.openedAt);
+  const deadline = responseDeadline(input.openedAt, input.windowSeconds);
   const now = input.now ?? new Date();
   if (now.getTime() < deadline.getTime()) {
     throw new AgentPassError("ResolveResponsePending", "the merchant has until the deadline to respond; decide with its response, or after the deadline", {

@@ -251,7 +251,9 @@ export type AgentPassErrorCode =
   /** A merchant response answers a different receipt or claim than the dispute on chain. */
   | "ResolveResponseMismatch"
   /** The dispute cannot be decided yet: no merchant response, and its 48 h have not passed (`E-22`). */
-  | "ResolveResponsePending";
+  | "ResolveResponsePending"
+  /** The arbiter's window in the store's escrow closed: only `expire` is valid, and it refunds the payer in full (T158, `X-7`). */
+  | "ResolveWindowClosed";
 
 /** Structured, non-secret context attached to an error for logs and tests. */
 export type AgentPassErrorDetails = Readonly<Record<string, unknown>>;

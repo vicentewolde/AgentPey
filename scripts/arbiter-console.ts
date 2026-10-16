@@ -127,8 +127,9 @@ async function handleApi(path: string, body: unknown): Promise<unknown> {
     }
     case "/api/decide": {
       const receiptHash = requireDispute();
-      if (session.responseFile === null) throw new AgentPassError("InvalidArguments", "primero carga la respuesta de la tienda (paso 2)", { details: {} });
-      const result = await runScript("resolve:decide", ["--receipt", receiptHash, "--response", session.responseFile], 300_000);
+      // Without the store's answer, resolve:decide itself refuses until the merchant's window closes: 48 h in
+      // agent-resolve, the escrow's own in a purchase-escrow (T158, X-26).
+      const result = await runScript("resolve:decide", ["--receipt", receiptHash, ...(session.responseFile === null ? [] : ["--response", session.responseFile])], 300_000);
       if (!result.ok) return failed(result);
       const verdict = summarizeVerdict(result.stdout);
       if (verdict === null) return { ok: false, message: "el árbitro respondió, pero no pude leer su veredicto", detail: result.stdout.slice(-1500) };

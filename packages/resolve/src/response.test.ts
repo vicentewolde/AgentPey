@@ -8,7 +8,7 @@ import { caseMessage } from "./arbiter.js";
 import type { Arbiter, ArbiterCase } from "./arbiter.js";
 import { checkClaim, claimHash, signClaim } from "./claim.js";
 import { decideDispute } from "./decide.js";
-import { RESPONSE_WINDOW_SECONDS, assertMayDecide, responseChallengeMessage, responseHash, verifyMerchantResponse } from "./response.js";
+import { RESPONSE_WINDOW_SECONDS, assertMayDecide, responseChallengeMessage, responseDeadline, responseHash, verifyMerchantResponse } from "./response.js";
 import type { AgentResolveResponse, ResponseContext } from "./response.js";
 import { agentResolveVerdictSchema, verdictHash } from "./verdict.js";
 import { NOW, PAID_ATOMIC, agentKey, claimFor, merchantOwnerKey, railController, verifiedReceipt } from "./test/fixtures.js";
@@ -146,6 +146,18 @@ describe("assertMayDecide — 48 h for the merchant to answer (E-22)", () => {
 
   it("decides without a response from the deadline on", () => {
     expect(() => assertMayDecide({ openedAt, hasResponse: false, now: new Date((openedAt + RESPONSE_WINDOW_SECONDS) * 1000) })).not.toThrow();
+  });
+});
+
+describe("assertMayDecide — an escrow's own response window (T158, X-26)", () => {
+  const openedAt = Math.floor(NOW.getTime() / 1000);
+
+  it("uses the window it is given instead of 48 h", () => {
+    const at = (seconds: number) => new Date((openedAt + seconds) * 1000);
+    expect(hasErrorCode(thrown(() => assertMayDecide({ openedAt, hasResponse: false, windowSeconds: 900, now: at(899) })), "ResolveResponsePending")).toBe(true);
+    expect(() => assertMayDecide({ openedAt, hasResponse: false, windowSeconds: 900, now: at(900) })).not.toThrow();
+    expect(responseDeadline(openedAt, 900).getTime()).toBe((openedAt + 900) * 1000);
+    expect(responseDeadline(openedAt).getTime()).toBe((openedAt + RESPONSE_WINDOW_SECONDS) * 1000);
   });
 });
 

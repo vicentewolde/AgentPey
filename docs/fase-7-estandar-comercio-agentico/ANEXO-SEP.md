@@ -630,7 +630,9 @@ Errores del lado de AgentPey: `ResolveClaimInvalid`, `ResolveReceiptInvalid`,
 `ResolveClaimantNotPayer`, `ResolveClaimWindowClosed`, `ResolveAmountExceeded`,
 `ResolveVerdictInvalid`, `ResolveConfirmationMismatch`, y para la respuesta
 del comercio `ResolveResponseInvalid`, `ResolveRespondentNotMerchant`,
-`ResolveResponseMismatch`, `ResolveResponsePending`.
+`ResolveResponseMismatch`, `ResolveResponsePending`. Para una disputa en el
+`purchase-escrow` de una tienda (Fase 9, T158), `ResolveWindowClosed`: pasó la
+ventana del árbitro y solo vale `expire`, que reembolsa todo.
 
 ## 5. Contratos desplegados (testnet)
 
@@ -689,6 +691,13 @@ construir, más quince que aparecieron después:
    como ajuste más `receipt.dispute` (sección 3.4). Pero UCP no tiene un formato
    para el proceso: quién abre, en qué plazo, cómo se prueba, y el ajuste solo
    puede expresar el reembolso en la moneda de la orden. Un SEP debería fijarlo.
+   **Desde la Fase 9 (T158), para las compras pagadas a un escrow, el proceso
+   existe en la red:** el comprador abre la disputa con su firma (`open`), el
+   comercio responde dentro de su plazo (`respond`), el árbitro resuelve dentro
+   del suyo (`resolve`) y, si no lo hace, cualquiera puede devolverle todo al
+   comprador (`expire`). El reembolso sale del mismo pago retenido, no de una
+   garantía aparte. Lo que sigue faltando es el formato en UCP: la orden todavía
+   muestra la disputa como un ajuste.
 7. **Resultado dudoso de la liquidación.** Ni UCP ni x402 dicen qué hacer
    cuando el facilitator no responde o da por fallida una transacción ya
    emitida. AgentPey retiene la compra y concilia a mano (`E-6`). Un SEP
@@ -758,6 +767,13 @@ construir, más quince que aparecieron después:
     filtrada se podrían vaciar las garantías, recibo por recibo, dentro de la
     ventana. Un SEP debería anclar el pagador junto al recibo, exigir en la red
     una segunda firma para `resolve` y dar a las disputas un vencimiento.
+    **Con el `purchase-escrow` de la Fase 9 (T158), dos de las tres quedan
+    cerradas para las compras pagadas a un escrow:** el pagador queda en la red
+    desde el `hold`, así que el reembolso solo puede ir a quien pagó; y la disputa
+    vence: pasado el plazo del árbitro, `expire` le devuelve todo al comprador
+    (`X-7`). Además, el comprador abre la disputa sin pasar por el árbitro. La
+    confirmación humana del veredicto (`E-18`) sigue viviendo solo en el script
+    del árbitro: la red todavía no exige una segunda firma.
 19. **Sin anclaje no hay disputa.** Un comercio que no ancla un recibo, o lo
     ancla con otro monto (y `verifyReceipt` lo invalida), queda fuera de
     AgentResolve.

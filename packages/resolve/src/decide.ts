@@ -19,6 +19,8 @@ export interface DecideDisputeInput {
   readonly arbiter: Arbiter;
   /** The merchant's verified response, or `null` when none arrived in time (T126). */
   readonly response: VerifiedResponse | null;
+  /** The merchant's time to answer, told to the arbiter: 48 h by default (`E-22`), the escrow's own (`X-26`). */
+  readonly responseWindowSeconds?: number;
   readonly now?: Date;
 }
 
@@ -35,6 +37,7 @@ export async function decideDispute(input: DecideDisputeInput): Promise<DecidedD
     receipt: checked.receipt,
     disputedAtomic: checked.disputedAtomic,
     response: input.response?.response ?? null,
+    ...(input.responseWindowSeconds === undefined ? {} : { responseWindowSeconds: input.responseWindowSeconds }),
   });
   const proposed = BigInt(decision.proposal.refund_atomic);
   const bounded = boundProposal(decision.proposal.outcome, proposed, checked.disputedAtomic);
