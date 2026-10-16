@@ -46,7 +46,7 @@
 | T135 MPP charge sobre Stellar (prueba técnica primero) | si alcanza | ✅ terminada: el SDK oficial no acepta pagar desde el `policy_rail` (la red sí acepta la firma; cuatro rechazos por el pagador, control con llave clásica cobra); no se construye (`R-20`); brecha 21; issue publicado ([stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)) | [PR #61](https://github.com/vicentewolde/AgentPey/pull/61), mergeado |
 | T136 SDK publicado en npm | si alcanza | ✅ terminada: [`@agentpey/ucp-stellar@0.1.0`](https://www.npmjs.com/package/@agentpey/ucp-stellar) en npm (publicado por el usuario el 6-oct), instalado desde npm en un proyecto vacío; el ejemplo compró `ord_muvqqsth2fb48d4110`; el agente paga a través del paquete (`R-21`) | [PR #63](https://github.com/vicentewolde/AgentPey/pull/63), mergeado |
 | T137 Kit de conformidad del medio de pago de Stellar | si alcanza | ✅ terminada: `pnpm run ucp:stellar:conformance -- <url>`, 20 comprobaciones (`R-22`); agentcommerce 20/20 con cobro real y una sola firma (`ord_muws1afd200277f471`); la tienda rota, 6 fallas con su motivo | [PR #64](https://github.com/vicentewolde/AgentPey/pull/64), mergeado |
-| T138 Prueba técnica: GenLayer | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
+| T138 Prueba técnica: GenLayer | si alcanza | 👀 en revisión: documento escrito; recomienda no construir ahora y, después, contrato propio en GenLayer con tramos y relevo único auditable ([evidencia](fase-8-agentes-reales/evidencia/T138-genlayer.md)); el usuario lo agendó para después (14-oct) | `cc/t138-genlayer-cierre` |
 | T139 Prueba técnica: Trustless Work | si alcanza | ⏳ pendiente, al final de la fase (`R-24`) | |
 | T140 Resolutor intercambiable | se corta primero | ✂️ cortada (`P-19`): se cruza con el diseño del escrow de la Fase 9 | |
 | T141 Página "Tiendas comprables por agentes" | para el video | ✅ terminada, en vivo en [agentpey.com/tiendas](https://agentpey.com/tiendas): `/tiendas` (alias `/stores`) lista las tres tiendas del directorio con su perfil UCP, sus recibos anclados y el último, leído de Horizon y confirmado en el registro (`R-26`); probada contra la red real | [PR #67](https://github.com/vicentewolde/AgentPey/pull/67) |
@@ -80,6 +80,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 
 ## Deuda y pendientes fuera de la fase
+
+- T138 (14-oct): construir GenLayer como jurado de AgentResolve queda **agendado para después**, con T140 primero (unas 27 h, [evidencia](fase-8-agentes-reales/evidencia/T138-genlayer.md) §7 y §8).
 
 - 14-oct, deploys de Render: el gateway espera 45 s a que levante `web` (`apps/gateway/src/supervisor.ts`) y aborta si
   tarda más. Así fallaron `cdde180` y `3492508` ("Exited with status 1"); Render deja la versión anterior en vivo, así

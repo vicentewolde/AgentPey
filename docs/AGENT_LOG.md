@@ -9068,3 +9068,20 @@ versiones del recibo; arreglado el test intermitente de realops. Con OK del usua
 `agentcommerce` validan contra UCP `2026-08-25` y la extensión `2026-10-16` (`ord_mv9s83yb…` `held`). D1 completo.
 
 Pendiente: `/tarea T162`. Exponential: T161 en `DONE`. `AGENTS.md`: sin cambios.
+
+## 2026-10-14 (8) — cc/t138-genlayer (worktree ~/dev/AgentPay-fase8)
+
+Agente: Claude Code.
+
+Qué: **T138 escrita**, en revisión. `evidencia/T138-genlayer.md`: GenLayer como jurado de AgentResolve. Internet Court
+tal cual no encaja (escrow y liquidación en Base, veredicto TRUE/FALSE/UNDETERMINED); sí un Intelligent Contract
+propio con tramos de reembolso y un relevo único auditable, con la confirmación humana de `E-18`. Recomendación: no
+construir ahora; después, T140 primero (unas 27 h en total). Solo documentos; sin código ni red.
+
+Coordinación: desde hoy **la Fase 8 trabaja en el worktree `~/dev/AgentPay-fase8`** y otra sesión de Claude Code en la
+carpeta principal; no cambiar de rama en la carpeta del otro. Las tareas nuevas de la Fase 8 numeran desde **T171**
+(T157 a T170 reservadas). No tocar `contracts/*`, `deployments/*.json`, AgentResolve, `open_claim` ni el `payTo` de
+Vitrinee desde la Fase 8.
+
+Pendiente: `/revisar` de T138 y la decisión del usuario (construir o no); T139 como documento; la tarea de `R-33`.
+Exponential: T138 a `IN_PROGRESS`. `AGENTS.md`: sin cambios.

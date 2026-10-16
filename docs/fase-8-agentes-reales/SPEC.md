@@ -300,8 +300,8 @@ más rápido que lo estimado.
 - **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no (narrativa y fondos)
 - **Descripción:** investigación, sin código de producto. Responder: cómo se presenta un reclamo de AgentResolve como caso de Internet Court; cómo se expresa un reembolso parcial con un veredicto de tres valores; cuál de las tres opciones de relevo (único auditable, varios con multifirma, puente); costo y tiempo.
 - **Hecho cuando:**
-  - [ ] `T138-genlayer.md` con las respuestas citadas, opciones, recomendación y horas
-  - [ ] el usuario decidió si se construye
+  - [x] `T138-genlayer.md` con las respuestas citadas, opciones, recomendación y horas ([evidencia](evidencia/T138-genlayer.md))
+  - [x] el usuario decidió si se construye: **no por ahora, agendado para después** (14-oct); cuando se retome, primero T140
 
 #### T139 · Prueba técnica: Trustless Work como escrow por compra · parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no
@@ -534,6 +534,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | T144: a pedido del usuario, un criterio más: probar el chat de Grok contra `mcp.agentpey.com`; la compra real, solo con su OK |
 | 2026-10-14 | `/revisar` de T144: el inicio de sesión del MCP rechaza a Grok. El usuario eligió abrirle la puerta: la prueba sale de T144 a una tarea nueva, **T156** (`R-37`), y `R-29` queda precisada sobre dots |
 | 2026-10-14 | T156 aprobada por el usuario; T144 cerrada |
+| 2026-10-14 | T138: documento escrito; el usuario decidió no construir por ahora y agendarlo para después |
 | 2026-10-14 | T156 cerrada por el usuario: desplegada, Grok conectado e inicio de sesión firmado con Freighter; la cotización y la compra no se pudieron hacer por el límite "High Demand" de Grok |
 
 ## 11. Fuentes externas

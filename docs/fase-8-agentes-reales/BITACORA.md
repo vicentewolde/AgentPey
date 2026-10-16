@@ -56,7 +56,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T135 MPP charge (prueba técnica) | cerrada |
 | T136 SDK en npm | cerrada |
 | T137 Kit de conformidad de Stellar | cerrada |
-| T138 Prueba técnica: GenLayer | pendiente, al final de la fase (`R-24`) |
+| T138 Prueba técnica: GenLayer | en revisión: documento escrito; construir, agendado para después |
 | T139 Prueba técnica: Trustless Work | pendiente, al final de la fase (`R-24`) |
 | T140 Resolutor intercambiable | pendiente (pide aprobación) |
 | T141 Página de tiendas | cerrada |
@@ -863,4 +863,22 @@ No pudo pedir una cotización: Grok contestó "High Demand" a cada mensaje, un l
 cerró la tarea así, sin compra.
 
 Evidencia: [`evidencia/T156.md`](evidencia/T156.md).
+
+---
+
+## T138 · GenLayer como jurado de AgentResolve — 2026-10-14, en revisión
+
+**Qué quedó.** Un documento que responde si GenLayer, la red donde varios modelos de IA distintos deciden por
+consenso, puede ser el jurado de las disputas de AgentPey. Sí, pero no usando Internet Court tal cual: su dinero vive
+en Base y su veredicto es un sí o no. Lo que encaja es un contrato propio en GenLayer que lea el reclamo, la respuesta
+del comercio y el recibo, compruebe sus hashes, y devuelva un veredicto con tramos de reembolso (0, 25, 50, 75 o
+100 %). El script del árbitro de hoy lo lleva a Stellar, y una persona sigue confirmando antes de pagar.
+
+**La recomendación.** No construirlo ahora: GenLayer está en testnet y su mainnet es del cuarto trimestre. Cuando se
+construya: primero la interfaz de T140, después el contrato en la testnet Bradbury, unas 27 h en total. Un hallazgo
+útil: varios relevos con multifirma no piden cambiar ningún contrato, basta con sumar firmantes a la cuenta del árbitro.
+
+**La decisión del usuario (14-oct).** No se construye por ahora; queda agendado para después, con T140 primero.
+
+Evidencia: [`evidencia/T138-genlayer.md`](evidencia/T138-genlayer.md).
 
