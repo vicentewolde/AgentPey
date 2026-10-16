@@ -9029,3 +9029,16 @@ rechazado ejecutado (`dcd3f219…`) y cuatro `expire` (detalles en la evidencia)
 verificando.
 
 Pendiente: `/revisar`; merge con OK del usuario. Exponential: T158 en `IN_PROGRESS`. `AGENTS.md`: sin cambios.
+
+## 2026-10-16 (18) — cc/t158-veredicto-escrow y cc/t158-cierre
+
+Agente: Claude Code.
+
+Qué: `/revisar` de T158 sin bloqueantes; los 15 hallazgos corregidos a pedido del usuario. El principal: `execute`
+solo ejecuta un veredicto que escuchó la respuesta del comercio en la red. Además: `decide` respeta la ventana del
+árbitro, `execute` vuelve a comprobar el wasm, hay reintentos en las lecturas del CLI con muerte a los 30 s, el
+contrato se encuentra por el reclamo, `verify` muestra `expire` y `refund_owed`, y se corrigió el anexo. Con OK del
+usuario, **T158 mergeada a `main`** ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91), fast-forward). Ticket en
+`DONE`.
+
+Pendiente: `/tarea T161`. Exponential: T158 en `DONE`. `AGENTS.md`: sin cambios.

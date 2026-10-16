@@ -16,8 +16,8 @@
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
 contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 cerrada** ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)): desde el 15-oct
-`agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 en revisión**: un veredicto real
-reembolsó desde el pago retenido el 16-oct.
+`agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 cerrada** ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)): un
+veredicto real reembolsó desde el pago retenido el 16-oct. Siguiente: T161.
 
 ## Progreso
 
@@ -25,7 +25,7 @@ reembolsó desde el pago retenido el 16-oct.
 |---|---|
 | Chequeo del día 1 | ✅ hecho (`X-14`) |
 | T157 Contrato de escrow | ✅ terminada |
-| T158 El veredicto actúa sobre el pago retenido | 👀 en revisión |
+| T158 El veredicto actúa sobre el pago retenido | ✅ terminada |
 | T159 Un pago, un recibo, en la red | ✅ terminada |
 | T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ⏳ pendiente |
@@ -142,7 +142,7 @@ contrato. La plata sigue en el escrow: la liberan el despacho y la ventana (T164
 
 **Evidencia.** [`evidencia/T160.md`](evidencia/T160.md).
 
-## 2026-10-15 y 16 · T158 · El veredicto actúa sobre el pago retenido (en revisión)
+## 2026-10-15 y 16 · T158 · El veredicto actúa sobre el pago retenido
 
 **Qué quedó funcionando, en llano.** Cuando una compra se pagó a un escrow, el reclamo, la decisión y el reembolso pasan
 todos por ese contrato. El comprador abre el reclamo con su propia firma, sin pedirle nada al árbitro. La tienda tiene
@@ -163,4 +163,9 @@ reclamó, el árbitro decidió reembolso completo, el usuario lo confirmó y los
 - **La sexta** salió bien. De esos tropiezos quedaron reintentos y tiempos máximos en las lecturas de red, y registros
   que sobreviven a un reinicio.
 
-**Decisión:** `X-26`. **Evidencia:** [`evidencia/T158.md`](evidencia/T158.md).
+**Lo que corrigió la revisión.** No hubo bloqueantes, y los quince hallazgos se corrigieron a pedido del usuario. El
+más importante: un veredicto decidido con una respuesta en archivo no se ejecuta si después el comercio responde otra
+cosa en la red. Además, `decide` ya no gasta una llamada cuando la ventana del árbitro cerró, `execute` vuelve a
+comprobar el código del escrow, y las lecturas por el CLI de Stellar también se reintentan.
+
+**Decisión:** `X-26`. **Evidencia:** [`evidencia/T158.md`](evidencia/T158.md). Mergeada el 16-oct ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)).
