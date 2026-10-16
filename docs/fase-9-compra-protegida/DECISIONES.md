@@ -504,3 +504,33 @@ de ser quien abre la disputa y quien pone el destinatario del reembolso (brecha 
 - **Las mismas 48 h para todo:** el escrow ya fija su propio plazo, y la decisión no puede llegar después de que el
   contrato cierre la ventana del árbitro.
 - **Esperar a T163 para el veredicto real:** atrasaba D1 sin cambiar lo que se prueba del pago retenido.
+
+---
+
+### X-27 · La orden muestra el escrow en `receipt.escrow`, versión `2026-10-16` de la extensión del recibo, y la disputa del escrow como ajuste de UCP · `Vigente`
+**Fecha:** 2026-10-16 · **Tarea:** T161 · Plan aprobado por el usuario
+
+1. **Un bloque nuevo, `receipt.escrow`,** en la orden de una compra pagada a un escrow. Trae el estado tal como lo
+   guarda el contrato (`held`, `shipped`, `released`, `disputed`, `responded`, `resolved` o `expired`), el monto, las
+   fechas que importan (despacho y liberación; apertura, plazo de la tienda y del árbitro; cierre), los hashes del
+   reclamo, la respuesta y el veredicto, y el reembolso entregado y el pendiente (`X-19`). Cada campo se comprueba con
+   `get(orden)` del contrato.
+2. **Versión `2026-10-16` de la extensión** (`X-13`), publicada en `agentpey.com/ucp/extensions/receipt/2026-10-16/`.
+   La declaran el perfil y el checkout de una tienda con escrow, y la orden de una compra pagada a uno. Toda otra
+   orden sigue en `2026-09-30`, sin cambios.
+3. **Una disputa en el escrow es además un ajuste nativo de UCP** (`adjustments[]`): `pending` mientras está abierta,
+   `completed` al resolverse o vencer, con el total reembolsado en la moneda de la orden, como `agent-resolve` desde
+   T127. Un cliente UCP que no conoce la extensión igual la ve.
+4. **Se lee de la red en cada consulta, sin caché**, con el mismo tope de 3 s que la disputa. Si falla, la orden sale
+   igual, con el aviso `escrow_state_unavailable`. Las ventanas del contrato no cambian nunca, así que se leen una vez
+   por contrato.
+5. **`get_order` del MCP** devuelve `escrow` con el estado, una frase que el chat puede repetir (`meaning`) y los montos
+   en USDC.
+
+**Motivo.** El comprador y su agente ven en la orden lo que el contrato promete y cuándo: hasta cuándo se puede
+reclamar, cuándo cobra la tienda, y si el reembolso llegó.
+
+**Alternativas descartadas.**
+- **Ampliar `receipt.dispute` con el escrow:** mezcla dos contratos con reglas distintas en un mismo bloque.
+- **Guardar el estado en la tienda y actualizarlo con eventos:** puede quedar viejo. La red es la fuente, y T165 suma
+  los avisos.

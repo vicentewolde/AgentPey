@@ -71,6 +71,13 @@ export const RECEIPT_EXTENSION = "com.agentpey.shopping.receipt";
 export const RECEIPT_EXTENSION_VERSION = "2026-09-30";
 export const RECEIPT_EXTENSION_SPEC_URL = "https://agentpey.com/ucp/extensions/receipt/spec";
 export const RECEIPT_EXTENSION_SCHEMA_URL = "https://agentpey.com/ucp/extensions/receipt/schema.json";
+/**
+ * The receipt extension a store with a `purchase-escrow` declares (Fase 9, T161, X-13): the order carries
+ * `receipt.escrow`, where the payment stands in the escrow. A store paid directly keeps {@link RECEIPT_EXTENSION_VERSION}.
+ */
+export const RECEIPT_EXTENSION_ESCROW_VERSION = "2026-10-16";
+export const RECEIPT_EXTENSION_ESCROW_SPEC_URL = `https://agentpey.com/ucp/extensions/receipt/${RECEIPT_EXTENSION_ESCROW_VERSION}/spec`;
+export const RECEIPT_EXTENSION_ESCROW_SCHEMA_URL = `https://agentpey.com/ucp/extensions/receipt/${RECEIPT_EXTENSION_ESCROW_VERSION}/schema.json`;
 
 /**
  * AgentPey's payment handler for UCP: an x402 "exact" payment on Stellar,

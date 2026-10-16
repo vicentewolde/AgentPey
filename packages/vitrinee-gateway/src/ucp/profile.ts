@@ -1,6 +1,9 @@
 import { StrKey } from "@stellar/stellar-sdk";
 import {
   RECEIPT_EXTENSION,
+  RECEIPT_EXTENSION_ESCROW_SCHEMA_URL,
+  RECEIPT_EXTENSION_ESCROW_SPEC_URL,
+  RECEIPT_EXTENSION_ESCROW_VERSION,
   RECEIPT_EXTENSION_SCHEMA_URL,
   RECEIPT_EXTENSION_SPEC_URL,
   RECEIPT_EXTENSION_VERSION,
@@ -155,7 +158,10 @@ export function buildUcpProfile({ config, baseUrl, version = "2026-08-25", ap2Ke
           ? {}
           : { [UCP_AP2_MANDATE]: [{ version, ...UCP_AP2_MANDATE_URLS, extends: UCP_CHECKOUT, config: { vp_formats_supported: { "dc+sd-jwt": {} } } }] }),
         [RECEIPT_EXTENSION]: [
-          { version: RECEIPT_EXTENSION_VERSION, spec: RECEIPT_EXTENSION_SPEC_URL, schema: RECEIPT_EXTENSION_SCHEMA_URL, extends: [UCP_CHECKOUT, UCP_ORDER] },
+          // A store with an escrow speaks the extension's escrow version, whose orders carry receipt.escrow (T161).
+          config.escrow === undefined
+            ? { version: RECEIPT_EXTENSION_VERSION, spec: RECEIPT_EXTENSION_SPEC_URL, schema: RECEIPT_EXTENSION_SCHEMA_URL, extends: [UCP_CHECKOUT, UCP_ORDER] }
+            : { version: RECEIPT_EXTENSION_ESCROW_VERSION, spec: RECEIPT_EXTENSION_ESCROW_SPEC_URL, schema: RECEIPT_EXTENSION_ESCROW_SCHEMA_URL, extends: [UCP_CHECKOUT, UCP_ORDER] },
         ],
       },
       payment_handlers: {

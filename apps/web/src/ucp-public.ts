@@ -9,8 +9,8 @@ export function ucpPublicPath(pathname: string): string | undefined {
   // The same platform declaring UCP 2026-08-25 (T133): a store answers in the version this profile says.
   // And declaring AP2 mandates, with its P-256 key (T134, R-16).
   if (pathname === "/ucp/platform/agentpey.json" || pathname === "/ucp/platform/agentpey-2026-08-25.json" || pathname === "/ucp/platform/agentpey-ap2.json") return pathname;
-  // The handler's escrow version (T160, X-13) lives in a folder of its own; the root keeps 2026-09-30.
-  const match = /^\/ucp\/(handlers\/stellar-x402(?:\/2026-10-15)?|extensions\/receipt)\/(spec|schema\.json)$/.exec(pathname);
+  // The escrow versions live in folders of their own (handler T160, receipt T161; X-13); the roots keep 2026-09-30.
+  const match = /^\/ucp\/(handlers\/stellar-x402(?:\/2026-10-15)?|extensions\/receipt(?:\/2026-10-16)?)\/(spec|schema\.json)$/.exec(pathname);
   if (match === null) return undefined;
   return match[2] === "spec" ? `/ucp/${match[1]}/spec.md` : pathname;
 }

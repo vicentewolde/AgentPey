@@ -11,6 +11,7 @@
  */
 import {
   RECEIPT_EXTENSION,
+  RECEIPT_EXTENSION_ESCROW_VERSION,
   RECEIPT_EXTENSION_VERSION,
   STELLAR_TESTNET_CAIP2,
   STELLAR_X402_HANDLER,
@@ -440,7 +441,7 @@ function checkoutBody(deps: UcpCheckoutDeps, session: CheckoutSession, { origin,
         [UCP_CHECKOUT]: [{ version }],
         [UCP_FULFILLMENT]: [{ version }],
         ...(offered ? { [UCP_BUYER_CONSENT]: [{ version }] } : {}),
-        [RECEIPT_EXTENSION]: [{ version: RECEIPT_EXTENSION_VERSION }],
+        [RECEIPT_EXTENSION]: [{ version: deps.config.escrow === undefined ? RECEIPT_EXTENSION_VERSION : RECEIPT_EXTENSION_ESCROW_VERSION }],
       },
       payment_handlers: { [STELLAR_X402_HANDLER]: [handlerFor(deps, session)] },
     },

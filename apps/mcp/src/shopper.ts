@@ -145,9 +145,33 @@ const orderSchema = z.looseObject({
       verify_url: z.string().optional(),
       anchor: z.looseObject({ status: z.string() }).optional(),
       dispute: z.looseObject({ status: z.string() }).optional(),
+      // Where the payment stands in the store's escrow (T161): the receipt extension's 2026-10-16 block.
+      escrow: z
+        .looseObject({
+          contract: z.string(),
+          status: z.enum(["held", "shipped", "released", "disputed", "responded", "resolved", "expired"]),
+          amount_atomic: z.string().regex(/^\d+$/),
+          release_after: z.string().optional(),
+          respond_by: z.string().optional(),
+          resolve_by: z.string().optional(),
+          refund_atomic: z.string().regex(/^\d+$/),
+          refund_owed_atomic: z.string().regex(/^\d+$/),
+        })
+        .optional(),
     })
     .optional(),
 });
+
+/** Each escrow state, in words the chat can repeat to the person (T161). */
+const ESCROW_MEANING = {
+  held: "The payment is held in the store's escrow. It goes to the store only after the order ships and the release window closes; a claim can be opened until then.",
+  shipped: "The store marked the order shipped. The payment is still held until release_after; a claim can be opened before then.",
+  released: "The release window closed with no claim: the escrow paid the store.",
+  disputed: "A claim is open: the payment stays held, and the store has until respond_by to answer.",
+  responded: "The store answered the claim: the arbiter decides before resolve_by.",
+  resolved: "The arbiter decided: refund_usdc went back to the payer from the held payment, and the rest to the store.",
+  expired: "The arbiter did not decide in time: the escrow refunded the payer in full.",
+} as const;
 
 function storeError(message: string, details: Record<string, unknown>): AgentPassError {
   return new AgentPassError("InvalidVenueId", message, { details });
@@ -345,6 +369,20 @@ export class Shopper {
       total: { amount: order.totals?.find((line) => line.type === "total")?.amount ?? null, currency: order.currency ?? null },
       items: (order.line_items ?? []).map((line) => ({ id: line.item?.id ?? null, title: line.item?.title ?? null, quantity: line.quantity ?? null })),
       dispute: receipt?.dispute?.status ?? null,
+      escrow:
+        receipt?.escrow === undefined
+          ? null
+          : {
+              contract: receipt.escrow.contract,
+              status: receipt.escrow.status,
+              meaning: ESCROW_MEANING[receipt.escrow.status],
+              amount_usdc: usdcAtomicToDecimal(BigInt(receipt.escrow.amount_atomic)),
+              release_after: receipt.escrow.release_after ?? null,
+              respond_by: receipt.escrow.respond_by ?? null,
+              resolve_by: receipt.escrow.resolve_by ?? null,
+              refund_usdc: usdcAtomicToDecimal(BigInt(receipt.escrow.refund_atomic)),
+              refund_owed_usdc: usdcAtomicToDecimal(BigInt(receipt.escrow.refund_owed_atomic)),
+            },
       receipt:
         receipt === undefined || verification === null
           ? null

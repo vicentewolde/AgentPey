@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentpey.com/ucp/extensions/receipt/2026-10-16/schema.json",
+  "title": "Anchored Receipt Extension",
+  "description": "Extends UCP checkout and order with a merchant-signed receipt whose hash is anchored on Stellar. Version 2026-10-16 adds receipt.escrow on orders: where the payment stands in the store's purchase-escrow contract, as the contract holds it. Stores paid directly keep version 2026-09-30.",
+  "name": "com.agentpey.shopping.receipt",
+  "version": "2026-10-16",
+  "$defs": {
+    "receipt": {
+      "type": "object",
+      "required": [
+        "format",
+        "jws",
+        "hash",
+        "network",
+        "settlement_tx_hash",
+        "anchor",
+        "verify_url"
+      ],
+      "properties": {
+        "format": {
+          "const": "jws"
+        },
+        "jws": {
+          "type": "string",
+          "description": "Compact JWS (EdDSA) of the receipt claims, signed by the business's signing key."
+        },
+        "hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the compact JWS: the value anchored on-chain."
+        },
+        "network": {
+          "type": "string",
+          "description": "CAIP-2 network id of the settlement and the anchor."
+        },
+        "settlement_tx_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "anchor": {
+          "type": "object",
+          "required": [
+            "status",
+            "registry"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "anchored",
+                "failed"
+              ]
+            },
+            "registry": {
+              "type": "string",
+              "pattern": "^C[A-Z2-7]{55}$",
+              "description": "Receipt registry contract."
+            },
+            "tx_hash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "ledger": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "anchored_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "verify_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "dispute": {
+          "$ref": "#/$defs/dispute"
+        },
+        "escrow": {
+          "$ref": "#/$defs/escrow"
+        }
+      }
+    },
+    "dispute": {
+      "type": "object",
+      "description": "A refund claim over this receipt in AgentPey's AgentResolve contract, as the contract holds it. Present only on orders, and only when the receipt is disputed. Amounts are strings of the receipt asset's atomic units (7 decimals).",
+      "required": [
+        "contract",
+        "status",
+        "claim_hash",
+        "asset",
+        "amount_atomic",
+        "opened_at"
+      ],
+      "properties": {
+        "contract": {
+          "type": "string",
+          "pattern": "^C[A-Z2-7]{55}$",
+          "description": "The agent-resolve contract; read its get(receipt) to check every field below."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "resolved"
+          ]
+        },
+        "claim_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the payer's signed claim."
+        },
+        "asset": {
+          "type": "string",
+          "pattern": "^C[A-Z2-7]{55}$",
+          "description": "The receipt asset's contract, in which the amounts are paid."
+        },
+        "amount_atomic": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Locked in the merchant's guarantee while the dispute is open."
+        },
+        "opened_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "verdict_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the verdict; present once resolved."
+        },
+        "refund_atomic": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Paid back to the payer; present once resolved, 0 when the claim was rejected."
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "dev.ucp.shopping.checkout": {
+      "title": "Checkout with Anchored Receipt",
+      "type": "object",
+      "properties": {
+        "receipt": {
+          "$ref": "#/$defs/receipt"
+        }
+      }
+    },
+    "dev.ucp.shopping.order": {
+      "title": "Order with Anchored Receipt",
+      "type": "object",
+      "properties": {
+        "receipt": {
+          "$ref": "#/$defs/receipt"
+        }
+      }
+    },
+    "escrow": {
+      "type": "object",
+      "description": "The purchase as the store's purchase-escrow holds it, read from the chain on each request. Present only on orders paid into an escrow. Amounts are strings of the receipt asset's atomic units (7 decimals). Read the contract's get(order id) to check every field.",
+      "required": [
+        "contract",
+        "status",
+        "amount_atomic",
+        "held_at",
+        "refund_atomic",
+        "refund_owed_atomic"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "type": "string",
+          "pattern": "^C[A-Z2-7]{55}$",
+          "description": "The store's purchase-escrow contract."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "held",
+            "shipped",
+            "released",
+            "disputed",
+            "responded",
+            "resolved",
+            "expired"
+          ],
+          "description": "held: paid and recorded; shipped: the release window is running; released: paid to the store; disputed: a claim is open and the release is frozen; responded: the store answered the claim; resolved: the arbiter decided; expired: the arbiter did not decide in time and the payer got everything back."
+        },
+        "amount_atomic": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "The payment the escrow holds for this order."
+        },
+        "held_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "shipped_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "release_after": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When anyone may release the payment to the store, if no claim is opened before."
+        },
+        "claim_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the payer's signed claim."
+        },
+        "opened_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "respond_by": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The store's deadline to answer the claim."
+        },
+        "resolve_by": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The arbiter's deadline; after it only expire is valid, refunding the payer in full."
+        },
+        "response_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the store's answer."
+        },
+        "verdict_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "sha256 of the arbiter's verdict."
+        },
+        "refund_atomic": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Refunded to the payer, by a verdict or by expire."
+        },
+        "refund_owed_atomic": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Part of the refund the payer could not receive yet; claim_refund delivers it."
+        },
+        "closed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

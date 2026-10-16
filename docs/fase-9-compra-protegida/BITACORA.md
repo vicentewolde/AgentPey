@@ -17,7 +17,8 @@ usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
 contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 cerrada** ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)): desde el 15-oct
 `agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 cerrada** ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)): un
-veredicto real reembolsó desde el pago retenido el 16-oct. Siguiente: T161.
+veredicto real reembolsó desde el pago retenido el 16-oct. **T161 en revisión**: la orden muestra dónde está el pago en el
+escrow; falta el merge y comprobarlo en producción.
 
 ## Progreso
 
@@ -28,7 +29,7 @@ veredicto real reembolsó desde el pago retenido el 16-oct. Siguiente: T161.
 | T158 El veredicto actúa sobre el pago retenido | ✅ terminada |
 | T159 Un pago, un recibo, en la red | ✅ terminada |
 | T160 El checkout paga al escrow | ✅ terminada |
-| T161 La orden muestra el estado del escrow | ⏳ pendiente |
+| T161 La orden muestra el estado del escrow | 👀 en revisión |
 | T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente |
 | T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente |
 | T164 El despacho abre la ventana de liberación | ⏳ pendiente |
@@ -169,3 +170,17 @@ cosa en la red. Además, `decide` ya no gasta una llamada cuando la ventana del 
 comprobar el código del escrow, y las lecturas por el CLI de Stellar también se reintentan.
 
 **Decisión:** `X-26`. **Evidencia:** [`evidencia/T158.md`](evidencia/T158.md). Mergeada el 16-oct ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)).
+
+## 2026-10-16 · T161 · La orden muestra el estado del escrow (en revisión)
+
+**Qué quedó funcionando, en llano.** La orden de una compra pagada a un escrow ahora dice dónde está la plata:
+retenida, despachada (y cuándo se libera), liberada a la tienda, en disputa (con el plazo de la tienda y el del
+árbitro), resuelta o vencida, y cuánto se reembolsó. Lo lee de la red en cada consulta. En el chat, `get_order` lo
+cuenta en una frase: por ejemplo, "el pago está retenido en el escrow de la tienda y va a la tienda solo después del
+despacho". Las órdenes de las tiendas que cobran directo no cambian.
+
+**Qué compra muestra "retenido".** La de T160 ya no lo está: T158 la resolvió. La que sigue retenida es la que alguien
+pagó desde el MCP el 15-oct (`ord_mv9s83yb…`); solo se lee. Leída localmente contra la red real, aparece retenida; la de
+T160 y la sexta de T158, resueltas; y una de las vencidas, vencida.
+
+**Decisión:** `X-27`. **Evidencia:** [`evidencia/T161.md`](evidencia/T161.md).

@@ -191,6 +191,9 @@ describe("UCP checkout sessions (T122)", () => {
     const order = await h.call("GET", `/orders/${body.order?.id}`);
     expect(order.status).toBe(200);
     expect(ucpErrors(ORDER_SCHEMA, order.body)).toEqual([]);
+    // A store paid directly: the receipt extension it always spoke, and no escrow block (T161).
+    expect(order.body.ucp).toMatchObject({ capabilities: { "com.agentpey.shopping.receipt": [{ version: "2026-09-30" }] } });
+    expect(order.body["receipt"]).not.toHaveProperty("escrow");
     expect(order.body).toMatchObject({ checkout_id: created.id, currency: "CLP", totals: expect.arrayContaining([{ type: "total", amount: 12990 }]) });
     expect(order.body["receipt"]).toMatchObject({ settlement_tx_hash: expect.stringMatching(/^[0-9a-f]{64}$/) });
     // Country only: the order id is in the public receipt, so the address is not served here.

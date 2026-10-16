@@ -231,3 +231,119 @@ describe("a store without an escrow publishes exactly what it did before T160", 
     }
   });
 });
+
+describe("the UCP order shows where its payment stands in the escrow (T161, X-27)", () => {
+  const RECEIPT_2026_10_16 = JSON.parse(
+    readFileSync(new URL("../../../apps/web/public/ucp/extensions/receipt/2026-10-16/schema.json", import.meta.url), "utf8"),
+  ) as { $id: string };
+  addSchema(RECEIPT_2026_10_16);
+  const orderReply = z.looseObject({
+    ucp: z.looseObject({ capabilities: z.record(z.string(), z.array(z.looseObject({ version: z.string() }))) }),
+    adjustments: z.array(z.looseObject({ type: z.string(), status: z.string(), totals: z.array(z.looseObject({ amount: z.number() })).optional() })).optional(),
+    messages: z.array(z.looseObject({ code: z.string().optional() })),
+    receipt: z.looseObject({ escrow: z.looseObject({ status: z.string() }).optional() }).optional(),
+  });
+
+  async function storeWithPurchase(escrows?: (contract: string) => ReturnType<typeof fakeEscrow>["reader"]) {
+    const escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    const app = createApp({
+      config: escrowConfig(),
+      adapter: new MockStoreAdapter(),
+      facilitator: fakeFacilitator(),
+      anchorer: registry.anchorer,
+      registry: registry.registry,
+      holder: escrow.holder,
+      escrows: escrows ?? escrow.escrows,
+      platformProfiles: fakePlatformProfiles(),
+      anchorRetryDelaysMs: [1],
+    });
+    const { url, close } = await listen(app);
+    const call = async (method: string, path: string, body?: unknown) => {
+      const res = await fetch(`${url}${UCP_REST_PREFIX}${path}`, {
+        method,
+        headers: { "content-type": "application/json", "UCP-Agent": 'profile="https://agentpey.com/ucp/platform/agentpey.json"' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      return { status: res.status, body: (await res.json()) as unknown };
+    };
+    const opened = checkoutReply.parse(
+      (await call("POST", "/checkout-sessions", {
+        line_items: [{ item: { id: "gorro-andes" }, quantity: 1 }],
+        fulfillment: { methods: [{ type: "shipping", destinations: [{ street_address: "Av. Providencia 1234", address_locality: "Santiago", address_country: "CL" }] }] },
+      })).body,
+    );
+    const requirements = opened.ucp.payment_handlers[STELLAR_X402_HANDLER]?.[0]?.config.payment_requirements;
+    const done = checkoutReply.parse(
+      (await call("POST", `/checkout-sessions/${opened.id}/complete`, {
+        payment: { instruments: [{ id: "instr_1", handler_id: "stellar_x402", type: "stellar_x402", selected: true, credential: { type: "x402_payment_payload", x402_version: 2, accepted: requirements, payload: { transaction: Buffer.from("fake-tx").toString("base64") } } }] },
+      })).body,
+    );
+    await app.anchors.idle();
+    const orderId = done.order!.id;
+    const purchase = () => [...escrow.purchases.values()][0]!;
+    const readOrder = async () => {
+      const res = await call("GET", `/orders/${orderId}`);
+      expect(res.status).toBe(200);
+      expect(ucpErrors(UCP_SCHEMA_2026_08_25.order, res.body, "2026-08-25")).toEqual([]);
+      const parsed = orderReply.parse(res.body);
+      if (parsed.receipt?.escrow !== undefined) expect(ucpErrors(`${RECEIPT_2026_10_16.$id}#/$defs/escrow`, parsed.receipt.escrow)).toEqual([]);
+      return { parsed, escrowOf: () => parsed.receipt?.escrow };
+    };
+    return { escrow, purchase, readOrder, close: async () => { app.anchors.stop(); await close(); } };
+  }
+
+  it("shows a held purchase, valid against UCP and the 2026-10-16 receipt extension", async () => {
+    const store = await storeWithPurchase();
+    try {
+      const { parsed, escrowOf } = await store.readOrder();
+      expect(parsed.ucp.capabilities["com.agentpey.shopping.receipt"]).toEqual([{ version: "2026-10-16" }]);
+      expect(escrowOf()).toEqual({ contract: ESCROW_ID, status: "held", amount_atomic: "136736842", held_at: "2026-09-21T14:13:20.000Z", refund_atomic: "0", refund_owed_atomic: "0" });
+      expect(parsed.adjustments).toBeUndefined();
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("shows the release window once shipped, and a claim with its deadlines as a pending UCP dispute", async () => {
+    const store = await storeWithPurchase();
+    try {
+      Object.assign(store.purchase(), { status: "shipped", shippedAt: 1_790_000_100 });
+      expect((await store.readOrder()).escrowOf()).toMatchObject({ status: "shipped", shipped_at: "2026-09-21T14:15:00.000Z", release_after: "2026-09-21T14:25:00.000Z" });
+
+      Object.assign(store.purchase(), { status: "disputed", claimHash: "c".repeat(64), openedAt: 1_790_000_200 });
+      const disputed = await store.readOrder();
+      expect(disputed.escrowOf()).toMatchObject({ status: "disputed", claim_hash: "c".repeat(64), respond_by: "2026-09-21T14:31:40.000Z", resolve_by: "2026-09-21T15:31:40.000Z" });
+      expect(disputed.parsed.adjustments).toEqual([expect.objectContaining({ type: "dispute", status: "pending" })]);
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("shows a refund from the held payment as a completed dispute with the refunded total, and an expired one too", async () => {
+    const store = await storeWithPurchase();
+    try {
+      Object.assign(store.purchase(), { status: "resolved", claimHash: "c".repeat(64), openedAt: 1_790_000_200, verdictHash: "f".repeat(64), refundAtomic: 136_736_842n, closedAt: 1_790_001_200 });
+      const resolved = await store.readOrder();
+      expect(resolved.escrowOf()).toMatchObject({ status: "resolved", verdict_hash: "f".repeat(64), refund_atomic: "136736842", closed_at: "2026-09-21T14:33:20.000Z" });
+      expect(resolved.parsed.adjustments).toEqual([expect.objectContaining({ status: "completed", totals: [expect.objectContaining({ amount: -12990 })] })]);
+
+      Object.assign(store.purchase(), { status: "expired", verdictHash: null });
+      const expired = await store.readOrder();
+      expect(expired.parsed.adjustments?.[0]).toMatchObject({ status: "completed", description: expect.stringContaining("did not decide in time") });
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("answers the order with a warning when the escrow cannot be read", async () => {
+    const store = await storeWithPurchase(() => ({ contractId: ESCROW_ID, config: () => Promise.reject(new Error("rpc: 503")), get: () => Promise.reject(new Error("rpc: 503")), byTx: () => Promise.reject(new Error("rpc: 503")) }));
+    try {
+      const { parsed } = await store.readOrder();
+      expect(parsed.receipt?.escrow).toBeUndefined();
+      expect(parsed.messages).toEqual(expect.arrayContaining([expect.objectContaining({ code: "escrow_state_unavailable" })]));
+    } finally {
+      await store.close();
+    }
+  });
+});

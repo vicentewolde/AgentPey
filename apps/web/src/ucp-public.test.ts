@@ -16,6 +16,8 @@ describe("the UCP documents agentpey.com publishes (Fase 7, E-1)", () => {
     { url: "https://agentpey.com/ucp/handlers/stellar-x402/2026-10-15/schema.json", file: "/ucp/handlers/stellar-x402/2026-10-15/schema.json" },
     { url: "https://agentpey.com/ucp/extensions/receipt/spec", file: "/ucp/extensions/receipt/spec.md" },
     { url: "https://agentpey.com/ucp/extensions/receipt/schema.json", file: "/ucp/extensions/receipt/schema.json" },
+    { url: "https://agentpey.com/ucp/extensions/receipt/2026-10-16/spec", file: "/ucp/extensions/receipt/2026-10-16/spec.md" },
+    { url: "https://agentpey.com/ucp/extensions/receipt/2026-10-16/schema.json", file: "/ucp/extensions/receipt/2026-10-16/schema.json" },
     { url: "https://agentpey.com/ucp/platform/agentpey.json", file: "/ucp/platform/agentpey.json" },
     { url: "https://agentpey.com/ucp/platform/agentpey-2026-08-25.json", file: "/ucp/platform/agentpey-2026-08-25.json" },
     { url: "https://agentpey.com/ucp/platform/agentpey-ap2.json", file: "/ucp/platform/agentpey-ap2.json" },

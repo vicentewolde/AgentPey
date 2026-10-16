@@ -276,7 +276,8 @@ export function createApp({
   });
   app.orderEvents = orderEvents;
   registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready, ap2Key, orderEvents }, baseUrlOf);
-  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents);
+  // Where each order's payment stands in the escrow it was paid into (T161): the same read-only readers verification uses.
+  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents, escrowReader);
 
   app.get("/products/:id", async (req, res) => {
     const id = String(req.params.id);

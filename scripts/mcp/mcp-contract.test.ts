@@ -272,6 +272,7 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
     const receipt = read.structuredContent!["receipt"];
     // T159: a receipt paid straight to the store has no fourth check, and its order reads exactly as before.
     expect(receipt.checks).not.toHaveProperty("held");
+    expect(read.structuredContent!["escrow"]).toBeNull();
     expect(receipt.explorer_url).toBe(`https://stellar.expert/explorer/testnet/tx/${receipt.settlement_tx_hash}`);
 
     const claimed = await mcp.call("open_claim", { store: storeName(), order_id: order["order_id"], reason: "not_delivered", description: "Never arrived" });
@@ -661,6 +662,8 @@ describe("a store with an escrow, through the MCP (T160)", () => {
         valid: true,
         checks: { order: { ok: true }, signature: { ok: true }, anchored: { ok: true }, settlement: { ok: true }, held: { ok: true } },
       });
+      // Where the payment stands, in words the chat can repeat (T161).
+      expect(read.structuredContent!["escrow"]).toMatchObject({ contract: ESCROW_ID, status: "held", amount_usdc: "13.6736842", refund_usdc: "0.0000000", meaning: expect.stringContaining("held in the store's escrow") });
       const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived" });
       expect(claimed.isError).toBeFalsy();
     } finally {

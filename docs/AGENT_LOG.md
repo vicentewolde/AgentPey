@@ -9042,3 +9042,16 @@ usuario, **T158 mergeada a `main`** ([PR #91](https://github.com/vicentewolde/Ag
 `DONE`.
 
 Pendiente: `/tarea T161`. Exponential: T158 en `DONE`. `AGENTS.md`: sin cambios.
+
+## 2026-10-16 (19) — cc/t161-orden-escrow
+
+Agente: Claude Code.
+
+Qué: **T161 en revisión** (plan aprobado por el usuario, `X-27`): la orden UCP de una compra pagada a un escrow trae
+`receipt.escrow` leído de la red (estado, fechas, hashes, reembolso), con la extensión del recibo `2026-10-16`
+publicada en agentpey.com; una disputa del escrow es también un ajuste nativo de UCP; `get_order` del MCP devuelve
+`escrow` con una frase para el chat. Las órdenes sin escrow no cambian. `pnpm check`, `vitrinee:check` y la suite UCP
+(49/8/20) en verde.
+
+Pendiente: `/revisar`; merge con OK del usuario; comprobar en producción `ord_mv9s83yb…` retenida. Exponential: T161 en
+`IN_PROGRESS`. `AGENTS.md`: sin cambios.
