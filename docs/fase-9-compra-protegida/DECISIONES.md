@@ -460,3 +460,36 @@ tienda que cobra a un contrato equivocado emitiría recibos que fallan el cuarto
 - **Leerlo de `deployments/testnet.json`:** se encendería con el merge, sin interruptor.
 - **Volver a cobrar directo si la comprobación falla:** esconde el error y deja a la tienda prometiendo una protección
   que no da.
+
+---
+
+### X-26 · Una disputa sobre una compra con escrow vive en el escrow: la abre el pagador, el plazo es del contrato y el reembolso sale del pago retenido · `Vigente`
+**Fecha:** 2026-10-15 · **Tarea:** T158 · Plan aprobado por el usuario
+
+El árbitro (`scripts/resolve.ts`) elige el contrato por el recibo: si nombra un escrow (`X-22`), la disputa vive ahí,
+identificada por la orden; si no, en `agent-resolve`, como desde T124. El veredicto, su hash y la confirmación humana
+(`E-18`, `X-10`) no cambian.
+
+1. **La abre el pagador, sin el árbitro.** `resolve:open` firma el reclamo y, con la misma llave dueña del rail, el
+   mensaje de `open` (`X-18`), y lo envía al escrow. El escrow compara la firma con el pagador que registró en el `hold`.
+   T162 hará lo mismo desde el chat. Por ahora, el script solo abre disputas de compras pagadas desde un rail cuya llave
+   tiene esta máquina (`AGENT_SECRET_KEY` o `MCP_AGENT_SECRET_KEY`).
+2. **El plazo del comercio es el del contrato.** `resolve:decide` no decide sin respuesta antes de que venza el
+   `response_window` del escrow (15 minutos en `agentcommerce`). Las 48 h de `E-22` quedan para `agent-resolve`
+   (`assertMayDecide` y `responseDeadline` reciben el plazo). Si el comercio respondió en la red, la respuesta que se
+   escucha es la del archivo cuyo hash guarda el escrow, y ninguna otra.
+3. **El reembolso sale del pago retenido.** `resolve:execute` llama `resolve` en el escrow, firmado por el árbitro. Antes
+   comprueba las ventanas del contrato (`X-7`, `X-15`): después de la respuesta o de su plazo, y antes de que cierre la
+   del árbitro. Pasado ese momento se niega con `ResolveWindowClosed` y avisa que solo vale `expire`, que le devuelve
+   todo al comprador. No se agrega un comando `resolve:expire` en esta tarea.
+4. **El veredicto real de T158 se toma sin respuesta del comercio**, porque responder en la red llega con T163.
+
+**Motivo.** El reembolso sale de la misma plata que pagó el comprador, con los plazos que impone la red. El árbitro deja
+de ser quien abre la disputa y quien pone el destinatario del reembolso (brecha 18).
+
+**Alternativas descartadas.**
+- **Que el árbitro abra también las disputas del escrow:** el escrow no lo necesita, y volvería a poner al árbitro en
+  medio de lo que el comprador puede hacer solo.
+- **Las mismas 48 h para todo:** el escrow ya fija su propio plazo, y la decisión no puede llegar después de que el
+  contrato cierre la ventana del árbitro.
+- **Esperar a T163 para el veredicto real:** atrasaba D1 sin cambiar lo que se prueba del pago retenido.

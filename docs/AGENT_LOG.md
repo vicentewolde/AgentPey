@@ -9016,3 +9016,16 @@ operador del escrow, `VerifiedEscrow`, árbitro al arrancar, `hold` solo en el e
 Pendiente: `/tarea T158`. Del usuario: publicar `@agentpey/ucp-stellar` 0.2.0. Exponential: T160 en `DONE`.
 `AGENTS.md`: sin cambios.
 
+## 2026-10-16 (17) — cc/t158-veredicto-escrow
+
+Agente: Claude Code.
+
+Qué: **T158 en revisión** (plan y cuatro decisiones aprobados por el usuario, `X-26`): `resolve:open`, `decide`,
+`execute`, `verify` y `check-response` eligen el contrato por el recibo; para un escrow, el pagador abre con su firma,
+el plazo es el del contrato y el reembolso sale del pago retenido. `packages/resolve`: plazo parametrizable y caso del
+árbitro con el plazo real y los dos números de la orden. `scripts/lib/dispute-venue.ts` y `network-retry.ts` con
+tests. Anexo del SEP, brechas 6 y 18. En testnet: veredicto con reembolso completo ejecutado (`65f5f891…`), uno
+rechazado ejecutado (`dcd3f219…`) y cuatro `expire` (detalles en la evidencia). La disputa vieja de T124 sigue
+verificando.
+
+Pendiente: `/revisar`; merge con OK del usuario. Exponential: T158 en `IN_PROGRESS`. `AGENTS.md`: sin cambios.

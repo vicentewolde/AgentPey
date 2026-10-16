@@ -16,7 +16,8 @@
 usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
 pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
 contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 cerrada** ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)): desde el 15-oct
-`agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. Siguiente: T158.
+`agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 en revisión**: un veredicto real
+reembolsó desde el pago retenido el 16-oct.
 
 ## Progreso
 
@@ -24,7 +25,7 @@ contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentP
 |---|---|
 | Chequeo del día 1 | ✅ hecho (`X-14`) |
 | T157 Contrato de escrow | ✅ terminada |
-| T158 El veredicto actúa sobre el pago retenido | ⏳ pendiente, después de T160 (`X-21`) |
+| T158 El veredicto actúa sobre el pago retenido | 👀 en revisión |
 | T159 Un pago, un recibo, en la red | ✅ terminada |
 | T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ⏳ pendiente |
@@ -140,3 +141,26 @@ contrato. La plata sigue en el escrow: la liberan el despacho y la ventana (T164
 `@agentpey/ucp-stellar` queda en `0.2.0` en el repo; publicarla en npm es del usuario.
 
 **Evidencia.** [`evidencia/T160.md`](evidencia/T160.md).
+
+## 2026-10-15 y 16 · T158 · El veredicto actúa sobre el pago retenido (en revisión)
+
+**Qué quedó funcionando, en llano.** Cuando una compra se pagó a un escrow, el reclamo, la decisión y el reembolso pasan
+todos por ese contrato. El comprador abre el reclamo con su propia firma, sin pedirle nada al árbitro. La tienda tiene
+el plazo que fija el contrato (15 minutos en `agentcommerce`). Claude propone un veredicto, una persona lo confirma, y
+el contrato devuelve la plata desde el mismo pago retenido. Se probó de verdad: un imán comprado dos veces por error se
+reclamó, el árbitro decidió reembolso completo, el usuario lo confirmó y los 0,52 USDC volvieron al rail que pagó
+([`65f5f891…`](https://stellar.expert/explorer/testnet/tx/65f5f8910b549a147e438983ed16c75d35e7c0a98ea5d4d1e83f8e39fa911816)). Las disputas viejas, en
+`agent-resolve`, siguen igual y siguen verificando.
+
+**Lo que costó.** Seis corridas en dos días.
+- **La primera** terminó en un veredicto en contra, que el usuario confirmó: el reclamo ("no llegó") se hizo a las dos
+  horas de pagar. Antes, el árbitro había razonado sobre dos datos que le dábamos mal (un plazo de 48 horas y un número
+  de orden), y eso se corrigió.
+- **Las cuatro siguientes** se pasaron de la ventana del árbitro, que dura solo una hora: una caída de la RPC pública
+  de Soroban, una respuesta que no llegó a tiempo, una confirmación tardía y un reinicio de la sesión. En las cuatro,
+  el contrato hizo lo que promete: pasado el plazo, cualquiera puede devolverle todo al comprador (`expire`), y así se
+  hizo.
+- **La sexta** salió bien. De esos tropiezos quedaron reintentos y tiempos máximos en las lecturas de red, y registros
+  que sobreviven a un reinicio.
+
+**Decisión:** `X-26`. **Evidencia:** [`evidencia/T158.md`](evidencia/T158.md).
