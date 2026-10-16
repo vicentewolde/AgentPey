@@ -301,7 +301,7 @@ más rápido que lo estimado.
 - **Descripción:** investigación, sin código de producto. Responder: cómo se presenta un reclamo de AgentResolve como caso de Internet Court; cómo se expresa un reembolso parcial con un veredicto de tres valores; cuál de las tres opciones de relevo (único auditable, varios con multifirma, puente); costo y tiempo.
 - **Hecho cuando:**
   - [x] `T138-genlayer.md` con las respuestas citadas, opciones, recomendación y horas ([evidencia](evidencia/T138-genlayer.md))
-  - [x] el usuario decidió si se construye: **no por ahora, agendado para después** (14-oct); cuando se retome, primero T140
+  - [x] el usuario decidió si se construye: **no por ahora, agendado para después** (14-oct, `R-38`); cuando se retome, primero T140, que está cortada (`P-19`) y pide una decisión nueva
 
 #### T139 · Prueba técnica: Trustless Work como escrow por compra · parar y mostrar
 - **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no
@@ -310,7 +310,7 @@ más rápido que lo estimado.
   - [ ] `T139-trustless-work.md` con las respuestas citadas, opciones, recomendación y horas
   - [ ] el usuario decidió si se construye
 
-#### T140 · Resolutor intercambiable en AgentResolve
+#### T140 · Resolutor intercambiable en AgentResolve · ✂️ cortada (`P-19`)
 - **Prioridad:** se corta primero · **Estimación:** 8 h · **Delegable a Codex:** no
 - **Depende de:** T138 o T139, **y la aprobación del usuario**
 - **Descripción:** una interfaz de resolutor con la implementación actual (Claude más confirmación humana) y la elegida. Los criterios se escriben cuando el usuario elija.

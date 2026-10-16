@@ -9069,19 +9069,24 @@ versiones del recibo; arreglado el test intermitente de realops. Con OK del usua
 
 Pendiente: `/tarea T162`. Exponential: T161 en `DONE`. `AGENTS.md`: sin cambios.
 
-## 2026-10-14 (8) — cc/t138-genlayer (worktree ~/dev/AgentPay-fase8)
+## 2026-10-16 (21) — cc/t138-genlayer-cierre
 
-Agente: Claude Code.
+Agente: Claude Code (carpeta principal). El usuario pidió terminar la Fase 8 desde esta sesión; el chat de la Fase 8
+ya no trabaja.
 
-Qué: **T138 escrita**, en revisión. `evidencia/T138-genlayer.md`: GenLayer como jurado de AgentResolve. Internet Court
-tal cual no encaja (escrow y liquidación en Base, veredicto TRUE/FALSE/UNDETERMINED); sí un Intelligent Contract
-propio con tramos de reembolso y un relevo único auditable, con la confirmación humana de `E-18`. Recomendación: no
-construir ahora; después, T140 primero (unas 27 h en total). Solo documentos; sin código ni red.
+Qué: **T138 en revisión**, traída del worktree `~/dev/AgentPay-fase8` (rama `cc/t138-genlayer`, `de249c1` y `f0ef135`,
+escritas el 14-oct y nunca subidas) a `cc/t138-genlayer-cierre` desde `origin/main`, sin tocar ese worktree.
+`evidencia/T138-genlayer.md`: GenLayer como jurado de AgentResolve. Internet Court tal cual no encaja (escrow y
+liquidación en Base, veredicto TRUE/FALSE/UNDETERMINED); sí un Intelligent Contract propio con tramos de reembolso y
+un relevo único auditable, con la confirmación humana de `E-18`. El usuario decidió no construirlo por ahora (`R-38`).
+`/revisar` sin bloqueantes; corregidos sus diez hallazgos: el choque de plazos con el `purchase-escrow` de la Fase 9
+(un caso puede vencer con `expire` antes del veredicto), T140 cortada en todos los documentos, `R-38`, la fuente de la
+multifirma y el estado `QA` en el tablero. Solo documentos; sin código ni red.
 
-Coordinación: desde hoy **la Fase 8 trabaja en el worktree `~/dev/AgentPay-fase8`** y otra sesión de Claude Code en la
-carpeta principal; no cambiar de rama en la carpeta del otro. Las tareas nuevas de la Fase 8 numeran desde **T171**
-(T157 a T170 reservadas). No tocar `contracts/*`, `deployments/*.json`, AgentResolve, `open_claim` ni el `payTo` de
-Vitrinee desde la Fase 8.
+Coordinación: la Fase 8 numera sus tareas nuevas desde **T171** (T157 a T170 reservadas). No tocar `contracts/*`,
+`deployments/*.json`, AgentResolve, `open_claim` ni el `payTo` de Vitrinee desde la Fase 8. Contactos: borrador a
+Cards402 en el Gmail del usuario; texto del issue a ASGCard listo; Trustless Work ya contactado por Discord;
+communityfund@stellar.org fuera de la lista.
 
-Pendiente: `/revisar` de T138 y la decisión del usuario (construir o no); T139 como documento; la tarea de `R-33`.
-Exponential: T138 a `IN_PROGRESS`. `AGENTS.md`: sin cambios.
+Pendiente: merge de T138 con OK del usuario; T139 como documento; la tarea de `R-33` en el spec; el SEP en Markdown;
+`/fase-cerrar 8` con T130 en pausa. Exponential: T138 en `QA`, T140 archivada. `AGENTS.md`: sin cambios.

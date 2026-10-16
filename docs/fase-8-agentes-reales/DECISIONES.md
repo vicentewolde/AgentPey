@@ -1176,3 +1176,29 @@ a cada mensaje (un límite de capacidad de su plan, que pide esperar o pagar uno
 cotización ni compra. El usuario cerró T156 con la conexión probada y sin pagar un plan de Grok para esto. La
 dirección de vuelta de terceros resultó ser la que Grok envía. Evidencia: [`evidencia/T156.md`](evidencia/T156.md) §3.
 
+---
+
+### R-38 · GenLayer como jurado de AgentResolve no se construye por ahora; si se retoma, contrato propio, tramos y relevo único · `Vigente`
+**Fecha:** 2026-10-14 · **Tarea:** T138 · **Decidido por el usuario**
+
+T138 respondió si GenLayer, la red donde varios modelos de IA deciden por consenso, puede proponer los veredictos de
+AgentResolve. Puede, pero no con Internet Court tal cual. El usuario decidió:
+
+1. **No construirlo ahora.** Queda agendado para después, sin fecha.
+2. **Si se retoma:** un *Intelligent Contract* propio en GenLayer (no Internet Court), con **tramos** de reembolso
+   (0, 25, 50, 75 o 100 %), **relevo único auditable** (el script del árbitro lleva el veredicto a Stellar) y `E-18`
+   igual: GenLayer propone y una persona confirma. Unas 27 h (19 sin la interfaz de T140). T140 está cortada
+   (`P-19`), así que retomarla pide una decisión nueva.
+3. **En una compra con escrow**, la ventana del árbitro de la tienda se fija al desplegar su escrow con margen para
+   GenLayer, sin cambiar el contrato.
+
+**Motivo.** GenLayer está en testnet y su mainnet es del cuarto trimestre de 2026, con validadores con permiso. La
+Fase 9 está construyendo la disputa sobre el escrow, y cambiar de árbitro a mitad de camino la pondría en riesgo. Con
+los plazos del escrow de `agentcommerce` (60 minutos para el árbitro), los 30 a 60 minutos de GenLayer harían vencer
+casos.
+
+**Alternativas descartadas.** (a) Construirlo ahora: mueve el árbitro mientras la Fase 9 lo usa. (b) Internet Court
+tal cual: su escrow y su liquidación están en Base y su veredicto es sí o no, sin monto. (c) Un puente por LayerZero:
+también depende de un relevo fuera de la cadena, y el de Internet Court tiene un problema de autorización abierto.
+
+Evidencia: [`evidencia/T138-genlayer.md`](evidencia/T138-genlayer.md).

@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-14 · Fase abierta (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-16 · Fase en cierre desde el 14-oct (`P-19`), abierta el 3-oct (`P-16`). **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -42,7 +42,7 @@ un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
-muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 y T156 cerradas** (14-oct; el chat de Grok ya inicia sesión en el MCP, sin compra por un límite de Grok): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`).
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 y T156 cerradas** (14-oct; el chat de Grok ya inicia sesión en el MCP, sin compra por un límite de Grok): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`). **Desde el 14-oct la fase está en cierre** (`P-19`): la Fase 9 es la principal y T140 quedó cortada. **T138 en revisión**: GenLayer podría juzgar disputas, pero no como Internet Court tal cual; el usuario decidió no construirlo por ahora (`R-38`).
 
 | Tarea | Estado |
 |---|---|
@@ -58,7 +58,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T137 Kit de conformidad de Stellar | cerrada |
 | T138 Prueba técnica: GenLayer | en revisión: documento escrito; construir, agendado para después |
 | T139 Prueba técnica: Trustless Work | pendiente, al final de la fase (`R-24`) |
-| T140 Resolutor intercambiable | pendiente (pide aprobación) |
+| T140 Resolutor intercambiable | cortada (`P-19`): se cruza con el escrow de la Fase 9 |
 | T141 Página de tiendas | cerrada |
 | T142 Guion y grabación | cerrada (entregado el 13-oct, `R-35`) |
 | T143 Más wallets | cerrada |
@@ -875,10 +875,13 @@ del comercio y el recibo, compruebe sus hashes, y devuelva un veredicto con tram
 100 %). El script del árbitro de hoy lo lleva a Stellar, y una persona sigue confirmando antes de pagar.
 
 **La recomendación.** No construirlo ahora: GenLayer está en testnet y su mainnet es del cuarto trimestre. Cuando se
-construya: primero la interfaz de T140, después el contrato en la testnet Bradbury, unas 27 h en total. Un hallazgo
+construya: primero la interfaz de T140, después el contrato en la testnet Bradbury, unas 27 h en total (19 sin T140).
+T140 está cortada (`P-19`): retomarla pide una decisión nueva del usuario. En una compra con escrow de la Fase 9, la
+ventana del árbitro tiene que alcanzar para los 30 a 60 minutos de GenLayer, o el caso vence con reembolso completo. Un hallazgo
 útil: varios relevos con multifirma no piden cambiar ningún contrato, basta con sumar firmantes a la cuenta del árbitro.
 
-**La decisión del usuario (14-oct).** No se construye por ahora; queda agendado para después, con T140 primero.
+**La decisión del usuario (14-oct).** No se construye por ahora; queda agendado para después, con T140 primero
+(`R-38`).
 
 Evidencia: [`evidencia/T138-genlayer.md`](evidencia/T138-genlayer.md).
 
