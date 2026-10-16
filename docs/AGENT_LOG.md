@@ -9055,3 +9055,16 @@ publicada en agentpey.com; una disputa del escrow es también un ajuste nativo d
 
 Pendiente: `/revisar`; merge con OK del usuario; comprobar en producción `ord_mv9s83yb…` retenida. Exponential: T161 en
 `IN_PROGRESS`. `AGENTS.md`: sin cambios.
+
+## 2026-10-16 (20) — cc/t161-orden-escrow → main, cc/t161-cierre
+
+Agente: Claude Code.
+
+Qué: revisión de T161 corregida (14 puntos): `get_order` lee el escrow que nombra el recibo firmado, en la red, y no
+el bloque de la tienda (`escrow_notice` si difiere o no cuadra); frases con montos y fechas; avisos
+`escrow_hold_pending`/`escrow_not_recorded`; webhooks de la orden con `receipt.escrow`; el perfil declara las dos
+versiones del recibo; arreglado el test intermitente de realops. Con OK del usuario, **T161 mergeada a `main`**
+([PR #92](https://github.com/vicentewolde/AgentPey/pull/92), fast-forward, CI 4/4). En producción desde las 21:43 UTC: smoke 28/28 y las cuatro órdenes del escrow de
+`agentcommerce` validan contra UCP `2026-08-25` y la extensión `2026-10-16` (`ord_mv9s83yb…` `held`). D1 completo.
+
+Pendiente: `/tarea T162`. Exponential: T161 en `DONE`. `AGENTS.md`: sin cambios.
