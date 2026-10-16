@@ -153,6 +153,8 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
         settlementAttempts: 3,
         escrows,
       }),
+    // get_order reads the escrow a signed receipt names, on chain, for where the payment stands (T161 review).
+    escrows,
     // Signing a quote's intent reserves the day's budget (M-15). A quote that expires or is evicted unpaid
     // signed nothing that pays, so its reservation goes back (T150 review).
     quotes: new QuoteBook({

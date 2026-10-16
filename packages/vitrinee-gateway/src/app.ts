@@ -26,7 +26,7 @@ import {
   searchRequestSchema,
 } from "./ucp/catalog.js";
 import { registerUcpCheckout } from "./ucp/checkout.js";
-import { lookupDispute, registerUcpOrders } from "./ucp/order.js";
+import { lookupDispute, lookupEscrow, registerUcpOrders, type EscrowWindows } from "./ucp/order.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
 import { OrderEvents } from "./ucp/order-events.js";
 import { sharedPlatformProfileReader, type PlatformProfileReader, type PlatformSender } from "./ucp/platform-profile.js";
@@ -263,12 +263,15 @@ export function createApp({
         ? null
         : new AgentResolveReader({ contractId: config.agentResolveId, rpcUrl: config.stellar.rpcUrl });
   const sender = webhookSender !== undefined ? webhookSender : isSender(platformProfiles) ? platformProfiles : null;
+  const webhookEscrowWindows = new Map<string, EscrowWindows>();
   const orderEvents = new OrderEvents({
     orders,
     adapter,
     sender,
     key: webhookKey,
     disputes: (record) => lookupDispute(record, disputeReader, log, disputeTimeoutMs),
+    // A webhook carries the same order document as GET /orders/:id, escrow state included (T161 review).
+    escrow: (record) => lookupEscrow(record, escrowReader, webhookEscrowWindows, log, disputeTimeoutMs),
     now,
     log,
     ...(webhookRetryDelaysMs === undefined ? {} : { retryDelaysMs: webhookRetryDelaysMs }),

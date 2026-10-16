@@ -126,13 +126,21 @@ stores it, read from the chain on each request:
   `disputed` (a claim is open: the release is frozen), `responded` (the store answered), `resolved` (the arbiter
   decided) or `expired` (the arbiter did not decide in time, and the payer got everything back).
 * `amount_atomic`, `held_at`, and as they happen `shipped_at`, `release_after`, `claim_hash`, `opened_at`,
-  `respond_by`, `resolve_by`, `response_hash`, `verdict_hash` and `closed_at`.
+  `respond_by`, `resolve_by`, `response_hash`, `verdict_hash` and `closed_at`. The contract stores the moments;
+  `release_after` (`shipped_at` plus the release window), `respond_by` (`opened_at` plus the response window) and
+  `resolve_by` (`respond_by` plus the resolve window) are computed from the windows its `config()` returns.
 * `refund_atomic` (paid back to the payer) and `refund_owed_atomic` (part of it the payer could not receive yet;
   the contract's `claim_refund` delivers it).
 
 A dispute in the escrow is also a native UCP adjustment, as above: `pending` while open, `completed` once resolved
 or expired, with the refunded share of the order total.
 
-To check it, call `get(order id)` on `contract`; every field must match. If the chain cannot be read, the order still
-answers, without `receipt.escrow`, and says so in a `warning` message (`escrow_state_unavailable`).
+To check it, call `get(order id)` on `contract`, the escrow the signed receipt names, and `config()` for the windows;
+every field must match. If the chain cannot be read, the order still answers, without `receipt.escrow`, and says so
+in a `warning` message (`escrow_state_unavailable`). An order paid into the escrow whose purchase the store has not
+recorded there yet says so too: `escrow_hold_pending` while the store retries, `escrow_not_recorded` once it gave up
+until its next restart. Until the purchase is recorded, no claim can be opened over it.
+
+A store with an escrow declares both versions of this extension: orders paid into the escrow use `2026-10-16`, and
+any order it took before its escrow was switched on keeps `2026-09-30`.
 

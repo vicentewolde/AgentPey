@@ -91,6 +91,14 @@ both. A cart is one checkout, one signed intent and one payment; the quote
 lists its lines in `items`. `get_order` returns the payment's transaction link
 in `receipt.explorer_url`.
 
+For an order paid into a store's escrow, `get_order` also returns `escrow`:
+where the payment stands (`held`, `shipped`, `released`, `disputed`,
+`responded`, `resolved` or `expired`), the amounts in USDC, the deadlines,
+and `meaning`, a sentence the chat can repeat. It is read on Stellar from
+the escrow the signed receipt names, never from the store's own block; when
+it cannot be read or does not check out, `escrow` is `null` and
+`escrow_notice` says why.
+
 ## Pay a quote yourself
 
 When the chat does not call `pay` (Claude would not, `R-11`), press it from

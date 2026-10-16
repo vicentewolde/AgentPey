@@ -25,7 +25,7 @@ import { z } from "zod";
 
 import type { OrderFulfillmentEvent, OrderRecord, OrderStore, OrderWebhook, OrderWebhookDelivery } from "../orders.js";
 import { parcelLines } from "./lines.js";
-import { ucpOrder, type DisputeLookup } from "./order.js";
+import { ucpOrder, type DisputeLookup, type EscrowLookup } from "./order.js";
 import type { PlatformSender, SendResult } from "./platform-profile.js";
 import type { StoreWebhookKey } from "./webhook-key.js";
 
@@ -77,6 +77,8 @@ export interface OrderEventsDeps {
   key: StoreWebhookKey;
   /** The order's dispute state for a snapshot (T127); a failed read never blocks an event. */
   disputes: (record: OrderRecord) => Promise<DisputeLookup>;
+  /** Where the order's payment stands in its escrow (T161); a failed read never blocks an event either. */
+  escrow?: (record: OrderRecord) => Promise<EscrowLookup>;
   now: () => Date;
   log: (message: string, fields?: Record<string, unknown>) => void;
   retryDelaysMs?: readonly number[];
@@ -263,9 +265,11 @@ export class OrderEvents {
     const current = this.deps.orders.get(orderId);
     if (current?.webhook === undefined || current.ucpCheckoutId === undefined) return;
     const lookup: DisputeLookup = event === "created" ? { kind: "none" } : await this.deps.disputes(current);
+    // Where the payment stands in the escrow, as the order itself shows it (T161): the webhook is the same document.
+    const escrow: EscrowLookup = this.deps.escrow === undefined ? { kind: "none" } : await this.deps.escrow(current);
     const now = this.deps.now();
     // The tracking goes to the platform that bought, and only there: the public order shows the country alone (T127, T147 review).
-    const body = JSON.stringify(ucpOrder({ ...current, ucpCheckoutId: current.ucpCheckoutId }, current.webhook.origin, lookup, current.webhook.version, { tracking: true }));
+    const body = JSON.stringify(ucpOrder({ ...current, ucpCheckoutId: current.ucpCheckoutId }, current.webhook.origin, lookup, current.webhook.version, { tracking: true, escrow }));
     const delivery: OrderWebhookDelivery = { id: randomUUID(), timestamp: Math.floor(now.getTime() / 1000), event, body, status: "pending", attempts: 0, nextAttemptAt: now.toISOString() };
     await this.deps.orders.update(orderId, (o) => {
       if (o.webhook === undefined) return;

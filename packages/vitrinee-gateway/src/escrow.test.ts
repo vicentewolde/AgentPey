@@ -244,8 +244,10 @@ describe("the UCP order shows where its payment stands in the escrow (T161, X-27
     receipt: z.looseObject({ escrow: z.looseObject({ status: z.string() }).optional() }).optional(),
   });
 
-  async function storeWithPurchase(escrows?: (contract: string) => ReturnType<typeof fakeEscrow>["reader"]) {
-    const escrow = fakeEscrow();
+  type Reader = ReturnType<typeof fakeEscrow>["reader"];
+  async function storeWithPurchase(options: { escrows?: (contract: string) => Reader; failTimes?: number; disputeTimeoutMs?: number } = {}) {
+    const escrow = fakeEscrow(options.failTimes === undefined ? {} : { failTimes: options.failTimes });
+    const escrows = options.escrows;
     const registry = fakeRegistry();
     const app = createApp({
       config: escrowConfig(),
@@ -257,6 +259,7 @@ describe("the UCP order shows where its payment stands in the escrow (T161, X-27
       escrows: escrows ?? escrow.escrows,
       platformProfiles: fakePlatformProfiles(),
       anchorRetryDelaysMs: [1],
+      ...(options.disputeTimeoutMs === undefined ? {} : { disputeTimeoutMs: options.disputeTimeoutMs }),
     });
     const { url, close } = await listen(app);
     const call = async (method: string, path: string, body?: unknown) => {
@@ -287,7 +290,8 @@ describe("the UCP order shows where its payment stands in the escrow (T161, X-27
       expect(res.status).toBe(200);
       expect(ucpErrors(UCP_SCHEMA_2026_08_25.order, res.body, "2026-08-25")).toEqual([]);
       const parsed = orderReply.parse(res.body);
-      if (parsed.receipt?.escrow !== undefined) expect(ucpErrors(`${RECEIPT_2026_10_16.$id}#/$defs/escrow`, parsed.receipt.escrow)).toEqual([]);
+      // The whole order against the extension's own order shape, so receipt.escrow is checked where it sits (T161 review).
+      if (parsed.receipt?.escrow !== undefined) expect(ucpErrors(`${RECEIPT_2026_10_16.$id}#/$defs/dev.ucp.shopping.order`, res.body, "2026-08-25")).toEqual([]);
       return { parsed, escrowOf: () => parsed.receipt?.escrow };
     };
     return { escrow, purchase, readOrder, close: async () => { app.anchors.stop(); await close(); } };
@@ -337,10 +341,93 @@ describe("the UCP order shows where its payment stands in the escrow (T161, X-27
   });
 
   it("answers the order with a warning when the escrow cannot be read", async () => {
-    const store = await storeWithPurchase(() => ({ contractId: ESCROW_ID, config: () => Promise.reject(new Error("rpc: 503")), get: () => Promise.reject(new Error("rpc: 503")), byTx: () => Promise.reject(new Error("rpc: 503")) }));
+    const store = await storeWithPurchase({ escrows: () => ({ contractId: ESCROW_ID, config: () => Promise.reject(new Error("rpc: 503")), get: () => Promise.reject(new Error("rpc: 503")), byTx: () => Promise.reject(new Error("rpc: 503")) }) });
     try {
       const { parsed } = await store.readOrder();
       expect(parsed.receipt?.escrow).toBeUndefined();
+      expect(parsed.messages).toEqual(expect.arrayContaining([expect.objectContaining({ code: "escrow_state_unavailable" })]));
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("shows a store's answer and the payment released to the store", async () => {
+    const store = await storeWithPurchase();
+    try {
+      Object.assign(store.purchase(), { status: "responded", claimHash: "c".repeat(64), openedAt: 1_790_000_200, responseHash: "d".repeat(64) });
+      const responded = await store.readOrder();
+      expect(responded.escrowOf()).toMatchObject({ status: "responded", response_hash: "d".repeat(64), resolve_by: "2026-09-21T15:31:40.000Z" });
+      expect(responded.parsed.adjustments).toEqual([expect.objectContaining({ type: "dispute", status: "pending" })]);
+
+      Object.assign(store.purchase(), { status: "released", claimHash: null, openedAt: null, responseHash: null, shippedAt: 1_790_000_100, closedAt: 1_790_000_800 });
+      const released = await store.readOrder();
+      expect(released.escrowOf()).toMatchObject({ status: "released", closed_at: "2026-09-21T14:26:40.000Z" });
+      expect(released.parsed.adjustments).toBeUndefined();
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("says nothing was refunded when the arbiter decided for the store, and when part of a refund still waits", async () => {
+    const store = await storeWithPurchase();
+    try {
+      Object.assign(store.purchase(), { status: "resolved", claimHash: "c".repeat(64), openedAt: 1_790_000_200, verdictHash: "f".repeat(64), refundAtomic: 0n, closedAt: 1_790_001_200 });
+      const forStore = await store.readOrder();
+      expect(forStore.parsed.adjustments).toEqual([expect.objectContaining({ status: "completed", description: expect.stringContaining("nothing refunded") })]);
+      expect(forStore.parsed.adjustments?.[0]).not.toHaveProperty("totals");
+
+      Object.assign(store.purchase(), { refundAtomic: 136_736_842n, refundOwedAtomic: 136_736_842n });
+      const owed = await store.readOrder();
+      expect(owed.escrowOf()).toMatchObject({ refund_owed_atomic: "136736842" });
+      expect(owed.parsed.adjustments?.[0]).toMatchObject({ description: expect.stringContaining("claim_refund delivers it") });
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("warns when the payment reached the escrow but the store could not record the purchase there", async () => {
+    const store = await storeWithPurchase({ failTimes: 10 });
+    try {
+      // Pending while the store retries, then failed for good: each says so.
+      const codes = async () => (await store.readOrder()).parsed.messages.map((m) => m.code);
+      const seen = new Set<string | undefined>();
+      for (let i = 0; i < 50 && !seen.has("escrow_not_recorded"); i += 1) {
+        for (const code of await codes()) seen.add(code);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      expect(seen).toContain("escrow_not_recorded");
+      const { parsed } = await store.readOrder();
+      expect(parsed.receipt?.escrow).toBeUndefined();
+      expect(parsed.ucp.capabilities["com.agentpey.shopping.receipt"]).toEqual([{ version: "2026-10-16" }]);
+      expect(parsed.messages.map((m) => m.code)).not.toContain("escrow_hold_pending");
+    } finally {
+      await store.close();
+    }
+  });
+
+  it("gives up on an escrow that does not answer in time, and reads its windows once", async () => {
+    let configReads = 0;
+    let hang = false;
+    const backing = fakeEscrow();
+    const reader = (): Reader => ({
+      contractId: ESCROW_ID,
+      config: () => {
+        configReads += 1;
+        return backing.reader.config();
+      },
+      get: (orderRef) => (hang ? new Promise(() => {}) : backing.reader.get(orderRef)),
+      byTx: (txHash) => backing.reader.byTx(txHash),
+    });
+    const store = await storeWithPurchase({ escrows: reader, disputeTimeoutMs: 50 });
+    try {
+      await store.readOrder();
+      const afterFirst = configReads;
+      await store.readOrder();
+      await store.readOrder();
+      expect(configReads).toBe(afterFirst);
+
+      hang = true;
+      const { parsed } = await store.readOrder();
       expect(parsed.messages).toEqual(expect.arrayContaining([expect.objectContaining({ code: "escrow_state_unavailable" })]));
     } finally {
       await store.close();

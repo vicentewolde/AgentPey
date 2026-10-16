@@ -33,11 +33,12 @@ import {
 } from "@agentpey/agent";
 import type { AgentPayMandate } from "@agentpey/mandate";
 import { CLAIM_REASONS, signClaim, type ClaimReason } from "@agentpey/resolve";
-import { getUcpProduct, searchUcpStore, type ReceiptVerification } from "@vitrinee/anchor";
+import { getUcpProduct, searchUcpStore, type EscrowReaderFactory, type ReceiptVerification } from "@vitrinee/anchor";
 import { checkReceiptSignature, stellarExpertTxUrl, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
 import type { Keypair } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
+import { readEscrowState } from "./escrow-state.js";
 import type { QuoteBook, QuoteEntry } from "./quotes.js";
 
 export interface SignIntentInput {
@@ -63,6 +64,9 @@ export interface ShopperDeps {
   /** The rail's owner, which is also the agent: it signs claims over what the rail paid. */
   readonly agentKey: Keypair;
   readonly verifyReceipt: (jws: string) => Promise<ReceiptVerification>;
+  /** Reads the escrow a signed receipt names, for get_order's escrow state (T161). Without it, that state is not shown. */
+  readonly escrows?: EscrowReaderFactory;
+  readonly now?: () => Date;
   readonly quotes: QuoteBook;
   readonly fetchImpl?: typeof fetch;
   readonly log?: (message: string, fields?: Record<string, unknown>) => void;
@@ -145,33 +149,11 @@ const orderSchema = z.looseObject({
       verify_url: z.string().optional(),
       anchor: z.looseObject({ status: z.string() }).optional(),
       dispute: z.looseObject({ status: z.string() }).optional(),
-      // Where the payment stands in the store's escrow (T161): the receipt extension's 2026-10-16 block.
-      escrow: z
-        .looseObject({
-          contract: z.string(),
-          status: z.enum(["held", "shipped", "released", "disputed", "responded", "resolved", "expired"]),
-          amount_atomic: z.string().regex(/^\d+$/),
-          release_after: z.string().optional(),
-          respond_by: z.string().optional(),
-          resolve_by: z.string().optional(),
-          refund_atomic: z.string().regex(/^\d+$/),
-          refund_owed_atomic: z.string().regex(/^\d+$/),
-        })
-        .optional(),
+      // Where the payment stands in the store's escrow (T161): only compared, never trusted or required (readEscrowState).
+      escrow: z.unknown().optional(),
     })
     .optional(),
 });
-
-/** Each escrow state, in words the chat can repeat to the person (T161). */
-const ESCROW_MEANING = {
-  held: "The payment is held in the store's escrow. It goes to the store only after the order ships and the release window closes; a claim can be opened until then.",
-  shipped: "The store marked the order shipped. The payment is still held until release_after; a claim can be opened before then.",
-  released: "The release window closed with no claim: the escrow paid the store.",
-  disputed: "A claim is open: the payment stays held, and the store has until respond_by to answer.",
-  responded: "The store answered the claim: the arbiter decides before resolve_by.",
-  resolved: "The arbiter decided: refund_usdc went back to the payer from the held payment, and the rest to the store.",
-  expired: "The arbiter did not decide in time: the escrow refunded the payer in full.",
-} as const;
 
 function storeError(message: string, details: Record<string, unknown>): AgentPassError {
   return new AgentPassError("InvalidVenueId", message, { details });
@@ -361,7 +343,19 @@ export class Shopper {
     const verification = receipt === undefined ? null : await this.deps.verifyReceipt(receipt.jws);
     const binding = receipt === undefined ? null : this.receiptBinding(store, order.id, receipt.jws);
     // The link comes from the signed receipt, never from the loose field the store sends next to it (T150 review).
-    const signedTx = receipt === undefined ? undefined : checkReceiptSignature(receipt.jws).claims?.settlementTxHash;
+    const signedReceipt = receipt === undefined ? null : checkReceiptSignature(receipt.jws);
+    const signedTx = signedReceipt?.claims?.settlementTxHash;
+    // The escrow state comes from the escrow the signed receipt of this order names, read on chain (T161 review).
+    const escrow =
+      receipt === undefined
+        ? { escrow: null, escrow_notice: null }
+        : await readEscrowState({
+            orderId: order.id,
+            signed: signedReceipt === null || !signedReceipt.ok || signedReceipt.claims === null || binding?.ok !== true ? null : { receiptHash: signedReceipt.hash, contract: signedReceipt.claims.escrow?.contract },
+            storeBlock: receipt.escrow,
+            readers: this.deps.escrows,
+            now: (this.deps.now ?? (() => new Date()))(),
+          });
     return {
       order_id: order.id,
       store: store.name,
@@ -369,20 +363,7 @@ export class Shopper {
       total: { amount: order.totals?.find((line) => line.type === "total")?.amount ?? null, currency: order.currency ?? null },
       items: (order.line_items ?? []).map((line) => ({ id: line.item?.id ?? null, title: line.item?.title ?? null, quantity: line.quantity ?? null })),
       dispute: receipt?.dispute?.status ?? null,
-      escrow:
-        receipt?.escrow === undefined
-          ? null
-          : {
-              contract: receipt.escrow.contract,
-              status: receipt.escrow.status,
-              meaning: ESCROW_MEANING[receipt.escrow.status],
-              amount_usdc: usdcAtomicToDecimal(BigInt(receipt.escrow.amount_atomic)),
-              release_after: receipt.escrow.release_after ?? null,
-              respond_by: receipt.escrow.respond_by ?? null,
-              resolve_by: receipt.escrow.resolve_by ?? null,
-              refund_usdc: usdcAtomicToDecimal(BigInt(receipt.escrow.refund_atomic)),
-              refund_owed_usdc: usdcAtomicToDecimal(BigInt(receipt.escrow.refund_owed_atomic)),
-            },
+      ...escrow,
       receipt:
         receipt === undefined || verification === null
           ? null

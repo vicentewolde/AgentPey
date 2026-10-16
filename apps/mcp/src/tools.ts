@@ -69,7 +69,11 @@ export const outputSchemas = {
     total: money,
     items: z.array(z.object({ id: z.string().nullable(), title: z.string().nullable(), quantity: z.unknown() })),
     dispute: z.string().nullable(),
-    /** Where the payment stands in the store's escrow (T161), with a sentence the chat can repeat; null for a store paid directly. */
+    /**
+     * Where the payment stands in the store's escrow (T161), read on Stellar from the escrow the signed receipt
+     * names, with a sentence the chat can repeat. null for a store paid directly, or when it could not be read or
+     * does not check out: then escrow_notice says why.
+     */
     escrow: z
       .object({
         contract: z.string(),
@@ -83,6 +87,7 @@ export const outputSchemas = {
         refund_owed_usdc: z.string(),
       })
       .nullable(),
+    escrow_notice: z.string().nullable(),
     receipt: z
       .object({
         hash: z.string(),
@@ -202,7 +207,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Get an order and check its receipt",
       description:
-        "Read an order from its store and verify its receipt independently of the store: that it is this order's receipt from this store, the merchant's signature, its anchor on Stellar, and the payment on Stellar. For a store with an escrow, escrow says where the payment stands (held, shipped, released, disputed, responded, resolved or expired) and what that means; tell the person in those words.",
+        "Read an order from its store and verify its receipt independently of the store: that it is this order's receipt from this store, the merchant's signature, its anchor on Stellar, and the payment on Stellar. For a store with an escrow, escrow says where the payment stands (held, shipped, released, disputed, responded, resolved or expired), read on Stellar, and its meaning says it in a sentence; tell the person in those words. When escrow_notice is set, pass it on too.",
       inputSchema: z.object({ store: z.string().trim().min(1).max(200), order_id: z.string().trim().min(1).max(200) }),
       outputSchema: outputSchemas.get_order,
       annotations: { title: "Get an order", ...READ_ONLY },

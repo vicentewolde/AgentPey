@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createApp, type VitrineeApp } from "../app.js";
 import { OrderStore, type OrderPersistence, type OrderRecord } from "../orders.js";
 import { fakeFacilitator, type FakeFacilitator } from "../test/fake-facilitator.js";
-import { fakePlatformProfiles, fakeRegistry, testConfig } from "../test/fixtures.js";
+import { ESCROW_ID, escrowConfig, fakeEscrow, fakePlatformProfiles, fakeRegistry, testConfig } from "../test/fixtures.js";
 import { listen } from "../test/listen.js";
 import { ucpErrors } from "../test/ucp-schemas.js";
 import type { PlatformProfileSummary } from "./platform-profile.js";
@@ -63,7 +63,7 @@ afterEach(async () => {
   }
 });
 
-async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter; retryDelaysMs?: number[]; stopped?: boolean } = {}) {
+async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter; retryDelaysMs?: number[]; stopped?: boolean; escrow?: ReturnType<typeof fakeEscrow> } = {}) {
   const profiles = fakePlatformProfiles({
     [PLATFORM]: platformProfile("2026-08-25", WEBHOOK),
     [QUIET_PLATFORM]: platformProfile("2026-08-25"),
@@ -75,7 +75,8 @@ async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter;
   const orders = options.orders ?? new OrderStore();
   const app = createApp({
     platformProfiles: profiles,
-    config: testConfig(),
+    config: options.escrow === undefined ? testConfig() : escrowConfig(),
+    ...(options.escrow === undefined ? {} : { holder: options.escrow.holder, escrows: options.escrow.escrows }),
     adapter,
     facilitator: uniqueFacilitator(),
     anchorer: registry.anchorer,
@@ -244,6 +245,19 @@ describe("order webhooks (T147)", () => {
 });
 
 describe("shipping events (T147)", () => {
+  it("carries where the payment stands in the escrow, as the order itself shows it (T161 review)", async () => {
+    const adapter = new MockStoreAdapter();
+    const s = await store({ adapter, escrow: fakeEscrow() });
+    const { orderId } = await s.buy();
+    await waitFor(() => s.profiles.sent[0]);
+    await s.app.anchors.idle();
+    await adapter.markShipped(s.orders.get(orderId)!.platformOrderId!, { shippedAt: "2026-10-05T12:00:00.000Z" });
+    await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`);
+    const shipped = JSON.parse((await waitFor(() => s.profiles.sent[1])).body) as { receipt?: { escrow?: unknown }; ucp: { capabilities: Record<string, unknown> } };
+    expect(shipped.receipt?.escrow).toMatchObject({ contract: ESCROW_ID, status: "held" });
+    expect(shipped.ucp.capabilities["com.agentpey.shopping.receipt"]).toEqual([{ version: "2026-10-16" }]);
+  });
+
   it("records a shipment the platform reports, shows it in the order, and tells the platform that bought", async () => {
     const adapter = new MockStoreAdapter();
     const s = await store({ adapter });

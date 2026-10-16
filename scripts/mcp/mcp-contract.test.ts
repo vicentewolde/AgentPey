@@ -641,6 +641,7 @@ describe("a store with an escrow, through the MCP (T160)", () => {
         escrow: { ...escrowPolicy(escrow.escrows, [ARBITER]), heldWaitMs: 2_000, heldPollMs: 20 },
       },
       verifyReceipt: (jws) => verifyReceipt(jws, { registry: registry.registry, horizonUrl: "https://horizon.test", fetchImpl: horizon, escrows: escrow.escrows }),
+      escrows: escrow.escrows,
     });
     try {
       const quoted = await mcp.call("quote", { store: name, product_id: "gorro-andes", quantity: 1, destination: DESTINATION });
@@ -664,6 +665,8 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       });
       // Where the payment stands, in words the chat can repeat (T161).
       expect(read.structuredContent!["escrow"]).toMatchObject({ contract: ESCROW_ID, status: "held", amount_usdc: "13.6736842", refund_usdc: "0.0000000", meaning: expect.stringContaining("held in the store's escrow") });
+      // Read from the escrow the signed receipt names, not from the store's block (T161 review): nothing to warn about.
+      expect(read.structuredContent!["escrow_notice"]).toBeNull();
       const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived" });
       expect(claimed.isError).toBeFalsy();
     } finally {

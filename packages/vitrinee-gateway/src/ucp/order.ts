@@ -14,7 +14,8 @@
  * when the order was paid into one (`X-27`): `receipt.escrow`, read from the
  * chain on each request like the dispute, and a native `adjustments[]` entry
  * for a dispute in the escrow. Such an order declares receipt extension
- * `2026-10-16`; every other order is exactly as before.
+ * `2026-10-16`; every other order is exactly as before. Its webhooks carry
+ * the same escrow state, read when each delivery is queued.
  *
  * And, since T147, what happened to the parcel: `fulfillment.events[]`, an
  * append-only log (UCP), with the line marked fulfilled once the platform
@@ -37,7 +38,7 @@ export type DisputeLookup = { kind: "none" } | { kind: "found"; contractId: stri
 
 export const DISPUTE_READ_TIMEOUT_MS = 3_000;
 
-type EscrowWindows = Pick<EscrowConfig, "releaseWindowSeconds" | "responseWindowSeconds" | "resolveWindowSeconds">;
+export type EscrowWindows = Pick<EscrowConfig, "releaseWindowSeconds" | "responseWindowSeconds" | "resolveWindowSeconds">;
 
 /** Where an order's payment stands in the escrow it was paid into: not paid into one, read from the chain, or a read that failed. */
 export type EscrowLookup = { kind: "none" } | { kind: "found"; contract: string; purchase: EscrowPurchase; windows: EscrowWindows } | { kind: "unavailable" };
@@ -123,13 +124,15 @@ function escrowDisputeAdjustment(record: OrderRecord, purchase: EscrowPurchase) 
   }
   const refunded = refundMinor(record, purchase.refundAtomic);
   const how = purchase.status === "expired" ? "the arbiter did not decide in time, so the escrow refunded the payer in full" : "decided by the arbiter";
+  // A refund the payer could not receive yet stays in the contract until claim_refund delivers it (X-19, T161 review).
+  const owed = purchase.refundOwedAtomic > 0n ? " Part of it could not be delivered yet and waits in the escrow: claim_refund delivers it." : "";
   return {
     ...base,
     occurred_at: iso(purchase.closedAt ?? purchase.openedAt),
     status: "completed" as const,
     ...(purchase.refundAtomic === 0n
       ? { description: `Refund claim closed in the store's escrow (${how}): nothing refunded.` }
-      : { description: `Refund claim closed in the store's escrow (${how}): refunded to the payer from the held payment.`, totals: [{ type: "total", display_text: "Refunded", amount: -refunded }] }),
+      : { description: `Refund claim closed in the store's escrow (${how}): refunded to the payer from the held payment.${owed}`, totals: [{ type: "total", display_text: "Refunded", amount: -refunded }] }),
   };
 }
 
@@ -166,6 +169,14 @@ export function ucpOrder(
       : []),
     ...(escrow.kind === "unavailable"
       ? [{ type: "warning", code: "escrow_state_unavailable", content: "Could not read where the payment stands in the store's escrow right now; the rest of the order is current." }]
+      : []),
+    // Paid into the escrow, but the store has not recorded the purchase there (yet): until it does, no claim can be opened (X-20).
+    ...(record.hold !== undefined && escrow.kind === "none" && record.hold.status !== "held"
+      ? [
+          record.hold.status === "failed"
+            ? { type: "warning", code: "escrow_not_recorded", content: "The payment reached the store's escrow, but the store could not record the purchase there; it retries on restart. Until it does, a claim cannot be opened." }
+            : { type: "warning", code: "escrow_hold_pending", content: "The payment reached the store's escrow, and the store is recording the purchase there." },
+        ]
       : []),
   ];
   return {
@@ -289,6 +300,18 @@ export async function lookupEscrow(
       }),
     ]);
     const w = { releaseWindowSeconds: config.releaseWindowSeconds, responseWindowSeconds: config.responseWindowSeconds, resolveWindowSeconds: config.resolveWindowSeconds };
+    // Every date the order shows must be one: a value out of Date's range would throw later, outside this guard (T161 review).
+    if (purchase !== null) {
+      const dates = [
+        purchase.heldAt,
+        purchase.closedAt,
+        purchase.shippedAt === null ? null : purchase.shippedAt + w.releaseWindowSeconds,
+        purchase.openedAt === null ? null : purchase.openedAt + w.responseWindowSeconds + w.resolveWindowSeconds,
+      ];
+      if (dates.some((s) => s !== null && (!Number.isSafeInteger(s) || Number.isNaN(new Date(s * 1000).getTime())))) {
+        throw new VitrineeError("EscrowError", "the escrow's dates are out of range", { details: { contract } });
+      }
+    }
     windows.set(contract, w);
     // Paid into the escrow but not recorded yet (the hold is pending): nothing to show but the warning-free order.
     return purchase === null ? { kind: "none" } : { kind: "found", contract, purchase, windows: w };

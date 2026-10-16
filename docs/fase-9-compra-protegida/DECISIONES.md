@@ -527,6 +527,24 @@ de ser quien abre la disputa y quien pone el destinatario del reembolso (brecha 
 5. **`get_order` del MCP** devuelve `escrow` con el estado, una frase que el chat puede repetir (`meaning`) y los montos
    en USDC.
 
+**Ajustes de la revisión (2026-10-16).**
+- **El MCP no le cree a la tienda:** `get_order` lee el escrow que nombra el recibo firmado de esa orden, en la red
+  (`get` y `config`), y comprueba que la compra retenida sea la de ese recibo. El bloque `receipt.escrow` de la tienda
+  solo se compara: si difiere, lo dice en `escrow_notice`; si viene mal formado, se ignora y `get_order` no falla.
+  Sin recibo que cuadre, sin lectura o con fechas fuera de rango, `escrow` es `null` y `escrow_notice` dice por qué.
+- **`meaning` con valores:** montos y fechas en la frase, no nombres de campo; distingue resuelto a favor de la
+  tienda (nada reembolsado), total o parcial, una tienda que no respondió a tiempo, y un reembolso pendiente de
+  entregar (`refund_owed`, `X-19`), que también menciona el ajuste de la orden.
+- **Avisos de compra no registrada:** `escrow_hold_pending` mientras la tienda reintenta `hold` y `escrow_not_recorded`
+  si se rindió. Hasta que quede registrada no se puede abrir un reclamo (`X-20`).
+- **El perfil declara las dos versiones** del recibo en una tienda con escrow: las órdenes anteriores al escrow siguen
+  en `2026-09-30`.
+- **Los webhooks de la orden llevan `receipt.escrow`** igual que `GET /orders/{id}`: es el mismo documento, y T165 lo
+  necesita.
+- **Criterio de T161 sobre `ord_mv9s83yb0022b6a353`:** el spec pedía mostrar "la compra de T160", pero esa orden quedó
+  resuelta en T158. El usuario aprobó en el plan (decisión 2) usar `ord_mv9s83yb…`, la que sigue retenida, para
+  mostrar `held`, y las de T160/T158 para `resolved` y `expired`.
+
 **Motivo.** El comprador y su agente ven en la orden lo que el contrato promete y cuándo: hasta cuándo se puede
 reclamar, cuándo cobra la tienda, y si el reembolso llegó.
 

@@ -196,7 +196,9 @@ describe("asking for a purchase", () => {
     expect(call.venue).toBe(VENUE);
     expect(call.productId).toBe("signaldesk:market-brief-xlm-usdc");
     expect(JSON.stringify(call)).not.toContain("malvado.example");
-    expect(JSON.stringify(call)).not.toContain("900");
+    // Not the sentence's price either, anywhere but in the random ids: a UUID key can contain "900" by chance.
+    const randomIds = new Set(["tenantId", "mandateId", "idempotencyKey"]);
+    expect(JSON.stringify(call, (key, value: unknown) => (randomIds.has(key) ? undefined : value))).not.toContain("900");
   });
 
   it("supplies the route parameters the merchant's paid route declares", async () => {
