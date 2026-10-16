@@ -346,8 +346,8 @@ push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por
 | 2026-10-14 | Reorden aprobado por el usuario: T159 → T160 → T158, porque el veredicto necesita una compra real retenida con su recibo (`X-21`) |
 | 2026-10-14 | T159 en revisión: recibo con `escrow`, cuarto chequeo «retenido», `hold` antes del anclaje; recibo duplicado rechazado por la red (`X-22`) |
 | 2026-10-14 | T160 en revisión: handler `2026-10-15` con `pay_to` = escrow, las dos puertas cobran al escrow, el agente comprueba el escrow en la red antes de firmar y avisa si no hay `hold`, interruptor `COMERCIO_ESCROWS` (`X-23` a `X-25`). Criterios 2 y 3 demostrados; el 1 (compra real) después del merge |
-| 2026-10-16 | T158 en revisión: el árbitro resuelve en el escrow las compras pagadas a un escrow; la disputa la abre el pagador, el plazo es el del contrato y el reembolso sale del pago retenido (`X-26`). Veredicto real con reembolso completo ejecutado |
 | 2026-10-15 | T160 cerrada: mergeada ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)), escrow encendido en `agentcommerce` con `VITRINEE_COMERCIO_ESCROWS` y una compra real retenida en el escrow |
+| 2026-10-16 | T158 en revisión: el árbitro resuelve en el escrow las compras pagadas a un escrow; la disputa la abre el pagador, el plazo es el del contrato y el reembolso sale del pago retenido (`X-26`). Veredicto real con reembolso completo ejecutado |
 
 ---
 

@@ -37,6 +37,8 @@ export interface DisputeView {
   readonly responseHash: string | null;
   readonly verdictHash: string | null;
   readonly refund: bigint;
+  /** A refund the payer could not receive yet, claimable with `claim_refund` (escrow only, `X-19`). */
+  readonly refundOwed: bigint;
   /** The escrow's own word on where the purchase stands, for the operator's eyes. */
   readonly detail: string;
 }
@@ -52,6 +54,7 @@ export function fromAgentResolve(d: { payer: string; claim_hash: string; amount:
     responseHash: null,
     verdictHash: d.verdict_hash,
     refund: d.refund,
+    refundOwed: 0n,
     detail: d.status,
   };
 }
@@ -68,6 +71,7 @@ export function fromEscrow(p: EscrowPurchase): DisputeView {
     responseHash: p.responseHash,
     verdictHash: p.verdictHash,
     refund: p.refundAtomic,
+    refundOwed: p.refundOwedAtomic,
     detail: p.status,
   };
 }
@@ -84,7 +88,7 @@ export function responseWindowOf(venue: DisputeVenue, escrow: Pick<EscrowConfig,
  *
  * @throws AgentPassError `ResolveReceiptInvalid` otherwise
  */
-export function assertOpenFor(view: DisputeView | null, claimHash: string): asserts view is DisputeView & { openedAt: number } {
+export function assertOpenFor(view: DisputeView | null, claimHash: string): asserts view is DisputeView & { openedAt: number; claimHash: string } {
   if (view === null || view.status !== "open" || view.claimHash !== claimHash || view.openedAt === null) {
     throw new AgentPassError("ResolveReceiptInvalid", "there is no open dispute on chain for this claim", {
       details: { status: view?.status ?? null, onChain: view?.claimHash ?? null, claim: claimHash },
@@ -108,20 +112,40 @@ export function assertResponseMatches(view: DisputeView, fileHash: string | null
   }
 }
 
+type Windows = Pick<EscrowConfig, "responseWindowSeconds" | "resolveWindowSeconds">;
+
 /**
- * When the escrow lets the arbiter resolve (`X-7`, `X-15`): after the merchant answered or its window closed, and
- * before the arbiter's own window closes. After that only `expire` is valid, and it refunds the payer in full.
+ * The arbiter's window in the escrow is still open (`X-7`, `X-15`). Checked before asking for a verdict too: past it,
+ * a verdict could never be executed, and asking would spend a call and archive one for nothing (T158 review).
  * `agent-resolve` has no such window (brecha 18).
+ *
+ * @throws AgentPassError `ResolveWindowClosed`
+ */
+export function assertArbiterWindowOpen(venue: DisputeVenue, view: DisputeView & { openedAt: number }, escrow: Windows | undefined, now: Date): void {
+  if (venue.kind === "agent-resolve") return;
+  if (escrow === undefined) throw new AgentPassError("ConfigError", "an escrow dispute needs the escrow's config", { details: { escrow: venue.contractId } });
+  const resolveBy = view.openedAt + escrow.responseWindowSeconds + escrow.resolveWindowSeconds;
+  if (Math.floor(now.getTime() / 1000) >= resolveBy) {
+    throw new AgentPassError("ResolveWindowClosed", "the arbiter's window in the escrow has closed: only expire is valid now, and it refunds the payer in full (X-7)", {
+      details: { resolveBy: new Date(resolveBy * 1000).toISOString() },
+    });
+  }
+}
+
+/**
+ * When the escrow lets the arbiter resolve (`X-7`, `X-15`): after the merchant answered or its window closed (the
+ * contract wants strictly past it), and before the arbiter's own window closes. After that only `expire` is valid,
+ * and it refunds the payer in full. `agent-resolve` has no such window (brecha 18).
  *
  * @throws AgentPassError `ResolveResponsePending` too early, `ResolveWindowClosed` too late
  */
-export function assertMayExecute(venue: DisputeVenue, view: DisputeView & { openedAt: number }, escrow: Pick<EscrowConfig, "responseWindowSeconds" | "resolveWindowSeconds"> | undefined, now: Date): void {
+export function assertMayExecute(venue: DisputeVenue, view: DisputeView & { openedAt: number }, escrow: Windows | undefined, now: Date): void {
   if (venue.kind === "agent-resolve") return;
   if (escrow === undefined) throw new AgentPassError("ConfigError", "an escrow dispute needs the escrow's config", { details: { escrow: venue.contractId } });
   const seconds = Math.floor(now.getTime() / 1000);
   const answerBy = view.openedAt + escrow.responseWindowSeconds;
   const resolveBy = answerBy + escrow.resolveWindowSeconds;
-  if (view.responseHash === null && seconds < answerBy) {
+  if (view.responseHash === null && seconds <= answerBy) {
     throw new AgentPassError("ResolveResponsePending", "the escrow refuses a verdict before the merchant answers or its window closes", {
       details: { answerBy: new Date(answerBy * 1000).toISOString() },
     });
@@ -133,7 +157,23 @@ export function assertMayExecute(venue: DisputeVenue, view: DisputeView & { open
   }
 }
 
-/** A resolved dispute is the archived verdict's: the same hash, refund and claim on chain. */
-export function verdictMatches(view: DisputeView, verdict: { readonly refundAtomic: string; readonly claimHash: string }, localHash: string): boolean {
-  return view.verdictHash === localHash && BigInt(verdict.refundAtomic) === view.refund && verdict.claimHash === view.claimHash;
+/**
+ * A verdict heard the merchant's answer on chain, when there is one: a verdict decided on another response (an
+ * off-chain file, before the merchant answered in the escrow) is not the one the escrow's answer calls for (`X-26`).
+ *
+ * @throws AgentPassError `ResolveConfirmationMismatch`
+ */
+export function assertVerdictHeardResponse(view: DisputeView, verdict: { readonly responseHash?: string | null | undefined }): void {
+  if (view.responseHash === null) return;
+  if (verdict.responseHash !== view.responseHash) {
+    throw new AgentPassError("ResolveConfirmationMismatch", "the merchant answered on chain with another response than the verdict heard; ask for a verdict again with that response; nothing was paid", {
+      details: { onChain: view.responseHash, verdict: verdict.responseHash ?? null },
+    });
+  }
+}
+
+/** A resolved dispute is the archived verdict's: the same hash, refund and claim on chain, and the response it heard. */
+export function verdictMatches(view: DisputeView, verdict: { readonly refundAtomic: string; readonly claimHash: string; readonly responseHash?: string | null | undefined }, localHash: string): boolean {
+  const heard = view.responseHash === null || verdict.responseHash === view.responseHash;
+  return heard && view.verdictHash === localHash && BigInt(verdict.refundAtomic) === view.refund && verdict.claimHash === view.claimHash;
 }

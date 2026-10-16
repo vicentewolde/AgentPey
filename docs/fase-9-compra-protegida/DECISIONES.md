@@ -484,6 +484,17 @@ identificada por la orden; si no, en `agent-resolve`, como desde T124. El veredi
    todo al comprador. No se agrega un comando `resolve:expire` en esta tarea.
 4. **El veredicto real de T158 se toma sin respuesta del comercio**, porque responder en la red llega con T163.
 
+**Ajustes de `/revisar` (16-oct, aprobados por el usuario).**
+- `execute` exige que el veredicto haya escuchado la respuesta que el comercio dejó en la red, si la hay, y `verify` no
+  da por bueno uno que escuchó otra. Así un veredicto decidido con un archivo no se ejecuta si después el comercio
+  respondió otra cosa en el escrow. `check-response` lo avisa antes de decidir.
+- `decide` se niega antes de pedir el veredicto si la ventana del árbitro ya cerró (`ResolveWindowClosed`).
+- `execute` vuelve a comprobar que el escrow corre el código conocido, además del cuarto chequeo que hace `decide`.
+- El chequeo local del plazo del comercio coincide con el del contrato: estrictamente después.
+- Las lecturas por el CLI de Stellar también se reintentan ante un 5xx y se cortan a los 30 s. El script encuentra el
+  contrato también por el recibo dentro del reclamo, y dice que no puede si no hay ninguno. `verify` muestra una compra
+  vencida por `expire` y un reembolso pendiente de entregar (`X-19`).
+
 **Motivo.** El reembolso sale de la misma plata que pagó el comprador, con los plazos que impone la red. El árbitro deja
 de ser quien abre la disputa y quien pone el destinatario del reembolso (brecha 18).
 

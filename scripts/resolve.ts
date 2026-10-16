@@ -68,12 +68,14 @@ import {
 import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
-import { EscrowClient, ReceiptRegistryClient, escrowReaders, verifyReceipt, type EscrowConfig } from "../packages/vitrinee-anchor/src/index.js";
+import { EscrowClient, PURCHASE_ESCROW_WASM_HASHES, ReceiptRegistryClient, escrowReaders, verifyReceipt, type EscrowConfig } from "../packages/vitrinee-anchor/src/index.js";
 import { checkReceiptSignature, receiptHash as hashOfReceipt } from "../packages/vitrinee-core/src/index.js";
 import {
+  assertArbiterWindowOpen,
   assertMayExecute,
   assertOpenFor,
   assertResponseMatches,
+  assertVerdictHeardResponse,
   fromAgentResolve,
   fromEscrow,
   responseWindowOf,
@@ -133,6 +135,8 @@ function usage(message: string): never {
 }
 
 const hex64 = z.string().regex(/^[0-9a-f]{64}$/);
+/** How long a CLI read may run before it is killed: `withRetry` gives each attempt 30 s, the process gets no more. */
+const READ_TIMEOUT_MS = 30_000;
 
 /** The dispute as `get` returns it through the CLI. Field names are the contract's. */
 const disputeSchema = z.object({
@@ -159,12 +163,13 @@ async function context() {
 }
 
 async function readDispute(contractId: string, receipt: string, secret: string): Promise<z.infer<typeof disputeSchema> | null> {
-  const raw = lastLine(await stellarCli(["contract", "invoke", "--id", contractId, "--send", "no", "--", "get", "--receipt", receipt], secret));
+  const raw = lastLine(await stellarCli(["contract", "invoke", "--id", contractId, "--send", "no", "--", "get", "--receipt", receipt], secret, { timeoutMs: READ_TIMEOUT_MS }));
   return raw === "null" ? null : disputeSchema.parse(JSON.parse(raw));
 }
 
 async function readGuarantee(contractId: string, merchant: string, secret: string): Promise<z.infer<typeof guaranteeSchema>> {
-  return guaranteeSchema.parse(JSON.parse(lastLine(await stellarCli(["contract", "invoke", "--id", contractId, "--send", "no", "--", "guarantee", "--merchant", merchant], secret))));
+  const raw = await withRetry("guarantee read", () => stellarCli(["contract", "invoke", "--id", contractId, "--send", "no", "--", "guarantee", "--merchant", merchant], secret, { timeoutMs: READ_TIMEOUT_MS }), retrying("garantía"));
+  return guaranteeSchema.parse(JSON.parse(lastLine(raw)));
 }
 
 function escrowClient(venue: DisputeVenue): EscrowClient {
@@ -197,12 +202,17 @@ async function escrowConfigOf(venue: DisputeVenue): Promise<EscrowConfig | undef
 }
 
 /**
- * Where the dispute over the receipt kept in `dir` lives, read from that receipt (saved by `open`). A directory with
- * no receipt is a dispute from before T158: `agent-resolve`.
+ * Where the dispute over the receipt kept in `dir` lives, read from that receipt: the copy `open` saved, or the one
+ * inside the claim, which every dispute has. With neither, it says so rather than guess `agent-resolve` (T158 review:
+ * a dispute opened elsewhere, from the chat with T162, has no saved receipt).
  */
 async function venueFromDir(dir: string, receipt: string, agentResolveId: string): Promise<DisputeVenue> {
-  const jws = (await readFile(resolve(dir, "receipt.jws"), "utf8").catch(() => "")).trim();
-  if (jws === "") return { kind: "agent-resolve", contractId: agentResolveId, key: receipt };
+  let jws = (await readFile(resolve(dir, "receipt.jws"), "utf8").catch(() => "")).trim();
+  if (jws === "") {
+    const claimJws = (await readFile(resolve(dir, "claim.jws"), "utf8").catch(() => "")).trim();
+    if (claimJws === "") throw new AgentPassError("ResolveReceiptInvalid", "this dispute's folder holds neither the receipt nor the claim, so its contract cannot be told", { details: { receipt, dir } });
+    jws = (await verifyClaim(claimJws)).document.receipt.jws;
+  }
   const claims = checkReceiptSignature(jws).claims;
   if (claims === null || hashOfReceipt(jws) !== receipt) {
     throw new AgentPassError("ResolveReceiptInvalid", "the receipt kept for this dispute is not the one named", { details: { receipt } });
@@ -221,7 +231,7 @@ function buyerKey(env: ReadonlyMap<string, string>, account: string): Keypair {
 
 /** `policy_rail.owner()`: the key that may speak for a rail payer. */
 async function railOwner(rail: string, secret: string): Promise<string> {
-  const answer = lastLine(await withRetry("rail owner", () => stellarCli(["contract", "invoke", "--id", rail, "--send", "no", "--", "owner"], secret), retrying("rail"))).replaceAll('"', "");
+  const answer = lastLine(await withRetry("rail owner", () => stellarCli(["contract", "invoke", "--id", rail, "--send", "no", "--", "owner"], secret, { timeoutMs: READ_TIMEOUT_MS }), retrying("rail"))).replaceAll('"', "");
   const hex = hex64.safeParse(answer);
   if (!hex.success) {
     throw new AgentPassError("ResolveClaimantNotPayer", "the payer contract did not answer owner() with an Ed25519 key, so no one can speak for it", { details: { payer: rail, answer: answer.slice(0, 80) } });
@@ -229,8 +239,11 @@ async function railOwner(rail: string, secret: string): Promise<string> {
   return StrKey.encodeEd25519PublicKey(Buffer.from(hex.data, "hex"));
 }
 
-/** A check that failed because the network did, not because the receipt is wrong: worth another try. */
-const UNREACHABLE = /could not (read|reach)|status code 5\d\d|fetch failed|timed out|ECONNRESET/i;
+/**
+ * A check that failed because the network did, not because the receipt is wrong: worth another try. Only network
+ * markers count: "could not read the escrow" alone can also mean a contract that is not an escrow (T158 review).
+ */
+const UNREACHABLE = /status code (5\d\d|429)|Bad Gateway|Service Unavailable|Gateway Time-?out|fetch failed|timed out|socket hang up|ECONNRESET|ETIMEDOUT/i;
 
 async function verifiedReceipt(jws: string) {
   const deployment = z.object({ receiptRegistry: z.object({ contractId: z.string() }) }).parse(JSON.parse(await readFile(VITRINEE_DEPLOYMENT, "utf8")));
@@ -396,7 +409,7 @@ async function openInEscrow(
   section("[comprador] abre la disputa en el escrow de la tienda");
   const claim = await verifyClaim(claimJws);
   const checked = await checkClaim(claim.document, verified, { controllerOf: (payer) => railOwner(payer, reader.secret()) });
-  const purchase = await escrowClient(venue).get(venue.key);
+  const purchase = await withRetry("escrow purchase", () => escrowClient(venue).get(venue.key), retrying("escrow"));
   if (purchase === null || fromEscrow(purchase).status !== "none" || purchase.payer !== checked.payer || purchase.receiptHash !== verified.hash) {
     throw new AgentPassError("ResolveReceiptInvalid", "the escrow does not hold this purchase, for this receipt and payer, without a dispute", {
       details: { escrow: venue.contractId, order: venue.key, status: purchase?.status ?? null },
@@ -421,8 +434,9 @@ async function openInEscrow(
     ["contract", "invoke", "--id", venue.contractId, "--", "open", "--order_ref", orderRefHex(venue.key), "--claim_hash", hash, "--sig", JSON.stringify(sig)],
     owner.secret(),
   );
+  // Read after `open` landed: a failure here must not hide that the dispute is open, so the reads retry.
   const view = await readView(venue, reader.secret());
-  const config = await escrowClient(venue).config();
+  const config = (await escrowConfigOf(venue))!;
   if (txHash !== undefined) line("tx", `${EXPLORER}/tx/${txHash}`);
   line("disputa", `${view?.detail ?? "?"}, ${usdc(view?.amount ?? 0n)} retenidos; la liberación queda congelada`);
   if (view?.openedAt != null) {
@@ -459,14 +473,18 @@ async function decide(): Promise<void> {
     now: new Date(dispute.openedAt * 1000),
   });
 
+  // Past the arbiter's window in an escrow, a verdict could never be executed: say so before asking for one.
+  assertArbiterWindowOpen(venue, dispute, escrowConfig, new Date());
+
   // The merchant's side (T126): a new file passed now, or the one an earlier
   // `decide` kept. Verified against the dispute on chain either way, and
-  // without one, no decision before the 48 h (E-22).
+  // without one, no decision before the merchant's window closes: 48 h in
+  // agent-resolve (E-22), the escrow's own (X-26).
   const windowSeconds = responseWindowOf(venue, escrowConfig);
   const response = await merchantResponse(dir, values.response, {
     receipt: checked.receipt,
     receiptHash: verified.hash,
-    claimHash: dispute.claimHash!,
+    claimHash: dispute.claimHash,
     claimId: claim.document.claimId,
     // What the contract locked (agent-resolve), or what the claim asks of the held purchase (escrow).
     disputedAtomic: disputedOf(venue, dispute, checked.disputedAtomic),
@@ -570,6 +588,11 @@ async function checkResponse(): Promise<void> {
   });
   line("✅ firma", `SEP-53 de ${didToStellarAddress(response.response.respondent)}, la cuenta de cobro del recibo`);
   line("✅ disputa", `responde al reclamo ${dispute.claimHash.slice(0, 16)}… que está en la red (${dispute.detail})`);
+  if (dispute.responseHash !== null) {
+    const same = dispute.responseHash === response.hash;
+    line(`${same ? "✅" : "❌"} en la red`, same ? "es la respuesta que el comercio dejó en el escrow" : `el comercio respondió otra cosa en el escrow (${dispute.responseHash.slice(0, 16)}…): decide solo con esa`);
+    if (!same) process.exitCode = 1;
+  }
   line("posición", describePosition(response));
   line("descargos", response.response.statement);
   for (const item of response.response.evidence) line("evidencia", item.content);
@@ -618,8 +641,15 @@ async function execute(): Promise<void> {
   if (dispute === null || dispute.status !== "open" || dispute.claimHash !== verdict.claimHash || dispute.openedAt === null) {
     throw new AgentPassError("ResolveConfirmationMismatch", "the dispute on chain is not open for this verdict's claim; nothing was paid", { details: { status: dispute?.status ?? null } });
   }
+  // A verdict must have heard the merchant's answer on chain, if there is one (X-26, T158 review).
+  assertVerdictHeardResponse(dispute, verdict);
+  const escrowConfig = await escrowConfigOf(venue);
+  // A second barrier after decide's receipt check: the arbiter's key only acts on the purchase-escrow code it knows.
+  if (escrowConfig !== undefined && (escrowConfig.wasmHash === null || !PURCHASE_ESCROW_WASM_HASHES.includes(escrowConfig.wasmHash))) {
+    throw new AgentPassError("ResolveConfirmationMismatch", "the receipt's escrow does not run the purchase-escrow code AgentPey knows; nothing was paid", { details: { escrow: venue.contractId } });
+  }
   // The escrow only takes a verdict inside its windows (X-7): checked here, so a late confirmation says so plainly.
-  assertMayExecute(venue, { ...dispute, openedAt: dispute.openedAt }, await escrowConfigOf(venue), new Date());
+  assertMayExecute(venue, { ...dispute, openedAt: dispute.openedAt }, escrowConfig, new Date());
 
   out("\nAgentResolve · ejecutar el veredicto confirmado · testnet");
   line("contrato", `${venue.kind === "escrow" ? "escrow de la tienda" : "agent-resolve"} ${venue.contractId}`);
@@ -633,7 +663,7 @@ async function execute(): Promise<void> {
   await writeFile(resolve(dir, "resolved.json"), `${JSON.stringify({ verdictHash: hash, txHash: txHash ?? null, at: new Date().toISOString() }, null, 2)}\n`);
   if (txHash !== undefined) line("tx", `${EXPLORER}/tx/${txHash}`);
   const after = await readView(venue, arbiter.secret());
-  line("disputa", `${after?.detail ?? "?"}, reembolsado ${usdc(after?.refund ?? 0n)}`);
+  line("disputa", `${after?.detail ?? "?"}, reembolsado ${usdc(after?.refund ?? 0n)}${(after?.refundOwed ?? 0n) > 0n ? `, de los que ${usdc(after?.refundOwed ?? 0n)} quedan por entregar con claim_refund (X-19)` : ""}`);
   out(`\nVerificar: pnpm run resolve:verify -- --receipt ${values.receipt}\n`);
 }
 
@@ -656,15 +686,19 @@ async function verify(): Promise<void> {
   line("pagador", dispute.payer);
   line(venue.kind === "escrow" ? "retenido" : "en disputa", usdc(dispute.amount));
   line("reembolso", usdc(dispute.refund));
+  if (dispute.refundOwed > 0n) line("por entregar", `${usdc(dispute.refundOwed)}: el pagador no pudo recibirlo; claim_refund lo entrega (X-19)`);
   if (dispute.responseHash !== null) line("respuesta", `en la red ${dispute.responseHash.slice(0, 16)}…`);
+  if (dispute.status === "closed") {
+    line("cierre", dispute.detail === "expired" ? "venció sin veredicto: expire le devolvió todo al pagador (X-7)" : "liberado a la tienda, sin disputa abierta");
+  }
   // A resolved dispute must match a valid verdict on file; an open one has none yet.
-  let ok = dispute.status === "open";
+  let ok = dispute.status === "open" || dispute.status === "closed";
   const parsed = await readVerdictFile(stateDir(values.receipt));
   if (parsed === null) {
     if (dispute.status === "resolved") {
       line("❌ veredicto", `en la red ${dispute.verdictHash ?? "—"}, pero no hay un veredicto válido archivado con qué compararlo`);
     } else {
-      line("veredicto", "sin veredicto todavía");
+      line("veredicto", dispute.status === "closed" ? "ninguno" : "sin veredicto todavía");
     }
   } else {
     const local = verdictHash(parsed);
@@ -673,6 +707,8 @@ async function verify(): Promise<void> {
     if (dispute.status === "resolved") {
       line(`${matches ? "✅" : "❌"} veredicto`, matches ? `el hash en la red es el del veredicto archivado (${local.slice(0, 16)}…)` : `no coincide: red ${dispute.verdictHash ?? "—"}, archivo ${local}`);
       ok = matches && responseOk;
+    } else if (dispute.status === "closed") {
+      line("veredicto", `archivado ${local.slice(0, 16)}…, nunca se ejecutó: la ventana del árbitro cerró antes`);
     } else {
       line("veredicto", `archivado ${local.slice(0, 16)}…, todavía sin ejecutar`);
     }

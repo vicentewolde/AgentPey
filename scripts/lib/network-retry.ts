@@ -19,13 +19,20 @@ export interface RetryOptions {
   readonly onRetry?: (attempt: number, error: unknown) => void;
 }
 
-const TRANSIENT = /status code (5\d\d|429)|fetch failed|socket hang up|ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|network error|timed out/i;
+const TRANSIENT = /status code (5\d\d|429)|Bad Gateway|Service Unavailable|Gateway Time-?out|Too Many Requests|fetch failed|socket hang up|ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|network error|timed out/i;
 
-/** Whether an error is the network's, worth another try: a 5xx or 429, a dropped connection, or our own timeout. */
+/**
+ * Whether an error is the network's, worth another try: a 5xx or 429, a dropped connection, or our own timeout.
+ * The Stellar CLI reports every failure as `CommandFailed`, with the RPC's answer in its stderr: that is read too.
+ */
 export function isTransient(error: unknown): boolean {
-  if (isAgentPassError(error)) return error.code === "NetworkError";
-  const text = error instanceof Error ? `${error.name} ${error.message} ${String((error as { code?: unknown }).code ?? "")}` : String(error);
-  return TRANSIENT.test(text);
+  if (isAgentPassError(error)) {
+    if (error.code === "NetworkError") return true;
+    return error.code === "CommandFailed" && TRANSIENT.test(String(error.details["stderr"] ?? ""));
+  }
+  if (!(error instanceof Error)) return TRANSIENT.test(String(error));
+  const code = "code" in error ? String(error.code) : "";
+  return TRANSIENT.test(`${error.name} ${error.message} ${code}`);
 }
 
 /**

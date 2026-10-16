@@ -16,9 +16,14 @@ import { TESTNET } from "./network.js";
 const execFileAsync = promisify(execFile);
 const CONTRACTS_DIR = resolve(fileURLToPath(new URL("../..", import.meta.url)), "contracts");
 
+export interface StellarCliOptions {
+  /** Kills the CLI after this long (reads only, T158): a read that gave up must not leave its process behind. */
+  readonly timeoutMs?: number;
+}
+
 /** Runs `stellar <args>` against testnet as the account whose secret is `secret`; returns stdout. */
-export async function stellarCli(args: readonly string[], secret: string): Promise<string> {
-  return (await stellarCliFull(args, secret)).stdout;
+export async function stellarCli(args: readonly string[], secret: string, options: StellarCliOptions = {}): Promise<string> {
+  return (await stellarCliFull(args, secret, options)).stdout;
 }
 
 /**
@@ -31,10 +36,11 @@ export async function stellarCliTx(args: readonly string[], secret: string): Pro
   return { result: lastLine(stdout === "" ? "null" : stdout), txHash };
 }
 
-async function stellarCliFull(args: readonly string[], secret: string): Promise<{ stdout: string; stderr: string }> {
+async function stellarCliFull(args: readonly string[], secret: string, options: StellarCliOptions = {}): Promise<{ stdout: string; stderr: string }> {
   try {
     const { stdout, stderr } = await execFileAsync("stellar", [...args], {
       cwd: CONTRACTS_DIR,
+      ...(options.timeoutMs === undefined ? {} : { timeout: options.timeoutMs, killSignal: "SIGKILL" as const }),
       env: {
         ...process.env,
         STELLAR_ACCOUNT: secret,

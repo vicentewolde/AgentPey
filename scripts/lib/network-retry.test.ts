@@ -51,6 +51,9 @@ describe("withRetry (T158): a read that gives up on time and tries again", () =>
     for (const transient of [new Error("Request failed with status code 502"), new Error("Request failed with status code 429"), new TypeError("fetch failed"), Object.assign(new Error("x"), { code: "ECONNRESET" }), new AgentPassError("NetworkError", "x", { details: {} })]) {
       expect(isTransient(transient), String(transient)).toBe(true);
     }
+    // The Stellar CLI wraps the RPC's 503 as CommandFailed, with the answer in its stderr (T158 review).
+    expect(isTransient(new AgentPassError("CommandFailed", "stellar contract invoke failed", { details: { stderr: "error: Networking or low-level protocol error: HTTP error: 503 Service Unavailable (status code 503)" } }))).toBe(true);
+    expect(isTransient(new AgentPassError("CommandFailed", "stellar contract invoke failed", { details: { stderr: "error: HostError: Error(Contract, #3)" } }))).toBe(false);
     for (const lasting of [new Error("Request failed with status code 404"), new AgentPassError("ResolveReceiptInvalid", "x", { details: {} }), new Error("invalid argument")]) {
       expect(isTransient(lasting), String(lasting)).toBe(false);
     }

@@ -769,7 +769,10 @@ construir, más quince que aparecieron después:
     una segunda firma para `resolve` y dar a las disputas un vencimiento.
     **Con el `purchase-escrow` de la Fase 9 (T158), dos de las tres quedan
     cerradas para las compras pagadas a un escrow:** el pagador queda en la red
-    desde el `hold`, así que el reembolso solo puede ir a quien pagó; y la disputa
+    desde el `hold`, y el reembolso solo puede ir a esa cuenta. El `hold` lo
+    escribe la tienda y el contrato no comprueba el pagador, pero el verificador
+    del recibo (cuarto chequeo) y el agente después de pagar comparan el pagador
+    registrado con el que pagó; y la disputa
     vence: pasado el plazo del árbitro, `expire` le devuelve todo al comprador
     (`X-7`). Además, el comprador abre la disputa sin pasar por el árbitro. La
     confirmación humana del veredicto (`E-18`) sigue viviendo solo en el script

@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import type { EscrowPurchase } from "../../packages/vitrinee-anchor/src/index.js";
-import { assertMayExecute, assertOpenFor, assertResponseMatches, fromAgentResolve, fromEscrow, responseWindowOf, venueOf, verdictMatches } from "./dispute-venue.js";
+import {
+  assertArbiterWindowOpen,
+  assertMayExecute,
+  assertOpenFor,
+  assertResponseMatches,
+  assertVerdictHeardResponse,
+  fromAgentResolve,
+  fromEscrow,
+  responseWindowOf,
+  venueOf,
+  verdictMatches,
+} from "./dispute-venue.js";
 
 const ESCROW = "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A";
 const AGENT_RESOLVE = "CCYMGX56FJ65EVXUY2M4BTVBCCOBXBTAMGSCWN5X4TQLQTCCEAHDCD3F";
@@ -90,7 +101,9 @@ describe("the arbiter's gates on an escrow dispute", () => {
   it("executes after the merchant's window and before the arbiter's closes, as the escrow allows", () => {
     const open = fromEscrow(purchase()) as ReturnType<typeof fromEscrow> & { openedAt: number };
     expect(codeOf(() => assertMayExecute(venue, open, WINDOWS, at(899)))).toBe("ResolveResponsePending");
-    expect(() => assertMayExecute(venue, open, WINDOWS, at(900))).not.toThrow();
+    // The contract wants strictly past the window: at the exact second it still refuses (T158 review).
+    expect(codeOf(() => assertMayExecute(venue, open, WINDOWS, at(900)))).toBe("ResolveResponsePending");
+    expect(() => assertMayExecute(venue, open, WINDOWS, at(901))).not.toThrow();
     expect(() => assertMayExecute(venue, open, WINDOWS, at(900 + 3599))).not.toThrow();
     expect(codeOf(() => assertMayExecute(venue, open, WINDOWS, at(900 + 3600)))).toBe("ResolveWindowClosed");
     // With the merchant's answer on chain, the arbiter need not wait for its window.
@@ -106,5 +119,37 @@ describe("the arbiter's gates on an escrow dispute", () => {
     expect(verdictMatches(resolved, { refundAtomic: "1", claimHash: CLAIM }, "f".repeat(64))).toBe(false);
     expect(verdictMatches(resolved, { refundAtomic: "5157895", claimHash: CLAIM }, "a".repeat(64))).toBe(false);
     expect(verdictMatches(resolved, { refundAtomic: "5157895", claimHash: "0".repeat(64) }, "f".repeat(64))).toBe(false);
+  });
+});
+
+describe("the arbiter's gates added in the T158 review", () => {
+  const venue = { kind: "escrow", contractId: ESCROW, key: "ord_mv9qzvka21f025d46d" } as const;
+  const answered = fromEscrow(purchase({ status: "responded", responseHash: "d".repeat(64) }));
+
+  it("executes only a verdict that heard the merchant's answer on chain", () => {
+    expect(() => assertVerdictHeardResponse(answered, { responseHash: "d".repeat(64) })).not.toThrow();
+    // Decided on an off-chain file before the merchant answered otherwise in the escrow.
+    expect(codeOf(() => assertVerdictHeardResponse(answered, { responseHash: "e".repeat(64) }))).toBe("ResolveConfirmationMismatch");
+    expect(codeOf(() => assertVerdictHeardResponse(answered, { responseHash: null }))).toBe("ResolveConfirmationMismatch");
+    // No answer on chain: any verdict, as before.
+    expect(() => assertVerdictHeardResponse(fromEscrow(purchase()), { responseHash: "e".repeat(64) })).not.toThrow();
+  });
+
+  it("does not call a resolved dispute the verdict's when the verdict heard another response than the escrow's", () => {
+    const resolved = fromEscrow(purchase({ status: "resolved", responseHash: "d".repeat(64), verdictHash: "f".repeat(64), refundAtomic: 1n }));
+    expect(verdictMatches(resolved, { refundAtomic: "1", claimHash: CLAIM, responseHash: "d".repeat(64) }, "f".repeat(64))).toBe(true);
+    expect(verdictMatches(resolved, { refundAtomic: "1", claimHash: CLAIM, responseHash: "e".repeat(64) }, "f".repeat(64))).toBe(false);
+  });
+
+  it("refuses to ask for a verdict once the arbiter's window closed", () => {
+    const open = fromEscrow(purchase()) as ReturnType<typeof fromEscrow> & { openedAt: number };
+    expect(() => assertArbiterWindowOpen(venue, open, WINDOWS, at(900 + 3599))).not.toThrow();
+    expect(codeOf(() => assertArbiterWindowOpen(venue, open, WINDOWS, at(900 + 3600)))).toBe("ResolveWindowClosed");
+    expect(() => assertArbiterWindowOpen({ kind: "agent-resolve", contractId: AGENT_RESOLVE, key: RECEIPT }, open, undefined, at(10_000_000))).not.toThrow();
+  });
+
+  it("carries a refund the payer could not receive yet (X-19)", () => {
+    expect(fromEscrow(purchase({ status: "resolved", refundAtomic: 5n, refundOwedAtomic: 5n })).refundOwed).toBe(5n);
+    expect(fromAgentResolve({ payer: RAIL, claim_hash: CLAIM, amount: 1n, opened_at: OPENED, status: "Resolved", verdict_hash: null, refund: 1n }).refundOwed).toBe(0n);
   });
 });
