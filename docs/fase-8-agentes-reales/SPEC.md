@@ -1,8 +1,8 @@
 # Spec Fase 8 · Agentes reales comprando en Stellar, y el estándar completo
 
-- **Estado:** Aprobado (2026-10-03)
+- **Estado:** Cerrado (2026-10-17, `P-20`); aprobado el 2026-10-03
 - **Rama base:** `main`
-- **Tareas:** T128 a T153 (T147 a T149 agregadas por `R-12`; T150 a pedido del usuario el 7-oct, `R-28`; T151 a T153 el 8-oct, `R-29`)
+- **Tareas:** T128 a T156 (T147 a T149 agregadas por `R-12`; T150 a pedido del usuario el 7-oct, `R-28`; T151 a T153 el 8-oct, `R-29`; T154 y T155, `R-34`; T156, `R-37`), y T171, aprobada el 17-oct para una fase futura (`P-20`)
 - **Referencias:** [`P-16`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método),
   [`P-10`](../DECISIONES.md) (perímetro de "nunca Codex"),
   el traspaso del 3-oct (`docs/traspaso-fase-8-agentes-reales.md`, archivo local sin versionar),
@@ -179,7 +179,7 @@ más rápido que lo estimado.
   - [x] una compra real desde ChatGPT, con capturas; o, si la cuenta no tiene el modo desarrollador, el motivo documentado: ChatGPT llamó `pay` él mismo tras la confirmación, `ord_mut0b5rm04b66bd5de` ([evidencia](evidencia/T129.md) §2)
   - [x] el README dice el paso exacto para conectar cada uno (`apps/mcp/README.md`, y un resumen en el README raíz)
 
-#### T130 · Tienda de terceros real
+#### T130 · Tienda de terceros real · ⏸ en pausa, sale de la fase al cerrarla (`R-36`, `P-20`)
 - **Prioridad:** imprescindible · **Estimación:** 4 h · **Delegable a Codex:** no
 - **Depende de:** T128; del usuario: conseguir la tienda
 - **Descripción:** dar de alta por el portal (T105) una tienda que no es del usuario. Si es Jumpseller, confirmar antes que su plan crea pedidos por API (`C-151`).
@@ -358,7 +358,7 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] un `policy_rail` con topes paga un servicio x402 en testnet, con recibo y un resumen de gastos del mes (`pnpm run team:pay` y `team:summary` contra `signaldesk.agentpey.com` el 8-oct, [evidencia](evidencia/T146.md) §6, `R-27`)
 
-#### T171 · El MCP para una lista cerrada de wallets, cada una con su rail (`R-33`, etapa 1) · **aprobada por el usuario el 17-oct**
+#### T171 · El MCP para una lista cerrada de wallets, cada una con su rail (`R-33`, etapa 1) · **aprobada por el usuario el 17-oct; pasa a una fase futura al cerrar esta (`P-20`)**
 - **Prioridad:** después de la Fase 9 o en paralelo sin tocar sus archivos · **Estimación:** 18 h (2 a 3 días, `R-33`) · **Delegable a Codex:** no (llaves, rails, inicio de sesión y flujo de fondos, `P-10`)
 - **Depende de:** `R-33`; T156 (el inicio de sesión de hoy); **T162 de la Fase 9**, dueña de `open_claim` (`P-19`): T171 entra después de T162 o solo le entrega a `open_claim` la llave de la persona, sin tocar su lógica
 - **Descripción:** hoy el MCP sirve a una sola wallet (`MCP_ALLOWED_WALLET`, una llave `MCP_AGENT_SECRET_KEY`, un rail). Se abre a **una lista cerrada** de wallets, cada una con:
@@ -457,7 +457,7 @@ No son tareas: no hay nada que construir. Su evidencia va a la carpeta de la Fas
 
 ## 6. Criterios de aceptación de la fase
 
-- [ ] Una compra hecha desde un chat de Claude (`R-11`), en una tienda que no es del usuario, pagada en USDC testnet desde un `policy_rail`, con pedido real y recibo con los tres checks en verde (T128, T129, T130)
+- [ ] Una compra hecha desde un chat de Claude (`R-11`), en una tienda que no es del usuario, pagada en USDC testnet desde un `policy_rail`, con pedido real y recibo con los tres checks en verde (T128, T129, T130). **No se cumplió:** T130 quedó en pausa (`R-36`) y salió de la fase al cerrarla (`P-20`)
 - [x] La red rechaza un pago del servidor MCP que excede su tope (T128, [evidencia](evidencia/T128.md) §4)
 - [x] La salida de la suite oficial de conformidad de UCP está en el repo, con su alcance escrito (T131, [evidencia](evidencia/T131.md); hoy 49/8/20)
 - [x] El verificador rechaza un recibo incoherente (T132, [evidencia](evidencia/T132.md))
@@ -560,6 +560,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | T156 cerrada por el usuario: desplegada, Grok conectado e inicio de sesión firmado con Freighter; la cotización y la compra no se pudieron hacer por el límite "High Demand" de Grok |
 | 2026-10-17 | T138 cerrada (`R-38`). T139: documento escrito; el usuario eligió la opción C, Trustless Work para pagos por hitos en una fase propia y no en el checkout (`R-39`) |
 | 2026-10-17 | T171 aprobada por el usuario (`R-33`, etapa 1): el MCP para una lista cerrada de wallets, cada una con su rail y su llave derivada; la lista en `apps/mcp/wallets.testnet.json`, una entrada que no cuadra se deshabilita sin tumbar a las demás, y entra después de T162 de la Fase 9 o sin tocar la lógica de `open_claim` |
+| 2026-10-17 | **Fase cerrada** (`P-20`): 25 de 29 tareas terminadas, T140 cortada, T130 en pausa fuera de la fase y T171 aprobada para una fase futura. Criterios 2 a 5 cumplidos; el 1 no, por T130 |
 
 ## 11. Fuentes externas
 

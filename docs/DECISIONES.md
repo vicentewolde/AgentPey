@@ -931,3 +931,29 @@ de piezas sueltas, antes de postular al Build Award de SCF.
 compromiso aparte, con otros plazos y otra evidencia.
 
 Spec en [`fase-9-compra-protegida/SPEC.md`](fase-9-compra-protegida/SPEC.md). Decisiones de la fase con prefijo `X-`.
+
+---
+
+### P-20 · La Fase 8 se cierra con T130 en pausa y T171 aprobada para una fase futura · `Vigente`
+**Fecha:** 2026-10-17 · **Hito:** cierre de la Fase 8 (T128–T156) · Decidido por el usuario
+
+**Qué cambia.** La Fase 8 cierra el 2026-10-17 con 25 de sus 29 tareas terminadas, T140 cortada (`P-19`) y dos que
+pasan a una fase futura:
+
+1. **T130 (la tienda de terceros real) sale de la Fase 8**, en pausa como decía `R-36`. Con ella queda **sin cumplir el
+   criterio 1** de la fase: una compra desde Claude en una tienda que no es del usuario. La tienda existe
+   (casastock.cl), pero sus productos cuestan unos 31 USDC y el rail del MCP permite 3 por compra. Retomarla pide lo
+   que dice `R-36` y, mejor, T171, que deja elegir los topes de cada rail al desplegarlo.
+2. **T171 (el MCP para una lista cerrada de wallets, `R-33`, etapa 1) queda aprobada** con el texto del spec de la
+   Fase 8, para construirse en una fase futura después de T162 de la Fase 9, dueña de `open_claim` (`P-19`). Su ticket
+   sigue en `READY_TO_PLAN`. La Fase 9 no la incluye: su spec deja `R-33` fuera de alcance.
+
+**Motivo.** El usuario decidió el 16-oct cerrar la fase con T130 en pausa en lugar de retomarla, que competía con la
+Fase 9 por tiempo y por el rail compartido. El criterio 1 se deja escrito como no cumplido, como `C-161` hizo con el
+de F9, en vez de reescribirlo.
+
+**Alternativas descartadas.** (a) Retomar T130 antes de cerrar: pide el acceso del dueño a Shopify, su wallet, un rail
+nuevo con topes más altos y un Mandato nuevo, mientras corre la Fase 9. (b) Dejar la Fase 8 abierta hasta construir
+T171: mantendría dos fases abiertas sin trabajo en una de ellas. (c) Mover T171 a la Fase 9: su spec la deja fuera
+de alcance a propósito.
+

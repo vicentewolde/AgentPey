@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-16 · Fase en cierre desde el 14-oct (`P-19`), abierta el 3-oct (`P-16`). **Spec aprobado** por el usuario
+**Fecha:** 2026-10-17 · **Fase cerrada** el 17-oct (T128–T156, `P-20`); en cierre desde el 14-oct (`P-19`), abierta el 3-oct (`P-16`). 25 de 29 tareas terminadas, T140 cortada, T130 en pausa fuera de la fase y T171 aprobada para una fase futura. Criterio 1 sin cumplir (por T130); criterios 2 a 5 cumplidos. **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
@@ -48,7 +48,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 |---|---|
 | T128 Servidor MCP | cerrada |
 | T129 Claude y ChatGPT conectados | cerrada |
-| T130 Tienda de terceros | pendiente |
+| T130 Tienda de terceros | en pausa (`R-36`); sale de la fase al cerrarla (`P-20`) |
 | T131 Suite de conformidad UCP | cerrada |
 | T132 Coherencia del recibo | cerrada |
 | T133 UCP `2026-08-25` | cerrada |
@@ -925,4 +925,39 @@ Evidencia: [`evidencia/T139-trustless-work.md`](evidencia/T139-trustless-work.md
 cual. Cada una abre con una nota de lo que cambió desde entonces: el escrow por compra ya existe como el
 `purchase-escrow` de la Fase 9, y GenLayer y Trustless Work se evaluaron (`R-38`, `R-39`). El texto que se
 presentaría sigue en el documento de Claude Docs; publicarlo en GitHub Discussions sigue pendiente del usuario.
+
+---
+
+## Cierre de la fase — 2026-10-17
+
+**Qué deja la Fase 8, en llano.** Agentes que la gente ya usa compran en Stellar: Claude y ChatGPT por el servidor MCP
+de AgentPey (`mcp.agentpey.com`), y el chat de Grok ya inicia sesión en él. Pagan desde una cuenta cuyos topes aplica
+la red, y la red rechaza lo que se pasa. La tienda habla UCP en sus dos versiones, con AP2 en el checkout, carritos,
+despachos que llegan al agente y el consentimiento del comprador. Hay un SDK en npm, un kit que comprueba si
+cualquier tienda implementa bien el medio de pago de Stellar, páginas públicas (tiendas, en vivo, portada) y el video
+de la hackatón, entregado el 13-oct. Las pruebas técnicas (MPP, tesorería de equipos, GenLayer, Trustless Work,
+dots, Muse y Grok Bot) quedaron como documentos con su decisión.
+
+**Criterios de aceptación.**
+- [ ] **1. Compra desde Claude en una tienda de terceros: no se cumplió.** La tienda existe (casastock.cl), pero sus
+  productos superan el tope del rail del MCP; T130 quedó en pausa (`R-36`) y salió de la fase (`P-20`).
+- [x] 2. La red rechaza un pago del MCP sobre su tope ([`evidencia/T128.md`](evidencia/T128.md) §4).
+- [x] 3. La salida de la suite oficial de UCP está en el repo, con su alcance ([`evidencia/T131/`](evidencia/T131/),
+  hoy 49/8/20).
+- [x] 4. El verificador rechaza un recibo incoherente (T132; `packages/vitrinee-anchor/src/anchor.test.ts`, 15 de 15
+  en verde al cerrar).
+- [x] 5. El video está grabado y entregado (T142, 13-oct).
+
+**Lo que sigue fuera de la fase.** T130 (en pausa) y T171 (aprobada, después de T162 de la Fase 9). Pendientes del
+usuario fuera del código: publicar el SEP en GitHub Discussions, enviar el correo a Cards402 y el issue a ASGCard.
+
+**Retro.**
+- **Funcionó:** el spec con bloques y línea de corte dejó ver qué era imprescindible para el video, y las pruebas
+  técnicas como documentos con decisión (MPP, T138, T139, T145) evitaron construir lo que no encajaba.
+- **No funcionó:** el criterio 1 dependía de una tienda ajena que se consiguió tarde y no cabía en los topes fijos
+  del rail; y el trabajo de T138 quedó tres días sin subir en un worktree aparte cuando la sesión pasó a la Fase 9.
+- **Cambiar:** un criterio de cierre que depende de un tercero se escribe con su plan B desde el spec; y al pasar de
+  una fase a otra, lo escrito se sube a una rama remota el mismo día, aunque no se mergee.
+
+Decisión: `P-20`.
 

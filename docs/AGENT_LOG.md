@@ -9141,3 +9141,19 @@ nota de lo que cambió después (`purchase-escrow` de la Fase 9 y el anexo de T1
 Pendiente: `/fase-cerrar 8`. Fuera del código, del usuario: publicar el SEP en GitHub Discussions y avisar en Discord;
 enviar el borrador a Cards402 y el issue a ASGCard. Exponential: sin cambios. `AGENTS.md`: sin cambios.
 
+## 2026-10-17 (25) — cc/fase8-cierre
+
+Agente: Claude Code.
+
+Qué: **Fase 8 cerrada** (`/fase-cerrar 8`, `P-20`, decidido por el usuario): T128–T156, 25 de 29 tareas terminadas, T140
+cortada (`P-19`), T130 en pausa fuera de la fase (`R-36`) y T171 (`R-33`) aprobada para una fase futura, después de
+T162. Criterios: 2 a 5 cumplidos (el 4 repetido al cerrar: `anchor.test.ts` 15/15); el 1, una compra desde Claude en
+una tienda de terceros, sin cumplir por T130. Actualizados SPEC (Cerrado), BITACORA (cierre y retro), ROADMAP, la
+tabla de CLAUDE.md y ESTADO (una sola fase abierta). Solo documentos.
+
+Coordinación: el worktree `~/dev/AgentPay-fase8` queda sin uso; su rama local `cc/t138-genlayer` ya está en `main` por
+`9016430`. No se tocó; borrarlo es decisión del usuario. `CLAUDE.local.md` (local) todavía menciona el chat de la Fase 8.
+
+Pendiente: Fase 9, `/tarea T162`. Exponential: ticket T130 a `BLOCKED` (en pausa); T171 en `READY_TO_PLAN`; el feature de la Fase 8 a `SHIPPED`; `exp:sync`.
+`AGENTS.md`: sin cambios.
+

@@ -5,15 +5,13 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-16
-**Fases en curso:** dos, desde el 14-oct (`P-19`).
-- **Fase 9 (principal)** · Una compra protegida, de punta a punta ([spec](fase-9-compra-protegida/SPEC.md), **aprobado**, `P-19`): los entregables del Instaward, 13-oct → 11-nov.
-- **Fase 8 (cierre)** · Agentes reales comprando en Stellar ([spec](fase-8-agentes-reales/SPEC.md), **aprobado**, `P-16`), en el worktree `~/dev/AgentPay-fase8`. La Fase 7 se cerró el 2026-10-03 (`E-25`)
+**Actualizado:** 2026-10-17
+**Fase actual:** Fase 9 · Una compra protegida, de punta a punta ([spec](fase-9-compra-protegida/SPEC.md), **aprobado**, `P-19`): los entregables del Instaward, 13-oct → 11-nov. La Fase 8 se cerró el 2026-10-17 (T128–T156, `P-20`); la Fase 7, el 2026-10-03 (`E-25`)
 
-**Última tarea terminada:** Fase 9: T161, la orden muestra el estado del escrow ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): en producción, la orden retenida `ord_mv9s83yb…` muestra `held`, y con ella se completa D1. Antes, T158 ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)). Fase 8: T139, Trustless Work queda para pagos por hitos, no en el checkout (`R-39`); antes, T138 (`R-38`)
-**Siguiente paso:** Fase 9: `/tarea T162`, el reclamo desde el chat abre la disputa en la red. Fase 8: `/fase-cerrar 8`; T171 (`R-33`) aprobada, a construir después de T162. **T130 queda en pausa** (`R-36`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Última tarea terminada:** Fase 9: T161, la orden muestra el estado del escrow ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): en producción, la orden retenida `ord_mv9s83yb…` muestra `held`, y con ella se completa D1. Antes, T158 ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)). Fase 8: cerrada el 17-oct (`P-20`), con T130 en pausa fuera de la fase y T171 aprobada para una fase futura
+**Siguiente paso:** Fase 9: `/tarea T162`, el reclamo desde el chat abre la disputa en la red. Después de la Fase 9: T171 (`R-33`), aprobada, y T130, en pausa (`R-36`), en una fase futura (`P-20`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
-**Convivencia (`P-19`).** La Fase 9 es dueña de `contracts/*` y `deployments/*.json`, de `open_claim` en el MCP, de `packages/resolve/`, `scripts/resolve*` y `apps/web/public/resolve/`, y del `payTo`, `hold`, webhooks y despacho de Vitrinee. La Fase 8, de `docs/fase-8-agentes-reales/*` y del borrador del SEP. Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
+**Convivencia (`P-19`).** Hasta el 17-oct la Fase 8 trabajó en paralelo, en el worktree `~/dev/AgentPay-fase8`; desde su cierre (`P-20`) hay una sola fase abierta. Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
 
 ## Progreso de la Fase 9
 
@@ -32,13 +30,13 @@
 | T166 Corrida completa y QA | ⏳ pendiente | |
 | T167 Video, mapa de tiempos e informe final | ⏳ pendiente | |
 
-## Progreso de la Fase 8 (cierre)
+## Progreso de la Fase 8 (cerrada el 2026-10-17, `P-20`)
 
 | Tarea | Prioridad | Estado | Rama / PR |
 |---|---|---|---|
 | T128 Servidor MCP de AgentPey | imprescindible | ✅ terminada: en vivo en `mcp.agentpey.com`; orden `ord_muszfkwz2604255e03` cotizada por Claude y pagada por la persona (`R-11`) | [PR #45](https://github.com/vicentewolde/AgentPey/pull/45) y [PR #46](https://github.com/vicentewolde/AgentPey/pull/46), mergeados; evidencia de cierre en [PR #47](https://github.com/vicentewolde/AgentPey/pull/47), mergeado |
 | T129 Claude y ChatGPT conectados | imprescindible | ✅ terminada: guía en el README; compras desde Claude (`R-11`) y desde ChatGPT, que paga él mismo | `cc/t129-conectar-claude-chatgpt`, mergeada |
-| T130 Tienda de terceros real | imprescindible | ⏸ en pausa (`R-36`): el usuario consiguió una tienda real el 13-oct, [casastock.cl](https://casastock.cl/) (Shopify, precios en CLP, de un amigo); se retoma pasado el periodo de la hackatón | |
+| T130 Tienda de terceros real | imprescindible | ✂️ fuera de la fase al cerrarla, en pausa (`R-36`, `P-20`): la tienda existe ([casastock.cl](https://casastock.cl/)), pero sus productos superan el tope del rail del MCP; el criterio 1 queda sin cumplir | |
 | T131 Suite oficial de conformidad UCP | imprescindible | ✅ terminada: `pnpm run ucp:conformance`, 40 pasan, 17 fallan con motivo, 20 se saltan | `cc/t131-conformidad-ucp`, mergeada ([PR #49](https://github.com/vicentewolde/AgentPey/pull/49)) |
 | T132 Coherencia del recibo (brecha 10) | imprescindible | ✅ terminada | `cc/t132-coherencia-recibo`, mergeada ([PR #44](https://github.com/vicentewolde/AgentPey/pull/44)) |
 | T133 UCP `2026-08-25` | si alcanza | ✅ terminada: dos versiones en paralelo (`R-14`); compra real en `2026-08-25` | [PR #50](https://github.com/vicentewolde/AgentPey/pull/50), mergeado; evidencia en `cc/t133-evidencia` |
@@ -65,11 +63,11 @@
 | T154 La página del recibo con el diseño del sitio (`R-34`) | para el video | ✅ terminada, en producción desde el 9-oct: misma cabecera, fuentes y colores que `agentpey.com`, e idioma por la cookie del sitio | [PR #81](https://github.com/vicentewolde/AgentPey/pull/81) |
 | T155 Pantalla local del árbitro (`R-34`) | para el video | ✅ terminada: `pnpm run arbiter:console`, los pasos del árbitro en una página en `localhost`; corrida real el 9-oct (`ord_mv1hp08c432548f9ed`, reembolso de 0,5157895 USDC), usada en la demo del Demo Day; mergeada el 10-oct | `cc/t155-consola-arbitro` |
 | T156 El chat de Grok compra por el MCP (`R-37`) | a pedido del usuario | ✅ terminada: el inicio de sesión del MCP acepta la dirección exacta de Grok (desplegado el 14-oct); el usuario instaló el conector e inició sesión con Freighter; sin cotización ni compra porque Grok respondió "High Demand" (límite de su plan), cerrada así por el usuario ([evidencia](fase-8-agentes-reales/evidencia/T156.md)) | [PR #85](https://github.com/vicentewolde/AgentPey/pull/85) |
-| T171 El MCP para una lista cerrada de wallets (`R-33`, etapa 1) | aprobada el 17-oct | ⏳ pendiente: un `policy_rail` y una llave derivada por persona, topes elegidos al desplegar (destraba T130, `R-36`); entra después de T162 de la Fase 9 o sin tocar la lógica de `open_claim` | |
+| T171 El MCP para una lista cerrada de wallets (`R-33`, etapa 1) | aprobada el 17-oct | ➡️ pasa a una fase futura (`P-20`), después de T162 de la Fase 9: un `policy_rail` y una llave derivada por persona, topes elegidos al desplegar | |
 
 Línea de corte (7-oct en la noche, si el Bloque A no está completo): T140, T146, T137, T144 (salvo dots), T136, T135, T134, T149, T148, T147, T143. **No se aplica** (`R-24`, decidido por el usuario el 7-oct): no se corta nada, y T138 y T139 pasan al final de la fase, con T140 detrás.
 
-Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada
+Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada · ⛔ bloqueada · ✂️ cortada · ➡️ pasa a otra fase
 
 ## Bloqueos y pendientes del usuario
 

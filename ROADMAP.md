@@ -10,7 +10,7 @@
 > cualquiera —humano o Claude Code— que necesite entender el proyecto entero
 > antes de tocar una fase específica.
 
-Última revisión: 2026-10-14 · Fases en curso: **Fase 9, principal, spec aprobado** — una compra protegida de punta a punta, con escrow en la red, para el Instaward (`P-19`) — y **Fase 8, en cierre** — agentes reales (Claude, ChatGPT) comprando en Stellar por un servidor MCP, y el estándar completo (`P-16`; ver [docs/DECISIONES.md](docs/DECISIONES.md)) — Fases 1 a 7 cerradas (T1–T127)
+Última revisión: 2026-10-17 · Fase en curso: **Fase 9, spec aprobado** — una compra protegida de punta a punta, con escrow en la red, para el Instaward (`P-19`) — Fases 1 a 8 cerradas (T1–T156; la Fase 8 el 2026-10-17, `P-20`; ver [docs/DECISIONES.md](docs/DECISIONES.md))
 
 ---
 
@@ -109,7 +109,7 @@ las decisiones estratégicas que llevaron al código, y para SCF eso es evidenci
 | 5 | **MandateVault + cierre de piloto** | Cada decisión del sistema queda como evidencia verificable; el MVP y la landing funcionan bien de cara al mensaje a Tellus, que gestiona la Instaward | ✅ Completa (T27–T31) — mensaje a Tellus enviado 2026-09-08 | — |
 | 6 | **Después: AgentGuard + comercialización** | Convertir el piloto en un producto real con partners en testnet, mientras se espera la resolución de SCF | ✅ Cerrada 2026-10-02 (T32–T119, `C-161`): plataforma para partners, piloto F9 y Vitrinee; AgentGuard sin alcance | — |
 | 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | ✅ Cerrada 2026-10-03 (T120–T127, `E-25`): perfil y catálogo UCP, compra UCP pagada en Stellar, mandatos AP2, AgentResolve y anexo del SEP; el reembolso real de T124 pasa a la Fase 8 con fecha | — |
-| 8 | **Agentes reales comprando en Stellar** | Que un agente que la gente ya usa (Claude, ChatGPT) compra en una tienda de terceros pagando en Stellar con topes aplicados por la red, y qué cumple AgentPey, con evidencia, de UCP, AP2 y MPP | 🔄 En cierre desde 2026-10-14 (`P-16`, `P-19`): T128–T156; quedan T138 y T139 como documentos y la tarea de `R-33` | — |
+| 8 | **Agentes reales comprando en Stellar** | Que un agente que la gente ya usa (Claude, ChatGPT) compra en una tienda de terceros pagando en Stellar con topes aplicados por la red, y qué cumple AgentPey, con evidencia, de UCP, AP2 y MPP | ✅ Cerrada 2026-10-17 (T128–T156, `P-20`): Claude y ChatGPT comprando por el MCP, UCP en dos versiones, AP2, SDK en npm, kit de conformidad y el video; criterio 1 sin cumplir (T130 en pausa); T171 aprobada para una fase futura | — |
 | 9 | **Una compra protegida, de punta a punta** | Que las piezas que ya existen (compra desde el chat, recibos anclados, despacho, disputas) se conectan en una sola compra: el pago queda retenido en un contrato y el veredicto lo libera o reembolsa | 🔄 En curso desde 2026-10-14 (`P-19`), spec aprobado, T157–T167, hasta el 11-nov | — |
 
 Las Fases 0 a 5 están cerradas — el piloto técnico completo.
@@ -650,7 +650,7 @@ borrador del SEP. Pasan a la Fase 8, con fecha, el reembolso real de T124 (8 o
 9 de octubre) y la comprobación en vivo de T127. Detalle y retro en
 [docs/fase-7-estandar-comercio-agentico/BITACORA.md](docs/fase-7-estandar-comercio-agentico/BITACORA.md#cierre-de-la-fase-2026-10-03).
 
-### 4.8 · Fase 8 — Agentes reales comprando en Stellar 🔄 en curso, abierta 2026-10-03
+### 4.8 · Fase 8 — Agentes reales comprando en Stellar ✅ cerrada 2026-10-17, abierta 2026-10-03
 
 La abre `P-16`. La Fase 7 probó la compra por UCP desde un programa propio;
 esta la pone en manos de agentes que la gente ya usa. Un servidor MCP de
@@ -663,9 +663,12 @@ inmediato: el video de Find Your Way, el 11-oct. Alcance, tareas (T128 a
 T146), línea de corte y preguntas abiertas en
 [docs/fase-8-agentes-reales/SPEC.md](docs/fase-8-agentes-reales/SPEC.md).
 
-Desde el 14-oct la Fase 8 está en cierre, en paralelo con la Fase 9 (`P-19`):
-quedan T138 y T139 como documentos, la tarea de `R-33` en el spec y el
-borrador del SEP. T140 queda cortada.
+Desde el 14-oct la Fase 8 estuvo en cierre, en paralelo con la Fase 9
+(`P-19`). Se cerró el 17-oct (`P-20`): T138 y T139 quedaron como documentos con
+su decisión (`R-38`, `R-39`), el borrador del SEP está en el repo y T140 quedó
+cortada. El criterio 1 (una compra desde Claude en una tienda de terceros) no
+se cumplió: T130 sigue en pausa fuera de la fase. T171, el MCP para una lista
+cerrada de wallets (`R-33`), quedó aprobada para una fase futura.
 
 ### 4.9 · Fase 9 — Una compra protegida, de punta a punta 🔄 en curso, abierta 2026-10-14
 

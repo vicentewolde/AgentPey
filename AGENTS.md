@@ -85,9 +85,10 @@ T124 (disputas) están dentro del perímetro de "nunca tuyo". No edites
 `docs/ESTADO.md` ni los `SPEC.md`: los mantiene Claude Code. Tu registro
 sigue siendo `docs/AGENT_LOG.md` y tu rama `codex/<task>`.
 
-**Fase 8, desde 2026-10-03 (`P-16`):** el spec es
-[`docs/fase-8-agentes-reales/SPEC.md`](docs/fase-8-agentes-reales/SPEC.md),
-aprobado el mismo día. El
+**Fase 8, del 2026-10-03 al 2026-10-17 (`P-16`, cerrada por `P-20`):** el spec es
+[`docs/fase-8-agentes-reales/SPEC.md`](docs/fase-8-agentes-reales/SPEC.md).
+T171 (`R-33`), aprobada para una fase futura, deriva una llave de agente y un
+rail por persona: llaves y cuentas pagadoras, perímetro de `P-10`. El
 servidor MCP (`apps/mcp`, T128) guarda una llave que paga y es de Claude Code,
 igual que el modo de conformidad de T131, la verificación del recibo (T132),
 AP2 (T134, con la llave de plataforma de `R-16` y la de cada tienda de `VT-43`), MPP (T135) y las wallets (T143). Lo delegable, si te llega, está
