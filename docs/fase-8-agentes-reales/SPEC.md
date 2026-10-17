@@ -358,6 +358,28 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] un `policy_rail` con topes paga un servicio x402 en testnet, con recibo y un resumen de gastos del mes (`pnpm run team:pay` y `team:summary` contra `signaldesk.agentpey.com` el 8-oct, [evidencia](evidencia/T146.md) §6, `R-27`)
 
+#### T171 · El MCP para una lista cerrada de wallets, cada una con su rail (`R-33`, etapa 1) · **propuesta, pendiente de aprobación**
+- **Prioridad:** después de la Fase 9 o en paralelo sin tocar sus archivos · **Estimación:** 18 h (2 a 3 días, `R-33`) · **Delegable a Codex:** no (llaves, rails, inicio de sesión y flujo de fondos, `P-10`)
+- **Depende de:** `R-33`; T156 (el inicio de sesión de hoy); **T162 de la Fase 9**, dueña de `open_claim` (`P-19`): T171 entra después de T162 o solo le entrega a `open_claim` la llave de la persona, sin tocar su lógica
+- **Descripción:** hoy el MCP sirve a una sola wallet (`MCP_ALLOWED_WALLET`, una llave `MCP_AGENT_SECRET_KEY`, un rail). Se abre a **una lista cerrada** de wallets, cada una con:
+  1. **Su propio `policy_rail`**, con su wallet como `principal`, desplegado por el usuario con `pnpm run deploy:policy-rail -- --profile mcp --principal G… --agent-index <n>`. **Los topes se eligen al desplegar** (`--per-tx`, `--per-day`; por defecto 3 y 5), que es lo que pide `R-36` para retomar T130.
+  2. **Su propia llave de agente**, derivada de una frase maestra (`MCP_AGENT_MNEMONIC`) con `deriveTenantKeypair(mnemónico, n, "agent")` de `packages/tenancy` (SEP-0005). Una llave comprometida compromete solo el rail de esa persona.
+  3. **Su credencial y su Mandato**, emitidos y anclados por `pnpm run mcp:setup -- --principal G… --agent-index <n>`, como hoy.
+  4. **Dónde vive la lista:** un archivo versionado, `apps/mcp/wallets.testnet.json` (wallet, índice, rail, credencial y Mandato, que son documentos firmados y no secretos), validado con zod al arrancar. No en `deployments/*.json`, que es de la Fase 9 (`P-19`). El único secreto nuevo es `MCP_AGENT_MNEMONIC`, en `.env.local` y en Render.
+  5. **El inicio de sesión** acepta solo las wallets de la lista; el token dice cuál entró, y cada herramienta usa el rail, la llave, la credencial y el Mandato de esa persona. Una wallet fuera de la lista se rechaza como hoy.
+  6. **Al arrancar**, cada entrada se comprueba en la red como hoy (`assertRailMatches`: dueño del rail = llave derivada, `principal` = wallet; credencial y Mandato del mismo agente). Una entrada que no cuadra queda deshabilitada y se anota en el log; las demás siguen.
+  7. **La entrada de hoy sigue funcionando** como la primera de la lista, con su llave actual (no derivada), para no redesplegar su rail.
+  8. **No cambia** la interfaz del escrow (spec de la Fase 9, §4.6): el reclamo lo firma la llave dueña del rail que pagó, ahora la de cada persona.
+- **Fuera de esta tarea (etapa 2 de `R-33`):** el alta automática de wallets, un registro de gasto persistente (sigue en memoria por rail; los topes los aplica la red) y quién paga cada despliegue (hoy, el usuario).
+- **Perímetro:** llaves derivadas, rails nuevos en testnet, quién puede iniciar sesión y desde qué rail se paga. `/revisar` lo mira línea por línea. Cada despliegue de rail y cada pago en testnet, con OK del usuario.
+- **Hecho cuando:**
+  - [ ] dos wallets de la lista, cada una con su rail desplegado en testnet (con OK del usuario), inician sesión con Freighter; cada una cotiza y paga desde su propio rail, con recibo en verde
+  - [ ] la red rechaza un pago sobre el tope del rail de cada persona, y un rail desplegado con `--per-tx`/`--per-day` tiene los topes pedidos
+  - [ ] una wallet fuera de la lista se rechaza al iniciar sesión, y una entrada que no cuadra en la red queda deshabilitada sin tumbar a las demás (tests)
+  - [ ] las llaves de dos personas son distintas y cada rail tiene como dueño la suya (test y lectura en la red)
+  - [ ] un reclamo sobre una compra de la segunda persona lo firma su llave, y el `open_message` del escrow lo verifica contra el `owner()` de su rail (test con el escrow de prueba)
+  - [ ] la entrada de hoy sigue comprando sin cambios; `pnpm check` en verde; el README del MCP documenta los comandos exactos
+
 ### Bloque D · Cierre
 
 #### T141 · Página pública "Tiendas comprables por agentes"
@@ -537,6 +559,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | T138: documento escrito; el usuario decidió no construir por ahora y agendarlo para después |
 | 2026-10-14 | T156 cerrada por el usuario: desplegada, Grok conectado e inicio de sesión firmado con Freighter; la cotización y la compra no se pudieron hacer por el límite "High Demand" de Grok |
 | 2026-10-17 | T138 cerrada (`R-38`). T139: documento escrito; el usuario eligió la opción C, Trustless Work para pagos por hitos en una fase propia y no en el checkout (`R-39`) |
+| 2026-10-17 | T171 propuesta (`R-33`, etapa 1): el MCP para una lista cerrada de wallets, cada una con su rail y su llave derivada; pendiente de aprobación |
 
 ## 11. Fuentes externas
 
