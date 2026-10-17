@@ -88,7 +88,7 @@ retoma, como un caso de hitos aparte, no en el checkout.
   (§4.1). Quedaría abierta por AgentPey como Platform, con el reclamo firmado fuera de la red: se pierde lo que dio
   `X-16`, que el pagador abre su propio reclamo en la red.
 - **Plazos:** **[código]** ninguno en el contrato (busqué fechas, ledgers y vencimientos en V1 y en las dos ramas de
-  V2). No hay ventana de liberación, ni plazo para la tienda, ni algo como `expire`; la documentación deja los plazos
+  V2; la revisión lo confirmó en `single-release-develop-v2`). No hay ventana de liberación, ni plazo para la tienda, ni algo como `expire`; la documentación deja los plazos
   a la aplicación. **La garantía principal de la Fase 9, que el comprador recupera todo si nadie decide a tiempo,
   quedaría en un servidor de AgentPey y no en la red.**
 - **El razonamiento del veredicto** queda fuera de la red, igual que hoy (`E-24`): Trustless Work no tiene campo para
@@ -133,6 +133,10 @@ el indexador (5), tests y documentos (4).
 ## 10. Sin confirmar
 
 - Si la API de Trustless Work acepta una dirección `C…` en un rol (el contrato sí; la documentación dice "wallets").
+- Si el reparto de `resolve-dispute` acepta una dirección `C…`: la API V2 documenta el destinatario como "Recipient
+  wallet (G...)", y el reembolso de AgentPey vuelve al rail, que es una `C…` (`X-24`). Si no la acepta, es otro
+  bloqueo para el checkout y para la opción C con un rail como pagador. Además, la API recibe el monto en decimales,
+  no en unidades atómicas.
 - La dirección de la fábrica y de los contratos en mainnet.
 - Qué versión cubrió la auditoría y si se corrigieron sus hallazgos.
 - Si una transferencia simple a un escrow V1 queda indexada siempre como depósito.
@@ -164,4 +168,4 @@ el indexador (5), tests y documentos (4).
 | [auditoría] | https://runtimeverification.com/public-report/trustless-work |
 | [integration track] | https://stellar.gitbook.io/scf-handbook/scf-awards/build-award/integration-track |
 | [integration list] | https://stellar.gitbook.io/scf-handbook/scf-awards/build-award/integration-track/integration-list.md |
-| El escrow de hoy | `contracts/purchase-escrow/src/lib.rs`, `contracts/policy-rail/src/lib.rs`, `X-7`, `X-14`, `X-16`, `X-20`, `X-24` en [Fase 9](../../fase-9-compra-protegida/DECISIONES.md) |
+| El escrow de hoy | `contracts/purchase-escrow/src/lib.rs`, `contracts/policy-rail/src/lib.rs`, `X-7`, `X-14`, `X-16`, `X-18`, `X-20`, `X-24` en [Fase 9](../../fase-9-compra-protegida/DECISIONES.md); `E-16`, `E-17`, `E-18`, `E-24` en [Fase 7](../../fase-7-estandar-comercio-agentico/DECISIONES.md); `R-1` en [Fase 8](../DECISIONES.md) |

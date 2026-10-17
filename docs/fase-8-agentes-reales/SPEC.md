@@ -535,8 +535,8 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | `/revisar` de T144: el inicio de sesión del MCP rechaza a Grok. El usuario eligió abrirle la puerta: la prueba sale de T144 a una tarea nueva, **T156** (`R-37`), y `R-29` queda precisada sobre dots |
 | 2026-10-14 | T156 aprobada por el usuario; T144 cerrada |
 | 2026-10-14 | T138: documento escrito; el usuario decidió no construir por ahora y agendarlo para después |
-| 2026-10-17 | T138 cerrada (`R-38`). T139: documento escrito; el usuario eligió la opción C, Trustless Work para pagos por hitos en una fase propia y no en el checkout (`R-39`) |
 | 2026-10-14 | T156 cerrada por el usuario: desplegada, Grok conectado e inicio de sesión firmado con Freighter; la cotización y la compra no se pudieron hacer por el límite "High Demand" de Grok |
+| 2026-10-17 | T138 cerrada (`R-38`). T139: documento escrito; el usuario eligió la opción C, Trustless Work para pagos por hitos en una fase propia y no en el checkout (`R-39`) |
 
 ## 11. Fuentes externas
 

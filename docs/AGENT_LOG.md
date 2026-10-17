@@ -9106,7 +9106,9 @@ métrica en la red. Recomendación: no integrarlo; si se retoma, pagos por hitos
 Decisión del usuario: opción C (`R-39`): no en el checkout; candidato para pagos por hitos entre empresas, en una
 fase propia, fuera de alcance hasta entonces.
 
-Pendiente: `/revisar`; merge con OK. Después: la tarea de `R-33` en el
-spec, el SEP en Markdown y `/fase-cerrar 8`. Exponential: T139 a `IN_PROGRESS`, T138 a `DONE`. `AGENTS.md`: sin
+`/revisar` sin bloqueantes; corregidos sus hallazgos de coherencia, y sumada a "sin confirmar" la duda de si el
+reparto de Trustless Work acepta una dirección `C…`. Mergeada a `main` con OK del usuario.
+
+Pendiente: la tarea de `R-33` en el spec, el SEP en Markdown y `/fase-cerrar 8`. Exponential: T139 y T138 a `DONE`. `AGENTS.md`: sin
 cambios.
 

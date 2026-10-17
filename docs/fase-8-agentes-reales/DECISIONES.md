@@ -1223,8 +1223,12 @@ para fondear y la firma de un rol para abrir una disputa; además su contrato no
 (el pagador recupera todo si nadie decide a tiempo) pasaría a un servidor. En pagos por hitos esas dos cosas pesan
 menos: los pagan personas o equipos, y los plazos los acuerdan las partes.
 
-**Alternativas descartadas.** (A) No usarlo en nada: deja fuera una pieza del ecosistema que está en la lista del
-Integration Track del SCF. (B) Integrarlo en el checkout (unas 35 h): el pagador dejaría de abrir su propio reclamo en
+La recomendación de T139 era la opción A (solo el `purchase-escrow`) y, si se retomaba, la C; el usuario formalizó la
+C, que la incluye: las compras siguen en el escrow propio.
+
+**Alternativas descartadas.** (A) Solo el `purchase-escrow`, sin dejar a Trustless Work como candidato: cierra una
+pieza del ecosistema que está en la lista del Integration Track del SCF, aunque hoy una postulación sería débil
+(evidencia §7). (B) Integrarlo en el checkout (unas 35 h): el pagador dejaría de abrir su propio reclamo en
 la red (`X-16`), los plazos quedarían en un servidor, un contrato por checkout y 0,3 % por compra y por reembolso.
 
 Evidencia: [`evidencia/T139-trustless-work.md`](evidencia/T139-trustless-work.md).

@@ -42,7 +42,7 @@ un equipo puede pagar servicios por uso desde un `policy_rail`; las
 suscripciones con tarjeta quedan como diseño (`R-25`). **T146 cerrada**, adelantada al
 video (`R-27`): un equipo le da a su agente un presupuesto y el agente paga créditos de
 SignalDesk desde un rail ya desplegado. **T141 cerrada**: [`agentpey.com/tiendas`](https://agentpey.com/tiendas)
-muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 y T156 cerradas** (14-oct; el chat de Grok ya inicia sesión en el MCP, sin compra por un límite de Grok): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`). **Desde el 14-oct la fase está en cierre** (`P-19`): la Fase 9 es la principal y T140 quedó cortada. **T138 en revisión**: GenLayer podría juzgar disputas, pero no como Internet Court tal cual; el usuario decidió no construirlo por ahora (`R-38`). **T139 en revisión**: Trustless Work no sirve como escrow de las compras tal como pagan hoy; el usuario lo dejó como candidato para pagos por hitos entre empresas, en una fase propia (`R-39`).
+muestra las tiendas del directorio con su último recibo anclado, leído de la red (`R-26`). **T142 cerrada** (13-oct, `R-35`): el usuario grabó y entregó el video de la hackatón (2:59, voz en inglés y subtítulos en español); el guion, la voz y el montaje los hizo Claude Code. **T144 y T156 cerradas** (14-oct; el chat de Grok ya inicia sesión en el MCP, sin compra por un límite de Grok): ninguno de dots, Grok Bot y Muse puede comprar con las cuentas del usuario; queda la tabla, sin compra (`R-29`). El chat de Grok sí acepta un servidor MCP propio, pero el inicio de sesión del MCP lo rechaza: abrirle la puerta es **T156** (`R-37`). **Desde el 14-oct la fase está en cierre** (`P-19`): la Fase 9 es la principal y T140 quedó cortada. **T138 cerrada** (17-oct, `R-38`): GenLayer podría juzgar disputas, pero no como Internet Court tal cual; el usuario decidió no construirlo por ahora (`R-38`). **T139 cerrada** (17-oct): Trustless Work no sirve como escrow de las compras tal como pagan hoy; el usuario lo dejó como candidato para pagos por hitos entre empresas, en una fase propia (`R-39`).
 
 | Tarea | Estado |
 |---|---|
@@ -57,7 +57,7 @@ muestra las tiendas del directorio con su último recibo anclado, leído de la r
 | T136 SDK en npm | cerrada |
 | T137 Kit de conformidad de Stellar | cerrada |
 | T138 Prueba técnica: GenLayer | cerrada: no se construye por ahora (`R-38`) |
-| T139 Prueba técnica: Trustless Work | en revisión: no en el checkout; candidato para pagos por hitos (`R-39`) |
+| T139 Prueba técnica: Trustless Work | cerrada: no en el checkout; candidato para pagos por hitos (`R-39`) |
 | T140 Resolutor intercambiable | cortada (`P-19`): se cruza con el escrow de la Fase 9 |
 | T141 Página de tiendas | cerrada |
 | T142 Guion y grabación | cerrada (entregado el 13-oct, `R-35`) |
@@ -887,7 +887,7 @@ Evidencia: [`evidencia/T138-genlayer.md`](evidencia/T138-genlayer.md).
 
 ---
 
-## T139 · Trustless Work como escrow por compra — 2026-10-17, en revisión
+## T139 · Trustless Work como escrow por compra — 2026-10-17, cerrada
 
 **Qué quedó.** Un documento que responde si Trustless Work, el servicio de escrows sobre Stellar, podría guardar el
 pago de las compras de AgentPey en lugar del escrow propio que construyó la Fase 9. La respuesta es que no, tal como
@@ -909,7 +909,8 @@ la red, o sea mainnet. Hoy sería una postulación débil.
 que es su caso de diseño, en una fase propia.
 
 **La decisión del usuario (17-oct).** Opción C: las compras siguen en el escrow propio, y Trustless Work queda como
-candidato para pagos por hitos entre empresas, en una fase propia (`R-39`). Trustless Work no respondió todavía por
+candidato para pagos por hitos entre empresas, en una fase propia (`R-39`). La recomendación era no integrarlo y, si
+se retomaba, usarlo para hitos; el usuario dejó formalizado ese candidato. Trustless Work no respondió todavía por
 Discord.
 
 Evidencia: [`evidencia/T139-trustless-work.md`](evidencia/T139-trustless-work.md).
