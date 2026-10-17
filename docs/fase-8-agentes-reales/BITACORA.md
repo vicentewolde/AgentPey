@@ -915,3 +915,14 @@ Discord.
 
 Evidencia: [`evidencia/T139-trustless-work.md`](evidencia/T139-trustless-work.md).
 
+---
+
+## El borrador del SEP, en el repo — 2026-10-17
+
+**Qué quedó.** El borrador del SEP vivía solo en un documento de Claude Docs
+("SEP draft — Agentic Commerce on Stellar", versión 0.0.1 del 3-oct). Ahora hay una copia en el repo, en inglés
+([`SEP-borrador.md`](SEP-borrador.md)) y en castellano ([`SEP-borrador-es.md`](SEP-borrador-es.md)), exportada tal
+cual. Cada una abre con una nota de lo que cambió desde entonces: el escrow por compra ya existe como el
+`purchase-escrow` de la Fase 9, y GenLayer y Trustless Work se evaluaron (`R-38`, `R-39`). El texto que se
+presentaría sigue en el documento de Claude Docs; publicarlo en GitHub Discussions sigue pendiente del usuario.
+

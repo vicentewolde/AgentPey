@@ -9129,3 +9129,15 @@ Coordinación: T171 toca `apps/mcp`, y `open_claim` es de la Fase 9 (T162): entr
 Pendiente: el SEP en Markdown y `/fase-cerrar 8`. Exponential: ticket T171 creado (`cmvchqozg0001jt06y672cql4`,
 `READY_TO_PLAN`). `AGENTS.md`: sin cambios.
 
+## 2026-10-17 (24) — cc/fase8-sep-borrador
+
+Agente: Claude Code.
+
+Qué: el borrador del SEP, exportado a Markdown desde el documento de Claude Docs
+(https://claude.ai/artifact/LrSQVsgyWqC8ULBJ5ZAweQ) con el conector de Docs: `docs/fase-8-agentes-reales/SEP-borrador.md`
+(pestaña en inglés) y `SEP-borrador-es.md` (traducción). Versión 0.0.1 del 3-oct, sin cambios; cada archivo abre con una
+nota de lo que cambió después (`purchase-escrow` de la Fase 9 y el anexo de T158, `R-38`, `R-39`). Solo documentos.
+
+Pendiente: `/fase-cerrar 8`. Fuera del código, del usuario: publicar el SEP en GitHub Discussions y avisar en Discord;
+enviar el borrador a Cards402 y el issue a ASGCard. Exponential: sin cambios. `AGENTS.md`: sin cambios.
+
