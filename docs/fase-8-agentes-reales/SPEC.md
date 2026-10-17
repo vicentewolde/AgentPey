@@ -307,7 +307,7 @@ más rápido que lo estimado.
 - **Prioridad:** si alcanza · **Estimación:** 4 h · **Delegable a Codex:** no
 - **Descripción:** responder: si el `payTo` de x402 pasa a ser el escrow; qué cambia en el recibo; si el árbitro de AgentResolve puede ser el Dispute Resolver; qué pediría una postulación al Integration Track de SCF.
 - **Hecho cuando:**
-  - [ ] `T139-trustless-work.md` con las respuestas citadas, opciones, recomendación y horas
+  - [x] `T139-trustless-work.md` con las respuestas citadas, opciones, recomendación y horas ([evidencia](evidencia/T139-trustless-work.md))
   - [ ] el usuario decidió si se construye
 
 #### T140 · Resolutor intercambiable en AgentResolve · ✂️ cortada (`P-19`)

@@ -9090,3 +9090,20 @@ communityfund@stellar.org fuera de la lista.
 
 Pendiente: merge de T138 con OK del usuario; T139 como documento; la tarea de `R-33` en el spec; el SEP en Markdown;
 `/fase-cerrar 8` con T130 en pausa. Exponential: T138 en `QA`, T140 archivada. `AGENTS.md`: sin cambios.
+
+## 2026-10-17 (22) — cc/t139-trustless-work
+
+Agente: Claude Code.
+
+Qué: T138 mergeada a `main` (`2e05c0f`, fast-forward con OK del usuario; ticket en `DONE`). **T139 en revisión**:
+`evidencia/T139-trustless-work.md`, Trustless Work como escrow por compra, contra el `purchase-escrow` de la Fase 9.
+No sirve tal como pagan hoy los agentes: el `policy_rail` solo autoriza `transfer` de su activo, así que no puede
+llamar `fund_escrow` ni abrir una disputa; una transferencia simple llega pero en V2 deja el escrow editable; su
+contrato no tiene plazos ni `expire`; un escrow por checkout; 0,3 % por compra y por reembolso. El árbitro sí podría
+ser Dispute Resolver y repartir montos. Integration Track: Trustless Work está en la lista, pero pide tracción y una
+métrica en la red. Recomendación: no integrarlo; si se retoma, pagos por hitos en una fase propia. Solo documentos.
+
+Pendiente: la decisión del usuario (criterio 2) y `R-39`; `/revisar`; merge con OK. Después: la tarea de `R-33` en el
+spec, el SEP en Markdown y `/fase-cerrar 8`. Exponential: T139 a `IN_PROGRESS`, T138 a `DONE`. `AGENTS.md`: sin
+cambios.
+
