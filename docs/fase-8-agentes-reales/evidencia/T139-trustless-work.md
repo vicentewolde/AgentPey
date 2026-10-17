@@ -141,7 +141,7 @@ el indexador (5), tests y documentos (4).
 ## 11. Criterios del spec
 
 - [x] `T139-trustless-work.md` con las respuestas citadas, opciones, recomendación y horas (este documento)
-- [ ] el usuario decidió si se construye
+- [x] el usuario decidió si se construye: **opción C** (17-oct, `R-39`): no en el checkout; candidato para pagos por hitos entre empresas, en una fase propia
 
 ## 12. Fuentes (leídas el 2026-10-17)
 

@@ -308,7 +308,7 @@ más rápido que lo estimado.
 - **Descripción:** responder: si el `payTo` de x402 pasa a ser el escrow; qué cambia en el recibo; si el árbitro de AgentResolve puede ser el Dispute Resolver; qué pediría una postulación al Integration Track de SCF.
 - **Hecho cuando:**
   - [x] `T139-trustless-work.md` con las respuestas citadas, opciones, recomendación y horas ([evidencia](evidencia/T139-trustless-work.md))
-  - [ ] el usuario decidió si se construye
+  - [x] el usuario decidió si se construye: **no en el checkout; queda como candidato para pagos por hitos entre empresas, en una fase propia** (17-oct, `R-39`)
 
 #### T140 · Resolutor intercambiable en AgentResolve · ✂️ cortada (`P-19`)
 - **Prioridad:** se corta primero · **Estimación:** 8 h · **Delegable a Codex:** no
@@ -535,6 +535,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | `/revisar` de T144: el inicio de sesión del MCP rechaza a Grok. El usuario eligió abrirle la puerta: la prueba sale de T144 a una tarea nueva, **T156** (`R-37`), y `R-29` queda precisada sobre dots |
 | 2026-10-14 | T156 aprobada por el usuario; T144 cerrada |
 | 2026-10-14 | T138: documento escrito; el usuario decidió no construir por ahora y agendarlo para después |
+| 2026-10-17 | T138 cerrada (`R-38`). T139: documento escrito; el usuario eligió la opción C, Trustless Work para pagos por hitos en una fase propia y no en el checkout (`R-39`) |
 | 2026-10-14 | T156 cerrada por el usuario: desplegada, Grok conectado e inicio de sesión firmado con Freighter; la cotización y la compra no se pudieron hacer por el límite "High Demand" de Grok |
 
 ## 11. Fuentes externas

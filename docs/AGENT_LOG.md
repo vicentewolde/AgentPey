@@ -9103,7 +9103,10 @@ contrato no tiene plazos ni `expire`; un escrow por checkout; 0,3 % por compra y
 ser Dispute Resolver y repartir montos. Integration Track: Trustless Work está en la lista, pero pide tracción y una
 métrica en la red. Recomendación: no integrarlo; si se retoma, pagos por hitos en una fase propia. Solo documentos.
 
-Pendiente: la decisión del usuario (criterio 2) y `R-39`; `/revisar`; merge con OK. Después: la tarea de `R-33` en el
+Decisión del usuario: opción C (`R-39`): no en el checkout; candidato para pagos por hitos entre empresas, en una
+fase propia, fuera de alcance hasta entonces.
+
+Pendiente: `/revisar`; merge con OK. Después: la tarea de `R-33` en el
 spec, el SEP en Markdown y `/fase-cerrar 8`. Exponential: T139 a `IN_PROGRESS`, T138 a `DONE`. `AGENTS.md`: sin
 cambios.
 

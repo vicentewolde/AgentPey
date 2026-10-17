@@ -1202,3 +1202,30 @@ tal cual: su escrow y su liquidación están en Base y su veredicto es sí o no,
 también depende de un relevo fuera de la cadena, y el de Internet Court tiene un problema de autorización abierto.
 
 Evidencia: [`evidencia/T138-genlayer.md`](evidencia/T138-genlayer.md).
+
+---
+
+### R-39 · Trustless Work no entra al checkout; queda como candidato para pagos por hitos entre empresas, en una fase propia · `Vigente`
+**Fecha:** 2026-10-17 · **Tarea:** T139 · **Decidido por el usuario** (opción C)
+
+T139 respondió si Trustless Work puede guardar el pago de las compras de AgentPey en lugar del `purchase-escrow` de la
+Fase 9. No puede, tal como pagan hoy los agentes. El usuario decidió:
+
+1. **Las compras siguen en el `purchase-escrow`.** No se integra Trustless Work en el checkout.
+2. **Trustless Work queda como candidato para pagos por hitos entre empresas** (por ejemplo, un equipo que paga a un
+   proveedor por entregas, como la tesorería de T145), que es su caso de diseño. Unas 16 h para una demo en testnet.
+3. **No se construye en la Fase 8.** Es un área de producto nueva: entra en alcance solo con una fase propia, su spec
+   aprobado y, de preferencia, un caso real (`P-15`, regla 5 de `CLAUDE.md`). Y tendría que resolver cómo firma un
+   `policy_rail`, que solo autoriza `transfer`, o pagar desde una cuenta clásica.
+
+**Motivo.** El `policy_rail` solo autoriza una transferencia de su propio activo, y Trustless Work exige `fund_escrow`
+para fondear y la firma de un rol para abrir una disputa; además su contrato no tiene plazos, y la garantía de `X-7`
+(el pagador recupera todo si nadie decide a tiempo) pasaría a un servidor. En pagos por hitos esas dos cosas pesan
+menos: los pagan personas o equipos, y los plazos los acuerdan las partes.
+
+**Alternativas descartadas.** (A) No usarlo en nada: deja fuera una pieza del ecosistema que está en la lista del
+Integration Track del SCF. (B) Integrarlo en el checkout (unas 35 h): el pagador dejaría de abrir su propio reclamo en
+la red (`X-16`), los plazos quedarían en un servidor, un contrato por checkout y 0,3 % por compra y por reembolso.
+
+Evidencia: [`evidencia/T139-trustless-work.md`](evidencia/T139-trustless-work.md).
+
