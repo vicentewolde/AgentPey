@@ -22,9 +22,9 @@ for a non-critical one before it listens; the log says how long each took
 when `web` missed it on four deploys in a row. A non-critical app (Vitrinee,
 the MCP) that misses its window is not given up on: its host answers `503`
 while the gateway keeps checking its port for up to five more minutes, and it is
-routed to as soon as it answers (`gateway: mcp came up late; now routed to` in
-the log). While it is waited for, the `503` carries `retry-after: 10` instead of
-`300`. Critical apps are unchanged: one that misses the window fails the
+routed to as soon as it answers (`gateway: mcp came up late, after 52.3 s; now
+routed to` in the log). While it is waited for, the `503` carries `retry-after: 10` instead of
+`300`. A critical app that misses its 120 s window fails the
 deploy.
 
 **Why this exists.** Before T86 the three apps were three separate Render

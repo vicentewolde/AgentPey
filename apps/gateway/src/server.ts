@@ -45,9 +45,10 @@ const TSX_BIN = resolve(REPO_ROOT, "node_modules/.bin/tsx");
 /**
  * How long a critical app is waited for before the gateway listens. 45 s until 17-oct: on Render's single CPU the
  * five children compile with tsx at the same time, and that day `web` missed 45 s on four deploys in a row ("nothing
- * answered on 127.0.0.1:4101"). The deploy then fails and Render keeps the previous version live, so a code change
- * would not reach production without anyone noticing. Render keeps serving the previous version meanwhile, so a
- * longer wait costs nothing visible. Each app's startup time is now logged to keep this honest.
+ * answered on 127.0.0.1:4101"). The deploy then failed and Render kept the previous version live, so a code change
+ * would not have reached production without anyone noticing. The wait ends as soon as the port answers, so the
+ * longer limit only lengthens a failure, and Render serves the previous version meanwhile (`P-21`). Each app's
+ * startup time is logged to keep the margin visible.
  */
 const READY_TIMEOUT_MS = 120_000;
 /** A non-critical app keeps the old window: past it, it joins late (`R-32`) instead of holding the others back. */
@@ -144,12 +145,20 @@ await Promise.all(
   toStart.map(async (target) => {
     try {
       await waitForPort(target.port, target.critical ? READY_TIMEOUT_MS : NON_CRITICAL_READY_TIMEOUT_MS);
-      process.stdout.write(`gateway: ${target.name} up after ${secondsSinceStart()} s\n`);
       // The child can exit between its port answering and this line running.
-      if (!exited.has(target.name)) running.add(target.name);
+      if (!exited.has(target.name)) {
+        running.add(target.name);
+        process.stdout.write(`gateway: ${target.name} up after ${secondsSinceStart()} s\n`);
+      }
     } catch (error) {
-      // A critical app that never came up is the old failure, unchanged.
-      if (target.critical) throw error;
+      // A critical app that never came up fails the deploy, as before; through `shutdown()`, so the children that did
+      // start are not left orphaned (they were, when this rejection reached the top-level await on its own).
+      if (target.critical) {
+        process.stderr.write(`gateway: ${target.name} did not come up: ${error instanceof Error ? error.message : String(error)}; exiting\n`);
+        process.exitCode = 1;
+        shutdown("a critical app did not start");
+        return;
+      }
       process.stderr.write(`gateway: ${target.name} did not come up yet; its host answers 503 while the gateway keeps waiting for it\n`);
       lateWaiting.add(target.name);
       void waitForLateApp(target.port, { timeoutMs: LATE_READY_TIMEOUT_MS, isAlive: () => !exited.has(target.name) && !shuttingDown })

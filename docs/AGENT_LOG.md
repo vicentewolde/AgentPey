@@ -9168,6 +9168,10 @@ vivo `2e05c0f`, con el mismo código. Con OK del usuario, deploy manual de `b628
 y 45 s a las no críticas (que siguen sumándose tarde, `R-32`), y escribe en el log cuánto tardó cada una. README del
 gateway y deuda de `ESTADO.md` al día.
 
-Pendiente: `/revisar` y merge con OK del usuario; confirmar en el log del deploy que aparece `web up after … s`.
+`/revisar` sin bloqueantes; corregidos sus hallazgos: decisión `P-21` (extiende `R-32`), la cita del log en el README,
+el aviso "up after" solo para una app que quedó enrutada, y una app crítica que no llega sale por `shutdown()` sin
+dejar procesos huérfanos. La compilación previa (correr desde `dist`) queda como deuda en `ESTADO.md`.
+
+Pendiente: merge con OK del usuario (dado); confirmar en el log del deploy que aparece `web up after … s`.
 Exponential: sin cambios. `AGENTS.md`: sin cambios.
 

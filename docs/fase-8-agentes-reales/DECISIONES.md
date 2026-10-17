@@ -1031,7 +1031,7 @@ siendo la forma de probar el piloto de punta a punta con un Mandato propio).
 
 ---
 
-### R-32 · Una app no crítica que tarda en arrancar se suma tarde en vez de quedar en `503` hasta el próximo deploy · `Vigente`
+### R-32 · Una app no crítica que tarda en arrancar se suma tarde en vez de quedar en `503` hasta el próximo deploy · `Vigente` — extendida por `P-21` (las críticas, 120 s)
 **Fecha:** 2026-10-08 · **Origen:** incidente en producción · Propuesta de Claude Code, **aprobada por el usuario**
 
 **Qué pasó.** El 8-oct, tras el deploy de T153, `mcp.agentpey.com` respondía `503` ("mcp is not running on this

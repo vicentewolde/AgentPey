@@ -957,3 +957,33 @@ nuevo con topes más altos y un Mandato nuevo, mientras corre la Fase 9. (b) Dej
 T171: mantendría dos fases abiertas sin trabajo en una de ellas. (c) Mover T171 a la Fase 9: su spec la deja fuera
 de alcance a propósito.
 
+---
+
+### P-21 · Las apps críticas del gateway tienen 120 s para arrancar; las no críticas siguen con 45 s · `Vigente` — extiende `R-32`
+**Fecha:** 2026-10-17 · **Origen:** incidente en producción · Pedido por el usuario
+
+**Qué pasó.** El 17-oct Render avisó "deploy failed". Fallaron cuatro deploys seguidos (`700192f`, `3970839`,
+`2e25e4d`, `b628499`) con `Error: nothing answered on 127.0.0.1:4101 within 45000ms`: `web`, una app crítica, no
+respondió en los 45 s que el gateway espera antes de escuchar. Render dejó en vivo `2e05c0f`, con el mismo código
+(los cuatro eran solo documentos), así que producción no cayó, pero un cambio de código no habría llegado sin que
+nadie lo notara. Un deploy manual de `b628499` pasó con `web` a 40 s y el MCP a 41 s: el arranque vive al borde del
+límite. La causa: en la instancia de Render (1 CPU) las cinco apps compilan con `tsx` a la vez al arrancar.
+
+**Se decide.**
+1. **Las apps críticas (`web`, RealOps, SignalDesk) tienen 120 s.** `R-32` descartó subir a 90 s porque "cada deploy
+   tarda más en quedar arriba", pero `waitForPort` vuelve apenas el puerto responde: un deploy sano tarda lo mismo, y
+   el límite solo alarga el caso de falla. Mientras tanto Render sigue sirviendo la versión anterior (no hay
+   `healthCheckPath`, `P-17`).
+2. **Las no críticas (Vitrinee, el MCP) siguen con 45 s** y, si no llegan, se suman tarde como dice `R-32`, sin
+   frenar a las demás.
+3. **El log dice cuánto tardó cada app** (`gateway: web up after 40.2 s`), para vigilar el margen en vez de adivinarlo.
+4. **Una app crítica que no llega cierra el gateway por `shutdown()`**, que también termina a las demás; antes el
+   error llegaba al `await` de nivel superior y dejaba procesos huérfanos en local.
+
+**Alternativas descartadas.**
+- **Correr las apps desde `dist` con `node` en vez de `tsx`:** ataca la causa, pero cambia cómo arranca cada app y
+  cómo se construye el servicio; queda como deuda en `ESTADO.md`, para cuando el margen se achique.
+- **Escalonar el arranque (las críticas primero):** Vitrinee, que atiende a las tiendas, quedaría en `503` un rato
+  después de cada deploy.
+- **Un `healthCheckPath` en Render:** pendiente desde `P-17`; no resuelve el arranque lento.
+
