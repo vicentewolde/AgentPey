@@ -9157,3 +9157,17 @@ Coordinación: el worktree `~/dev/AgentPay-fase8` queda sin uso; su rama local `
 Pendiente: Fase 9, `/tarea T162`. Exponential: ticket T130 a `BLOCKED` (en pausa); T171 en `READY_TO_PLAN`; el feature de la Fase 8 a `SHIPPED`; `exp:sync`.
 `AGENTS.md`: sin cambios.
 
+## 2026-10-17 (26) — cc/gateway-arranque
+
+Agente: Claude Code.
+
+Qué: Render avisó "deploy failed". Producción nunca cayó (smoke 28/28): fallaron cuatro deploys seguidos de commits de
+solo documentos (`700192f` a `b628499`) con `Error: nothing answered on 127.0.0.1:4101 within 45000ms`, y Render dejó en
+vivo `2e05c0f`, con el mismo código. Con OK del usuario, deploy manual de `b628499` desde el panel: pasó, con `web` en
+40 s y el MCP en 41 s, contra un límite de 45 s. Arreglo: `apps/gateway/src/server.ts` espera 120 s a las apps críticas
+y 45 s a las no críticas (que siguen sumándose tarde, `R-32`), y escribe en el log cuánto tardó cada una. README del
+gateway y deuda de `ESTADO.md` al día.
+
+Pendiente: `/revisar` y merge con OK del usuario; confirmar en el log del deploy que aparece `web up after … s`.
+Exponential: sin cambios. `AGENTS.md`: sin cambios.
+

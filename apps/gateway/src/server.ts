@@ -42,8 +42,16 @@ import { spawnApp, waitForLateApp, waitForPort } from "./supervisor.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const TSX_BIN = resolve(REPO_ROOT, "node_modules/.bin/tsx");
-/** A first purchase deploys and funds a rail and waits for testnet settlement — 20-40s measured in T84. Comfortably inside this. */
-const READY_TIMEOUT_MS = 45_000;
+/**
+ * How long a critical app is waited for before the gateway listens. 45 s until 17-oct: on Render's single CPU the
+ * five children compile with tsx at the same time, and that day `web` missed 45 s on four deploys in a row ("nothing
+ * answered on 127.0.0.1:4101"). The deploy then fails and Render keeps the previous version live, so a code change
+ * would not reach production without anyone noticing. Render keeps serving the previous version meanwhile, so a
+ * longer wait costs nothing visible. Each app's startup time is now logged to keep this honest.
+ */
+const READY_TIMEOUT_MS = 120_000;
+/** A non-critical app keeps the old window: past it, it joins late (`R-32`) instead of holding the others back. */
+const NON_CRITICAL_READY_TIMEOUT_MS = 45_000;
 /** How long a non-critical app that missed the window above is still waited for, while the others already serve (`R-32`). */
 const LATE_READY_TIMEOUT_MS = 5 * 60_000;
 const PORT = Number(process.env.PORT ?? 8080);
@@ -70,7 +78,9 @@ const toStart = APP_TARGETS.filter((target) => {
   }
   return missing.length === 0;
 });
+const startedAt = Date.now();
 const spawned = toStart.map((target) => spawnApp(target, REPO_ROOT, TSX_BIN, process.env));
+const secondsSinceStart = (): string => ((Date.now() - startedAt) / 1000).toFixed(1);
 /** The apps that are up and may be routed to. A non-critical app that exits leaves this set. */
 const running = new Set<AppName>();
 /** The apps whose process has exited: never routed to after this, late or not. */
@@ -133,7 +143,8 @@ process.stdout.write(`gateway: waiting for ${toStart.map((target) => `${target.n
 await Promise.all(
   toStart.map(async (target) => {
     try {
-      await waitForPort(target.port, READY_TIMEOUT_MS);
+      await waitForPort(target.port, target.critical ? READY_TIMEOUT_MS : NON_CRITICAL_READY_TIMEOUT_MS);
+      process.stdout.write(`gateway: ${target.name} up after ${secondsSinceStart()} s\n`);
       // The child can exit between its port answering and this line running.
       if (!exited.has(target.name)) running.add(target.name);
     } catch (error) {
@@ -145,7 +156,7 @@ await Promise.all(
         .then((up) => {
           if (up && !exited.has(target.name) && !shuttingDown) {
             running.add(target.name);
-            process.stdout.write(`gateway: ${target.name} came up late; now routed to\n`);
+            process.stdout.write(`gateway: ${target.name} came up late, after ${secondsSinceStart()} s; now routed to\n`);
           } else if (!exited.has(target.name) && !shuttingDown) {
             process.stderr.write(`gateway: ${target.name} never came up; its host answers 503 until the next deploy\n`);
           }

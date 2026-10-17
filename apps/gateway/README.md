@@ -16,8 +16,11 @@ critical either), instead of
 the whole service restarting.
 
 **A non-critical app that is slow to start joins late (`R-32`).** The gateway
-waits up to 45 s for every app before it listens. A non-critical app (Vitrinee,
-the MCP) that misses that window is not given up on: its host answers `503`
+waits up to 120 s for each critical app (`web`, RealOps, SignalDesk) and 45 s
+for a non-critical one before it listens; the log says how long each took
+(`gateway: web up after 38.2 s`). The critical window was 45 s until 17-oct,
+when `web` missed it on four deploys in a row. A non-critical app (Vitrinee,
+the MCP) that misses its window is not given up on: its host answers `503`
 while the gateway keeps checking its port for up to five more minutes, and it is
 routed to as soon as it answers (`gateway: mcp came up late; now routed to` in
 the log). While it is waited for, the `503` carries `retry-after: 10` instead of

@@ -91,6 +91,10 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
   tarda más. Así fallaron `cdde180` y `3492508` ("Exited with status 1"); Render deja la versión anterior en vivo, así
   que el sitio no cae, pero ese commit no llega a producción sin aviso. Es lo de `R-32`, que se arregló solo para el MCP.
   Después de cada merge hay que confirmar que el código nuevo esté en vivo (`T159` lo confirmó con `checks.held`).
+  **17-oct:** fallaron cuatro deploys seguidos (`700192f`, `3970839`, `2e25e4d`, `b628499`), con `web` sin responder en
+  45 s; quedó en vivo `2e05c0f` (mismo código, eran solo documentos). Un deploy manual de `b628499` pasó: `web` tardó
+  40 s y el MCP 41 s, al borde del límite. Arreglo en `cc/gateway-arranque`: 120 s para las apps críticas, 45 s para
+  las no críticas (siguen sumándose tarde, `R-32`), y el log dice cuánto tardó cada una.
 
 - T123 (brecha 14 del anexo): la misma intención se puede exportar a AP2 más de una vez mientras no vence. Cada par está acotado al mismo tope y a la vida de la intención. Hacerlo cumplir pide memoria por `intentId`.
 
