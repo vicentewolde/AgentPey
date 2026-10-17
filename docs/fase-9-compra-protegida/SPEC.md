@@ -294,7 +294,7 @@ explícito del usuario.
 
 La corrida de T166 en `agentcommerce` (Shopify), desde Claude con el MCP de `mcp.agentpey.com`, con ventanas de
 minutos (`X-6`). El usuario la graba en T167. Cada push a `main` despliega en Render: antes de correr o grabar se
-avisa para que el chat de la Fase 8 no mergee.
+avisa al usuario y no se mergea a `main` mientras dura (la Fase 8 se cerró el 17-oct, `P-20`: ya no hay otro chat que merge).
 
 ## 8. Orden, fechas y cortes
 
@@ -308,12 +308,13 @@ avisa para que el chat de la Fase 8 no mergee.
 **Línea de corte:** si al final de la semana 3 falta algo, se corta primero T165 y después T161. **D1 y la corrida
 de D3 no se cortan.**
 
-**Convivencia con el cierre de la Fase 8.** Las dos fases están en curso. Esta fase es dueña de `contracts/*`, el
-contrato nuevo y `deployments/*.json`; de `apps/mcp/src/shopper.ts` y `tools.ts` (`open_claim`); de
-`packages/resolve/`, `scripts/resolve*` y `apps/web/public/resolve/`; y en `packages/vitrinee-*`, del `payTo`, `hold`,
-los webhooks y el despacho. La Fase 8 es dueña de `docs/fase-8-agentes-reales/*` y del borrador del SEP. Son
-compartidos `ESTADO.md`, `AGENT_LOG.md`, `ROADMAP.md`, `CLAUDE.md`, `SYNC.md` y `docs/DECISIONES.md`: antes de cada
-push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por día) es compartido.
+**Convivencia (hasta el cierre de la Fase 8, 17-oct).** Mientras las dos fases corrieron en paralelo, esta fase fue
+dueña de `contracts/*`, el contrato nuevo y `deployments/*.json`; de `apps/mcp/src/shopper.ts` y `tools.ts`
+(`open_claim`); de `packages/resolve/`, `scripts/resolve*` y `apps/web/public/resolve/`; y en `packages/vitrinee-*`, del
+`payTo`, `hold`, los webhooks y el despacho. Desde el cierre de la Fase 8 (`P-20`) es la única fase abierta y todo el
+trabajo va en la carpeta principal, una tarea a la vez, sin carpetas de trabajo paralelas (los worktrees de la Fase 8 y
+de las tareas T154 y T155 se retiraron el 17-oct; queda `AgentPay-codex`, la de Codex, `P-5`). Antes de cada push,
+`git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por día) lo usa solo esta fase.
 
 ## 9. Riesgos
 
@@ -323,7 +324,7 @@ push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por
 | Una tienda registra en `hold` plata que no llegó | Chequeo de saldo no asignado + `tx_hash` único; un escrow por tienda, así que no puede tomar un pago ajeno (`X-11`) |
 | Una tienda declara escrow pero cobra directo, o declara un contrato falso | El agente rechaza antes de firmar: `payTo` = contrato declarado y wasm conocido (`X-9`) |
 | El escrow rompe compras o disputas existentes | Escrow opcional por tienda; handler y recibo `2026-09-30` siguen válidos; `agent-resolve` y `receipt-registry` intactos; tests de regresión con recibos viejos |
-| El rail del MCP llega a su tope diario (5 USDC) | Compras de la demo baratas; el chat de la Fase 8 no compra sin preguntar |
+| El rail del MCP llega a su tope diario (5 USDC) | Compras de la demo baratas; ninguna compra sin preguntar al usuario |
 | Jumpseller no informa despachos | Demo en `agentcommerce` (Shopify); Jumpseller documentado |
 | Trabajo para una sola persona, con un día de atraso | Línea de corte de la sección 8 |
 
@@ -349,6 +350,7 @@ push, `git fetch` y rebase sobre `origin/main`. El rail del MCP (tope 5 USDC por
 | 2026-10-15 | T160 cerrada: mergeada ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)), escrow encendido en `agentcommerce` con `VITRINEE_COMERCIO_ESCROWS` y una compra real retenida en el escrow |
 | 2026-10-16 | T161 cerrada (PR #92): en producción la orden retenida `ord_mv9s83yb…` muestra `held` y valida contra los esquemas; `get_order` lee el escrow de la red. D1 completo |
 | 2026-10-16 | T161 en revisión: `receipt.escrow` en la orden, extensión del recibo `2026-10-16`, la disputa del escrow como ajuste de UCP y `escrow` en `get_order` (`X-27`) |
+| 2026-10-17 | Cierre de la Fase 8 (`P-20`): esta pasa a ser la única fase abierta. Se quitan del spec el chat paralelo de la Fase 8 y la coordinación de merges con él; el trabajo va en la carpeta principal, sin worktrees de tareas |
 | 2026-10-16 | T158 en revisión: el árbitro resuelve en el escrow las compras pagadas a un escrow; la disputa la abre el pagador, el plazo es el del contrato y el reembolso sale del pago retenido (`X-26`). Veredicto real con reembolso completo ejecutado |
 
 ---

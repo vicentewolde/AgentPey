@@ -9175,3 +9175,19 @@ dejar procesos huérfanos. La compilación previa (correr desde `dist`) queda co
 Pendiente: merge con OK del usuario (dado); confirmar en el log del deploy que aparece `web up after … s`.
 Exponential: sin cambios. `AGENTS.md`: sin cambios.
 
+## 2026-10-17 (27) — cc/limpieza-worktrees
+
+Agente: Claude Code.
+
+Qué: por pedido del usuario, que no quiere el trabajo repartido en muchas carpetas, se retiraron los worktrees
+`~/dev/AgentPay-fase8`, `-t154`, `-t155` y `-demo` (`git worktree remove`, sin forzar: ninguno tenía cambios sin
+guardar y sus ramas ya estaban en `main`; la de T138 por otros códigos de commit). Antes se copiaron a `~/dev/AgentPay`
+y se verificaron las dos corridas del árbitro de T155 que solo vivían en `.vitrinee/` de t155
+(`.vitrinee/arbiter-console/` y `.vitrinee/agentresolve/`); el video del ensayo ya estaba en la carpeta principal. Se
+borraron las cuatro ramas locales y se limpió el registro del worktree `/private/tmp/agentpay-explainer-mp4`, cuya
+carpeta ya no existía. Quedan `~/dev/AgentPay` y `~/dev/AgentPay-codex` (la de Codex, `P-5`; con un `.env.local` propio).
+Las ramas remotas en GitHub no se tocaron. Se quitaron del spec de la Fase 9, de `ESTADO.md` y de `CLAUDE.local.md` las
+menciones al chat paralelo de la Fase 8, y las rutas de la demo (`reclamo.zsh`, `ESCALETA.md`) apuntan a `~/dev/AgentPay`.
+
+Pendiente: merge de esta rama con OK del usuario. Exponential: sin cambios. `AGENTS.md`: sin cambios.
+

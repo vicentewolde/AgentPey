@@ -166,11 +166,11 @@ cada vez). Si la abres otra vez, reinicia el servidor y abre una página nueva (
 pestaña 6. Comprueba que carga: debe decir "Una disputa, paso a paso." y los pasos 2 a 4 se ven apagados. Si no se
 abre, el registro está en `/tmp/arbiter-console.log`.
 
-La app arranca la pantalla desde `~/dev/AgentPay-t155`, que ya tiene el enlace a tu `.env.local`. Si ese worktree
-cambia de lugar, la app deja de funcionar. Sin la app, lo mismo desde una terminal:
+La app arranca la pantalla desde `~/dev/AgentPay` (en el ensayo del 9-oct era el worktree `AgentPay-t155`, ya
+retirado). Si esa carpeta cambia de lugar, la app deja de funcionar. Sin la app, lo mismo desde una terminal:
 
 ```bash
-cd ~/dev/AgentPay-t155 && pnpm run arbiter:console
+cd ~/dev/AgentPay && pnpm run arbiter:console
 ```
 
 Si la pantalla falla, queda el plan antiguo: los mismos pasos con los atajos de [reclamo.zsh](reclamo.zsh) (`source

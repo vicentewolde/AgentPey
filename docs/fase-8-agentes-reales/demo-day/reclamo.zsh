@@ -1,5 +1,5 @@
 # Arbiter shortcuts for the live claim at the Demo Day. Load once per terminal:
-#   source ~/dev/AgentPay-demo/docs/fase-8-agentes-reales/demo-day/reclamo.zsh
+#   source ~/dev/AgentPay/docs/fase-8-agentes-reales/demo-day/reclamo.zsh
 # The claim Claude signs is kept at ~/Desktop/reclamo.jws; the same file is uploaded to the merchant's page.
 # The scripts run from ~/dev/AgentPay, which holds .env.local.
 reclamo_guardar() { pbpaste > "$HOME/Desktop/reclamo.jws" && echo "saved to ~/Desktop/reclamo.jws"; }
