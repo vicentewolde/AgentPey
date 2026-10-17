@@ -937,7 +937,7 @@ Spec en [`fase-9-compra-protegida/SPEC.md`](fase-9-compra-protegida/SPEC.md). De
 ### P-20 · La Fase 8 se cierra con T130 en pausa y T171 aprobada para una fase futura · `Vigente`
 **Fecha:** 2026-10-17 · **Hito:** cierre de la Fase 8 (T128–T156) · Decidido por el usuario
 
-**Qué cambia.** La Fase 8 cierra el 2026-10-17 con 25 de sus 29 tareas terminadas, T140 cortada (`P-19`) y dos que
+**Qué cambia.** La Fase 8 cierra el 2026-10-17 con 27 de sus 29 tareas terminadas, T140 cortada (`P-19`) y dos que
 pasan a una fase futura:
 
 1. **T130 (la tienda de terceros real) sale de la Fase 8**, en pausa como decía `R-36`. Con ella queda **sin cumplir el

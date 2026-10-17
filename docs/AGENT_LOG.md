@@ -9145,7 +9145,7 @@ enviar el borrador a Cards402 y el issue a ASGCard. Exponential: sin cambios. `A
 
 Agente: Claude Code.
 
-Qué: **Fase 8 cerrada** (`/fase-cerrar 8`, `P-20`, decidido por el usuario): T128–T156, 25 de 29 tareas terminadas, T140
+Qué: **Fase 8 cerrada** (`/fase-cerrar 8`, `P-20`, decidido por el usuario): T128–T156, 27 de 29 tareas terminadas, T140
 cortada (`P-19`), T130 en pausa fuera de la fase (`R-36`) y T171 (`R-33`) aprobada para una fase futura, después de
 T162. Criterios: 2 a 5 cumplidos (el 4 repetido al cerrar: `anchor.test.ts` 15/15); el 1, una compra desde Claude en
 una tienda de terceros, sin cumplir por T130. Actualizados SPEC (Cerrado), BITACORA (cierre y retro), ROADMAP, la

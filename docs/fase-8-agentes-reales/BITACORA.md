@@ -12,7 +12,7 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-17 · **Fase cerrada** el 17-oct (T128–T156, `P-20`); en cierre desde el 14-oct (`P-19`), abierta el 3-oct (`P-16`). 25 de 29 tareas terminadas, T140 cortada, T130 en pausa fuera de la fase y T171 aprobada para una fase futura. Criterio 1 sin cumplir (por T130); criterios 2 a 5 cumplidos. **Spec aprobado** por el usuario
+**Fecha:** 2026-10-17 · **Fase cerrada** el 17-oct (T128–T156, `P-20`); en cierre desde el 14-oct (`P-19`), abierta el 3-oct (`P-16`). 27 de 29 tareas terminadas, T140 cortada, T130 en pausa fuera de la fase y T171 aprobada para una fase futura. Criterio 1 sin cumplir (por T130); criterios 2 a 5 cumplidos. **Spec aprobado** por el usuario
 el 3-oct, con sus decisiones `R-1` a `R-6`. **T132 cerrada**: el
 verificador rechaza un recibo que se contradice y la tienda no emite dos
 recibos sobre un pago. **T128 cerrada**: el servidor MCP está en vivo en
