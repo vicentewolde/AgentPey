@@ -358,7 +358,7 @@ más rápido que lo estimado.
 - **Hecho cuando:**
   - [x] un `policy_rail` con topes paga un servicio x402 en testnet, con recibo y un resumen de gastos del mes (`pnpm run team:pay` y `team:summary` contra `signaldesk.agentpey.com` el 8-oct, [evidencia](evidencia/T146.md) §6, `R-27`)
 
-#### T171 · El MCP para una lista cerrada de wallets, cada una con su rail (`R-33`, etapa 1) · **propuesta, pendiente de aprobación**
+#### T171 · El MCP para una lista cerrada de wallets, cada una con su rail (`R-33`, etapa 1) · **aprobada por el usuario el 17-oct**
 - **Prioridad:** después de la Fase 9 o en paralelo sin tocar sus archivos · **Estimación:** 18 h (2 a 3 días, `R-33`) · **Delegable a Codex:** no (llaves, rails, inicio de sesión y flujo de fondos, `P-10`)
 - **Depende de:** `R-33`; T156 (el inicio de sesión de hoy); **T162 de la Fase 9**, dueña de `open_claim` (`P-19`): T171 entra después de T162 o solo le entrega a `open_claim` la llave de la persona, sin tocar su lógica
 - **Descripción:** hoy el MCP sirve a una sola wallet (`MCP_ALLOWED_WALLET`, una llave `MCP_AGENT_SECRET_KEY`, un rail). Se abre a **una lista cerrada** de wallets, cada una con:
@@ -559,7 +559,7 @@ congelado el 10-oct); después T146 y T144 si alcanzan; al final T138, T139 y T1
 | 2026-10-14 | T138: documento escrito; el usuario decidió no construir por ahora y agendarlo para después |
 | 2026-10-14 | T156 cerrada por el usuario: desplegada, Grok conectado e inicio de sesión firmado con Freighter; la cotización y la compra no se pudieron hacer por el límite "High Demand" de Grok |
 | 2026-10-17 | T138 cerrada (`R-38`). T139: documento escrito; el usuario eligió la opción C, Trustless Work para pagos por hitos en una fase propia y no en el checkout (`R-39`) |
-| 2026-10-17 | T171 propuesta (`R-33`, etapa 1): el MCP para una lista cerrada de wallets, cada una con su rail y su llave derivada; pendiente de aprobación |
+| 2026-10-17 | T171 aprobada por el usuario (`R-33`, etapa 1): el MCP para una lista cerrada de wallets, cada una con su rail y su llave derivada; la lista en `apps/mcp/wallets.testnet.json`, una entrada que no cuadra se deshabilita sin tumbar a las demás, y entra después de T162 de la Fase 9 o sin tocar la lógica de `open_claim` |
 
 ## 11. Fuentes externas
 

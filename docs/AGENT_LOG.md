@@ -9112,3 +9112,20 @@ reparto de Trustless Work acepta una dirección `C…`. Mergeada a `main` con OK
 Pendiente: la tarea de `R-33` en el spec, el SEP en Markdown y `/fase-cerrar 8`. Exponential: T139 y T138 a `DONE`. `AGENTS.md`: sin
 cambios.
 
+## 2026-10-17 (23) — cc/r33-tarea-spec
+
+Agente: Claude Code.
+
+Qué: **T171 escrita y aprobada por el usuario** en el spec de la Fase 8 (`R-33`, etapa 1): el MCP para una lista
+cerrada de wallets, cada una con su `policy_rail` (topes elegidos al desplegar, lo que pide `R-36` para T130), su
+llave de agente derivada (`packages/tenancy`, `MCP_AGENT_MNEMONIC`), su credencial y su Mandato. La lista vive en
+`apps/mcp/wallets.testnet.json`, no en `deployments/` (de la Fase 9); una entrada que no cuadra se deshabilita sin
+tumbar a las demás; la entrada de hoy sigue como la primera. La interfaz del escrow (spec de la Fase 9, §4.6) no
+cambia. Solo el spec; nada construido.
+
+Coordinación: T171 toca `apps/mcp`, y `open_claim` es de la Fase 9 (T162): entra después de T162, o solo le entrega a
+`open_claim` la llave de la persona.
+
+Pendiente: el SEP en Markdown y `/fase-cerrar 8`. Exponential: ticket T171 creado (`cmvchqozg0001jt06y672cql4`,
+`READY_TO_PLAN`). `AGENTS.md`: sin cambios.
+
