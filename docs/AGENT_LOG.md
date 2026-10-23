@@ -9226,3 +9226,17 @@ Pendiente: OK del usuario para pushear y mergear (cada merge despliega: no duran
 jueces); después poner las variables de Render (valores en `vitrinee/evidencia/T172.md` §6); leer los logs de Render del
 19-20 de oct; decidir si se repone el stock del imán.
 Exponential: sin cambios (T172 no tiene ticket). `AGENTS.md`: sin cambios.
+
+## 2026-10-23 (29) — cc/sep-v002-export
+
+Agente: Claude Code.
+
+Qué: el borrador del SEP en su versión 0.0.2, exportado a `docs/sep/agentic-commerce-on-stellar.md` (en inglés, para
+enlazarlo desde la discusión pública del pre-SEP). Suma el escrow por compra como modelo con comportamiento mínimo
+(§4.3.1) y el `purchase-escrow` de la Fase 9 como implementación de referencia; las reglas de §4.2 por modelo; la
+tabla de seguridad; y la nota de que Trustless Work se evaluó y no sirvió para compras de agentes (T139, `R-39`). El
+texto vigente sigue en el documento de Claude Docs; esta copia sirve para tener un enlace público. Solo documentos,
+sin código ni despliegues. No describe el flujo desde el chat (T162 a T165, pendientes).
+
+Pendiente: el usuario publica el hilo en GitHub Discussions; no se mergea a `main` (cada merge despliega en Render).
+Exponential: sin cambios. `AGENTS.md`: sin cambios.
