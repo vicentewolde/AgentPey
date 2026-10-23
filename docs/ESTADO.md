@@ -38,10 +38,9 @@ Fase 9, por decisión suya (22-oct).** No cambia nada en producción hasta poner
 
 | Tarea | Estado | Rama / PR |
 |---|---|---|
-| T172 Cuentas bloqueadas, límite por cuenta, plataformas aprobadas y AP2 exigido, por tienda y apagados por defecto; chequeo de producción `pnpm run prod:check` | 👀 en revisión: 44 pruebas nuevas, `vitrinee:check` verde, producción 11/11 antes y después ([evidencia](fase-6-agentguard-comercializacion/vitrinee/evidencia/T172.md), `VT-49`) | `cc/t172-freno-compradores`, sin push ni PR |
+| T172 Cuentas bloqueadas, límite por cuenta, plataformas aprobadas y AP2 exigido, por tienda y apagados por defecto; chequeo de producción `pnpm run prod:check` | ✅ mergeada el 23-oct ([PR #93](https://github.com/vicentewolde/AgentPey/pull/93), `cd2b3ae`, CI 4/4) y en vivo desde las 06:20 UTC aprox. (Render: Deployed, 2 m 22 s). 44 pruebas nuevas; producción 11/11 durante todo el deploy. **Sin variables puestas: no cambia nada hasta que el usuario las ponga** ([evidencia](fase-6-agentguard-comercializacion/vitrinee/evidencia/T172.md), `VT-49`) | [PR #93](https://github.com/vicentewolde/AgentPey/pull/93), mergeada |
 
-- [ ] Del usuario: OK para empujar y mergear `cc/t172-freno-compradores` (cada merge despliega; mejor fuera de una
-  grabación o de una revisión de los jueces). Después, poner en el servicio `AgentPey` de Render
+- [ ] Del usuario: poner en el servicio `AgentPey` de Render (Environment, ya abierto en Chrome el 23-oct)
   `VITRINEE_COMERCIO_BLOCKED_PAYERS` (las tres cuentas viejas, dejando libre `GBJDXLBZ…`) y
   `VITRINEE_COMERCIO_PAYER_LIMITS=agentcommerce=5/3600`; los valores exactos están en la evidencia.
 - [ ] Del usuario: leer los logs de Render de `agentcommerce` del 19 y 20-oct (IP y agente de usuario), si todavía los

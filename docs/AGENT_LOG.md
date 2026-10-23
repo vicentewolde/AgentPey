@@ -9226,3 +9226,19 @@ Pendiente: OK del usuario para pushear y mergear (cada merge despliega: no duran
 jueces); después poner las variables de Render (valores en `vitrinee/evidencia/T172.md` §6); leer los logs de Render del
 19-20 de oct; decidir si se repone el stock del imán.
 Exponential: sin cambios (T172 no tiene ticket). `AGENTS.md`: sin cambios.
+
+## 2026-10-23 (29) — cc/t172-cierre
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, **T172 mergeada a `main`** ([PR #93](https://github.com/vicentewolde/AgentPey/pull/93)), fast-forward a `cd2b3ae`, CI 4/4.
+Render la desplegó en 2 m 22 s (panel: *Deployed*, comprobado en el Chrome del usuario); `pnpm run prod:check` cada 90 s
+durante ~20 min: 14 de 14 veces 11/11. Sin variables puestas, el comportamiento no cambia. El usuario pidió dejar la página
+de variables del servicio `AgentPey` abierta en su Chrome para poner las claves después: está abierta, sin tocar. Un
+error mío en el camino: un script sobrescribió `docs/AGENT_LOG.md` con `ESTADO.md` en el working tree; se restauró del
+commit antes de commitear, sin llegar a `main`. Este commit solo corrige el tablero y la evidencia.
+
+Pendiente: del usuario, las dos variables (`VITRINEE_COMERCIO_BLOCKED_PAYERS` y `_PAYER_LIMITS`, valores en
+`vitrinee/evidencia/T172.md` §6) y después `pnpm run prod:check`; leer los logs de Render del 19-20 de oct; decidir si se
+repone el stock del imán. Deuda: el kit de conformidad falla R2 contra `agentcommerce` desde T160. Exponential: sin
+cambios. `AGENTS.md`: sin cambios.
