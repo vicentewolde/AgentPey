@@ -38,7 +38,7 @@ Fase 9, por decisión suya (22-oct).** No cambia nada en producción hasta poner
 
 | Tarea | Estado | Rama / PR |
 |---|---|---|
-| T172 Cuentas bloqueadas, límite por cuenta, plataformas aprobadas y AP2 exigido, por tienda y apagados por defecto; chequeo de producción `pnpm run prod:check` | 👀 en revisión: 39 pruebas nuevas, `vitrinee:check` verde, producción 11/11 antes y después ([evidencia](fase-6-agentguard-comercializacion/vitrinee/evidencia/T172.md), `VT-49`) | `cc/t172-freno-compradores`, sin push ni PR |
+| T172 Cuentas bloqueadas, límite por cuenta, plataformas aprobadas y AP2 exigido, por tienda y apagados por defecto; chequeo de producción `pnpm run prod:check` | 👀 en revisión: 44 pruebas nuevas, `vitrinee:check` verde, producción 11/11 antes y después ([evidencia](fase-6-agentguard-comercializacion/vitrinee/evidencia/T172.md), `VT-49`) | `cc/t172-freno-compradores`, sin push ni PR |
 
 - [ ] Del usuario: OK para empujar y mergear `cc/t172-freno-compradores` (cada merge despliega; mejor fuera de una
   grabación o de una revisión de los jueces). Después, poner en el servicio `AgentPey` de Render

@@ -11,6 +11,7 @@ import {
   type SettleFailureContext,
   type SettleResultContext,
 } from "@x402/core/server";
+import { SettleError } from "@x402/core/types";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
 
 import type { GatewayConfig } from "./config.js";
@@ -101,9 +102,10 @@ function installPayerGuard(server: x402ResourceServer, guard: PayerGuard, log: (
     if (key === undefined || !admitted.has(key)) return;
     const payer = admitted.get(key);
     admitted.delete(key);
-    // Only a payment the facilitator definitely refused gives its place back: with a transaction hash it may have settled.
-    const error = context.error as { response?: { transaction?: string } } | undefined;
-    if ((error?.response?.transaction ?? "") === "") guard.release(payer);
+    // Only a payment the facilitator definitely refused gives its place back: a refusal that names a transaction may
+    // have settled, and an error that is not a refusal at all (a timeout, a dropped connection) leaves nobody knowing.
+    const error = context.error;
+    if (error instanceof SettleError && error.transaction === "") guard.release(payer);
   });
 }
 

@@ -1,5 +1,6 @@
 import { MockStoreAdapter } from "@vitrinee/adapters";
 import { STELLAR_X402_HANDLER, UCP_REST_PREFIX } from "@vitrinee/core";
+import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@x402/core/http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../app.js";
@@ -52,12 +53,14 @@ const payment = (accepted: unknown, payer: string) => ({
 async function store(env: Record<string, string>) {
   const clock = { now: new Date("2026-10-22T12:00:00.000Z") };
   const base = fakeFacilitator();
-  const control = { refuse: false };
+  const control = { refuse: false, refuseWithHash: false, fail: false };
   let n = 0;
   const facilitator: FakeFacilitator = {
     ...base,
     async settle(payload, requirements) {
       base.settleCalls.push({ payload, requirements });
+      if (control.fail) throw new Error("connect ETIMEDOUT");
+      if (control.refuseWithHash) return { success: false, transaction: "ab".repeat(32), network: "stellar:testnet", errorReason: "settle_exact_stellar_transaction_failed" };
       if (control.refuse) return { success: false, transaction: "", network: "stellar:testnet", errorReason: "invalid_exact_stellar_payload_simulation_failed" };
       n += 1;
       return { success: true, transaction: n.toString(16).padStart(64, "0"), network: "stellar:testnet", payer: OTHER };
@@ -90,7 +93,23 @@ async function store(env: Record<string, string>) {
     const accepted = created.ucp.payment_handlers[STELLAR_X402_HANDLER]?.[0]?.config.payment_requirements;
     return call(`/checkout-sessions/${created.id}/complete`, payment(accepted, payer));
   };
-  return { buy, facilitator, control, clock, close };
+  /** The x402 door that predates UCP: a 402, then the payment signed for what it asked. */
+  const buyDirect = async (payer: string) => {
+    const path = `${url}/checkout/gorro-andes`;
+    const body = JSON.stringify({ buyer: { name: "Ana Rojas", email: "ana@example.com", address: "Av. Providencia 1234, Santiago", country: "CL" } });
+    const post = (headers: Record<string, string> = {}) => fetch(path, { method: "POST", headers: { "content-type": "application/json", ...headers }, body });
+    const challenge = await post();
+    const required = decodePaymentRequiredHeader(challenge.headers.get("payment-required") ?? "");
+    return post({
+      "payment-signature": encodePaymentSignatureHeader({
+        x402Version: required.x402Version,
+        resource: required.resource,
+        accepted: required.accepts[0]!,
+        payload: { transaction: `payer:${payer}:${(nonce += 1)}` },
+      }),
+    });
+  };
+  return { buy, buyDirect, facilitator, control, clock, close };
 }
 
 describe("a store's brake on who may pay (T172, VT-49)", () => {
@@ -163,6 +182,58 @@ describe("a store's brake on who may pay (T172, VT-49)", () => {
 
     const results = await Promise.all([s.buy(OTHER), s.buy(OTHER)]);
     expect(results.map((r) => r.status).sort()).toEqual(["completed", "ready_for_complete"]);
+    expect(s.facilitator.settleCalls).toHaveLength(1);
+  });
+
+  it("keeps the place of a payment nobody knows the outcome of: it may have settled", async () => {
+    const s = await store({ PAYER_LIMIT: "1/3600" });
+    close = s.close;
+
+    // The facilitator names a transaction while refusing: it may have gone through.
+    s.control.refuseWithHash = true;
+    await s.buy(OTHER);
+    s.control.refuseWithHash = false;
+    expect((await s.buy(OTHER)).messages).toEqual([expect.objectContaining({ code: "payer_rate_limited" })]);
+  });
+
+  it("keeps the place of a payment whose request failed on the way, for the same reason", async () => {
+    const s = await store({ PAYER_LIMIT: "1/3600" });
+    close = s.close;
+
+    s.control.fail = true;
+    await s.buy(OTHER);
+    s.control.fail = false;
+    expect((await s.buy(OTHER)).messages).toEqual([expect.objectContaining({ code: "payer_rate_limited" })]);
+  });
+});
+
+describe("the same brake at the x402 door that predates UCP (T172, VT-49)", () => {
+  let close: (() => Promise<void>) | undefined;
+  afterEach(async () => {
+    await close?.();
+    close = undefined;
+  });
+
+  it("refuses a blocked payer before the facilitator is asked, and lets another one buy", async () => {
+    const s = await store({ BLOCKED_PAYERS: BLOCKED });
+    close = s.close;
+
+    const refused = await s.buyDirect(BLOCKED);
+    expect(refused.status).toBeGreaterThanOrEqual(400);
+    expect(s.facilitator.settleCalls).toHaveLength(0);
+
+    const allowed = await s.buyDirect(OTHER);
+    expect(allowed.status).toBe(200);
+    expect(s.facilitator.settleCalls).toHaveLength(1);
+  });
+
+  it("limits a payer at both doors together: one purchase through UCP uses the place of the next at this door", async () => {
+    const s = await store({ PAYER_LIMIT: "1/3600" });
+    close = s.close;
+
+    expect((await s.buy(OTHER)).status).toBe("completed");
+    const refused = await s.buyDirect(OTHER);
+    expect(refused.status).toBeGreaterThanOrEqual(400);
     expect(s.facilitator.settleCalls).toHaveLength(1);
   });
 });

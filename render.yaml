@@ -280,8 +280,10 @@ services:
       # unset. COMERCIO_ALLOWED_PLATFORMS is `<slug>=<https URL>[,<https URL>]`
       # separated by `;` (the platforms a store deals with, by the origin of
       # their profile); COMERCIO_REQUIRE_AP2 is slugs separated by `,`, or `*`.
-      # AP2 alone does not say who buys (any platform can publish a profile):
-      # the allowlist is what does.
+      # Neither says who buys on its own: any platform can publish a profile,
+      # and the UCP-Agent header naming one is not authenticated. Both
+      # together make a platform sign with the key its profile publishes. Only
+      # the UCP door evaluates them; the per-account brake covers both doors.
       - key: VITRINEE_COMERCIO_ALLOWED_PLATFORMS
         sync: false
       - key: VITRINEE_COMERCIO_REQUIRE_AP2

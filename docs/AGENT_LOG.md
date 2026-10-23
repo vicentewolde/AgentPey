@@ -9208,7 +9208,13 @@ agente en el log. AP2 no se usó como candado (lo activa quien compra y cualquie
 explicada en `VT-49`. Además `pnpm run prod:check`: 11 superficies de producción, solo lectura, para correr antes y
 después de cualquier merge.
 
-Verificación: `pnpm run vitrinee:check` verde (454 pruebas en el gateway, 39 nuevas), `apps/gateway` 40 pruebas;
+Revisión (`revisor`): sin bloqueantes ni cambios por defecto en producción. Corregido tras ella: un pago de resultado
+desconocido devolvía su lugar en la ventana (ahora solo lo devuelve un rechazo sin transacción), la puerta x402 directa
+tiene pruebas, la siembra de la ventana solo corre si el límite está puesto, `VT-49` dice que las plataformas aprobadas
+solo frenan la puerta UCP y que el encabezado `UCP-Agent` no se autentica, y la plataforma avisa en el log si una
+variable nombra un slug que no existe. `.env.vitrinee.example` e `INSTRUCCIONES.md` al día.
+
+Verificación: `pnpm run vitrinee:check` verde (459 pruebas en el gateway, 44 nuevas), `apps/gateway` 40 pruebas;
 producción 11/11 antes de empezar y al terminar. Ninguna variable puesta: lo desplegado no cambia.
 
 Pendiente: OK del usuario para pushear y mergear (cada merge despliega: no durante una grabación ni una revisión de

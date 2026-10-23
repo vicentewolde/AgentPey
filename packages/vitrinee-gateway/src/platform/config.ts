@@ -216,6 +216,21 @@ export function loadPlatformSettings(env: NodeJS.ProcessEnv): PlatformSettings |
   };
 }
 
+/**
+ * The store slugs the four brake variables name that no store has (T172, VT-49). A slug is only checked for its
+ * shape when the value is read, so a typo in one would leave the store it was meant for unbraked, in silence: the
+ * platform logs these at startup instead. `*` is not a slug.
+ */
+export function unknownBrakeSlugs(env: NodeJS.ProcessEnv, known: readonly string[]): string[] {
+  const named = new Set<string>([
+    ...parseComercioBlockedPayers(env["COMERCIO_BLOCKED_PAYERS"]).keys(),
+    ...[...parseComercioPayerLimits(env["COMERCIO_PAYER_LIMITS"]).keys()].filter((key) => key !== "*"),
+    ...parseComercioAllowedPlatforms(env["COMERCIO_ALLOWED_PLATFORMS"]).keys(),
+    ...parseComercioRequireAp2(env["COMERCIO_REQUIRE_AP2"]).slugs,
+  ]);
+  return [...named].filter((slug) => !known.includes(slug));
+}
+
 /** Both lists are read once at startup so that a malformed value stops the platform there, not at a store's first purchase. */
 function validatePayerGuardEnv(e: { COMERCIO_BLOCKED_PAYERS?: string | undefined; COMERCIO_PAYER_LIMITS?: string | undefined; COMERCIO_ALLOWED_PLATFORMS?: string | undefined; COMERCIO_REQUIRE_AP2?: string | undefined }): void {
   parseComercioBlockedPayers(e.COMERCIO_BLOCKED_PAYERS);

@@ -1457,25 +1457,32 @@ comporta exactamente como antes.
   el facilitator liquide nada, así que no se mueve dinero. Respuesta UCP `payer_blocked`, severidad `unrecoverable`.
 - **Límite por cuenta** (`PAYER_LIMIT` / `COMERCIO_PAYER_LIMITS`, `<máx>/<segundos>`): ventana deslizante por cuenta.
   Respuesta `payer_rate_limited`, `recoverable`. Se cuenta al admitir, no al terminar, para que dos pagos simultáneos
-  no pasen juntos; se devuelve el lugar si el facilitator rechaza el pago. La ventana se siembra con las órdenes de la
+  no pasen juntos; se devuelve el lugar solo si el facilitator rechazó el pago sin nombrar una transacción (un
+  rechazo con transacción, o un error en el camino, puede haber liquidado y el lugar sigue ocupado). La ventana se siembra con las órdenes de la
   tienda, así que un reinicio no la borra.
 - **Plataformas aprobadas** (`ALLOWED_PLATFORMS` / `COMERCIO_ALLOWED_PLATFORMS`): solo las plataformas cuyo perfil
   está en el origen listado pueden abrir un checkout; las demás, 403 `platform_not_allowed`.
 - **AP2 exigido** (`REQUIRE_AP2` / `COMERCIO_REQUIRE_AP2`): una plataforma que no negoció AP2 recibe 403
   `ap2_required`.
-Los de plataforma son por origen, no por cuenta, y por eso se leen al abrir el checkout, no al pagar.
+Los de plataforma son por origen, no por cuenta, y por eso se leen al abrir el checkout, no al pagar. **Solo cubren la
+puerta UCP:** la puerta x402 directa (`/checkout/:productId`) no abre una sesión de plataforma, así que no los
+evalúa; el bloqueo y el límite por cuenta sí valen en las dos.
 
 **Dónde vive.** El pagador se lee de la transacción que firmó (`payerFromTransactionXdr`), nunca del cuerpo, y el
 freno es un gancho `onBeforeSettle` del servidor x402 que comparten el checkout UCP y el directo: un solo punto
 cubre las dos puertas. En la plataforma se configura por slug desde variables de Render (`VITRINEE_COMERCIO_…`,
 `hosts.ts`), se ponen y se quitan sin deploy, y un valor mal escrito impide que la plataforma arranque (igual que
 `COMERCIO_ESCROWS`). Ninguna de esas variables se hereda de una tienda a otra. Cada intento de completar un checkout
-deja en el log de la tienda la cuenta, la IP y el agente de usuario (`ucp complete attempt`, `payer refused`).
+deja en el log de la tienda la cuenta, la IP y el agente de usuario (`ucp complete attempt`, `payer refused`). Al
+arrancar, la plataforma avisa en el log si alguna de las cuatro variables nombra una tienda que no existe, porque un
+error de tipeo en el slug dejaría esa tienda sin freno en silencio.
 
 **Por qué AP2 no se usó como candado.** AP2 lo activa quien compra al abrir el checkout, no la tienda; la tienda
 verifica el mandato contra el perfil de la plataforma que abrió la sesión, y cualquiera puede publicar un perfil con
-una llave propia. Exigir AP2 no dice quién compra. Lo que sí lo dice es la lista de plataformas aprobadas, y por eso
-`REQUIRE_AP2` queda como opción y no como regla. Además, exigirlo en `agentcommerce` habría roto el ejemplo del
+una llave propia. Exigir AP2 no dice quién compra. La lista de plataformas aprobadas tampoco basta sola: la plataforma sale del
+encabezado `UCP-Agent`, que nadie autentica, y cualquiera puede copiar el de una plataforma aprobada. **Solo las dos
+juntas** obligan a firmar con la llave publicada en ese perfil, y por eso quedan como opciones y no como regla.
+Lo que frena a un comprador anónimo hoy es el control por cuenta. Además, exigirlo en `agentcommerce` habría roto el ejemplo del
 README, el SDK `@agentpey/ucp-stellar`, la compra desde el MCP y la corrida grabada del D3 de la Fase 9, que compran
 sin mandato.
 

@@ -9,7 +9,7 @@ import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { verifyStoreEscrow } from "./escrow.js";
 import { seedComercioFromEnv, type Comercio } from "./platform/comercios.js";
-import { loadPlatformSettings, type PlatformSettings } from "./platform/config.js";
+import { loadPlatformSettings, unknownBrakeSlugs, type PlatformSettings } from "./platform/config.js";
 import { storeCatalogueReader } from "./platform/onboarding.js";
 import { createPlatformApp } from "./platform/platform-app.js";
 import { PostgresCheckoutSessions, PostgresComercioStore, PostgresOrderPersistence, createVitrineePool, migrate } from "./platform/postgres.js";
@@ -160,6 +160,8 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
     log,
   });
   const listed = await comercios.list();
+  const unbraked = unknownBrakeSlugs(process.env, listed.map((c) => c.slug));
+  if (unbraked.length > 0) log("a brake variable names a store that does not exist; check the slug", { slugs: unbraked });
   app.listen(settings.port, () => {
     log("vitrinee platform listening", {
       mode: "platform",

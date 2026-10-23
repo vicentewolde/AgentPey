@@ -164,10 +164,11 @@ export function createApp({
   const payerGuard = new PayerGuard(
     config.payerGuard,
     () => now().getTime(),
-    orders.list().map((order) => ({ payer: order.settlement.payer, at: Date.parse(order.settlement.settledAt) })),
+    // Only when a switch is on: with both off, starting up does nothing new.
+    config.payerGuard.limit === undefined ? [] : orders.list().flatMap((order) => (order.settlement === undefined ? [] : [{ payer: order.settlement.payer, at: Date.parse(order.settlement.settledAt) }])),
   );
   const x402 = createX402Server(facilitator, ledger, now, payerGuard, log);
-  const deps: CheckoutDeps = { config, adapter, orders, ledger, anchors, reservations: new Reservations(), payerGuard, inFlight: new Set(), now, log };
+  const deps: CheckoutDeps = { config, adapter, orders, ledger, anchors, reservations: new Reservations(), inFlight: new Set(), now, log };
 
   const baseUrlOf = (req: Request): string => config.publicBaseUrl ?? `${req.protocol}://${req.get("host") ?? "localhost"}`;
   const cacheHeader = `public, max-age=${config.manifestCacheSeconds}`;

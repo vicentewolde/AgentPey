@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { REGISTRY_ID } from "../test/fixtures.js";
 import { MemoryComercioStore, openComercioSecrets, sealComercio, seedComercioFromEnv } from "./comercios.js";
-import { comercioConfig, loadPlatformSettings, parseComercioAllowedPlatforms, parseComercioBlockedPayers, parseComercioEscrows, parseComercioPayerLimits, parseComercioRequireAp2 } from "./config.js";
+import { comercioConfig, loadPlatformSettings, parseComercioAllowedPlatforms, parseComercioBlockedPayers, parseComercioEscrows, parseComercioPayerLimits, parseComercioRequireAp2, unknownBrakeSlugs } from "./config.js";
 import { createSecretBox, generateMasterKey } from "./secret-box.js";
 
 const now = new Date("2026-09-24T12:00:00.000Z");
@@ -240,6 +240,13 @@ describe("COMERCIO_ALLOWED_PLATFORMS and COMERCIO_REQUIRE_AP2: the platform name
     const env = { COMERCIO_ALLOWED_PLATFORMS: "agentcommerce=https://agentpey.com", COMERCIO_REQUIRE_AP2: "agentcommerce", ALLOWED_PLATFORMS: "https://x.example", REQUIRE_AP2: "true" };
     expect(configOf(env, "agentcommerce").platformPolicy).toEqual({ requireAp2: true, allowedPlatforms: ["https://agentpey.com"] });
     expect(configOf(env, "bazar").platformPolicy).toEqual({ requireAp2: false, allowedPlatforms: [] });
+  });
+
+  it("name the slugs no store has, so a typo is not left unbraked in silence", () => {
+    const A = "GD7O7GEOP4Y3YG4JHSGOH5FOBZGLZUZWRMADELTRNPC3IYYQ4H7CINQ7";
+    const env = { COMERCIO_BLOCKED_PAYERS: `agentcomerce=${A}`, COMERCIO_PAYER_LIMITS: "*=10/3600,agentcommerce=3/3600", COMERCIO_REQUIRE_AP2: "mycokit" };
+    expect(unknownBrakeSlugs(env, ["agentcommerce", "mycokit"])).toEqual(["agentcomerce"]);
+    expect(unknownBrakeSlugs({}, ["agentcommerce"])).toEqual([]);
   });
 
   it("require AP2 at every store with *", () => {

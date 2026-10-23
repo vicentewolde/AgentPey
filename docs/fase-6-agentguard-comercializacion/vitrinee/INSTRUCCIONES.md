@@ -144,6 +144,17 @@ Una tienda puede cobrar a su `purchase-escrow` en vez de a su cuenta de cobro (`
   Render, donde se llama `VITRINEE_COMERCIO_ESCROWS` (el gateway se la pasa a Vitrinee con el nombre sin prefijo,
   `apps/gateway/src/hosts.ts`). Es el interruptor: se pone y se quita sin deploy. `ESCROW_CONTRACT_ID` nunca se hereda de la plataforma.
 
+### Quién puede pagarle a una tienda (T172, `VT-49`)
+
+Cuatro interruptores por tienda, **apagados por defecto**, que se ponen y se quitan sin deploy. En Render se llaman
+`VITRINEE_COMERCIO_…` (el gateway los pasa a Vitrinee sin el prefijo, `apps/gateway/src/hosts.ts`); en modo de una
+tienda son `BLOCKED_PAYERS`, `PAYER_LIMIT`, `ALLOWED_PLATFORMS` y `REQUIRE_AP2`.
+- `COMERCIO_BLOCKED_PAYERS=<slug>=<G…>[,<G…>]` (tiendas separadas por `;`): cuentas que la tienda rechaza.
+- `COMERCIO_PAYER_LIMITS=<slug o *>=<máx>/<segundos>` (separados por coma), por ejemplo `agentcommerce=5/3600`.
+- `COMERCIO_ALLOWED_PLATFORMS=<slug>=<URL https>[,…]` y `COMERCIO_REQUIRE_AP2=<slug>[,…]` o `*`: solo la puerta UCP.
+Un valor mal escrito impide arrancar la plataforma. Después de editarlas, `pnpm run prod:check`. Detalle y el incidente
+que las originó: [`evidencia/T172.md`](evidencia/T172.md).
+
 Antes de abrir, la tienda lee el escrow en la red y no abre si no es suyo: código `purchase-escrow` conocido, operador
 = cuenta de firma, `payee` = cuenta de cobro y token USDC. Nunca vuelve en silencio a cobrar directo. Con escrow, el
 perfil declara el handler en su versión `2026-10-15` y el manifest suma `settlement.escrow`.
