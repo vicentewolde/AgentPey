@@ -9191,3 +9191,27 @@ menciones al chat paralelo de la Fase 8, y las rutas de la demo (`reclamo.zsh`, 
 
 Pendiente: merge de esta rama con OK del usuario. Exponential: sin cambios. `AGENTS.md`: sin cambios.
 
+
+## 2026-10-22 (28) — cc/t172-freno-compradores
+
+Agente: Claude Code.
+
+Qué: incidente del 19-20 de oct en `agentcommerce` (20 compras del mismo imán, cuatro cuentas desechables creadas por
+Friendbot, una compra cada 30 s, con los datos de relleno del ejemplo del README). Investigado en solo lectura con Horizon
+y el admin de Shopify desde el Chrome del usuario: la red no dice quién fue (cuentas sin identidad; el USDC viene de un
+proveedor de liquidez público de testnet o de cuentas de un solo uso). Fuera de la Fase 9 por decisión del usuario.
+T172 / `VT-49`: cuentas bloqueadas, límite por cuenta, plataformas aprobadas y AP2 exigido, por tienda, apagados por
+defecto y configurables desde Render sin deploy (`VITRINEE_COMERCIO_BLOCKED_PAYERS`, `_PAYER_LIMITS`,
+`_ALLOWED_PLATFORMS`, `_REQUIRE_AP2`). El freno es un gancho `onBeforeSettle` del servidor x402 que comparten el checkout
+UCP y el directo; el pagador se lee de la transacción firmada. Cada intento de completar un checkout deja cuenta, IP y
+agente en el log. AP2 no se usó como candado (lo activa quien compra y cualquiera publica su propio perfil), decisión
+explicada en `VT-49`. Además `pnpm run prod:check`: 11 superficies de producción, solo lectura, para correr antes y
+después de cualquier merge.
+
+Verificación: `pnpm run vitrinee:check` verde (454 pruebas en el gateway, 39 nuevas), `apps/gateway` 40 pruebas;
+producción 11/11 antes de empezar y al terminar. Ninguna variable puesta: lo desplegado no cambia.
+
+Pendiente: OK del usuario para pushear y mergear (cada merge despliega: no durante una grabación ni una revisión de
+jueces); después poner las variables de Render (valores en `vitrinee/evidencia/T172.md` §6); leer los logs de Render del
+19-20 de oct; decidir qué pasa con el ejemplo del README (apunta a `agentcommerce` y al imán, agotado) y con el stock.
+Exponential: sin cambios (T172 no tiene ticket). `AGENTS.md`: sin cambios.

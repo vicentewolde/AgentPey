@@ -10,6 +10,9 @@ import {
 } from "@vitrinee/core";
 import { z } from "zod";
 
+import { parseBlockedPayers, parsePayerLimit, type PayerGuardSettings } from "./payer-guard.js";
+import { parseAllowedPlatforms, parseRequireAp2, type PlatformPolicy } from "./ucp/platform-policy.js";
+
 const optionalString = z
   .string()
   .optional()
@@ -55,6 +58,14 @@ const envSchema = z.object({
   MANIFEST_CACHE_SECONDS: z.coerce.number().int().nonnegative().default(60),
   MOCK_ORDERS_FILE: optionalString,
   ORDERS_FILE: optionalString,
+  /** Payer accounts this store refuses, separated by commas (T172, VT-49). Unset (the default): nobody is blocked. */
+  BLOCKED_PAYERS: optionalString,
+  /** At most `<max>/<window seconds>` purchases per payer, such as `3/3600` (T172, VT-49). Unset (the default): no limit. */
+  PAYER_LIMIT: optionalString,
+  /** Origins of the platforms that may open a checkout, separated by commas (T172, VT-49). Unset (the default): any platform. */
+  ALLOWED_PLATFORMS: optionalString,
+  /** `true`: only a platform that negotiated AP2 may open a checkout (T172, VT-49). Unset (the default): not required. */
+  REQUIRE_AP2: optionalString,
 });
 
 export interface GatewayConfig {
@@ -86,6 +97,10 @@ export interface GatewayConfig {
   shopify: { shop: string; clientId: string; clientSecret: string } | undefined;
   /** Where the gateway's own order records live. `undefined` keeps them in memory only. */
   ordersFile: string | undefined;
+  /** Who may pay this store (T172, VT-49): accounts it refuses and how often one account may buy. Both off by default. */
+  payerGuard: PayerGuardSettings;
+  /** Which platforms may open a checkout here (T172, VT-49): an allowlist and whether AP2 is required. Both off by default. */
+  platformPolicy: PlatformPolicy;
 }
 
 /** The store's escrow as its own contract says it is (T160): published in the profile and the manifest. */
@@ -173,5 +188,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
         ? undefined
         : { shop: e.SHOPIFY_SHOP, clientId: e.SHOPIFY_CLIENT_ID, clientSecret: e.SHOPIFY_CLIENT_SECRET },
     ordersFile: e.ORDERS_FILE,
+    payerGuard: { blocked: parseBlockedPayers(e.BLOCKED_PAYERS), limit: parsePayerLimit(e.PAYER_LIMIT) },
+    platformPolicy: { requireAp2: parseRequireAp2(e.REQUIRE_AP2), allowedPlatforms: parseAllowedPlatforms(e.ALLOWED_PLATFORMS) },
   };
 }

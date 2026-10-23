@@ -1441,3 +1441,49 @@ Las decisiones viven en la Fase 9; aquí queda lo que cambia dentro de Vitrinee:
 
 Ver [`../../fase-9-compra-protegida/DECISIONES.md`](../../fase-9-compra-protegida/DECISIONES.md), `X-23` a `X-25`.
 
+
+### VT-49 · Una tienda frena a quien le paga: cuentas bloqueadas, un límite por cuenta y plataformas aprobadas · `Vigente`
+**Fecha:** 2026-10-22 · **Tarea:** T172 (fuera de la Fase 9) · Decidido por el usuario (plan aprobado el 22-oct, tras el incidente del 19-oct)
+
+**Contexto.** Entre el 19 y el 20 de octubre, cuatro cuentas desechables compraron 20 veces el mismo producto de
+`agentcommerce`, a un ritmo de una cada 30 s. El checkout es público a propósito (cualquiera con USDC de testnet
+compra) y no tenía ningún freno propio: ni por cuenta, ni por plataforma, ni forma de bloquear a nadie. El límite de
+gasto de AgentPey (`policy_rail`) protege a quien compra con un agente de AgentPey, no a una tienda. Cuenta completa
+del incidente en [`evidencia/T172.md`](evidencia/T172.md).
+
+**Decisión.** Cuatro interruptores por tienda, todos **apagados por defecto**: una tienda que no pone ninguno se
+comporta exactamente como antes.
+- **Cuentas bloqueadas** (`BLOCKED_PAYERS` / `COMERCIO_BLOCKED_PAYERS`): la cuenta que paga se rechaza antes de que
+  el facilitator liquide nada, así que no se mueve dinero. Respuesta UCP `payer_blocked`, severidad `unrecoverable`.
+- **Límite por cuenta** (`PAYER_LIMIT` / `COMERCIO_PAYER_LIMITS`, `<máx>/<segundos>`): ventana deslizante por cuenta.
+  Respuesta `payer_rate_limited`, `recoverable`. Se cuenta al admitir, no al terminar, para que dos pagos simultáneos
+  no pasen juntos; se devuelve el lugar si el facilitator rechaza el pago. La ventana se siembra con las órdenes de la
+  tienda, así que un reinicio no la borra.
+- **Plataformas aprobadas** (`ALLOWED_PLATFORMS` / `COMERCIO_ALLOWED_PLATFORMS`): solo las plataformas cuyo perfil
+  está en el origen listado pueden abrir un checkout; las demás, 403 `platform_not_allowed`.
+- **AP2 exigido** (`REQUIRE_AP2` / `COMERCIO_REQUIRE_AP2`): una plataforma que no negoció AP2 recibe 403
+  `ap2_required`.
+Los de plataforma son por origen, no por cuenta, y por eso se leen al abrir el checkout, no al pagar.
+
+**Dónde vive.** El pagador se lee de la transacción que firmó (`payerFromTransactionXdr`), nunca del cuerpo, y el
+freno es un gancho `onBeforeSettle` del servidor x402 que comparten el checkout UCP y el directo: un solo punto
+cubre las dos puertas. En la plataforma se configura por slug desde variables de Render (`VITRINEE_COMERCIO_…`,
+`hosts.ts`), se ponen y se quitan sin deploy, y un valor mal escrito impide que la plataforma arranque (igual que
+`COMERCIO_ESCROWS`). Ninguna de esas variables se hereda de una tienda a otra. Cada intento de completar un checkout
+deja en el log de la tienda la cuenta, la IP y el agente de usuario (`ucp complete attempt`, `payer refused`).
+
+**Por qué AP2 no se usó como candado.** AP2 lo activa quien compra al abrir el checkout, no la tienda; la tienda
+verifica el mandato contra el perfil de la plataforma que abrió la sesión, y cualquiera puede publicar un perfil con
+una llave propia. Exigir AP2 no dice quién compra. Lo que sí lo dice es la lista de plataformas aprobadas, y por eso
+`REQUIRE_AP2` queda como opción y no como regla. Además, exigirlo en `agentcommerce` habría roto el ejemplo del
+README, el SDK `@agentpey/ucp-stellar`, la compra desde el MCP y la corrida grabada del D3 de la Fase 9, que compran
+sin mandato.
+
+**Alternativas descartadas.**
+- *Exigir AP2 en `agentcommerce` ya:* rompe lo anterior y no frena a quien publica su propio perfil.
+- *Limitar por IP:* detrás del proxy de Render y sin identidad, una IP no es una cuenta ni una persona; queda solo en el
+  log.
+- *Un interruptor de pausa por producto:* el producto ya queda fuera de venta cuando se agota, y la tienda entera se
+  apaga con `disabled`; no hacía falta para este incidente. Sigue pendiente si se necesita.
+- *Contar en la base de datos en vez de en memoria:* la ventana se siembra desde las órdenes al arrancar, que ya son
+  durables; una tabla nueva no aportaba más.

@@ -5,7 +5,7 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-17
+**Actualizado:** 2026-10-22
 **Fase actual:** Fase 9 · Una compra protegida, de punta a punta ([spec](fase-9-compra-protegida/SPEC.md), **aprobado**, `P-19`): los entregables del Instaward, 13-oct → 11-nov. La Fase 8 se cerró el 2026-10-17 (T128–T156, `P-20`); la Fase 7, el 2026-10-03 (`E-25`)
 
 **Última tarea terminada:** Fase 9: T161, la orden muestra el estado del escrow ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): en producción, la orden retenida `ord_mv9s83yb…` muestra `held`, y con ella se completa D1. Antes, T158 ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)). Fase 8: cerrada el 17-oct (`P-20`), con T130 en pausa fuera de la fase y T171 aprobada para una fase futura
@@ -29,6 +29,25 @@
 | T165 Cada cambio de la disputa llega al agente (se corta primero) | ⏳ pendiente | |
 | T166 Corrida completa y QA | ⏳ pendiente | |
 | T167 Video, mapa de tiempos e informe final | ⏳ pendiente | |
+
+## Fuera de la fase: T172, un freno para quien le paga a una tienda (22-oct, `VT-49`)
+
+Tras el incidente del 19-20 de oct (20 compras del mismo imán en `agentcommerce`, cuatro cuentas desechables, una cada
+30 s, con los datos de relleno del ejemplo del README), el usuario pidió frenos en la tienda. **Fuera del spec de la
+Fase 9, por decisión suya (22-oct).** No cambia nada en producción hasta poner variables en Render.
+
+| Tarea | Estado | Rama / PR |
+|---|---|---|
+| T172 Cuentas bloqueadas, límite por cuenta, plataformas aprobadas y AP2 exigido, por tienda y apagados por defecto; chequeo de producción `pnpm run prod:check` | 👀 en revisión: 39 pruebas nuevas, `vitrinee:check` verde, producción 11/11 antes y después ([evidencia](fase-6-agentguard-comercializacion/vitrinee/evidencia/T172.md), `VT-49`) | `cc/t172-freno-compradores`, sin push ni PR |
+
+- [ ] Del usuario: OK para empujar y mergear `cc/t172-freno-compradores` (cada merge despliega; mejor fuera de una
+  grabación o de una revisión de los jueces). Después, poner en el servicio `AgentPey` de Render
+  `VITRINEE_COMERCIO_BLOCKED_PAYERS` (las tres cuentas viejas, dejando libre `GBJDXLBZ…`) y
+  `VITRINEE_COMERCIO_PAYER_LIMITS=agentcommerce=5/3600`; los valores exactos están en la evidencia.
+- [ ] Del usuario: leer los logs de Render de `agentcommerce` del 19 y 20-oct (IP y agente de usuario), si todavía los
+  guardan: es lo único que puede decir quién fue.
+- [ ] Decidir: el ejemplo del README y del SDK apunta a `agentcommerce` y al imán (hoy agotado). Y reponer o no el stock.
+- Antes de cualquier merge y justo después: `pnpm run prod:check` (solo lectura, 11 superficies).
 
 ## Progreso de la Fase 8 (cerrada el 2026-10-17, `P-20`)
 

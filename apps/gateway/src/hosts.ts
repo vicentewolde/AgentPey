@@ -177,6 +177,12 @@ export const VITRINEE_TARGET: AppTarget = {
     SEED_COMERCIO_SLUG: "VITRINEE_SEED_COMERCIO_SLUG",
     // T160 (X-25): each store's purchase-escrow by slug, the platform's switch for charging into it.
     COMERCIO_ESCROWS: "VITRINEE_COMERCIO_ESCROWS",
+    // T172 (VT-49): who may pay each store. The accounts a store refuses and how often one account may buy, by slug.
+    COMERCIO_BLOCKED_PAYERS: "VITRINEE_COMERCIO_BLOCKED_PAYERS",
+    COMERCIO_PAYER_LIMITS: "VITRINEE_COMERCIO_PAYER_LIMITS",
+    // And which platforms may open a checkout at each store: an allowlist, and AP2 required.
+    COMERCIO_ALLOWED_PLATFORMS: "VITRINEE_COMERCIO_ALLOWED_PLATFORMS",
+    COMERCIO_REQUIRE_AP2: "VITRINEE_COMERCIO_REQUIRE_AP2",
   },
   // `VITRINEE_ADAPTER` is here although it is not a secret: Vitrinee defaults
   // to its mock store when it is unset, and a production deploy quietly

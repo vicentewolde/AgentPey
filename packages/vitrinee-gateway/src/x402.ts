@@ -8,11 +8,14 @@ import {
   type HTTPProcessResult,
   type HTTPRequestContext,
   type PaywallConfig,
+  type SettleFailureContext,
   type SettleResultContext,
 } from "@x402/core/server";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
 
 import type { GatewayConfig } from "./config.js";
+import { payerFromTransactionXdr } from "./payer.js";
+import type { PayerGuard } from "./payer-guard.js";
 import { paymentKeyFromPayload, type SettlementLedger } from "./settlements.js";
 
 /** The "Built on Stellar" facilitator (OpenZeppelin). The API key never leaves this closure. */
@@ -40,8 +43,11 @@ export function createX402Server(
   facilitator: FacilitatorClient,
   ledger: SettlementLedger,
   now: () => Date = () => new Date(),
+  guard?: PayerGuard,
+  log: (message: string, fields?: Record<string, unknown>) => void = () => {},
 ): x402ResourceServer {
   const server = new x402ResourceServer(facilitator).register(STELLAR_TESTNET_CAIP2, new ExactStellarScheme());
+  if (guard?.active === true) installPayerGuard(server, guard, log);
   server.onAfterSettle(async (context: SettleResultContext) => {
     if (!context.result.success) return;
     const key = paymentKeyFromPayload(context.paymentPayload);
@@ -57,6 +63,48 @@ export function createX402Server(
     });
   });
   return server;
+}
+
+/**
+ * The store's brake on who may pay (T172, VT-49), one place for both checkouts: every payment, UCP or x402, reaches
+ * this server's `settlePayment`. The payer is read from the transaction the payer signed, before the facilitator is
+ * asked to settle, so a refused payer moves no money. A refusal is a definite "no": the UCP checkout answers it as a
+ * payment that did not settle, and the x402 middleware answers 402 with the reason.
+ *
+ * A place taken in the window is given back if the facilitator then refuses the payment; if nobody knows whether it
+ * settled it stays taken, the cautious side.
+ */
+function installPayerGuard(server: x402ResourceServer, guard: PayerGuard, log: (message: string, fields?: Record<string, unknown>) => void): void {
+  /** The payer each admitted payment is under, by the transaction it signed, until it settles or fails. */
+  const admitted = new Map<string, string | undefined>();
+  server.onBeforeSettle(async (context) => {
+    const key = paymentKeyFromPayload(context.paymentPayload);
+    const payer = key === undefined ? undefined : payerFromTransactionXdr(key);
+    const admission = guard.admit(payer);
+    if (admission.ok) {
+      if (key !== undefined) admitted.set(key, payer);
+      return;
+    }
+    log("payer refused", { payer, code: admission.code, ...(admission.code === "payer_rate_limited" ? { retryAfterSeconds: admission.retryAfterSeconds } : {}) });
+    return {
+      abort: true as const,
+      reason: admission.code,
+      message: admission.code === "payer_blocked" ? "this payer account is not allowed to buy from this store" : `this payer account has bought too often; try again in ${admission.retryAfterSeconds} s`,
+    };
+  });
+  server.onAfterSettle(async (context: SettleResultContext) => {
+    const key = paymentKeyFromPayload(context.paymentPayload);
+    if (key !== undefined) admitted.delete(key);
+  });
+  server.onSettleFailure(async (context: SettleFailureContext) => {
+    const key = paymentKeyFromPayload(context.paymentPayload);
+    if (key === undefined || !admitted.has(key)) return;
+    const payer = admitted.get(key);
+    admitted.delete(key);
+    // Only a payment the facilitator definitely refused gives its place back: with a transaction hash it may have settled.
+    const error = context.error as { response?: { transaction?: string } } | undefined;
+    if ((error?.response?.transaction ?? "") === "") guard.release(payer);
+  });
 }
 
 /**

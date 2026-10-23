@@ -34,6 +34,7 @@ import { deriveStoreWebhookKey } from "./ucp/webhook-key.js";
 import { deriveStoreAp2Key } from "./ucp/ap2.js";
 import { buildUcpProfile, ucpLeafProfilePath } from "./ucp/profile.js";
 import { MemoryCheckoutSessions, type CheckoutSessionPersistence } from "./ucp/sessions.js";
+import { PayerGuard } from "./payer-guard.js";
 import { QueryFreeResourceServer, createFacilitatorClient, createX402Server } from "./x402.js";
 
 export interface AppDeps {
@@ -159,8 +160,14 @@ export function createApp({
   // And the key it signs its order webhooks with (T147, VT-44), published in both versions' profiles.
   const webhookKey = deriveStoreWebhookKey(config.signing.secret, stellarDid(config.signing.account, "testnet"));
   const ledger = new SettlementLedger();
-  const x402 = createX402Server(facilitator, ledger, now);
-  const deps: CheckoutDeps = { config, adapter, orders, ledger, anchors, reservations: new Reservations(), inFlight: new Set(), now, log };
+  // Who may pay this store (T172, VT-49): seeded with the purchases it already has, so a restart keeps the window.
+  const payerGuard = new PayerGuard(
+    config.payerGuard,
+    () => now().getTime(),
+    orders.list().map((order) => ({ payer: order.settlement.payer, at: Date.parse(order.settlement.settledAt) })),
+  );
+  const x402 = createX402Server(facilitator, ledger, now, payerGuard, log);
+  const deps: CheckoutDeps = { config, adapter, orders, ledger, anchors, reservations: new Reservations(), payerGuard, inFlight: new Set(), now, log };
 
   const baseUrlOf = (req: Request): string => config.publicBaseUrl ?? `${req.protocol}://${req.get("host") ?? "localhost"}`;
   const cacheHeader = `public, max-age=${config.manifestCacheSeconds}`;

@@ -29,6 +29,7 @@ import type { GatewayConfig } from "./config.js";
 import { payToOf } from "./escrow.js";
 import type { OrderRecord, OrderStore } from "./orders.js";
 import { payerFromTransactionXdr } from "./payer.js";
+import type { PayerGuard } from "./payer-guard.js";
 import type { Reservations } from "./reservations.js";
 import { paymentKeyFromHeader, type SettlementLedger, type SettlementRecord } from "./settlements.js";
 
@@ -167,6 +168,8 @@ export interface CheckoutDeps {
   ledger: SettlementLedger;
   anchors: AnchorWorker;
   reservations: Reservations;
+  /** Who may pay this store (T172, VT-49). The brake itself sits in the x402 server; kept here for what the handlers log. */
+  payerGuard: PayerGuard;
   /** Idempotency keys whose paid request is being processed right now. */
   inFlight: Set<string>;
   now: () => Date;

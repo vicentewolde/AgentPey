@@ -29,7 +29,7 @@ import {
   usdcAtomicToDecimal,
 } from "@vitrinee/core";
 import type { x402ResourceServer } from "@x402/core/server";
-import type { PaymentPayload, PaymentRequirements, SettleResponse } from "@x402/core/types";
+import { SettleError, type PaymentPayload, type PaymentRequirements, type SettleResponse } from "@x402/core/types";
 import type { Express, Request, Response } from "express";
 import { z, ZodError } from "zod";
 
@@ -55,6 +55,7 @@ import type { StoreAp2Key } from "./ap2.js";
 import { applyConsent, buyerConsentOf, consentGaps, defaultConsent, parseConsent, renderConsent, sameConsent } from "./consent.js";
 import { isDeliverableUrl, type OrderEvents } from "./order-events.js";
 import type { PlatformP256Key } from "./platform-profile.js";
+import { platformRefusal } from "./platform-policy.js";
 import { IdempotencyCache, requestHash } from "./idempotency.js";
 import { ucpPlatformOf, ucpVersionOf } from "./negotiation.js";
 import { stellarX402Config, stellarX402HandlerVersion } from "./profile.js";
@@ -588,6 +589,16 @@ function failureSeverity(reason: string | undefined): Severity {
   return "recoverable";
 }
 
+/**
+ * Why a payment did not settle, as UCP says it. A payer the store's brake refuses (T172, VT-49) gets its own code:
+ * blocked is final for that account, too-often is worth trying again later. Anything else is the facilitator's.
+ */
+function refusedPaymentMessage(reason: string): UcpMessage {
+  if (reason === "payer_blocked") return message("payer_blocked", "this payer account is not allowed to buy from this store", "unrecoverable", "$.payment");
+  if (reason === "payer_rate_limited") return message("payer_rate_limited", "this payer account has bought too often from this store; try again later", "recoverable", "$.payment");
+  return message("payment_failed", `the payment did not settle: ${reason}`, failureSeverity(reason), "$.payment");
+}
+
 type SettleOutcome =
   | { kind: "settled"; response: SettleResponse }
   /** The facilitator answered no, and nothing was broadcast: safe to sign again. */
@@ -601,6 +612,11 @@ async function settle(deps: UcpCheckoutDeps, requirements: StoredRequirements, t
   try {
     response = await deps.x402.settlePayment(payload, requirements as PaymentRequirements);
   } catch (error) {
+    // The store's own brake on who may pay (T172, VT-49) stops a payment before the facilitator is asked: a definite
+    // "no", nothing broadcast. Only those two reasons: any other thrown error may have paid.
+    if (error instanceof SettleError && (error.errorReason === "payer_blocked" || error.errorReason === "payer_rate_limited")) {
+      return { kind: "refused", reason: error.errorReason };
+    }
     const answered = (error as { response?: Partial<SettleResponse> } | undefined)?.response;
     const reason = answered?.errorReason ?? (error instanceof Error ? error.message : String(error));
     // An explicit refusal with no transaction broadcast is a definite "no"; anything else
@@ -837,6 +853,12 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         webhook: null,
       };
       const view = viewOf(req, res);
+      // Which platforms may open a checkout here (T172, VT-49): off unless the store names them or requires AP2.
+      const refusal = platformRefusal(deps.config.platformPolicy, view);
+      if (refusal !== undefined) {
+        deps.log("ucp checkout refused", { code: refusal.code, platform: view.platform?.url ?? null, ip: req.ip });
+        return sendError(res, 403, refusal.code, refusal.content);
+      }
       // AP2 is negotiated once, when the checkout is created, and locks it for good (T134, R-15): no later request,
       // whatever profile or version it presents, completes it without a mandate from this platform.
       if (ap2Negotiated(view)) session.ap2 = { platformProfile: view.platform.url, mandate: null };
@@ -905,6 +927,8 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
       const id = String(req.params["id"]);
       const idempotencyKey = readIdempotencyKey(req);
       const input = completeInput.parse(req.body ?? {});
+      // Who is asking, in the store's own log (T172, VT-49): the only trace an anonymous payer leaves besides its account.
+      deps.log("ucp complete attempt", { checkoutId: id, ip: req.ip, userAgent: (req.header("user-agent") ?? "").slice(0, 200) });
       await withSessionLock(deps, id, res, () => complete(deps, id, idempotencyKey, input, res, viewOf(req, res)));
     }, keepCompleteAnswer)),
   );
@@ -1040,7 +1064,7 @@ async function complete(
       session.paymentKey = null;
       session.updatedAt = deps.now().toISOString();
       await deps.sessions.save(session);
-      res.json(await checkoutResponse(deps, session, view, [message("payment_failed", `the payment did not settle: ${outcome.reason}`, failureSeverity(outcome.reason), "$.payment")]));
+      res.json(await checkoutResponse(deps, session, view, [refusedPaymentMessage(outcome.reason)]));
       return;
     }
     if (outcome.kind === "unknown") {

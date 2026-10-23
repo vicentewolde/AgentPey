@@ -265,6 +265,27 @@ services:
       # never here. Today: agentcommerce=CBQFELK5…DO27A (deployments/testnet.json).
       - key: VITRINEE_COMERCIO_ESCROWS
         sync: false
+      # T172 (VT-49): who may pay each store, set and removed in the dashboard
+      # without a deploy; both are off while unset. Handed to Vitrinee as
+      # COMERCIO_BLOCKED_PAYERS and COMERCIO_PAYER_LIMITS (hosts.ts).
+      #   BLOCKED_PAYERS  <slug>=<G...>[,<G...>] entries separated by `;`
+      #                   (accounts a store refuses outright).
+      #   PAYER_LIMITS    <slug or *>=<max>/<seconds> separated by `,`, such as
+      #                   `*=10/3600,agentcommerce=3/3600` (purchases per payer).
+      - key: VITRINEE_COMERCIO_BLOCKED_PAYERS
+        sync: false
+      - key: VITRINEE_COMERCIO_PAYER_LIMITS
+        sync: false
+      # T172 (VT-49): which platforms may open a checkout at a store. Off while
+      # unset. COMERCIO_ALLOWED_PLATFORMS is `<slug>=<https URL>[,<https URL>]`
+      # separated by `;` (the platforms a store deals with, by the origin of
+      # their profile); COMERCIO_REQUIRE_AP2 is slugs separated by `,`, or `*`.
+      # AP2 alone does not say who buys (any platform can publish a profile):
+      # the allowlist is what does.
+      - key: VITRINEE_COMERCIO_ALLOWED_PLATFORMS
+        sync: false
+      - key: VITRINEE_COMERCIO_REQUIRE_AP2
+        sync: false
       # VITRINEE_ROOT_COMERCIO is gone since T104 (VT-30): AgentPey and RealOps
       # reach every store at its own subdomain, and the root is only the portal
       # and its directory. Delete it from the dashboard too.

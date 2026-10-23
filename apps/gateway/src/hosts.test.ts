@@ -132,6 +132,10 @@ describe("which secrets each child actually receives", () => {
     VITRINEE_DATABASE_URL: "postgres://vitrinee-role",
     VITRINEE_MASTER_KEY: "master-key",
     VITRINEE_COMERCIO_ESCROWS: "agentcommerce=CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A",
+    VITRINEE_COMERCIO_BLOCKED_PAYERS: "agentcommerce=GD7O7GEOP4Y3YG4JHSGOH5FOBZGLZUZWRMADELTRNPC3IYYQ4H7CINQ7",
+    VITRINEE_COMERCIO_PAYER_LIMITS: "*=10/3600,agentcommerce=3/3600",
+    VITRINEE_COMERCIO_ALLOWED_PLATFORMS: "agentcommerce=https://agentpey.com",
+    VITRINEE_COMERCIO_REQUIRE_AP2: "agentcommerce",
   };
   const VITRINEE_SECRETS = ["S-RECEIPTS", "oz-key", "store-login", "store-token", "postgres://vitrinee-role", "master-key"];
   const AGENTPEY_SECRETS = ["S-ISSUER", "S-AGENT", "S-ADMIN", "twelve words", "apk-realops", "re-key", "S-SIGNALDESK", "S-SD-FACILITATOR", "postgres://shared"];
@@ -153,6 +157,11 @@ describe("which secrets each child actually receives", () => {
       MASTER_KEY: "master-key",
       // T160: the escrow switch reaches the platform under the name it reads.
       COMERCIO_ESCROWS: "agentcommerce=CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A",
+      // T172: the brake on who may pay reaches the platform under the names it reads.
+      COMERCIO_BLOCKED_PAYERS: "agentcommerce=GD7O7GEOP4Y3YG4JHSGOH5FOBZGLZUZWRMADELTRNPC3IYYQ4H7CINQ7",
+      COMERCIO_PAYER_LIMITS: "*=10/3600,agentcommerce=3/3600",
+      COMERCIO_ALLOWED_PLATFORMS: "agentcommerce=https://agentpey.com",
+      COMERCIO_REQUIRE_AP2: "agentcommerce",
       PORT: "4104",
     });
     for (const secret of AGENTPEY_SECRETS) expect(Object.values(env)).not.toContain(secret);

@@ -16,6 +16,8 @@ import { z } from "zod";
 
 import { loadConfig, type GatewayConfig } from "../config.js";
 import type { Comercio, ComercioSecrets } from "./comercios.js";
+import { parseBlockedPayers, parsePayerLimit } from "../payer-guard.js";
+import { parseAllowedPlatforms } from "../ucp/platform-policy.js";
 import { isComercioSlug } from "./hosts.js";
 
 export interface PlatformSettings {
@@ -57,6 +59,88 @@ export function parseComercioEscrows(value: string | undefined): Map<string, str
   return escrows;
 }
 
+/**
+ * `COMERCIO_BLOCKED_PAYERS`, as `<slug>=<account>[,<account>…]` entries separated by semicolons (T172, VT-49): the
+ * payer accounts each store refuses, for example `agentcommerce=GAAA…,GBBB…;mycokit=GCCC…`. Set and removed without
+ * a deploy. A malformed value stops the platform from starting, so a typo never leaves a store open that was meant
+ * to be closed to an account.
+ *
+ * @throws VitrineeError `ConfigError` on a malformed entry, a repeated slug or a bad account
+ */
+export function parseComercioBlockedPayers(value: string | undefined): Map<string, string[]> {
+  const blocked = new Map<string, string[]>();
+  if (value === undefined || value.trim() === "") return blocked;
+  for (const entry of value.split(";").map((e) => e.trim()).filter((e) => e !== "")) {
+    const [slug, accounts, ...rest] = entry.split("=").map((part) => part.trim());
+    if (slug === undefined || accounts === undefined || rest.length > 0 || !isComercioSlug(slug) || blocked.has(slug)) {
+      throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_BLOCKED_PAYERS: expected <slug>=<account>[,<account>], one entry per store, separated by semicolons", { details: { entry: slug ?? "" } });
+    }
+    blocked.set(slug, parseBlockedPayers(accounts, "COMERCIO_BLOCKED_PAYERS"));
+  }
+  return blocked;
+}
+
+/**
+ * `COMERCIO_PAYER_LIMITS`, as `<slug or *>=<max>/<window seconds>` entries separated by commas (T172, VT-49): how
+ * many purchases one payer account may make in the window, for example `*=10/3600,agentcommerce=3/3600`. `*` is
+ * every store that has no entry of its own. Stores with neither have no limit.
+ *
+ * @throws VitrineeError `ConfigError` on a malformed entry, a repeated key or a bad limit
+ */
+export function parseComercioPayerLimits(value: string | undefined): Map<string, string> {
+  const limits = new Map<string, string>();
+  if (value === undefined || value.trim() === "") return limits;
+  for (const entry of value.split(",").map((e) => e.trim()).filter((e) => e !== "")) {
+    const [key, limit, ...rest] = entry.split("=").map((part) => part.trim());
+    if (key === undefined || limit === undefined || rest.length > 0 || (key !== "*" && !isComercioSlug(key)) || limits.has(key)) {
+      throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_PAYER_LIMITS: expected <slug or *>=<max>/<window seconds>, comma separated", { details: { entry: key ?? "" } });
+    }
+    const parsed = parsePayerLimit(limit, "COMERCIO_PAYER_LIMITS");
+    if (parsed === undefined) {
+      throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_PAYER_LIMITS: a limit is needed after the =", { details: { entry: key } });
+    }
+    limits.set(key, `${parsed.max}/${parsed.windowSeconds}`);
+  }
+  return limits;
+}
+
+/**
+ * `COMERCIO_ALLOWED_PLATFORMS`, as `<slug>=<https URL>[,<https URL>…]` entries separated by semicolons (T172, VT-49):
+ * the platforms whose profiles may open a checkout at each store. A store with no entry lets any platform open one.
+ *
+ * @throws VitrineeError `ConfigError` on a malformed entry, a repeated slug or a URL that is not https
+ */
+export function parseComercioAllowedPlatforms(value: string | undefined): Map<string, string[]> {
+  const allowed = new Map<string, string[]>();
+  if (value === undefined || value.trim() === "") return allowed;
+  for (const entry of value.split(";").map((e) => e.trim()).filter((e) => e !== "")) {
+    const [slug, urls, ...rest] = entry.split("=").map((part) => part.trim());
+    if (slug === undefined || urls === undefined || rest.length > 0 || !isComercioSlug(slug) || allowed.has(slug)) {
+      throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_ALLOWED_PLATFORMS: expected <slug>=<https URL>[,<https URL>], one entry per store, separated by semicolons", { details: { entry: slug ?? "" } });
+    }
+    allowed.set(slug, parseAllowedPlatforms(urls, "COMERCIO_ALLOWED_PLATFORMS"));
+  }
+  return allowed;
+}
+
+/**
+ * `COMERCIO_REQUIRE_AP2`: the stores that open a checkout only for a platform that negotiated AP2 (T172, VT-49), as
+ * slugs separated by commas, or `*` for every store.
+ *
+ * @throws VitrineeError `ConfigError` on anything that is not a slug or `*`
+ */
+export function parseComercioRequireAp2(value: string | undefined): { all: boolean; slugs: ReadonlySet<string> } {
+  const slugs = new Set<string>();
+  let all = false;
+  if (value === undefined || value.trim() === "") return { all, slugs };
+  for (const item of value.split(",").map((i) => i.trim()).filter((i) => i !== "")) {
+    if (item === "*") all = true;
+    else if (isComercioSlug(item)) slugs.add(item);
+    else throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_REQUIRE_AP2: expected store slugs separated by commas, or *", { details: { item } });
+  }
+  return { all, slugs };
+}
+
 const settingsSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4021),
   DATABASE_URL: z.string().min(1),
@@ -68,6 +152,10 @@ const settingsSchema = z.object({
   PUBLIC_BASE_URL: z.url().optional(),
   ROOT_COMERCIO: z.string().refine(isComercioSlug, "a comercio slug").optional(),
   COMERCIO_ESCROWS: z.string().optional(),
+  COMERCIO_BLOCKED_PAYERS: z.string().optional(),
+  COMERCIO_PAYER_LIMITS: z.string().optional(),
+  COMERCIO_ALLOWED_PLATFORMS: z.string().optional(),
+  COMERCIO_REQUIRE_AP2: z.string().optional(),
 });
 
 /** The keys of the single-store environment that belong to one merchant, never to the platform. */
@@ -87,6 +175,12 @@ const MERCHANT_KEYS = [
   // One store's escrow (T159): never inherited from the platform's environment, or every store would name it.
   // A store gets one only through COMERCIO_ESCROWS, by its slug (T160).
   "ESCROW_CONTRACT_ID",
+  // Who may pay one store (T172): never inherited either. A store gets them only by its slug, through
+  // COMERCIO_BLOCKED_PAYERS and COMERCIO_PAYER_LIMITS.
+  "BLOCKED_PAYERS",
+  "PAYER_LIMIT",
+  "ALLOWED_PLATFORMS",
+  "REQUIRE_AP2",
   "ORDERS_FILE",
   "MOCK_ORDERS_FILE",
   "DATABASE_URL",
@@ -110,6 +204,7 @@ export function loadPlatformSettings(env: NodeJS.ProcessEnv): PlatformSettings |
     throw new VitrineeError("ConfigError", `invalid platform environment: ${problems.join("; ")}`, { details: { problems } });
   }
   const e = parsed.data;
+  validatePayerGuardEnv(e);
   const platformHost = e.PLATFORM_HOST ?? (e.PUBLIC_BASE_URL === undefined ? "vitrinee.agentpey.com" : new URL(e.PUBLIC_BASE_URL).hostname);
   return {
     port: e.PORT,
@@ -119,6 +214,14 @@ export function loadPlatformSettings(env: NodeJS.ProcessEnv): PlatformSettings |
     rootComercio: e.ROOT_COMERCIO,
     escrows: parseComercioEscrows(e.COMERCIO_ESCROWS),
   };
+}
+
+/** Both lists are read once at startup so that a malformed value stops the platform there, not at a store's first purchase. */
+function validatePayerGuardEnv(e: { COMERCIO_BLOCKED_PAYERS?: string | undefined; COMERCIO_PAYER_LIMITS?: string | undefined; COMERCIO_ALLOWED_PLATFORMS?: string | undefined; COMERCIO_REQUIRE_AP2?: string | undefined }): void {
+  parseComercioBlockedPayers(e.COMERCIO_BLOCKED_PAYERS);
+  parseComercioPayerLimits(e.COMERCIO_PAYER_LIMITS);
+  parseComercioAllowedPlatforms(e.COMERCIO_ALLOWED_PLATFORMS);
+  parseComercioRequireAp2(e.COMERCIO_REQUIRE_AP2);
 }
 
 /**
@@ -142,6 +245,17 @@ export function comercioConfig(env: NodeJS.ProcessEnv, comercio: Comercio, secre
   // The platform's own list names this store's escrow (T160); `ESCROW_CONTRACT_ID` itself is never inherited.
   const escrow = parseComercioEscrows(env["COMERCIO_ESCROWS"]).get(comercio.slug);
   if (escrow !== undefined) merchant["ESCROW_CONTRACT_ID"] = escrow;
+  // Who may pay this store (T172, VT-49): the accounts it refuses, and its limit (its own entry, else `*`).
+  const blocked = parseComercioBlockedPayers(env["COMERCIO_BLOCKED_PAYERS"]).get(comercio.slug);
+  if (blocked !== undefined && blocked.length > 0) merchant["BLOCKED_PAYERS"] = blocked.join(",");
+  const limits = parseComercioPayerLimits(env["COMERCIO_PAYER_LIMITS"]);
+  const limit = limits.get(comercio.slug) ?? limits.get("*");
+  if (limit !== undefined) merchant["PAYER_LIMIT"] = limit;
+  // Which platforms may open a checkout here (T172, VT-49).
+  const platforms = parseComercioAllowedPlatforms(env["COMERCIO_ALLOWED_PLATFORMS"]).get(comercio.slug);
+  if (platforms !== undefined && platforms.length > 0) merchant["ALLOWED_PLATFORMS"] = platforms.join(",");
+  const requireAp2 = parseComercioRequireAp2(env["COMERCIO_REQUIRE_AP2"]);
+  if (requireAp2.all || requireAp2.slugs.has(comercio.slug)) merchant["REQUIRE_AP2"] = "true";
   if (secrets.credentials.kind === "jumpseller-api") {
     merchant["JUMPSELLER_LOGIN"] = secrets.credentials.login;
     merchant["JUMPSELLER_AUTHTOKEN"] = secrets.credentials.authtoken;
