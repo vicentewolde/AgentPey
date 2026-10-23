@@ -120,6 +120,11 @@ When a checkout is ready to pay, the business returns the handler with
   `amount`.
 * `binding.checkout_id`: the checkout this credential is for.
 
+`pay_to` is the business config's, so it is the escrow contract here too.
+(Corrected on 2026-10-23: the schema's `response_config` still asked for a
+`G...` account there, which no checkout of a store with an escrow could meet. The
+text above and the checkouts already said the escrow.)
+
 The platform **MUST** treat `payment_requirements` as authoritative and
 **MUST NOT** sign for any other amount, asset, network or recipient.
 

@@ -9242,3 +9242,24 @@ Pendiente: del usuario, las dos variables (`VITRINEE_COMERCIO_BLOCKED_PAYERS` y 
 `vitrinee/evidencia/T172.md` §6) y después `pnpm run prod:check`; leer los logs de Render del 19-20 de oct; decidir si se
 repone el stock del imán. Deuda: el kit de conformidad falla R2 contra `agentcommerce` desde T160. Exponential: sin
 cambios. `AGENTS.md`: sin cambios.
+
+## 2026-10-23 (30) — cc/t173-kit-escrow
+
+Agente: Claude Code.
+
+Qué: a pedido del usuario, tres cosas. (1) **Logs de Render** del 19-20 de oct, vistos en el Chrome del usuario: las compras
+están pero sin IP ni agente (no se registraban); los Request logs piden plan Pro. La identidad del comprador no es
+recuperable. (2) **Stock del imán repuesto** en Shopify (Inventario, `agenticom`): disponible 0 → 20, en mano 54 → 74; los 54
+comprometidos son pedidos sin despachar. (3) **Deuda del kit de conformidad (T173, `VT-50`)**: R2 fallaba contra
+`agentcommerce` porque `response_config.pay_to` del esquema `2026-10-15` pedía `G…` y desde T160 el cobro va al escrow
+`C…`; corregido el esquema (y una nota en `spec.md`), con una prueba nueva que corre R1 a R6 contra una tienda con escrow
+y que falló antes del arreglo. Además, con las dos variables ya en Render, el bloqueo se verificó en producción con
+pagos falsos sin firma: las tres cuentas viejas dan `payer_blocked` y `GBJDXLBZ…` sigue libre; mis pruebas de las
+~15:00 UTC quedaron en el log con IP `181.42.142.64` y agente `node`.
+
+Observación sin resolver: el log de Render muestra avisos repetidos `ucp platform profile unread … host agentpey.com …
+bad_status/backoff` (varias veces al día, también sin deploy); los tres perfiles `agentpey*.json` responden 200 ahora. Puede
+ser un reinicio de `web`; no se investigó.
+
+Pendiente: merge de esta rama con OK del usuario (cambia el esquema publicado en `agentpey.com`; cada merge despliega).
+Exponential: sin cambios. `AGENTS.md`: sin cambios.

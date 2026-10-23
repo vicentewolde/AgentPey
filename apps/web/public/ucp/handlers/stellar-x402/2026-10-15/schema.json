@@ -167,7 +167,8 @@
         },
         "pay_to": {
           "type": "string",
-          "pattern": "^G[A-Z2-7]{55}$"
+          "pattern": "^C[A-Z2-7]{55}$",
+          "description": "The purchase-escrow contract the payment is transferred to: the business config's pay_to, always escrow.contract."
         },
         "facilitator": {
           "type": "string",

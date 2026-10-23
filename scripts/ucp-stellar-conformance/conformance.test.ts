@@ -392,4 +392,20 @@ describe("the kit against a store with an escrow (T160)", () => {
     // A store paid directly has no P8 at all: its run reads as before.
     expect(byId(await runConformance(options({ profileOnly: true }), deps()))["P8"]).toBeUndefined();
   });
+
+  it("answers its own schema: the checkout of a store with an escrow validates as a response_config, with the escrow as pay_to (R2)", async () => {
+    const escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    const escrowStore = createApp({ platformProfiles: fakePlatformProfiles(), config: escrowConfig(), adapter: new MockStoreAdapter(), facilitator: fakeFacilitator(), anchorer: registry.anchorer, registry: registry.registry, holder: escrow.holder, escrows: escrow.escrows });
+    const escrowServer = await listen(escrowStore);
+    try {
+      // The requirement checks run, without --pay: nothing is signed and nothing settles.
+      const results = byId(await runConformance(options({ storeUrl: escrowServer.url, escrowArbiters: [ARBITER] }), deps({ escrow: async () => escrow.reader.config(), readBalance: async () => 0n })));
+      expect(results["R2"]).toMatchObject({ outcome: "pass", detail: "valid against #/$defs/response_config" });
+      expect(["R1", "R3", "R4", "R5", "R6"].map((id) => results[id]?.outcome)).toEqual(["pass", "pass", "pass", "pass", "pass"]);
+    } finally {
+      escrowStore.anchors.stop();
+      await escrowServer.close();
+    }
+  });
 });

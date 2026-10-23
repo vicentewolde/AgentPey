@@ -1494,3 +1494,25 @@ sin mandato.
   apaga con `disabled`; no hacía falta para este incidente. Sigue pendiente si se necesita.
 - *Contar en la base de datos en vez de en memoria:* la ventana se siembra desde las órdenes al arrancar, que ya son
   durables; una tabla nueva no aportaba más.
+
+### VT-50 · El esquema `2026-10-15` pide el escrow también en `response_config.pay_to` · `Vigente`
+**Fecha:** 2026-10-23 · **Tarea:** T173 (deuda de T160 y T172) · Decidido por el usuario (pidió resolver la deuda)
+
+**Contexto.** `pnpm run ucp:stellar:conformance` fallaba R2 contra `agentcommerce` con cualquier producto
+(`/pay_to must match pattern "^G[A-Z2-7]{55}$"`). Desde T160 la tienda cobra a su escrow, un contrato `C…`: lo declara
+su perfil, y `business_config.pay_to` y `payment_requirements.payTo` del esquema `2026-10-15` ya pedían `C…`. Pero
+`response_config.pay_to` quedó pidiendo `G…`, y ningún checkout de una tienda con escrow podía cumplirlo. La pasó por
+alto T160 porque la prueba del kit contra una tienda con escrow corría solo con `--profile-only`, que no ejecuta R2.
+
+**Decisión.** Se corrige el esquema, no el kit: `response_config.pay_to` pide `^C[A-Z2-7]{55}$`, igual que la config
+del negocio, como ya decía el texto del spec ("la config del negocio más…"). Se agrega a `spec.md` una nota con la
+fecha. La prueba nueva corre las comprobaciones R contra una tienda con escrow y exige que R2 pase.
+
+**Alternativa descartada: una versión nueva del handler (`2026-10-23`).** Una versión publicada debería ser inmutable,
+pero esta salió el 15-oct, solo la usa `agentcommerce`, no hay implementadores externos conocidos, y cambia solo un
+patrón que la tienda ya cumplía en la práctica: el cambio no altera ningún comportamiento. Una versión nueva habría
+obligado a la tienda, al SDK y a la guía a cambiar de versión por una corrección de una línea. Si algún día hay
+implementadores externos de `2026-10-15`, se les avisa de la corrección.
+
+**Alternativa descartada: aceptar `G` o `C` en la respuesta.** Dejaría pasar una tienda que cobra a una cuenta distinta
+de la que declara en su perfil, justo lo que el kit existe para detectar.

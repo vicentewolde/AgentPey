@@ -40,14 +40,14 @@ Fase 9, por decisión suya (22-oct).** No cambia nada en producción hasta poner
 |---|---|---|
 | T172 Cuentas bloqueadas, límite por cuenta, plataformas aprobadas y AP2 exigido, por tienda y apagados por defecto; chequeo de producción `pnpm run prod:check` | ✅ mergeada el 23-oct ([PR #93](https://github.com/vicentewolde/AgentPey/pull/93), `cd2b3ae`, CI 4/4) y en vivo desde las 06:20 UTC aprox. (Render: Deployed, 2 m 22 s). 44 pruebas nuevas; producción 11/11 durante todo el deploy. **Sin variables puestas: no cambia nada hasta que el usuario las ponga** ([evidencia](fase-6-agentguard-comercializacion/vitrinee/evidencia/T172.md), `VT-49`) | [PR #93](https://github.com/vicentewolde/AgentPey/pull/93), mergeada |
 
-- [ ] Del usuario: poner en el servicio `AgentPey` de Render (Environment, ya abierto en Chrome el 23-oct)
-  `VITRINEE_COMERCIO_BLOCKED_PAYERS` (las tres cuentas viejas, dejando libre `GBJDXLBZ…`) y
-  `VITRINEE_COMERCIO_PAYER_LIMITS=agentcommerce=5/3600`; los valores exactos están en la evidencia.
-- [ ] Del usuario: leer los logs de Render de `agentcommerce` del 19 y 20-oct (IP y agente de usuario), si todavía los
-  guardan: es lo único que puede decir quién fue.
+- [x] Las dos variables en Render (23-oct, deploy manual del usuario a las 11:55 hora de Chile): el bloqueo de las tres cuentas viejas
+  se verificó en producción con pagos falsos sin firma (`payer_blocked`, sin orden), y `GBJDXLBZ…` sigue libre. El límite
+  `agentcommerce=5/3600` no se probó en vivo (6 compras reales); lo cubren las pruebas automáticas.
+- [x] Logs de Render del 19 y 20-oct (23-oct): las compras están, pero solo con checkout, hash y monto, sin IP ni agente; los
+  "Request logs" piden plan Pro. **La identidad no es recuperable.** Desde T172, cada intento deja IP y agente.
 - [x] El ejemplo del README y del SDK compraba el imán, agotado (daba `out_of_stock` en producción): cambiado al set de
-  posavasos, 15 en stock (22-oct, en la rama; llega a GitHub con el merge y a npm con la próxima publicación). Reponer o
-  no el imán sigue siendo del usuario.
+  posavasos, 15 en stock (en `main` desde el 23-oct; a npm llega con la próxima publicación). **Imán repuesto el 23-oct:** 20
+  disponibles (en mano 54 → 74; los 54 comprometidos son pedidos sin despachar, de pruebas y del incidente).
 - Antes de cualquier merge y justo después: `pnpm run prod:check` (solo lectura, 11 superficies).
 
 ## Progreso de la Fase 8 (cerrada el 2026-10-17, `P-20`)
@@ -100,9 +100,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Deuda y pendientes fuera de la fase
 
-- 22-oct: el kit `pnpm run ucp:stellar:conformance` falla R2 contra `agentcommerce` (`pay_to` debe ser `G…` y desde T160
-  es el escrow, `C…`). Es anterior a T172 (T137 dio 20/20 el 6-oct, antes del escrow). Hay que ajustar el esquema del
-  handler o el kit para un cobro a un contrato; no se tocó. Ver `vitrinee/evidencia/T172.md` §5b.
+- 23-oct, **resuelta** (T173, `VT-50`): el kit fallaba R2 contra `agentcommerce` porque `response_config.pay_to` del esquema
+  `2026-10-15` pedía `G…` y desde T160 el cobro va al escrow, `C…`. Corregido el esquema; con prueba nueva.
 
 - T139 (17-oct, `R-39`): Trustless Work para pagos por hitos entre empresas, unas 16 h para una demo en testnet.
   Fuera de alcance hasta tener una fase propia con su spec aprobado; tendría que resolver cómo firma un `policy_rail`.
