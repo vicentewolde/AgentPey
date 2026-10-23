@@ -16,7 +16,7 @@ Node.js 22 or later. ESM only.
 
 ## Example
 
-A magnet from AgentPey's Shopify test store. The first run only quotes (it opens a checkout and moves no money);
+A set of leather coasters from AgentPey's Shopify test store. The first run only quotes (it opens a checkout and moves no money);
 with `PAY=yes` it pays from an AgentPey `policy_rail` on testnet.
 
 ```js
@@ -27,7 +27,7 @@ const buyer = { email: "buyer@example.com", first_name: "Ada", last_name: "Lovel
 const destination = { first_name: "Ada", last_name: "Lovelace", street_address: "Av. Providencia 1234", address_locality: "Providencia", address_country: "CL" };
 
 // 1. Open a checkout and check it against the store's public profile. Nothing is signed.
-const q = await quote({ storeUrl, productId: "67624104591666", quantity: 1, buyer, destination });
+const q = await quote({ storeUrl, productId: "67661927612722", quantity: 1, buyer, destination });
 console.log(`checkout ${q.checkoutId}: ${fromAtomic(BigInt(q.requirements.amount), q.asset.decimals)} ${q.asset.code} to ${q.requirements.payTo}`);
 if (process.env.PAY !== "yes") process.exit(0);
 

@@ -9217,7 +9217,12 @@ variable nombra un slug que no existe. `.env.vitrinee.example` e `INSTRUCCIONES.
 Verificación: `pnpm run vitrinee:check` verde (459 pruebas en el gateway, 44 nuevas), `apps/gateway` 40 pruebas;
 producción 11/11 antes de empezar y al terminar. Ninguna variable puesta: lo desplegado no cambia.
 
+README: el ejemplo comprador apuntaba al imán, agotado en producción (`out_of_stock`); cambiado al set de posavasos
+(`67661927612722`, 15 en stock) en el README raíz, el del SDK, `example/buy.mjs`, el kit de conformidad y el de AP2;
+comprobado cotizando en producción, sin pagar. Hallazgo aparte, ya existente: el kit de conformidad falla R2 contra
+`agentcommerce` desde T160 (`pay_to` es el escrow `C…` y el esquema pide `G…`); deuda anotada en `ESTADO.md`, sin tocar.
+
 Pendiente: OK del usuario para pushear y mergear (cada merge despliega: no durante una grabación ni una revisión de
 jueces); después poner las variables de Render (valores en `vitrinee/evidencia/T172.md` §6); leer los logs de Render del
-19-20 de oct; decidir qué pasa con el ejemplo del README (apunta a `agentcommerce` y al imán, agotado) y con el stock.
+19-20 de oct; decidir si se repone el stock del imán.
 Exponential: sin cambios (T172 no tiene ticket). `AGENTS.md`: sin cambios.

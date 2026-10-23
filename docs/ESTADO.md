@@ -46,7 +46,9 @@ Fase 9, por decisión suya (22-oct).** No cambia nada en producción hasta poner
   `VITRINEE_COMERCIO_PAYER_LIMITS=agentcommerce=5/3600`; los valores exactos están en la evidencia.
 - [ ] Del usuario: leer los logs de Render de `agentcommerce` del 19 y 20-oct (IP y agente de usuario), si todavía los
   guardan: es lo único que puede decir quién fue.
-- [ ] Decidir: el ejemplo del README y del SDK apunta a `agentcommerce` y al imán (hoy agotado). Y reponer o no el stock.
+- [x] El ejemplo del README y del SDK compraba el imán, agotado (daba `out_of_stock` en producción): cambiado al set de
+  posavasos, 15 en stock (22-oct, en la rama; llega a GitHub con el merge y a npm con la próxima publicación). Reponer o
+  no el imán sigue siendo del usuario.
 - Antes de cualquier merge y justo después: `pnpm run prod:check` (solo lectura, 11 superficies).
 
 ## Progreso de la Fase 8 (cerrada el 2026-10-17, `P-20`)
@@ -98,6 +100,10 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 
 ## Deuda y pendientes fuera de la fase
+
+- 22-oct: el kit `pnpm run ucp:stellar:conformance` falla R2 contra `agentcommerce` (`pay_to` debe ser `G…` y desde T160
+  es el escrow, `C…`). Es anterior a T172 (T137 dio 20/20 el 6-oct, antes del escrow). Hay que ajustar el esquema del
+  handler o el kit para un cobro a un contrato; no se tocó. Ver `vitrinee/evidencia/T172.md` §5b.
 
 - T139 (17-oct, `R-39`): Trustless Work para pagos por hitos entre empresas, unas 16 h para una demo en testnet.
   Fuera de alcance hasta tener una fase propia con su spec aprobado; tendría que resolver cómo firma un `policy_rail`.

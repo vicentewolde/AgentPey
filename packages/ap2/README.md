@@ -71,7 +71,7 @@ JSON Schemas, vendored unmodified in `src/test/ap2-v0.2/`.
 ## Real export and cross-check
 
 ```bash
-pnpm run ap2:export -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --ephemeral-p256
+pnpm run ap2:export -- --store https://agentcommerce.vitrinee.agentpey.com --product 67661927612722 --ephemeral-p256
 ```
 
 Anchors a credential and a Mandate on testnet (fees only), has the agent sign

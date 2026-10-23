@@ -18,7 +18,7 @@ Checkout with a junk transaction, which a conforming store refuses. It moves no
 money:
 
 ```bash
-pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --product 67624104591666
+pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --product 67661927612722
 ```
 
 Everything, including a real payment on testnet. The key is yours, given in
@@ -31,7 +31,7 @@ can cost is one payment of up to `--max-amount`, in `--asset` (USDC on testnet
 by default):
 
 ```bash
-UCP_STELLAR_CONFORMANCE_SECRET=S... pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --pay --rail C... --max-amount 2.00
+UCP_STELLAR_CONFORMANCE_SECRET=S... pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --product 67661927612722 --pay --rail C... --max-amount 2.00
 ```
 
 A store broken on purpose, to see the kit fail:

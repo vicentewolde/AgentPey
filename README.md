@@ -58,7 +58,7 @@ import { fromAtomic, quote } from "@agentpey/ucp-stellar";
 
 const q = await quote({
   storeUrl: "https://agentcommerce.vitrinee.agentpey.com",
-  productId: "67624104591666",
+  productId: "67661927612722",
   quantity: 1,
   buyer: { email: "buyer@example.com", first_name: "Ada", last_name: "Lovelace" },
   destination: { first_name: "Ada", last_name: "Lovelace", street_address: "Av. Providencia 1234", address_locality: "Providencia", address_country: "CL" },

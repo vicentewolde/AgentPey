@@ -17,7 +17,7 @@
  *    DID. Only public keys are written; the private ones exist in this
  *    process and nowhere else.
  *
- *   pnpm run ap2:export -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624104591666 --ephemeral-p256
+ *   pnpm run ap2:export -- --store https://agentcommerce.vitrinee.agentpey.com --product 67661927612722 --ephemeral-p256
  *
  * Writes to .vitrinee/ap2/ (gitignored). Needs `.env.local` with
  * ISSUER_SECRET_KEY, AGENT_SECRET_KEY and AGENT_REGISTRY_CONTRACT_ID.
