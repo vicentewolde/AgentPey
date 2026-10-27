@@ -18,9 +18,8 @@ pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino 
 contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 cerrada** ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)): desde el 15-oct
 `agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 cerrada** ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)): un
 veredicto real reembolsó desde el pago retenido el 16-oct. **T161 cerrada** ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): la orden muestra dónde está el pago en el
-escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el entregable D1. **T162, código listo el
-27-oct** (rama `cc/t162-reclamo-abre-disputa`, sin mergear): el reclamo del chat abre la disputa en el escrow. Falta el
-reclamo en vivo desde Claude, que necesita el merge y el OK del usuario. Después: T163.
+escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el entregable D1. **T162 mergeada el
+27-oct** ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)): el reclamo del chat abre la disputa en el escrow. Falta el reclamo en vivo desde Claude, grabado. Después: T163.
 
 ## Progreso
 
@@ -32,7 +31,7 @@ reclamo en vivo desde Claude, que necesita el merge y el OK del usuario. Despué
 | T159 Un pago, un recibo, en la red | ✅ terminada |
 | T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ✅ terminada |
-| T162 El reclamo desde el chat abre la disputa en la red | 🔨 código listo; falta el reclamo en vivo desde Claude |
+| T162 El reclamo desde el chat abre la disputa en la red | 🔨 mergeada; falta el reclamo en vivo desde Claude |
 | T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente |
 | T164 El despacho abre la ventana de liberación | ⏳ pendiente |
 | T165 Cada cambio de la disputa llega al agente | ⏳ pendiente |
@@ -215,4 +214,4 @@ MCP de producción, así que primero hay que mergear (Render redespliega), y abr
 testnet: los dos pasos esperan el OK del usuario. El guion está en la evidencia, sobre la compra que sigue retenida
 (`ord_mv9s83yb…`, pagada desde el MCP).
 
-**Decisión:** `X-28` (y el código de error nuevo `ResolveDisputeExists`). **Evidencia:** [`evidencia/T162.md`](evidencia/T162.md).
+**Decisión:** `X-28` (y el código de error nuevo `ResolveDisputeExists`). **Evidencia:** [`evidencia/T162.md`](evidencia/T162.md). Mergeada el 27-oct ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)), CI 4/4; producción 11/11 y 28/28 después del push.

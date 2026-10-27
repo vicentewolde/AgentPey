@@ -9285,3 +9285,17 @@ Pendiente: OK del usuario para push, PR y merge (redespliega Render); después, 
 Claude con grabación (guion en `fase-9-compra-protegida/evidencia/T162.md` §4) y su hash en la evidencia. La rama
 `cc/t174-identidad-comprador` de la otra sesión quedó intacta. Exponential: ticket T162 a `IN_PROGRESS` (inicio 27-oct en `SYNC.md`); `exp:sync` sin cambios de tarjetas. `AGENTS.md`: sin cambios
 (ninguna decisión de `docs/DECISIONES.md` cambió).
+
+## 2026-10-27 (32) — cc/t162-merge-docs
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, **T162 mergeada a `main`** ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)), fast-forward
+`2b79a8f..a432878` a las 03:24 UTC, CI 4/4. `pnpm run prod:check` 11/11 antes y a las 03:30 UTC; recorrido de producción
+28/28. No se pudo ver qué commit corre Render: el navegador integrado no tiene sesión en Render (no se inició sesión) y
+Render no informa deploys a GitHub desde septiembre. Este commit solo anota el merge, y queda en local hasta juntarlo
+con la evidencia del reclamo en vivo (cada push a `main` redespliega).
+
+Pendiente: el usuario confirma «Deployed» en Render y avisa para grabar el reclamo desde Claude (guion en
+`fase-9-compra-protegida/evidencia/T162.md` §4). Exponential: sin cambios (T162 sigue `IN_PROGRESS` hasta la grabación).
+`AGENTS.md`: sin cambios.
