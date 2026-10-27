@@ -632,7 +632,9 @@ Errores del lado de AgentPey: `ResolveClaimInvalid`, `ResolveReceiptInvalid`,
 del comercio `ResolveResponseInvalid`, `ResolveRespondentNotMerchant`,
 `ResolveResponseMismatch`, `ResolveResponsePending`. Para una disputa en el
 `purchase-escrow` de una tienda (Fase 9, T158), `ResolveWindowClosed`: pasó la
-ventana del árbitro y solo vale `expire`, que reembolsa todo.
+ventana del árbitro y solo vale `expire`, que reembolsa todo. Cuando el reclamo
+del chat abre la disputa en el escrow (T162), `ResolveDisputeExists`: la compra
+ya tiene una disputa, abierta o cerrada, y no se envía nada.
 
 ## 5. Contratos desplegados (testnet)
 

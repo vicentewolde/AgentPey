@@ -9263,3 +9263,23 @@ ser un reinicio de `web`; no se investigó.
 
 Pendiente: merge de esta rama con OK del usuario (cambia el esquema publicado en `agentpey.com`; cada merge despliega).
 Exponential: sin cambios. `AGENTS.md`: sin cambios.
+
+## 2026-10-27 (31) — cc/t162-reclamo-abre-disputa
+
+Agente: Claude Code.
+
+Qué: Fase 9, T162, con el plan aprobado por el usuario el 26-oct. `open_claim` del MCP, cuando el recibo firmado nombra
+un escrow, lo lee en la red antes de firmar nada (código conocido, misma compra, recibo, pago y monto, pagada por el rail
+del MCP, ventana abierta) y después firma el mensaje de `X-18` con la llave dueña del rail y envía `open`, pagado por la
+cuenta clásica del agente. Devuelve `dispute` (transacción, enlace, plazos) y un `next_step` nuevo. Sin escrow, igual que
+antes. `EscrowClient.open` y `escrowDisputeOpeners` en `@vitrinee/anchor`; `apps/mcp/src/escrow-dispute.ts` nuevo;
+código de error nuevo `ResolveDisputeExists` en `@agentpass/core` (el anexo del SEP lo nombra). Decisión `X-28`.
+
+Verificación: `pnpm check` verde, `cargo test -p purchase-escrow` 35/35, ESLint de `vitrinee-anchor` sin errores. En
+testnet, solo simulación (sin enviar ni gastar) sobre `ord_mv9s83yb0022b6a353`: firmado por otra llave,
+`Error(Crypto, InvalidInput)`; por la dueña del rail del MCP, pasaría. `pnpm run prod:check` 11/11 antes de empezar.
+
+Pendiente: `/revisar`; OK del usuario para push, PR y merge (redespliega Render); después, el reclamo en vivo desde
+Claude con grabación (guion en `fase-9-compra-protegida/evidencia/T162.md` §4) y su hash en la evidencia. La rama
+`cc/t174-identidad-comprador` de la otra sesión quedó intacta. Exponential: ticket T162 a `IN_PROGRESS` (inicio 27-oct en `SYNC.md`); `exp:sync` sin cambios de tarjetas. `AGENTS.md`: sin cambios
+(ninguna decisión de `docs/DECISIONES.md` cambió).

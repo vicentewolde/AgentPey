@@ -218,7 +218,7 @@ describe("the SEP annex agrees with the code and the deployments (T125)", () => 
       expect(annex, name).toContain(`\`${name}\``);
     }
     const resolveCodes = [...read("../packages/core/src/errors.ts").matchAll(/\| "(Resolve[A-Za-z]+)"/g)].map(([, code]) => code ?? "");
-    expect(resolveCodes).toHaveLength(12);
+    expect(resolveCodes).toHaveLength(13);
     for (const code of resolveCodes) expect(annex, code).toContain(`\`${code}\``);
   });
 

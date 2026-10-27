@@ -33,11 +33,12 @@ import {
 } from "@agentpey/agent";
 import type { AgentPayMandate } from "@agentpey/mandate";
 import { CLAIM_REASONS, signClaim, type ClaimReason } from "@agentpey/resolve";
-import { getUcpProduct, searchUcpStore, type EscrowReaderFactory, type ReceiptVerification } from "@vitrinee/anchor";
+import { getUcpProduct, searchUcpStore, type EscrowDisputeOpenerFactory, type EscrowReaderFactory, type ReceiptVerification } from "@vitrinee/anchor";
 import { checkReceiptSignature, stellarExpertTxUrl, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
 import type { Keypair } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
+import { checkClaimableEscrow, openEscrowDispute } from "./escrow-dispute.js";
 import { readEscrowState } from "./escrow-state.js";
 import type { QuoteBook, QuoteEntry } from "./quotes.js";
 
@@ -66,6 +67,8 @@ export interface ShopperDeps {
   readonly verifyReceipt: (jws: string) => Promise<ReceiptVerification>;
   /** Reads the escrow a signed receipt names, for get_order's escrow state (T161). Without it, that state is not shown. */
   readonly escrows?: EscrowReaderFactory;
+  /** Opens a dispute in the escrow a signed receipt names, paid by `agentKey` (T162). Without it, such an order's claim is refused. */
+  readonly escrowDisputes?: EscrowDisputeOpenerFactory;
   readonly now?: () => Date;
   readonly quotes: QuoteBook;
   readonly fetchImpl?: typeof fetch;
@@ -389,8 +392,10 @@ export class Shopper {
 
   /**
    * Signs a refund claim over an order's receipt with the agent's key, the
-   * owner of the rail that paid. It does not open the dispute: the arbiter
-   * does, with its own key (`pnpm run resolve:open -- --claim <file>`).
+   * owner of the rail that paid. When the receipt names the store's escrow,
+   * it also opens the dispute there, on chain, after checking the escrow holds
+   * exactly this purchase (T162, `X-28`). Otherwise the arbiter opens it, with
+   * its own key (`pnpm run resolve:open -- --claim <file>`), as before.
    */
   async openClaim(raw: ClaimInput) {
     const input = claimInputSchema.parse(raw);
@@ -406,6 +411,20 @@ export class Shopper {
     if (!binding.ok) {
       throw new AgentPassError("InvalidArguments", `the store shows a receipt that is not this order's: ${binding.reason ?? ""}`, { details: { orderId: input.order_id } });
     }
+    // The escrow comes from the signed receipt, never from the store's order (T161 review); checked before signing anything.
+    const contract = receipt.claims.escrow?.contract;
+    const target =
+      contract === undefined
+        ? null
+        : await checkClaimableEscrow({
+            contract,
+            orderId: order.id,
+            receipt: { hash: receipt.hash, txHash: receipt.claims.settlementTxHash, amountAtomic: BigInt(receipt.claims.amountUSDCAtomic) },
+            payer: this.deps.payment.payer?.contractId ?? this.deps.agentKey.publicKey(),
+            readers: this.deps.escrows,
+            openers: this.deps.escrowDisputes,
+            now: (this.deps.now ?? (() => new Date()))(),
+          });
     const signed = await signClaim(
       {
         type: "AgentResolveClaim",
@@ -421,13 +440,27 @@ export class Shopper {
       this.deps.agentKey,
     );
     this.log("claim signed", { claimHash: signed.hash, receiptHash: receipt.hash });
-    return {
+    const base = {
       claim_id: signed.document.claimId,
       claim_hash: signed.hash,
       receipt_hash: receipt.hash,
       amount_usdc: usdcAtomicToDecimal(BigInt(receipt.claims.amountUSDCAtomic)),
       claim_jws: signed.jws,
-      next_step: "Send claim_jws to the AgentResolve arbiter, who opens the dispute on Stellar with: pnpm run resolve:open -- --claim <file with claim_jws>",
+    };
+    if (target === null) {
+      return {
+        ...base,
+        dispute: null,
+        next_step: "Send claim_jws to the AgentResolve arbiter, who opens the dispute on Stellar with: pnpm run resolve:open -- --claim <file with claim_jws>",
+      };
+    }
+    const dispute = await openEscrowDispute({ target, claimHash: signed.hash, agentKey: this.deps.agentKey });
+    this.log("dispute opened", { claimHash: signed.hash, escrow: dispute.escrow, transaction: dispute.transaction });
+    const until = dispute.respond_by === null ? "within the escrow's response window" : `until ${dispute.respond_by}`;
+    return {
+      ...base,
+      dispute,
+      next_step: `The dispute is open on Stellar: the payment stays held in the store's escrow and the store cannot collect it. The store can answer ${until}; then the AgentResolve arbiter decides, and any refund comes from the held payment. Send claim_jws to the arbiter: it is the claim the escrow recorded.`,
     };
   }
 

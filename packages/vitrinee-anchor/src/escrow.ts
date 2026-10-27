@@ -95,6 +95,41 @@ export interface HoldResult {
   alreadyHeld: boolean;
 }
 
+export interface OpenInput {
+  orderRef: string;
+  /** SHA-256 of the compact claim JWS, hex. */
+  claimHash: string;
+  /** A rail payer's consent: its owner's Ed25519 signature over `open_message`. `null` for a classic payer, who signs the call (`X-16`). */
+  sig: Uint8Array | null;
+}
+
+export interface OpenResult {
+  txHash: string;
+  ledger: number;
+}
+
+/** Opens disputes in whichever escrow a receipt names (T162): the buyer's side, as `Holder` is the store's. */
+export interface EscrowDisputeOpener {
+  open(input: OpenInput, sourceSecret: string): Promise<OpenResult>;
+}
+
+export type EscrowDisputeOpenerFactory = (contractId: string) => EscrowDisputeOpener;
+
+/** The contract's error number in a failed simulation or transaction, if the contract raised one. */
+export function escrowContractError(error: unknown): number | null {
+  const match = /Error\(Contract, #(\d+)\)/.exec(errorText(error));
+  return match === null ? null : Number(match[1]);
+}
+
+/** Whether the host refused a signature: `ed25519_verify` aborts with a crypto error, not a contract one. */
+export function isSignatureRefused(error: unknown): boolean {
+  return /Error\(Crypto,/.test(errorText(error));
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
+}
+
 /** The part of `rpc.Server` the client uses: tests pass a fake. */
 export type EscrowRpc = Pick<rpc.Server, "getLedgerEntries" | "getAccount" | "prepareTransaction" | "sendTransaction" | "pollTransaction">;
 
@@ -216,13 +251,13 @@ function wasmHashOf(executable: unknown): string | null {
 
 /** The contract's own errors a `hold` can meet when an earlier attempt already landed. */
 function isAlreadyHeld(error: unknown): boolean {
-  const text = error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
   // OrderAlreadyHeld = 4, PaymentAlreadyHeld = 5.
-  return /Error\(Contract, #(4|5)\)/.test(text);
+  const code = escrowContractError(error);
+  return code === 4 || code === 5;
 }
 
 /** Soroban RPC client for one store's `purchase-escrow`. */
-export class EscrowClient implements EscrowReader {
+export class EscrowClient implements EscrowReader, EscrowDisputeOpener {
   readonly contractId: string;
   private readonly server: EscrowRpc;
   private readonly contract: Contract;
@@ -298,17 +333,50 @@ export class EscrowClient implements EscrowReader {
       if (isAlreadyHeld(error)) return this.existing(input);
       throw new VitrineeError("EscrowError", `simulation of hold failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error)}`, { cause: error });
     }
-    prepared.sign(signer);
+    const sent = await this.submit("hold", prepared, signer);
+    return { ...sent, alreadyHeld: false };
+  }
 
+  /**
+   * Opens a dispute (T162), sent and paid by `sourceSecret`: for a rail payer anyone may send it, since `sig` is the
+   * consent; for a classic payer it must be the payer itself, whose source-account auth satisfies `require_auth`
+   * (`X-16`). A refusal keeps the contract's error in its cause (`escrowContractError`, `isSignatureRefused`).
+   */
+  async open(input: OpenInput, sourceSecret: string): Promise<OpenResult> {
+    const signer = Keypair.fromSecret(sourceSecret);
+    const account = await this.server.getAccount(signer.publicKey());
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: this.config_.networkPassphrase })
+      .addOperation(
+        this.contract.call(
+          "open",
+          nativeToScVal(Buffer.from(input.orderRef, "utf8"), { type: "bytes" }),
+          xdr.ScVal.scvBytes(hashToBytes(input.claimHash)),
+          // `Option<BytesN<64>>`: `None` is void.
+          input.sig === null ? xdr.ScVal.scvVoid() : xdr.ScVal.scvBytes(Buffer.from(input.sig)),
+        ),
+      )
+      .setTimeout(60)
+      .build();
+    let prepared;
+    try {
+      prepared = await this.server.prepareTransaction(tx);
+    } catch (error) {
+      throw new VitrineeError("EscrowError", `simulation of open failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error)}`, { cause: error });
+    }
+    return this.submit("open", prepared, signer);
+  }
+
+  private async submit(name: string, prepared: Awaited<ReturnType<EscrowRpc["prepareTransaction"]>>, signer: Keypair): Promise<OpenResult> {
+    prepared.sign(signer);
     const sent = await this.server.sendTransaction(prepared);
     if (sent.status === "ERROR" || sent.status === "TRY_AGAIN_LATER") {
-      throw new VitrineeError("EscrowError", `hold submission ${sent.status}`, { details: { status: sent.status, hash: sent.hash, error: sent.errorResult?.result.type } });
+      throw new VitrineeError("EscrowError", `${name} submission ${sent.status}`, { details: { status: sent.status, hash: sent.hash, error: sent.errorResult?.result.type } });
     }
     const final = await this.server.pollTransaction(sent.hash, { attempts: 30 });
     if (final.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
-      throw new VitrineeError("EscrowError", `hold transaction ${final.status}`, { details: { hash: sent.hash, status: final.status } });
+      throw new VitrineeError("EscrowError", `${name} transaction ${final.status}`, { details: { hash: sent.hash, status: final.status } });
     }
-    return { txHash: sent.hash, ledger: final.ledger, alreadyHeld: false };
+    return { txHash: sent.hash, ledger: final.ledger };
   }
 
   private async existing(input: HoldInput): Promise<HoldResult> {
@@ -333,6 +401,11 @@ export function sameHold(held: EscrowPurchase, input: HoldInput): boolean {
  * cache keyed by those would grow without bound.
  */
 export function escrowReaders(options: { rpcUrl: string; networkPassphrase: string }): EscrowReaderFactory {
+  return (contractId) => new EscrowClient({ contractId, ...options });
+}
+
+/** The buyer's side of the same clients: opens a dispute in whichever escrow a receipt names (T162). */
+export function escrowDisputeOpeners(options: { rpcUrl: string; networkPassphrase: string }): EscrowDisputeOpenerFactory {
   return (contractId) => new EscrowClient({ contractId, ...options });
 }
 

@@ -552,3 +552,45 @@ reclamar, cuándo cobra la tienda, y si el reembolso llegó.
 - **Ampliar `receipt.dispute` con el escrow:** mezcla dos contratos con reglas distintas en un mismo bloque.
 - **Guardar el estado en la tienda y actualizarlo con eventos:** puede quedar viejo. La red es la fuente, y T165 suma
   los avisos.
+
+---
+
+### X-28 · El reclamo del chat abre la disputa en el escrow, lo envía y lo paga la llave del agente, y solo si el escrow guarda esa compra · `Vigente`
+**Fecha:** 2026-10-27 · **Tarea:** T162 · Plan aprobado por el usuario el 26-oct
+
+1. **Qué escrow.** El que nombra el recibo firmado de la orden (`X-22`), nunca el bloque `receipt.escrow` que muestra la
+   tienda (`X-27`). Si el recibo no nombra escrow, `open_claim` sigue como antes: firma el reclamo y el árbitro abre la
+   disputa en `agent-resolve`.
+2. **Qué se comprueba antes de firmar nada,** leyendo el escrow en la red (`get` y `config`, con el mismo tope de 5 s
+   que `get_order`): que corra el código conocido de `purchase-escrow` (la misma barrera de `X-9`); que guarde una
+   compra para esa orden con el mismo recibo, el mismo pago y el mismo monto; que la haya pagado el rail del MCP; y que
+   se pueda reclamar todavía: retenida, o despachada antes de que cierre la ventana de liberación (`X-15`, la misma regla
+   del contrato). Si algo no cuadra, un error tipado y no se envía nada.
+3. **Quién la envía y paga la comisión.** La llave dueña del rail, que es la del agente (`MCP_AGENT_SECRET_KEY`): firma
+   el mensaje de `X-18` y envía `open` desde su cuenta clásica de testnet (`GC7ALMLY…`, 10 000 XLM el 27-oct). El rail no
+   puede pagar comisiones: solo autoriza `transfer` (§4.1 del spec). Para un pagador clásico, `open` va sin firma aparte y
+   su propia transacción es el consentimiento (`X-16`).
+4. **Si la red lo rechaza,** el error se traduce a un código que el chat puede repetir y siempre dice que la disputa no
+   se abrió: firma de otra llave (`Error(Crypto, …)` del host) → `ResolveClaimantNotPayer`; ventana cerrada (#10) →
+   `ResolveClaimWindowClosed`; la compra cambió entretanto (#8) → `ResolveDisputeExists`, **código nuevo** para "una
+   compra, una disputa". Un envío que no se pudo confirmar → `NetworkError`, con el aviso de leer `get_order` antes de
+   reintentar, porque puede haber entrado igual.
+5. **Qué devuelve.** `open_claim` suma `dispute` (contrato, `disputed`, transacción, enlace a Stellar Expert, y hasta
+   cuándo puede responder la tienda y decidir el árbitro, leídos del escrow después de abrir; `null` si esa lectura
+   falla) y un `next_step` que lo cuenta. La herramienta pasa a llamarse "Open a refund claim", con `openWorldHint: true`;
+   sigue sin ser de solo lectura y sin ser destructiva (`R-10`), y la descripción le pide al chat que avise antes que una
+   compra admite una sola disputa.
+6. **El árbitro sigue necesitando `claim_jws`.** El escrow guarda solo su hash. La persona se lo pasa al árbitro, como
+   antes; llevarlo solo es trabajo de los avisos (T165) y no entra aquí.
+
+**Motivo.** Es lo que pide T162 y lo que `X-26` dejó anunciado: el comprador abre la disputa sin el árbitro en medio. La
+comprobación previa existe porque la red solo dice "rechazado": sin ella, el chat gastaría comisión para enterarse de un
+recibo ajeno o de una ventana cerrada, y no podría explicar por qué.
+
+**Alternativas descartadas.**
+- **Enviar `open` sin comprobar y dejar que el contrato decida:** el contrato igual es la última palabra, pero el chat
+  no sabría si el escrow es el del recibo ni podría decir qué falló.
+- **Pedir `confirm: true` como `pay`:** `open` no mueve plata (la congela donde ya está) y `R-10` deja la confirmación a
+  las anotaciones del cliente. Si el usuario prefiere el candado extra, es un cambio chico y se propone aparte.
+- **Que lo pague una cuenta de la plataforma:** sumaba otra llave en el servidor del MCP sin necesidad; la del agente ya
+  existe y ya firma por el rail.

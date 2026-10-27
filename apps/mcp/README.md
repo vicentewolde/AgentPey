@@ -3,7 +3,7 @@
 AgentPey's MCP server (T128): Claude, ChatGPT and the Grok chat connect to it
 (for Grok, sign-in only so far, see below) to search Vitrinee stores, quote, pay on Stellar testnet
 from the MCP's own `policy_rail`, read the order with its verified receipt, and
-sign a refund claim. OAuth 2.1 in front of `/mcp`; the only person who can sign in is the
+sign a refund claim, which opens the dispute on chain when the store holds the payment in an escrow. OAuth 2.1 in front of `/mcp`; the only person who can sign in is the
 wallet that owns the rail, by signing a message with a Stellar wallet.
 
 Connect a client to:
@@ -98,6 +98,15 @@ and `meaning`, a sentence the chat can repeat. It is read on Stellar from
 the escrow the signed receipt names, never from the store's own block; when
 it cannot be read or does not check out, `escrow` is `null` and
 `escrow_notice` says why.
+
+For such an order, `open_claim` also opens the dispute in that escrow (T162):
+it reads the escrow on Stellar first and sends nothing unless it holds exactly
+this purchase, paid from the MCP's rail, with the claim window still open. The
+rail's owner key signs the escrow's message and sends `open`, paying the fee
+from its own testnet account. The reply carries `dispute`: the transaction,
+its Stellar Expert link, and until when the store may answer. For an order
+paid straight to the store, `dispute` is `null` and the arbiter opens it, as
+before.
 
 ## Pay a quote yourself
 

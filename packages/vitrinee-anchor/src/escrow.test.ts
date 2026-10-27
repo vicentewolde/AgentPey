@@ -10,6 +10,8 @@ import {
   configKey,
   decodeEscrowConfig,
   decodePurchase,
+  escrowContractError,
+  isSignatureRefused,
   paymentKey,
   purchaseKey,
   sameHold,
@@ -297,5 +299,64 @@ describe("EscrowClient.hold, when an earlier attempt already landed (T159)", () 
     await expect(c.hold(input, operator.secret())).rejects.toMatchObject({ code: "EscrowError", message: expect.stringContaining("simulation of hold failed") });
     expect(byTx).not.toHaveBeenCalled();
     await expect(client(simulation(45)).hold(input, operator.secret())).rejects.toMatchObject({ message: expect.stringContaining("simulation of hold failed") });
+  });
+});
+
+describe("EscrowClient.open, the buyer's dispute (T162)", () => {
+  const source = Keypair.random();
+  const SIG = new Uint8Array(64).fill(7);
+  const input = { orderRef: "ord_mv9s83yb0022b6a353", claimHash: CLAIM, sig: SIG };
+  /** An RPC that records the transaction it was asked to simulate, and lands it unless told to refuse. */
+  function rpc(refuse?: string) {
+    const simulated: unknown[] = [];
+    const server = {
+      getAccount: async () => new Account(source.publicKey(), "1"),
+      prepareTransaction: async (tx: unknown) => {
+        simulated.push(tx);
+        if (refuse !== undefined) throw new Error(refuse);
+        return { sign: () => undefined };
+      },
+      sendTransaction: async () => ({ status: "PENDING", hash: "d".repeat(64) }),
+      pollTransaction: async () => ({ status: "SUCCESS", ledger: 1_234 }),
+    };
+    return { simulated, server: server as unknown as EscrowRpc };
+  }
+  const client = (server: EscrowRpc) => new EscrowClient({ contractId: ESCROW, rpcUrl: "https://rpc.test", networkPassphrase: "Test SDF Network ; September 2015", server });
+  /** The `open` call's three arguments, decoded, from a simulated transaction (stellar-sdk 17's `{ type, <field> }` shape). */
+  function argsOf(tx: unknown): unknown[] {
+    const op = (tx as { operations: Array<{ func: { invokeContract: { functionName: unknown; args: xdr.ScVal[] } } }> }).operations[0]!;
+    const call = op.func.invokeContract;
+    expect(String(call.functionName)).toBe("open");
+    return call.args.map((arg) => scValToNative(arg));
+  }
+
+  it("sends open(order_ref, claim_hash, Some(sig)) for a rail payer, and returns its transaction", async () => {
+    const { simulated, server } = rpc();
+    expect(await client(server).open(input, source.secret())).toEqual({ txHash: "d".repeat(64), ledger: 1_234 });
+    const [orderRef, claimHash, sig] = argsOf(simulated[0]);
+    expect(Buffer.from(orderRef as Uint8Array).toString("utf8")).toBe(input.orderRef);
+    expect(Buffer.from(claimHash as Uint8Array).toString("hex")).toBe(CLAIM);
+    expect(Buffer.from(sig as Uint8Array)).toEqual(Buffer.from(SIG));
+  });
+
+  it("sends None as the signature for a classic payer, whose own transaction is the consent (X-16)", async () => {
+    const { simulated, server } = rpc();
+    await client(server).open({ ...input, sig: null }, source.secret());
+    expect(argsOf(simulated[0])[2]).toBeNull();
+  });
+
+  it("keeps the contract's refusal readable: its error number, or a refused signature", async () => {
+    const window = await client(rpc("HostError: Error(Contract, #10)\nEvent log: open").server).open(input, source.secret()).catch((error: unknown) => error);
+    expect(window).toMatchObject({ code: "EscrowError", message: expect.stringContaining("simulation of open failed") });
+    expect(escrowContractError(window)).toBe(10);
+    expect(isSignatureRefused(window)).toBe(false);
+    const forged = await client(rpc("HostError: Error(Crypto, InvalidInput)\nEvent log: ed25519_verify").server).open(input, source.secret()).catch((error: unknown) => error);
+    expect(isSignatureRefused(forged)).toBe(true);
+    expect(escrowContractError(forged)).toBeNull();
+  });
+
+  it("names the contract errors the MCP reads from open, as contracts/purchase-escrow does", () => {
+    for (const line of ["PurchaseNotFound = 7,", "WrongStatus = 8,", "ClaimWindowClosed = 10,", "MissingSignature = 11,", "UnsupportedPayer = 12,"]) expect(CONTRACT_SOURCE).toContain(line);
+    expect(CONTRACT_SOURCE).toContain("pub fn open(env: Env, order_ref: Bytes, claim_hash: BytesN<32>, sig: Option<BytesN<64>>)");
   });
 });

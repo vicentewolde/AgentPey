@@ -106,6 +106,17 @@ export const outputSchemas = {
     receipt_hash: z.string(),
     amount_usdc: z.string(),
     claim_jws: z.string(),
+    /** The dispute this call opened in the store's escrow (T162); null for an order paid straight to the store. */
+    dispute: z
+      .object({
+        escrow: z.string(),
+        status: z.literal("disputed"),
+        transaction: z.string(),
+        explorer_url: z.string(),
+        respond_by: z.string().nullable(),
+        resolve_by: z.string().nullable(),
+      })
+      .nullable(),
     next_step: z.string(),
   }),
 } as const;
@@ -218,11 +229,11 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
   server.registerTool(
     "open_claim",
     {
-      title: "Sign a refund claim",
-      description: `Sign a refund claim over an order's receipt, for AgentResolve. Reasons: ${CLAIM_REASONS.join(", ")}. It does not open the dispute: the arbiter does. Only when the person asks for it.`,
+      title: "Open a refund claim",
+      description: `Sign a refund claim over an order's receipt, for AgentResolve. Reasons: ${CLAIM_REASONS.join(", ")}. When the order was paid into the store's escrow, this also opens the dispute on Stellar: the payment is frozen there and the store cannot collect it until the arbiter decides; dispute has the transaction and until when the store may answer. A purchase admits one dispute, so only when the person asks for it, after telling them that. For an order paid straight to the store, dispute is null and the arbiter opens it. Pass next_step on.`,
       inputSchema: claimInputSchema,
       outputSchema: outputSchemas.open_claim,
-      annotations: { title: "Sign a refund claim", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      annotations: { title: "Open a refund claim", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
     async (input) => run(async () => shopper.openClaim(input), log),
   );

@@ -9,13 +9,18 @@ export {
   configKey,
   decodeEscrowConfig,
   decodePurchase,
+  escrowContractError,
+  escrowDisputeOpeners,
   escrowPolicy,
   escrowReaders,
+  isSignatureRefused,
   paymentKey,
   purchaseKey,
   sameHold,
   type EscrowClientConfig,
   type EscrowConfig,
+  type EscrowDisputeOpener,
+  type EscrowDisputeOpenerFactory,
   type EscrowPurchase,
   type EscrowReader,
   type EscrowReaderFactory,
@@ -23,6 +28,8 @@ export {
   type EscrowStatus,
   type HoldInput,
   type HoldResult,
+  type OpenInput,
+  type OpenResult,
 } from "./escrow.js";
 export { checkHeld, verifyReceipt, type HeldCheck, type ReceiptVerification, type VerifyOptions } from "./verify.js";
 export {

@@ -18,7 +18,7 @@ import {
 } from "@agentpey/agent";
 import { verifyMandate } from "@agentpey/mandate";
 import { Keypair, Networks, StrKey, contract } from "@stellar/stellar-sdk";
-import { ReceiptRegistryClient, escrowPolicy, escrowReaders, verifyReceipt } from "@vitrinee/anchor";
+import { ReceiptRegistryClient, escrowDisputeOpeners, escrowPolicy, escrowReaders, verifyReceipt } from "@vitrinee/anchor";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 
@@ -155,6 +155,8 @@ export async function createShopper(env: McpEnv, log: (message: string, fields?:
       }),
     // get_order reads the escrow a signed receipt names, on chain, for where the payment stands (T161 review).
     escrows,
+    // open_claim opens the dispute in that escrow, sent and paid by the agent's own account (T162).
+    escrowDisputes: escrowDisputeOpeners({ rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase }),
     // Signing a quote's intent reserves the day's budget (M-15). A quote that expires or is evicted unpaid
     // signed nothing that pays, so its reservation goes back (T150 review).
     quotes: new QuoteBook({

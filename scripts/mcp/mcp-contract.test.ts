@@ -18,9 +18,9 @@ import { createMcpApp } from "../../apps/mcp/src/http.js";
 import { QuoteBook } from "../../apps/mcp/src/quotes.js";
 import { Shopper, type ShopperDeps } from "../../apps/mcp/src/shopper.js";
 import { createMandate } from "../../packages/mandate/src/index.js";
-import { verifyClaim } from "../../packages/resolve/src/index.js";
+import { escrowOpenMessage, verifyClaim } from "../../packages/resolve/src/index.js";
 import { MOCK_CATALOG, MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
-import { verifyReceipt } from "../../packages/vitrinee-anchor/src/index.js";
+import { verifyReceipt, type EscrowDisputeOpenerFactory, type EscrowPurchase, type OpenInput } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
@@ -280,6 +280,9 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
     const claim = await verifyClaim(claimed.structuredContent!["claim_jws"] as string);
     expect(claim.document).toMatchObject({ claimant: AGENT_DID, reason: "not_delivered", amountAtomic: "136736842", receipt: { hash: read.structuredContent!["receipt"].hash } });
     expect(claim.hash).toBe(claimed.structuredContent!["claim_hash"]);
+    // Paid straight to the store: nothing is opened on chain, the arbiter opens it as before (T162).
+    expect(claimed.structuredContent!["dispute"]).toBeNull();
+    expect(claimed.structuredContent!["next_step"]).toContain("pnpm run resolve:open");
   });
 
   it("quotes a cart of two products as one checkout and pays it with one payment (T150)", async () => {
@@ -601,23 +604,49 @@ describe("an order's receipt must be that order's, from that store (T128)", () =
   });
 });
 
+/** The rail debited and the escrow credited, as Horizon reports a contract-to-contract transfer (X-14). */
+function escrowHorizon(): typeof fetch {
+  return (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (/\/transactions\/[0-9a-f]{64}$/.test(url)) return Response.json({ successful: true, ledger: 4_899_999, created_at: "2026-10-14T12:00:00Z" });
+    if (/\/transactions\/[0-9a-f]{64}\/effects/.test(url)) {
+      const records = [
+        { type: "contract_debited", account: FAKE_PAYER, contract: RAIL, amount: "13.6736842", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+        { type: "contract_credited", account: FAKE_PAYER, contract: ESCROW_ID, amount: "13.6736842", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
+      ];
+      return Response.json({ _embedded: { records } });
+    }
+    return new Response("not found", { status: 404 });
+  }) as typeof fetch;
+}
+
+/**
+ * `open` as the escrow answers it, over the fake escrow's purchases: a rail payer's signature must verify against
+ * the rail's owner over `open_message`, or the host aborts the call (T162).
+ */
+function escrowOpener(purchases: Map<string, EscrowPurchase>, railOwner: Keypair): EscrowDisputeOpenerFactory & { sent: OpenInput[] } {
+  const sent: OpenInput[] = [];
+  const factory = (contractId: string) => ({
+    async open(input: OpenInput) {
+      sent.push(input);
+      const [key, held] = [...purchases.entries()].find(([, p]) => p.orderRef === input.orderRef) ?? [];
+      if (key === undefined || held === undefined) throw new Error("HostError: Error(Contract, #7)");
+      if (held.status !== "held" && held.status !== "shipped") throw new Error("HostError: Error(Contract, #8)");
+      if (input.sig === null || !railOwner.verify(Buffer.from(escrowOpenMessage(contractId, input.orderRef, input.claimHash)), Buffer.from(input.sig))) {
+        throw new Error("HostError: Error(Crypto, InvalidInput)");
+      }
+      purchases.set(key, { ...held, status: "disputed", claimHash: input.claimHash, openedAt: held.heldAt + 60 });
+      return { txHash: "9".repeat(64), ledger: 5_000_100 };
+    },
+  });
+  return Object.assign(factory, { sent });
+}
+
 describe("a store with an escrow, through the MCP (T160)", () => {
   it("quotes with its protection, pays into the escrow, sees the purchase held, and reads the order with four green checks", async () => {
     const escrow = fakeEscrow();
     const registry = fakeRegistry();
-    // The rail debited and the escrow credited, as Horizon reports a contract-to-contract transfer (X-14).
-    const horizon = (async (input: string | URL | Request) => {
-      const url = String(input);
-      if (/\/transactions\/[0-9a-f]{64}$/.test(url)) return Response.json({ successful: true, ledger: 4_899_999, created_at: "2026-10-14T12:00:00Z" });
-      if (/\/transactions\/[0-9a-f]{64}\/effects/.test(url)) {
-        const records = [
-          { type: "contract_debited", account: FAKE_PAYER, contract: RAIL, amount: "13.6736842", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
-          { type: "contract_credited", account: FAKE_PAYER, contract: ESCROW_ID, amount: "13.6736842", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer },
-        ];
-        return Response.json({ _embedded: { records } });
-      }
-      return new Response("not found", { status: 404 });
-    }) as typeof fetch;
+    const horizon = escrowHorizon();
     const escrowStore = createApp({
       platformProfiles: fakePlatformProfiles(),
       config: escrowConfig(),
@@ -632,6 +661,7 @@ describe("a store with an escrow, through the MCP (T160)", () => {
     });
     const escrowServer = await listen(escrowStore);
     const name = new URL(escrowServer.url).host;
+    const opener = escrowOpener(escrow.purchases, agent);
     const mcp = await startMcp({
       venues: () => Promise.resolve(loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: escrowServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }])),
       payment: {
@@ -642,6 +672,7 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       },
       verifyReceipt: (jws) => verifyReceipt(jws, { registry: registry.registry, horizonUrl: "https://horizon.test", fetchImpl: horizon, escrows: escrow.escrows }),
       escrows: escrow.escrows,
+      escrowDisputes: opener,
     });
     try {
       const quoted = await mcp.call("quote", { store: name, product_id: "gorro-andes", quantity: 1, destination: DESTINATION });
@@ -669,6 +700,63 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       expect(read.structuredContent!["escrow_notice"]).toBeNull();
       const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived" });
       expect(claimed.isError).toBeFalsy();
+      // The claim opened the dispute in the escrow, signed by the rail's owner over the escrow's message (T162).
+      expect(claimed.structuredContent!["dispute"]).toMatchObject({ escrow: ESCROW_ID, status: "disputed", transaction: "9".repeat(64), respond_by: expect.any(String) });
+      expect(claimed.structuredContent!["next_step"]).toContain("The dispute is open on Stellar");
+      expect(opener.sent).toEqual([{ orderRef: orderId, claimHash: claimed.structuredContent!["claim_hash"], sig: expect.any(Uint8Array) }]);
+      const after = await mcp.call("get_order", { store: name, order_id: orderId });
+      expect(after.structuredContent!["escrow"]).toMatchObject({ status: "disputed", meaning: expect.stringContaining("A claim is open") });
+      // One purchase, one dispute: a second claim sends nothing.
+      const again = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Still nothing" });
+      expect(errorOf(again)).toMatchObject({ error: "ResolveDisputeExists", payment_may_have_been_sent: false });
+      expect(opener.sent).toHaveLength(1);
+    } finally {
+      await mcp.close();
+      escrowStore.anchors.stop();
+      await escrowServer.close();
+    }
+  });
+
+  it("does not open the dispute when the escrow refuses the claim's signature: another key signed it (T162)", async () => {
+    const escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    const escrowStore = createApp({
+      platformProfiles: fakePlatformProfiles(),
+      config: escrowConfig(),
+      adapter: new MockStoreAdapter(),
+      facilitator: fakeFacilitator({ settle: { payer: RAIL } }),
+      anchorer: registry.anchorer,
+      registry: registry.registry,
+      holder: escrow.holder,
+      escrows: escrow.escrows,
+      anchorRetryDelaysMs: [1],
+    });
+    const escrowServer = await listen(escrowStore);
+    const name = new URL(escrowServer.url).host;
+    // The rail on chain answers owner() with a key that is not the one this MCP signs with.
+    const opener = escrowOpener(escrow.purchases, Keypair.random());
+    const mcp = await startMcp({
+      venues: () => Promise.resolve(loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: escrowServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }])),
+      payment: {
+        signerSecret: agent.secret(),
+        payer: { contractId: RAIL, ownerSecret: agent.secret() },
+        schemeForTests: fakeScheme(),
+        escrow: { ...escrowPolicy(escrow.escrows, [ARBITER]), heldWaitMs: 2_000, heldPollMs: 20 },
+      },
+      verifyReceipt: (jws) => verifyReceipt(jws, { registry: registry.registry, horizonUrl: "https://horizon.test", fetchImpl: escrowHorizon(), escrows: escrow.escrows }),
+      escrows: escrow.escrows,
+      escrowDisputes: opener,
+    });
+    try {
+      const quoted = await mcp.call("quote", { store: name, product_id: "gorro-andes", quantity: 1, destination: DESTINATION });
+      const paid = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+      await escrowStore.anchors.idle();
+      const orderId = paid.structuredContent!["order_id"] as string;
+      const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived" });
+      expect(errorOf(claimed)).toMatchObject({ error: "ResolveClaimantNotPayer", message: expect.stringContaining("The dispute was not opened") });
+      expect(opener.sent).toHaveLength(1);
+      const after = await mcp.call("get_order", { store: name, order_id: orderId });
+      expect(after.structuredContent!["escrow"]).toMatchObject({ status: "held" });
     } finally {
       await mcp.close();
       escrowStore.anchors.stop();

@@ -18,7 +18,9 @@ pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino 
 contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 cerrada** ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)): desde el 15-oct
 `agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 cerrada** ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)): un
 veredicto real reembolsó desde el pago retenido el 16-oct. **T161 cerrada** ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): la orden muestra dónde está el pago en el
-escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el entregable D1. Siguiente: T162.
+escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el entregable D1. **T162, código listo el
+27-oct** (rama `cc/t162-reclamo-abre-disputa`, sin mergear): el reclamo del chat abre la disputa en el escrow. Falta el
+reclamo en vivo desde Claude, que necesita el merge y el OK del usuario. Después: T163.
 
 ## Progreso
 
@@ -30,7 +32,7 @@ escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el e
 | T159 Un pago, un recibo, en la red | ✅ terminada |
 | T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ✅ terminada |
-| T162 El reclamo desde el chat abre la disputa en la red | ⏳ pendiente |
+| T162 El reclamo desde el chat abre la disputa en la red | 🔨 código listo; falta el reclamo en vivo desde Claude |
 | T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente |
 | T164 El despacho abre la ventana de liberación | ⏳ pendiente |
 | T165 Cada cambio de la disputa llega al agente | ⏳ pendiente |
@@ -192,3 +194,25 @@ llegó al escrow pero la compra todavía no quedó registrada, y los avisos de l
 completo (veredicto `f13730b9…`) y una de las vencidas, vencida. Smoke de producción 28/28.
 
 **Decisión:** `X-27`. **Evidencia:** [`evidencia/T161.md`](evidencia/T161.md). Mergeada el 16-oct ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)).
+
+## 2026-10-27 · T162 · El reclamo desde el chat abre la disputa en la red
+
+**Qué quedó funcionando, en llano.** Hasta ahora, cuando alguien le pedía a Claude un reclamo, Claude lo firmaba y le
+decía que se lo pasara al árbitro a mano. Ahora, si la compra se pagó al escrow de la tienda, Claude abre la disputa él
+mismo en la red: el pago queda congelado donde está y la tienda no lo puede cobrar hasta que el árbitro decida. El chat
+recibe el enlace de la transacción y hasta cuándo puede responder la tienda. Las compras pagadas directo a la tienda
+siguen igual que antes.
+
+**Antes de abrir, mira.** El MCP lee el escrow en la red y no envía nada si algo no cuadra: un contrato que no es el
+escrow conocido, una compra que la tienda no registró, otro recibo, otro pago, otro monto, otro pagador, una disputa
+que ya existe, o la ventana de reclamo cerrada. Cada caso tiene su error con nombre, y el chat lo puede contar.
+
+**Otra llave no sirve.** La red solo acepta el reclamo si lo firma la dueña del rail que pagó. Se comprobó en testnet,
+sin gastar: la misma llamada firmada por una llave al azar la rechaza la red, y firmada por la del MCP pasaría.
+
+**Lo que falta.** La grabación del reclamo hecho desde Claude, con el hash de la disputa abierta. Claude habla con el
+MCP de producción, así que primero hay que mergear (Render redespliega), y abrir la disputa cuesta una comisión de
+testnet: los dos pasos esperan el OK del usuario. El guion está en la evidencia, sobre la compra que sigue retenida
+(`ord_mv9s83yb…`, pagada desde el MCP).
+
+**Decisión:** `X-28` (y el código de error nuevo `ResolveDisputeExists`). **Evidencia:** [`evidencia/T162.md`](evidencia/T162.md).
