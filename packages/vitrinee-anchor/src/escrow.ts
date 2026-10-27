@@ -343,8 +343,14 @@ export class EscrowClient implements EscrowReader, EscrowDisputeOpener {
    * (`X-16`). A refusal keeps the contract's error in its cause (`escrowContractError`, `isSignatureRefused`).
    */
   async open(input: OpenInput, sourceSecret: string): Promise<OpenResult> {
-    const signer = Keypair.fromSecret(sourceSecret);
-    const account = await this.server.getAccount(signer.publicKey());
+    let signer: Keypair;
+    let account: Awaited<ReturnType<EscrowRpc["getAccount"]>>;
+    try {
+      signer = Keypair.fromSecret(sourceSecret);
+      account = await this.server.getAccount(signer.publicKey());
+    } catch (error) {
+      throw new VitrineeError("EscrowError", "could not load the account that sends open", { cause: error, details: { stage: "prepare" } });
+    }
     const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: this.config_.networkPassphrase })
       .addOperation(
         this.contract.call(
@@ -361,20 +367,25 @@ export class EscrowClient implements EscrowReader, EscrowDisputeOpener {
     try {
       prepared = await this.server.prepareTransaction(tx);
     } catch (error) {
-      throw new VitrineeError("EscrowError", `simulation of open failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error)}`, { cause: error });
+      throw new VitrineeError("EscrowError", `simulation of open failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error)}`, { cause: error, details: { stage: "simulate" } });
     }
     return this.submit("open", prepared, signer);
   }
 
+  /**
+   * Signs, sends and waits. Each refusal says in `details.stage` whether the transaction certainly did not take effect
+   * (`rejected` before entering a ledger, `failed` inside one) or might still (`unconfirmed`, or a thrown send or poll).
+   */
   private async submit(name: string, prepared: Awaited<ReturnType<EscrowRpc["prepareTransaction"]>>, signer: Keypair): Promise<OpenResult> {
     prepared.sign(signer);
     const sent = await this.server.sendTransaction(prepared);
     if (sent.status === "ERROR" || sent.status === "TRY_AGAIN_LATER") {
-      throw new VitrineeError("EscrowError", `${name} submission ${sent.status}`, { details: { status: sent.status, hash: sent.hash, error: sent.errorResult?.result.type } });
+      throw new VitrineeError("EscrowError", `${name} submission ${sent.status}`, { details: { stage: "rejected", status: sent.status, hash: sent.hash, error: sent.errorResult?.result.type } });
     }
     const final = await this.server.pollTransaction(sent.hash, { attempts: 30 });
     if (final.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
-      throw new VitrineeError("EscrowError", `${name} transaction ${final.status}`, { details: { hash: sent.hash, status: final.status } });
+      const stage = final.status === rpc.Api.GetTransactionStatus.FAILED ? "failed" : "unconfirmed";
+      throw new VitrineeError("EscrowError", `${name} transaction ${final.status}`, { details: { stage, hash: sent.hash, status: final.status } });
     }
     return { txHash: sent.hash, ledger: final.ledger };
   }

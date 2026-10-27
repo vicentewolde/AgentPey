@@ -587,6 +587,22 @@ reclamar, cuándo cobra la tienda, y si el reembolso llegó.
 comprobación previa existe porque la red solo dice "rechazado": sin ella, el chat gastaría comisión para enterarse de un
 recibo ajeno o de una ventana cerrada, y no podría explicar por qué.
 
+**Ajustes de `/revisar` (27-oct).**
+- **Bloqueante corregido: un escrow señuelo.** La tienda firma el recibo, así que podía nombrar otro escrow propio, con
+  una compra idéntica registrada, mientras la plata quedaba sin asignar en el verdadero. Ahora, antes de leer el escrow,
+  `open_claim` verifica el recibo como `get_order` (`verifyReceipt`) y exige el chequeo del pago (el pago acreditó a
+  ese contrato) y el de retenido (el escrow es de la tienda que firma: su operador y su cuenta de cobro). Además el
+  árbitro del escrow tiene que ser uno de los que el agente acepta al pagar (`X-9`), y la compra tiene que ser de esa
+  misma orden.
+- **Un envío incierto no pierde el reclamo.** Si `open` se envió y no se pudo confirmar, puede haber entrado con el hash
+  de un reclamo que nadie más tiene. El error lleva entonces el `claim_jws` completo para el árbitro.
+- **"No se abrió" solo cuando es seguro:** `EscrowClient.open` marca en qué etapa falló (`prepare`, `simulate`,
+  `rejected`, `failed` o `unconfirmed`), y solo las cuatro primeras dicen que nada cambió.
+- **Queda para el usuario:** `destructiveHint` sigue en `false` (`R-10`). Pasarlo a `true` haría que Claude y ChatGPT
+  pidan confirmación con más fuerza; es un cambio de una línea.
+- **Otra llave rechazada "en la red":** se probó con una simulación en testnet (sin enviar). Si hace falta una
+  transacción rechazada con hash, cuesta una comisión y se hace con OK del usuario.
+
 **Alternativas descartadas.**
 - **Enviar `open` sin comprobar y dejar que el contrato decida:** el contrato igual es la última palabra, pero el chat
   no sabría si el escrow es el del recibo ni podría decir qué falló.

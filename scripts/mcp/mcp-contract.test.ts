@@ -764,6 +764,77 @@ describe("a store with an escrow, through the MCP (T160)", () => {
     }
   });
 
+  it("never calls the escrow for an order paid straight to the store, even with a way to open disputes (T162)", async () => {
+    const opener = escrowOpener(new Map(), agent);
+    const mcp = await startMcp({ escrowDisputes: opener });
+    try {
+      const quoted = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", destination: DESTINATION });
+      const paid = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+      await store.anchors.idle();
+      const claimed = await mcp.call("open_claim", { store: storeName(), order_id: paid.structuredContent!["order_id"], reason: "not_delivered", description: "Never arrived" });
+      expect(claimed.isError).toBeFalsy();
+      expect(claimed.structuredContent!["dispute"]).toBeNull();
+      expect(opener.sent).toEqual([]);
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it("sends nothing when the payment did not reach the escrow the receipt names: a decoy escrow (T162 review)", async () => {
+    const escrow = fakeEscrow();
+    const registry = fakeRegistry();
+    const escrowStore = createApp({
+      platformProfiles: fakePlatformProfiles(),
+      config: escrowConfig(),
+      adapter: new MockStoreAdapter(),
+      facilitator: fakeFacilitator({ settle: { payer: RAIL } }),
+      anchorer: registry.anchorer,
+      registry: registry.registry,
+      holder: escrow.holder,
+      escrows: escrow.escrows,
+      anchorRetryDelaysMs: [1],
+    });
+    const escrowServer = await listen(escrowStore);
+    const name = new URL(escrowServer.url).host;
+    const opener = escrowOpener(escrow.purchases, agent);
+    // Horizon says the money went to another contract than the one the receipt names, which holds a look-alike purchase.
+    const elsewhere = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (/\/transactions\/[0-9a-f]{64}$/.test(url)) return Response.json({ successful: true, ledger: 4_899_999, created_at: "2026-10-14T12:00:00Z" });
+      if (/\/effects/.test(url)) {
+        const records = [{ type: "contract_credited", account: FAKE_PAYER, contract: "CBWRKZ3SL4EAXOS5XAV6CXVRRTBNPPFFC5TKSLW3FTXFTQZNBAZY6Z5U", amount: "13.6736842", asset_code: "USDC", asset_issuer: USDC_TESTNET.issuer }];
+        return Response.json({ _embedded: { records } });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+    let horizon: typeof fetch = escrowHorizon();
+    const mcp = await startMcp({
+      venues: () => Promise.resolve(loadVenueRegistry([{ slug: "vitrinee", address: MERCHANT, baseUrl: escrowServer.url, assets: [{ code: "USDC", issuer: USDC_TESTNET.contractId }] }])),
+      payment: {
+        signerSecret: agent.secret(),
+        payer: { contractId: RAIL, ownerSecret: agent.secret() },
+        schemeForTests: fakeScheme(),
+        escrow: { ...escrowPolicy(escrow.escrows, [ARBITER]), heldWaitMs: 2_000, heldPollMs: 20 },
+      },
+      verifyReceipt: (jws) => verifyReceipt(jws, { registry: registry.registry, horizonUrl: "https://horizon.test", fetchImpl: horizon, escrows: escrow.escrows }),
+      escrows: escrow.escrows,
+      escrowDisputes: opener,
+    });
+    try {
+      const quoted = await mcp.call("quote", { store: name, product_id: "gorro-andes", quantity: 1, destination: DESTINATION });
+      const paid = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+      await escrowStore.anchors.idle();
+      horizon = elsewhere;
+      const claimed = await mcp.call("open_claim", { store: name, order_id: paid.structuredContent!["order_id"], reason: "not_delivered", description: "Never arrived" });
+      expect(errorOf(claimed)).toMatchObject({ error: "ResolveReceiptInvalid", message: expect.stringContaining("nothing was sent") });
+      expect(opener.sent).toEqual([]);
+    } finally {
+      await mcp.close();
+      escrowStore.anchors.stop();
+      await escrowServer.close();
+    }
+  });
+
   it("refuses the store's escrow before signing when the server has no way to check it", async () => {
     const escrow = fakeEscrow();
     const registry = fakeRegistry();

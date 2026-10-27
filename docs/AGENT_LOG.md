@@ -9279,7 +9279,9 @@ Verificación: `pnpm check` verde, `cargo test -p purchase-escrow` 35/35, ESLint
 testnet, solo simulación (sin enviar ni gastar) sobre `ord_mv9s83yb0022b6a353`: firmado por otra llave,
 `Error(Crypto, InvalidInput)`; por la dueña del rail del MCP, pasaría. `pnpm run prod:check` 11/11 antes de empezar.
 
-Pendiente: `/revisar`; OK del usuario para push, PR y merge (redespliega Render); después, el reclamo en vivo desde
+Revisión (`revisor`): un bloqueante corregido (un escrow señuelo nombrado por la tienda: ahora se exige que el pago haya acreditado a ese escrow y que sea de la tienda, vía `verifyReceipt`), más árbitro aceptado, orden afirmada, etapas de error y el reclamo entregado si el envío queda incierto. `destructiveHint` queda para el usuario.
+
+Pendiente: OK del usuario para push, PR y merge (redespliega Render); después, el reclamo en vivo desde
 Claude con grabación (guion en `fase-9-compra-protegida/evidencia/T162.md` §4) y su hash en la evidencia. La rama
 `cc/t174-identidad-comprador` de la otra sesión quedó intacta. Exponential: ticket T162 a `IN_PROGRESS` (inicio 27-oct en `SYNC.md`); `exp:sync` sin cambios de tarjetas. `AGENTS.md`: sin cambios
 (ninguna decisión de `docs/DECISIONES.md` cambió).

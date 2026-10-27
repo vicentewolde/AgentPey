@@ -1,5 +1,6 @@
 import { hasErrorCode } from "@agentpass/core";
 import { escrowOpenMessage } from "@agentpey/resolve";
+import { VitrineeError } from "@vitrinee/core";
 import { PURCHASE_ESCROW_WASM_HASHES, type EscrowConfig, type EscrowDisputeOpenerFactory, type EscrowPurchase, type EscrowReader, type EscrowReaderFactory, type OpenInput } from "@vitrinee/anchor";
 import { Keypair } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
@@ -74,6 +75,7 @@ const check = (e: ReturnType<typeof escrow>, overrides: Partial<Parameters<typeo
     orderId: "ord_1",
     receipt: { hash: RECEIPT, txHash: TX, amountAtomic: 5_157_895n },
     payer: RAIL,
+    arbiters: ["GARBITER"],
     readers: e.readers,
     openers: e.openers,
     now: at(60),
@@ -134,6 +136,20 @@ describe("a claim from the chat opens the dispute in the escrow (T162)", () => {
     expect(opened).toMatchObject({ status: "disputed", respond_by: null, resolve_by: null });
   });
 
+  it("tells a send that certainly did not take effect from one that may still land", async () => {
+    const e = escrow(purchase());
+    const target = await check(e);
+    const failing = (stage: string): EscrowDisputeOpenerFactory => () => ({ open: () => Promise.reject(new VitrineeError("EscrowError", "open failed", { details: { stage } })) });
+    for (const stage of ["prepare", "simulate", "rejected", "failed"]) {
+      const error = await openEscrowDispute({ target: { ...target, openers: failing(stage) }, claimHash: CLAIM, agentKey: owner }).catch((caught: unknown) => caught);
+      expect((error as Error).message, stage).toContain("nothing changed");
+      expect((error as { details: Record<string, unknown> }).details["uncertain"], stage).toBeUndefined();
+    }
+    const unconfirmed = await openEscrowDispute({ target: { ...target, openers: failing("unconfirmed") }, claimHash: CLAIM, agentKey: owner }).catch((caught: unknown) => caught);
+    expect((unconfirmed as Error).message).toContain("read the order with get_order");
+    expect((unconfirmed as { details: Record<string, unknown> }).details["uncertain"]).toBe(true);
+  });
+
   it.each([
     ["the contract's own window closed meanwhile", "HostError: Error(Contract, #10)", "ResolveClaimWindowClosed"],
     ["the purchase changed meanwhile", "HostError: Error(Contract, #8)", "ResolveDisputeExists"],
@@ -149,6 +165,7 @@ describe("a claim from the chat opens the dispute in the escrow (T162)", () => {
 describe("nothing is sent when the escrow does not hold this purchase, open to a claim (T162)", () => {
   it.each([
     ["the store recorded no purchase", null, {}, "ResolveReceiptInvalid"],
+    ["the purchase for another order", purchase({ orderRef: "ord_2" }), {}, "ResolveReceiptInvalid"],
     ["another receipt", purchase({ receiptHash: "8".repeat(64) }), {}, "ResolveReceiptInvalid"],
     ["another payment", purchase({ txHash: "f".repeat(64) }), {}, "ResolveReceiptInvalid"],
     ["another amount", purchase({ amountAtomic: 1n }), {}, "ResolveReceiptInvalid"],
@@ -161,6 +178,12 @@ describe("nothing is sent when the escrow does not hold this purchase, open to a
     const e = escrow(found);
     expect(await codeOf(check(e, overrides))).toBe(code);
     expect(e.sent).toEqual([]);
+  });
+
+  it("refuses an escrow whose arbiter the agent does not accept", async () => {
+    const e = escrow(purchase(), { ...CONFIG, arbiter: "GSTORESOWNARBITER" });
+    expect(await codeOf(check(e))).toBe("EscrowUnverified");
+    expect(await codeOf(check(escrow(purchase()), { arbiters: undefined }))).toBe("ConfigError");
   });
 
   it("refuses an escrow that does not run the known purchase-escrow code", async () => {

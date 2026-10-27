@@ -413,18 +413,27 @@ export class Shopper {
     }
     // The escrow comes from the signed receipt, never from the store's order (T161 review); checked before signing anything.
     const contract = receipt.claims.escrow?.contract;
-    const target =
-      contract === undefined
-        ? null
-        : await checkClaimableEscrow({
-            contract,
-            orderId: order.id,
-            receipt: { hash: receipt.hash, txHash: receipt.claims.settlementTxHash, amountAtomic: BigInt(receipt.claims.amountUSDCAtomic) },
-            payer: this.deps.payment.payer?.contractId ?? this.deps.agentKey.publicKey(),
-            readers: this.deps.escrows,
-            openers: this.deps.escrowDisputes,
-            now: (this.deps.now ?? (() => new Date()))(),
-          });
+    let target: Awaited<ReturnType<typeof checkClaimableEscrow>> | null = null;
+    if (contract !== undefined) {
+      // The store signs the receipt, so the escrow it names is checked against the money: the payment credited that
+      // escrow, and the escrow is the store's own and holds it (T162 review). A decoy escrow fails here.
+      const verification = await this.deps.verifyReceipt(jws);
+      if (!verification.checks.settlement.ok || verification.checks.held?.ok !== true) {
+        throw new AgentPassError("ResolveReceiptInvalid", "the payment did not reach the escrow this receipt names, or that escrow is not the store's; nothing was sent", {
+          details: { orderId: order.id, escrow: contract, settlement: verification.checks.settlement.reason ?? null, held: verification.checks.held?.reason ?? null },
+        });
+      }
+      target = await checkClaimableEscrow({
+        contract,
+        orderId: order.id,
+        receipt: { hash: receipt.hash, txHash: receipt.claims.settlementTxHash, amountAtomic: BigInt(receipt.claims.amountUSDCAtomic) },
+        payer: this.deps.payment.payer?.contractId ?? this.deps.agentKey.publicKey(),
+        arbiters: this.deps.payment.escrow?.arbiters,
+        readers: this.deps.escrows,
+        openers: this.deps.escrowDisputes,
+        now: (this.deps.now ?? (() => new Date()))(),
+      });
+    }
     const signed = await signClaim(
       {
         type: "AgentResolveClaim",
@@ -454,7 +463,17 @@ export class Shopper {
         next_step: "Send claim_jws to the AgentResolve arbiter, who opens the dispute on Stellar with: pnpm run resolve:open -- --claim <file with claim_jws>",
       };
     }
-    const dispute = await openEscrowDispute({ target, claimHash: signed.hash, agentKey: this.deps.agentKey });
+    let dispute: Awaited<ReturnType<typeof openEscrowDispute>>;
+    try {
+      dispute = await openEscrowDispute({ target, claimHash: signed.hash, agentKey: this.deps.agentKey });
+    } catch (error) {
+      // A dispute that may still land records this claim's hash, and the claim cannot be signed again the same way:
+      // hand it over now, or the arbiter could never read it (T162 review).
+      if (isAgentPassError(error) && error.details["uncertain"] === true) {
+        throw new AgentPassError("NetworkError", `${error.message}. Keep this claim for the arbiter, it is the one sent: ${signed.jws}`, { cause: error, details: { claimHash: signed.hash } });
+      }
+      throw error;
+    }
     this.log("dispute opened", { claimHash: signed.hash, escrow: dispute.escrow, transaction: dispute.transaction });
     const until = dispute.respond_by === null ? "within the escrow's response window" : `until ${dispute.respond_by}`;
     return {
