@@ -16,7 +16,7 @@
     "@agentpey/directory": "workspace:*",
     "@agentpey/mandate": "workspace:*",
     "@agentpey/vault": "workspace:*",
-    "@stellar/stellar-sdk": "^17.0.1",
+    "@stellar/stellar-sdk": "^17.4.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {

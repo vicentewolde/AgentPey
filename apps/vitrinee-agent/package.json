@@ -21,7 +21,7 @@
     "verify": "tsx src/verify-cli.ts"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^17.1.0",
+    "@stellar/stellar-sdk": "^17.4.0",
     "@vitrinee/anchor": "workspace:*",
     "@vitrinee/core": "workspace:*",
     "@x402/core": "2.26.0",

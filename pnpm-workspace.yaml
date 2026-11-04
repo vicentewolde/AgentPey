@@ -13,3 +13,9 @@ allowBuilds:
   esbuild: true
   secp256k1: false
   utf-8-validate: false
+
+# Stellar testnet moved to protocol 30 (2026-11): stellar-sdk 16.3.0 and 17.0–17.1 cannot read its ledger header, so
+# every payment that sets an authorization's expiry (getLatestLedger) failed. Our own packages use 17.4.0; @x402/stellar
+# still asks for ^16.3.0, so its copy is held at 16.4.1, the first 16.x that reads protocol 30.
+overrides:
+  '@x402/stellar>@stellar/stellar-sdk': 16.4.1

@@ -252,7 +252,9 @@ main().catch((error: unknown) => {
   if (isAgentPassError(error)) {
     process.stderr.write(`\n${error.code}: ${error.message}\n${JSON.stringify(error.details, null, 2)}\n`);
   } else {
-    process.stderr.write(`\n${String(error)}\n`);
+    // A wrapped failure (the payment builder's, for instance) says what really failed in its cause.
+    const cause = (error as { cause?: unknown }).cause;
+    process.stderr.write(`\n${String(error)}\n${cause === undefined ? "" : `cause: ${cause instanceof Error ? cause.message : String(cause)}\n`}`);
   }
   process.exitCode = 1;
 });

@@ -987,3 +987,25 @@ límite. La causa: en la instancia de Render (1 CPU) las cinco apps compilan con
   después de cada deploy.
 - **Un `healthCheckPath` en Render:** pendiente desde `P-17`; no resuelve el arranque lento.
 
+
+---
+
+### P-22 · `stellar-sdk` pasa a 17.4.0 (y 16.4.1 dentro de `@x402/stellar`) porque testnet subió al protocolo 30 · `Vigente`
+**Fecha:** 2026-11-04 · **Tarea:** T163 (encontrado al correr su ensayo en testnet)
+
+Stellar testnet corre el protocolo 30 (stellar-core 30.0.0). Las versiones que usaba el repo (`stellar-sdk` 17.0.1 y
+17.1.0, y la 16.3.0 que trae `@x402/stellar`) no saben leer la cabecera de ledger nueva:
+`getLatestLedger` falla con `LedgerHeader.scpValue.ext.v: unknown enum value 3`. Esa llamada fija el vencimiento de la
+firma de un pago, así que **ningún agente podía armar un pago**: ni el MCP, ni el comprador UCP, ni los scripts. Las
+lecturas y las simulaciones seguían funcionando, por eso `prod:check` daba verde.
+
+- Todos los paquetes del workspace pasan a `stellar-sdk` 17.4.0 (manteniendo cada uno su forma de fijar la versión).
+- `@x402/stellar` pide `^16.3.0`: un `override` en `pnpm-workspace.yaml` le fija la 16.4.1, la primera 16.x que lee el
+  protocolo 30. Se quita cuando `@x402/stellar` pida una versión que ya lo lea.
+- `@agentpey/ucp-stellar` está publicado en npm (0.2.0, con `~17.0.1`): quien lo instale hoy no puede pagar. Publicar
+  una versión nueva le queda al usuario.
+- `examples/reference-merchant` tiene su propio lockfile, fuera del workspace, y queda en 17.0.1: se actualiza aparte.
+
+**Motivo.** Sin esto no hay pagos en testnet, así que no hay T163 en la red, ni T166, ni demo.
+
+**Alternativa descartada: esperar a que `@x402/stellar` actualice.** Dejaba el piloto sin pagos por tiempo indefinido.

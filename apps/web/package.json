@@ -21,7 +21,7 @@
     "@agentpey/vault": "workspace:*",
     "@agentpey/wallet-kit": "workspace:*",
     "@agentpey/webhooks": "workspace:*",
-    "@stellar/stellar-sdk": "^17.0.1",
+    "@stellar/stellar-sdk": "^17.4.0",
     "@vitrinee/anchor": "workspace:*",
     "@vitrinee/core": "workspace:*",
     "pg": "^8.13.0",
