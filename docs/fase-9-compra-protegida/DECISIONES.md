@@ -643,6 +643,25 @@ recibo ajeno o de una ventana cerrada, y no podría explicar por qué.
    para la evidencia, `pnpm run escrow:rehearsal -- --scenario late-response` firma `respond` dentro del plazo en el
    escrow de ensayo y la envía después.
 
+**Ajustes de `/revisar` (4-nov).**
+- **Bloqueante corregido: una respuesta que llegó a la red pero no se pudo confirmar se perdía.** El contrato no deja
+  responder dos veces, así que el árbitro no podía decidir y la disputa terminaba en `expire`. Ahora `submit` es
+  idempotente: si el escrow ya tiene el hash de ese documento, lo guarda sin enviar nada (con su transacción, cuyo hash
+  se calcula del sobre firmado antes de enviarlo). La página guarda la respuesta firmada en el navegador hasta que la
+  tienda la confirma y, al volver a cargarla, la reenvía igual.
+- **La tienda valida con el esquema del árbitro** (`@agentpey/resolve/response`): el documento tiene que estar exactamente
+  como lo lee el esquema (texto recortado, sin campos de más), responder al `claimId` del reclamo guardado y aceptar un
+  parcial menor que lo reclamado. Así nunca se ancla un hash que el árbitro después rechazaría.
+- **La página compara lo que prepara la tienda** (el hash de la respuesta y la cuenta) con lo suyo antes de pasarlo a la
+  wallet, arma el enlace a Stellar Expert desde el hash y muestra el plazo. El decodificador de la tienda además rechaza
+  una operación con otro origen, una autorización que no sea la de la cuenta de origen, un fee bump y una comisión de
+  más de 1 XLM.
+- **El árbitro** acepta `--response` con el documento solo en una disputa del escrow (verificado contra el hash de la
+  red), y guarda el reclamo leído de la orden solo después de compararlo con el escrow.
+- **Queda como está:** la página pide wallets que firman mensajes y transacciones (las dos que se ofrecen, Freighter y
+  xBull, hacen ambas); las rutas no tienen límite de uso (cada una exige una disputa abierta en la red); y
+  `STELLAR_RPC_URL` del portal se lee igual que `STELLAR_HORIZON_URL`, sin pasar por el esquema.
+
 **Motivo.** Es lo que pide T163 ("el árbitro decide con la respuesta sin intercambiar archivos"). Sin el reclamo junto a
 la orden, el comercio igual necesitaría un archivo para saber qué le reclaman.
 

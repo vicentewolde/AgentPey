@@ -11,12 +11,17 @@
  * never holds that key (VT-8): `prepare` builds the transaction for the wallet to sign, and `submit` sends it only
  * after reading back that it is exactly that call, for this order and this document, from the payout account.
  *
+ * `submit` is idempotent (T163 review): an answer whose hash the escrow already holds is kept without sending
+ * anything, so a send that landed but could not be confirmed, or a restart in between, never loses the document.
+ * The store checks a response with the arbiter's own schema, so it never sends a hash the arbiter would refuse.
+ *
  * Every route is public, like the order itself: the chain is the gate. Reads and the two answer steps are CORS-open
  * to AgentPey's responder page only.
  */
 import { createHash } from "node:crypto";
 
 import { canonicalJson, jwsDocumentHash } from "@agentpass/core";
+import { agentResolveResponseSchema } from "@agentpey/resolve/response";
 import { decodeEscrowCall, type EscrowClient, type EscrowPurchase, type EscrowReaderFactory } from "@vitrinee/anchor";
 import { VitrineeError, stellarExpertTxUrl } from "@vitrinee/core";
 import type { Express, NextFunction, Request, Response } from "express";
@@ -32,19 +37,26 @@ export const RESPOND_VALID_SECONDS = 300;
 /** A response document is text written by a person: bounded so the order record stays small. */
 const MAX_RESPONSE_BYTES = 16 * 1024;
 const MAX_CLAIM_BYTES = 32 * 1024;
+/** What a merchant's `respond` may charge it: a Soroban call costs well under this; anything above is not ours. */
+const MAX_RESPOND_FEE_STROOPS = 10_000_000n;
 
-const hex64 = z.string().regex(/^[0-9a-f]{64}$/, "expected a lowercase hex sha256");
-
-/** What the store checks of a response: who answers, to what. The arbiter checks the rest (`@agentpey/resolve`). */
-const responseDocumentSchema = z.looseObject({
-  type: z.literal("AgentResolveResponse"),
-  respondent: z.string().min(1),
-  receiptHash: hex64,
-  claimHash: hex64,
-});
+/** The claim's own fields the store holds an answer to: its id and the amount asked. Read from a claim already hash-checked. */
+const claimPayloadSchema = z.looseObject({ claimId: z.string(), amountAtomic: z.string().regex(/^[1-9]\d*$/) });
 const claimBodySchema = z.strictObject({ claim_jws: z.string().trim().min(1).max(MAX_CLAIM_BYTES) });
 const prepareBodySchema = z.strictObject({ response: z.record(z.string(), z.unknown()) });
-const submitBodySchema = z.strictObject({ response: z.record(z.string(), z.unknown()), signed_xdr: z.string().min(1).max(64 * 1024) });
+/** Without `signed_xdr`: only to hand over the document of an answer the escrow already holds. */
+const submitBodySchema = z.strictObject({ response: z.record(z.string(), z.unknown()), signed_xdr: z.string().min(1).max(64 * 1024).optional() });
+
+function claimPayload(jws: string): z.infer<typeof claimPayloadSchema> | null {
+  const part = jws.split(".")[1];
+  if (part === undefined) return null;
+  try {
+    const parsed = claimPayloadSchema.safeParse(JSON.parse(Buffer.from(part, "base64url").toString("utf8")));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
 
 /** sha256 of the document's canonical JSON, lowercase hex: `responseHash` in `@agentpey/resolve`. */
 export function disputeResponseHash(document: Record<string, unknown>): string {
@@ -117,35 +129,69 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
     return purchase;
   };
 
-  /** A response the escrow can take now: the right respondent, answering this order's open dispute, in time. */
-  const checkResponse = (record: OrderRecord, purchase: EscrowPurchase, document: Record<string, unknown>): { hash: string; respondBy: Date } => {
+  /**
+   * A response the arbiter will accept, answering this order's dispute: the arbiter's own schema, exactly as it parses
+   * (trimmed, no extra fields), from the payout account, about this receipt and the claim the escrow holds, and a
+   * partial amount below what was claimed and paid. Its hash is the one `respond` would anchor.
+   */
+  const checkDocument = (record: OrderRecord, purchase: EscrowPurchase, document: Record<string, unknown>): string => {
     if (Buffer.byteLength(canonicalJson(document), "utf8") > MAX_RESPONSE_BYTES) throw refused("the response is too long", { limitBytes: MAX_RESPONSE_BYTES });
-    const response = parse(responseDocumentSchema, document);
+    const parsed = agentResolveResponseSchema.safeParse(document);
+    if (!parsed.success) throw new VitrineeError("ValidationError", "the response does not have the expected shape", { details: { issues: parsed.error.issues.map((i) => i.message) } });
+    const response = parsed.data;
+    if (canonicalJson(response) !== canonicalJson(document)) throw refused("the response must be exactly as its schema reads it: trimmed text and no extra fields", {});
     if (response.respondent !== payeeDid) throw refused("only the store's payout account answers a dispute in its escrow", { respondent: response.respondent });
     if (response.receiptHash !== record.receipt?.hash) throw refused("the response is about another receipt than this order's", { receiptHash: response.receiptHash });
+    if (purchase.claimHash === null || response.claimHash !== purchase.claimHash) throw refused("the response answers another claim than the one in the escrow", { claimHash: response.claimHash });
+    const claim = record.dispute?.claimJws === undefined ? null : claimPayload(record.dispute.claimJws);
+    if (claim === null) throw refused("the store does not have this dispute's claim yet, so it cannot check the answer against it", { orderId: record.orderId });
+    if (response.claimId !== claim.claimId) throw refused("the response answers another claim than the one in the escrow", { claimId: response.claimId });
+    if (response.acceptedAtomic !== null) {
+      const accepted = BigInt(response.acceptedAtomic);
+      if (accepted >= BigInt(claim.amountAtomic) || accepted >= purchase.amountAtomic) throw refused("a partial acceptance must be less than the amount claimed", { accepted: response.acceptedAtomic });
+    }
+    return disputeResponseHash(document);
+  };
+
+  /** The escrow takes an answer now: a dispute open, its window not over. Returns until when. */
+  const checkOpen = (record: OrderRecord, purchase: EscrowPurchase): Date => {
     if (purchase.status === "responded") throw refused("the store already answered this dispute", { orderId: record.orderId });
     if (purchase.status !== "disputed" || purchase.openedAt === null) throw refused("this order has no open dispute to answer", { status: purchase.status });
-    if (response.claimHash !== purchase.claimHash) throw refused("the response answers another claim than the one in the escrow", { claimHash: response.claimHash });
     const respondBy = new Date((purchase.openedAt + escrow.responseWindowSeconds) * 1000);
     // The contract refuses from the second after the window (`now > opened_at + response_window`).
     if (now().getTime() > respondBy.getTime()) throw refused(`the time to answer ended on ${respondBy.toISOString()}`, { respondBy: respondBy.toISOString() });
-    return { hash: disputeResponseHash(document), respondBy };
+    return respondBy;
   };
 
-  const view = (record: OrderRecord) => ({
-    order_id: record.orderId,
-    escrow: escrow.contract,
-    payee: escrow.payee,
-    claim_jws: record.dispute?.claimJws ?? null,
-    response:
-      record.dispute?.response === undefined
-        ? null
-        : { document: record.dispute.response.document, hash: record.dispute.response.hash, transaction: record.dispute.response.transaction, explorer_url: stellarExpertTxUrl(record.dispute.response.transaction) },
-  });
+  const keep = async (id: string, document: Record<string, unknown>, hash: string, transaction: string | null) => {
+    await deps.orders.update(id, (order) => {
+      order.dispute = { ...order.dispute, response: { document, hash, transaction } };
+    });
+    log("dispute response kept", { orderId: id, responseHash: hash, transaction });
+  };
 
-  app.get("/orders/:id/dispute", (req: Request, res: Response) => {
+  const view = (record: OrderRecord, purchase: EscrowPurchase | null = null) => {
+    const response = record.dispute?.response;
+    return {
+      order_id: record.orderId,
+      escrow: escrow.contract,
+      payee: escrow.payee,
+      // Until when the store may answer, while a dispute is open: the page shows it. Null when unknown.
+      respond_by: purchase?.status === "disputed" && purchase.openedAt !== null ? new Date((purchase.openedAt + escrow.responseWindowSeconds) * 1000).toISOString() : null,
+      claim_jws: record.dispute?.claimJws ?? null,
+      response:
+        response === undefined
+          ? null
+          : { document: response.document, hash: response.hash, transaction: response.transaction, explorer_url: response.transaction === null ? null : stellarExpertTxUrl(response.transaction) },
+    };
+  };
+
+  app.get("/orders/:id/dispute", async (req: Request, res: Response) => {
     res.set("Cache-Control", "no-store");
-    res.json(view(heldOrder(String(req.params["id"]))));
+    const record = heldOrder(String(req.params["id"]));
+    // The deadline is a convenience: a failed read leaves it out, never the documents.
+    const purchase = await purchaseOf(record.orderId).catch(() => null);
+    res.json(view(record, purchase));
   });
 
   // The buyer's claim, kept once its hash is the escrow's claim_hash. Anyone may bring it: only the real one fits.
@@ -162,14 +208,16 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
       });
       log("dispute claim kept", { orderId: id, claimHash: purchase.claimHash });
     }
-    res.json(view(heldOrder(id)));
+    res.json(view(heldOrder(id), purchase));
   });
 
   app.post("/orders/:id/dispute/response/prepare", async (req: Request, res: Response) => {
     const id = String(req.params["id"]);
     const record = heldOrder(id);
     const { response } = parse(prepareBodySchema, req.body);
-    const { hash, respondBy } = checkResponse(record, await purchaseOf(id), response);
+    const purchase = await purchaseOf(id);
+    const respondBy = checkOpen(record, purchase);
+    const hash = checkDocument(record, purchase, response);
     const xdr = await deps.writer.prepareRespond({ orderRef: id, responseHash: hash }, escrow.payee, RESPOND_VALID_SECONDS);
     res.json({ xdr, response_hash: hash, payee: escrow.payee, respond_by: respondBy.toISOString(), network_passphrase: deps.networkPassphrase });
   });
@@ -178,24 +226,36 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
     const id = String(req.params["id"]);
     const record = heldOrder(id);
     const body = parse(submitBodySchema, req.body);
-    const { hash } = checkResponse(record, await purchaseOf(id), body.response);
+    const purchase = await purchaseOf(id);
+    const hash = checkDocument(record, purchase, body.response);
     // Sent only if it is exactly respond(this order, this document) on this escrow, from the payout account.
-    const call = decodeEscrowCall(body.signed_xdr, deps.networkPassphrase);
+    const call = body.signed_xdr === undefined ? null : decodeEscrowCall(body.signed_xdr, deps.networkPassphrase);
     const args = call?.args ?? [];
     const orderRef = args[0] instanceof Uint8Array ? Buffer.from(args[0]).toString("utf8") : null;
     const signedHash = args[1] instanceof Uint8Array ? Buffer.from(args[1]).toString("hex") : null;
-    if (call === null || call.contract !== escrow.contract || call.fn !== "respond" || args.length !== 2 || orderRef !== id || signedHash !== hash || call.source !== escrow.payee) {
-      throw refused("the signed transaction is not this store's respond for this order and this response", { orderId: id });
+    const exact =
+      call !== null && call.contract === escrow.contract && call.fn === "respond" && args.length === 2 && orderRef === id && signedHash === hash && call.source === escrow.payee && call.feeStroops <= MAX_RESPOND_FEE_STROOPS;
+    if (body.signed_xdr !== undefined && !exact) throw refused("the signed transaction is not this store's respond for this order and this response", { orderId: id });
+    // The escrow already holds this answer: a send that landed earlier. Keep the document; send nothing.
+    if (purchase.status === "responded" && purchase.responseHash === hash) {
+      await keep(id, body.response, hash, call?.hash ?? record.dispute?.response?.transaction ?? null);
+      res.json(view(heldOrder(id), purchase));
+      return;
     }
-    const sent = await deps.writer.submitSigned("respond", body.signed_xdr);
+    const signedXdr = body.signed_xdr;
+    if (call === null || signedXdr === undefined) throw refused("the escrow does not hold this answer yet: send it with its signed transaction", { orderId: id });
+    checkOpen(record, purchase);
+    try {
+      await deps.writer.submitSigned("respond", signedXdr);
+    } catch (error) {
+      // It may have landed anyway: the same request, sent again, keeps it once the escrow shows it.
+      throw new VitrineeError("EscrowError", "the answer could not be confirmed on Stellar; send the same answer again in a minute", { cause: error, details: { orderId: id, transaction: call.hash } });
+    }
     const after = await purchaseOf(id);
     if (after.responseHash !== hash) {
-      throw new VitrineeError("EscrowError", "the respond transaction landed but the escrow holds another answer", { details: { orderId: id, transaction: sent.txHash } });
+      throw new VitrineeError("EscrowError", "the respond transaction landed but the escrow holds another answer", { details: { orderId: id, transaction: call.hash } });
     }
-    await deps.orders.update(id, (order) => {
-      order.dispute = { ...order.dispute, response: { document: body.response, hash, transaction: sent.txHash } };
-    });
-    log("dispute response kept", { orderId: id, responseHash: hash, transaction: sent.txHash });
-    res.json(view(heldOrder(id)));
+    await keep(id, body.response, hash, call.hash);
+    res.json(view(heldOrder(id), after));
   });
 }

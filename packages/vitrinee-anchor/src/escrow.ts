@@ -134,6 +134,10 @@ function errorText(error: unknown): string {
 export interface EscrowCall {
   /** The transaction's source account, the one whose signature authorizes a `require_auth` on it. */
   source: string;
+  /** The most the transaction can charge its source, in stroops. */
+  feeStroops: bigint;
+  /** Its sha256, hex: the hash the network will give it, known before it is sent. */
+  hash: string;
   contract: string;
   fn: string;
   /** The arguments, decoded with `scValToNative`. */
@@ -141,8 +145,10 @@ export interface EscrowCall {
 }
 
 /**
- * The single contract call in a transaction envelope, or `null` when it holds anything else (no operation, several,
- * or not an `invokeContract`). Read before submitting a transaction someone else signed, to know what it does.
+ * The single contract call in a transaction envelope, or `null` when it holds anything else: no operation or several,
+ * not an `invokeContract`, an operation with its own source, or an authorization other than the transaction's source
+ * account (so nothing but the source's own signature authorizes it). Read before submitting a transaction someone else
+ * signed, to know what it does.
  */
 export function decodeEscrowCall(envelopeXdr: string, networkPassphrase: string): EscrowCall | null {
   let tx: ReturnType<typeof TransactionBuilder.fromXDR>;
@@ -154,12 +160,22 @@ export function decodeEscrowCall(envelopeXdr: string, networkPassphrase: string)
   // A fee bump wraps another transaction: refused, so the source read below is the one that signs.
   if (!(tx instanceof Transaction) || tx.operations.length !== 1) return null;
   // stellar-sdk 17: the operation's host function is a `{ type, <field> }` object (Vitrinee rule 5).
-  const op = tx.operations[0] as { type?: unknown; func?: { type?: unknown; invokeContract?: { contractAddress?: unknown; functionName?: unknown; args?: unknown } } };
+  const op = tx.operations[0] as {
+    type?: unknown;
+    source?: unknown;
+    auth?: unknown;
+    func?: { type?: unknown; invokeContract?: { contractAddress?: unknown; functionName?: unknown; args?: unknown } };
+  };
   const call = op.type === "invokeHostFunction" ? op.func?.invokeContract : undefined;
   if (call === undefined || !Array.isArray(call.args)) return null;
+  if (op.source !== undefined && op.source !== tx.source) return null;
+  const auth = Array.isArray(op.auth) ? (op.auth as Array<{ credentials?: { type?: unknown } }>) : [];
+  if (auth.some((entry) => entry.credentials?.type !== "sorobanCredentialsSourceAccount")) return null;
   try {
     return {
       source: tx.source,
+      feeStroops: BigInt(tx.fee),
+      hash: Buffer.from(tx.hash()).toString("hex"),
       contract: Address.fromScAddress(call.contractAddress as xdr.ScAddress).toString(),
       fn: String(call.functionName),
       args: (call.args as xdr.ScVal[]).map((arg) => scValToNative(arg) as unknown),

@@ -16,7 +16,9 @@ const ESCROW = "CBQFELK556ECU5KD2WVFYEXWNCDD7KEDYIFNFVUNR77LNOFQ7CVDO27A";
 const payee = Keypair.random();
 const ORDER = "ord_mv9s83yb0022b6a353";
 const RECEIPT = "7".repeat(64);
-const CLAIM_JWS = "eyJhbGciOiJFZERTQSJ9.eyJ0eXBlIjoiQWdlbnRSZXNvbHZlQ2xhaW0ifQ.c2ln";
+const CLAIM_ID = "0b9b2f3a-7c4d-4e1f-8a6b-5d3c2e1f0a9b";
+/** A claim as the store receives it: only its hash, its id and its amount matter here (the arbiter verifies the signature). */
+const CLAIM_JWS = `eyJhbGciOiJFZERTQSJ9.${Buffer.from(JSON.stringify({ type: "AgentResolveClaim", claimId: CLAIM_ID, amountAtomic: "5157895" })).toString("base64url")}.c2ln`;
 const CLAIM = createHash("sha256").update(CLAIM_JWS, "utf8").digest("hex");
 const OPENED_AT = 1_793_000_000; // 2026-10-26T…Z
 const STORE_ESCROW: StoreEscrow = { contract: ESCROW, payee: payee.publicKey(), arbiter: "GARBITER", releaseWindowSeconds: 600, responseWindowSeconds: 900, resolveWindowSeconds: 3600 };
@@ -56,7 +58,7 @@ const response = (overrides: Record<string, unknown> = {}): Record<string, unkno
   respondent: `did:stellar:testnet:${payee.publicKey()}`,
   receiptHash: RECEIPT,
   claimHash: CLAIM,
-  claimId: "0b9b2f3a-7c4d-4e1f-8a6b-5d3c2e1f0a9b",
+  claimId: CLAIM_ID,
   position: "contest",
   acceptedAtomic: null,
   statement: "Shipped on time; tracking attached.",
@@ -66,8 +68,8 @@ const response = (overrides: Record<string, unknown> = {}): Record<string, unkno
 });
 
 /** `respond(order, hash)` on `contract`, as the store's writer would prepare it, with `source` as its source. */
-function respondXdr(orderRef: string, hash: string, source: string = payee.publicKey(), contract: string = ESCROW, fn = "respond"): string {
-  return new TransactionBuilder(new Account(source, "1"), { fee: BASE_FEE, networkPassphrase: PASSPHRASE })
+function respondXdr(orderRef: string, hash: string, source: string = payee.publicKey(), contract: string = ESCROW, fn = "respond", fee: string = BASE_FEE): string {
+  return new TransactionBuilder(new Account(source, "1"), { fee, networkPassphrase: PASSPHRASE })
     .addOperation(new Contract(contract).call(fn, nativeToScVal(Buffer.from(orderRef, "utf8"), { type: "bytes" }), xdr.ScVal.scvBytes(Buffer.from(hash, "hex"))))
     .setTimeout(300)
     .build()
@@ -80,9 +82,10 @@ afterEach(async () => {
   servers = [];
 });
 
-async function start(options: { purchase?: EscrowPurchase | null; order?: OrderRecord; now?: Date } = {}) {
+async function start(options: { purchase?: EscrowPurchase | null; order?: OrderRecord; now?: Date; claimKept?: boolean; failAfterLanding?: number } = {}) {
   let purchase = options.purchase === undefined ? disputed() : options.purchase;
-  const orders = new OrderStore(undefined, [options.order ?? record()]);
+  let failures = options.failAfterLanding ?? 0;
+  const orders = new OrderStore(undefined, [options.order ?? record(options.claimKept === false ? {} : { dispute: { claimJws: CLAIM_JWS } })]);
   const readers: EscrowReaderFactory = (contractId) => ({ contractId, get: async () => purchase, config: async () => { throw new Error("unused"); }, byTx: async () => null }) as EscrowReader;
   const submitted: string[] = [];
   const writer: DisputeDeps["writer"] = {
@@ -96,7 +99,12 @@ async function start(options: { purchase?: EscrowPurchase | null; order?: OrderR
       if (!tx.signatures.some((sig) => sig.toXDR("base64") === expected)) throw new Error("tx_bad_auth");
       const call = (tx as unknown as { operations: Array<{ func: { invokeContract: { args: xdr.ScVal[] } } }> }).operations[0]!.func.invokeContract;
       purchase = { ...purchase!, status: "responded", responseHash: Buffer.from(scValToNative(call.args[1]!) as Uint8Array).toString("hex") };
-      return { txHash: "a".repeat(64), ledger: 10 };
+      // Landed, but the poll gave up: the store cannot tell, and says so.
+      if (failures > 0) {
+        failures -= 1;
+        throw new Error("respond transaction NOT_FOUND");
+      }
+      return { txHash: Buffer.from(tx.hash()).toString("hex"), ledger: 10 };
     },
   };
   const app = express();
@@ -128,7 +136,7 @@ function sign(unsignedXdr: string, key: Keypair = payee): string {
 
 describe("a dispute's claim, kept with the order (T163)", () => {
   it("keeps the claim whose hash the escrow holds, and serves it", async () => {
-    const store = await start();
+    const store = await start({ claimKept: false });
     expect((await store.call(`/orders/${ORDER}/dispute`)).json).toMatchObject({ order_id: ORDER, escrow: ESCROW, claim_jws: null, response: null });
     const kept = await store.call(`/orders/${ORDER}/dispute/claim`, { claim_jws: CLAIM_JWS });
     expect(kept.status).toBe(200);
@@ -137,7 +145,7 @@ describe("a dispute's claim, kept with the order (T163)", () => {
   });
 
   it("refuses a claim the escrow does not hold, and an order with no claim", async () => {
-    const store = await start();
+    const store = await start({ claimKept: false });
     const forged = await store.call(`/orders/${ORDER}/dispute/claim`, { claim_jws: `${CLAIM_JWS}x` });
     expect(forged).toMatchObject({ status: 409, json: { error: "DisputeRefused" } });
     expect(store.orders.get(ORDER)?.dispute).toBeUndefined();
@@ -166,9 +174,11 @@ describe("the merchant answers with its wallet (T163)", () => {
     const prepared = await store.call(`/orders/${ORDER}/dispute/response/prepare`, { response: doc });
     expect(prepared.status).toBe(200);
     expect(prepared.json).toMatchObject({ response_hash: disputeResponseHash(doc), payee: payee.publicKey(), respond_by: "2026-10-26T07:48:20.000Z" });
-    const sent = await store.call(`/orders/${ORDER}/dispute/response/submit`, { response: doc, signed_xdr: sign(prepared.json["xdr"]) });
+    const signedXdr = sign(prepared.json["xdr"]);
+    const sent = await store.call(`/orders/${ORDER}/dispute/response/submit`, { response: doc, signed_xdr: signedXdr });
     expect(sent.status).toBe(200);
-    expect(sent.json["response"]).toMatchObject({ document: doc, hash: disputeResponseHash(doc), transaction: "a".repeat(64), explorer_url: expect.stringContaining("a".repeat(64)) });
+    const txHash = Buffer.from(TransactionBuilder.fromXDR(signedXdr, PASSPHRASE).hash()).toString("hex");
+    expect(sent.json["response"]).toMatchObject({ document: doc, hash: disputeResponseHash(doc), transaction: txHash, explorer_url: expect.stringContaining(txHash) });
     expect(store.purchase()?.responseHash).toBe(disputeResponseHash(doc));
     // Answered once: a second answer is refused before anything is sent.
     const again = await store.call(`/orders/${ORDER}/dispute/response/prepare`, { response: response({ statement: "Changed my mind" }) });
@@ -180,6 +190,10 @@ describe("the merchant answers with its wallet (T163)", () => {
     ["another receipt", response({ receiptHash: "8".repeat(64) }), "another receipt"],
     ["another claim", response({ claimHash: "9".repeat(64) }), "another claim"],
     ["not a response", { type: "Something" }, "expected shape"],
+    ["a statement with a trailing space", response({ statement: "Shipped on time. " }), "exactly as its schema reads it"],
+    ["an extra field", response({ note: "hi" }), "expected shape"],
+    ["another claim id", response({ claimId: "1b9b2f3a-7c4d-4e1f-8a6b-5d3c2e1f0a9b" }), "another claim"],
+    ["a partial acceptance of the whole amount", response({ position: "accept_partial", acceptedAtomic: "5157895" }), "less than the amount claimed"],
   ])("refuses a response from %s before preparing anything", async (_name, doc, message) => {
     const store = await start();
     const prepared = await store.call(`/orders/${ORDER}/dispute/response/prepare`, { response: doc });
@@ -195,6 +209,30 @@ describe("the merchant answers with its wallet (T163)", () => {
     expect(refused).toMatchObject({ status: 409, json: { message: expect.stringContaining("the time to answer ended on") } });
   });
 
+  it("keeps an answer that landed but could not be confirmed, when the same request comes again", async () => {
+    const store = await start({ failAfterLanding: 1 });
+    const doc = response();
+    const prepared = await store.call(`/orders/${ORDER}/dispute/response/prepare`, { response: doc });
+    const signedXdr = sign(prepared.json["xdr"]);
+    const first = await store.call(`/orders/${ORDER}/dispute/response/submit`, { response: doc, signed_xdr: signedXdr });
+    expect(first).toMatchObject({ status: 502, json: { message: expect.stringContaining("send the same answer again") } });
+    expect(store.purchase()?.status).toBe("responded");
+    const again = await store.call(`/orders/${ORDER}/dispute/response/submit`, { response: doc, signed_xdr: signedXdr });
+    expect(again.status).toBe(200);
+    expect(again.json["response"]).toMatchObject({ hash: disputeResponseHash(doc), transaction: Buffer.from(TransactionBuilder.fromXDR(signedXdr, PASSPHRASE).hash()).toString("hex") });
+    // Sent once: the second time the escrow already held it.
+    expect(store.submitted).toHaveLength(1);
+  });
+
+  it("takes the document of an answer the escrow holds without its transaction, and nothing else without one", async () => {
+    const doc = response();
+    const store = await start({ purchase: disputed({ status: "responded", responseHash: disputeResponseHash(doc) }) });
+    const kept = await store.call(`/orders/${ORDER}/dispute/response/submit`, { response: doc });
+    expect(kept.json["response"]).toMatchObject({ hash: disputeResponseHash(doc), transaction: null, explorer_url: null });
+    const open = await start();
+    expect((await open.call(`/orders/${ORDER}/dispute/response/submit`, { response: doc })).json["message"]).toContain("send it with its signed transaction");
+  });
+
   it("refuses an order with no open dispute", async () => {
     const store = await start({ purchase: disputed({ status: "held", claimHash: null, openedAt: null }) });
     expect((await store.call(`/orders/${ORDER}/dispute/response/prepare`, { response: response() })).json["message"]).toContain("no open dispute");
@@ -206,6 +244,7 @@ describe("the merchant answers with its wallet (T163)", () => {
     ["on another contract", () => respondXdr(ORDER, disputeResponseHash(response()), payee.publicKey(), "CBWRKZ3SL4EAXOS5XAV6CXVRRTBNPPFFC5TKSLW3FTXFTQZNBAZY6Z5U")],
     ["calling another function", () => respondXdr(ORDER, disputeResponseHash(response()), payee.publicKey(), ESCROW, "release")],
     ["from another account", () => respondXdr(ORDER, disputeResponseHash(response()), Keypair.random().publicKey())],
+    ["charging the merchant a fee above any respond", () => respondXdr(ORDER, disputeResponseHash(response()), payee.publicKey(), ESCROW, "respond", "100000000")],
     ["that is not a transaction", () => "AAAA"],
   ])("never sends a signed transaction %s", async (_name, build) => {
     const store = await start();

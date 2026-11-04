@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { Account, Address, Keypair, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Account, Address, Asset, Contract, Keypair, Operation, TransactionBuilder, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -379,9 +379,33 @@ describe("the merchant's respond, built for a wallet and read back before sendin
     expect(Buffer.from(call!.args[1] as Uint8Array).toString("hex")).toBe(RECEIPT);
   });
 
-  it("reads nothing from what is not one contract call", () => {
+  it("reads nothing from what is not one contract call authorized by its source alone", () => {
     expect(decodeEscrowCall("AAAA", PASSPHRASE)).toBeNull();
     expect(decodeEscrowCall("", PASSPHRASE)).toBeNull();
+    const respond = () => new Contract(ESCROW).call("respond", nativeToScVal(Buffer.from("ord_1"), { type: "bytes" }), xdr.ScVal.scvBytes(Buffer.from(RECEIPT, "hex")));
+    const build = (...ops: xdr.Operation[]) => ops.reduce((b, op) => b.addOperation(op), new TransactionBuilder(new Account(payee.publicKey(), "1"), { fee: "100", networkPassphrase: PASSPHRASE })).setTimeout(300).build();
+    const one = build(respond());
+    expect(decodeEscrowCall(one.toXDR(), PASSPHRASE)).toMatchObject({ fn: "respond", feeStroops: 100n, hash: Buffer.from(one.hash()).toString("hex") });
+    // Two operations, or a payment, or a call run as another account.
+    expect(decodeEscrowCall(build(respond(), respond()).toXDR(), PASSPHRASE)).toBeNull();
+    expect(decodeEscrowCall(build(Operation.payment({ destination: OPERATOR, asset: Asset.native(), amount: "1" })).toXDR(), PASSPHRASE)).toBeNull();
+    const otherSource = Operation.invokeContractFunction({ contract: ESCROW, function: "respond", args: [], source: OPERATOR });
+    expect(decodeEscrowCall(build(otherSource).toXDR(), PASSPHRASE)).toBeNull();
+    // An authorization signed by someone else than the source.
+    const byAddress = new xdr.SorobanAuthorizationEntry({
+      credentials: xdr.SorobanCredentials.sorobanCredentialsAddress(
+        new xdr.SorobanAddressCredentials({ address: new Address(OPERATOR).toScAddress(), nonce: xdr.Int64.fromString("1"), signatureExpirationLedger: 1, signature: xdr.ScVal.scvVoid() }),
+      ),
+      rootInvocation: new xdr.SorobanAuthorizedInvocation({
+        function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(new xdr.InvokeContractArgs({ contractAddress: new Address(ESCROW).toScAddress(), functionName: "respond", args: [] })),
+        subInvocations: [],
+      }),
+    });
+    expect(decodeEscrowCall(build(Operation.invokeContractFunction({ contract: ESCROW, function: "respond", args: [], auth: [byAddress] })).toXDR(), PASSPHRASE)).toBeNull();
+    // A fee bump wraps the call in someone else's transaction.
+    one.sign(payee);
+    const bump = TransactionBuilder.buildFeeBumpTransaction(Keypair.random(), "1000", one, PASSPHRASE);
+    expect(decodeEscrowCall(bump.toXDR(), PASSPHRASE)).toBeNull();
   });
 
   it("keeps a failed simulation's stage, and an account it cannot load", async () => {

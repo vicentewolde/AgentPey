@@ -92,6 +92,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 ## Bloqueos y pendientes del usuario
 
 - [x] T162: merge (hecho el 27-oct, PR #95)
+- [ ] T163: OK para mergear `cc/t163-respuesta-comercio` (redespliega Render), para el ensayo `pnpm run escrow:rehearsal -- --scenario late-response` (0,05 USDC del rail UCP que vuelven con `expire`, unos 8 min) y para responder un reclamo real desde el portal con la wallet de la cuenta de cobro `GD2MCESI…`
 - [ ] T162: el reclamo en vivo desde Claude sobre `ord_mv9s83yb…` (una comisión de testnet), grabando la pantalla ([guion](fase-9-compra-protegida/evidencia/T162.md) §4)
 - [ ] T130 (en pausa, `R-36`): [casastock.cl](https://casastock.cl/) es de un amigo del usuario (Shopify, 10 productos, CLP: casas prefabricadas, kits por m² y servicios; el más barato cuesta 30.000 CLP, unos 31 USDC). Al retomar hace falta: que su dueño dé acceso para crear la app (`read_products`, `write_orders`), su wallet y su acuerdo para recibir un pedido que aparece «Pagado» con USDC de testnet; y subir los topes del rail del MCP (3 por compra, 5 por día, fijos en el contrato: es un rail nuevo y un Mandato nuevo). T144: el usuario confirmó que tiene Grok, no dots ni Muse
 - [x] Publicar `@agentpey/ucp-stellar` 0.2.0 en npm (T160): publicada el 15-oct como `latest`

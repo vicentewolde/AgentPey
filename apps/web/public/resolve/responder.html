@@ -305,6 +305,11 @@ var T = {
   sending: { en: "Sending it to Stellar…", es: "Enviándola a Stellar…" },
   sent: { en: "Done: your answer is recorded in the escrow and kept with the order. The arbiter reads it there.", es: "Listo: tu respuesta quedó registrada en el escrow y guardada junto al pedido. El árbitro la lee ahí." },
   transaction: { en: "Transaction", es: "Transacción" },
+  respondBy: { en: "Answer before", es: "Responde antes del" },
+  timeOver: { en: "The time to answer this claim ended. The arbiter decides without your answer.", es: "Venció el plazo para responder este reclamo. El árbitro decide sin tu respuesta." },
+  storeMismatch: { en: "Your store prepared a transaction for something other than this answer, so it was not sent to your wallet. Reload the page and try again.", es: "Tu tienda preparó una transacción para algo distinto de esta respuesta, así que no se envió a tu wallet. Vuelve a cargar la página e intenta de nuevo." },
+  resending: { en: "Sending your signed answer again…", es: "Enviando de nuevo tu respuesta firmada…" },
+  resendLater: { en: "Your answer is signed but your store could not confirm it yet. It is kept in this browser: reload this page in a minute and it is sent again, the same one.", es: "Tu respuesta está firmada, pero tu tienda todavía no pudo confirmarla. Quedó guardada en este navegador: vuelve a cargar esta página en un minuto y se envía de nuevo, la misma." },
 };
 
 function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
@@ -313,6 +318,8 @@ function t(key) { var entry = T[key]; return entry ? entry[lang()] : key; }
 var read = null;
 /** Set when the page came from an order (T163): the dispute lives in the store's escrow and is answered there. */
 var order = null;
+/** Until when the store may answer, from the store's dispute view. */
+var respondBy = null;
 var address = "";
 var signedResult = null;
 var statuses = {};
@@ -382,9 +389,10 @@ function renderDone() {
   facts.append(row(t("position"), position));
   facts.append(row(t("answerHash"), signedResult.hash));
   facts.append(row(t("signer"), address));
-  if (signedResult.explorerUrl) {
+  // Built here from the hash, never a URL the store sent.
+  if (signedResult.transaction && /^[0-9a-f]{64}$/.test(signedResult.transaction)) {
     var link = document.createElement("a");
-    link.href = signedResult.explorerUrl;
+    link.href = "https://stellar.expert/explorer/testnet/tx/" + signedResult.transaction;
     link.target = "_blank";
     link.rel = "noopener";
     link.textContent = signedResult.transaction;
@@ -425,8 +433,30 @@ async function loadFromOrder(param) {
     return;
   }
   renderClaim();
+  respondBy = documents.respond_by ? new Date(documents.respond_by) : null;
+  if (respondBy) document.getElementById("claim-facts").append(row(t("respondBy"), formatDate(documents.respond_by)));
+  // An answer signed here earlier that the store could not confirm: sent again, the very same one.
+  var pending = readPending();
+  if (!documents.response && pending) {
+    try {
+      setStatus("claim-status", "", { key: "resending" });
+      var kept = await storeCall("/response/submit", { response: pending.response, signed_xdr: pending.signedXdr });
+      dropPending();
+      documents.response = kept.response;
+    } catch (error) {
+      // Still disputed and past its time: that answer never landed and never will. Otherwise, keep it for later.
+      if (respondBy && Date.now() > respondBy.getTime()) {
+        dropPending();
+        setStatus("claim-status", "error", { key: "timeOver" });
+      } else {
+        setStatus("claim-status", "error", { key: "resendLater" });
+      }
+      return;
+    }
+  }
   if (documents.response) {
-    signedResult = { response: documents.response.document, hash: documents.response.hash, transaction: documents.response.transaction, explorerUrl: documents.response.explorer_url };
+    dropPending();
+    signedResult = { response: documents.response.document, hash: documents.response.hash, transaction: documents.response.transaction };
     address = documents.payee;
     renderDone();
     document.getElementById("sign-panel").hidden = false;
@@ -434,6 +464,7 @@ async function loadFromOrder(param) {
     setStatus("claim-status", "ok", { key: "orderAnswered" });
     return;
   }
+  if (respondBy && Date.now() > respondBy.getTime()) { setStatus("claim-status", "error", { key: "timeOver" }); return; }
   setStatus("claim-status", "ok", { key: "claimRead" });
   document.getElementById("wallet-btn").hidden = false;
   document.getElementById("wallet-panel").hidden = false;
@@ -442,16 +473,40 @@ async function loadFromOrder(param) {
   refreshSignButton();
 }
 
+/** A signed answer kept until the store confirms it, so a failed send is retried with the same document (T163 review). */
+function pendingKey() { return "agentpey-respond:" + order.origin + "/" + order.orderId; }
+function readPending() {
+  try {
+    var value = JSON.parse(localStorage.getItem(pendingKey()) || "null");
+    return value && value.response && typeof value.signedXdr === "string" ? value : null;
+  } catch (e) { return null; }
+}
+function savePending(response, signedXdr) {
+  try { localStorage.setItem(pendingKey(), JSON.stringify({ response: response, signedXdr: signedXdr })); } catch (e) {}
+}
+function dropPending() {
+  try { localStorage.removeItem(pendingKey()); } catch (e) {}
+}
+
 /** The escrow route: the store prepares `respond`, the wallet signs it, the store sends it and keeps the answer. */
 async function answerInEscrow(response) {
   setStatus("sign-status", "", { key: "preparing" });
   var prepared = await storeCall("/response/prepare", { response: response });
+  // The store builds the transaction: it must be for this answer, from this account, or the wallet never sees it.
+  if (prepared.response_hash !== (await responseHash(response)) || prepared.payee !== address) throw { key: "storeMismatch" };
   setStatus("sign-status", "", { key: "waitingTxSignature" });
   // The wallet layer refuses a signature by another account (WrongAccount).
   var signedXdr = await AgentpeyWallet.signTransaction(prepared.xdr, address);
+  savePending(response, signedXdr);
   setStatus("sign-status", "", { key: "sending" });
-  var kept = await storeCall("/response/submit", { response: response, signed_xdr: signedXdr });
-  signedResult = { response: response, hash: kept.response.hash, transaction: kept.response.transaction, explorerUrl: kept.response.explorer_url };
+  var kept;
+  try {
+    kept = await storeCall("/response/submit", { response: response, signed_xdr: signedXdr });
+  } catch (error) {
+    throw { key: "resendLater" };
+  }
+  dropPending();
+  signedResult = { response: response, hash: kept.response.hash, transaction: kept.response.transaction };
   renderDone();
   document.getElementById("done-row").hidden = false;
   setStatus("sign-status", "ok", { key: "sent" });
@@ -483,7 +538,8 @@ async function loadClaim() {
 
 function refreshSignButton() {
   // An escrow dispute is answered once: after that the button stays off (the store and the contract would refuse).
-  document.getElementById("sign-btn").disabled = !(read && address && address === read.receipt.merchantAccount) || (order !== null && signedResult !== null);
+  document.getElementById("sign-btn").disabled =
+    !(read && address && address === read.receipt.merchantAccount) || (order !== null && signedResult !== null) || (respondBy !== null && Date.now() > respondBy.getTime());
 }
 
 async function connectWallet() {

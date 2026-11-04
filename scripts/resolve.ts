@@ -138,6 +138,8 @@ function usage(message: string): never {
 }
 
 const hex64 = z.string().regex(/^[0-9a-f]{64}$/);
+/** A kept response: signed with a wallet message (`agent-resolve`, T126) or by its `respond` transaction in an escrow (T163). */
+const archivedResponseSchema = z.union([z.object({ response: z.unknown(), signature: z.string().min(1) }), z.object({ response: z.unknown(), transaction: hex64.nullable() })]);
 /** How long a CLI read may run before it is killed: `withRetry` gives each attempt 30 s, the process gets no more. */
 const READ_TIMEOUT_MS = 30_000;
 
@@ -455,24 +457,24 @@ async function openInEscrow(
  * and the answer are read from the store and kept here, so `decide` and `execute` work as for any other dispute. Both
  * are hashed again against the escrow before they count. Returns the receipt hash and what the store keeps.
  */
-async function fromOrder(order: string): Promise<{ receipt: string; documents: OrderDisputeDocuments }> {
+async function fromOrder(order: string): Promise<{ receipt: string; claimJws: string; documents: OrderDisputeDocuments }> {
   const documents = await readOrderDispute(order);
   if (documents.claim_jws === null) {
     throw new AgentPassError("ResolveClaimInvalid", "the store keeps no claim for this order yet: the chat that opened the dispute did not hand it over", { details: { order } });
   }
   const claim = await verifyClaim(documents.claim_jws);
-  const receiptJws = claim.document.receipt.jws;
-  const receipt = hashOfReceipt(receiptJws);
-  const dir = stateDir(receipt);
-  const kept = (await readFile(resolve(dir, "claim.jws"), "utf8").catch(() => "")).trim();
-  if (kept !== "" && kept !== documents.claim_jws) {
-    throw new AgentPassError("ResolveClaimInvalid", "this machine keeps another claim for the same receipt", { details: { receipt } });
-  }
-  await mkdir(dir, { recursive: true });
-  await writeFile(resolve(dir, "claim.jws"), `${documents.claim_jws}\n`);
-  await writeFile(resolve(dir, "receipt.jws"), `${receiptJws}\n`);
   line("orden", `${order} (reclamo y respuesta leídos de la tienda)`);
-  return { receipt, documents };
+  // Nothing is written yet: `decide` keeps the claim only after comparing it with the escrow.
+  return { receipt: hashOfReceipt(claim.document.receipt.jws), claimJws: documents.claim_jws, documents };
+}
+
+/** Keeps a store's claim (and its receipt) for this dispute, once it is the one the escrow holds. */
+async function keepClaimFromOrder(dir: string, claimJws: string, receiptJws: string): Promise<void> {
+  const kept = (await readFile(resolve(dir, "claim.jws"), "utf8").catch(() => "")).trim();
+  if (kept === claimJws) return;
+  await mkdir(dir, { recursive: true });
+  await writeFile(resolve(dir, "claim.jws"), `${claimJws}\n`);
+  await writeFile(resolve(dir, "receipt.jws"), `${receiptJws}\n`);
 }
 
 async function decide(): Promise<void> {
@@ -483,7 +485,7 @@ async function decide(): Promise<void> {
   const arbiterKey = Keypair.fromSecret(requireEnv(env, "RESOLVE_ARBITER_SECRET_KEY", "pnpm run deploy:agent-resolve"));
   const apiKey = requireEnv(env, "ANTHROPIC_API_KEY", "add an Anthropic API key to .env.local");
   const dir = stateDir(receiptHash);
-  const claimJws = (await readFile(resolve(dir, "claim.jws"), "utf8")).trim();
+  const claimJws = fromStore?.claimJws ?? (await readFile(resolve(dir, "claim.jws"), "utf8")).trim();
 
   out("\nAgentResolve · veredicto · testnet");
   const claim = await verifyClaim(claimJws);
@@ -491,6 +493,7 @@ async function decide(): Promise<void> {
   const venue = venueOf(verified.receipt, verified.hash, contractId);
   const dispute = await readView(venue, arbiterKey.secret());
   assertOpenFor(dispute, claimHash(claimJws));
+  if (fromStore !== undefined) await keepClaimFromOrder(dir, claimJws, claim.document.receipt.jws);
   const escrowConfig = await escrowConfigOf(venue);
   line("contrato", `${venue.kind === "escrow" ? "escrow de la tienda" : "agent-resolve"} ${venue.contractId}`);
   // The claim is re-checked as of the moment the dispute opened, not now: the
@@ -600,6 +603,14 @@ async function merchantResponse(
     line("✅ en la red", `la respuesta que la tienda guarda junto a la orden es la del escrow (tx ${escrow.fromStore.transaction.slice(0, 16)}…)`);
     return verified;
   }
+  // In an escrow the transaction was the signature: a document passed by hand counts if its hash is the one on chain.
+  if (path !== undefined && escrow !== null && escrow.onChainHash !== null) {
+    const file = await readResponseFile(resolve(path));
+    const wrapped = z.object({ response: z.unknown() }).safeParse(file);
+    const verified = verifyEscrowResponse(wrapped.success ? wrapped.data.response : file, context, escrow.onChainHash);
+    await keep(`${JSON.stringify({ response: verified.response, transaction: null }, null, 2)}\n`, verified.hash);
+    return verified;
+  }
   if (path !== undefined) {
     const verified = verifyMerchantResponse(await readResponseFile(resolve(path)), context);
     await keep(`${JSON.stringify({ response: verified.response, signature: verified.signature }, null, 2)}\n`, verified.hash);
@@ -608,7 +619,7 @@ async function merchantResponse(
   const exists = await readFile(latest, "utf8").then(() => true, () => false);
   if (!exists) return null;
   const file = await readResponseFile(latest);
-  const onChain = z.object({ response: z.unknown(), transaction: hex64 }).safeParse(file);
+  const onChain = z.object({ response: z.unknown(), transaction: hex64.nullable() }).safeParse(file);
   if (onChain.success && escrow !== null && escrow.onChainHash !== null) return verifyEscrowResponse(onChain.data.response, context, escrow.onChainHash);
   return verifyMerchantResponse(file, context);
 }
@@ -662,7 +673,7 @@ async function checkArchivedResponse(dir: string, hash: string | null | undefine
   }
   const json = await readResponseFile(resolve(dir, "responses", `${hex64.parse(hash)}.json`)).catch(() => null);
   // Signed with a wallet (T126) or with a `respond` transaction (T163): either way the verdict covers this document.
-  const file = json === null ? null : z.object({ response: z.unknown() }).safeParse(json);
+  const file = json === null ? null : archivedResponseSchema.safeParse(json);
   const parsed = file?.success === true ? agentResolveResponseSchema.safeParse(file.data.response) : null;
   const matches = parsed?.success === true && responseHash(parsed.data) === hash;
   line(`${matches ? "✅" : "❌"} respuesta`, matches ? `la del comercio archivada en responses/ es la que cubre el veredicto (${hash.slice(0, 16)}…)` : `el veredicto nombra ${hash}, pero no hay una respuesta archivada con ese hash`);

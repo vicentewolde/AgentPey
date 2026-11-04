@@ -28,6 +28,9 @@
     },
     {
       "path": "../wallet-kit"
+    },
+    {
+      "path": "../resolve"
     }
   ]
 }

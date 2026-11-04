@@ -20,7 +20,7 @@ contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentP
 veredicto real reembolsó desde el pago retenido el 16-oct. **T161 cerrada** ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): la orden muestra dónde está el pago en el
 escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el entregable D1. **T162 mergeada el
 27-oct** ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)): el reclamo del chat abre la disputa en el escrow. Falta el reclamo en vivo desde Claude, grabado. **T163, código listo el 4-nov** (rama
-`cc/t163-respuesta-comercio`): el comercio responde desde su página firmando con su wallet, y el árbitro decide desde la orden. Después: T163.
+`cc/t163-respuesta-comercio`): el comercio responde desde su página firmando con su wallet, y el árbitro decide desde la orden. Después: T164.
 
 ## Progreso
 

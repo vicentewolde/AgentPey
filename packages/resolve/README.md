@@ -61,6 +61,14 @@ Without a response, once its 48 h have passed:
 pnpm run resolve:decide -- --receipt <receipt hash>
 ```
 
+A dispute in a store's escrow, opened from the chat (T162) and answered from
+the store's page (T163), is read from the order: the claim and the merchant's
+answer, each checked against the hash the escrow holds. No files:
+
+```bash
+pnpm run resolve:decide -- --order agentcommerce.vitrinee.agentpey.com/orders/<order id>
+```
+
 ```bash
 pnpm run resolve:execute -- --receipt <receipt hash> --confirm <verdict hash>
 ```

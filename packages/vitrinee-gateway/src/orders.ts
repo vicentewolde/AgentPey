@@ -52,8 +52,11 @@ export interface OrderHold {
 export interface OrderDisputeDocuments {
   /** The buyer's claim, a compact JWS whose sha256 is the escrow's `claim_hash`. */
   claimJws?: string;
-  /** The merchant's answer: the document, the sha256 of its canonical JSON (the escrow's `response_hash`) and its `respond` transaction. */
-  response?: { document: Record<string, unknown>; hash: string; transaction: string };
+  /**
+   * The merchant's answer: the document, the sha256 of its canonical JSON (the escrow's `response_hash`) and its
+   * `respond` transaction (`null` when the document arrived after the answer landed, without it).
+   */
+  response?: { document: Record<string, unknown>; hash: string; transaction: string | null };
 }
 
 /**
@@ -284,7 +287,7 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
   dispute: z
     .object({
       claimJws: z.string().min(1).optional(),
-      response: z.object({ document: z.record(z.string(), z.unknown()), hash: z.string().regex(/^[0-9a-f]{64}$/), transaction: z.string().regex(/^[0-9a-f]{64}$/) }).optional(),
+      response: z.object({ document: z.record(z.string(), z.unknown()), hash: z.string().regex(/^[0-9a-f]{64}$/), transaction: z.string().regex(/^[0-9a-f]{64}$/).nullable() }).optional(),
     })
     .optional(),
 }));
