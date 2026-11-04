@@ -22,6 +22,8 @@
  *   --scenario released|refunded|both|late-response   default both (late-response only on its own)
  *   --amount <usdc>                     default 0.05
  *   --resume <order_ref>                finish a `refunded` run that stopped after `hold`
+ *   --paid <tx hash>                    late-response: record a payment that already reached the escrow (a
+ *                                       facilitator that timed out after settling) instead of paying again
  */
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -159,10 +161,11 @@ async function refunded(r: Rehearsal, orderRef: string, resume: boolean): Promis
  * A merchant answer that comes too late (T163): built and signed while the window is open, the way the responder
  * page does it, and sent after it closed. The contract refuses it inside a ledger, so the refusal has a hash.
  */
-async function lateResponse(r: Rehearsal, orderRef: string): Promise<void> {
+async function lateResponse(r: Rehearsal, orderRef: string, paid: string | undefined): Promise<void> {
   out(`\nlate-response · ${orderRef}`);
-  const paymentTx = await pay(r, orderRef);
-  step("payment", paymentTx);
+  // `hold` refuses a payment that is not unallocated in the escrow, so a wrong hash moves nothing.
+  const paymentTx = paid ?? (await pay(r, orderRef));
+  step(paid === undefined ? "payment" : "payment (earlier)", paymentTx);
   await hold(r, orderRef, paymentTx);
   const claimHash = sha256(`rehearsal claim: ${orderRef} not delivered`);
   const sig = Buffer.from(signEscrowOpen(r.escrow, orderRef, claimHash, r.railOwner)).toString("hex");
@@ -239,7 +242,8 @@ async function main(): Promise<void> {
   const stamp = Date.now().toString(36);
   out(`\nAgentPey escrow:rehearsal · ${r.escrow} · ${amount} USDC per scenario from ${r.rail}`);
   if (scenario === "late-response") {
-    await lateResponse(r, `rehearsal-${stamp}-l`);
+    const paid = ARGV.includes("--paid") ? z.string().regex(/^[0-9a-f]{64}$/).parse(flag("--paid", "")) : undefined;
+    await lateResponse(r, `rehearsal-${stamp}-l`, paid);
     out("");
     return;
   }

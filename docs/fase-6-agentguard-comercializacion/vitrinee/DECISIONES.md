@@ -1529,3 +1529,14 @@ abiertas por CORS solo a `https://agentpey.com`; un código nuevo, `DisputeRefus
 `EscrowClient.prepareRespond`, `submitSigned` y `decodeEscrowCall`; y el portal lee el escrow de cada pedido retenido
 para avisar de un reclamo. La tienda sigue sin tener la llave de la cuenta de cobro (`VT-8`): solo arma la
 transacción y la envía después de comprobar qué contiene. El detalle y el motivo están en `X-29`.
+
+---
+
+### VT-52 · La tienda abre la ventana de su escrow al despachar y libera al vencer · `Vigente` — referencia a `X-30` de la Fase 9
+
+**Fecha:** 2026-11-04 · **Tarea:** T164
+
+Por dentro de Vitrinee: `src/escrow-release.ts` (`EscrowReleases`), enganchado al observador de despachos
+(`OrderEvents.recordShipment`, `resume`, `stop`); un campo `escrowRelease` en la orden; y en `@vitrinee/anchor`,
+`EscrowClient.markShipped` y `release`, firmados por la cuenta de firma. El escrow falso de las pruebas
+(`fakeEscrow().releaser`) hace las dos llamadas en memoria, para que ninguna prueba con un despacho salga a la red.

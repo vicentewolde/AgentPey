@@ -9318,3 +9318,24 @@ Verificación: `vitrinee:check` verde; `pnpm check` verde salvo `tenant-rail.tes
 
 Pendiente: `/revisar`; merge con OK; los hashes de testnet (respuesta tardía en el ensayo, respuesta a tiempo firmada
 por el usuario). Exponential: T163 a `IN_PROGRESS`. `AGENTS.md`: sin cambios.
+
+## 2026-11-04 (34) — cc/t163-respuesta-comercio (merge) y cc/t164-despacho-libera
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, **T163 mergeada** ([PR #96](https://github.com/vicentewolde/AgentPey/pull/96), CI 4/4,
+fast-forward `a432878..0b205bd` a las 13:55 UTC) y el ensayo de la respuesta tardía: `759bc186…` falló en la red con el
+error 13 (`ResponseWindowClosed`) y `expire` (`63a7f70b…`) devolvió los 0,05 USDC. En el camino: testnet está en el
+protocolo 30 y `stellar-sdk` 17.0/17.1 (y la 16.3.0 de `@x402/stellar`) no armaban pagos; todo pasó a 17.4.0 y un
+override fija 16.4.1 para x402 (`P-22`, en el mismo PR). El facilitator dio 504 al liquidar aunque el pago entró; el
+ensayo suma `--paid <hash>` para registrar ese pago sin pagar otra vez.
+
+**Producción:** después del deploy, `prod:check` 9/11: el MCP responde 503. Causa: `MCP_CREDENTIAL_JWS` y
+`MCP_MANDATE_JWS` vencieron el 2026-11-02 (30 días desde el 3-oct); el proceso anterior no los volvía a verificar, el
+reinicio sí. Reproducido local (`CredentialExpired`). Arreglo: `mcp:setup --reissue` y copiar los dos valores a Render,
+con OK del usuario. El resto de producción está bien (tiendas, web, RealOps, SignalDesk).
+
+T164 en `cc/t164-despacho-libera`: un despacho completo en Shopify llama `mark_shipped` y la tienda llama `release` al
+vencer la ventana, salvo reclamo (`X-30`, `VT-52`). `vitrinee:check` y `pnpm check` verdes (salvo `tenant-rail.test.ts`,
+que depende de la RPC pública). Exponential: T164 a `IN_PROGRESS`. `AGENTS.md`: sin cambios (`P-22` es de
+dependencias, no de reglas).

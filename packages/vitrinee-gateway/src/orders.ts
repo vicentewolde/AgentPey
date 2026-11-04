@@ -46,6 +46,22 @@ export interface OrderHold {
 }
 
 /**
+ * Where the shipment left the escrowed payment (T164, X-30): `pending` until the store opened the release window,
+ * `shipped` while it runs, `released` once paid to the payee, `disputed` when a claim took over, `failed` when the
+ * store gave up retrying (by hand from there).
+ */
+export interface OrderEscrowRelease {
+  status: "pending" | "shipped" | "released" | "disputed" | "failed";
+  attempts: number;
+  shippedTx?: string;
+  shippedAt?: string;
+  /** When `release` may be called: the escrow's `shipped_at` plus its release window. */
+  releaseAfter?: string;
+  releaseTx?: string;
+  lastError?: string;
+}
+
+/**
  * A dispute's documents, kept next to the order (T163, X-29). The escrow holds their hashes, so the store can keep
  * them or lose them, never change them: whoever reads them hashes them again against the chain.
  */
@@ -162,6 +178,8 @@ export interface OrderRecord {
   webhook?: OrderWebhook;
   /** The claim and the merchant's answer of a dispute in the store's escrow (T163). Absent until one arrives. */
   dispute?: OrderDisputeDocuments;
+  /** What the shipment did to the escrowed payment (T164). Absent until the order ships in full. */
+  escrowRelease?: OrderEscrowRelease;
 }
 
 /**
@@ -282,6 +300,17 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
           lastError: z.string().optional(),
         }),
       ),
+    })
+    .optional(),
+  escrowRelease: z
+    .object({
+      status: z.enum(["pending", "shipped", "released", "disputed", "failed"]),
+      attempts: z.number().int().nonnegative(),
+      shippedTx: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+      shippedAt: z.string().optional(),
+      releaseAfter: z.string().optional(),
+      releaseTx: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+      lastError: z.string().optional(),
     })
     .optional(),
   dispute: z

@@ -76,7 +76,7 @@ async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter;
   const app = createApp({
     platformProfiles: profiles,
     config: options.escrow === undefined ? testConfig() : escrowConfig(),
-    ...(options.escrow === undefined ? {} : { holder: options.escrow.holder, escrows: options.escrow.escrows }),
+    ...(options.escrow === undefined ? {} : { holder: options.escrow.holder, escrows: options.escrow.escrows, escrowReleaseWriter: options.escrow.releaser }),
     adapter,
     facilitator: uniqueFacilitator(),
     anchorer: registry.anchorer,
@@ -256,6 +256,20 @@ describe("shipping events (T147)", () => {
     const shipped = JSON.parse((await waitFor(() => s.profiles.sent[1])).body) as { receipt?: { escrow?: unknown }; ucp: { capabilities: Record<string, unknown> } };
     expect(shipped.receipt?.escrow).toMatchObject({ contract: ESCROW_ID, status: "held" });
     expect(shipped.ucp.capabilities["com.agentpey.shopping.receipt"]).toEqual([{ version: "2026-10-16" }]);
+  });
+
+  it("opens the escrow's release window when the order leaves in full (T164)", async () => {
+    const adapter = new MockStoreAdapter();
+    const escrow = fakeEscrow();
+    const s = await store({ adapter, escrow });
+    const { orderId } = await s.buy();
+    await s.app.anchors.idle();
+    expect([...escrow.purchases.values()][0]?.status).toBe("held");
+    await adapter.markShipped(s.orders.get(orderId)!.platformOrderId!, { shippedAt: "2026-11-04T12:00:00.000Z" });
+    await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`);
+    await s.app.escrowReleases?.idle();
+    expect([...escrow.purchases.values()][0]?.status).toBe("shipped");
+    expect(s.orders.get(orderId)?.escrowRelease).toMatchObject({ status: "shipped", shippedTx: "d".repeat(64), releaseAfter: expect.any(String) });
   });
 
   it("records a shipment the platform reports, shows it in the order, and tells the platform that bought", async () => {

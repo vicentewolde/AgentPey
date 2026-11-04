@@ -28,6 +28,7 @@ import { parcelLines } from "./lines.js";
 import { ucpOrder, type DisputeLookup, type EscrowLookup } from "./order.js";
 import type { PlatformSender, SendResult } from "./platform-profile.js";
 import type { StoreWebhookKey } from "./webhook-key.js";
+import type { EscrowReleases } from "../escrow-release.js";
 
 /** After a failed attempt, the wait before the next one; past the last, the delivery is given up. Seven attempts over about two and a half hours. */
 export const WEBHOOK_RETRY_DELAYS_MS: readonly number[] = [2_000, 10_000, 60_000, 5 * 60_000, 30 * 60_000, 2 * 60 * 60_000];
@@ -83,6 +84,8 @@ export interface OrderEventsDeps {
   log: (message: string, fields?: Record<string, unknown>) => void;
   retryDelaysMs?: readonly number[];
   watchIntervalMs?: number;
+  /** Opens the escrow's release window when an order paid into it ships in full, and releases at its end (T164). */
+  releases?: Pick<EscrowReleases, "afterShipment" | "resume" | "stop">;
 }
 
 /** What a delivery's outcome means for it: done, try again later, wait for the budget, or never again. */
@@ -170,6 +173,8 @@ export class OrderEvents {
       this.deps.log("order shipped", { orderId, source: shipment.source, platformRef: shipment.platformRef });
       if (order.webhook !== undefined) await this.queue(orderId, "shipped");
     }
+    // All of it left: the escrow's release window opens (T164). Also for a last parcel recorded before, never twice.
+    if (order.fulfillmentState === "fulfilled" && order.hold?.status === "held" && order.escrowRelease === undefined) await this.deps.releases?.afterShipment(orderId);
     return order;
   }
 
@@ -242,6 +247,7 @@ export class OrderEvents {
         pending += 1;
       }
     }
+    this.deps.releases?.resume();
     this.startWatcher();
     return pending;
   }
@@ -257,6 +263,7 @@ export class OrderEvents {
     this.timers.clear();
     if (this.watcher !== undefined) clearInterval(this.watcher);
     this.watcher = undefined;
+    this.deps.releases?.stop();
   }
 
   // ------------------------------------------------------------ deliveries

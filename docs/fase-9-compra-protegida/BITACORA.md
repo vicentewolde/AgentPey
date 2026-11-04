@@ -33,8 +33,8 @@ escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el e
 | T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ✅ terminada |
 | T162 El reclamo desde el chat abre la disputa en la red | 🔨 mergeada; falta el reclamo en vivo desde Claude |
-| T163 El comercio recibe el aviso y responde desde su página | 🔨 código listo; faltan los hashes de testnet |
-| T164 El despacho abre la ventana de liberación | ⏳ pendiente |
+| T163 El comercio recibe el aviso y responde desde su página | 🔨 mergeada; respuesta tardía rechazada en la red (`759bc186…`); falta una respuesta a tiempo firmada por el usuario |
+| T164 El despacho abre la ventana de liberación | 🔨 código listo; faltan los hashes de un despacho real |
 | T165 Cada cambio de la disputa llega al agente | ⏳ pendiente |
 | T166 Corrida completa y QA | ⏳ pendiente |
 | T167 Video, mapa de tiempos e informe final | ⏳ pendiente |
@@ -236,3 +236,28 @@ una tardía que la red rechaza (un ensayo en el escrow de prueba, unos 8 minutos
 esperan el OK del usuario.
 
 **Decisiones:** `X-29` y `VT-51`. **Evidencia:** [`evidencia/T163.md`](evidencia/T163.md).
+
+**Merge y red (4-nov).** T163 mergeada ([PR #96](https://github.com/vicentewolde/AgentPey/pull/96), CI 4/4, `main` en
+`0b205bd` a las 13:55 UTC). La respuesta tardía quedó rechazada por la red con su propio hash
+([`759bc186…`](https://stellar.expert/explorer/testnet/tx/759bc186694fef49cddba622b5cb18e5b90f14f626027aad3882c35e50b6703e),
+error 13 del contrato, `ResponseWindowClosed`), y los 0,05 USDC volvieron con `expire`. Para llegar ahí aparecieron dos
+problemas ajenos a T163: testnet subió al protocolo 30 y las versiones de `stellar-sdk` del repo ya no podían armar
+pagos (arreglado en el mismo PR, `P-22`), y el facilitator x402 respondió 504 aunque el pago sí entró (se registró con
+`--paid`). Después del deploy, el MCP de producción no levantó: su credencial y su Mandato vencieron el 2-nov (duran 30
+días) y el reinicio los volvió a verificar. Se renuevan con `mcp:setup --reissue`, con OK del usuario.
+
+## 2026-11-04 · T164 · El despacho abre la ventana de liberación
+
+**Qué quedó funcionando, en llano.** Hasta ahora, despachar un pedido no tocaba la plata retenida: el contrato esperaba
+que alguien avisara del despacho, y nadie lo hacía. Ahora, cuando Shopify dice que el pedido salió completo, la tienda
+avisa al contrato y empieza a correr el plazo de liberación (10 minutos en `agentcommerce`). Si en ese plazo nadie
+reclama, la tienda libera sola la plata hacia su cuenta de cobro. Si alguien reclama antes, no libera nada: decide el
+árbitro. Un pedido despachado en parte no abre el plazo, para que el comprador no se quede sin reclamo por lo que falta.
+
+**Si algo falla, no se pierde.** Cada pedido guarda en qué paso está, y al reiniciar la tienda retoma los plazos
+abiertos. Una llamada que falla se reintenta; si el contrato dice que todavía es temprano, espera unos segundos más.
+
+**Lo que falta.** Los hashes de un despacho real: una compra en `agentcommerce`, que el usuario marque el envío en
+Shopify, y esperar los 10 minutos. Va después del merge.
+
+**Decisiones:** `X-30` y `VT-52`. **Evidencia:** [`evidencia/T164.md`](evidencia/T164.md).

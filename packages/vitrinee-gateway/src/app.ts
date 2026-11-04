@@ -28,6 +28,7 @@ import {
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { lookupDispute, lookupEscrow, registerUcpOrders, type EscrowWindows } from "./ucp/order.js";
 import { registerDisputes, type DisputeDeps } from "./disputes.js";
+import { EscrowReleases, type EscrowReleaseDeps } from "./escrow-release.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
 import { OrderEvents } from "./ucp/order-events.js";
 import { sharedPlatformProfileReader, type PlatformProfileReader, type PlatformSender } from "./ucp/platform-profile.js";
@@ -59,6 +60,9 @@ export interface AppDeps {
   disputeWriter?: DisputeDeps["writer"];
   /** Browser origins allowed to read and answer disputes (T163). Defaults to AgentPey's responder page. */
   disputeOrigins?: readonly string[];
+  /** Calls `mark_shipped` and `release` on the store's escrow (T164). Defaults to the store's escrow over Soroban RPC. */
+  escrowReleaseWriter?: EscrowReleaseDeps["writer"];
+  escrowReleaseRetryDelaysMs?: readonly number[];
   /** Disputes over receipts, shown on UCP orders (T127). Defaults to `agent-resolve` over Soroban RPC when configured; `null` turns it off. */
   disputes?: DisputeReader | null;
   /** How long an order waits for the dispute read before answering without it (default 3 s). */
@@ -92,6 +96,8 @@ export interface VitrineeApp extends Express {
   anchors: AnchorWorker;
   /** Order events and webhooks (T147). `resume()` it when the app starts serving, `stop()` it when it stops. */
   orderEvents: OrderEvents;
+  /** The store's release of escrowed payments after shipment (T164); `undefined` for a store paid directly. */
+  escrowReleases: EscrowReleases | undefined;
 }
 
 const verifyBodySchema = z.object({ receiptJws: z.string().min(1).max(20_000) });
@@ -113,6 +119,8 @@ export function createApp({
   escrows,
   disputeWriter,
   disputeOrigins,
+  escrowReleaseWriter,
+  escrowReleaseRetryDelaysMs,
   disputes,
   disputeTimeoutMs,
   horizonFetch,
@@ -279,6 +287,24 @@ export function createApp({
         : new AgentResolveReader({ contractId: config.agentResolveId, rpcUrl: config.stellar.rpcUrl });
   const sender = webhookSender !== undefined ? webhookSender : isSender(platformProfiles) ? platformProfiles : null;
   const webhookEscrowWindows = new Map<string, EscrowWindows>();
+  // The store's own client of its escrow, for the calls it signs or relays (T163, T164).
+  const storeEscrow =
+    config.escrow === undefined ? undefined : (escrowClient ?? new EscrowClient({ contractId: config.escrow.contract, rpcUrl: config.stellar.rpcUrl, networkPassphrase: config.stellar.networkPassphrase }));
+  // The shipment opens the release window and the store releases when it closes (T164, X-30).
+  const releases =
+    config.escrow === undefined || storeEscrow === undefined
+      ? undefined
+      : new EscrowReleases({
+          orders,
+          escrow: config.escrow,
+          readers: escrowReader,
+          writer: escrowReleaseWriter ?? storeEscrow,
+          operatorSecret: config.signing.secret,
+          now,
+          log,
+          ...(escrowReleaseRetryDelaysMs === undefined ? {} : { retryDelaysMs: escrowReleaseRetryDelaysMs }),
+        });
+  app.escrowReleases = releases;
   const orderEvents = new OrderEvents({
     orders,
     adapter,
@@ -291,15 +317,15 @@ export function createApp({
     log,
     ...(webhookRetryDelaysMs === undefined ? {} : { retryDelaysMs: webhookRetryDelaysMs }),
     ...(shipmentWatchIntervalMs === undefined ? {} : { watchIntervalMs: shipmentWatchIntervalMs }),
+    ...(releases === undefined ? {} : { releases }),
   });
   app.orderEvents = orderEvents;
   registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready, ap2Key, orderEvents }, baseUrlOf);
   // Where each order's payment stands in the escrow it was paid into (T161): the same read-only readers verification uses.
   registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents, escrowReader);
   // The claim and the merchant's answer of a dispute in the store's escrow, kept with the order (T163, X-29).
-  if (config.escrow !== undefined) {
-    const writer =
-      disputeWriter ?? escrowClient ?? new EscrowClient({ contractId: config.escrow.contract, rpcUrl: config.stellar.rpcUrl, networkPassphrase: config.stellar.networkPassphrase });
+  if (config.escrow !== undefined && storeEscrow !== undefined) {
+    const writer = disputeWriter ?? storeEscrow;
     registerDisputes(app, {
       orders,
       escrow: config.escrow,

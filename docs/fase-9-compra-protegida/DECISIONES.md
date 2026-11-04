@@ -672,3 +672,32 @@ la orden, el comercio igual necesitaría un archivo para saber qué le reclaman.
   igual tiene que guardar el documento después.
 - **Mantener la firma SEP-53 además de la transacción:** duplica la firma sin agregar nada: la red ya exige la cuenta de
   cobro para guardar el hash.
+
+---
+
+### X-30 · El despacho completo abre la ventana de liberación, y la tienda libera sola al vencer · `Vigente`
+**Fecha:** 2026-11-04 · **Tarea:** T164 · Plan del usuario: "completa la fase 9 entera" (4-nov), sobre el spec aprobado
+
+1. **Cuándo se abre la ventana.** Cuando la plataforma dice que el pedido salió **completo** (`fulfillmentState:
+   fulfilled`, Shopify, T147). Un despacho parcial no la abre: si el resto no llega, el comprador todavía puede reclamar
+   con la plata retenida. La tienda llama `mark_shipped` con su cuenta de firma, el operador del escrow (`X-4`).
+2. **Cuándo se libera.** Al cerrar la ventana (`shipped_at` del contrato más `release_window`), con 15 s de margen
+   porque el reloj del ledger va unos segundos atrás. La tienda llama `release`, que cualquiera puede llamar; la paga su
+   cuenta de firma. Si el contrato dice que todavía es temprano (#9), espera 15 s más sin contarlo como falla.
+3. **El escrow manda.** Antes de cada llamada la tienda lee el escrow. Si hubo un reclamo (`disputed` o después), no
+   libera nada y deja de intentar: el árbitro decide. Si la compra ya estaba despachada o liberada (un intento anterior
+   que sí entró), lo anota sin repetir.
+4. **Dónde queda.** En la orden, `escrowRelease`: `pending`, `shipped` (con `releaseAfter`), `released`, `disputed` o
+   `failed`, con los hashes de `mark_shipped` y `release`. Al arrancar, la tienda retoma las ventanas abiertas y los
+   despachos que no alcanzó a mandar al escrow. Una llamada que falla por otra razón se reintenta a los 30 s, 2, 10 y
+   30 min; después queda `failed` y se resuelve a mano.
+5. **Jumpseller** no informa despachos (`R-17`): sus pedidos no abren la ventana. Para una tienda Jumpseller con
+   escrow, el pago queda retenido hasta un reclamo (el límite de v0 ya anotado en el spec, §4.2).
+
+**Motivo.** Es lo que pide T164 y lo que el contrato espera: sin `mark_shipped` la plata no se libera nunca.
+
+**Alternativas descartadas.**
+- **Abrir la ventana con el primer paquete:** con un despacho parcial, el comprador podría quedarse sin reclamo antes de
+  recibir lo demás.
+- **Un proceso aparte que libere:** la tienda ya tiene el observador de despachos y la llave de operador; un servicio más
+  sumaba otra llave en otro lugar.

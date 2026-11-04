@@ -164,6 +164,10 @@ comercio, y los sirve en `GET /orders/<id>/dispute`. El comercio responde desde
 `agentpey.com/resolve/responder?order=<tienda>/orders/<id>` (el portal lo enlaza): la tienda arma `respond`, la wallet
 de la cuenta de cobro lo firma y la tienda lo envía. La tienda nunca tiene esa llave.
 
+**Despacho y liberación (T164, `VT-52`, `X-30`).** Cuando Shopify dice que el pedido salió completo, la tienda llama
+`mark_shipped` en su escrow y, al cerrar la ventana, `release`, las dos con su cuenta de firma. Dónde quedó cada pedido
+está en `escrowRelease` de la orden. Jumpseller no informa despachos: sus pedidos no se liberan solos.
+
 ## Shopify (T112)
 
 Un comercio Shopify se da de alta igual que uno Jumpseller (portal, cuatro

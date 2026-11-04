@@ -428,6 +428,45 @@ export class EscrowClient implements EscrowReader, EscrowDisputeOpener {
   }
 
   /**
+   * The store's parcel left (T164): opens the release window. Signed and paid by the store's signing account, the
+   * escrow's `operator` (`X-4`). A refusal keeps the contract's error (`escrowContractError`): #8 when the purchase is
+   * no longer held (already shipped, or disputed).
+   */
+  async markShipped(orderRef: string, operatorSecret: string): Promise<OpenResult> {
+    return this.callAsSource("mark_shipped", [nativeToScVal(Buffer.from(orderRef, "utf8"), { type: "bytes" })], operatorSecret);
+  }
+
+  /**
+   * Pays the held amount to the payee once the release window closed with no claim (T164). Anyone may call it; the
+   * store's signing account sends it and pays the fee. #9 is `ReleaseTooEarly`, #8 a purchase that is not shipped.
+   */
+  async release(orderRef: string, sourceSecret: string): Promise<OpenResult> {
+    return this.callAsSource("release", [nativeToScVal(Buffer.from(orderRef, "utf8"), { type: "bytes" })], sourceSecret);
+  }
+
+  private async callAsSource(name: string, args: xdr.ScVal[], sourceSecret: string): Promise<OpenResult> {
+    let signer: Keypair;
+    let account: Awaited<ReturnType<EscrowRpc["getAccount"]>>;
+    try {
+      signer = Keypair.fromSecret(sourceSecret);
+      account = await this.server.getAccount(signer.publicKey());
+    } catch (error) {
+      throw new VitrineeError("EscrowError", `could not load the account that sends ${name}`, { cause: error, details: { stage: "prepare" } });
+    }
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: this.config_.networkPassphrase })
+      .addOperation(this.contract.call(name, ...args))
+      .setTimeout(60)
+      .build();
+    let prepared;
+    try {
+      prepared = await this.server.prepareTransaction(tx);
+    } catch (error) {
+      throw new VitrineeError("EscrowError", `simulation of ${name} failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error)}`, { cause: error, details: { stage: "simulate" } });
+    }
+    return this.submit(name, prepared, signer);
+  }
+
+  /**
    * The store's answer to a dispute, built for its payout account's wallet to sign (T163): the escrow's `respond`
    * needs `payee.require_auth()`, which the transaction's source satisfies, and the store never holds that key. The
    * transaction is simulated here and comes back unsigned. `validForSeconds` bounds how long it can be submitted.

@@ -109,7 +109,22 @@ export function fakeEscrow(options: { failTimes?: number; config?: Partial<Escro
     if (contractId !== ESCROW_ID) throw new Error(`no such escrow ${contractId}`);
     return reader;
   };
-  return { holder, calls, purchases, escrows, reader };
+  /** `mark_shipped` and `release` in memory (T164), so a shipment in a test never reaches the network. */
+  const releaser = {
+    async markShipped(orderRef: string) {
+      const [key, p] = [...purchases.entries()].find(([, held]) => held.orderRef === orderRef) ?? [];
+      if (key === undefined || p === undefined || p.status !== "held") throw new Error("HostError: Error(Contract, #8)");
+      purchases.set(key, { ...p, status: "shipped", shippedAt: Math.floor(Date.now() / 1000) });
+      return { txHash: "d".repeat(64) };
+    },
+    async release(orderRef: string) {
+      const [key, p] = [...purchases.entries()].find(([, held]) => held.orderRef === orderRef) ?? [];
+      if (key === undefined || p === undefined || p.status !== "shipped") throw new Error("HostError: Error(Contract, #8)");
+      purchases.set(key, { ...p, status: "released", closedAt: Math.floor(Date.now() / 1000) });
+      return { txHash: "f".repeat(64) };
+    },
+  };
+  return { holder, calls, purchases, escrows, reader, releaser };
 }
 
 /** A test config whose escrow `verifyStoreEscrow` already read (T160): what `createApp` takes for a store with one. */
