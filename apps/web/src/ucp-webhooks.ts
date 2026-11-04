@@ -68,7 +68,20 @@ const deliveredOrderSchema = z.looseObject({
   permalink_url: z.string().max(2_048),
   ucp: z.looseObject({ version: z.string().max(20).optional() }).optional(),
   fulfillment: z.looseObject({ events: z.array(z.looseObject({ type: z.string().max(50) })).max(100).optional() }).optional(),
+  // Where the payment stands in the store's escrow (T161, T165): read, never trusted for money, only logged.
+  receipt: z
+    .looseObject({ escrow: z.looseObject({ status: z.string().max(20), refund_atomic: z.string().max(40).optional() }).optional() })
+    .optional(),
 });
+
+/** The event an escrow state reports (T165): a dispute's step, or where the payment ended. Others are fulfillment's. */
+const ESCROW_EVENT: Readonly<Record<string, string>> = {
+  disputed: "dispute.opened",
+  responded: "dispute.responded",
+  resolved: "dispute.resolved",
+  released: "escrow.released",
+  expired: "escrow.refunded",
+};
 
 type WebhookKey = EcPublicJwk & { kid: string };
 
@@ -77,8 +90,10 @@ export interface ReceivedWebhook {
   store: string;
   /** A digest of the order id, not the id: with the id, anyone could read the order at the store. */
   orderRef: string;
-  /** `created`, or the type of the order's newest fulfillment event. */
+  /** `created`, the type of the order's newest fulfillment event, or the escrow's step it reports (T165). */
   event: string;
+  /** The escrow's state in the delivered order, and what was refunded, when the order was paid into one (T165). */
+  escrow?: { status: string; refundAtomic: string | null };
   occurredAt: string;
   receivedAt: string;
 }
@@ -217,11 +232,13 @@ export function createOrderWebhookReceiver(options: OrderWebhookReceiverOptions 
       return refuse(403, "NotYourOrder", "the order in the body is not this store's");
     }
     const last = order.data.fulfillment?.events?.at(-1)?.type;
+    const escrow = order.data.receipt?.escrow;
     const received: ReceivedWebhook = {
       webhookId,
       store: profile.origin,
       orderRef: createHash("sha256").update(order.data.id).digest("hex").slice(0, 16),
-      event: last ?? "created",
+      event: (escrow === undefined ? undefined : ESCROW_EVENT[escrow.status]) ?? last ?? "created",
+      ...(escrow === undefined ? {} : { escrow: { status: escrow.status, refundAtomic: escrow.refund_atomic ?? null } }),
       occurredAt: new Date(Number(timestamp) * 1000).toISOString(),
       receivedAt: now().toISOString(),
     };
@@ -229,7 +246,9 @@ export function createOrderWebhookReceiver(options: OrderWebhookReceiverOptions 
     if (seen.size > SEEN_MAX) seen.delete(seen.values().next().value!);
     kept.unshift(received);
     kept.splice(MAX_KEPT);
-    log("order webhook received", { ...received, orderId: order.data.id });
+    // Flat fields for the log line: what makes this delivery's record of the dispute (T165).
+    const { escrow: escrowSeen, ...flat } = received;
+    log("order webhook received", { ...flat, orderId: order.data.id, escrowStatus: escrowSeen?.status ?? null, refundAtomic: escrowSeen?.refundAtomic ?? null });
     const version = order.data.ucp?.version;
     return { status: 200, body: { ucp: { ...(version === undefined ? {} : { version }), status: "success" } } };
   }

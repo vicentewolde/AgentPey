@@ -25,6 +25,7 @@ import { z } from "zod";
 
 import type { OrderFulfillmentEvent, OrderRecord, OrderStore, OrderWebhook, OrderWebhookDelivery } from "../orders.js";
 import { parcelLines } from "./lines.js";
+import { escrowEvents, isEscrowSettled } from "./escrow-events.js";
 import { ucpOrder, type DisputeLookup, type EscrowLookup } from "./order.js";
 import type { PlatformSender, SendResult } from "./platform-profile.js";
 import type { StoreWebhookKey } from "./webhook-key.js";
@@ -43,6 +44,15 @@ const SHIPMENT_CHECK_MIN_INTERVAL_MS = 60_000;
 const SHIPMENT_CHECK_TIMEOUT_MS = 3_000;
 /** When the process's delivery budget is spent, the wait before trying again; it does not count as an attempt. */
 export const WEBHOOK_BUSY_RETRY_MS = 5_000;
+/** How often the store reads the escrow of an order still moving (T165): a dispute's windows are minutes long. */
+export const ESCROW_WATCH_INTERVAL_MS = 60_000;
+/** A read prompted by someone reading the order: at most this often per order. */
+const ESCROW_CHECK_MIN_INTERVAL_MS = 15_000;
+/**
+ * An order read for the first time after T165 shipped: a recent one starts from `held`, so a dispute opened before
+ * that first read still reports; an older one starts from what the escrow says, so a deploy never replays history.
+ */
+const ESCROW_BASELINE_RECENT_MS = 24 * 60 * 60_000;
 
 /** The webhook key, checked once: a key that cannot sign is a configuration error, never a stuck queue. */
 const webhookSigningKeySchema = z.object({
@@ -84,6 +94,8 @@ export interface OrderEventsDeps {
   log: (message: string, fields?: Record<string, unknown>) => void;
   retryDelaysMs?: readonly number[];
   watchIntervalMs?: number;
+  /** How often the escrow of a moving order is read for dispute and escrow events (T165). */
+  escrowWatchIntervalMs?: number;
   /** Opens the escrow's release window when an order paid into it ships in full, and releases at its end (T164). */
   releases?: Pick<EscrowReleases, "afterShipment" | "resume" | "stop" | "idle">;
 }
@@ -107,6 +119,10 @@ export class OrderEvents {
   private readonly signingKey: { kid: string; privateJwk: EcPrivateJwk };
   private watcher: NodeJS.Timeout | undefined;
   private watching = false;
+  private escrowWatcher: NodeJS.Timeout | undefined;
+  private escrowWatching = false;
+  private readonly escrowChecks = new Map<string, Promise<void>>();
+  private readonly escrowCheckedAt = new Map<string, number>();
   private stopped = false;
 
   /** @throws VitrineeError `ConfigError` for a webhook key that cannot sign */
@@ -254,6 +270,7 @@ export class OrderEvents {
     }
     this.deps.releases?.resume();
     this.startWatcher();
+    this.startEscrowWatcher();
     return pending;
   }
 
@@ -269,7 +286,71 @@ export class OrderEvents {
     this.timers.clear();
     if (this.watcher !== undefined) clearInterval(this.watcher);
     this.watcher = undefined;
+    if (this.escrowWatcher !== undefined) clearInterval(this.escrowWatcher);
+    this.escrowWatcher = undefined;
     this.deps.releases?.stop();
+  }
+
+  // ------------------------------------------------------------ escrow events (T165)
+
+  /**
+   * Reads the order's escrow and tells the platform what changed since it was last told: a dispute opened, answered
+   * or resolved, the payment released or refunded (X-31). One read at a time per order; `force: false` (an order
+   * being read) at most every 15 s. Never throws: a failed read is tried at the next pass.
+   */
+  async checkEscrow(orderId: string, options: { force?: boolean } = {}): Promise<void> {
+    const running = this.escrowChecks.get(orderId);
+    if (running !== undefined) return running;
+    const last = this.escrowCheckedAt.get(orderId);
+    if (options.force !== true && last !== undefined && this.deps.now().getTime() - last < ESCROW_CHECK_MIN_INTERVAL_MS) return;
+    const work = this.readEscrow(orderId)
+      .catch((error: unknown) => {
+        this.deps.log("escrow check failed", { orderId, error: error instanceof Error ? error.message.slice(0, 300) : String(error) });
+      })
+      .finally(() => this.escrowChecks.delete(orderId));
+    this.escrowChecks.set(orderId, work);
+    return work;
+  }
+
+  private async readEscrow(orderId: string): Promise<void> {
+    const order = this.deps.orders.get(orderId);
+    if (order?.webhook === undefined || order.ucpCheckoutId === undefined || order.hold?.status !== "held" || this.deps.escrow === undefined) return;
+    this.escrowCheckedAt.set(orderId, this.deps.now().getTime());
+    const lookup = await this.deps.escrow(order);
+    if (lookup.kind !== "found") return;
+    const status = lookup.purchase.status;
+    const recent = this.deps.now().getTime() - Date.parse(order.createdAt) < ESCROW_BASELINE_RECENT_MS;
+    const previous = order.escrowSeen?.status ?? (recent ? "held" : status);
+    if (previous === status && order.escrowSeen !== undefined) return;
+    const events = escrowEvents(previous, lookup.purchase);
+    await this.deps.orders.update(orderId, (o) => {
+      o.escrowSeen = { status, at: this.deps.now().toISOString() };
+    });
+    if (events.length > 0) this.deps.log("escrow changed", { orderId, from: previous, to: status, events });
+    for (const event of events) await this.queue(orderId, event);
+  }
+
+  private startEscrowWatcher(): void {
+    if (this.stopped || this.escrowWatcher !== undefined || this.deps.escrow === undefined) return;
+    this.escrowWatcher = setInterval(() => {
+      if (this.escrowWatching) return;
+      this.escrowWatching = true;
+      void this.watchEscrowsOnce().finally(() => {
+        this.escrowWatching = false;
+      });
+    }, this.deps.escrowWatchIntervalMs ?? ESCROW_WATCH_INTERVAL_MS);
+    this.escrowWatcher.unref();
+  }
+
+  /** Reads the escrow of every UCP order of the last 30 days still moving there, one at a time. */
+  async watchEscrowsOnce(): Promise<void> {
+    const cutoff = this.deps.now().getTime() - SHIPMENT_WATCH_WINDOW_MS;
+    for (const order of this.deps.orders.list()) {
+      if (this.stopped) return;
+      if (order.webhook === undefined || order.hold?.status !== "held" || Date.parse(order.createdAt) < cutoff) continue;
+      if (order.escrowSeen !== undefined && isEscrowSettled(order.escrowSeen.status)) continue;
+      await this.checkEscrow(order.orderId, { force: true });
+    }
   }
 
   // ------------------------------------------------------------ deliveries

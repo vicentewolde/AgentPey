@@ -41,6 +41,8 @@ export interface EscrowReleaseDeps {
   now: () => Date;
   log: (message: string, fields?: Record<string, unknown>) => void;
   retryDelaysMs?: readonly number[];
+  /** The escrow moved for this order (released, or found disputed): tell the platform now (T165). */
+  onChange?: (orderId: string) => void;
 }
 
 /** WrongStatus (#8): the purchase is not in a state that allows the call. ReleaseTooEarly (#9): the window is open. */
@@ -189,6 +191,7 @@ export class EscrowReleases {
     const next = this.fromChain(purchase, current);
     if (next === null) throw new VitrineeError("EscrowError", "the escrow still shows the purchase held, not shipped", { details: { orderId } });
     await this.save(orderId, next);
+    if (next.status === "released" || next.status === "disputed") this.deps.onChange?.(orderId);
     if (next.status === "disputed") this.deps.log("escrow release stopped: a claim was opened", { orderId });
     if (next.status === "shipped") this.schedule(orderId, this.untilRelease(next), "release");
   }

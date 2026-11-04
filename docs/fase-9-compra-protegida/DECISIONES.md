@@ -719,3 +719,35 @@ la orden, el comercio igual necesitaría un archivo para saber qué le reclaman.
   recibir lo demás.
 - **Un proceso aparte que libere:** la tienda ya tiene el observador de despachos y la llave de operador; un servicio más
   sumaba otra llave en otro lugar.
+
+---
+
+### X-31 · Cada cambio del escrow de una orden sale como aviso firmado, leído de la red por la tienda · `Vigente`
+**Fecha:** 2026-11-04 · **Tarea:** T165 · Plan del usuario: "completa la fase 9 entera" (4-nov), sobre el spec aprobado
+
+1. **Los eventos.** `dispute.opened`, `dispute.responded`, `dispute.resolved`, `escrow.released` y `escrow.refunded`,
+   en la misma cola de webhooks firmados (RFC 9421) de `created` y `shipped` (T147). Cada entrega es la orden entera,
+   como pide UCP (una foto, nunca un delta), con `receipt.escrow` tal como estaba. El nombre del evento queda en la
+   entrega de la tienda; el receptor lo deduce del estado del escrow que viene en la orden.
+2. **De dónde salen.** La tienda lee el escrow y compara con el último estado que le contó a la plataforma
+   (`escrowSeen` en la orden). Cada paso entre medio es un evento, en orden: si entre dos lecturas la disputa se abrió,
+   se respondió y se resolvió, salen los tres, y el veredicto suma `escrow.refunded` y/o `escrow.released` según cómo
+   repartió la plata. `expire` es `escrow.refunded`. La red es la fuente: así también se ven los pasos que la tienda no
+   hace (el veredicto del árbitro, un `expire` de cualquiera).
+3. **Cuándo lee.** Cada 60 s las órdenes de los últimos 30 días con el pago retenido y todavía en movimiento; al instante
+   cuando a la tienda le llega el reclamo o la respuesta, o cuando libera; y al leerse la orden (cada 15 s como mucho,
+   sin esperar). Una orden liberada, resuelta o vencida no se vuelve a leer.
+4. **Sin repetir historia.** Una orden de menos de 24 h que se lee por primera vez parte de `held`; una más vieja parte de
+   lo que dice el escrow, así el deploy no reenvía disputas ya cerradas.
+5. **El receptor de agentpey.com** verifica la firma como desde T147 y ahora anota el estado del escrow y el reembolso de
+   cada aviso, y lo nombra (`dispute.opened`, …). `GET /ucp/webhooks/orders` muestra el registro, sin cuerpos ni ids de
+   orden.
+
+**Motivo.** Es lo que pide T165 y lo que el Instaward prometió: que el agente se entere de cada cambio sin preguntar.
+
+**Alternativas descartadas.**
+- **Avisar solo de lo que hace la tienda** (reclamo recibido, respuesta enviada, liberación): no vería el veredicto del
+  árbitro ni un `expire`, que son los que mueven la plata hacia el comprador.
+- **Leer los eventos de Soroban del contrato:** la RPC pública guarda pocos días de eventos y exige paginar; el estado
+  del contrato es más simple de leer y no se pierde.
+- **Un encabezado propio con el nombre del evento:** UCP ya fija el formato del aviso; el estado en la orden alcanza.

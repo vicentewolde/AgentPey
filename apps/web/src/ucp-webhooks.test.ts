@@ -80,6 +80,24 @@ describe("AgentPey's order webhook receiver (T147)", () => {
     expect(r.recent()).toEqual([expect.objectContaining({ event: "shipped" })]);
   });
 
+  it("names a dispute's step by the escrow state the order carries, and keeps it with the refund (T165)", async () => {
+    const { r } = receiver();
+    const steps = [
+      ["disputed", "dispute.opened", "0"],
+      ["responded", "dispute.responded", "0"],
+      ["resolved", "dispute.resolved", "5157895"],
+      ["released", "escrow.released", "0"],
+      ["expired", "escrow.refunded", "5157895"],
+      ["held", "created", "0"],
+    ] as const;
+    for (const [i, [status, , refund]] of steps.entries()) {
+      const delivery = deliver(order({ receipt: { escrow: { status, refund_atomic: refund } } }), { id: `99999999-2222-4333-8444-00000000000${i}` });
+      expect((await r.receive(URL_, delivery.headers, delivery.body)).status).toBe(200);
+    }
+    // Newest first.
+    expect(r.recent().map((w) => [w.escrow?.status, w.event, w.escrow?.refundAtomic])).toEqual([...steps].reverse().map(([status, event, refund]) => [status, event, refund]));
+  });
+
   it("finds the key in a 2026-04-08 profile's signing_keys", async () => {
     const { r } = receiver({ ucp: { version: "2026-04-08" }, signing_keys: [storeKey.publicJwk] });
     const { headers, body } = deliver();

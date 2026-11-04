@@ -63,6 +63,8 @@ export interface AppDeps {
   /** Calls `mark_shipped` and `release` on the store's escrow (T164). Defaults to the store's escrow over Soroban RPC. */
   escrowReleaseWriter?: EscrowReleaseDeps["writer"];
   escrowReleaseRetryDelaysMs?: readonly number[];
+  /** How often the escrow of a moving order is read for dispute and escrow events (T165). */
+  escrowWatchIntervalMs?: number;
   /** Disputes over receipts, shown on UCP orders (T127). Defaults to `agent-resolve` over Soroban RPC when configured; `null` turns it off. */
   disputes?: DisputeReader | null;
   /** How long an order waits for the dispute read before answering without it (default 3 s). */
@@ -121,6 +123,7 @@ export function createApp({
   disputeOrigins,
   escrowReleaseWriter,
   escrowReleaseRetryDelaysMs,
+  escrowWatchIntervalMs,
   disputes,
   disputeTimeoutMs,
   horizonFetch,
@@ -302,6 +305,8 @@ export function createApp({
           operatorSecret: config.signing.secret,
           // One transaction at a time from the signing account, with its holds and anchors.
           signerTurn: (work) => anchors.signerTurn(work),
+          // Assigned below: by the time a release lands, the order events exist.
+          onChange: (orderId) => void app.orderEvents.checkEscrow(orderId, { force: true }),
           now,
           log,
           ...(escrowReleaseRetryDelaysMs === undefined ? {} : { retryDelaysMs: escrowReleaseRetryDelaysMs }),
@@ -319,6 +324,7 @@ export function createApp({
     log,
     ...(webhookRetryDelaysMs === undefined ? {} : { retryDelaysMs: webhookRetryDelaysMs }),
     ...(shipmentWatchIntervalMs === undefined ? {} : { watchIntervalMs: shipmentWatchIntervalMs }),
+    ...(escrowWatchIntervalMs === undefined ? {} : { escrowWatchIntervalMs }),
     ...(releases === undefined ? {} : { releases }),
   });
   app.orderEvents = orderEvents;
@@ -337,6 +343,7 @@ export function createApp({
       ...(disputeOrigins === undefined ? {} : { allowedOrigins: disputeOrigins }),
       now,
       log,
+      onChange: (orderId) => void orderEvents.checkEscrow(orderId, { force: true }),
     });
   }
 

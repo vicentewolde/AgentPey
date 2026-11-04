@@ -9339,3 +9339,22 @@ T164 en `cc/t164-despacho-libera`: un despacho completo en Shopify llama `mark_s
 vencer la ventana, salvo reclamo (`X-30`, `VT-52`). `vitrinee:check` y `pnpm check` verdes (salvo `tenant-rail.test.ts`,
 que depende de la RPC pública). Exponential: T164 a `IN_PROGRESS`. `AGENTS.md`: sin cambios (`P-22` es de
 dependencias, no de reglas).
+
+## 2026-11-04 (35) — merge de T164, MCP renovado y cc/t165-avisos-disputa
+
+Agente: Claude Code.
+
+Qué: con OK del usuario, (1) `pnpm run mcp:setup -- --principal GD2MCESI… --reissue`: credencial `442be942…` y Mandato
+`d13b76ac…` del MCP, anclados en testnet y válidos hasta el 2026-12-04; solo cambiaron `MCP_CREDENTIAL_JWS` y
+`MCP_MANDATE_JWS` en `.env.local`; el MCP arranca localmente (200 y 401). Falta que el usuario los copie a Render: hasta
+entonces `prod:check` da 9/11. (2) **T164 mergeada** ([PR #97](https://github.com/vicentewolde/AgentPey/pull/97), CI 4/4,
+fast-forward `0b205bd..44e631f` a las 14:37 UTC), con su bloqueante de revisión corregido antes (un guardado fallido
+podía tirar el proceso).
+
+T165 en `cc/t165-avisos-disputa` (sobre `main`): la tienda lee su escrow cada 60 s, al recibir el reclamo o la
+respuesta, al liberar y al leerse la orden, y manda `dispute.opened`, `.responded`, `.resolved`, `escrow.released` y
+`.refunded` por la cola firmada de T147 (`X-31`, `VT-53`). El receptor de agentpey.com anota el paso y el reembolso.
+`vitrinee:check` verde (gateway 501); suite UCP 49 · 8 · 20, igual que antes.
+
+Pendiente: `/revisar` de T165, merge, y la corrida de T166 (que da los hashes de T162 en vivo, T163 a tiempo, T164 y el
+registro de T165). Exponential: T165 a `IN_PROGRESS`. `AGENTS.md`: sin cambios.

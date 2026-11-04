@@ -340,6 +340,8 @@ export function registerUcpOrders(
     const id = String(req.params["id"]);
     // Has it shipped? Asks the store's platform at most once a minute per order, bounded in time (T147).
     if (events !== null) await events.checkShipment(id);
+    // And has its escrow moved? Told to the platform apart, never awaited here (T165).
+    if (events !== null) void events.checkEscrow(id);
     const record = orders.get(id);
     // Only orders a UCP checkout created are UCP orders: the others have no checkout to point at.
     if (record === undefined || record.ucpCheckoutId === undefined) {

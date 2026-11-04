@@ -1540,3 +1540,14 @@ Por dentro de Vitrinee: `src/escrow-release.ts` (`EscrowReleases`), enganchado a
 (`OrderEvents.recordShipment`, `resume`, `stop`); un campo `escrowRelease` en la orden; y en `@vitrinee/anchor`,
 `EscrowClient.markShipped` y `release`, firmados por la cuenta de firma. El escrow falso de las pruebas
 (`fakeEscrow().releaser`) hace las dos llamadas en memoria, para que ninguna prueba con un despacho salga a la red.
+
+---
+
+### VT-53 · La tienda lee su escrow para avisar cada cambio de una disputa · `Vigente` — referencia a `X-31` de la Fase 9
+
+**Fecha:** 2026-11-04 · **Tarea:** T165
+
+Por dentro de Vitrinee: `src/ucp/escrow-events.ts` (qué eventos significa un cambio), `OrderEvents.checkEscrow` y un
+observador cada 60 s (`escrowWatchIntervalMs`), el campo `escrowSeen` en la orden y cinco eventos nuevos en
+`ORDER_WEBHOOK_EVENTS`. La lectura usa el mismo `lookupEscrow` de la orden, así que el aviso lleva el mismo
+`receipt.escrow` que `GET /orders/:id`.

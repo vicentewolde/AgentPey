@@ -34,8 +34,8 @@ escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el e
 | T161 La orden muestra el estado del escrow | ✅ terminada |
 | T162 El reclamo desde el chat abre la disputa en la red | 🔨 mergeada; falta el reclamo en vivo desde Claude |
 | T163 El comercio recibe el aviso y responde desde su página | 🔨 mergeada; respuesta tardía rechazada en la red (`759bc186…`); falta una respuesta a tiempo firmada por el usuario |
-| T164 El despacho abre la ventana de liberación | 🔨 código listo; faltan los hashes de un despacho real |
-| T165 Cada cambio de la disputa llega al agente | ⏳ pendiente |
+| T164 El despacho abre la ventana de liberación | 🔨 mergeada (PR #97); faltan los hashes de un despacho real |
+| T165 Cada cambio de la disputa llega al agente | 🔨 código listo; suite UCP 49 · 8 · 20; falta el registro de una disputa real |
 | T166 Corrida completa y QA | ⏳ pendiente |
 | T167 Video, mapa de tiempos e informe final | ⏳ pendiente |
 
@@ -261,3 +261,23 @@ abiertos. Una llamada que falla se reintenta; si el contrato dice que todavía e
 Shopify, y esperar los 10 minutos. Va después del merge.
 
 **Decisiones:** `X-30` y `VT-52`. **Evidencia:** [`evidencia/T164.md`](evidencia/T164.md).
+
+**Merge (4-nov).** T164 mergeada ([PR #97](https://github.com/vicentewolde/AgentPey/pull/97), CI 4/4, `main` en
+`44e631f` a las 14:37 UTC), después de corregir su bloqueante de revisión. La credencial y el Mandato del MCP se
+renovaron en testnet (hasta el 4-dic, `mcp:setup --reissue`, con OK del usuario); faltan copiarlos a Render.
+
+## 2026-11-04 · T165 · Cada cambio de la disputa llega al agente
+
+**Qué quedó funcionando, en llano.** El agente que compró ya recibía un aviso firmado cuando se creaba el pedido y cuando
+se despachaba. Ahora también recibe uno por cada paso de una disputa: cuando se abre, cuando el comercio responde, cuando
+el árbitro decide, y cuando la plata se libera a la tienda o vuelve al comprador. La tienda se entera leyendo el contrato
+en la red, así ve también lo que no hace ella (el veredicto del árbitro, o un reembolso por vencimiento). Si entre dos
+lecturas pasaron varias cosas, avisa de todas, en orden. Cada aviso es la orden completa, con el estado del pago en ese
+momento, firmado con la llave de la tienda.
+
+**Del otro lado,** el receptor de agentpey.com comprueba la firma de cada aviso y lo anota con su paso y el reembolso. La
+suite oficial de UCP sigue igual: 49 bien, 8 fallas y 20 omitidas, las mismas de antes.
+
+**Lo que falta.** El registro de una disputa real, con cada aviso entregado y verificado: sale de la corrida de T166.
+
+**Decisiones:** `X-31` y `VT-53`. **Evidencia:** [`evidencia/T165.md`](evidencia/T165.md).

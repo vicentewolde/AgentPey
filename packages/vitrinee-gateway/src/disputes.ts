@@ -74,6 +74,8 @@ export interface DisputeDeps {
   allowedOrigins?: readonly string[];
   now?: () => Date;
   log?: (message: string, fields?: Record<string, unknown>) => void;
+  /** The escrow just moved for this order (a claim or an answer landed): tell the platform now (T165). */
+  onChange?: (orderId: string) => void;
 }
 
 function refused(message: string, details: Record<string, unknown>): VitrineeError {
@@ -168,6 +170,7 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
       order.dispute = { ...order.dispute, response: { document, hash, transaction } };
     });
     log("dispute response kept", { orderId: id, responseHash: hash, transaction });
+    deps.onChange?.(id);
   };
 
   const view = (record: OrderRecord, purchase: EscrowPurchase | null = null) => {
@@ -207,6 +210,7 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
         order.dispute = { ...order.dispute, claimJws };
       });
       log("dispute claim kept", { orderId: id, claimHash: purchase.claimHash });
+      deps.onChange?.(id);
     }
     res.json(view(heldOrder(id), purchase));
   });

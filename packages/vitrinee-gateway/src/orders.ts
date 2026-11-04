@@ -99,6 +99,13 @@ export interface OrderFulfillmentEvent {
 }
 
 /**
+ * What a delivery reports (T147, T165). Every delivery carries the whole order (UCP: a snapshot, never a delta); the
+ * name says which change made the store send it. The dispute and escrow ones come from the escrow's own state (X-31).
+ */
+export const ORDER_WEBHOOK_EVENTS = ["created", "shipped", "dispute.opened", "dispute.responded", "dispute.resolved", "escrow.released", "escrow.refunded"] as const;
+export type OrderWebhookEvent = (typeof ORDER_WEBHOOK_EVENTS)[number];
+
+/**
  * One webhook delivery (T147): the event's identity and body are fixed when it
  * is queued and travel unchanged on every attempt, as UCP's suite requires.
  */
@@ -107,7 +114,7 @@ export interface OrderWebhookDelivery {
   id: string;
   /** `Webhook-Timestamp`, unix seconds: when the event happened. */
   timestamp: number;
-  event: "created" | "shipped";
+  event: OrderWebhookEvent;
   /** The order as it stood at the event, exactly the bytes sent. */
   body: string;
   status: "pending" | "delivered" | "failed";
@@ -180,6 +187,8 @@ export interface OrderRecord {
   dispute?: OrderDisputeDocuments;
   /** What the shipment did to the escrowed payment (T164). Absent until the order ships in full. */
   escrowRelease?: OrderEscrowRelease;
+  /** The escrow's state the platform was last told about (T165): a change from it is an event. Absent until first read. */
+  escrowSeen?: { status: "held" | "shipped" | "released" | "disputed" | "responded" | "resolved" | "expired"; at: string };
 }
 
 /**
@@ -291,7 +300,7 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
         z.object({
           id: z.string().min(1),
           timestamp: z.number().int().nonnegative(),
-          event: z.enum(["created", "shipped"]),
+          event: z.enum(ORDER_WEBHOOK_EVENTS),
           body: z.string(),
           status: z.enum(["pending", "delivered", "failed"]),
           attempts: z.number().int().nonnegative(),
@@ -302,6 +311,7 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
       ),
     })
     .optional(),
+  escrowSeen: z.object({ status: z.enum(["held", "shipped", "released", "disputed", "responded", "resolved", "expired"]), at: z.iso.datetime() }).optional(),
   escrowRelease: z
     .object({
       status: z.enum(["pending", "shipped", "released", "disputed", "failed"]),

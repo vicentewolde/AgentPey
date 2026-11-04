@@ -258,6 +258,57 @@ describe("shipping events (T147)", () => {
     expect(shipped.ucp.capabilities["com.agentpey.shopping.receipt"]).toEqual([{ version: "2026-10-16" }]);
   });
 
+  it("tells the platform each step of a dispute in the escrow, signed, and nothing twice (T165)", async () => {
+    const escrow = fakeEscrow();
+    const s = await store({ escrow });
+    const { orderId } = await s.buy();
+    await waitFor(() => s.profiles.sent[0]);
+    await s.app.anchors.idle();
+    const [key, held] = [...escrow.purchases.entries()][0]!;
+    const move = async (changes: Partial<typeof held>) => {
+      escrow.purchases.set(key, { ...escrow.purchases.get(key)!, ...changes });
+      await s.app.orderEvents.watchEscrowsOnce();
+    };
+    await s.app.orderEvents.watchEscrowsOnce();
+    expect(s.orders.get(orderId)?.escrowSeen?.status).toBe("held");
+    await move({ status: "disputed", openedAt: Math.floor(Date.now() / 1000), claimHash: "c".repeat(64) });
+    await move({ status: "responded", responseHash: "a".repeat(64) });
+    await move({ status: "resolved", verdictHash: "b".repeat(64), refundAtomic: held.amountAtomic, closedAt: Math.floor(Date.now() / 1000) });
+    // Settled: read no more.
+    await s.app.orderEvents.watchEscrowsOnce();
+    await waitFor(() => s.profiles.sent[4]);
+    await s.app.orderEvents.idle();
+    expect(s.orders.get(orderId)?.webhook?.deliveries.map((d) => [d.event, d.status])).toEqual([
+      ["created", "delivered"],
+      ["dispute.opened", "delivered"],
+      ["dispute.responded", "delivered"],
+      ["dispute.resolved", "delivered"],
+      ["escrow.refunded", "delivered"],
+    ]);
+    // Each delivery is signed by the store's webhook key, and carries the escrow as it stood.
+    const statuses = s.profiles.sent.slice(1).map((sent) => (JSON.parse(sent.body) as { receipt?: { escrow?: { status: string } } }).receipt?.escrow?.status);
+    expect(statuses).toEqual(["disputed", "responded", "resolved", "resolved"]);
+    for (const sent of s.profiles.sent) expect(sent.headers["signature"]).toMatch(/^sig1=:/);
+  });
+
+  it("does not replay an old order's history when it is first read after the change ships (T165)", async () => {
+    const escrow = fakeEscrow();
+    const orders = new OrderStore();
+    const s = await store({ escrow, orders });
+    const { orderId } = await s.buy();
+    await waitFor(() => s.profiles.sent[0]);
+    await s.app.anchors.idle();
+    // A purchase made two days ago and released since, never read by this version.
+    await orders.update(orderId, (o) => {
+      o.createdAt = new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString();
+    });
+    const [key] = [...escrow.purchases.keys()];
+    escrow.purchases.set(key!, { ...escrow.purchases.get(key!)!, status: "released" });
+    await s.app.orderEvents.watchEscrowsOnce();
+    expect(s.orders.get(orderId)?.escrowSeen?.status).toBe("released");
+    expect(s.orders.get(orderId)?.webhook?.deliveries.map((d) => d.event)).toEqual(["created"]);
+  });
+
   it("opens the escrow's release window when the order leaves in full (T164)", async () => {
     const adapter = new MockStoreAdapter();
     const escrow = fakeEscrow();
