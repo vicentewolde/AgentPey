@@ -690,9 +690,27 @@ la orden, el comercio igual necesitaría un archivo para saber qué le reclaman.
 4. **Dónde queda.** En la orden, `escrowRelease`: `pending`, `shipped` (con `releaseAfter`), `released`, `disputed` o
    `failed`, con los hashes de `mark_shipped` y `release`. Al arrancar, la tienda retoma las ventanas abiertas y los
    despachos que no alcanzó a mandar al escrow. Una llamada que falla por otra razón se reintenta a los 30 s, 2, 10 y
-   30 min; después queda `failed` y se resuelve a mano.
+   30 min; después queda `failed` hasta el próximo reinicio, que lo vuelve a intentar.
 5. **Jumpseller** no informa despachos (`R-17`): sus pedidos no abren la ventana. Para una tienda Jumpseller con
    escrow, el pago queda retenido hasta un reclamo (el límite de v0 ya anotado en el spec, §4.2).
+
+**Ajustes de `/revisar` (4-nov).**
+- **Bloqueante corregido:** si el almacén de órdenes fallaba al guardar el estado, el rechazo quedaba sin manejar en un
+  timer y podía tirar el proceso, con todas las tiendas de la plataforma. Ahora ningún paso lanza: un estado que no se
+  pudo guardar queda en el log.
+- **Una cola para la cuenta de firma:** `mark_shipped` y `release` pasan por la misma cola que los `hold` y los anclajes
+  (`AnchorWorker.signerTurn`), una transacción a la vez, para no chocar en el número de secuencia.
+- **Leer una orden no espera a la red:** el despacho deja la orden `pending` en el mismo guardado y la llamada al escrow
+  sigue aparte, así `get_order` no tarda los 30 s de una confirmación.
+- **Nada queda sin salida:** al reiniciar la tienda, un paso `failed` tiene otro intento (el contrato juzga cada llamada).
+  Para insistir a mano basta reiniciar el servicio en Render. Solo se retoman órdenes que el despacho marcó `pending`;
+  una orden despachada antes de T164 no abre su ventana sola al desplegar.
+- **La ventana la dice el escrow:** si `release` llega temprano (#9), la tienda espera hasta el `shipped_at` que reporta
+  el contrato, no el anotado; los tiempos de espera tienen tope y las fechas guardadas se validan.
+- **Límite de v0, a la vista:** un pedido cancelado en Shopify después de despacharse completo igual se libera, porque el
+  observador deja de preguntar por una orden `fulfilled`. El comprador conserva el reclamo mientras dura la ventana.
+- Al desplegar: `ord_mv9s83yb…` (la compra del reclamo pendiente de T162) no tiene `escrowRelease`, así que no se
+  libera sola aunque estuviera despachada.
 
 **Motivo.** Es lo que pide T164 y lo que el contrato espera: sin `mark_shipped` la plata no se libera nunca.
 

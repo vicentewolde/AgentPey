@@ -85,7 +85,7 @@ export interface OrderEventsDeps {
   retryDelaysMs?: readonly number[];
   watchIntervalMs?: number;
   /** Opens the escrow's release window when an order paid into it ships in full, and releases at its end (T164). */
-  releases?: Pick<EscrowReleases, "afterShipment" | "resume" | "stop">;
+  releases?: Pick<EscrowReleases, "afterShipment" | "resume" | "stop" | "idle">;
 }
 
 /** What a delivery's outcome means for it: done, try again later, wait for the budget, or never again. */
@@ -150,6 +150,11 @@ export class OrderEvents {
       const events = o.fulfillmentEvents ?? [];
       const seen = events.some((e) => e.type === "shipped" && (shipment.platformRef === undefined ? e.source === shipment.source : e.platformRef === shipment.platformRef));
       if (o.fulfillmentState !== "fulfilled" || shipment.state !== "partial") o.fulfillmentState = shipment.state ?? "fulfilled";
+      // All of it left an order held in an escrow: the release window is owed (T164), recorded with the shipment so a
+      // restart in between still opens it.
+      if (this.deps.releases !== undefined && o.fulfillmentState === "fulfilled" && o.hold?.status === "held" && o.escrowRelease === undefined) {
+        o.escrowRelease = { status: "pending", attempts: 0 };
+      }
       if (seen) return;
       // Which lines this parcel carried (T148). None that can be named: not an event yet; it is asked about again.
       const lines = parcelLines(o, shipment);
@@ -173,8 +178,8 @@ export class OrderEvents {
       this.deps.log("order shipped", { orderId, source: shipment.source, platformRef: shipment.platformRef });
       if (order.webhook !== undefined) await this.queue(orderId, "shipped");
     }
-    // All of it left: the escrow's release window opens (T164). Also for a last parcel recorded before, never twice.
-    if (order.fulfillmentState === "fulfilled" && order.hold?.status === "held" && order.escrowRelease === undefined) await this.deps.releases?.afterShipment(orderId);
+    // All of it left: the escrow's release window opens (T164). Not awaited: reading an order never waits on the chain.
+    if (order.escrowRelease?.status === "pending") void this.deps.releases?.afterShipment(orderId);
     return order;
   }
 
@@ -252,9 +257,10 @@ export class OrderEvents {
     return pending;
   }
 
-  /** Resolves when no delivery is running (scheduled retries are not awaited). Tests and shutdown. */
+  /** Resolves when no delivery, and no escrow step, is running (scheduled ones are not awaited). Tests and shutdown. */
   async idle(): Promise<void> {
     while (this.running.size > 0) await Promise.allSettled([...this.running.values()]);
+    await this.deps.releases?.idle();
   }
 
   stop(): void {

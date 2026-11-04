@@ -3,16 +3,18 @@
  *
  * When the store's platform says an order paid into the escrow left in full (Shopify, T147), the store calls
  * `mark_shipped`, which opens the release window. When the window closes with no claim, the store calls `release`,
- * which pays the payee. Both are signed and paid by the store's signing account, the escrow's operator (`X-4`).
+ * which pays the payee. Both are signed and paid by the store's signing account, the escrow's operator (`X-4`), and
+ * go through the same queue as its holds and anchors (`AnchorWorker.signerTurn`): one transaction at a time.
  *
  * The escrow is the judge of every step: the store only asks it. A purchase that was disputed meanwhile is never
- * released (the contract refuses, and the store stops trying); a release too early waits; a call that failed is
- * tried again later. Where each order stands is kept on the order, so a restart resumes every pending release.
- * Jumpseller does not report shipments (`R-17`): its orders never reach this module.
+ * released (the contract refuses, and the store stops trying); a release too early waits for the window the escrow
+ * reports; a call that failed is tried again later. Where each order stands is kept on the order, so a restart
+ * resumes every pending step, failed ones included. Nothing here ever throws to its caller: a shipment is recorded
+ * whatever the escrow answers. Jumpseller does not report shipments (`R-17`): its orders never reach this module.
  */
 import type { EscrowPurchase, EscrowReaderFactory } from "@vitrinee/anchor";
 import { escrowContractError } from "@vitrinee/anchor";
-import { stellarExpertTxUrl } from "@vitrinee/core";
+import { VitrineeError, stellarExpertTxUrl } from "@vitrinee/core";
 
 import type { StoreEscrow } from "./config.js";
 import type { OrderEscrowRelease, OrderRecord, OrderStore } from "./orders.js";
@@ -21,6 +23,8 @@ import type { OrderEscrowRelease, OrderRecord, OrderStore } from "./orders.js";
 export const RELEASE_MARGIN_MS = 15_000;
 /** Waits between attempts of a call that failed for a reason other than the contract's word. */
 export const RELEASE_RETRY_DELAYS_MS: readonly number[] = [30_000, 2 * 60_000, 10 * 60_000, 30 * 60_000];
+/** The longest a timer waits before looking again: `setTimeout` overflows past ~24.8 days. */
+const MAX_WAIT_MS = 24 * 60 * 60_000;
 
 export interface EscrowReleaseDeps {
   orders: OrderStore;
@@ -32,6 +36,8 @@ export interface EscrowReleaseDeps {
   };
   /** The store's signing account: the escrow's operator. */
   operatorSecret: string;
+  /** The signing account's queue, shared with holds and anchors. Without it, calls run as they come (tests). */
+  signerTurn?: <T>(work: () => Promise<T>) => Promise<T>;
   now: () => Date;
   log: (message: string, fields?: Record<string, unknown>) => void;
   retryDelaysMs?: readonly number[];
@@ -41,6 +47,8 @@ export interface EscrowReleaseDeps {
 const WRONG_STATUS = 8;
 const RELEASE_TOO_EARLY = 9;
 
+const errorText = (error: unknown): string => (error instanceof Error ? error.message.slice(0, 300) : String(error));
+
 export class EscrowReleases {
   private readonly timers = new Map<string, NodeJS.Timeout>();
   private readonly running = new Map<string, Promise<void>>();
@@ -48,32 +56,34 @@ export class EscrowReleases {
 
   constructor(private readonly deps: EscrowReleaseDeps) {}
 
-  /**
-   * The platform says the order left in full: open the release window, once. Never throws: a shipment is recorded
-   * whatever the escrow answers, and a failed call is tried again.
-   */
+  /** The platform says the order left in full: open the release window, once. Never rejects. */
   afterShipment(orderId: string): Promise<void> {
     return this.serialized(orderId, () => this.markShipped(orderId));
   }
 
-  /** Re-schedules every order whose window is open or whose shipment was never sent to the escrow (after a restart). */
+  /**
+   * Re-schedules every step left half done (after a restart): a window still open, a shipment not yet sent to the
+   * escrow, and a step that gave up, which gets another chance since the contract judges every call anyway.
+   */
   resume(): number {
     let pending = 0;
     for (const order of this.deps.orders.list()) {
       if (order.hold?.escrow !== this.deps.escrow.contract || order.hold.status !== "held") continue;
       const release = order.escrowRelease;
-      if (release?.status === "shipped" && release.releaseAfter !== undefined) {
-        this.schedule(order.orderId, Date.parse(release.releaseAfter) - this.deps.now().getTime() + RELEASE_MARGIN_MS);
-        pending += 1;
-      } else if ((release === undefined || release.status === "pending") && order.fulfillmentState === "fulfilled") {
+      if (release === undefined) continue;
+      if (release.status === "pending" || (release.status === "failed" && release.shippedAt === undefined)) {
         this.schedule(order.orderId, 0, "ship");
-        pending += 1;
+      } else if (release.status === "shipped" || release.status === "failed") {
+        this.schedule(order.orderId, this.untilRelease(release), "release");
+      } else {
+        continue;
       }
+      pending += 1;
     }
     return pending;
   }
 
-  /** Resolves when no call is running (scheduled ones are not awaited). Tests and shutdown. */
+  /** Resolves when no step is running (scheduled ones are not awaited). Tests, shutdown, and a store being replaced. */
   async idle(): Promise<void> {
     while (this.running.size > 0) await Promise.allSettled([...this.running.values()]);
   }
@@ -85,23 +95,41 @@ export class EscrowReleases {
   }
 
   private serialized(orderId: string, work: () => Promise<void>): Promise<void> {
+    const guarded = () =>
+      work().catch((error: unknown) => {
+        // Last line: a step that could not even record its failure (the order store is down). Logged, never thrown.
+        this.deps.log("escrow release step crashed", { orderId, error: errorText(error) });
+      });
     const before = this.running.get(orderId) ?? Promise.resolve();
-    const next = before.then(work, work).finally(() => {
+    const next = before.then(guarded, guarded).finally(() => {
       if (this.running.get(orderId) === next) this.running.delete(orderId);
     });
     this.running.set(orderId, next);
     return next;
   }
 
-  private schedule(orderId: string, delayMs: number, step: "ship" | "release" = "release"): void {
+  private schedule(orderId: string, delayMs: number, step: "ship" | "release"): void {
     if (this.stopped) return;
     clearTimeout(this.timers.get(orderId));
-    const timer = setTimeout(() => {
-      this.timers.delete(orderId);
-      void this.serialized(orderId, () => (step === "ship" ? this.markShipped(orderId) : this.release(orderId)));
-    }, Math.max(0, delayMs));
+    const timer = setTimeout(
+      () => {
+        this.timers.delete(orderId);
+        void this.serialized(orderId, () => (step === "ship" ? this.markShipped(orderId) : this.release(orderId)));
+      },
+      Math.min(MAX_WAIT_MS, Math.max(0, Number.isFinite(delayMs) ? delayMs : 0)),
+    );
     timer.unref();
     this.timers.set(orderId, timer);
+  }
+
+  /** How long until `release` may be called, from the window kept on the order. */
+  private untilRelease(release: OrderEscrowRelease): number {
+    const at = release.releaseAfter === undefined ? Number.NaN : Date.parse(release.releaseAfter);
+    return Number.isFinite(at) ? at - this.deps.now().getTime() + RELEASE_MARGIN_MS : 0;
+  }
+
+  private turn<T>(work: () => Promise<T>): Promise<T> {
+    return this.deps.signerTurn === undefined ? work() : this.deps.signerTurn(work);
   }
 
   private held(orderId: string): OrderRecord | undefined {
@@ -120,15 +148,15 @@ export class EscrowReleases {
   }
 
   /** Where the escrow says a purchase stands, kept on the order: shipped (with its window), released, or no longer ours to move. */
-  private fromChain(purchase: EscrowPurchase, current: OrderEscrowRelease | undefined): OrderEscrowRelease | null {
-    const base = { attempts: current?.attempts ?? 0, ...(current?.shippedTx === undefined ? {} : { shippedTx: current.shippedTx }) };
+  private fromChain(purchase: EscrowPurchase, current: OrderEscrowRelease): OrderEscrowRelease | null {
+    const base = { attempts: 0, ...(current.shippedTx === undefined ? {} : { shippedTx: current.shippedTx }) };
     switch (purchase.status) {
       case "shipped": {
         const shippedAt = purchase.shippedAt ?? 0;
         return { ...base, status: "shipped", shippedAt: new Date(shippedAt * 1000).toISOString(), releaseAfter: new Date((shippedAt + this.deps.escrow.releaseWindowSeconds) * 1000).toISOString() };
       }
       case "released":
-        return { ...base, status: "released", ...(current?.releaseTx === undefined ? {} : { releaseTx: current.releaseTx }) };
+        return { ...base, status: "released", ...(current.releaseTx === undefined ? {} : { releaseTx: current.releaseTx }) };
       case "disputed":
       case "responded":
       case "resolved":
@@ -140,26 +168,41 @@ export class EscrowReleases {
     }
   }
 
-  private retry(orderId: string, step: "ship" | "release", current: OrderEscrowRelease, error: unknown): Promise<void> {
+  /** Records a failed attempt and schedules the next, or gives up. A failure to record is only logged. */
+  private async retry(orderId: string, step: "ship" | "release", current: OrderEscrowRelease, error: unknown): Promise<void> {
     const delays = this.deps.retryDelaysMs ?? RELEASE_RETRY_DELAYS_MS;
     const attempts = current.attempts + 1;
-    const message = error instanceof Error ? error.message.slice(0, 300) : String(error);
+    const message = errorText(error);
     const delay = delays[attempts - 1];
     this.deps.log(`escrow ${step} failed`, { orderId, attempts, error: message, ...(delay === undefined ? { gaveUp: true } : { retryInMs: delay }) });
     if (delay !== undefined) this.schedule(orderId, delay, step);
-    return this.save(orderId, { ...current, attempts, lastError: message, ...(delay === undefined ? { status: "failed" as const } : {}) });
+    try {
+      await this.save(orderId, { ...current, attempts, lastError: message, ...(delay === undefined ? { status: "failed" as const } : {}) });
+    } catch (saveError) {
+      this.deps.log("escrow release state not saved", { orderId, error: errorText(saveError) });
+    }
+  }
+
+  /** Records what the escrow says now, and schedules the release while the window runs. */
+  private async settle(orderId: string, purchase: EscrowPurchase | null, current: OrderEscrowRelease): Promise<void> {
+    if (purchase === null) throw new VitrineeError("EscrowError", "the escrow holds no purchase for this order", { details: { orderId } });
+    const next = this.fromChain(purchase, current);
+    if (next === null) throw new VitrineeError("EscrowError", "the escrow still shows the purchase held, not shipped", { details: { orderId } });
+    await this.save(orderId, next);
+    if (next.status === "disputed") this.deps.log("escrow release stopped: a claim was opened", { orderId });
+    if (next.status === "shipped") this.schedule(orderId, this.untilRelease(next), "release");
   }
 
   private async markShipped(orderId: string): Promise<void> {
     const order = this.held(orderId);
     if (order === undefined || order.fulfillmentState !== "fulfilled") return;
-    const current = order.escrowRelease ?? { status: "pending" as const, attempts: 0 };
-    if (current.status !== "pending") return;
+    const current: OrderEscrowRelease = order.escrowRelease ?? { status: "pending", attempts: 0 };
+    if (current.status !== "pending" && !(current.status === "failed" && current.shippedAt === undefined)) return;
     try {
       let purchase = await this.read(orderId);
       if (purchase?.status === "held") {
         try {
-          const sent = await this.deps.writer.markShipped(orderId, this.deps.operatorSecret);
+          const sent = await this.turn(() => this.deps.writer.markShipped(orderId, this.deps.operatorSecret));
           current.shippedTx = sent.txHash;
           this.deps.log("escrow window opened", { orderId, transaction: sent.txHash, explorerUrl: stellarExpertTxUrl(sent.txHash) });
         } catch (error) {
@@ -168,10 +211,7 @@ export class EscrowReleases {
         }
         purchase = await this.read(orderId);
       }
-      const next = purchase === null ? null : this.fromChain(purchase, current);
-      if (next === null) throw new Error(purchase === null ? "the escrow holds no purchase for this order" : "the escrow still shows the purchase held");
-      await this.save(orderId, next);
-      if (next.status === "shipped" && next.releaseAfter !== undefined) this.schedule(orderId, Date.parse(next.releaseAfter) - this.deps.now().getTime() + RELEASE_MARGIN_MS);
+      await this.settle(orderId, purchase, current);
     } catch (error) {
       await this.retry(orderId, "ship", current, error);
     }
@@ -180,30 +220,26 @@ export class EscrowReleases {
   private async release(orderId: string): Promise<void> {
     const order = this.held(orderId);
     const current = order?.escrowRelease;
-    if (order === undefined || current?.status !== "shipped") return;
+    if (order === undefined || current === undefined || !(current.status === "shipped" || (current.status === "failed" && current.shippedAt !== undefined))) return;
     try {
       const purchase = await this.read(orderId);
       if (purchase?.status === "shipped") {
         try {
-          const sent = await this.deps.writer.release(orderId, this.deps.operatorSecret);
+          const sent = await this.turn(() => this.deps.writer.release(orderId, this.deps.operatorSecret));
           current.releaseTx = sent.txHash;
           this.deps.log("escrow released", { orderId, transaction: sent.txHash, explorerUrl: stellarExpertTxUrl(sent.txHash) });
         } catch (error) {
           const code = escrowContractError(error);
           if (code === RELEASE_TOO_EARLY) {
-            // The ledger's clock is behind: ask again shortly, without counting it as a failure.
-            this.schedule(orderId, RELEASE_MARGIN_MS);
+            // The escrow's window, not the one kept here, decides: wait for it, without counting a failure.
+            const window = this.fromChain(purchase, current);
+            this.schedule(orderId, window === null ? RELEASE_MARGIN_MS : Math.max(RELEASE_MARGIN_MS, this.untilRelease(window)), "release");
             return;
           }
           if (code !== WRONG_STATUS) throw error;
         }
       }
-      const after = await this.read(orderId);
-      const next = after === null ? null : this.fromChain(after, current);
-      if (next === null) throw new Error("the escrow holds no purchase for this order");
-      await this.save(orderId, next);
-      if (next.status === "disputed") this.deps.log("escrow release stopped: a claim was opened", { orderId });
-      if (next.status === "shipped" && next.releaseAfter !== undefined) this.schedule(orderId, Date.parse(next.releaseAfter) - this.deps.now().getTime() + RELEASE_MARGIN_MS);
+      await this.settle(orderId, await this.read(orderId), current);
     } catch (error) {
       await this.retry(orderId, "release", current, error);
     }

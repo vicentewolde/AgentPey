@@ -307,8 +307,8 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
       status: z.enum(["pending", "shipped", "released", "disputed", "failed"]),
       attempts: z.number().int().nonnegative(),
       shippedTx: z.string().regex(/^[0-9a-f]{64}$/).optional(),
-      shippedAt: z.string().optional(),
-      releaseAfter: z.string().optional(),
+      shippedAt: z.iso.datetime().optional(),
+      releaseAfter: z.iso.datetime().optional(),
       releaseTx: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       lastError: z.string().optional(),
     })

@@ -300,6 +300,8 @@ export function createApp({
           readers: escrowReader,
           writer: escrowReleaseWriter ?? storeEscrow,
           operatorSecret: config.signing.secret,
+          // One transaction at a time from the signing account, with its holds and anchors.
+          signerTurn: (work) => anchors.signerTurn(work),
           now,
           log,
           ...(escrowReleaseRetryDelaysMs === undefined ? {} : { retryDelaysMs: escrowReleaseRetryDelaysMs }),

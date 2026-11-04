@@ -58,6 +58,19 @@ export class AnchorWorker {
     });
   }
 
+  /**
+   * Runs `work` in this same queue (T164): the store's signing account sends holds, anchors, `mark_shipped` and
+   * `release`, and one transaction at a time is what keeps their sequence numbers from colliding.
+   */
+  signerTurn<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(work);
+    this.chain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
   /** Re-queues everything not yet held or anchored, e.g. after a restart. */
   resume(): number {
     let queued = 0;
