@@ -53,6 +53,9 @@ const ESCROW_CHECK_MIN_INTERVAL_MS = 15_000;
  * that first read still reports; an older one starts from what the escrow says, so a deploy never replays history.
  */
 const ESCROW_BASELINE_RECENT_MS = 24 * 60 * 60_000;
+/** An order whose escrow has not moved in this long is read less often: once every `ESCROW_QUIET_INTERVAL_MS`. */
+const ESCROW_QUIET_AFTER_MS = 3 * 60 * 60_000;
+const ESCROW_QUIET_INTERVAL_MS = 10 * 60_000;
 
 /** The webhook key, checked once: a key that cannot sign is a configuration error, never a stuck queue. */
 const webhookSigningKeySchema = z.object({
@@ -276,7 +279,7 @@ export class OrderEvents {
 
   /** Resolves when no delivery, and no escrow step, is running (scheduled ones are not awaited). Tests and shutdown. */
   async idle(): Promise<void> {
-    while (this.running.size > 0) await Promise.allSettled([...this.running.values()]);
+    while (this.running.size > 0 || this.escrowChecks.size > 0) await Promise.allSettled([...this.running.values(), ...this.escrowChecks.values()]);
     await this.deps.releases?.idle();
   }
 
@@ -299,6 +302,7 @@ export class OrderEvents {
    * being read) at most every 15 s. Never throws: a failed read is tried at the next pass.
    */
   async checkEscrow(orderId: string, options: { force?: boolean } = {}): Promise<void> {
+    if (this.stopped) return;
     const running = this.escrowChecks.get(orderId);
     if (running !== undefined) return running;
     const last = this.escrowCheckedAt.get(orderId);
@@ -314,7 +318,7 @@ export class OrderEvents {
 
   private async readEscrow(orderId: string): Promise<void> {
     const order = this.deps.orders.get(orderId);
-    if (order?.webhook === undefined || order.ucpCheckoutId === undefined || order.hold?.status !== "held" || this.deps.escrow === undefined) return;
+    if (this.stopped || order?.webhook === undefined || order.ucpCheckoutId === undefined || order.hold?.status !== "held" || this.deps.escrow === undefined) return;
     this.escrowCheckedAt.set(orderId, this.deps.now().getTime());
     const lookup = await this.deps.escrow(order);
     if (lookup.kind !== "found") return;
@@ -323,11 +327,22 @@ export class OrderEvents {
     const previous = order.escrowSeen?.status ?? (recent ? "held" : status);
     if (previous === status && order.escrowSeen !== undefined) return;
     const events = escrowEvents(previous, lookup.purchase);
+    // Every delivery is built from this one read, then saved with the state they report in a single write: a crash
+    // or a failed save in between loses nothing, and the next read tries again (T165 review).
+    const deliveries: OrderWebhookDelivery[] = [];
+    for (const event of events) {
+      const delivery = await this.delivery(order, event, lookup);
+      if (delivery !== null) deliveries.push(delivery);
+    }
+    // A store replaced meanwhile writes nothing: the new one reads the escrow itself (T147).
+    if (this.stopped) return;
+    const at = this.deps.now().toISOString();
     await this.deps.orders.update(orderId, (o) => {
-      o.escrowSeen = { status, at: this.deps.now().toISOString() };
+      o.escrowSeen = { status, at };
+      appendDeliveries(o, deliveries);
     });
     if (events.length > 0) this.deps.log("escrow changed", { orderId, from: previous, to: status, events });
-    for (const event of events) await this.queue(orderId, event);
+    if (deliveries.length > 0) this.schedule(orderId, 0);
   }
 
   private startEscrowWatcher(): void {
@@ -349,6 +364,10 @@ export class OrderEvents {
       if (this.stopped) return;
       if (order.webhook === undefined || order.hold?.status !== "held" || Date.parse(order.createdAt) < cutoff) continue;
       if (order.escrowSeen !== undefined && isEscrowSettled(order.escrowSeen.status)) continue;
+      // An order quiet for hours is read every 10 minutes, not every minute: the RPC is shared (T165 review).
+      const quiet = order.escrowSeen !== undefined && this.deps.now().getTime() - Date.parse(order.escrowSeen.at) > ESCROW_QUIET_AFTER_MS;
+      const last = this.escrowCheckedAt.get(order.orderId);
+      if (quiet && last !== undefined && this.deps.now().getTime() - last < ESCROW_QUIET_INTERVAL_MS) continue;
       await this.checkEscrow(order.orderId, { force: true });
     }
   }
@@ -358,24 +377,22 @@ export class OrderEvents {
   private async queue(orderId: string, event: OrderWebhookDelivery["event"]): Promise<void> {
     const current = this.deps.orders.get(orderId);
     if (current?.webhook === undefined || current.ucpCheckoutId === undefined) return;
-    const lookup: DisputeLookup = event === "created" ? { kind: "none" } : await this.deps.disputes(current);
     // Where the payment stands in the escrow, as the order itself shows it (T161): the webhook is the same document.
     const escrow: EscrowLookup = this.deps.escrow === undefined ? { kind: "none" } : await this.deps.escrow(current);
+    const delivery = await this.delivery(current, event, escrow);
+    if (delivery === null) return;
+    await this.deps.orders.update(orderId, (o) => appendDeliveries(o, [delivery]));
+    this.schedule(orderId, 0);
+  }
+
+  /** One delivery: the whole order as it stands, with the escrow lookup already read. `null` for an order without a webhook. */
+  private async delivery(current: OrderRecord, event: OrderWebhookDelivery["event"], escrow: EscrowLookup): Promise<OrderWebhookDelivery | null> {
+    if (current.webhook === undefined || current.ucpCheckoutId === undefined) return null;
+    const lookup: DisputeLookup = event === "created" ? { kind: "none" } : await this.deps.disputes(current);
     const now = this.deps.now();
     // The tracking goes to the platform that bought, and only there: the public order shows the country alone (T127, T147 review).
     const body = JSON.stringify(ucpOrder({ ...current, ucpCheckoutId: current.ucpCheckoutId }, current.webhook.origin, lookup, current.webhook.version, { tracking: true, escrow }));
-    const delivery: OrderWebhookDelivery = { id: randomUUID(), timestamp: Math.floor(now.getTime() / 1000), event, body, status: "pending", attempts: 0, nextAttemptAt: now.toISOString() };
-    await this.deps.orders.update(orderId, (o) => {
-      if (o.webhook === undefined) return;
-      const deliveries = [...o.webhook.deliveries, delivery];
-      while (deliveries.length > MAX_DELIVERIES) {
-        const finished = deliveries.findIndex((d) => d.status !== "pending");
-        if (finished === -1) break;
-        deliveries.splice(finished, 1);
-      }
-      o.webhook.deliveries = deliveries;
-    });
-    this.schedule(orderId, 0);
+    return { id: randomUUID(), timestamp: Math.floor(now.getTime() / 1000), event, body, status: "pending", attempts: 0, nextAttemptAt: now.toISOString() };
   }
 
   private schedule(orderId: string, delayMs: number): void {
@@ -494,6 +511,18 @@ export class OrderEvents {
       await this.checkShipment(order.orderId);
     }
   }
+}
+
+/** Adds deliveries to an order's queue, dropping the oldest finished ones past the limit; never a pending one. */
+function appendDeliveries(order: OrderRecord, added: readonly OrderWebhookDelivery[]): void {
+  if (order.webhook === undefined || added.length === 0) return;
+  const deliveries = [...order.webhook.deliveries, ...added];
+  while (deliveries.length > MAX_DELIVERIES) {
+    const finished = deliveries.findIndex((d) => d.status !== "pending");
+    if (finished === -1) break;
+    deliveries.splice(finished, 1);
+  }
+  order.webhook.deliveries = deliveries;
 }
 
 /** What may be kept as a webhook URL: a parsable http(s) URL within the length a session and an order store (T147 review). The sender vets it again on every delivery. */

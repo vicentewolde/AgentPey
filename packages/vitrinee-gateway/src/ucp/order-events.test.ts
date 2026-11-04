@@ -291,6 +291,47 @@ describe("shipping events (T147)", () => {
     for (const sent of s.profiles.sent) expect(sent.headers["signature"]).toMatch(/^sig1=:/);
   });
 
+  it("loses no event when saving fails, and does not move on from a read it could not make (T165 review)", async () => {
+    const escrow = fakeEscrow();
+    const orders = new OrderStore();
+    const s = await store({ escrow, orders });
+    const { orderId } = await s.buy();
+    await waitFor(() => s.profiles.sent[0]);
+    await s.app.anchors.idle();
+    await s.app.orderEvents.watchEscrowsOnce();
+    const [key] = [...escrow.purchases.keys()];
+    escrow.purchases.set(key!, { ...escrow.purchases.get(key!)!, status: "disputed", openedAt: Math.floor(Date.now() / 1000), claimHash: "c".repeat(64) });
+    // The order store fails once: the state and its delivery go together, so neither is written.
+    const update = orders.update.bind(orders);
+    let failures = 1;
+    orders.update = async (id, change) => {
+      if (failures > 0) {
+        failures -= 1;
+        throw new Error("postgres is down");
+      }
+      return update(id, change);
+    };
+    await s.app.orderEvents.watchEscrowsOnce();
+    expect(s.orders.get(orderId)?.escrowSeen?.status).toBe("held");
+    // The next pass sends it.
+    await s.app.orderEvents.watchEscrowsOnce();
+    expect(s.orders.get(orderId)?.escrowSeen?.status).toBe("disputed");
+    expect(s.orders.get(orderId)?.webhook?.deliveries.map((d) => d.event)).toEqual(["created", "dispute.opened"]);
+
+    // An escrow that cannot be read leaves the state where it was.
+    const reader = escrow.reader as { get: (orderRef: string) => Promise<unknown> };
+    const get = reader.get;
+    reader.get = () => Promise.reject(new Error("rpc down"));
+    escrow.purchases.set(key!, { ...escrow.purchases.get(key!)!, status: "responded", responseHash: "a".repeat(64) });
+    await s.app.orderEvents.watchEscrowsOnce();
+    expect(s.orders.get(orderId)?.escrowSeen?.status).toBe("disputed");
+    reader.get = get;
+    // A stopped store (replaced by a new one) reads and writes nothing more.
+    s.app.orderEvents.stop();
+    await s.app.orderEvents.checkEscrow(orderId, { force: true });
+    expect(s.orders.get(orderId)?.escrowSeen?.status).toBe("disputed");
+  });
+
   it("does not replay an old order's history when it is first read after the change ships (T165)", async () => {
     const escrow = fakeEscrow();
     const orders = new OrderStore();

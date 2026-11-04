@@ -743,6 +743,18 @@ la orden, el comercio igual necesitaría un archivo para saber qué le reclaman.
    cada aviso, y lo nombra (`dispute.opened`, …). `GET /ucp/webhooks/orders` muestra el registro, sin cuerpos ni ids de
    orden.
 
+**Ajustes de `/revisar` (4-nov).**
+- **Ningún aviso se pierde:** las entregas de un cambio se arman con la misma lectura del escrow y se guardan junto con
+  el estado nuevo (`escrowSeen`) en una sola escritura. Si esa escritura falla, nada avanza y la próxima lectura vuelve
+  a intentar. Una lectura que no se pudo hacer tampoco avanza el estado.
+- **Una tienda detenida** (reemplazada en la plataforma) ya no lee ni escribe, y `idle()` espera sus lecturas en curso.
+- **Menos carga en la RPC:** una orden cuyo escrow no se movió en 3 h se lee cada 10 min, no cada minuto.
+- **El registro con nombre es la cola de la tienda.** Un mismo estado puede ser más de un evento (un veredicto es
+  `dispute.resolved` y además un reembolso o una liberación), así que el receptor nombra por estado. Cada aviso lleva un
+  `Webhook-Id`, el mismo en la cola de la tienda y en el registro de agentpey.com: unidos, dicen qué se entregó y qué se
+  verificó. El receptor anota también el reembolso pendiente de entregar (`X-19`): un `escrow.refunded` con deuda
+  significa que la plata todavía espera `claim_refund`. Un bloque de escrow que no puede leer no rechaza el aviso.
+
 **Motivo.** Es lo que pide T165 y lo que el Instaward prometió: que el agente se entere de cada cambio sin preguntar.
 
 **Alternativas descartadas.**

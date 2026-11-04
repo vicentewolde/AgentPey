@@ -69,19 +69,30 @@ const deliveredOrderSchema = z.looseObject({
   ucp: z.looseObject({ version: z.string().max(20).optional() }).optional(),
   fulfillment: z.looseObject({ events: z.array(z.looseObject({ type: z.string().max(50) })).max(100).optional() }).optional(),
   // Where the payment stands in the store's escrow (T161, T165): read, never trusted for money, only logged.
+  // Only logged: a block this receiver cannot read is ignored, never a refused delivery (T165 review).
   receipt: z
-    .looseObject({ escrow: z.looseObject({ status: z.string().max(20), refund_atomic: z.string().max(40).optional() }).optional() })
-    .optional(),
+    .looseObject({
+      escrow: z
+        .looseObject({ status: z.string().max(20), refund_atomic: z.string().max(40).optional(), refund_owed_atomic: z.string().max(40).optional() })
+        .optional()
+        .catch(undefined),
+    })
+    .optional()
+    .catch(undefined),
 });
 
-/** The event an escrow state reports (T165): a dispute's step, or where the payment ended. Others are fulfillment's. */
-const ESCROW_EVENT: Readonly<Record<string, string>> = {
-  disputed: "dispute.opened",
-  responded: "dispute.responded",
-  resolved: "dispute.resolved",
-  released: "escrow.released",
-  expired: "escrow.refunded",
-};
+/**
+ * The step an escrow state reports (T165): a dispute's, or where the payment ended. A state can stand for more than one
+ * event (a verdict is `dispute.resolved` and also a refund or a release): the store's own queue names each delivery,
+ * and its `Webhook-Id` is the one kept here, so the two records join.
+ */
+const ESCROW_EVENT: ReadonlyMap<string, string> = new Map([
+  ["disputed", "dispute.opened"],
+  ["responded", "dispute.responded"],
+  ["resolved", "dispute.resolved"],
+  ["released", "escrow.released"],
+  ["expired", "escrow.refunded"],
+]);
 
 type WebhookKey = EcPublicJwk & { kid: string };
 
@@ -92,8 +103,8 @@ export interface ReceivedWebhook {
   orderRef: string;
   /** `created`, the type of the order's newest fulfillment event, or the escrow's step it reports (T165). */
   event: string;
-  /** The escrow's state in the delivered order, and what was refunded, when the order was paid into one (T165). */
-  escrow?: { status: string; refundAtomic: string | null };
+  /** The escrow's state in the delivered order, what was refunded and what of it is still owed (`X-19`), when it was paid into one (T165). */
+  escrow?: { status: string; refundAtomic: string | null; refundOwedAtomic: string | null };
   occurredAt: string;
   receivedAt: string;
 }
@@ -237,8 +248,8 @@ export function createOrderWebhookReceiver(options: OrderWebhookReceiverOptions 
       webhookId,
       store: profile.origin,
       orderRef: createHash("sha256").update(order.data.id).digest("hex").slice(0, 16),
-      event: (escrow === undefined ? undefined : ESCROW_EVENT[escrow.status]) ?? last ?? "created",
-      ...(escrow === undefined ? {} : { escrow: { status: escrow.status, refundAtomic: escrow.refund_atomic ?? null } }),
+      event: (escrow === undefined ? undefined : ESCROW_EVENT.get(escrow.status)) ?? last ?? "created",
+      ...(escrow === undefined ? {} : { escrow: { status: escrow.status, refundAtomic: escrow.refund_atomic ?? null, refundOwedAtomic: escrow.refund_owed_atomic ?? null } }),
       occurredAt: new Date(Number(timestamp) * 1000).toISOString(),
       receivedAt: now().toISOString(),
     };
@@ -248,7 +259,7 @@ export function createOrderWebhookReceiver(options: OrderWebhookReceiverOptions 
     kept.splice(MAX_KEPT);
     // Flat fields for the log line: what makes this delivery's record of the dispute (T165).
     const { escrow: escrowSeen, ...flat } = received;
-    log("order webhook received", { ...flat, orderId: order.data.id, escrowStatus: escrowSeen?.status ?? null, refundAtomic: escrowSeen?.refundAtomic ?? null });
+    log("order webhook received", { ...flat, orderId: order.data.id, escrowStatus: escrowSeen?.status ?? null, refundAtomic: escrowSeen?.refundAtomic ?? null, refundOwedAtomic: escrowSeen?.refundOwedAtomic ?? null });
     const version = order.data.ucp?.version;
     return { status: 200, body: { ucp: { ...(version === undefined ? {} : { version }), status: "success" } } };
   }

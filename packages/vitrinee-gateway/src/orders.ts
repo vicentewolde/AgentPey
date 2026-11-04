@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { Buyer } from "@vitrinee/adapters";
+import { ESCROW_STATUSES, type EscrowStatus } from "@vitrinee/anchor";
 import { VitrineeError, currencyDecimals, formatUnits, parseDecimal } from "@vitrinee/core";
 import { z } from "zod";
 
@@ -188,7 +189,7 @@ export interface OrderRecord {
   /** What the shipment did to the escrowed payment (T164). Absent until the order ships in full. */
   escrowRelease?: OrderEscrowRelease;
   /** The escrow's state the platform was last told about (T165): a change from it is an event. Absent until first read. */
-  escrowSeen?: { status: "held" | "shipped" | "released" | "disputed" | "responded" | "resolved" | "expired"; at: string };
+  escrowSeen?: { status: EscrowStatus; at: string };
 }
 
 /**
@@ -311,7 +312,7 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
       ),
     })
     .optional(),
-  escrowSeen: z.object({ status: z.enum(["held", "shipped", "released", "disputed", "responded", "resolved", "expired"]), at: z.iso.datetime() }).optional(),
+  escrowSeen: z.object({ status: z.enum(ESCROW_STATUSES), at: z.iso.datetime() }).optional(),
   escrowRelease: z
     .object({
       status: z.enum(["pending", "shipped", "released", "disputed", "failed"]),

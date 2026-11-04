@@ -98,6 +98,15 @@ describe("AgentPey's order webhook receiver (T147)", () => {
     expect(r.recent().map((w) => [w.escrow?.status, w.event, w.escrow?.refundAtomic])).toEqual([...steps].reverse().map(([status, event, refund]) => [status, event, refund]));
   });
 
+  it("never refuses a delivery for an escrow block it cannot read, nor names one by an inherited property (T165 review)", async () => {
+    const { r } = receiver();
+    const odd = deliver(order({ receipt: { escrow: { status: 42 } } }), { id: "99999999-2222-4333-8444-000000000010" });
+    expect((await r.receive(URL_, odd.headers, odd.body)).status).toBe(200);
+    const tricky = deliver(order({ receipt: { escrow: { status: "constructor" } } }), { id: "99999999-2222-4333-8444-000000000011" });
+    expect((await r.receive(URL_, tricky.headers, tricky.body)).status).toBe(200);
+    expect(r.recent().map((w) => w.event)).toEqual(["created", "created"]);
+  });
+
   it("finds the key in a 2026-04-08 profile's signing_keys", async () => {
     const { r } = receiver({ ucp: { version: "2026-04-08" }, signing_keys: [storeKey.publicJwk] });
     const { headers, body } = deliver();
