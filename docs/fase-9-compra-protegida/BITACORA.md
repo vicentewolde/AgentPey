@@ -19,7 +19,8 @@ contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentP
 `agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 cerrada** ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)): un
 veredicto real reembolsó desde el pago retenido el 16-oct. **T161 cerrada** ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): la orden muestra dónde está el pago en el
 escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el entregable D1. **T162 mergeada el
-27-oct** ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)): el reclamo del chat abre la disputa en el escrow. Falta el reclamo en vivo desde Claude, grabado. Después: T163.
+27-oct** ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)): el reclamo del chat abre la disputa en el escrow. Falta el reclamo en vivo desde Claude, grabado. **T163, código listo el 4-nov** (rama
+`cc/t163-respuesta-comercio`): el comercio responde desde su página firmando con su wallet, y el árbitro decide desde la orden. Después: T163.
 
 ## Progreso
 
@@ -32,7 +33,7 @@ escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el e
 | T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ✅ terminada |
 | T162 El reclamo desde el chat abre la disputa en la red | 🔨 mergeada; falta el reclamo en vivo desde Claude |
-| T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente |
+| T163 El comercio recibe el aviso y responde desde su página | 🔨 código listo; faltan los hashes de testnet |
 | T164 El despacho abre la ventana de liberación | ⏳ pendiente |
 | T165 Cada cambio de la disputa llega al agente | ⏳ pendiente |
 | T166 Corrida completa y QA | ⏳ pendiente |
@@ -215,3 +216,23 @@ testnet: los dos pasos esperan el OK del usuario. El guion está en la evidencia
 (`ord_mv9s83yb…`, pagada desde el MCP).
 
 **Decisión:** `X-28` (y el código de error nuevo `ResolveDisputeExists`). **Evidencia:** [`evidencia/T162.md`](evidencia/T162.md). Mergeada el 27-oct ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)), CI 4/4; producción 11/11 y 28/28 después del push.
+
+## 2026-11-04 · T163 · El comercio recibe el aviso y responde desde su página
+
+**Qué quedó funcionando, en llano.** Hasta ahora, una disputa obligaba a pasar archivos de mano en mano: el árbitro le
+mandaba el reclamo al comercio, el comercio firmaba un mensaje y le devolvía otro archivo. Ahora todo queda junto al
+pedido. Cuando Claude abre la disputa, le entrega el reclamo a la tienda, que lo guarda solo si es el mismo que quedó
+registrado en la red. El portal del comercio avisa "reclamo abierto, responde antes de tal hora" con un enlace. En esa
+página, el comercio lee el reclamo, escribe su versión y la firma con su wallet (Freighter o xBull): la firma es una
+transacción que deja en la red la huella de su respuesta, dentro del plazo. La tienda guarda la respuesta junto al
+pedido, y el árbitro decide leyendo las dos cosas desde ahí, comparadas con la red. Ningún archivo pasa de mano en mano.
+
+**La tienda no puede cambiar nada.** Guarda los documentos, pero la red tiene sus huellas: quien los lee los compara.
+Tampoco tiene la llave del comercio: arma la transacción y la manda solo después de leer que es exactamente la respuesta
+de ese pedido, en su escrow, firmada por la cuenta de cobro.
+
+**Lo que falta.** Los hashes de testnet: una respuesta a tiempo (la firma el usuario con su wallet, después del merge) y
+una tardía que la red rechaza (un ensayo en el escrow de prueba, unos 8 minutos y 0,05 USDC que vuelven). Las dos
+esperan el OK del usuario.
+
+**Decisiones:** `X-29` y `VT-51`. **Evidencia:** [`evidencia/T163.md`](evidencia/T163.md).

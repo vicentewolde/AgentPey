@@ -115,6 +115,8 @@ export const outputSchemas = {
         explorer_url: z.string(),
         respond_by: z.string().nullable(),
         resolve_by: z.string().nullable(),
+        /** Whether the store keeps the claim next to the order, for the merchant and the arbiter (T163). */
+        claim_kept: z.boolean(),
       })
       .nullable(),
     next_step: z.string(),

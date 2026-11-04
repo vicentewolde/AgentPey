@@ -159,6 +159,11 @@ Antes de abrir, la tienda lee el escrow en la red y no abre si no es suyo: códi
 = cuenta de firma, `payee` = cuenta de cobro y token USDC. Nunca vuelve en silencio a cobrar directo. Con escrow, el
 perfil declara el handler en su versión `2026-10-15` y el manifest suma `settlement.escrow`.
 
+**Disputas en el escrow (T163, `VT-51`, `X-29`).** La tienda guarda junto a la orden el reclamo y la respuesta del
+comercio, y los sirve en `GET /orders/<id>/dispute`. El comercio responde desde
+`agentpey.com/resolve/responder?order=<tienda>/orders/<id>` (el portal lo enlaza): la tienda arma `respond`, la wallet
+de la cuenta de cobro lo firma y la tienda lo envía. La tienda nunca tiene esa llave.
+
 ## Shopify (T112)
 
 Un comercio Shopify se da de alta igual que uno Jumpseller (portal, cuatro

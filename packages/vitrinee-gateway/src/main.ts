@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
+import { escrowReaders } from "@vitrinee/anchor";
 import { MANIFEST_PATH, isVitrineeError, stellarAccountSchema, stellarContractIdSchema } from "@vitrinee/core";
 import { z } from "zod";
 
@@ -151,6 +152,8 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
     portal: {
       sessions: new WalletSessions({ sessionKey: deriveKey(settings.masterKey, "portal-session") }),
       ordersFor,
+      // The dispute notice reads each held order's escrow on chain (T163).
+      escrows: escrowReaders({ rpcUrl: process.env["STELLAR_RPC_URL"] ?? "https://soroban-testnet.stellar.org", networkPassphrase: "Test SDF Network ; September 2015" }),
       onboarding: {
         box,
         stellar: testnet({ ...(process.env["STELLAR_HORIZON_URL"] ? { horizonUrl: process.env["STELLAR_HORIZON_URL"] } : {}) }),

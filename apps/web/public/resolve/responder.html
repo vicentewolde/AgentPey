@@ -146,7 +146,7 @@
 </style>
 </head>
 <body>
-<script src="/wallet-kit.js" data-needs="message"></script>
+<script src="/wallet-kit.js" data-needs="message transaction"></script>
 
 <main class="wrap">
   <div class="top">
@@ -184,14 +184,21 @@
 
   <section class="panel">
     <p class="panel-kicker"><span data-tr="en">01 · The claim</span><span data-tr="es">01 · El reclamo</span></p>
-    <h2><span data-tr="en">Load the claim the arbiter sent you</span><span data-tr="es">Carga el reclamo que te envió el árbitro</span></h2>
-    <p class="lead">
+    <h2 class="file-mode"><span data-tr="en">Load the claim the arbiter sent you</span><span data-tr="es">Carga el reclamo que te envió el árbitro</span></h2>
+    <p class="lead file-mode">
       <span data-tr="en">It is a file named claim.jws. Choose it, or paste its content. Nothing leaves this page until you download your answer.</span>
       <span data-tr="es">Es un archivo llamado claim.jws. Elígelo o pega su contenido. Nada sale de esta página hasta que descargas tu respuesta.</span>
     </p>
-    <div class="actions"><input id="claim-file" type="file" accept=".jws,.txt,text/plain"></div>
-    <textarea id="claim-text" class="field mono" rows="4" spellcheck="false" data-placeholder-en="Or paste the claim here (eyJ...)" data-placeholder-es="O pega el reclamo aquí (eyJ...)"></textarea>
-    <div class="actions"><button id="read-btn" class="btn secondary" type="button"><span data-tr="en">Read the claim</span><span data-tr="es">Leer el reclamo</span></button></div>
+    <h2 class="order-mode" hidden><span data-tr="en">The claim on your order</span><span data-tr="es">El reclamo sobre tu pedido</span></h2>
+    <p class="lead order-mode" hidden>
+      <span data-tr="en">The buyer opened it in your store's escrow, so the payment for this order is frozen until the arbiter decides. Your store keeps the claim next to the order; it is the one the escrow holds.</span>
+      <span data-tr="es">El comprador lo abrió en el escrow de tu tienda, así que el pago de este pedido queda congelado hasta que el árbitro decida. Tu tienda guarda el reclamo junto al pedido; es el mismo que guarda el escrow.</span>
+    </p>
+    <div id="file-inputs">
+      <div class="actions"><input id="claim-file" type="file" accept=".jws,.txt,text/plain"></div>
+      <textarea id="claim-text" class="field mono" rows="4" spellcheck="false" data-placeholder-en="Or paste the claim here (eyJ...)" data-placeholder-es="O pega el reclamo aquí (eyJ...)"></textarea>
+      <div class="actions"><button id="read-btn" class="btn secondary" type="button"><span data-tr="en">Read the claim</span><span data-tr="es">Leer el reclamo</span></button></div>
+    </div>
     <p id="claim-status" class="status" role="status"></p>
     <dl id="claim-facts" class="grant" hidden></dl>
   </section>
@@ -228,21 +235,25 @@
   <section id="sign-panel" class="panel" hidden>
     <p class="panel-kicker"><span data-tr="en">04 · Sign and send</span><span data-tr="es">04 · Firma y envía</span></p>
     <h2><span data-tr="en">Sign your answer</span><span data-tr="es">Firma tu respuesta</span></h2>
-    <p class="lead">
+    <p class="lead file-mode">
       <span data-tr="en">Your wallet shows a short message with the receipt, the claim, your position and the hash of your answer. Signing moves no money. Then download the file and send it back to the arbiter.</span>
       <span data-tr="es">Tu wallet te muestra un mensaje corto con el recibo, el reclamo, tu posición y el hash de tu respuesta. Firmar no mueve dinero. Después descarga el archivo y envíaselo al árbitro.</span>
+    </p>
+    <p class="lead order-mode" hidden>
+      <span data-tr="en">Your wallet shows a transaction that records the hash of your answer in your store's escrow, before the time to answer ends. It moves no money besides the network fee, a fraction of a cent in XLM. Your store keeps the answer next to the order, and the arbiter reads it there: no file to send.</span>
+      <span data-tr="es">Tu wallet te muestra una transacción que deja el hash de tu respuesta en el escrow de tu tienda, antes de que venza el plazo. No mueve dinero salvo la comisión de la red, una fracción de centavo en XLM. Tu tienda guarda la respuesta junto al pedido y el árbitro la lee ahí: no hay archivo que enviar.</span>
     </p>
     <div class="actions"><button id="sign-btn" class="btn" type="button" disabled><span data-tr="en">Sign with your wallet</span><span data-tr="es">Firmar con tu wallet</span></button></div>
     <p id="sign-status" class="status" role="status"></p>
     <div id="done-row" hidden>
       <dl id="done-facts" class="result"></dl>
-      <div class="actions"><a id="download-link" class="btn" download><span data-tr="en">Download your answer</span><span data-tr="es">Descargar tu respuesta</span></a></div>
+      <div class="actions file-mode"><a id="download-link" class="btn" download><span data-tr="en">Download your answer</span><span data-tr="es">Descargar tu respuesta</span></a></div>
     </div>
   </section>
 </main>
 
 <script type="module">
-import { formatAtomic, parseUsdc, readClaim, buildResponse, responseChallengeMessage, responseHash, responseFile, verifySep53 } from "./responder.js";
+import { formatAtomic, parseUsdc, parseOrderParam, readClaim, buildResponse, responseChallengeMessage, responseHash, responseFile, verifySep53 } from "./responder.js";
 
 var T = {
   pasteOrChoose: { en: "Choose the claim file or paste it first.", es: "Primero elige el archivo del reclamo o pégalo." },
@@ -284,12 +295,24 @@ var T = {
   contest: { en: "Contests the claim", es: "Rechaza el reclamo" },
   accept_full: { en: "Accepts it in full", es: "Lo acepta completo" },
   accept_partial: { en: "Accepts part of it", es: "Acepta una parte" },
+  orderLoading: { en: "Reading the claim from your store…", es: "Leyendo el reclamo desde tu tienda…" },
+  orderBad: { en: "This link does not point to an order of a store on Vitrinee.", es: "Este enlace no apunta a un pedido de una tienda de Vitrinee." },
+  orderNoClaim: { en: "Your store does not have this order's claim yet. Try again in a minute.", es: "Tu tienda todavía no tiene el reclamo de este pedido. Intenta de nuevo en un minuto." },
+  orderUnreachable: { en: "Could not read this order from your store.", es: "No se pudo leer este pedido desde tu tienda." },
+  orderAnswered: { en: "Your store already answered this claim. The arbiter reads that answer.", es: "Tu tienda ya respondió este reclamo. El árbitro lee esa respuesta." },
+  preparing: { en: "Preparing the transaction…", es: "Preparando la transacción…" },
+  waitingTxSignature: { en: "Waiting for your signature in your wallet…", es: "Esperando tu firma en la wallet…" },
+  sending: { en: "Sending it to Stellar…", es: "Enviándola a Stellar…" },
+  sent: { en: "Done: your answer is recorded in the escrow and kept with the order. The arbiter reads it there.", es: "Listo: tu respuesta quedó registrada en el escrow y guardada junto al pedido. El árbitro la lee ahí." },
+  transaction: { en: "Transaction", es: "Transacción" },
 };
 
 function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
 function t(key) { var entry = T[key]; return entry ? entry[lang()] : key; }
 
 var read = null;
+/** Set when the page came from an order (T163): the dispute lives in the store's escrow and is answered there. */
+var order = null;
 var address = "";
 var signedResult = null;
 var statuses = {};
@@ -359,6 +382,79 @@ function renderDone() {
   facts.append(row(t("position"), position));
   facts.append(row(t("answerHash"), signedResult.hash));
   facts.append(row(t("signer"), address));
+  if (signedResult.explorerUrl) {
+    var link = document.createElement("a");
+    link.href = signedResult.explorerUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = signedResult.transaction;
+    var entry = row(t("transaction"), "");
+    entry.querySelector("dd").append(link);
+    facts.append(entry);
+  }
+}
+
+/** The store's answer to a step of the escrow route, or its message as an error. */
+async function storeCall(path, body) {
+  var res = await fetch(order.origin + "/orders/" + encodeURIComponent(order.orderId) + "/dispute" + path, body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  var json = await res.json().catch(function () { return null; });
+  if (!res.ok || !json) throw new Error(json && json.message ? json.message : res.status + " " + res.statusText);
+  return json;
+}
+
+/** A dispute in the store's escrow, from the order the portal linked (T163). */
+async function loadFromOrder(param) {
+  order = parseOrderParam(param, location.host);
+  document.querySelectorAll(".file-mode").forEach(function (el) { el.hidden = true; });
+  document.querySelectorAll(".order-mode").forEach(function (el) { el.hidden = false; });
+  document.getElementById("file-inputs").hidden = true;
+  if (!order) { setStatus("claim-status", "error", { key: "orderBad" }); return; }
+  setStatus("claim-status", "", { key: "orderLoading" });
+  var documents;
+  try {
+    documents = await storeCall("");
+  } catch (error) {
+    setStatus("claim-status", "error", { key: "orderUnreachable" });
+    return;
+  }
+  if (!documents.claim_jws) { setStatus("claim-status", "error", { key: "orderNoClaim" }); return; }
+  try {
+    read = await readClaim(documents.claim_jws);
+  } catch (error) {
+    setStatus("claim-status", "error", { key: "notAClaim" });
+    return;
+  }
+  renderClaim();
+  if (documents.response) {
+    signedResult = { response: documents.response.document, hash: documents.response.hash, transaction: documents.response.transaction, explorerUrl: documents.response.explorer_url };
+    address = documents.payee;
+    renderDone();
+    document.getElementById("sign-panel").hidden = false;
+    document.getElementById("done-row").hidden = false;
+    setStatus("claim-status", "ok", { key: "orderAnswered" });
+    return;
+  }
+  setStatus("claim-status", "ok", { key: "claimRead" });
+  document.getElementById("wallet-btn").hidden = false;
+  document.getElementById("wallet-panel").hidden = false;
+  document.getElementById("answer-panel").hidden = false;
+  document.getElementById("sign-panel").hidden = false;
+  refreshSignButton();
+}
+
+/** The escrow route: the store prepares `respond`, the wallet signs it, the store sends it and keeps the answer. */
+async function answerInEscrow(response) {
+  setStatus("sign-status", "", { key: "preparing" });
+  var prepared = await storeCall("/response/prepare", { response: response });
+  setStatus("sign-status", "", { key: "waitingTxSignature" });
+  // The wallet layer refuses a signature by another account (WrongAccount).
+  var signedXdr = await AgentpeyWallet.signTransaction(prepared.xdr, address);
+  setStatus("sign-status", "", { key: "sending" });
+  var kept = await storeCall("/response/submit", { response: response, signed_xdr: signedXdr });
+  signedResult = { response: response, hash: kept.response.hash, transaction: kept.response.transaction, explorerUrl: kept.response.explorer_url };
+  renderDone();
+  document.getElementById("done-row").hidden = false;
+  setStatus("sign-status", "ok", { key: "sent" });
 }
 
 async function loadClaim() {
@@ -386,7 +482,8 @@ async function loadClaim() {
 }
 
 function refreshSignButton() {
-  document.getElementById("sign-btn").disabled = !(read && address && address === read.receipt.merchantAccount);
+  // An escrow dispute is answered once: after that the button stays off (the store and the contract would refuse).
+  document.getElementById("sign-btn").disabled = !(read && address && address === read.receipt.merchantAccount) || (order !== null && signedResult !== null);
 }
 
 async function connectWallet() {
@@ -441,8 +538,12 @@ async function sign() {
 
   var button = document.getElementById("sign-btn");
   button.disabled = true;
-  setStatus("sign-status", "", { key: "waitingSignature" });
   try {
+    if (order) {
+      await answerInEscrow(response);
+      return;
+    }
+    setStatus("sign-status", "", { key: "waitingSignature" });
     var message = await responseChallengeMessage(response);
     // The wallet layer refuses a signature by another account (WrongAccount) and hands back base64.
     var signature = (await AgentpeyWallet.signMessage(message, address)).signature;
@@ -467,6 +568,8 @@ async function sign() {
 }
 
 document.getElementById("read-btn").addEventListener("click", loadClaim);
+var orderParam = new URLSearchParams(location.search).get("order");
+if (orderParam !== null) loadFromOrder(orderParam);
 document.getElementById("wallet-btn").addEventListener("click", connectWallet);
 document.getElementById("sign-btn").addEventListener("click", sign);
 document.querySelectorAll('input[name="position"]').forEach(function (radio) {

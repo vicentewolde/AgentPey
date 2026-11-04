@@ -166,6 +166,41 @@ export function verifyMerchantResponse(file: unknown, context: ResponseContext):
 }
 
 /**
+ * Verifies a response the merchant left in a store's `purchase-escrow` (T163, X-29). There the merchant's consent is
+ * its `respond` transaction: the contract required the payout account's signature, and it stored `responseHash`.
+ * So the document needs no wallet signature of its own; it needs to be the one whose hash the escrow holds, from
+ * the receipt's payout account, answering this dispute.
+ *
+ * @throws AgentPassError `ResolveResponseInvalid` — off its schema, a partial amount outside (0, disputed)
+ * @throws AgentPassError `ResolveResponseMismatch` — not the document the escrow holds, or about another receipt or claim
+ * @throws AgentPassError `ResolveRespondentNotMerchant` — names another respondent than the receipt's payout account
+ */
+export function verifyEscrowResponse(document: unknown, context: ResponseContext, onChainHash: string): VerifiedResponse {
+  const parsed = agentResolveResponseSchema.safeParse(document);
+  if (!parsed.success) throw fail("ResolveResponseInvalid", "the response does not match its schema", { issues: parsed.error.issues.map((i) => i.message) }, parsed.error);
+  const response = parsed.data;
+  const hash = responseHash(response);
+  // Hashed as parsed: a document that only matches after the schema trims it is not the one the merchant signed for.
+  if (hash !== onChainHash || canonicalJson(document) !== canonicalJson(response)) {
+    throw fail("ResolveResponseMismatch", "this is not the response whose hash the escrow holds", { hash, onChain: onChainHash });
+  }
+  if (didToStellarAddress(response.respondent) !== context.receipt.merchantAccount) {
+    throw fail("ResolveRespondentNotMerchant", "the response names another respondent than the receipt's payout account", { respondent: response.respondent, merchantAccount: context.receipt.merchantAccount });
+  }
+  if (response.receiptHash !== context.receiptHash || response.claimHash !== context.claimHash || response.claimId !== context.claimId) {
+    throw fail("ResolveResponseMismatch", "the response answers another receipt or claim than the dispute on chain", {
+      response: { receipt: response.receiptHash, claim: response.claimHash, claimId: response.claimId },
+      dispute: { receipt: context.receiptHash, claim: context.claimHash, claimId: context.claimId },
+    });
+  }
+  if (response.acceptedAtomic !== null && BigInt(response.acceptedAtomic) >= context.disputedAtomic) {
+    throw fail("ResolveResponseInvalid", "a partial acceptance must be less than the disputed amount", { accepted: response.acceptedAtomic, disputed: context.disputedAtomic.toString() });
+  }
+  // The transaction is the signature; nothing else to carry.
+  return { response, hash, signature: "" };
+}
+
+/**
  * When a dispute opened at `openedAt` (seconds, the contract's ledger time) may be decided without a response.
  * `windowSeconds` is the merchant's time to answer: 48 h in `agent-resolve` (`E-22`), the contract's own
  * `response_window` in a store's `purchase-escrow` (T158, `X-26`).

@@ -5,11 +5,11 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-10-27
+**Actualizado:** 2026-11-04
 **Fase actual:** Fase 9 · Una compra protegida, de punta a punta ([spec](fase-9-compra-protegida/SPEC.md), **aprobado**, `P-19`): los entregables del Instaward, 13-oct → 11-nov. La Fase 8 se cerró el 2026-10-17 (T128–T156, `P-20`); la Fase 7, el 2026-10-03 (`E-25`)
 
 **Última tarea terminada:** Fase 9: T161, la orden muestra el estado del escrow ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): en producción, la orden retenida `ord_mv9s83yb…` muestra `held`, y con ella se completa D1. Antes, T158 ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)). Fase 8: cerrada el 17-oct (`P-20`), con T130 en pausa fuera de la fase y T171 aprobada para una fase futura
-**Siguiente paso:** Fase 9: T162 mergeada ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95), `main` en `a432878` desde las 03:24 UTC del 27-oct). Falta el reclamo en vivo desde Claude, grabado ([guion](fase-9-compra-protegida/evidencia/T162.md) §4); el usuario avisa cuándo. Después, `/tarea T163`. Después de la Fase 9: T171 (`R-33`), aprobada, y T130, en pausa (`R-36`), en una fase futura (`P-20`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
+**Siguiente paso:** Fase 9: T162 mergeada ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95), `main` en `a432878` desde las 03:24 UTC del 27-oct). Falta el reclamo en vivo desde Claude, grabado ([guion](fase-9-compra-protegida/evidencia/T162.md) §4); el usuario avisa cuándo. T163 con código listo en `cc/t163-respuesta-comercio` (sin push): revisión, merge y sus dos hashes de testnet. Después, T164. Después de la Fase 9: T171 (`R-33`), aprobada, y T130, en pausa (`R-36`), en una fase futura (`P-20`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 **Convivencia (`P-19`).** Hasta el 17-oct la Fase 8 trabajó en paralelo, en el worktree `~/dev/AgentPay-fase8`; desde su cierre (`P-20`) hay una sola fase abierta y todo va en `~/dev/AgentPay`, una tarea a la vez. Los worktrees `AgentPay-fase8`, `-t154`, `-t155` y `-demo` se retiraron el 17-oct (todo estaba en `main`); queda `~/dev/AgentPay-codex`, la de Codex (`P-5`). Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
 
@@ -24,7 +24,7 @@
 | T160 El checkout paga al escrow | ✅ terminada: `agentcommerce` cobra a su escrow (handler `2026-10-15`, `VITRINEE_COMERCIO_ESCROWS` en Render); compra real retenida, pago [`ed11e866…`](https://stellar.expert/explorer/testnet/tx/ed11e866b57004827165f3d7b8fd204f8f9df0cb12314c2894bd8ba970a0b754) y `hold` [`6ae292d4…`](https://stellar.expert/explorer/testnet/tx/6ae292d4870d869446cb0bc9e88321e326662037043d0dd7362998222e1ef09f); tienda tramposa rechazada antes de firmar; suite UCP 49/8/20 (`X-23` a `X-25`, [evidencia](fase-9-compra-protegida/evidencia/T160.md)) | [PR #90](https://github.com/vicentewolde/AgentPey/pull/90) |
 | T161 La orden muestra el estado del escrow (se corta segundo) | ✅ terminada: `receipt.escrow` (extensión `2026-10-16`) en la orden y sus webhooks, ajuste de UCP para la disputa del escrow, `escrow` en `get_order` leído de la red; en producción, `ord_mv9s83yb…` `held` y las resueltas y vencidas validan contra los esquemas (`X-27`, [evidencia](fase-9-compra-protegida/evidencia/T161.md)) | [PR #92](https://github.com/vicentewolde/AgentPey/pull/92) |
 | T162 El reclamo desde el chat abre la disputa en la red | 🔨 código listo: `open_claim` comprueba el escrow en la red y envía `open` firmado por la dueña del rail; otra llave rechazada por la red en una simulación de testnet (`X-28`, [evidencia](fase-9-compra-protegida/evidencia/T162.md)). Mergeada; falta el reclamo en vivo desde Claude | [PR #95](https://github.com/vicentewolde/AgentPey/pull/95) |
-| T163 El comercio recibe el aviso y responde desde su página | ⏳ pendiente | |
+| T163 El comercio recibe el aviso y responde desde su página | 🔨 código listo: el reclamo y la respuesta viven junto a la orden, el comercio firma `respond` con su wallet desde `responder`, el portal avisa, el árbitro decide con `--order` (`X-29`, `VT-51`, [evidencia](fase-9-compra-protegida/evidencia/T163.md)). Faltan los hashes de testnet | `cc/t163-respuesta-comercio` |
 | T164 El despacho abre la ventana de liberación | ⏳ pendiente | |
 | T165 Cada cambio de la disputa llega al agente (se corta primero) | ⏳ pendiente | |
 | T166 Corrida completa y QA | ⏳ pendiente | |
@@ -153,6 +153,8 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - Fase 6 (`C-161`): `C-122` (MPP Session) y `C-130` pendientes, `C-156` en investigación; mejora anotada en T117 (revisar el saldo de XLM antes de pedir la firma).
 
 ## Notas de la última sesión
+
+- 2026-11-04: el usuario pidió completar la Fase 9 entera. T163 con código listo. Deuda nueva: `apps/web/src/tenant-rail.test.ts` sale a la RPC pública de Soroban y se pasa de 5 s cuando la RPC está lenta (hoy `getHealth` 4,2 s): `pnpm test` no debería tocar la red.
 
 - 2026-10-27: T162 mergeada con OK del usuario ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95), CI 4/4, fast-forward `2b79a8f..a432878` a las 03:24 UTC). `prod:check` 11/11 antes y 11/11 a las 03:30, recorrido de producción 28/28. Desde aquí no se ve el commit que corre Render (el navegador integrado no tiene sesión en Render y Render dejó de informar deploys a GitHub en septiembre): confirmar «Deployed» en el panel antes de grabar.
 

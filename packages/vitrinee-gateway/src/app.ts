@@ -27,6 +27,7 @@ import {
 } from "./ucp/catalog.js";
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { lookupDispute, lookupEscrow, registerUcpOrders, type EscrowWindows } from "./ucp/order.js";
+import { registerDisputes, type DisputeDeps } from "./disputes.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
 import { OrderEvents } from "./ucp/order-events.js";
 import { sharedPlatformProfileReader, type PlatformProfileReader, type PlatformSender } from "./ucp/platform-profile.js";
@@ -54,6 +55,10 @@ export interface AppDeps {
   holder?: Holder;
   /** How verification reads the escrow a receipt names. Defaults to Soroban RPC (read-only). */
   escrows?: EscrowReaderFactory;
+  /** Builds and sends the merchant's `respond` (T163). Defaults to the store's escrow over Soroban RPC. */
+  disputeWriter?: DisputeDeps["writer"];
+  /** Browser origins allowed to read and answer disputes (T163). Defaults to AgentPey's responder page. */
+  disputeOrigins?: readonly string[];
   /** Disputes over receipts, shown on UCP orders (T127). Defaults to `agent-resolve` over Soroban RPC when configured; `null` turns it off. */
   disputes?: DisputeReader | null;
   /** How long an order waits for the dispute read before answering without it (default 3 s). */
@@ -106,6 +111,8 @@ export function createApp({
   registry,
   holder,
   escrows,
+  disputeWriter,
+  disputeOrigins,
   disputes,
   disputeTimeoutMs,
   horizonFetch,
@@ -289,6 +296,21 @@ export function createApp({
   registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready, ap2Key, orderEvents }, baseUrlOf);
   // Where each order's payment stands in the escrow it was paid into (T161): the same read-only readers verification uses.
   registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents, escrowReader);
+  // The claim and the merchant's answer of a dispute in the store's escrow, kept with the order (T163, X-29).
+  if (config.escrow !== undefined) {
+    const writer =
+      disputeWriter ?? escrowClient ?? new EscrowClient({ contractId: config.escrow.contract, rpcUrl: config.stellar.rpcUrl, networkPassphrase: config.stellar.networkPassphrase });
+    registerDisputes(app, {
+      orders,
+      escrow: config.escrow,
+      readers: escrowReader,
+      writer,
+      networkPassphrase: config.stellar.networkPassphrase,
+      ...(disputeOrigins === undefined ? {} : { allowedOrigins: disputeOrigins }),
+      now,
+      log,
+    });
+  }
 
   app.get("/products/:id", async (req, res) => {
     const id = String(req.params.id);

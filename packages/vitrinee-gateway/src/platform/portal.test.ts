@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import { signStellarMessage } from "@agentpass/core";
 import { Keypair } from "@stellar/stellar-sdk";
+import type { EscrowPurchase } from "@vitrinee/anchor";
 import { MANIFEST_PATH, VitrineeError } from "@vitrinee/core";
 import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@x402/core/http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -17,6 +18,7 @@ import { listen } from "../test/listen.js";
 import { MemoryComercioStore, sealComercio, type Comercio } from "./comercios.js";
 import type { StellarNetwork } from "./stellar-network.js";
 import { createPlatformApp } from "./platform-app.js";
+import { RESPONDER_URL, disputeNotice } from "./portal.js";
 import { createSecretBox, generateMasterKey } from "./secret-box.js";
 import { StorefrontPool } from "./storefronts.js";
 import { WalletSessions } from "./wallet-session.js";
@@ -338,5 +340,43 @@ describe("the owners' portal: sign in with the wallet, register a store, see its
     const out = await call(base, PLATFORM, "/api/portal/logout", { method: "POST", body: {}, headers: { cookie, origin: PORTAL_ORIGIN } });
     const cleared = out.headers["set-cookie"];
     expect(String(cleared)).toContain("Max-Age=0");
+  });
+});
+
+describe("the panel tells the merchant about a claim in its escrow (T163)", () => {
+  const base = "https://agentcommerce.vitrinee.agentpey.com";
+  const purchase = (status: EscrowPurchase["status"], openedAt: number | null = 1_793_000_000): EscrowPurchase => ({
+    orderRef: "ord_1",
+    payer: "CRAIL",
+    amountAtomic: 5_157_895n,
+    txHash: "e".repeat(64),
+    receiptHash: "7".repeat(64),
+    status,
+    heldAt: 1_792_999_000,
+    shippedAt: null,
+    claimHash: openedAt === null ? null : "c".repeat(64),
+    openedAt,
+    responseHash: null,
+    verdictHash: null,
+    refundAtomic: 0n,
+    refundOwedAtomic: 0n,
+    closedAt: null,
+  });
+  const at = (seconds: number) => new Date((1_793_000_000 + seconds) * 1000);
+
+  it("links an open claim to the responder page until its time ends", () => {
+    expect(disputeNotice(base, "ord_1", purchase("disputed"), { responseWindowSeconds: 900 }, RESPONDER_URL, at(60))).toEqual({
+      status: "disputed",
+      respondBy: "2026-10-26T07:48:20.000Z",
+      answerUrl: "https://agentpey.com/resolve/responder?order=agentcommerce.vitrinee.agentpey.com%2Forders%2Ford_1",
+    });
+    expect(disputeNotice(base, "ord_1", purchase("disputed"), { responseWindowSeconds: 900 }, RESPONDER_URL, at(901))?.answerUrl).toBeNull();
+  });
+
+  it("says where an answered or closed claim stands, and nothing for a purchase without one", () => {
+    expect(disputeNotice(base, "ord_1", purchase("responded"), { responseWindowSeconds: 900 }, RESPONDER_URL, at(60))).toEqual({ status: "responded", respondBy: null, answerUrl: null });
+    expect(disputeNotice(base, "ord_1", purchase("resolved"), { responseWindowSeconds: 900 }, RESPONDER_URL, at(60))?.status).toBe("resolved");
+    expect(disputeNotice(base, "ord_1", purchase("held", null), { responseWindowSeconds: 900 }, RESPONDER_URL, at(60))).toBeNull();
+    expect(disputeNotice(base, "ord_1", null, { responseWindowSeconds: 900 }, RESPONDER_URL, at(60))).toBeNull();
   });
 });

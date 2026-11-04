@@ -185,3 +185,18 @@ export async function verifySep53(address, message, signatureBase64) {
 export function responseFile(response, signature) {
   return JSON.stringify({ response, signature }, null, 2) + "\n";
 }
+
+/**
+ * The order a dispute in a store's escrow belongs to, from the page's `?order=` (T163): `<store host>/orders/<id>`,
+ * as the merchant portal links it. Only stores on the Vitrinee platform, or a local store under test, so the page
+ * never sends an answer to a host someone else chose. `null` for anything else.
+ */
+export function parseOrderParam(value, pageHost) {
+  const text = String(value || "").trim();
+  const match = /^(?:https?:\/\/)?([a-z0-9.-]+(?::\d+)?)\/orders\/([A-Za-z0-9_-]{1,64})\/?$/.exec(text);
+  if (!match) return null;
+  const host = match[1];
+  const local = /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host) && /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(String(pageHost));
+  if (!local && !/^[a-z0-9-]+\.vitrinee\.agentpey\.com$/.test(host)) return null;
+  return { origin: (local ? "http://" : "https://") + host, orderId: match[2] };
+}

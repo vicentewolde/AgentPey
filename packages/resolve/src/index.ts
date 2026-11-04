@@ -58,6 +58,7 @@ export {
   responseDeadline,
   responseHash,
   signedResponseFileSchema,
+  verifyEscrowResponse,
   verifyMerchantResponse,
   type AgentResolveResponse,
   type ResponseContext,

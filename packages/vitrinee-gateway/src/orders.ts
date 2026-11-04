@@ -46,6 +46,17 @@ export interface OrderHold {
 }
 
 /**
+ * A dispute's documents, kept next to the order (T163, X-29). The escrow holds their hashes, so the store can keep
+ * them or lose them, never change them: whoever reads them hashes them again against the chain.
+ */
+export interface OrderDisputeDocuments {
+  /** The buyer's claim, a compact JWS whose sha256 is the escrow's `claim_hash`. */
+  claimJws?: string;
+  /** The merchant's answer: the document, the sha256 of its canonical JSON (the escrow's `response_hash`) and its `respond` transaction. */
+  response?: { document: Record<string, unknown>; hash: string; transaction: string };
+}
+
+/**
  * One entry of the order's fulfillment log (UCP `fulfillment.events[]`, T147):
  * append-only, never edited. Today only `shipped`, from the store's platform
  * (Shopify, Jumpseller) or from the local conformance store's simulation.
@@ -146,6 +157,8 @@ export interface OrderRecord {
   fulfillmentState?: "partial" | "fulfilled" | "canceled";
   /** Order webhooks to the platform that bought (T147). Absent when it asked for none. */
   webhook?: OrderWebhook;
+  /** The claim and the merchant's answer of a dispute in the store's escrow (T163). Absent until one arrives. */
+  dispute?: OrderDisputeDocuments;
 }
 
 /**
@@ -266,6 +279,12 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
           lastError: z.string().optional(),
         }),
       ),
+    })
+    .optional(),
+  dispute: z
+    .object({
+      claimJws: z.string().min(1).optional(),
+      response: z.object({ document: z.record(z.string(), z.unknown()), hash: z.string().regex(/^[0-9a-f]{64}$/), transaction: z.string().regex(/^[0-9a-f]{64}$/) }).optional(),
     })
     .optional(),
 }));

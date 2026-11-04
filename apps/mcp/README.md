@@ -106,7 +106,10 @@ rail's owner key signs the escrow's message and sends `open`, paying the fee
 from its own testnet account. The reply carries `dispute`: the transaction,
 its Stellar Expert link, and until when the store may answer. For an order
 paid straight to the store, `dispute` is `null` and the arbiter opens it, as
-before.
+before. After opening it, the MCP hands the claim to the store, which keeps it
+next to the order once its hash matches the escrow (`dispute.claim_kept`,
+T163): the merchant answers from its portal and the arbiter decides from the
+order, without files.
 
 ## Pay a quote yourself
 

@@ -11,7 +11,7 @@ import { Keypair } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 
 import { checkClaim, claimHash, signClaim } from "./claim.js";
-import { formatAtomic, responseChallengeMessage, responseHash, verifyMerchantResponse } from "./response.js";
+import { formatAtomic, responseChallengeMessage, responseHash, verifyEscrowResponse, verifyMerchantResponse } from "./response.js";
 import type { AgentResolveResponse } from "./response.js";
 import { NOW, agentKey, claimFor, merchantOwnerKey, railController, verifiedReceipt } from "./test/fixtures.js";
 
@@ -25,6 +25,7 @@ interface ResponderModule {
   parseUsdc(text: string): string | null;
   publicKeyBytes(address: string): Uint8Array | null;
   verifySep53(address: string, message: string, signature: string): Promise<boolean | null>;
+  parseOrderParam(value: string, pageHost: string): { origin: string; orderId: string } | null;
 }
 
 const PAGE_MODULE = fileURLToPath(new URL("../../../apps/web/public/resolve/responder.js", import.meta.url));
@@ -122,4 +123,48 @@ describe("the page checks Freighter's signature before it hands out the file", (
     expect(await page.verifySep53(merchantOwnerKey.publicKey(), message, "not base64!")).toBe(false);
   });
 
+});
+
+describe("an answer left in the store's escrow (T163)", () => {
+  async function escrowAnswer(address = merchantOwnerKey.publicKey()) {
+    const { receipt, signed, checked } = await claimJws();
+    const read = await page.readClaim(signed.jws);
+    const response = page.buildResponse({
+      claim: read.claim,
+      claimHash: read.claimHash,
+      address,
+      position: "contest",
+      acceptedAtomic: undefined,
+      statement: " Despachado el 3 de octubre. ",
+      evidence: [],
+      responseId: "9d3c2b1a-0f9e-4d8c-8b7a-6f5e4d3c2b1a",
+      createdAt: "2026-10-27T12:30:00.000Z",
+    });
+    const context = { receipt: receipt.receipt, receiptHash: receipt.hash, claimHash: claimHash(signed.jws), claimId: signed.document.claimId, disputedAtomic: checked.disputedAtomic };
+    return { response, context, hash: await page.responseHash(response) };
+  }
+
+  it("verifies the document whose hash the escrow holds, with no wallet message", async () => {
+    const { response, context, hash } = await escrowAnswer();
+    const verified = verifyEscrowResponse(JSON.parse(JSON.stringify(response)) as unknown, context, hash);
+    expect(verified.hash).toBe(hash);
+    expect(verified.response.statement).toBe("Despachado el 3 de octubre.");
+  });
+
+  it("refuses another document than the one on chain, and another respondent than the payout account", async () => {
+    const { response, context, hash } = await escrowAnswer();
+    expect(() => verifyEscrowResponse({ ...response, statement: "Otra cosa" }, context, hash)).toThrow(expect.objectContaining({ code: "ResolveResponseMismatch" }));
+    const other = await escrowAnswer(Keypair.random().publicKey());
+    expect(() => verifyEscrowResponse(other.response, other.context, other.hash)).toThrow(expect.objectContaining({ code: "ResolveRespondentNotMerchant" }));
+    expect(() => verifyEscrowResponse({ type: "AgentResolveResponse" }, context, hash)).toThrow(expect.objectContaining({ code: "ResolveResponseInvalid" }));
+  });
+
+  it("reads only orders of stores on Vitrinee, or a local store from a local page", () => {
+    expect(page.parseOrderParam("agentcommerce.vitrinee.agentpey.com/orders/ord_mv9s83yb0022b6a353", "agentpey.com")).toEqual({ origin: "https://agentcommerce.vitrinee.agentpey.com", orderId: "ord_mv9s83yb0022b6a353" });
+    expect(page.parseOrderParam("https://agentcommerce.vitrinee.agentpey.com/orders/ord_1/", "agentpey.com")).toEqual({ origin: "https://agentcommerce.vitrinee.agentpey.com", orderId: "ord_1" });
+    expect(page.parseOrderParam("127.0.0.1:4100/orders/ord_1", "127.0.0.1:3000")).toEqual({ origin: "http://127.0.0.1:4100", orderId: "ord_1" });
+    for (const bad of ["evil.example/orders/ord_1", "agentcommerce.vitrinee.agentpey.com.evil.example/orders/ord_1", "agentcommerce.vitrinee.agentpey.com/receipts/ord_1", "127.0.0.1:4100/orders/ord_1", ""]) {
+      expect(page.parseOrderParam(bad, "agentpey.com"), bad).toBeNull();
+    }
+  });
 });

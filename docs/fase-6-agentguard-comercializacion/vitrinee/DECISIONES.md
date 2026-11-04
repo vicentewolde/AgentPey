@@ -1516,3 +1516,16 @@ implementadores externos de `2026-10-15`, se les avisa de la corrección.
 
 **Alternativa descartada: aceptar `G` o `C` en la respuesta.** Dejaría pasar una tienda que cobra a una cuenta distinta
 de la que declara en su perfil, justo lo que el kit existe para detectar.
+
+---
+
+### VT-51 · La tienda guarda el reclamo y la respuesta de una disputa en su escrow, y arma la respuesta para la wallet del comercio · `Vigente` — referencia a `X-29` de la Fase 9
+
+**Fecha:** 2026-11-04 · **Tarea:** T163
+
+Por dentro de Vitrinee: un campo `dispute` en el registro de la orden (`claimJws`, `response`); cuatro rutas en
+`src/disputes.ts` (`GET /orders/:id/dispute`, `POST …/claim`, `POST …/response/prepare`, `POST …/response/submit`),
+abiertas por CORS solo a `https://agentpey.com`; un código nuevo, `DisputeRefused` (409); en `@vitrinee/anchor`,
+`EscrowClient.prepareRespond`, `submitSigned` y `decodeEscrowCall`; y el portal lee el escrow de cada pedido retenido
+para avisar de un reclamo. La tienda sigue sin tener la llave de la cuenta de cobro (`VT-8`): solo arma la
+transacción y la envía después de comprobar qué contiene. El detalle y el motivo están en `X-29`.

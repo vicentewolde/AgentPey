@@ -10,13 +10,16 @@
  *
  *   released   hold → mark_shipped → (release window) → release
  *   refunded   hold → open, signed by the rail's owner → respond → resolve, full refund
+ *   late-response (T163) hold → open → respond prepared inside the window, sent after it → the
+ *              network refuses it (ResponseWindowClosed, a failed transaction with its own hash)
+ *              → expire after the arbiter's window, full refund
  *
  * The claim, response, receipt and verdict here are rehearsal documents: what
  * the contract stores is their SHA-256. The real ones arrive with T159–T163.
  * Moves `--amount` USDC (default 0.05) per scenario out of the UCP rail; the
  * refund brings one of them back. Needs the user's OK each time it runs.
  *
- *   --scenario released|refunded|both   default both
+ *   --scenario released|refunded|both|late-response   default both (late-response only on its own)
  *   --amount <usdc>                     default 0.05
  *   --resume <order_ref>                finish a `refunded` run that stopped after `hold`
  */
@@ -26,12 +29,13 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { AgentPassError, isAgentPassError } from "@agentpass/core";
-import { Keypair } from "@stellar/stellar-sdk";
+import { Keypair, TransactionBuilder } from "@stellar/stellar-sdk";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { z } from "zod";
 
 import { STELLAR_DECIMALS, toAtomic } from "../packages/ucp-stellar/src/index.js";
 import { signEscrowOpen } from "../packages/resolve/src/escrow-open.js";
+import { EscrowClient, escrowContractError } from "../packages/vitrinee-anchor/src/index.js";
 import { readDeployment } from "./lib/deployment.js";
 import { payIntoEscrow } from "./lib/escrow-pay.js";
 import { readEnvFile } from "./lib/env-file.js";
@@ -65,6 +69,8 @@ interface Rehearsal {
   readonly rail: string;
   readonly token: string;
   readonly releaseWindowSeconds: number;
+  readonly responseWindowSeconds: number;
+  readonly resolveWindowSeconds: number;
   readonly operator: Keypair;
   readonly payee: Keypair;
   readonly arbiter: Keypair;
@@ -149,8 +155,53 @@ async function refunded(r: Rehearsal, orderRef: string, resume: boolean): Promis
   out(`  status       ${purchase.status} · refund ${purchase.refund} back to ${r.rail} · owed ${purchase.refund_owed}`);
 }
 
+/**
+ * A merchant answer that comes too late (T163): built and signed while the window is open, the way the responder
+ * page does it, and sent after it closed. The contract refuses it inside a ledger, so the refusal has a hash.
+ */
+async function lateResponse(r: Rehearsal, orderRef: string): Promise<void> {
+  out(`\nlate-response · ${orderRef}`);
+  const paymentTx = await pay(r, orderRef);
+  step("payment", paymentTx);
+  await hold(r, orderRef, paymentTx);
+  const claimHash = sha256(`rehearsal claim: ${orderRef} not delivered`);
+  const sig = Buffer.from(signEscrowOpen(r.escrow, orderRef, claimHash, r.railOwner)).toString("hex");
+  step("open", await invoke(r, r.operator, ["open", "--order_ref", orderRefHex(orderRef), "--claim_hash", claimHash, "--sig", JSON.stringify(sig)]));
+  const client = new EscrowClient({ contractId: r.escrow, rpcUrl: "https://soroban-testnet.stellar.org", networkPassphrase: "Test SDF Network ; September 2015" });
+  // Valid for longer than the window: the transaction itself stays submittable, only the contract can refuse it.
+  const unsigned = await client.prepareRespond({ orderRef, responseHash: sha256(`rehearsal late response: ${orderRef}`) }, r.payee.publicKey(), r.responseWindowSeconds + 300);
+  const tx = TransactionBuilder.fromXDR(unsigned, "Test SDF Network ; September 2015");
+  tx.sign(r.payee);
+  out(`  prepared     respond signed inside the window; waiting ${r.responseWindowSeconds} s for it to close`);
+  await sleep((r.responseWindowSeconds + 15) * 1000);
+  try {
+    const landed = await client.submitSigned("respond", tx.toXDR());
+    throw new AgentPassError("CommandFailed", "the escrow took a late answer", { details: { transaction: landed.txHash } });
+  } catch (error) {
+    const details = (error as { details?: { stage?: unknown; hash?: unknown } }).details ?? {};
+    if (details.stage !== "failed" || typeof details.hash !== "string") throw error;
+    step("respond ✗", details.hash);
+    out(`  refused      ${escrowContractError(error) === 13 ? "ResponseWindowClosed (#13)" : "by the contract"}: the transaction failed inside a ledger`);
+  }
+  const resolveBy = r.responseWindowSeconds + r.resolveWindowSeconds;
+  out(`  waiting      the arbiter's window (${resolveBy} s from open) for expire`);
+  await sleep((r.resolveWindowSeconds + 15) * 1000);
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      step("expire", await invoke(r, r.operator, ["expire", "--order_ref", orderRefHex(orderRef)]));
+      break;
+    } catch (error) {
+      // ResolveWindowOpen is #16: the ledger's clock trails the wall clock.
+      if (attempt >= 5 || !(isAgentPassError(error) && JSON.stringify(error.details).includes("Error(Contract, #16)"))) throw error;
+      await sleep(10_000);
+    }
+  }
+  const purchase = await get(r, orderRef);
+  out(`  status       ${purchase.status} · refund ${purchase.refund} back to ${r.rail} · owed ${purchase.refund_owed}`);
+}
+
 async function main(): Promise<void> {
-  const scenario = z.enum(["released", "refunded", "both"]).parse(flag("--scenario", "both"));
+  const scenario = z.enum(["released", "refunded", "both", "late-response"]).parse(flag("--scenario", "both"));
   const amount = flag("--amount", "0.05");
   const env = await readEnvFile(resolve(REPO_ROOT, ".env.local"));
   const vitrineeEnv = await readEnvFile(resolve(REPO_ROOT, ".env.vitrinee.local"));
@@ -166,6 +217,8 @@ async function main(): Promise<void> {
     rail: rail.contractId,
     token: escrow.token,
     releaseWindowSeconds: escrow.releaseWindowSeconds,
+    responseWindowSeconds: escrow.responseWindowSeconds,
+    resolveWindowSeconds: escrow.resolveWindowSeconds,
     operator: Keypair.fromSecret(requireEnv(env, "ADMIN_SECRET_KEY", ".env.local")),
     payee: Keypair.fromSecret(requireEnv(env, "ISSUER_SECRET_KEY", ".env.local")),
     arbiter: Keypair.fromSecret(requireEnv(env, "RESOLVE_ARBITER_SECRET_KEY", ".env.local")),
@@ -185,6 +238,11 @@ async function main(): Promise<void> {
   if (resume !== undefined && scenario !== "refunded") throw new AgentPassError("InvalidArguments", "--resume goes with --scenario refunded", { details: {} });
   const stamp = Date.now().toString(36);
   out(`\nAgentPey escrow:rehearsal · ${r.escrow} · ${amount} USDC per scenario from ${r.rail}`);
+  if (scenario === "late-response") {
+    await lateResponse(r, `rehearsal-${stamp}-l`);
+    out("");
+    return;
+  }
   if (scenario !== "refunded") await released(r, `rehearsal-${stamp}-r`);
   if (scenario !== "released") await refunded(r, resume ?? `rehearsal-${stamp}-f`, resume !== undefined);
   out("");

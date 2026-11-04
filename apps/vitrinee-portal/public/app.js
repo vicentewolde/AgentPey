@@ -54,6 +54,12 @@ var T = {
   thProof: { en: "Proof", es: "Prueba" },
   statusPaid: { en: "Paid, order in your store", es: "Pagado, pedido en tu tienda" },
   statusUnfulfilled: { en: "Paid, order not yet in your store", es: "Pagado, pedido aún no llega a tu tienda" },
+  disputeOpen: { en: "Claim open: answer by", es: "Reclamo abierto: responde antes del" },
+  disputeLate: { en: "Claim open: the time to answer ended", es: "Reclamo abierto: venció el plazo para responder" },
+  disputeAnswer: { en: "Answer the claim", es: "Responder el reclamo" },
+  disputeResponded: { en: "Claim answered: the arbiter decides", es: "Reclamo respondido: decide el árbitro" },
+  disputeClosed: { en: "Claim closed", es: "Reclamo cerrado" },
+  disputesWaiting: { en: "A buyer opened a claim on one of your orders. Its payment stays frozen in your store's escrow until the arbiter decides. Answer it before the time ends, with this wallet.", es: "Un comprador abrió un reclamo sobre uno de tus pedidos. Su pago queda congelado en el escrow de tu tienda hasta que el árbitro decida. Respóndelo antes de que venza el plazo, con esta wallet." },
   payment: { en: "Payment", es: "Pago" },
   receipt: { en: "Receipt", es: "Recibo" },
   manifest: { en: "Catalogue for agents", es: "Catálogo para agentes" },
@@ -153,6 +159,10 @@ function renderStores() {
       el("span", { className: "muted small", text: "  ·  " + t("manifest") }),
     ]);
     var box = el("div", { className: "store" }, [head, url]);
+    // A claim to answer comes first: its time is short (T163).
+    if (c.orders.some(function (o) { return o.dispute && o.dispute.answerUrl; })) {
+      box.appendChild(el("p", { className: "notice", text: t("disputesWaiting") }));
+    }
     if (!c.orders.length) {
       box.appendChild(el("p", { className: "empty", text: t("noOrders") }));
     } else {
@@ -163,11 +173,13 @@ function renderStores() {
           o.receiptUrl ? el("a", { href: o.receiptUrl, target: "_blank", rel: "noopener", text: t("receipt") }) : null,
         ]);
         var paid = o.status === "paid";
+        var status = [el("span", { className: "pill" + (paid ? "" : " warn"), text: t(paid ? "statusPaid" : "statusUnfulfilled") })];
+        if (o.dispute) status.push(el("br"), disputeCell(o.dispute));
         return el("tr", {}, [
           el("td", { text: new Date(o.createdAt).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" }) }),
           el("td", { text: (o.items || []).map(function (i) { return i.name + (i.quantity > 1 ? " × " + i.quantity : ""); }).join(", ") }),
           el("td", { className: "num", text: o.amountUSDC }),
-          el("td", {}, [el("span", { className: "pill" + (paid ? "" : " warn"), text: t(paid ? "statusPaid" : "statusUnfulfilled") })]),
+          el("td", {}, status),
           proof,
         ]);
       });
@@ -176,6 +188,20 @@ function renderStores() {
     }
     holder.appendChild(box);
   });
+}
+
+/** The dispute notice of one order: answer by when, with the link, or where it stands (T163). */
+function disputeCell(d) {
+  if (d.status === "disputed" && d.answerUrl) {
+    var when = new Date(d.respondBy).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" });
+    return el("span", {}, [
+      el("span", { className: "pill warn", text: t("disputeOpen") + " " + when }),
+      el("span", { text: " " }),
+      el("a", { href: d.answerUrl, target: "_blank", rel: "noopener", text: t("disputeAnswer") }),
+    ]);
+  }
+  if (d.status === "disputed") return el("span", { className: "pill warn", text: t("disputeLate") });
+  return el("span", { className: "pill" + (d.status === "responded" ? " warn" : ""), text: t(d.status === "responded" ? "disputeResponded" : "disputeClosed") });
 }
 
 /* ---------- registration ---------- */

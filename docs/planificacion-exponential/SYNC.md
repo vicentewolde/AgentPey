@@ -83,7 +83,7 @@ la web el 2026-09-23): contiene las seis acciones y las dos metas.
 | T160 | `cmv8by7zt000hic06q7h5n0qs` | El checkout paga al escrow | SPEC | `DONE` | 2026-10-14 | 2026-10-14 | 2026-10-15 | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | [PR #90](https://github.com/vicentewolde/AgentPey/pull/90) |
 | T161 | `cmv8by9bq000lic06r27r3hq9` | La orden muestra el estado del escrow | SPEC | `DONE` | 2026-10-14 | 2026-10-16 | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
 | T162 | `cmv8byan7000pic06cec9t1v4` | El reclamo desde el chat abre la disputa en la red | SPEC | `IN_PROGRESS` | 2026-10-14 | 2026-10-27 | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
-| T163 | `cmv8bybsf000tic06w37zgev9` | El comercio recibe el aviso y responde desde su página | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
+| T163 | `cmv8bybsf000tic06w37zgev9` | El comercio recibe el aviso y responde desde su página | SPEC | `IN_PROGRESS` | 2026-10-14 | 2026-11-04 | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
 | T164 | `cmv8bycz2000xic06t4lwk257` | El despacho abre la ventana de liberación | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
 | T165 | `cmv8byee70001ld06ix35vq8h` | Cada cambio de la disputa llega al agente | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |
 | T166 | `cmv8byfub0005ld06lcbfhzjf` | Corrida completa y QA | SPEC | `READY_TO_PLAN` | 2026-10-14 | | | [SPEC](../fase-9-compra-protegida/SPEC.md), [P-19](../DECISIONES.md) | |

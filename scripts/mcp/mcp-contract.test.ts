@@ -701,7 +701,10 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived" });
       expect(claimed.isError).toBeFalsy();
       // The claim opened the dispute in the escrow, signed by the rail's owner over the escrow's message (T162).
-      expect(claimed.structuredContent!["dispute"]).toMatchObject({ escrow: ESCROW_ID, status: "disputed", transaction: "9".repeat(64), respond_by: expect.any(String) });
+      expect(claimed.structuredContent!["dispute"]).toMatchObject({ escrow: ESCROW_ID, status: "disputed", transaction: "9".repeat(64), respond_by: expect.any(String), claim_kept: true });
+      // The store keeps the claim next to the order, for the merchant's page and the arbiter (T163).
+      const kept = (await (await fetch(`${escrowServer.url}/orders/${orderId}/dispute`)).json()) as { claim_jws: string | null };
+      expect(kept.claim_jws).toBe(claimed.structuredContent!["claim_jws"]);
       expect(claimed.structuredContent!["next_step"]).toContain("The dispute is open on Stellar");
       expect(opener.sent).toEqual([{ orderRef: orderId, claimHash: claimed.structuredContent!["claim_hash"], sig: expect.any(Uint8Array) }]);
       const after = await mcp.call("get_order", { store: name, order_id: orderId });

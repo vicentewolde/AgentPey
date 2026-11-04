@@ -34,6 +34,7 @@ export const ERROR_CODES = [
   "PayoutAccountNotReady",
   "StoreCredentialsRejected",
   "SigningKeyNotFunded",
+  "DisputeRefused",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -65,6 +66,8 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   StoreCredentialsRejected: 422,
   // Friendbot or Horizon failed us; the owner did nothing wrong.
   SigningKeyNotFunded: 502,
+  // A dispute document that does not match the escrow, or arrives outside its window (T163).
+  DisputeRefused: 409,
 };
 
 export interface VitrineeErrorOptions {

@@ -12,7 +12,7 @@
  * `Purchase`, `Status`, STORAGE_SCHEMA_VERSION 1). A test pins it to that
  * source; if the contract's layout changes, bump the version on both sides.
  */
-import { Address, BASE_FEE, Contract, Keypair, TransactionBuilder, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Address, BASE_FEE, Contract, Keypair, Transaction, TransactionBuilder, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { VitrineeError } from "@vitrinee/core";
 import { z } from "zod";
 
@@ -128,6 +128,45 @@ export function isSignatureRefused(error: unknown): boolean {
 
 function errorText(error: unknown): string {
   return error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
+}
+
+/** One contract call read back from a transaction envelope: what a wallet was asked to sign (T163). */
+export interface EscrowCall {
+  /** The transaction's source account, the one whose signature authorizes a `require_auth` on it. */
+  source: string;
+  contract: string;
+  fn: string;
+  /** The arguments, decoded with `scValToNative`. */
+  args: unknown[];
+}
+
+/**
+ * The single contract call in a transaction envelope, or `null` when it holds anything else (no operation, several,
+ * or not an `invokeContract`). Read before submitting a transaction someone else signed, to know what it does.
+ */
+export function decodeEscrowCall(envelopeXdr: string, networkPassphrase: string): EscrowCall | null {
+  let tx: ReturnType<typeof TransactionBuilder.fromXDR>;
+  try {
+    tx = TransactionBuilder.fromXDR(envelopeXdr, networkPassphrase);
+  } catch {
+    return null;
+  }
+  // A fee bump wraps another transaction: refused, so the source read below is the one that signs.
+  if (!(tx instanceof Transaction) || tx.operations.length !== 1) return null;
+  // stellar-sdk 17: the operation's host function is a `{ type, <field> }` object (Vitrinee rule 5).
+  const op = tx.operations[0] as { type?: unknown; func?: { type?: unknown; invokeContract?: { contractAddress?: unknown; functionName?: unknown; args?: unknown } } };
+  const call = op.type === "invokeHostFunction" ? op.func?.invokeContract : undefined;
+  if (call === undefined || !Array.isArray(call.args)) return null;
+  try {
+    return {
+      source: tx.source,
+      contract: Address.fromScAddress(call.contractAddress as xdr.ScAddress).toString(),
+      fn: String(call.functionName),
+      args: (call.args as xdr.ScVal[]).map((arg) => scValToNative(arg) as unknown),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** The part of `rpc.Server` the client uses: tests pass a fake. */
@@ -373,12 +412,56 @@ export class EscrowClient implements EscrowReader, EscrowDisputeOpener {
   }
 
   /**
-   * Signs, sends and waits. Each refusal says in `details.stage` whether the transaction certainly did not take effect
+   * The store's answer to a dispute, built for its payout account's wallet to sign (T163): the escrow's `respond`
+   * needs `payee.require_auth()`, which the transaction's source satisfies, and the store never holds that key. The
+   * transaction is simulated here and comes back unsigned. `validForSeconds` bounds how long it can be submitted.
+   */
+  async prepareRespond(input: { orderRef: string; responseHash: string }, payee: string, validForSeconds = 300): Promise<string> {
+    let account: Awaited<ReturnType<EscrowRpc["getAccount"]>>;
+    try {
+      account = await this.server.getAccount(payee);
+    } catch (error) {
+      throw new VitrineeError("EscrowError", "could not load the payout account that answers", { cause: error, details: { stage: "prepare" } });
+    }
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: this.config_.networkPassphrase })
+      .addOperation(
+        this.contract.call(
+          "respond",
+          nativeToScVal(Buffer.from(input.orderRef, "utf8"), { type: "bytes" }),
+          xdr.ScVal.scvBytes(hashToBytes(input.responseHash)),
+        ),
+      )
+      .setTimeout(validForSeconds)
+      .build();
+    try {
+      return (await this.server.prepareTransaction(tx)).toXDR();
+    } catch (error) {
+      throw new VitrineeError("EscrowError", `simulation of respond failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error)}`, { cause: error, details: { stage: "simulate" } });
+    }
+  }
+
+  /** Sends a transaction a wallet already signed, and waits for it, with the same stages as `submit`. */
+  async submitSigned(name: string, signedXdr: string): Promise<OpenResult> {
+    let tx: ReturnType<typeof TransactionBuilder.fromXDR>;
+    try {
+      tx = TransactionBuilder.fromXDR(signedXdr, this.config_.networkPassphrase);
+    } catch (error) {
+      throw new VitrineeError("EscrowError", "the signed transaction cannot be read", { cause: error, details: { stage: "prepare" } });
+    }
+    return this.send(name, tx);
+  }
+
+  /**
+   * Signs, sends and waits (`send`). Each refusal says in `details.stage` whether the transaction certainly did not take effect
    * (`rejected` before entering a ledger, `failed` inside one) or might still (`unconfirmed`, or a thrown send or poll).
    */
   private async submit(name: string, prepared: Awaited<ReturnType<EscrowRpc["prepareTransaction"]>>, signer: Keypair): Promise<OpenResult> {
     prepared.sign(signer);
-    const sent = await this.server.sendTransaction(prepared);
+    return this.send(name, prepared);
+  }
+
+  private async send(name: string, tx: Parameters<EscrowRpc["sendTransaction"]>[0]): Promise<OpenResult> {
+    const sent = await this.server.sendTransaction(tx);
     if (sent.status === "ERROR" || sent.status === "TRY_AGAIN_LATER") {
       throw new VitrineeError("EscrowError", `${name} submission ${sent.status}`, { details: { stage: "rejected", status: sent.status, hash: sent.hash, error: sent.errorResult?.result.type } });
     }

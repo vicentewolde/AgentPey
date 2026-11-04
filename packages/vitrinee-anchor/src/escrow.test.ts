@@ -9,6 +9,7 @@ import {
   PURCHASE_ESCROW_WASM_HASHES,
   configKey,
   decodeEscrowConfig,
+  decodeEscrowCall,
   decodePurchase,
   escrowContractError,
   isSignatureRefused,
@@ -358,5 +359,37 @@ describe("EscrowClient.open, the buyer's dispute (T162)", () => {
   it("names the contract errors the MCP reads from open, as contracts/purchase-escrow does", () => {
     for (const line of ["PurchaseNotFound = 7,", "WrongStatus = 8,", "ClaimWindowClosed = 10,", "MissingSignature = 11,", "UnsupportedPayer = 12,"]) expect(CONTRACT_SOURCE).toContain(line);
     expect(CONTRACT_SOURCE).toContain("pub fn open(env: Env, order_ref: Bytes, claim_hash: BytesN<32>, sig: Option<BytesN<64>>)");
+  });
+});
+
+describe("the merchant's respond, built for a wallet and read back before sending (T163)", () => {
+  const payee = Keypair.random();
+  const PASSPHRASE = "Test SDF Network ; September 2015";
+  const server = {
+    getAccount: async (account: string) => new Account(account, "7"),
+    prepareTransaction: async (tx: unknown) => tx,
+  } as unknown as EscrowRpc;
+  const client = new EscrowClient({ contractId: ESCROW, rpcUrl: "https://rpc.test", networkPassphrase: PASSPHRASE, server });
+
+  it("prepares respond(order, hash) with the payout account as source, and the decoder reads exactly that", async () => {
+    const xdrText = await client.prepareRespond({ orderRef: "ord_mv9s83yb0022b6a353", responseHash: RECEIPT }, payee.publicKey(), 300);
+    const call = decodeEscrowCall(xdrText, PASSPHRASE);
+    expect(call).toMatchObject({ source: payee.publicKey(), contract: ESCROW, fn: "respond" });
+    expect(Buffer.from(call!.args[0] as Uint8Array).toString("utf8")).toBe("ord_mv9s83yb0022b6a353");
+    expect(Buffer.from(call!.args[1] as Uint8Array).toString("hex")).toBe(RECEIPT);
+  });
+
+  it("reads nothing from what is not one contract call", () => {
+    expect(decodeEscrowCall("AAAA", PASSPHRASE)).toBeNull();
+    expect(decodeEscrowCall("", PASSPHRASE)).toBeNull();
+  });
+
+  it("keeps a failed simulation's stage, and an account it cannot load", async () => {
+    const refusing = new EscrowClient({ contractId: ESCROW, rpcUrl: "https://rpc.test", networkPassphrase: PASSPHRASE, server: { getAccount: server.getAccount, prepareTransaction: () => Promise.reject(new Error("HostError: Error(Contract, #13)")) } as unknown as EscrowRpc });
+    const late = await refusing.prepareRespond({ orderRef: "ord_1", responseHash: RECEIPT }, payee.publicKey()).catch((error: unknown) => error);
+    expect(late).toMatchObject({ code: "EscrowError", details: { stage: "simulate" } });
+    expect(escrowContractError(late)).toBe(13);
+    const missing = new EscrowClient({ contractId: ESCROW, rpcUrl: "https://rpc.test", networkPassphrase: PASSPHRASE, server: { getAccount: () => Promise.reject(new Error("not found")) } as unknown as EscrowRpc });
+    await expect(missing.prepareRespond({ orderRef: "ord_1", responseHash: RECEIPT }, payee.publicKey())).rejects.toMatchObject({ details: { stage: "prepare" } });
   });
 });

@@ -475,12 +475,37 @@ export class Shopper {
       throw error;
     }
     this.log("dispute opened", { claimHash: signed.hash, escrow: dispute.escrow, transaction: dispute.transaction });
+    // The store keeps the claim with the order, so the merchant reads it and the arbiter decides without files (T163).
+    const claimKept = await this.handClaimToStore(store, order.id, signed.jws);
     const until = dispute.respond_by === null ? "within the escrow's response window" : `until ${dispute.respond_by}`;
     return {
       ...base,
-      dispute,
-      next_step: `The dispute is open on Stellar: the payment stays held in the store's escrow and the store cannot collect it. The store can answer ${until}; then the AgentResolve arbiter decides, and any refund comes from the held payment. Send claim_jws to the arbiter: it is the claim the escrow recorded.`,
+      dispute: { ...dispute, claim_kept: claimKept },
+      next_step: claimKept
+        ? `The dispute is open on Stellar: the payment stays held in the store's escrow and the store cannot collect it. The store has the claim next to the order and can answer ${until}; then the AgentResolve arbiter decides from the order, and any refund comes from the held payment.`
+        : `The dispute is open on Stellar: the payment stays held in the store's escrow and the store cannot collect it. The store can answer ${until}; then the AgentResolve arbiter decides, and any refund comes from the held payment. The store did not take the claim just now: send claim_jws to the arbiter, it is the claim the escrow recorded.`,
     };
+  }
+
+  /**
+   * Hands the claim to the store, which keeps it next to the order once its hash is the escrow's (T163). Best effort:
+   * the dispute is open whatever the store answers, and the chat still has `claim_jws`.
+   */
+  private async handClaimToStore(store: Store, orderId: string, claimJws: string): Promise<boolean> {
+    const fetchImpl = this.deps.fetchImpl ?? fetch;
+    try {
+      const res = await fetchImpl(`${store.url}/orders/${encodeURIComponent(orderId)}/dispute/claim`, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ claim_jws: claimJws }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) this.log("claim not kept by the store", { store: store.name, orderId, status: res.status });
+      return res.ok;
+    } catch (error) {
+      this.log("claim not kept by the store", { store: store.name, orderId, error: error instanceof Error ? error.message : String(error) });
+      return false;
+    }
   }
 
   private async release(intentId: string, cause: unknown): Promise<void> {

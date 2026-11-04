@@ -16,6 +16,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { WALLET_KIT_BUNDLE, walletIconFile } from "@agentpey/wallet-kit";
+import type { EscrowConfig, EscrowPurchase, EscrowReaderFactory } from "@vitrinee/anchor";
 import { VitrineeError } from "@vitrinee/core";
 import express, { type NextFunction, type Request, type Response, type Router } from "express";
 import { z } from "zod";
@@ -34,6 +35,10 @@ export interface PortalOptions {
   sessions: WalletSessions;
   comercios: ComercioStore;
   ordersFor: (comercio: Comercio) => OrderPersistence;
+  /** Reads the escrow an order was paid into, for the dispute notice (T163). Without it, the panel shows none. */
+  escrows?: EscrowReaderFactory;
+  /** Where a merchant answers a dispute in its escrow: AgentPey's responder page. */
+  responderUrl?: string;
   onboarding: Omit<OnboardingDeps, "comercios">;
   /** Where the portal's static page lives. Defaults to `apps/vitrinee-portal/public`. */
   staticDir?: string;
@@ -72,7 +77,72 @@ function publicComercio(req: Request, platformHost: string, c: Comercio) {
   };
 }
 
-function panelOrder(base: string, o: OrderRecord) {
+/** A dispute in the store's escrow, as the panel tells the merchant (T163): what to do and until when. */
+export interface PanelDispute {
+  status: "disputed" | "responded" | "resolved" | "expired";
+  respondBy: string | null;
+  /** The responder page for this order, while the merchant can still answer. */
+  answerUrl: string | null;
+}
+
+const PANEL_ESCROW_TIMEOUT_MS = 3_000;
+export const RESPONDER_URL = "https://agentpey.com/resolve/responder";
+
+/**
+ * The dispute notice for each order paid into an escrow, read on chain: a store cannot hide a claim from its own
+ * panel. A read that fails or times out shows no notice for that order and is logged; the panel still loads.
+ */
+async function panelDisputes(
+  base: string,
+  orders: readonly OrderRecord[],
+  escrows: EscrowReaderFactory | undefined,
+  responderUrl: string,
+  now: Date,
+  log: (message: string, fields?: Record<string, unknown>) => void,
+): Promise<Map<string, PanelDispute>> {
+  const notices = new Map<string, PanelDispute>();
+  if (escrows === undefined) return notices;
+  const configs = new Map<string, Promise<EscrowConfig>>();
+  await Promise.all(
+    orders.map(async (o) => {
+      const contract = o.hold?.status === "held" ? o.hold.escrow : undefined;
+      if (contract === undefined) return;
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        const reader = escrows(contract);
+        if (!configs.has(contract)) configs.set(contract, reader.config());
+        const [purchase, config] = await Promise.race([
+          Promise.all([reader.get(o.orderId), configs.get(contract)!]),
+          new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => reject(new VitrineeError("NetworkError", "the escrow gave no answer in time")), PANEL_ESCROW_TIMEOUT_MS);
+          }),
+        ]);
+        const notice = disputeNotice(base, o.orderId, purchase, config, responderUrl, now);
+        if (notice !== null) notices.set(o.orderId, notice);
+      } catch (error) {
+        log("panel escrow read failed", { orderId: o.orderId, error: error instanceof Error ? error.message : String(error) });
+      } finally {
+        clearTimeout(timer);
+      }
+    }),
+  );
+  return notices;
+}
+
+export function disputeNotice(base: string, orderId: string, purchase: EscrowPurchase | null, config: Pick<EscrowConfig, "responseWindowSeconds">, responderUrl: string, now: Date): PanelDispute | null {
+  if (purchase === null || purchase.openedAt === null) return null;
+  if (purchase.status !== "disputed" && purchase.status !== "responded" && purchase.status !== "resolved" && purchase.status !== "expired") return null;
+  const respondBy = new Date((purchase.openedAt + config.responseWindowSeconds) * 1000);
+  const open = purchase.status === "disputed" && now.getTime() <= respondBy.getTime();
+  const order = `${new URL(base).host}/orders/${orderId}`;
+  return {
+    status: purchase.status,
+    respondBy: purchase.status === "disputed" ? respondBy.toISOString() : null,
+    answerUrl: open ? `${responderUrl}?order=${encodeURIComponent(order)}` : null,
+  };
+}
+
+function panelOrder(base: string, o: OrderRecord, dispute: PanelDispute | null = null) {
   return {
     orderId: o.orderId,
     status: o.status,
@@ -84,11 +154,12 @@ function panelOrder(base: string, o: OrderRecord) {
     // The readable page, not the JSON (T108); the page links to the JSON.
     receiptUrl: o.receipt === null ? null : `${base}/receipts/${o.receipt.hash}`,
     platformOrderId: o.platformOrderId,
+    dispute,
   };
 }
 
 export function createPortalRouter(options: PortalOptions): Router {
-  const { platformHost, sessions, comercios, ordersFor, log = () => {} } = options;
+  const { platformHost, sessions, comercios, ordersFor, escrows, responderUrl = RESPONDER_URL, log = () => {} } = options;
   const router = express.Router();
   const secure = (req: Request) => req.secure;
 
@@ -151,7 +222,8 @@ export function createPortalRouter(options: PortalOptions): Router {
       mine.map(async (c) => {
         const base = storeUrl(req, platformHost, c.slug);
         const orders = (await ordersFor(c).load()).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, PANEL_ORDERS);
-        return { ...publicComercio(req, platformHost, c), orders: orders.map((o) => panelOrder(base, o)) };
+        const disputes = await panelDisputes(base, orders, escrows, responderUrl, new Date(), log);
+        return { ...publicComercio(req, platformHost, c), orders: orders.map((o) => panelOrder(base, o, disputes.get(o.orderId) ?? null)) };
       }),
     );
     res.json({ account, comercios: listed });

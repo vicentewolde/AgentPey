@@ -9299,3 +9299,22 @@ con la evidencia del reclamo en vivo (cada push a `main` redespliega).
 Pendiente: el usuario confirma «Deployed» en Render y avisa para grabar el reclamo desde Claude (guion en
 `fase-9-compra-protegida/evidencia/T162.md` §4). Exponential: sin cambios (T162 sigue `IN_PROGRESS` hasta la grabación).
 `AGENTS.md`: sin cambios.
+
+## 2026-11-04 (33) — cc/t163-respuesta-comercio
+
+Agente: Claude Code.
+
+Qué: el usuario pidió completar la Fase 9 entera. T163: el reclamo y la respuesta de una disputa en el escrow viven
+junto a la orden (`X-29`, `VT-51`). La tienda guarda el reclamo que le entrega el MCP (si su hash es el del escrow) y la
+respuesta del comercio; arma `respond` para la wallet de la cuenta de cobro y lo envía después de leer qué contiene
+(`src/disputes.ts`, código `DisputeRefused`); `@vitrinee/anchor` suma `prepareRespond`, `submitSigned` y
+`decodeEscrowCall`. La página `responder?order=…` carga el reclamo de la tienda y firma con `signTransaction`. El
+portal avisa de cada reclamo leyendo el escrow en la red. `resolve:decide -- --order …` lee todo de la orden y lo
+compara con la red (`verifyEscrowResponse`). Ensayo nuevo `escrow:rehearsal -- --scenario late-response`. La nota del
+merge de T162 (antes en `cc/t162-merge-docs`) va en esta rama.
+
+Verificación: `vitrinee:check` verde; `pnpm check` verde salvo `tenant-rail.test.ts`, que depende de la RPC pública
+(deuda anotada en `ESTADO.md`). Página revisada en el navegador integrado con una tienda local de prueba.
+
+Pendiente: `/revisar`; merge con OK; los hashes de testnet (respuesta tardía en el ensayo, respuesta a tiempo firmada
+por el usuario). Exponential: T163 a `IN_PROGRESS`. `AGENTS.md`: sin cambios.

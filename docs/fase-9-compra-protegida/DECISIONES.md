@@ -610,3 +610,46 @@ recibo ajeno o de una ventana cerrada, y no podría explicar por qué.
   las anotaciones del cliente. Si el usuario prefiere el candado extra, es un cambio chico y se propone aparte.
 - **Que lo pague una cuenta de la plataforma:** sumaba otra llave en el servidor del MCP sin necesidad; la del agente ya
   existe y ya firma por el rail.
+
+---
+
+### X-29 · El reclamo y la respuesta de una disputa en el escrow viven junto a la orden; el comercio responde firmando `respond` con su wallet · `Vigente`
+**Fecha:** 2026-11-04 · **Tarea:** T163 · Plan del usuario: "completa la fase 9 entera" (4-nov), sobre el spec aprobado
+
+1. **Los documentos van con la orden, los hashes con la red.** La tienda guarda, junto a cada orden pagada a su escrow,
+   el reclamo (el JWS cuyo SHA-256 es el `claim_hash` del escrow) y la respuesta del comercio (el documento cuyo SHA-256
+   de JSON canónico es el `response_hash`). Los sirve en `GET /orders/<id>/dispute`. Solo guarda un documento si su hash
+   es el que tiene el escrow, y quien lo lee lo vuelve a comparar con la red: la tienda puede guardarlo o perderlo,
+   nunca cambiarlo.
+2. **El reclamo lo entrega el MCP.** Después de abrir la disputa (T162), `open_claim` hace `POST
+   /orders/<id>/dispute/claim`. Cualquiera puede entregarlo, porque solo el verdadero calza con el hash. Si la tienda no
+   lo toma, la disputa sigue abierta igual y el chat conserva `claim_jws` (`dispute.claim_kept`).
+3. **El comercio responde con una transacción, no con un mensaje.** `respond` exige la firma de la cuenta de cobro, y la
+   tienda nunca tiene esa llave (`VT-8`). La tienda arma la transacción (`/response/prepare`), la página `responder` la
+   pasa a la wallet (Freighter o xBull, `signTransaction`), y la tienda la envía (`/response/submit`) solo después de
+   leer que es exactamente `respond(esta orden, el hash de este documento)` en su escrow y desde la cuenta de cobro.
+   Antes comprueba quién responde, a qué recibo y reclamo, y que el plazo siga abierto, con la misma regla del
+   contrato. Para estas disputas la respuesta no lleva firma SEP-53: la transacción es la firma
+   (`verifyEscrowResponse`). Las de `agent-resolve` siguen con archivo y firma (`E-21`).
+4. **El aviso al comercio está en su portal.** El portal lee en la red el escrow de cada pedido retenido y muestra "reclamo
+   abierto: responde antes del …" con el enlace a `responder?order=<tienda>/orders/<id>`, o el estado si ya respondió o
+   se cerró. La lectura es en la red para que una tienda no pueda esconderle un reclamo a su propio panel. El "evento de
+   la orden" del spec ya existe como ajuste de UCP (`X-27`) y llega como aviso firmado con T165.
+5. **El árbitro decide desde la orden:** `pnpm run resolve:decide -- --order <tienda>/orders/<id>` lee el reclamo y la
+   respuesta de la tienda, los compara con la red y sigue igual que siempre. Sin archivos de por medio.
+6. **Solo la página de AgentPey puede llamar estas rutas desde un navegador** (CORS para `https://agentpey.com`). Son
+   públicas como la orden: la red es la que decide.
+7. **Una respuesta tardía la rechaza la red con hash propio.** La página no deja preparar una respuesta fuera de plazo;
+   para la evidencia, `pnpm run escrow:rehearsal -- --scenario late-response` firma `respond` dentro del plazo en el
+   escrow de ensayo y la envía después.
+
+**Motivo.** Es lo que pide T163 ("el árbitro decide con la respuesta sin intercambiar archivos"). Sin el reclamo junto a
+la orden, el comercio igual necesitaría un archivo para saber qué le reclaman.
+
+**Alternativas descartadas.**
+- **Publicar los documentos dentro de `receipt.escrow` de la orden UCP:** el esquema de la extensión `2026-10-16` no
+  admite campos nuevos, y una versión nueva de la extensión solo para esto pesa más que una ruta aparte.
+- **Que la página envíe la transacción sola a la RPC de Soroban:** la página no tiene el SDK de Stellar, y la tienda
+  igual tiene que guardar el documento después.
+- **Mantener la firma SEP-53 además de la transacción:** duplica la firma sin agregar nada: la red ya exige la cuenta de
+  cobro para guardar el hash.
