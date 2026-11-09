@@ -9358,3 +9358,16 @@ respuesta, al liberar y al leerse la orden, y manda `dispute.opened`, `.responde
 
 Pendiente: `/revisar` de T165, merge, y la corrida de T166 (que da los hashes de T162 en vivo, T163 a tiempo, T164 y el
 registro de T165). Exponential: T165 a `IN_PROGRESS`. `AGENTS.md`: sin cambios.
+
+## 2026-11-09 — cc/huecos-reconciliar-expire
+
+Agente: Claude Code.
+
+Qué: T180 (`reconcile.ts`, `SessionReconciler`, `pnpm run reconcile:pending`) y T181 (`expire` en `EscrowReleases`),
+las dos tareas del spec que se escribieron antes del código (`P-23`, `X-32`, `X-33`). Rama `cc/t180-t181-reconcile-expire` desde `origin/main`.
+El 9-nov otra sesión llamó `expire` a mano sobre `ord_mw892rlwf…` (tx `79d7d9f5…56bd`); el keeper trata una compra ya vencida como no-op.
+
+Por qué: la auditoría de código encontró un pago sin reconciliación y un reembolso que dependía de una llamada a mano.
+
+Pendiente: el OK del usuario para encender `VITRINEE_RECONCILE_PENDING=1`, decidir la sesión varada `95ea7770…` (solo se
+corrió en simulación de pruebas, no contra producción), la revisión del spec (`P-15`), el push y publicar `@agentpey/ucp-stellar` (`P-22`).

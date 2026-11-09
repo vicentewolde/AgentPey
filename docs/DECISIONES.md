@@ -1009,3 +1009,13 @@ lecturas y las simulaciones seguían funcionando, por eso `prod:check` daba verd
 **Motivo.** Sin esto no hay pagos en testnet, así que no hay T163 en la red, ni T166, ni demo.
 
 **Alternativa descartada: esperar a que `@x402/stellar` actualice.** Dejaba el piloto sin pagos por tiempo indefinido.
+
+### P-23 · La Fase 9 suma dos tareas del código que la auditoría encontró: T180 (reconciliar pagos retenidos) y T181 (llamar `expire`) · `Vigente`
+**Fecha:** 2026-11-09 · **Origen:** auditoría de código de la compra protegida; el usuario respondió "Sí, implementar"
+
+Dos huecos de la compra protegida no estaban en el spec: un pago en duda (`payment_pending`) no se reconciliaba nunca, y
+nadie llamaba `expire`. Se escribieron como T180 y T181 en `fase-9-compra-protegida/SPEC.md` antes del código (`P-15`) y
+se decidieron como `X-32` y `X-33`. Siguen fuera: mainnet, la sesión varada del Instaward (solo se simula, la decide el
+usuario) y publicar `@agentpey/ucp-stellar` 0.2.1 (`P-22`). **Alternativa descartada:** dejarlos como deuda anotada; el
+primero hace perder el pedido de un comprador que ya pagó.
+

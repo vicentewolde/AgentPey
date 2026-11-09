@@ -28,6 +28,7 @@ import {
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { lookupDispute, lookupEscrow, registerUcpOrders, type EscrowWindows } from "./ucp/order.js";
 import { registerDisputes, type DisputeDeps } from "./disputes.js";
+import { SessionReconciler } from "./ucp/reconcile.js";
 import { EscrowReleases, type EscrowReleaseDeps } from "./escrow-release.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
 import { OrderEvents } from "./ucp/order-events.js";
@@ -71,6 +72,8 @@ export interface AppDeps {
   disputeTimeoutMs?: number;
   /** Used for the Horizon settlement check. Tests inject a fake Horizon. */
   horizonFetch?: typeof fetch;
+  /** Turns the reconciliation of held checkouts on or off (T180); unset reads `VITRINEE_RECONCILE_PENDING`. */
+  reconcilePending?: boolean;
   anchorRetryDelaysMs?: readonly number[];
   /**
    * Reads the platform profile `UCP-Agent` points to, to learn the UCP version it speaks (T133, R-14).
@@ -100,6 +103,8 @@ export interface VitrineeApp extends Express {
   orderEvents: OrderEvents;
   /** The store's release of escrowed payments after shipment (T164); `undefined` for a store paid directly. */
   escrowReleases: EscrowReleases | undefined;
+  /** Looks for held checkouts' payments (T180); it runs by itself only when `VITRINEE_RECONCILE_PENDING=1`. */
+  sessionReconciler: SessionReconciler;
 }
 
 const verifyBodySchema = z.object({ receiptJws: z.string().min(1).max(20_000) });
@@ -127,6 +132,7 @@ export function createApp({
   disputes,
   disputeTimeoutMs,
   horizonFetch,
+  reconcilePending,
   anchorRetryDelaysMs,
   syncFacilitatorOnStart = true,
   platformProfiles = sharedPlatformProfileReader(),
@@ -328,7 +334,13 @@ export function createApp({
     ...(releases === undefined ? {} : { releases }),
   });
   app.orderEvents = orderEvents;
-  registerUcpCheckout(app, UCP_REST_PREFIX, { ...deps, sessions, x402, ready, ap2Key, orderEvents }, baseUrlOf);
+  const checkoutDeps = { ...deps, sessions, x402, ready, ap2Key, orderEvents };
+  registerUcpCheckout(app, UCP_REST_PREFIX, checkoutDeps, baseUrlOf);
+  // Looks for payments whose outcome the store never learned and finishes the checkouts that were paid (T180, X-32).
+  // Off unless asked for: it creates orders by itself, so it is switched on per deploy (`VITRINEE_RECONCILE_PENDING=1`).
+  const reconciler = new SessionReconciler({ checkout: checkoutDeps, horizonUrl: config.stellar.horizonUrl, ...(horizonFetch === undefined ? {} : { fetchImpl: horizonFetch }) });
+  app.sessionReconciler = reconciler;
+  if (reconcilePending ?? process.env["VITRINEE_RECONCILE_PENDING"] === "1") orderEvents.attachReconciler(reconciler);
   // Where each order's payment stands in the escrow it was paid into (T161): the same read-only readers verification uses.
   registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents, escrowReader);
   // The claim and the merchant's answer of a dispute in the store's escrow, kept with the order (T163, X-29).

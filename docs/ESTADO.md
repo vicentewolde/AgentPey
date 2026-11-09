@@ -29,6 +29,8 @@
 | T165 Cada cambio de la disputa llega al agente (se corta primero) | 🔨 código listo: `dispute.opened`, `.responded`, `.resolved`, `escrow.released` y `.refunded` en la cola firmada, leídos del escrow; el receptor de agentpey.com los anota; suite UCP 49 · 8 · 20 (`X-31`, `VT-53`, [evidencia](fase-9-compra-protegida/evidencia/T165.md)). Falta el registro de una disputa real | `cc/t165-avisos-disputa` |
 | T166 Corrida completa y QA | ⏳ pendiente | |
 | T167 Video, mapa de tiempos e informe final | ⏳ pendiente | |
+| T180 Reconciliar los pagos varados en `payment_pending` (agregada el 9-nov, `P-23`, `X-32`) | 👀 código y pruebas en la rama local `cc/huecos-reconciliar-expire` (9 pruebas); `pnpm run reconcile:pending` en seco por defecto. Falta el OK del usuario para encenderlo (`VITRINEE_RECONCILE_PENDING=1`) y decidir la sesión varada `cs_mw88s5td3…` (tx `95ea7770…`) | `cc/huecos-reconciliar-expire`, sin push |
+| T181 Un keeper que llame `expire` (agregada el 9-nov, `P-23`, `X-33`) | 👀 código y pruebas en la misma rama (8 pruebas con escrow en memoria y reloj simulado); sin cambiar el contrato | `cc/huecos-reconciliar-expire`, sin push |
 
 ## Fuera de la fase: T172, un freno para quien le paga a una tienda (22-oct, `VT-49`)
 
