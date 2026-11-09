@@ -98,7 +98,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 - [ ] **MCP caído:** copiar `MCP_CREDENTIAL_JWS` y `MCP_MANDATE_JWS` de `.env.local` a las variables del servicio `AgentPey` en Render
 - [x] T163: merge (PR #96) y ensayo de la respuesta tardía (`759bc186…`), 4-nov
 - [ ] T163: responder un reclamo real desde el portal con la wallet de la cuenta de cobro `GD2MCESI…`
-- [ ] Publicar `@agentpey/ucp-stellar` con `stellar-sdk` 17.4.0 (`P-22`): la 0.2.0 de npm no puede pagar en el protocolo 30
+- [ ] Publicar `@agentpey/ucp-stellar` con `stellar-sdk` 17.4.0 (`P-22`): la 0.2.0 de npm no puede pagar en el protocolo 30 El 9-nov la versión pasó a 0.2.1 en `package.json` (PR de la rama `cc/ucp-stellar-0.2.1`); falta que el mantenedor la publique con `npm publish --access public` desde `packages/ucp-stellar`.
 - [ ] T162: el reclamo en vivo desde Claude sobre `ord_mv9s83yb…` (una comisión de testnet), grabando la pantalla ([guion](fase-9-compra-protegida/evidencia/T162.md) §4)
 - [ ] T130 (en pausa, `R-36`): [casastock.cl](https://casastock.cl/) es de un amigo del usuario (Shopify, 10 productos, CLP: casas prefabricadas, kits por m² y servicios; el más barato cuesta 30.000 CLP, unos 31 USDC). Al retomar hace falta: que su dueño dé acceso para crear la app (`read_products`, `write_orders`), su wallet y su acuerdo para recibir un pedido que aparece «Pagado» con USDC de testnet; y subir los topes del rail del MCP (3 por compra, 5 por día, fijos en el contrato: es un rail nuevo y un Mandato nuevo). T144: el usuario confirmó que tiene Grok, no dots ni Muse
 - [x] Publicar `@agentpey/ucp-stellar` 0.2.0 en npm (T160): publicada el 15-oct como `latest`
