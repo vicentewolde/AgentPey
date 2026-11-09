@@ -48,10 +48,11 @@ const purchase = (overrides: Partial<EscrowPurchase> = {}): EscrowPurchase => ({
 });
 
 /** An escrow in memory that answers `mark_shipped` and `release` the way the contract does. */
-function setup(options: { record?: OrderRecord; records?: OrderRecord[]; start?: EscrowPurchase; failShip?: number; failRelease?: number; orders?: OrderStore; queued?: boolean } = {}) {
+function setup(options: { record?: OrderRecord; records?: OrderRecord[]; start?: EscrowPurchase; failShip?: number; failRelease?: number; failExpire?: number; orders?: OrderStore; queued?: boolean } = {}) {
   let chain: EscrowPurchase = options.start ?? purchase();
   let shipFailures = options.failShip ?? 0;
   let releaseFailures = options.failRelease ?? 0;
+  let expireFailures = options.failExpire ?? 0;
   const calls: string[] = [];
   const now = () => new Date(Date.now());
   // One purchase per order: the first order's is `chain`, others start held and move on their own.
@@ -91,6 +92,18 @@ function setup(options: { record?: OrderRecord; records?: OrderRecord[]; start?:
       setPurchase(orderRef, { ...p, status: "released", closedAt: Math.floor(Date.now() / 1000) });
       return { txHash: "b".repeat(64) };
     },
+    async expire(orderRef: string) {
+      calls.push(`expire ${orderRef}`);
+      if (expireFailures > 0) {
+        expireFailures -= 1;
+        throw new VitrineeError("EscrowError", "expire transaction NOT_FOUND");
+      }
+      const p = purchaseOf(orderRef);
+      if (p.status !== "disputed" && p.status !== "responded") throw contractError(8);
+      if (Date.now() / 1000 <= (p.openedAt ?? 0) + STORE_ESCROW.responseWindowSeconds + STORE_ESCROW.resolveWindowSeconds) throw contractError(16);
+      setPurchase(orderRef, { ...p, status: "expired", refundAtomic: p.amountAtomic, closedAt: Math.floor(Date.now() / 1000) });
+      return { txHash: "c".repeat(64) };
+    },
   };
   const orders = options.orders ?? new OrderStore(undefined, options.records ?? [options.record ?? order()]);
   const logs: string[] = [];
@@ -112,7 +125,7 @@ function setup(options: { record?: OrderRecord; records?: OrderRecord[]; start?:
     retryDelaysMs: [1_000, 5_000],
     ...(options.queued === false ? {} : { signerTurn }),
   });
-  return { releases, orders, calls, logs, maxInFlight: () => maxInFlight, purchaseOf, chain: () => chain, dispute: () => (chain = { ...chain, status: "disputed", openedAt: Math.floor(Date.now() / 1000), claimHash: "c".repeat(64) }) };
+  return { releases, orders, calls, logs, maxInFlight: () => maxInFlight, purchaseOf, chain: () => chain, setChain: (next: EscrowPurchase) => (chain = next), dispute: () => (chain = { ...chain, status: "disputed", openedAt: Math.floor(Date.now() / 1000), claimHash: "c".repeat(64) }) };
 }
 
 beforeEach(() => {
@@ -249,5 +262,100 @@ describe("the shipment opens the release window, and the store releases when it 
     const s = setup({ orders: failing });
     await expect(run(s.releases.afterShipment(ORDER))).resolves.toBeUndefined();
     expect(s.logs).toContain("escrow release state not saved");
+  });
+});
+
+describe("the store expires a dispute the arbiter left open (T181, X-33)", () => {
+  const WINDOW_MS = (STORE_ESCROW.responseWindowSeconds + STORE_ESCROW.resolveWindowSeconds) * 1000;
+  const disputed = (): EscrowPurchase => purchase({ status: "disputed", openedAt: T0 });
+
+  it("calls expire once the response and resolve windows have closed, and not a second before", async () => {
+    const s = setup({ start: disputed() });
+    await run(s.releases.afterDispute(ORDER));
+    expect(s.orders.get(ORDER)?.escrowExpire).toMatchObject({ status: "scheduled", attempts: 0 });
+    await vi.advanceTimersByTimeAsync(WINDOW_MS - 5_000);
+    await s.releases.idle();
+    expect(s.calls).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(5_000 + RELEASE_MARGIN_MS + 1_000);
+    await s.releases.idle();
+    expect(s.calls).toEqual([`expire ${ORDER}`]);
+    expect(s.chain().status).toBe("expired");
+    expect(s.orders.get(ORDER)?.escrowExpire).toMatchObject({ status: "expired", expireTx: "c".repeat(64) });
+  });
+
+  it("does nothing to a purchase the arbiter resolved first", async () => {
+    const s = setup({ start: disputed() });
+    await run(s.releases.afterDispute(ORDER));
+    s.setChain({ ...s.chain(), status: "resolved", refundAtomic: 5_157_895n, closedAt: T0 + 60 });
+    await vi.advanceTimersByTimeAsync(WINDOW_MS + RELEASE_MARGIN_MS + 1_000);
+    await s.releases.idle();
+    expect(s.calls).toEqual([]);
+    expect(s.orders.get(ORDER)?.escrowExpire).toMatchObject({ status: "done" });
+  });
+
+  it("treats a purchase someone already expired by hand as a no-op", async () => {
+    const s = setup({ start: { ...disputed(), status: "expired", refundAtomic: 5_157_895n, closedAt: T0 + WINDOW_MS / 1000 + 1 } });
+    await run(s.releases.afterDispute(ORDER));
+    expect(s.calls).toEqual([]);
+    expect(s.orders.get(ORDER)?.escrowExpire).toMatchObject({ status: "expired" });
+  });
+
+  it("leaves an undisputed purchase alone", async () => {
+    const s = setup();
+    await run(s.releases.afterDispute(ORDER));
+    expect(s.calls).toEqual([]);
+    expect(s.orders.get(ORDER)?.escrowExpire).toBeUndefined();
+  });
+
+  it("waits for the escrow's own clock when it says the window is still open", async () => {
+    // The contract's clock trails ours: the call lands early (#16) and is asked again without counting a failure.
+    const s = setup({ start: disputed() });
+    await run(s.releases.afterDispute(ORDER));
+    vi.setSystemTime(new Date((T0 + WINDOW_MS / 1000 - 1) * 1000));
+    s.releases.resume();
+    await vi.advanceTimersByTimeAsync(RELEASE_MARGIN_MS + 1_000);
+    await s.releases.idle();
+    expect(s.orders.get(ORDER)?.escrowExpire?.attempts).toBe(0);
+    await vi.advanceTimersByTimeAsync(WINDOW_MS);
+    await s.releases.idle();
+    expect(s.chain().status).toBe("expired");
+  });
+
+  it("retries a failed call, and gives up after its delays with a reason (resume tries again)", async () => {
+    const s = setup({ start: disputed(), failExpire: 3 });
+    await run(s.releases.afterDispute(ORDER));
+    await vi.advanceTimersByTimeAsync(WINDOW_MS + RELEASE_MARGIN_MS + 20_000);
+    await s.releases.idle();
+    expect(s.orders.get(ORDER)?.escrowExpire).toMatchObject({ status: "failed", attempts: 3, lastError: expect.stringContaining("NOT_FOUND") });
+    expect(s.chain().status).toBe("disputed");
+    s.releases.stop();
+
+    // A restart resumes the failed step; the escrow now answers.
+    const again = setup({ start: s.chain(), record: order({ escrowExpire: s.orders.get(ORDER)?.escrowExpire }) });
+    vi.setSystemTime(new Date(Date.now()));
+    expect(again.releases.resume()).toBe(1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await again.releases.idle();
+    expect(again.chain().status).toBe("expired");
+  });
+
+  it("resumes a scheduled expiry after a restart", async () => {
+    const expireAfter = new Date((T0 + WINDOW_MS / 1000) * 1000).toISOString();
+    const s = setup({ start: disputed(), record: order({ escrowExpire: { status: "scheduled", attempts: 0, expireAfter } }) });
+    expect(s.releases.resume()).toBe(1);
+    await vi.advanceTimersByTimeAsync(WINDOW_MS + RELEASE_MARGIN_MS + 1_000);
+    await s.releases.idle();
+    expect(s.calls).toEqual([`expire ${ORDER}`]);
+    expect(s.chain().status).toBe("expired");
+  });
+
+  it("finds a dispute nobody announced on its sweep, once per interval", async () => {
+    const s = setup({ start: disputed() });
+    await s.releases.sweepOnce();
+    expect(s.orders.get(ORDER)?.escrowExpire).toMatchObject({ status: "scheduled" });
+    await vi.advanceTimersByTimeAsync(WINDOW_MS + RELEASE_MARGIN_MS + 1_000);
+    await s.releases.idle();
+    expect(s.chain().status).toBe("expired");
   });
 });

@@ -444,6 +444,15 @@ export class EscrowClient implements EscrowReader, EscrowDisputeOpener {
     return this.callAsSource("release", [nativeToScVal(Buffer.from(orderRef, "utf8"), { type: "bytes" })], sourceSecret);
   }
 
+  /**
+   * Refunds the whole purchase when the arbiter let the resolve window close (T181, `X-7`). Anyone may call it; the
+   * store's signing account sends it and pays the fee. #16 is `ResolveWindowOpen`, #8 a purchase that is not
+   * disputed or answered (already resolved or expired).
+   */
+  async expire(orderRef: string, sourceSecret: string): Promise<OpenResult> {
+    return this.callAsSource("expire", [nativeToScVal(Buffer.from(orderRef, "utf8"), { type: "bytes" })], sourceSecret);
+  }
+
   private async callAsSource(name: string, args: xdr.ScVal[], sourceSecret: string): Promise<OpenResult> {
     let signer: Keypair;
     let account: Awaited<ReturnType<EscrowRpc["getAccount"]>>;
