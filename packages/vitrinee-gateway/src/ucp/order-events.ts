@@ -100,7 +100,7 @@ export interface OrderEventsDeps {
   /** How often the escrow of a moving order is read for dispute and escrow events (T165). */
   escrowWatchIntervalMs?: number;
   /** Opens the escrow's release window when an order paid into it ships in full, and releases at its end (T164). */
-  releases?: Pick<EscrowReleases, "afterShipment" | "resume" | "stop" | "idle">;
+  releases?: Pick<EscrowReleases, "afterShipment" | "afterDispute" | "resume" | "stop" | "idle">;
 }
 
 /** What a delivery's outcome means for it: done, try again later, wait for the budget, or never again. */
@@ -341,6 +341,8 @@ export class OrderEvents {
       o.escrowSeen = { status, at };
       appendDeliveries(o, deliveries);
     });
+    // A dispute is open: the store schedules `expire` for when the arbiter's window closes (T181).
+    if (status === "disputed" || status === "responded") void this.deps.releases?.afterDispute(orderId);
     if (events.length > 0) this.deps.log("escrow changed", { orderId, from: previous, to: status, events });
     if (deliveries.length > 0) this.schedule(orderId, 0);
   }

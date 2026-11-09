@@ -63,6 +63,20 @@ export interface OrderEscrowRelease {
 }
 
 /**
+ * Where the store's `expire` stands for a disputed order (T181, X-33): `scheduled` while it waits for the arbiter's
+ * window to close, `expired` once the escrow refunded the payer in full, `done` when a verdict (or a release) closed
+ * the purchase first, `failed` when the store gave up retrying.
+ */
+export interface OrderEscrowExpire {
+  status: "scheduled" | "expired" | "done" | "failed";
+  attempts: number;
+  /** When `expire` may be called: the dispute's `opened_at` plus the response and resolve windows. */
+  expireAfter?: string;
+  expireTx?: string;
+  lastError?: string;
+}
+
+/**
  * A dispute's documents, kept next to the order (T163, X-29). The escrow holds their hashes, so the store can keep
  * them or lose them, never change them: whoever reads them hashes them again against the chain.
  */
@@ -188,6 +202,7 @@ export interface OrderRecord {
   dispute?: OrderDisputeDocuments;
   /** What the shipment did to the escrowed payment (T164). Absent until the order ships in full. */
   escrowRelease?: OrderEscrowRelease;
+  escrowExpire?: OrderEscrowExpire;
   /** The escrow's state the platform was last told about (T165): a change from it is an event. Absent until first read. */
   escrowSeen?: { status: EscrowStatus; at: string };
 }
@@ -321,6 +336,15 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
       shippedAt: z.iso.datetime().optional(),
       releaseAfter: z.iso.datetime().optional(),
       releaseTx: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+      lastError: z.string().optional(),
+    })
+    .optional(),
+  escrowExpire: z
+    .object({
+      status: z.enum(["scheduled", "expired", "done", "failed"]),
+      attempts: z.number().int().nonnegative(),
+      expireAfter: z.iso.datetime().optional(),
+      expireTx: z.string().regex(/^[0-9a-f]{64}$/).optional(),
       lastError: z.string().optional(),
     })
     .optional(),
