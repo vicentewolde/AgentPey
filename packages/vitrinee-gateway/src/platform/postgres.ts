@@ -230,6 +230,24 @@ export class PostgresCheckoutSessions implements CheckoutSessionPersistence {
     return rows[0] === undefined ? undefined : sessionFromRecord(id, rows[0].record);
   }
 
+  async listStranded(): Promise<CheckoutSession[]> {
+    let rows: { session_id: string; record: unknown }[];
+    try {
+      rows = (
+        await this.pool.query(
+          `select session_id, record from vitrinee.checkout_sessions
+           where comercio_id = $1 and record->>'status' = 'complete_in_progress'
+             and jsonb_typeof(record->'settleAttempt') = 'object' and coalesce(jsonb_typeof(record->'settlement'), 'null') <> 'object'
+           order by created_at limit 200`,
+          [this.comercioId],
+        )
+      ).rows;
+    } catch (error) {
+      throw storageError("could not list the held checkout sessions", error);
+    }
+    return rows.map((row) => sessionFromRecord(row.session_id, row.record));
+  }
+
   async save(s: CheckoutSession): Promise<void> {
     const session = checkoutSessionSchema.parse(s);
     try {

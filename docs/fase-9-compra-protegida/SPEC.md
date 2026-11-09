@@ -288,8 +288,8 @@ explícito del usuario.
 - **Qué hace:** una rutina que, para cada sesión varada con `settleAttempt.transaction`, lee Horizon, comprueba con `checkSettlement` que el pago sea el esperado (monto, activo, pagador y destino, que es el escrow cuando la tienda lo usa) y entonces guarda el `settlement` y termina la sesión con `finish` (orden, `hold` y recibo). Sin hash, o con un pago que no coincide o falló en la red, la sesión pasa a «requiere revisión manual» con su motivo: **nunca se asume un pago**. Un hash no encontrado se reintenta con espera creciente y, pasadas 24 h, pasa a revisión.
 - **Límites:** corre en el vigilante existente y como `pnpm run reconcile:pending` (**`--dry-run` por defecto**; solo con `--apply` escribe). No toca contratos ni claves del comercio. `--session` y `--tx` dejan que una persona entregue el hash de un pago que la tienda no registró: se verifica igual. Idempotente: un hash ya usado por otra orden no hace un segundo `hold` (lo impide `fulfilPaidPurchase` y el contrato, `PaymentAlreadyHeld`).
 - **Hecho cuando:**
-  - [ ] pago confirmado → orden creada una sola vez; pago no encontrado → reintento; monto o destino distinto → revisión; hash repetido → sin doble `hold`; reinicio a mitad → retoma
-  - [ ] el script en `--dry-run` dice qué haría con la sesión del Instaward sin escribir nada
+  - [x] pago confirmado → orden creada una sola vez; pago no encontrado → reintento; monto o destino distinto → revisión; hash repetido → sin doble `hold`; reinicio a mitad → retoma
+  - [x] el script en `--dry-run` dice qué haría con la sesión del Instaward sin escribir nada
 
 #### T181 · Un keeper que llame `expire` (agregada el 9-nov, a pedido del usuario)
 - **Estimación:** 0,5–1 día · **Delegable a Codex:** no · **Depende de:** T157, T164
@@ -297,7 +297,7 @@ explícito del usuario.
 - **Qué hace:** en `EscrowReleases`, cuando el escrow de una orden está `disputed` o `responded`, programa `expire` para `opened_at + response_window + resolve_window` más un margen del reloj, con la cuenta operadora y la misma cola de firma. El contrato juzga: `ResolveWindowOpen` espera sin contar falla, `WrongStatus` (ya resuelta o vencida) es un no-op. Reintentos con límite; el estado vive en la orden y `resume()` lo retoma al reiniciar.
 - **Límites:** sin cambiar el contrato; solo escrows de la tienda; nunca lanza a quien lo llama.
 - **Hecho cuando:**
-  - [ ] pruebas con escrow en memoria y reloj simulado: vence en plazo, no antes, ya resuelta es no-op, reinicio retoma
+  - [x] pruebas con escrow en memoria y reloj simulado: vence en plazo, no antes, ya resuelta es no-op, reinicio retoma
 
 ## 6. Criterios de aceptación de la fase (la evidencia que se prometió)
 

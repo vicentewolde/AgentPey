@@ -763,3 +763,58 @@ la orden, el comercio igual necesitaría un archivo para saber qué le reclaman.
 - **Leer los eventos de Soroban del contrato:** la RPC pública guarda pocos días de eventos y exige paginar; el estado
   del contrato es más simple de leer y no se pierde.
 - **Un encabezado propio con el nombre del evento:** UCP ya fija el formato del aviso; el estado en la orden alcanza.
+
+### X-32 · Un checkout con el pago en duda se reconcilia contra la red, y nunca se asume un pago · `Vigente`
+**Fecha:** 2026-11-09 · **Tarea:** T180 · Pedido del usuario ("Sí, implementar", 9-nov), con spec escrito antes (`SPEC.md`)
+
+El 8-nov un pago llegó al escrow (0,5157895 USDC, tx `95ea7770…`) y el checkout quedó `complete_in_progress` /
+`payment_pending`: `settle` devuelve `unknown` ante un timeout o una respuesta ilegible del facilitator, o un rechazo que
+nombra una transacción, y desde ahí nada volvía a mirar (`complete` repite el aviso, `cancel` responde 409).
+
+1. **`ucp/reconcile.ts`.** Para cada sesión retenida con hash, lee Horizon con `checkSettlement` y comprueba que el pago
+   sea el pedido: firmado por el pagador de la sesión, USDC, exactamente el monto de los requisitos y acreditado al escrow
+   (o a la cuenta del comercio) que nombran. Solo entonces guarda el `settlement` y termina con `finish`, el mismo camino
+   de un `complete` normal (orden, `hold` por la cola de la tienda, recibo).
+2. **Nunca se asume un pago.** Sin hash, con una transacción que falló, de otro monto, sin pagador legible o con un hash
+   que ya produjo otra orden, la sesión queda en `reconcile.review` con el motivo y el vigilante no la toca. Un hash que
+   Horizon todavía no muestra se reintenta (30 s, 2, 10, 30 min y repite) hasta 24 h; pasado ese plazo pasa a revisión.
+3. **Idempotente.** Una sesión terminada no se vuelve a mirar; dos sesiones con el mismo hash producen una sola orden
+   (`fulfilPaidPurchase`) y el contrato rechaza un segundo `hold` del mismo pago (`PaymentAlreadyHeld`, X-22).
+4. **El vigilante** (`SessionReconciler`, cada minuto) arranca y se detiene con `OrderEvents`. **Apagado por defecto:**
+   crea órdenes por su cuenta, así que se enciende por despliegue con `VITRINEE_RECONCILE_PENDING=1`.
+5. **`pnpm run reconcile:pending`** es de solo lectura por defecto. `--apply` con `--session` y `--tx` verifica el hash que
+   una persona encontró y lo anota en la sesión; no crea la orden (otro proceso no puede actualizar la caché de órdenes de
+   la tienda): la termina la tienda en su siguiente pasada.
+
+**Motivo.** Un comprador que pagó y no tiene orden es la peor falla de la compra protegida, y el contrato ya permitía
+recuperar el pago (`hold` toma de lo no asignado).
+
+**Alternativas descartadas.**
+- **Reintentar `settle`:** podía cobrar dos veces; el diseño actual prefiere detener antes que repetir un cobro.
+- **Asumir el pago por el hash que reporta el facilitator:** un rechazo con hash puede ser un pago fallido.
+- **Terminar la sesión desde el script:** escribiría órdenes que la tienda en ejecución no conoce.
+
+**Sin verificar contra servicios reales:** Horizon y el facilitator están simulados en las pruebas, y el script no se
+corrió contra el Postgres de producción.
+
+### X-33 · La tienda llama `expire` cuando vence la ventana del árbitro · `Vigente`
+**Fecha:** 2026-11-09 · **Tarea:** T181 · Pedido del usuario ("Sí, implementar", 9-nov)
+
+`expire` (`lib.rs:502`, cualquiera puede llamarla; solo en `Disputed` o `Responded`) no la llamaba ningún código: si el
+árbitro no resolvía, el reembolso esperaba a una persona (el 9-nov, `ord_mw892rlwf…`, se llamó a mano).
+
+1. **`EscrowReleases.afterDispute`** lee el escrow y, si hay una disputa, guarda `escrowExpire` en la orden con el plazo
+   `opened_at + response_window + resolve_window` y programa `expire` 15 s después (el reloj del ledger atrasa).
+2. **El contrato juzga:** `ResolveWindowOpen` (#16) espera sin contar falla, `WrongStatus` (#8, ya resuelta o vencida) es
+   un no-op que solo anota el estado. Reintentos a 30 s, 2, 10 y 30 min y luego `failed`; `resume()` lo reactiva al
+   reiniciar. Va por la misma cola de firma de la cuenta operadora.
+3. **Cómo se entera:** al ver la lectura del escrow `disputed` o `responded` (T165) y, para disputas que nadie avisó, un
+   barrido cada 10 min de las órdenes retenidas de los últimos 30 días (una lectura por orden y pasada).
+4. Sin cambios al contrato. `EscrowClient.expire` es nuevo.
+
+**Motivo.** El reembolso del comprador no puede depender de que alguien se acuerde. **Alternativa descartada:** un keeper
+aparte del proceso de la tienda; la tienda ya tiene la cuenta operadora, la cola y el patrón de reintentos.
+
+**Sin verificar contra servicios reales:** la RPC y la transacción real de `expire` solo se probaron con un escrow en
+memoria; la firma de la cuenta operadora no se ejercitó.
+

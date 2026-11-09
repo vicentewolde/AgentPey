@@ -128,6 +128,19 @@ const sessionShape = z.object({
    */
   settleAttempt: z.object({ transaction: z.string().nullable(), error: z.string(), at: z.string() }).nullable().default(null),
   /**
+   * Where the reconciliation of a held settlement stands (T180, X-32): how many times the payment was looked for and
+   * when to look next, or why a person has to look (`review`). Never set for a checkout that settled normally.
+   */
+  reconcile: z
+    .object({
+      attempts: z.number().int().nonnegative(),
+      nextAt: z.string().nullable(),
+      lastReason: z.string().optional(),
+      review: z.object({ reason: z.string(), at: z.string() }).nullable().default(null),
+    })
+    .nullable()
+    .default(null),
+  /**
    * AP2 (T134, R-15): set when the session is created with the extension
    * negotiated, and never cleared. From then on the checkout is security
    * locked: every 2026-08-25 response is signed, and `complete` needs a mandate
@@ -189,6 +202,11 @@ export type CheckoutSession = z.infer<typeof sessionShape>;
 export interface CheckoutSessionPersistence {
   get(id: string): Promise<CheckoutSession | undefined>;
   save(session: CheckoutSession): Promise<void>;
+  /**
+   * Checkouts held for reconciliation (T180): `complete_in_progress`, a settlement attempt of unknown outcome and no
+   * settlement. Absent for a persistence that cannot list them: those stores reconcile nothing.
+   */
+  listStranded?(): Promise<CheckoutSession[]>;
 }
 
 /** Sessions of one process, gone on restart. The single-store gateway and the tests use it. */
@@ -203,6 +221,15 @@ export class MemoryCheckoutSessions implements CheckoutSessionPersistence {
   async save(session: CheckoutSession): Promise<void> {
     this.sessions.set(session.id, structuredClone(checkoutSessionSchema.parse(session)));
   }
+
+  async listStranded(): Promise<CheckoutSession[]> {
+    return [...this.sessions.values()].filter(isStranded).map((session) => structuredClone(session));
+  }
+}
+
+/** A checkout whose payment may have moved but whose outcome the store never learned (T180). */
+export function isStranded(session: CheckoutSession): boolean {
+  return session.status === "complete_in_progress" && session.settlement === null && session.settleAttempt !== null;
 }
 
 export function newSessionId(now: Date): string {

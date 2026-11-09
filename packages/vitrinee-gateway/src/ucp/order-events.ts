@@ -262,6 +262,13 @@ export class OrderEvents {
     }
   }
 
+  private reconciler: { start(): void; stop(): void; idle(): Promise<void> } | undefined;
+
+  /** The vigilante that looks for payments the store never learned the outcome of (T180): it starts, stops and drains with this one. */
+  attachReconciler(reconciler: { start(): void; stop(): void; idle(): Promise<void> }): void {
+    this.reconciler = reconciler;
+  }
+
   /** Re-schedules every delivery still pending (after a restart) and starts the shipment watcher. */
   resume(): number {
     let pending = 0;
@@ -272,6 +279,7 @@ export class OrderEvents {
       }
     }
     this.deps.releases?.resume();
+    this.reconciler?.start();
     this.startWatcher();
     this.startEscrowWatcher();
     return pending;
@@ -281,6 +289,7 @@ export class OrderEvents {
   async idle(): Promise<void> {
     while (this.running.size > 0 || this.escrowChecks.size > 0) await Promise.allSettled([...this.running.values(), ...this.escrowChecks.values()]);
     await this.deps.releases?.idle();
+    await this.reconciler?.idle();
   }
 
   stop(): void {
@@ -292,6 +301,7 @@ export class OrderEvents {
     if (this.escrowWatcher !== undefined) clearInterval(this.escrowWatcher);
     this.escrowWatcher = undefined;
     this.deps.releases?.stop();
+    this.reconciler?.stop();
   }
 
   // ------------------------------------------------------------ escrow events (T165)

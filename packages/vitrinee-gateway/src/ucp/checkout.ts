@@ -849,6 +849,7 @@ export function registerUcpCheckout(app: Express, prefix: string, deps: UcpCheck
         orderId: null,
         settlement: null,
         settleAttempt: null,
+        reconcile: null,
         ap2: null,
         webhook: null,
       };
@@ -1118,7 +1119,7 @@ function held(): UcpMessage {
  * session's own snapshot (never a fresh quote, which could now say out of
  * stock) and close the session. Safe to call again after a failure.
  */
-async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<void> {
+export async function finish(deps: UcpCheckoutDeps, session: CheckoutSession): Promise<void> {
   const settlement = session.settlement;
   const snapshot = session.quote;
   if (settlement === null || snapshot === null) {
