@@ -293,7 +293,7 @@ explícito del usuario.
 
 #### T181 · Un keeper que llame `expire` (agregada el 9-nov, a pedido del usuario)
 - **Estimación:** 0,5–1 día · **Delegable a Codex:** no · **Depende de:** T157, T164
-- **Por qué:** `expire` (`lib.rs:502`, «anyone may call it», solo en `Disputed` o `Responded`) no la llamaba ningún código: si el árbitro no resolvía, el reembolso esperaba a una persona (el 9-nov se llamó a mano, `evidencia/T166.md`).
+- **Por qué:** `expire` (`lib.rs:502`, «anyone may call it», solo en `Disputed` o `Responded`) no la llamaba ningún código: si el árbitro no resolvía, el reembolso esperaba a una persona (en la corrida del 9-nov hubo que llamarla a mano).
 - **Qué hace:** en `EscrowReleases`, cuando el escrow de una orden está `disputed` o `responded`, programa `expire` para `opened_at + response_window + resolve_window` más un margen del reloj, con la cuenta operadora y la misma cola de firma. El contrato juzga: `ResolveWindowOpen` espera sin contar falla, `WrongStatus` (ya resuelta o vencida) es un no-op. Reintentos con límite; el estado vive en la orden y `resume()` lo retoma al reiniciar.
 - **Límites:** sin cambiar el contrato; solo escrows de la tienda; nunca lanza a quien lo llama.
 - **Hecho cuando:**

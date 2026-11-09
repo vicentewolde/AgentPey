@@ -9365,7 +9365,7 @@ Agente: Claude Code.
 
 Qué: T180 (`reconcile.ts`, `SessionReconciler`, `pnpm run reconcile:pending`) y T181 (`expire` en `EscrowReleases`),
 las dos tareas del spec que se escribieron antes del código (`P-23`, `X-32`, `X-33`). Rama `cc/t180-t181-reconcile-expire` desde `origin/main`.
-El 9-nov otra sesión llamó `expire` a mano sobre `ord_mw892rlwf…` (tx `79d7d9f5…56bd`); el keeper trata una compra ya vencida como no-op.
+El 9-nov otra sesión llamó `expire` a mano sobre `ord_mw892rlwf…`; el keeper trata una compra ya vencida como no-op.
 
 Por qué: la auditoría de código encontró un pago sin reconciliación y un reembolso que dependía de una llamada a mano.
 
