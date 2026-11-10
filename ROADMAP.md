@@ -111,7 +111,7 @@ las decisiones estratégicas que llevaron al código, y para SCF eso es evidenci
 | 7 | **Estándar de comercio agéntico sobre Stellar** | Que los estándares que ya ganaron (UCP, AP2, x402) funcionan sobre Stellar de punta a punta, con lo que les falta: handler de pago, recibos anclados, comercios LATAM y disputas | ✅ Cerrada 2026-10-03 (T120–T127, `E-25`): perfil y catálogo UCP, compra UCP pagada en Stellar, mandatos AP2, AgentResolve y anexo del SEP; el reembolso real de T124 pasa a la Fase 8 con fecha | — |
 | 8 | **Agentes reales comprando en Stellar** | Que un agente que la gente ya usa (Claude, ChatGPT) compra en una tienda de terceros pagando en Stellar con topes aplicados por la red, y qué cumple AgentPey, con evidencia, de UCP, AP2 y MPP | ✅ Cerrada 2026-10-17 (T128–T156, `P-20`): Claude y ChatGPT comprando por el MCP, UCP en dos versiones, AP2, SDK en npm, kit de conformidad y el video; criterio 1 sin cumplir (T130 en pausa); T171 aprobada para una fase futura | — |
 | 9 | **Una compra protegida, de punta a punta** | Que las piezas que ya existen (compra desde el chat, recibos anclados, despacho, disputas) se conectan en una sola compra: el pago queda retenido en un contrato y el veredicto lo libera o reembolsa | 🔄 En curso desde 2026-10-14 (`P-19`), spec aprobado, T157–T167, hasta el 11-nov | — |
-| 10 | **Compras protegidas con la comunidad y tótem de llegada** | Que cinco o más personas reales compran con su asistente en una tienda propia con la confirmación del comprador, la evidencia sellada y una cuenta de gasto por persona, y que una tarjeta comprada registra la llegada a un evento | 📝 Spec en borrador (2026-11-10, `P-24`); empieza el 23-nov solo si el capítulo aprueba | La aprobación del spec por el usuario y la del Instaward |
+| 10 | **Compras protegidas con la comunidad y tótem de llegada** | Que cinco o más personas reales compran con su asistente en una tienda propia con la confirmación del comprador, la evidencia sellada y una cuenta de gasto por persona, y que una tarjeta comprada registra la llegada a un evento | 📝 Spec aprobado (2026-11-10, `P-24`); empieza el 23-nov solo si el capítulo aprueba | La aprobación del spec por el usuario y la del Instaward |
 
 Las Fases 0 a 5 están cerradas — el piloto técnico completo.
 La Fase 6 hizo la mitad de "comercialización" y se cerró el 2026-10-02; la
@@ -692,15 +692,15 @@ octubre no se ganó: el informe lo aprobó el usuario.
 
 ---
 
-### 4.10 · Fase 10 — Compras protegidas con la comunidad y tótem de llegada 📝 spec en borrador, 2026-11-10
+### 4.10 · Fase 10 — Compras protegidas con la comunidad y tótem de llegada 📝 spec aprobado, 2026-11-10
 
-La abre `P-24` (propuesta): los tres entregables del Instaward enviado a Stellar Chile el 9-nov. Suma lo que le falta a la compra
+La abre `P-24`: los tres entregables del Instaward enviado a Stellar Chile el 9-nov. Suma lo que le falta a la compra
 protegida de la Fase 9 para que personas reales confíen: el comprador confirma y libera el pago, el reclamo lleva evidencia
 sellada, cada persona tiene su cuenta de gasto; una tienda propia, Tapline, donde cinco o más miembros de la comunidad compran con su
 asistente; y un tótem de llegada para los eventos, con tarjeta NFC o QR que cambia cada 30 s. Todo en testnet. Tareas T182 a T206,
 decisiones con prefijo `Y-`, en
-[docs/fase-10-instaward-comunidad/SPEC.md](docs/fase-10-instaward-comunidad/SPEC.md). No se implementa nada hasta que el usuario
-apruebe el spec.
+[docs/fase-10-instaward-comunidad/SPEC.md](docs/fase-10-instaward-comunidad/SPEC.md). El usuario aprobó el spec el 10-nov; las tareas
+empiezan el 23-nov, y solo si el capítulo aprueba el Instaward.
 
 ---
 
