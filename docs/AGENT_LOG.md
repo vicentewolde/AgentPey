@@ -9382,3 +9382,13 @@ Por qué: el encargo de la sesión de investigación para el sprint del Instawar
 
 Pendiente: que el usuario pegue el texto exacto del anexo A (la plataforma pide sesión y no se pudo leer), apruebe el spec, y suscriba Tapline en Shopify. Tarea A (catálogo de Tapline) sin empezar. Exponential: sin cambios hasta aprobar. `AGENTS.md`: sin cambios.
 
+
+## 2026-11-10 — cc/fase-10-plan (anexo A exacto)
+
+Agente: Claude Code.
+
+Qué: el anexo A del spec de la Fase 10 pasa de provisional al texto exacto enviado el 9-nov (transcrito por la sesión de investigación). Cambios de fondo: D3 ya no promete la asistencia en Stellar (T201 es un extra), la evidencia de D3 es el tótem en un evento, la lista de llegadas en vivo y un video corto, la semana 4 lleva video y revisión final con el líder del capítulo, el presupuesto de D3 incluye "3D design and printing" y hay un tercer documento de apoyo (`tapline-cl.myshopify.com`). El 23-nov queda como fecha sugerida, por confirmar. Solo documentos.
+
+Por qué: lo enviado es el compromiso; el spec no debe prometer ni más ni menos.
+
+Pendiente: el push de la rama (PR #101 abierto, sin mergear; requiere OK del usuario) y la fecha real de inicio, que fija la aprobación final del capítulo.

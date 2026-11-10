@@ -1,9 +1,9 @@
 # Spec Fase 10 · Compras protegidas con la comunidad y tótem de llegada
 
-- **Estado:** Aprobado (2026-11-10), con el anexo A todavía provisional (el usuario pega el texto exacto). Las tareas se empiezan el 23-nov, y solo si el capítulo aprueba el Instaward
+- **Estado:** Aprobado (2026-11-10). El anexo A es el texto exacto enviado (puesto el 10-nov). Las tareas empiezan al arrancar el sprint (fecha sugerida 23-nov, por confirmar), y solo si el capítulo aprueba el Instaward
 - **Rama base:** `main`
 - **Tareas:** T182 a T206 (la numeración sigue la de la Fase 9, cuyo último número es T181)
-- **Fechas:** 23-nov → 21-dic-2026 (30 días), **solo si el capítulo aprueba el Instaward**. Si no lo aprueba, el spec queda como plan y el usuario decide si construye algo
+- **Fechas:** 4 semanas desde el inicio del sprint. El 23-nov (→ 21-dic-2026) es la fecha **sugerida, por confirmar**: la propuso la investigación en el campo "Suggested sprint start date" y no la confirmó ni Tellus ni el capítulo. La plataforma muestra Chapter review → Final approval → Sprint kick-off; si el sprint arranca antes, las 4 semanas terminan antes del 21-dic. **Solo si el capítulo aprueba el Instaward**; si no lo aprueba, el spec queda como plan y el usuario decide si construye algo
 - **Referencias:** [`P-24`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método), [`P-10`](../DECISIONES.md) (perímetro de "nunca Codex"), [`P-20`](../DECISIONES.md) (T171 pasó a una fase futura; aquí vuelve), [spec de la Fase 9](../fase-9-compra-protegida/SPEC.md) (escrow, `X-1` a `X-33`), [spec de la Fase 8](../fase-8-agentes-reales/SPEC.md) (MCP, `R-33`), [INSTRUCCIONES de Vitrinee](../fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md). Decisiones de la fase con prefijo `Y-` en [`DECISIONES.md`](DECISIONES.md)
 
 ## 1. Objetivo
@@ -19,12 +19,12 @@ veredicto reembolsa desde el pago retenido. La Fase 10 suma **personas reales y 
    compró o con un QR que cambia cada 30 s, y el organizador ve en su teléfono quién llegó.
 
 La fase cumple los tres entregables del **Instaward de noviembre** enviado a Stellar Chile (Stellar Passport) el 9-nov-2026
-(USD 4.000, inicio sugerido el 23-nov). El texto enviado está en el [anexo A](#anexo-a--texto-enviado-al-instaward-9-nov-2026):
+(USD 4.000, inicio sugerido el 23-nov, por confirmar). El texto enviado está en el [anexo A](#anexo-a--texto-enviado-al-instaward-9-nov-2026):
 **lo que dice el anexo es el compromiso**, y este spec no promete ni más ni menos.
 
-> **Aviso sobre el anexo A.** La plataforma de Passport pide iniciar sesión y no se pudo leer el texto exacto. El anexo está
-> armado con el resumen fiel de las notas de la sesión de investigación (v3 del formulario) y está marcado como
-> **provisional**: el usuario pega el texto exacto antes de aprobar el spec.
+> **Sobre el anexo A.** Es el texto exacto de los campos que se escribieron en el formulario el 9-nov (transcrito por la sesión
+> de investigación; Passport pide iniciar sesión y no se releyó lo guardado). Lo que el anexo no dice, el spec no lo promete:
+> en particular, **la asistencia en Stellar no es un compromiso** (T201 es un extra).
 
 ## 2. Alcance
 
@@ -41,7 +41,7 @@ contrato** para Tapline (`Y-2`) y el de `agentcommerce` no se toca.
 
 - Rieles de tarjeta o fiat, y mainnet o dinero real. Todo en testnet.
 - Otras plataformas de tienda (solo Shopify) y sumar otros comercios que no sean Tapline.
-- Reemplazar Luma o Passport: el tótem se suma a ambos y los lee, no los sustituye.
+- Reemplazar Luma o Passport (está en lo enviado como fuera de alcance): el tótem se suma a ambos y los lee, no los sustituye.
 - Reconocimiento facial o rastreo automático de personas.
 - Auditoría externa de seguridad.
 - Tocar la tienda `agentcommerce` (la de la demo en vivo) y el escrow `CBQFELK5…DO27A`.
@@ -102,13 +102,13 @@ tarjeta NFC (NDEF con un token firmado) ─┐
 QR en pantalla (cambia cada 30 s)        ├─▶ lector ─▶ servicio de llegada ─▶ vista del organizador (teléfono)
                                          ┘                    │
                   Luma (lista / CSV) ───────────────────────▶ │ ──▶ exportar CSV
-          perfil público de Passport ─────────────────────────▶ │ ──▶ huella de la asistencia en Stellar
+          perfil público de Passport ─────────────────────────▶ │ ──▶ (extra, T201) huella de la asistencia en Stellar
 ```
 
 El lector es una Raspberry Pi o un ESP32 con un PN532, o el teléfono del organizador (Web NFC en Android) como respaldo:
 **sin el hardware, el registro funciona igual con el QR en el teléfono** y el tótem es la carcasa. Luma: su API pide Luma Plus en
 el calendario del capítulo y la clave solo sirve para ese calendario; el respaldo es importar el CSV. Passport: API pública de
-solo lectura. La asistencia queda anclada en Stellar como la huella de un registro, sin datos personales en la red (`Y-6`).
+solo lectura. Anclar la asistencia en Stellar como la huella de un registro, sin datos personales en la red (`Y-6`), es un **extra opcional** (T201): lo enviado al capítulo no lo promete.
 
 ### 4.7 Decisiones
 
@@ -248,8 +248,8 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
   - [ ] la lista de Luma entra por CSV (y por la API si el capítulo da una clave de un calendario con Luma Plus); el perfil de Passport se lee por su API pública de solo lectura
   - [ ] ninguna de las dos se reemplaza ni se escribe
 
-#### T201 · La asistencia en Stellar
-- **Estimación:** 8 h · **Depende de:** T196
+#### T201 · La asistencia en Stellar (extra, no es un compromiso)
+- **Estimación:** 8 h · **Depende de:** T196 · **Extra:** el formulario enviado no lo promete; se hace solo si sobra tiempo
 - **Hecho cuando:**
   - [ ] la huella de cada llegada queda anclada en testnet sin datos personales (`Y-6`); se puede verificar contra la lista exportada
 
@@ -266,7 +266,7 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 #### T204 · El evento de entrega de tarjetas con el capítulo
 - **Estimación:** 8 h · **Depende de:** T203 y la fecha que acuerde el capítulo
 - **Hecho cuando:**
-  - [ ] el tótem debuta en un evento real con la comunidad y queda el registro de llegadas
+  - [ ] el tótem debuta en un evento real con la comunidad, queda la lista de llegadas en vivo y se graba un video corto
 
 #### T205 · Corrida final, QA y verificación de lo prometido
 - **Estimación:** 8 h · **Depende de:** T190, T194, T195, T204
@@ -276,7 +276,7 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 #### T206 · Informe final y cierre con el capítulo
 - **Estimación:** 4 h · **Depende de:** T205
 - **Hecho cuando:**
-  - [ ] el informe final está entregado y ESTADO, ROADMAP y la bitácora cierran la fase
+  - [ ] la revisión final con el líder del capítulo (semana 4), el informe final entregado y ESTADO, ROADMAP y la bitácora cierran la fase
 
 ## 6. Criterios de aceptación de la fase (la evidencia que se prometió)
 
@@ -284,35 +284,38 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 |---|---|---|
 | D1 | El ID del contrato y sus tests; los hashes de una liberación confirmada, una por vencimiento y un reclamo con evidencia sellada; un pago sobre el tope rechazado por la red | T182, T183, T184, T189, T190 |
 | D2 | Cinco o más compras de la comunidad, una digital y una física, una confirmada y una reembolsada con evidencia; una página pública que las lista leídas de Stellar | T194, T195 |
-| D3 | El tótem funcionando (tarjeta y QR), la vista del organizador con exportación, Luma y Passport leídos, la asistencia en Stellar, y su debut en un evento | T196 a T204 |
+| D3 | El tótem funcionando en un evento (tarjeta y QR), la lista de llegadas en vivo y un video corto. Además se construyen la vista del organizador con exportación y la lectura de Luma y Passport (entregable); la asistencia en Stellar (T201) es un extra | T196 a T200, T202 a T204 (T201 extra) |
 
 ## 7. Plan de demo
 
 Una compra de punta a punta en Tapline: Claude cotiza, la persona aprueba, el pago queda retenido; la persona confirma desde su
 wallet y el pago se libera; otra compra con reclamo y evidencia que termina en reembolso; la página pública las muestra; la
-tarjeta comprada se usa en el tótem de un evento y la llegada aparece en el teléfono del organizador.
+tarjeta comprada se usa en el tótem de un evento y la llegada aparece en el teléfono del organizador. Se graba un video corto.
 
 ## 8. Orden, fechas y cortes
 
 | Semana | Tareas |
 |---|---|
-| Antes del 23-nov | Cerrar la Fase 9 (T162–T167 en vivo), la tienda Tapline y su catálogo (tarea A del encargo), pedir el hardware, preguntar al capítulo por Luma |
-| 1 (23–29 nov) | T182 a T190 |
+| Antes del inicio del sprint (23-nov sugerido) | Cerrar la Fase 9 (T162–T167 en vivo), la tienda Tapline y su catálogo (tarea A del encargo), pedir el hardware, preguntar al capítulo por Luma |
+| 1 (23–29 nov, si se confirma) | T182 a T190 |
 | 2 (30-nov – 6-dic) | T191 a T195 |
 | 3 y 4 (7–21 dic) | T196 a T206 |
 
-**Línea de corte:** si al final de la semana 2 falta algo, se corta primero T201 (la asistencia en Stellar) y después T200 (la API
-de Luma, queda el CSV). **D1 y las compras de D2 no se cortan.** Sin el tótem físico, el registro funciona con el QR en el teléfono
+Las fechas de la tabla cuentan desde la fecha sugerida (23-nov); si el sprint arranca antes, se corren todas. Hoy no hay fecha
+confirmada: depende de la aprobación final del capítulo.
+
+**Línea de corte:** T201 (la asistencia en Stellar) es un extra que no se prometió y no se hace si algo aprieta; si al final de la
+semana 2 falta algo, se corta T201 primero y después T200 (la API de Luma, queda el CSV). **D1 y las compras de D2 no se cortan.** Sin el tótem físico, el registro funciona con el QR en el teléfono
 del organizador.
 
 ## 9. Riesgos
 
 | Riesgo | Mitigación |
 |---|---|
-| El hardware tarda (desde AliExpress a Chile, 2 a 4 semanas; supuesto sin verificar) | Pedir el lector y las tarjetas antes del 23-nov; el respaldo es Web NFC en un teléfono Android y el QR |
+| El hardware tarda (desde AliExpress a Chile, 2 a 4 semanas; supuesto sin verificar) | Pedir el lector y las tarjetas antes del inicio del sprint; el respaldo es Web NFC en un teléfono Android y el QR |
 | Cambiar el contrato de escrow a mitad del sprint | El contrato v2 es la primera tarea y el despliegue la segunda; Tapline usa uno nuevo y `agentcommerce` no se toca |
 | La clave de Luma sirve solo para el calendario que la emite y exige Luma Plus | Importar el CSV; preguntarle al capítulo |
-| Que el capítulo pregunte para qué necesita la red la asistencia | El registro anclado es opcional y lo central es la compra protegida; la huella se ancla sin datos personales |
+| Que el capítulo pregunte para qué necesita la red la asistencia | No se prometió: T201 es un extra opcional; si se hace, la huella se ancla sin datos personales |
 | Confirmar libera plata: un error de autorización sería grave | Firma de la wallet de la persona, tests de quien no es `principal`, y el agente no puede confirmar solo |
 | La tienda Tapline sigue en prueba gratis (vence ~12-nov) y con contraseña | Decisión del usuario: suscribir (USD 1/mes por 3 meses, luego 25) |
 | Personas reales: sus compras y grabaciones | Permiso de cada persona y nada de datos personales en la red ni en la página pública |
@@ -323,7 +326,8 @@ del organizador.
 - [x] ¿Se retoma la cuenta por persona (`R-33`, T171) en esta fase? **Sí**, decidido por el usuario el 10-nov (`Y-4`)
 - [x] ¿Cómo se marca la entrega de un digital? **Enlace de descarga propio**, decidido el 10-nov (`Y-5`)
 - [x] Suscripción de Tapline: **suscribir** (USD 1/mes por 3 meses y luego 25), decidido el 10-nov; el pago lo hace el usuario en Shopify
-- [ ] **El texto exacto del anexo A:** lo pega el usuario antes de aprobar
+- [x] **El texto exacto del anexo A:** puesto el 10-nov, transcrito del formulario enviado (pasado por la sesión de investigación)
+- [ ] **La fecha de inicio del sprint:** el 23-nov es sugerida; la fija la aprobación final del capítulo y Tellus
 - [x] Prefijo de decisiones `Y-` y carpeta `docs/fase-10-instaward-comunidad/`: aprobados con el spec el 10-nov
 - [ ] ¿El tótem va en `apps/totem` o dentro de `apps/web`? Se decide en el plan de T196
 - [ ] ¿Quién imprime la carcasa 3D y cuándo es el evento de entrega? Los fija el usuario con el capítulo
@@ -332,6 +336,7 @@ del organizador.
 
 | Fecha | Cambio |
 |---|---|
+| 2026-11-10 | Anexo A reemplazado por el texto exacto enviado: D3 sin asistencia en Stellar (T201 pasa a extra), evidencia de D3 = tótem, lista en vivo y video, semana 4 con video y revisión final con el líder del capítulo, presupuesto de D3 con "3D design and printing", tercer documento de apoyo (`tapline-cl.myshopify.com`). Fecha del 23-nov: sugerida, por confirmar |
 | 2026-11-10 | **Aprobado** por el usuario, sin cambios en las tareas; `Y-2`, `Y-3` y `Y-6` quedan como se propusieron; el anexo A sigue provisional |
 | 2026-11-10 | Borrador a partir del encargo de la sesión de investigación y de la lectura del código. Respuestas del usuario sobre `confirm`, cuenta por persona, entrega digital y suscripción. Anexo A provisional |
 
@@ -339,15 +344,56 @@ del organizador.
 
 ## Anexo A · Texto enviado al Instaward (9-nov-2026)
 
-> **PROVISIONAL.** Resumen fiel de las notas de la sesión de investigación (`15-formulario-final.md` a `17-formulario-v3-y-evaluacion.md`), no el texto exacto. El usuario lo reemplaza por el texto enviado antes de aprobar el spec.
+> **Texto exacto de los campos del formulario**, transcrito del envío del 9-nov-2026 (~22:18 hora de Chile) por la sesión de investigación (`investigacion-instaward/25-formulario-enviado-texto-exacto.md`). No es una lectura de la plataforma después del envío: Passport pidió iniciar sesión. Estado en Passport el 10-nov: "Application submitted", paso 2 de 4, "Chapter review"; Tellus escribió que AgentPey fue seleccionado. El texto está en inglés, como se envió.
 
-**Proyecto:** AgentPey · USD 4.000 · inicio sugerido 23-11-2026 · duración 4 semanas · capítulo: Stellar Chile.
+### Project scope
+- **Project name:** AgentPey
+- **Requested funding (USD):** 4000
+- **Suggested sprint start date:** 2026-11-23 (solo una sugerencia, ver la sección 8)
+- **Supporting documents:**
+  - https://github.com/vicentewolde/AgentPey
+  - https://agentpey.com
+  - https://tapline-cl.myshopify.com
+- Casillas "The scope takes 30 days or less" y "The deliverables are concrete and measurable": marcadas.
 
-**Presupuesto (v3):** D1 USD 1.100 · D2 USD 800 · D3 USD 1.600 · infraestructura USD 500.
+### Problem & objective
+AI assistants can now buy things for us. The hard part comes when a purchase goes wrong: the item never shows up, or it isn't what we paid for, and by then the money is gone.
 
-**Entregables:**
-1. *Protección para cualquier compra, física o digital (semana 1).* El escrow libera cuando el comprador confirma que está conforme, o cuando vence la ventana sin reclamo. El reclamo lleva evidencia (fotos o archivos) con su huella sellada en Stellar para el árbitro. Cada comprador tiene su propia cuenta de gasto, con sus topes y fondeada desde su propia wallet. El asistente gana dos acciones: confirmar la compra y adjuntar evidencia. Evidencia: el ID del contrato y sus tests; los hashes de una liberación confirmada, una liberación por vencimiento y un reclamo con evidencia sellada; un pago sobre el tope rechazado por la red.
-2. *Compras reales de la comunidad de Stellar (semana 2).* Tapline, conectada a AgentPey con su propio escrow. Cinco o más miembros de la comunidad compran con su asistente (Claude o ChatGPT): el asistente cotiza y la persona aprueba. Al menos una compra digital y una física, al menos una confirmada y una reembolsada tras un reclamo con evidencia. Una página pública lista cada compra y su resultado, leído de Stellar.
-3. *Tótem de llegada para los eventos de Stellar Chile (semanas 3 y 4).* Un tótem impreso en 3D. El asistente se registra con la tarjeta NFC comprada, o con un QR en pantalla que cambia cada 30 s. El organizador ve en su teléfono quién llegó, quién es nuevo y quién no se había inscrito, y puede exportar la lista. Lee la lista de Luma y el perfil de Stellar Passport, sumándose a ambos sin reemplazarlos. La asistencia queda en Stellar. Debuta en un evento de entrega de tarjetas con la comunidad.
+AgentPey fixes that on Stellar: the payment waits in an escrow until the buyer is happy with what they got. If not, they open a claim from the same chat, show what went wrong, and get their money back.
 
-**Fuera de alcance:** rieles de tarjeta o fiat, otras plataformas de tienda, sumar otros comercios, reemplazar Luma o Passport, reconocimiento facial o rastreo automático, auditoría externa. Todo en testnet.
+This sprint puts it in real hands. People from the Stellar community will buy NFC cards and event badges from a real store, each purchase protected until they confirm it. Those cards then get a job at Stellar Chile events: a 3D-printed arrival totem where members check in with a tap, working with Luma and Stellar Passport, while organizers see who arrived in real time.
+
+### Deliverables
+
+**1. Protection for any purchase**
+- *What will be delivered:* The AgentPey escrow is extended so a purchase is released when the buyer confirms they are satisfied, or when the claim window passes without a claim. It works for physical goods (confirmed on arrival) and digital goods (confirmed after access). Claims carry evidence, such as photos or files, whose fingerprint is sealed on Stellar for the arbiter. Each buyer gets their own spending account with their own limits, funded from their own wallet. The AI assistant gets two new actions: confirm a purchase, and attach evidence to a claim.
+- *Planned evidence:* Escrow contract ID on Stellar Expert and its tests; transaction hashes for a release confirmed by the buyer, a release after the claim window and a claim with sealed evidence; one over-limit payment rejected by the network.
+
+**2. Real purchases from the Stellar community**
+- *What will be delivered:* Tapline, a store selling NFC cards and event badges, connected to AgentPey with its own escrow. 5 or more Stellar community members buy through their AI assistant (Claude or ChatGPT): the assistant quotes, the person approves. Purchases include at least one digital item and one physical item; at least one is confirmed by the buyer and one is refunded after a claim with evidence. A public page lists every purchase and its outcome, read from Stellar.
+- *Planned evidence:* Store URL; transaction hashes for purchases, confirmations and the refund; the public page; screen recordings.
+
+**3. Arrival totem for Stellar Chile events**
+- *What will be delivered:* A 3D-printed totem, a gift for Stellar Chile's community events. Members tap their NFC card, or scan the code on its screen (it changes every 30 seconds), and are checked in within a second. The organizer sees on their phone who arrived, who is new and who had not registered, and can export the list. It reads the Luma guest list and the member's Stellar Passport profile. It debuts at a card-handover event with the community, planned with the chapter.
+- *Planned evidence:* The totem working at a community event; the live arrivals list; a short video.
+
+### Out of scope y presupuesto
+- **Out of scope:** Card or fiat payment rails; other store platforms; onboarding other merchants; replacing Luma or Stellar Passport; facial recognition or automatic tracking; an external security audit.
+- **Budget:** USD 4,000 in total.
+  - Deliverable 1: USD 1,100 (escrow confirmation and evidence, per-buyer spending accounts, assistant actions, tests).
+  - Deliverable 2: USD 800 (store integration, onboarding, live runs, public page, recordings).
+  - Deliverable 3: USD 1,600 (3D design and printing, NFC reader and electronics, NFC cards, check-in app and organizer view, event).
+  - Infrastructure and tooling: USD 500 (hosting and database, Stellar RPC, domain, store plan, card shipping).
+
+### Execution plan
+- **Week 1:** Escrow extended: release on buyer confirmation, release after the claim window, sealed evidence on claims, with tests on testnet. Per-buyer spending accounts. New assistant actions to confirm a purchase and attach evidence.
+- **Week 2:** Tapline connected to AgentPey. First community buyers: one digital and one physical purchase, one confirmation, one claim with evidence and its refund. Public page of purchases.
+- **Week 3:** Totem built: 3D print, NFC reader, check-in app and the organizer's live view, reading the Luma guest list and Passport profiles. Cards produced.
+- **Week 4:** Card-handover event with the community using the totem. Video and final review with the Chapter Lead.
+
+### Pasos 7 y 8
+- **7 · After the sprint:** "Apply for a follow-on Instaward, if eligible".
+- **8 · Acknowledgements:** las cinco reglas aceptadas.
+
+### Lo que el anexo no promete
+La asistencia en Stellar **no** es parte de lo enviado: ni el entregable 3, ni su evidencia, ni la semana 4 la mencionan (T201 es un extra, no un compromiso). Tampoco se prometió "sin datos personales" en la página pública (T195 lo cumple por diseño, no por compromiso) ni "sin reemplazar Luma ni Passport" como entregable (solo aparece en "Out of scope"). Los dos modos de registro del tótem, la tarjeta NFC y el QR que cambia cada 30 s, sí son compromiso.
