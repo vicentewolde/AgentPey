@@ -9371,3 +9371,14 @@ Por qué: la auditoría de código encontró un pago sin reconciliación y un re
 
 Pendiente: el OK del usuario para encender `VITRINEE_RECONCILE_PENDING=1`, decidir la sesión varada `95ea7770…` (solo se
 corrió en simulación de pruebas, no contra producción), la revisión del spec (`P-15`), el push y publicar `@agentpey/ucp-stellar` (`P-22`).
+
+## 2026-11-10 — cc/fase-10-plan
+
+Agente: Claude Code.
+
+Qué: spec en borrador de la Fase 10 (`docs/fase-10-instaward-comunidad/`: SPEC, BITACORA, DECISIONES `Y-1` a `Y-6`), la decisión `P-24`, y los párrafos de alcance de `CLAUDE.md`, `ROADMAP.md` y `ESTADO.md`. Solo documentos. El usuario decidió en este chat `confirm`, la cuenta por persona, la entrega digital y la suscripción de Tapline.
+
+Por qué: el encargo de la sesión de investigación para el sprint del Instaward de noviembre (inicio sugerido el 23-nov).
+
+Pendiente: que el usuario pegue el texto exacto del anexo A (la plataforma pide sesión y no se pudo leer), apruebe el spec, y suscriba Tapline en Shopify. Tarea A (catálogo de Tapline) sin empezar. Exponential: sin cambios hasta aprobar. `AGENTS.md`: sin cambios.
+

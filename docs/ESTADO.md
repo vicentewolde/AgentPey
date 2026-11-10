@@ -5,13 +5,22 @@
 > `BITACORA.md` de la fase, la coordinación con Codex en `AGENT_LOG.md` y el
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`).
 
-**Actualizado:** 2026-11-04
+**Actualizado:** 2026-11-10
 **Fase actual:** Fase 9 · Una compra protegida, de punta a punta ([spec](fase-9-compra-protegida/SPEC.md), **aprobado**, `P-19`): los entregables del Instaward, 13-oct → 11-nov. La Fase 8 se cerró el 2026-10-17 (T128–T156, `P-20`); la Fase 7, el 2026-10-03 (`E-25`)
 
 **Última tarea terminada:** Fase 9: T161, la orden muestra el estado del escrow ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): en producción, la orden retenida `ord_mv9s83yb…` muestra `held`, y con ella se completa D1. Antes, T158 ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)). Fase 8: cerrada el 17-oct (`P-20`), con T130 en pausa fuera de la fase y T171 aprobada para una fase futura
 **Siguiente paso:** Fase 9: T162 mergeada ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95), `main` en `a432878` desde las 03:24 UTC del 27-oct). Falta el reclamo en vivo desde Claude, grabado ([guion](fase-9-compra-protegida/evidencia/T162.md) §4); el usuario avisa cuándo. T163 mergeada (PR #96); falta su respuesta a tiempo. T164 mergeada (PR #97). T165 con código listo en `cc/t165-avisos-disputa` (sin push). **El MCP de producción está caído desde el deploy del 4-nov a las 13:55 UTC: su credencial y su Mandato vencieron el 2-nov.** Ya se renovaron en testnet (hasta el 4-dic): falta que el usuario copie `MCP_CREDENTIAL_JWS` y `MCP_MANDATE_JWS` de `.env.local` a Render. Después, T166: la corrida completa. Después de la Fase 9: T171 (`R-33`), aprobada, y T130, en pausa (`R-36`), en una fase futura (`P-20`). Seguir [stellar/stellar-mpp-sdk#90](https://github.com/stellar/stellar-mpp-sdk/issues/90)
 
 **Convivencia (`P-19`).** Hasta el 17-oct la Fase 8 trabajó en paralelo, en el worktree `~/dev/AgentPay-fase8`; desde su cierre (`P-20`) hay una sola fase abierta y todo va en `~/dev/AgentPay`, una tarea a la vez. Los worktrees `AgentPay-fase8`, `-t154`, `-t155` y `-demo` se retiraron el 17-oct (todo estaba en `main`); queda `~/dev/AgentPay-codex`, la de Codex (`P-5`). Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
+
+## Fase 10 · en planificación (10-nov, `P-24`)
+
+El spec está en **borrador** ([spec](fase-10-instaward-comunidad/SPEC.md), T182 a T206, decisiones `Y-1` a `Y-6`) para el Instaward de noviembre
+(USD 4.000, enviado el 9-nov, sprint del 23-nov al 21-dic **si el capítulo lo aprueba**). No se construye nada hasta que el usuario lo apruebe.
+
+- [ ] Del usuario: pegar el texto exacto del anexo A (hoy provisional), confirmar el prefijo `Y-` y la carpeta, y aprobar el spec
+- [ ] Del usuario: suscribir Tapline en Shopify antes del ~12-nov (decidido el 10-nov: USD 1/mes por 3 meses, luego 25)
+- [ ] Antes del 23-nov: cerrar la Fase 9 en vivo, pedir el hardware del tótem, preguntarle al capítulo por Luma
 
 ## Progreso de la Fase 9
 
