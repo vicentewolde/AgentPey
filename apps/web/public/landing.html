@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
   /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
   (function () {
@@ -23,1086 +23,240 @@
   })();
 </script>
 <style>
+  /* The hero is a small 3D market on a blue table: people with phones walk between shops, carry coins to a vault, and every coin drops
+     through two rings, the limits. One palette (blue, ink, white, mint, flare), one display face, almost no text. */
   :root {
     color-scheme: light;
-    --paper: #fbfaf8;
-    --paper-2: #f2f0ea;
-    --ink: #0f1211;
-    --ink-2: #434946;
-    --ink-3: #7d8481;
-    --rule: #e3e0d9;
-    --accent: #0a7a56;
-    --dark: #0b0d12;
-    --dark-rule: #232838;
-    --dark-text: #e7e9ee;
-    --dark-muted: #949cad;
-    --mint: #5fe3b3;
-    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
-    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-    --gap: clamp(52px, 7.5vw, 92px);
-    /* theme tokens: a section becomes dark by adding .band, which redefines these */
-    --fg: var(--ink);
-    --fg-2: var(--ink-2);
-    --fg-3: var(--ink-3);
-    --rule-c: var(--rule);
-    --accent-c: var(--accent);
+    --blue: #176bff;
+    --ink: #070b16;
+    --mint: #6df2c0;
+    --flare: #ff5a36;
+    --dim: rgba(255,255,255,.74);
+    --hair: rgba(255,255,255,.12);
+    --display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+    --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    --wrap: 1240px;
   }
-
   * { box-sizing: border-box; }
-
+  html { background: var(--ink); }
   html[lang="en"] [data-tr="es"],
   html[lang="es"] [data-tr="en"] { display: none; }
+  body { margin: 0; background: var(--ink); color: #fff; font-family: var(--body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  h1, h2, p { margin: 0; }
+  .in { max-width: var(--wrap); margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+  :focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; }
+  button { font: inherit; }
 
-  body {
-    margin: 0;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: var(--sans);
-    font-size: 16px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
+  .hero { position: relative; background: var(--blue); min-height: clamp(660px, 90vh, 880px); overflow: hidden; }
+  #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .fallback { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 64px 64px; }
+  .ui { position: relative; z-index: 2; padding-bottom: 76px; pointer-events: none; }
+  .ui a, .ui button { pointer-events: auto; }
+  nav.top { display: flex; align-items: center; gap: 26px; height: 76px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -.02em; }
+  .brand svg { width: 28px; height: 28px; }
+  .nl { display: flex; gap: 26px; margin-left: 18px; font-size: 15px; color: var(--dim); }
+  .nl a:hover { color: #fff; }
+  .nr { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .lang { font-family: var(--mono); font-size: 12px; color: var(--dim); display: flex; gap: 6px; align-items: center; }
+  .lang button { background: none; border: 0; padding: 4px 2px; color: var(--dim); cursor: pointer; font-family: var(--mono); font-size: 12px; }
+  .lang button[aria-pressed="true"] { color: #fff; font-weight: 500; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 26px; font-weight: 600; font-size: 16px; font-family: var(--body); border: 2px solid transparent; cursor: pointer; transition: transform .18s ease; background: #fff; color: var(--blue); box-shadow: 4px 4px 0 var(--ink); }
+  .btn:hover { transform: translate(-2px, -2px); }
+  .btn.dark { background: var(--ink); color: #fff; box-shadow: 4px 4px 0 rgba(255,255,255,.35); }
+  .btn.line { background: transparent; border-color: rgba(255,255,255,.7); color: #fff; box-shadow: none; }
+  .btn.sm { height: 40px; padding: 0 18px; font-size: 14px; }
+  .copy { margin-top: clamp(28px, 9vh, 84px); max-width: 560px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .live-dot { width: 9px; height: 9px; background: var(--mint); border-radius: 50%; flex: none; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(42px, 6.6vw, 100px); line-height: .94; letter-spacing: -.045em; font-variation-settings: "opsz" 96; text-wrap: balance; }
+  h1 u { text-decoration: none; background: var(--ink); display: inline-block; line-height: .9; padding: .03em .14em .09em; margin-top: .06em; }
+  html[lang="es"] h1 { font-size: clamp(38px, 5.7vw, 86px); }
+  .sub { color: var(--dim); font-size: 19px; margin-top: 22px; max-width: 380px; }
+  .cta { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
+  .cap { position: absolute; z-index: 2; left: 0; right: 0; bottom: 18px; pointer-events: none; }
+  .cap span { font-family: var(--mono); font-size: 12px; color: var(--dim); }
 
-  .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 56px); }
+  /* logo strip: every mark is a white glyph with no box, the name beside it */
+  .marq { background: var(--ink); border-bottom: 1px solid var(--hair); overflow: hidden; }
+  .marq .row { display: flex; width: max-content; padding-block: 26px 30px; animation: slide 46s linear infinite; }
+  .marq .grp { display: flex; align-items: center; gap: 68px; padding-right: 68px; }
+  .lg { display: flex; align-items: center; gap: 16px; white-space: nowrap; font-family: var(--display); font-weight: 600; font-size: 27px; letter-spacing: -.02em; color: rgba(255,255,255,.95); }
+  .lg svg { width: 32px; height: 32px; fill: currentColor; flex: none; }
+  .lg svg.o { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes slide { to { transform: translateX(-50%); } }
 
-  a { color: var(--accent); }
+  .proof { padding-block: 88px 0; }
+  .proof .eyebrow { color: var(--mint); }
+  h2 { font-family: var(--display); font-weight: 700; font-size: clamp(36px, 5.2vw, 76px); line-height: .96; letter-spacing: -.04em; text-wrap: balance; font-variation-settings: "opsz" 72; }
+  .nums { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-top: 1px solid var(--hair); margin-top: 44px; }
+  .stat { padding: 28px 24px 30px 0; border-bottom: 1px solid var(--hair); }
+  .stat + .stat { padding-left: 24px; border-left: 1px solid var(--hair); }
+  .stat b { display: block; font-family: var(--display); font-weight: 800; font-size: clamp(48px, 6vw, 96px); letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat > span { color: rgba(255,255,255,.62); font-size: 15px; display: block; margin-top: 8px; }
+  .stats-note { margin-top: 16px; font-family: var(--mono); font-size: 12px; color: rgba(255,255,255,.5); }
+  .stats-note a { text-decoration: underline; text-underline-offset: 3px; }
 
-  /* ---------- top bar (shared pilot chrome) ---------- */
-  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
-  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
-  .mark .logo { width: 24px; height: 24px; flex: none; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
-  /* the five anchor links need the room below 1100px */
-  @media (max-width: 1100px) { .mark .tagline { display: none; } }
-  .nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 22px; }
-  .nav a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
-  .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); }
-  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
-  .apps { display: flex; align-items: center; gap: 16px; }
-  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
-  .apps a:hover { color: var(--accent); }
-  .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
-  .gh:hover { color: var(--ink); }
-  .lang { display: flex; align-items: center; gap: 8px; }
-  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .lang span { color: var(--rule); font-size: 11.5px; }
-  .lang button:hover { color: var(--ink-2); background: none; transform: none; }
-  html[lang="en"] .lang button[data-set-lang="en"],
-  html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
-  .mark:focus-visible, .nav a:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
-  @media (max-width: 720px) { .nav { display: none; } }
-  .btn:focus-visible,
-  .verify:focus-visible { outline: 2px solid var(--accent-c); outline-offset: 3px; border-radius: 3px; }
+  .explore { margin-top: 72px; border-top: 1px solid var(--hair); }
+  .explore a { display: grid; grid-template-columns: 220px minmax(0,1fr) auto; gap: 24px; align-items: center; padding: 26px 0; border-bottom: 1px solid var(--hair); transition: padding .2s ease; }
+  .explore a:hover { padding-left: 14px; }
+  .explore .k { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spacing: -.03em; }
+  .explore .d { color: rgba(255,255,255,.64); }
+  .explore .go { font-family: var(--mono); font-size: 18px; color: var(--mint); }
 
-  /* ---------- hero ---------- */
-  .hero { padding: clamp(32px, 4.5vw, 56px) 0 clamp(40px, 6vw, 64px); }
-  .eyebrow {
-    font-size: 11.5px;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-3);
-    margin: 0;
-  }
-  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; }
-  .live-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent-c);
-    box-shadow: 0 0 0 0 var(--accent-c);
-    animation: live-pulse 2s ease-out infinite;
-  }
-  @keyframes live-pulse {
-    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-c) 55%, transparent); }
-    100% { box-shadow: 0 0 0 6px transparent; }
-  }
-  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
-  h1 {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(2.4rem, 6.6vw, 4.4rem);
-    line-height: 1.06;
-    letter-spacing: -0.016em;
-    margin: 20px 0 0;
-    max-width: 20ch;
-  }
-  h1 em { font-style: italic; color: var(--accent); }
-  .hero .sub {
-    margin: 26px 0 0;
-    font-size: clamp(1rem, 1.8vw, 1.18rem);
-    line-height: 1.55;
-    color: var(--ink-2);
-    max-width: 68ch;
-  }
-  .cta-row { margin-top: 38px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-  .btn {
-    display: inline-block;
-    background: var(--ink);
-    color: var(--paper);
-    text-decoration: none;
-    font-size: 15px;
-    font-weight: 500;
-    letter-spacing: -0.005em;
-    padding: 14px 26px;
-    border-radius: 8px;
-    transition: background 0.18s ease, transform 0.18s ease;
-  }
-  .btn:hover { background: var(--accent); transform: translateY(-1px); }
-  .cta-note { font-size: 13.5px; color: var(--ink-3); margin: 0; }
+  .close { background: var(--blue); margin-top: 96px; padding-block: 104px; position: relative; overflow: hidden; }
+  .close::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 64px 64px; }
+  .close .in { position: relative; display: flex; justify-content: space-between; align-items: end; gap: 40px; flex-wrap: wrap; }
+  .close h2 { font-size: clamp(44px, 7.4vw, 112px); line-height: .9; max-width: 11ch; }
+  .close .cta { margin: 0; }
+  footer { padding-block: 40px 28px; }
+  footer .in { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; color: rgba(255,255,255,.55); font-size: 14px; }
+  footer .fl { display: flex; gap: 24px; flex-wrap: wrap; }
+  footer a:hover { color: #fff; }
 
-  /* ---------- section furniture ---------- */
-  section { padding: var(--gap) 0; }
-  .sh {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(1.95rem, 4.5vw, 3rem);
-    line-height: 1.08;
-    letter-spacing: -0.015em;
-    margin: 16px 0 0;
-    max-width: 24ch;
-    color: var(--fg);
+  @media (max-width: 860px) {
+    .nl, .lang { display: none; }
+    .nums { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .stat:nth-child(odd) { padding-left: 0; border-left: 0; }
+    .explore a { grid-template-columns: 1fr auto; row-gap: 4px; }
+    .explore .d { grid-column: 1; grid-row: 2; }
+    .explore .go { grid-column: 2; grid-row: 1; }
   }
-  .lead {
-    margin: 20px 0 0;
-    font-size: clamp(1rem, 1.6vw, 1.1rem);
-    line-height: 1.55;
-    color: var(--fg-2);
-    max-width: 76ch;
+  @media (max-width: 760px) {
+    .hero { min-height: clamp(720px, 96vh, 900px); }
+    .copy { margin-top: 18px; }
+    .sub { font-size: 17px; }
   }
-  .lead.trust {
-    margin-top: 44px;
-    padding-top: 30px;
-    border-top: 1px solid var(--rule-c);
-    color: var(--fg);
-    font-weight: 500;
-    max-width: 76ch;
-  }
-
-  /* ---------- flow strip ---------- */
-  .flow {
-    margin-top: 44px;
-    display: flex;
-    flex-wrap: wrap;
-    border-top: 1px solid var(--rule-c);
-    border-bottom: 1px solid var(--rule-c);
-  }
-  .flow-step {
-    flex: 1 1 150px;
-    padding: 18px 20px;
-    border-right: 1px solid var(--rule-c);
-  }
-  .flow-step:first-child { padding-left: 0; }
-  .flow-step:last-child { padding-right: 0; border-right: none; }
-  .flow-step .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--accent-c); text-transform: uppercase; }
-  .flow-step .label { margin-top: 7px; font-size: 14px; font-weight: 500; color: var(--fg); line-height: 1.35; }
-  @media (max-width: 720px) {
-    .flow { border-bottom: none; }
-    .flow-step { flex: 1 1 100%; border-right: none; border-bottom: 1px solid var(--rule-c); padding: 16px 0; }
-    .flow-step:last-child { border-bottom: none; }
-  }
-
-  /* ---------- three patterns ---------- */
-  .steps { margin-top: 12px; }
-  .step {
-    display: grid;
-    grid-template-columns: 62px minmax(0, 1fr);
-    gap: 0 26px;
-    padding: 32px 0;
-    border-top: 1px solid var(--rule-c);
-  }
-  .step .n { font-family: var(--serif); font-size: 26px; line-height: 1.2; color: var(--accent-c); }
-  .step h3 {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(1.4rem, 2.7vw, 1.8rem);
-    line-height: 1.15;
-    letter-spacing: -0.012em;
-    margin: 0 0 12px;
-    color: var(--fg);
-  }
-  .step p { margin: 0; font-size: 15.5px; line-height: 1.62; color: var(--fg-2); max-width: 80ch; }
-  @media (max-width: 640px) {
-    .step { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-    .step .n { font-size: 22px; }
-  }
-
-  /* ---------- dark sections ---------- */
-  .band {
-    background: var(--dark);
-    color: var(--dark-text);
-    --fg: #f4f6fa;
-    --fg-2: var(--dark-muted);
-    --fg-3: var(--dark-muted);
-    --rule-c: var(--dark-rule);
-    --accent-c: var(--mint);
-  }
-  .band .eyebrow { color: var(--accent-c); }
-
-  .ev-list { margin-top: 52px; }
-  .ev {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px 56px;
-    align-items: start;
-    padding: 28px 0;
-    border-top: 1px solid var(--rule-c);
-  }
-  .ev h3 { margin: 0 0 8px; font-size: 15.5px; font-weight: 600; color: var(--fg); letter-spacing: -0.005em; }
-  .ev p { margin: 0; font-size: 14.5px; line-height: 1.58; color: var(--fg-2); max-width: 72ch; }
-  .ev .tx { text-align: right; white-space: nowrap; }
-  .ev .hash { display: block; font-family: var(--mono); font-size: 12px; color: var(--fg-3); margin-bottom: 8px; }
-  .ev .verify {
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--accent-c);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.18s ease;
-  }
-  .ev .verify:hover { border-bottom-color: var(--accent-c); }
-  @media (max-width: 720px) {
-    .ev { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-    .ev .tx { text-align: left; white-space: normal; }
-    .ev .hash { word-break: break-all; }
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 28px 20px;
-    margin-top: 56px;
-    padding-top: 34px;
-    border-top: 1px solid var(--rule-c);
-  }
-  .stats.hero-stats { margin-top: 48px; padding-top: 30px; }
-  .stats-note { margin: 14px 0 0; font-size: 12.5px; color: var(--fg-3); }
-  .stats-note a { color: var(--fg-2); }
-  .cta-note code { font-family: var(--mono); font-size: 0.92em; overflow-wrap: anywhere; }
-  .stat b {
-    display: block;
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(1.9rem, 4vw, 2.7rem);
-    line-height: 1;
-    color: var(--fg);
-  }
-  .stat span { display: block; margin-top: 10px; font-size: 12.5px; line-height: 1.4; color: var(--fg-2); }
-  @media (max-width: 640px) {
-    .stats { grid-template-columns: repeat(2, 1fr); }
-  }
-
-  /* ---------- activity feed ---------- */
-  .feed { margin-top: 40px; }
-  .feed-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: baseline;
-    gap: 6px 24px;
-    padding: 16px 0;
-    border-top: 1px solid var(--rule-c);
-    font-size: 14.5px;
-  }
-  .feed-row:last-child { border-bottom: 1px solid var(--rule-c); }
-  .feed-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; color: var(--fg); }
-  .feed-k { font-weight: 500; }
-  .feed-when { font-family: var(--mono); font-size: 12px; color: var(--fg-3); white-space: nowrap; }
-  .feed-code { font-family: var(--mono); font-size: 12px; color: var(--fg-3); white-space: nowrap; }
-  @media (max-width: 640px) {
-    .feed-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  }
-
-  /* ---------- eras timeline ---------- */
-  .eras {
-    margin-top: 40px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0 28px;
-    border-top: 1px solid var(--rule-c);
-  }
-  .era { padding: 26px 0 4px; border-right: 1px solid var(--rule-c); }
-  .era:last-child { border-right: none; }
-  .era-n { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; color: var(--fg-3); }
-  .era h3 {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: 1.3rem;
-    line-height: 1.15;
-    margin: 10px 0 8px;
-    color: var(--fg);
-  }
-  .era p { margin: 0; font-size: 13.5px; line-height: 1.52; color: var(--fg-2); }
-  .era-now .era-n, .era-now h3 { color: var(--accent-c); }
-  .era-tag {
-    display: inline-block;
-    margin-top: 14px;
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--accent-c);
-    border: 1px solid var(--accent-c);
-    border-radius: 20px;
-    padding: 4px 10px;
-  }
-  @media (max-width: 720px) {
-    .eras { grid-template-columns: 1fr; border-top: none; }
-    .era { border-right: none; border-top: 1px solid var(--rule-c); padding: 20px 0; }
-    .era:first-child { border-top: none; }
-  }
-
-  /* ---------- merchant ---------- */
-  .merchant p.big {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(1.6rem, 3.4vw, 2.35rem);
-    line-height: 1.22;
-    letter-spacing: -0.012em;
-    margin: 16px 0 0;
-    max-width: 30ch;
-    color: var(--fg);
-  }
-  .merchant .note { margin-top: 22px; font-size: 15.5px; line-height: 1.62; color: var(--fg-2); max-width: 80ch; }
-  .merchant .src { margin-top: 20px; font-family: var(--mono); font-size: 12.5px; color: var(--fg-3); }
-  .merchant .src a { color: var(--fg-3); text-decoration: none; border-bottom: 1px solid var(--rule-c); }
-  .merchant .src a:hover { color: var(--accent-c); border-bottom-color: var(--accent-c); }
-
-  /* ---------- status ---------- */
-  .status { margin-top: 44px; }
-  .status-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 24px;
-    align-items: baseline;
-    padding: 17px 0;
-    border-top: 1px solid var(--rule-c);
-    font-size: 15.5px;
-  }
-  .status-row .what { color: var(--fg); }
-  .status-row .st {
-    font-size: 11.5px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--accent-c);
-    white-space: nowrap;
-  }
-  .status-row .st.pending { color: var(--fg-3); }
-
-  /* ---------- closing ---------- */
-  .close { background: var(--paper-2); padding: clamp(64px, 9vw, 108px) 0; }
-  .close p.big {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: clamp(1.8rem, 4.2vw, 2.8rem);
-    line-height: 1.1;
-    letter-spacing: -0.015em;
-    margin: 0;
-    max-width: 26ch;
-  }
-
-  footer {
-    padding: 34px 0 46px;
-    font-size: 12.5px;
-    line-height: 1.6;
-    color: var(--ink-3);
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  footer a { color: var(--ink-3); text-decoration: none; border-bottom: 1px solid var(--rule); }
-  footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* ---------- entrance ---------- */
-  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  .hero .eyebrow { animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-  .hero h1 { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.06s both; }
-  .hero .sub { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.13s both; }
-  .hero .cta-row { animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both; }
-  @media (prefers-reduced-motion: reduce) {
-    * { animation: none !important; transition: none !important; }
-  }
+  @media (prefers-reduced-motion: reduce) { .marq .row { animation: none; } .btn, .explore a { transition: none; } }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <div class="top">
-    <a class="mark" href="/">
-      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
-      <span>AgentPey</span>
-      <span class="tagline"><span data-tr="en">Payment infrastructure for agents</span><span data-tr="es">Infraestructura de pagos para agentes</span></span>
-    </a>
-    <nav class="nav">
-      <a href="#activity"><span data-tr="en">Activity</span><span data-tr="es">Actividad</span></a>
-      <a href="#how-it-works"><span data-tr="en">How it works</span><span data-tr="es">Cómo funciona</span></a>
-      <a href="#evidence"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></a>
-      <a href="#bazaar"><span data-tr="en">Bazaar</span><span data-tr="es">Bazaar</span></a>
-      <a href="#status"><span data-tr="en">Status</span><span data-tr="es">Estado</span></a>
-      <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
-      <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
-    </nav>
-    <div class="utils">
-      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
-      <div class="lang">
-        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
-        <span aria-hidden="true">/</span>
-        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
-      </div>
-      <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-        <span>GitHub</span>
-      </a>
-    </div>
-  </div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-stellar" viewBox="0 0 24 24"><path d="M12.003 1.716c-1.37 0-2.7.27-3.948.78A10.18 10.18 0 0 0 2.66 7.901a10.136 10.136 0 0 0-.797 3.954c0 .258.01.516.027.775a1.942 1.942 0 0 1-1.055 1.88L0 14.934v1.902l2.463-1.26.072-.032v.005l.77-.39.758-.385.066-.039 14.807-7.56 1.666-.847 3.392-1.732V2.694L17.792 5.86 3.744 13.025l-.104.055-.017-.115a8.286 8.286 0 0 1-.071-1.105c0-2.255.88-4.377 2.474-5.977a8.462 8.462 0 0 1 2.71-1.82 8.513 8.513 0 0 1 3.2-.654h.067a8.41 8.41 0 0 1 4.09 1.055l1.628-.83.126-.066a10.11 10.11 0 0 0-5.845-1.853zM24 7.143 5.047 16.808l-1.666.847L0 19.382v1.902l3.282-1.671 2.91-1.485 14.058-7.153.105-.055.016.115c.05.369.072.743.072 1.11 0 2.255-.88 4.383-2.475 5.978a8.461 8.461 0 0 1-2.71 1.82 8.305 8.305 0 0 1-3.2.654h-.06c-1.441 0-2.86-.369-4.102-1.061l-.066.033-1.683.857c.594.418 1.232.776 1.903 1.062a10.11 10.11 0 0 0 3.947.797 10.09 10.09 0 0 0 7.17-2.975 10.136 10.136 0 0 0 2.969-7.18c0-.259-.005-.523-.027-.781a1.942 1.942 0 0 1 1.055-1.88L24 9.044z"/></symbol>
+  <symbol id="i-circle" viewBox="0 0 24 24"><path d="M20.788 3.832c-.101-.105-.197-.213-.301-.317-.103-.103-.211-.202-.32-.302A11.903 11.903 0 0 0 12 0a11.926 11.926 0 0 0-8.486 3.514C-1.062 8.09-1.16 15.47 3.213 20.168c.099.108.197.214.3.32.104.103.21.2.317.3A11.92 11.92 0 0 0 12 24c3.206 0 6.22-1.247 8.487-3.512 4.576-4.576 4.673-11.956.301-16.656zm-16.655.301A11.057 11.057 0 0 1 12 .874c2.825 0 5.49 1.048 7.55 2.958l-1.001 1.002A9.646 9.646 0 0 0 12 2.292a9.644 9.644 0 0 0-6.865 2.844A9.644 9.644 0 0 0 2.292 12c0 2.448.9 4.753 2.542 6.549L3.831 19.55C-.201 15.191-.101 8.367 4.133 4.133zm13.798 1.318v.002l-1.015 1.014A7.346 7.346 0 0 0 12 4.589 7.357 7.357 0 0 0 6.761 6.76 7.362 7.362 0 0 0 4.589 12a7.34 7.34 0 0 0 1.877 4.913l-1.014 1.016A8.77 8.77 0 0 1 3.167 12a8.77 8.77 0 0 1 2.588-6.245A8.771 8.771 0 0 1 12 3.167c2.213 0 4.301.809 5.931 2.284zM18.537 12c0 1.745-.681 3.387-1.916 4.622S13.746 18.538 12 18.538a6.491 6.491 0 0 1-4.296-1.621l-.001-.004c-.11-.094-.22-.188-.324-.291a6.027 6.027 0 0 1-.293-.326A6.47 6.47 0 0 1 5.466 12c0-1.746.679-3.387 1.914-4.621A6.488 6.488 0 0 1 12 5.465c1.599 0 3.105.576 4.295 1.62.111.096.224.19.326.295.104.104.2.214.295.324A6.482 6.482 0 0 1 18.537 12zM7.084 17.534h.001A7.349 7.349 0 0 0 12 19.413a7.35 7.35 0 0 0 5.239-2.174A7.354 7.354 0 0 0 19.412 12a7.364 7.364 0 0 0-1.876-4.916l1.013-1.012A8.777 8.777 0 0 1 20.834 12a8.765 8.765 0 0 1-2.589 6.246A8.764 8.764 0 0 1 12 20.834a8.782 8.782 0 0 1-5.93-2.285l1.014-1.015zm12.783 2.333A11.046 11.046 0 0 1 12 23.125a11.042 11.042 0 0 1-7.551-2.957l1.004-1.001a9.64 9.64 0 0 0 6.549 2.542 9.639 9.639 0 0 0 6.865-2.846A9.642 9.642 0 0 0 21.71 12a9.64 9.64 0 0 0-2.543-6.548l1.001-1.002c4.031 4.359 3.935 11.182-.301 15.417z"/></symbol>
+  <symbol id="i-mcp" viewBox="0 0 24 24"><path d="M13.85 0a4.16 4.16 0 0 0-2.95 1.217L1.456 10.66a.835.835 0 0 0 0 1.18.835.835 0 0 0 1.18 0l9.442-9.442a2.49 2.49 0 0 1 3.541 0 2.49 2.49 0 0 1 0 3.541L8.59 12.97l-.1.1a.835.835 0 0 0 0 1.18.835.835 0 0 0 1.18 0l.1-.098 7.03-7.034a2.49 2.49 0 0 1 3.542 0l.049.05a2.49 2.49 0 0 1 0 3.54l-8.54 8.54a1.96 1.96 0 0 0 0 2.755l1.753 1.753a.835.835 0 0 0 1.18 0 .835.835 0 0 0 0-1.18l-1.753-1.753a.266.266 0 0 1 0-.394l8.54-8.54a4.185 4.185 0 0 0 0-5.9l-.05-.05a4.16 4.16 0 0 0-2.95-1.218c-.2 0-.401.02-.6.048a4.17 4.17 0 0 0-1.17-3.552A4.16 4.16 0 0 0 13.85 0m0 3.333a.84.84 0 0 0-.59.245L6.275 10.56a4.186 4.186 0 0 0 0 5.902 4.186 4.186 0 0 0 5.902 0L19.16 9.48a.835.835 0 0 0 0-1.18.835.835 0 0 0-1.18 0l-6.985 6.984a2.49 2.49 0 0 1-3.54 0 2.49 2.49 0 0 1 0-3.54l6.983-6.985a.835.835 0 0 0 0-1.18.84.84 0 0 0-.59-.245"/></symbol>
+  <symbol id="i-claude" viewBox="0 0 24 24"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></symbol>
+  <symbol id="i-ucp" viewBox="0 0 24 24"><path d="M3 9.5 4.6 4h14.8L21 9.5M3 9.5h18M3 9.5v10.5h18V9.5M9.5 20v-6h5v6"/></symbol>
+  <symbol id="i-ap2" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3zM8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-x402" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM7.5 12h9M13 8.5l3.5 3.5-3.5 3.5"/></symbol>
+  <symbol id="i-openai" viewBox="0 0 24 24"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654 2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></symbol>
+</svg>
 
-  <header class="hero">
-    <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
-    <h1>
-      <span data-tr="en">AI agents buying at real stores, with <em>limits</em> the network enforces.</span>
-      <span data-tr="es">Agentes de IA comprando en tiendas reales, con <em>límites</em> que aplica la red.</span>
-    </h1>
-    <p class="sub">
-      <span data-tr="en">Claude and ChatGPT shop at stores that speak UCP and pay in USDC on Stellar, from a smart contract that caps each payment inside the transfer itself. Every receipt is signed and anchored, and a refund claim ends in a verdict on-chain.</span>
-      <span data-tr="es">Claude y ChatGPT compran en tiendas que hablan UCP y pagan en USDC sobre Stellar, desde un contrato inteligente que pone un tope a cada pago dentro de la transferencia misma. Cada recibo queda firmado y anclado, y un reclamo termina en un veredicto en la red.</span>
-    </p>
-    <div class="cta-row">
-      <a class="btn" href="/en-vivo">
-        <span data-tr="en">See agents buying, live →</span>
-        <span data-tr="es">Mira a los agentes comprar, en vivo →</span>
-      </a>
-      <p class="cta-note">
-        <span data-tr="en">Every purchase an agent makes through the pilot's connector shows up there, read from the network. Testnet only.</span>
-        <span data-tr="es">Cada compra que un agente hace con el conector del piloto aparece ahí, leída de la red. Solo en testnet.</span>
-      </p>
-    </div>
-
-    <div class="stats hero-stats" id="hero-stats" aria-live="polite">
-      <div class="stat">
-        <b id="live-stores">…</b>
-        <span><span data-tr="en">stores agents can buy from</span><span data-tr="es">tiendas donde los agentes pueden comprar</span></span>
-      </div>
-      <div class="stat">
-        <b id="live-purchases">…</b>
-        <span><span data-tr="en">recent purchases by agents, each with a receipt anchored on Stellar</span><span data-tr="es">compras recientes de agentes, cada una con su recibo anclado en Stellar</span></span>
-      </div>
-      <div class="stat">
-        <b id="live-usdc">…</b>
-        <span><span data-tr="en">USDC paid in them</span><span data-tr="es">USDC pagados en ellas</span></span>
-      </div>
-      <div class="stat">
-        <b id="live-disputes">…</b>
-        <span><span data-tr="en">refund claims resolved on-chain among them</span><span data-tr="es">reclamos resueltos en la red entre ellas</span></span>
-      </div>
-    </div>
-    <p class="stats-note"><span data-tr="en">Read live from the store directory and the network, as on <a href="/en-vivo">/en-vivo</a>.</span><span data-tr="es">Leído en vivo del directorio de tiendas y de la red, como en <a href="/en-vivo">/en-vivo</a>.</span></p>
-  </header>
-</div>
-
-<div class="wrap">
-  <section id="today">
-    <p class="eyebrow">
-      <span data-tr="en">What agents can do today</span>
-      <span data-tr="es">Lo que los agentes ya pueden hacer</span>
-    </p>
-    <h2 class="sh">
-      <span data-tr="en">Real agents, real stores, every step on Stellar.</span>
-      <span data-tr="es">Agentes reales, tiendas reales, cada paso en Stellar.</span>
-    </h2>
-    <p class="lead">
-      <span data-tr="en">Each of these runs on Stellar testnet today, and each links to the page or the evidence that shows it.</span>
-      <span data-tr="es">Todo esto funciona hoy en Stellar testnet, y cada pieza enlaza a la página o a la evidencia que lo muestra.</span>
-    </p>
-
-    <div class="ev-list">
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">Claude and ChatGPT buy here</span>
-            <span data-tr="es">Claude y ChatGPT compran aquí</span>
-          </h3>
-          <p>
-            <span data-tr="en">The pilot's MCP connector at mcp.agentpey.com: the chat searches the stores, quotes one product or a cart, and pays from a policy_rail whose limits Stellar enforces. On October 8 Claude paid a two-product cart itself, after the person said yes. In this pilot only the wallet that owns the rail signs in.</span>
-            <span data-tr="es">El conector MCP del piloto, en mcp.agentpey.com: el chat busca en las tiendas, cotiza un producto o un carrito, y paga desde un policy_rail cuyos topes aplica Stellar. El 8 de octubre Claude pagó él mismo un carrito de dos productos, tras el sí de la persona. En este piloto solo inicia sesión la wallet dueña del rail.</span>
-          </p>
+<header class="hero">
+  <div class="fallback" id="fallback"></div>
+  <canvas id="scene" role="img" aria-label="A small 3D market: people with phones walk between shops and carry coins that drop through two limit rings into a vault."></canvas>
+  <div class="ui">
+    <div class="in">
+      <nav class="top">
+        <a class="brand" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#070b16" stroke-width="60"/></svg>AgentPey</a>
+        <div class="nl">
+          <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+          <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+          <a href="#explore"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></a>
         </div>
-        <div class="tx">
-          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/apps/mcp/README.md" target="_blank" rel="noopener">
-            <span data-tr="en">How it works ↗</span>
-            <span data-tr="es">Cómo funciona ↗</span>
-          </a>
+        <div class="nr">
+          <div class="lang">
+            <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+            <span aria-hidden="true">/</span>
+            <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+          </div>
+          <a class="btn dark sm" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
         </div>
-      </div>
-
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">Stores that speak the standard</span>
-            <span data-tr="es">Tiendas que hablan el estándar</span>
-          </h3>
-          <p>
-            <span data-tr="en">Every store publishes a UCP profile and catalog in two versions of the standard and declares a Stellar payment handler. Run locally against a test store, the official UCP conformance suite passes 49 of 77 tests; 8 fail and 20 are skipped, each with its reason written down.</span>
-            <span data-tr="es">Cada tienda publica su perfil y su catálogo UCP en dos versiones del estándar y declara un medio de pago de Stellar. Corrida en local contra una tienda de prueba, la suite oficial de conformidad de UCP pasa 49 de 77 tests; 8 fallan y 20 se saltan, cada uno con su motivo escrito.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <a class="verify" href="/tiendas">
-            <span data-tr="en">See the stores →</span>
-            <span data-tr="es">Ver las tiendas →</span>
-          </a>
-          <br>
-          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T131.md" target="_blank" rel="noopener">
-            <span data-tr="en">Conformance run ↗</span>
-            <span data-tr="es">La corrida ↗</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">AP2 mandates in the checkout</span>
-            <span data-tr="es">Mandatos AP2 en el checkout</span>
-          </h3>
-          <p>
-            <span data-tr="en">With AP2, the store signs its terms and will not charge without the agent's mandate, which the official AP2 library verifies on a real purchase.</span>
-            <span data-tr="es">Con AP2, la tienda firma sus términos y no cobra sin el mandato del comprador, que la librería oficial de AP2 verifica sobre una compra real.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T134.md" target="_blank" rel="noopener">
-            <span data-tr="en">Evidence ↗</span>
-            <span data-tr="es">Evidencia ↗</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">Disputes that end in a refund</span>
-            <span data-tr="es">Disputas que terminan en un reembolso</span>
-          </h3>
-          <p>
-            <span data-tr="en">The buyer signs a claim, the merchant answers with its own signature, an AI arbiter writes a reasoned verdict, a person confirms it, and the contract pays back from the merchant's guarantee. Done for real on October 8, for an order the store never prepared.</span>
-            <span data-tr="es">El comprador firma un reclamo, el comercio responde con su firma, un árbitro con IA escribe un veredicto razonado, una persona lo confirma y el contrato devuelve desde la garantía del comercio. Hecho de verdad el 8 de octubre, por un pedido que la tienda nunca preparó.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T124-reembolso-real.md" target="_blank" rel="noopener">
-            <span data-tr="en">Evidence ↗</span>
-            <span data-tr="es">Evidencia ↗</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">A team budget for its agent</span>
-            <span data-tr="es">Un presupuesto de equipo para su agente</span>
-          </h3>
-          <p>
-            <span data-tr="en">A team gives its agent 0.30 USDC a day for AI credits, checked before anything is signed, while the rail that pays keeps its own limits on-chain: three purchases settle, the fourth is refused, and the month adds up from a hash-chained record.</span>
-            <span data-tr="es">Un equipo le da a su agente 0,30 USDC al día para créditos de IA, revisados antes de firmar nada, mientras el rail que paga mantiene sus propios topes en la red: tres compras se pagan, la cuarta se rechaza, y el mes se suma desde un registro encadenado por hashes.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T146.md" target="_blank" rel="noopener">
-            <span data-tr="en">Evidence ↗</span>
-            <span data-tr="es">Evidencia ↗</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">Open tools for anyone</span>
-            <span data-tr="es">Herramientas abiertas para cualquiera</span>
-          </h3>
-          <p>
-            <span data-tr="en">The buyer's side as a package on npm, @agentpey/ucp-stellar, which never holds a key; and a conformance kit that checks any store's Stellar payment handler, one line per check.</span>
-            <span data-tr="es">El lado del comprador como paquete en npm, @agentpey/ucp-stellar, que nunca guarda una llave; y un kit de conformidad que revisa el medio de pago de Stellar de cualquier tienda, una línea por comprobación.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <a class="verify" href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">
-            <span data-tr="en">On npm ↗</span>
-            <span data-tr="es">En npm ↗</span>
-          </a>
-          <br>
-          <a class="verify" href="https://github.com/vicentewolde/AgentPey/blob/main/scripts/ucp-stellar-conformance/README.md" target="_blank" rel="noopener">
-            <span data-tr="en">The kit ↗</span>
-            <span data-tr="es">El kit ↗</span>
-          </a>
+      </nav>
+      <div class="copy">
+        <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+        <h1>
+          <span data-tr="en">Agents buy. You stay <u>in charge.</u></span>
+          <span data-tr="es">Los agentes compran. Tú sigues <u>al mando.</u></span>
+        </h1>
+        <p class="sub"><span data-tr="en">The payment rail for AI agents on Stellar.</span><span data-tr="es">El riel de pagos para agentes de IA en Stellar.</span></p>
+        <div class="cta">
+          <a class="btn" href="/en-vivo"><span data-tr="en">See agents buying, live →</span><span data-tr="es">Mira a los agentes comprar, en vivo →</span></a>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+  <div class="cap"><div class="in"><span><span data-tr="en">Illustration: agents, shops, two limit rings, one escrow.</span><span data-tr="es">Ilustración: agentes, tiendas, dos anillos de límite, un escrow.</span></span></div></div>
+</header>
 
-  <section id="activity">
-    <p class="eyebrow live">
-      <span class="live-dot" aria-hidden="true"></span>
-      <span data-tr="en">Recent activity</span>
-      <span data-tr="es">Actividad reciente</span>
-    </p>
-    <h2 class="sh">
-      <span data-tr="en">One real session, start to finish.</span>
-      <span data-tr="es">Una sesión real, de principio a fin.</span>
-    </h2>
-    <p class="lead">
-      <span data-tr="en">Not a mockup and not a live simulation. This is one real session run against Stellar testnet, frozen at this point so every step can be verified independently. Every "Verify" link leads to a public explorer.</span>
-      <span data-tr="es">Ni maqueta ni simulación en vivo: esta es una sesión real contra Stellar testnet, congelada en este punto para que cada paso pueda verificarse de forma independiente. Cada enlace "Verificar" conduce a un explorador público.</span>
-    </p>
-
-    <div class="feed">
-      <div class="feed-row">
-        <div class="feed-main">
-          <span class="feed-k"><span data-tr="en">Credential issued and anchored</span><span data-tr="es">Credencial emitida y anclada</span></span>
-          <span class="feed-when" data-at="2026-09-07T01:13:57Z"></span>
-        </div>
-        <a class="verify" href="https://stellar.expert/explorer/testnet/tx/624aa7eb2032021cbf3136e0bd04d1e41b9fce59d6fad82c3507b75c31bf10e9" target="_blank" rel="noopener">
-          <span data-tr="en">Verify ↗</span><span data-tr="es">Verificar ↗</span>
-        </a>
-      </div>
-      <div class="feed-row">
-        <div class="feed-main">
-          <span class="feed-k"><span data-tr="en">Mandate signed and anchored</span><span data-tr="es">Mandato firmado y anclado</span></span>
-          <span class="feed-when" data-at="2026-09-07T01:14:02Z"></span>
-        </div>
-        <a class="verify" href="https://stellar.expert/explorer/testnet/tx/42d5fb408828ab666a5fd6813a25c056334e23d73e0a64e7742f0eeeb7852d6b" target="_blank" rel="noopener">
-          <span data-tr="en">Verify ↗</span><span data-tr="es">Verificar ↗</span>
-        </a>
-      </div>
-      <div class="feed-row">
-        <div class="feed-main">
-          <span class="feed-k"><span data-tr="en">Payment executed via x402</span><span data-tr="es">Pago ejecutado con x402</span></span>
-          <span class="feed-when" data-at="2026-09-07T01:14:17Z"></span>
-        </div>
-        <a class="verify" href="https://stellar.expert/explorer/testnet/tx/4806be2f76896f46544999a25cd0aa1f836dcab5a6b7217180088a0866d1968b" target="_blank" rel="noopener">
-          <span data-tr="en">Verify ↗</span><span data-tr="es">Verificar ↗</span>
-        </a>
-      </div>
-      <div class="feed-row">
-        <div class="feed-main">
-          <span class="feed-k"><span data-tr="en">Decision anchored to the payment</span><span data-tr="es">Decisión anclada al pago</span></span>
-          <span class="feed-when" data-at="2026-09-07T01:14:27Z"></span>
-        </div>
-        <a class="verify" href="https://stellar.expert/explorer/testnet/tx/b3158fdeee735d84e693ade3a09536d48dd23c2ce36634a27ca48324c5aa5376" target="_blank" rel="noopener">
-          <span data-tr="en">Verify ↗</span><span data-tr="es">Verificar ↗</span>
-        </a>
-      </div>
-      <div class="feed-row">
-        <div class="feed-main">
-          <span class="feed-k"><span data-tr="en">Mandate revoked, from outside the agent</span><span data-tr="es">Mandato revocado, desde fuera del agente</span></span>
-          <span class="feed-when" data-at="2026-09-07T01:14:42Z"></span>
-        </div>
-        <a class="verify" href="https://stellar.expert/explorer/testnet/tx/2b247331d3fa1b0768e0f65c94c1408e1f429d3a0c9b4b52c0804d7089081cfc" target="_blank" rel="noopener">
-          <span data-tr="en">Verify ↗</span><span data-tr="es">Verificar ↗</span>
-        </a>
-      </div>
-      <div class="feed-row">
-        <div class="feed-main">
-          <span class="feed-k"><span data-tr="en">Next purchase fails: verification reads the revoke</span><span data-tr="es">La siguiente compra falla: la verificación lee la revocación</span></span>
-          <span class="feed-when" data-at="2026-09-07T01:14:55Z"></span>
-        </div>
-        <span class="feed-code">MandateRevoked</span>
-      </div>
+<div class="marq" aria-label="Works with">
+  <div class="row">
+    <div class="grp">
+      <div class="lg"><svg><use href="#i-stellar"/></svg>Stellar</div>
+      <div class="lg"><svg><use href="#i-circle"/></svg>USDC</div>
+      <div class="lg"><svg class="o"><use href="#i-ucp"/></svg>UCP</div>
+      <div class="lg"><svg class="o"><use href="#i-ap2"/></svg>AP2</div>
+      <div class="lg"><svg class="o"><use href="#i-x402"/></svg>x402</div>
+      <div class="lg"><svg><use href="#i-mcp"/></svg>MCP</div>
+      <div class="lg"><svg><use href="#i-claude"/></svg>Claude</div>
+      <div class="lg"><svg><use href="#i-openai"/></svg>ChatGPT</div>
     </div>
-  </section>
-</div>
-
-<div class="band">
-<div class="wrap">
-  <section id="how-it-works">
-    <p class="eyebrow">
-      <span data-tr="en">How it works</span>
-      <span data-tr="es">Cómo funciona</span>
-    </p>
-    <h2 class="sh">
-      <span data-tr="en">What actually happens when it pays for something.</span>
-      <span data-tr="es">Qué pasa realmente cuando paga algo.</span>
-    </h2>
-
-    <div class="flow">
-      <div class="flow-step">
-        <div class="k">01</div>
-        <div class="label"><span data-tr="en">Reads the catalog</span><span data-tr="es">Lee el catálogo</span></div>
-      </div>
-      <div class="flow-step">
-        <div class="k">02</div>
-        <div class="label"><span data-tr="en">Signs the intent</span><span data-tr="es">Firma la intención</span></div>
-      </div>
-      <div class="flow-step">
-        <div class="k">03</div>
-        <div class="label"><span data-tr="en">Checks the limit (x402)</span><span data-tr="es">Revisa el límite (x402)</span></div>
-      </div>
-      <div class="flow-step">
-        <div class="k">04</div>
-        <div class="label"><span data-tr="en">Pays</span><span data-tr="es">Paga</span></div>
-      </div>
-      <div class="flow-step">
-        <div class="k">05</div>
-        <div class="label"><span data-tr="en">Anchors the decision</span><span data-tr="es">Ancla la decisión</span></div>
-      </div>
-    </div>
-
-    <p class="lead">
-      <span data-tr="en">Step three is the one that matters. Three things make it hold:</span>
-      <span data-tr="es">El paso tres es el que importa. Tres cosas hacen que se sostenga:</span>
-    </p>
-
-    <div class="steps">
-      <div class="step">
-        <div class="n">01</div>
-        <div>
-          <h3>
-            <span data-tr="en">It proves who's behind it.</span>
-            <span data-tr="es">Prueba quién está detrás.</span>
-          </h3>
-          <p>
-            <span data-tr="en">The agent carries a credential, signed and registered in a Stellar contract. Whoever's on the other end of a payment can look up exactly who it belongs to, and what it's allowed to do.</span>
-            <span data-tr="es">El agente lleva una credencial firmada, registrada en un contrato de Stellar. Quien está del otro lado de un pago puede revisar exactamente de quién es, y qué tiene permitido hacer.</span>
-          </p>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="n">02</div>
-        <div>
-          <h3>
-            <span data-tr="en">It can't be talked out of its limit.</span>
-            <span data-tr="es">Nadie puede convencerlo de saltarse su límite.</span>
-          </h3>
-          <p>
-            <span data-tr="en">Feed an agent the right words and it'll believe almost anything. So the limit doesn't live in its instructions. It lives in a Soroban contract that checks the x402 charge while the payment is happening. The agent can be fooled. The network can't.</span>
-            <span data-tr="es">Al agente lo puedes convencer de casi cualquier cosa con las palabras correctas. Por eso el límite no vive en sus instrucciones: vive en un contrato de Soroban que revisa el cobro x402 mientras el pago está ocurriendo. Al agente lo pueden engañar. A la red, no.</span>
-          </p>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="n">03</div>
-        <div>
-          <h3>
-            <span data-tr="en">You can cut it off from outside.</span>
-            <span data-tr="es">Puedes cortarlo desde fuera.</span>
-          </h3>
-          <p>
-            <span data-tr="en">Revoke the credential and the agent stops being able to pay immediately, without touching its code, without needing it to cooperate.</span>
-            <span data-tr="es">Revocas la credencial y el agente deja de poder pagar al instante, sin tocar su código, sin necesitar que colabore.</span>
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <p class="lead trust">
-      <span data-tr="en">You can trust that its purchases will be safe and it won't buy anything it shouldn't.</span>
-      <span data-tr="es">Puedes confiar en que sus compras van a ser seguras y no va a comprar nada indebido.</span>
-    </p>
-  </section>
-
-  <section id="eras">
-    <p class="eyebrow">
-      <span data-tr="en">Why this has to exist</span>
-      <span data-tr="es">Por qué esto tiene que existir</span>
-    </p>
-    <h2 class="sh">
-      <span data-tr="en">Every era of payments needed its own layer of trust.</span>
-      <span data-tr="es">Cada era de pagos necesitó su propia capa de confianza.</span>
-    </h2>
-    <p class="lead">
-      <span data-tr="en">With each step forward, paying required less and less direct contact, and payments needed a new way to authorize and confirm it was allowed.</span>
-      <span data-tr="es">Con cada avance, quien paga necesitó cada vez menos contacto, y los pagos necesitaron una nueva forma de autorizar y comprobar que estaba permitido.</span>
-    </p>
-
-    <div class="eras">
-      <div class="era">
-        <div class="era-n">01</div>
-        <h3><span data-tr="en">Physical cards</span><span data-tr="es">Tarjetas físicas</span></h3>
-        <p><span data-tr="en">A signature, in person.</span><span data-tr="es">Una firma, en persona.</span></p>
-      </div>
-      <div class="era">
-        <div class="era-n">02</div>
-        <h3><span data-tr="en">Online payments</span><span data-tr="es">Pagos online</span></h3>
-        <p><span data-tr="en">A card number and a CVV.</span><span data-tr="es">Un número de tarjeta y un CVV.</span></p>
-      </div>
-      <div class="era">
-        <div class="era-n">03</div>
-        <h3><span data-tr="en">Mobile wallets</span><span data-tr="es">Wallets móviles</span></h3>
-        <p><span data-tr="en">The owner's own biometrics.</span><span data-tr="es">La biometría del dueño.</span></p>
-      </div>
-      <div class="era era-now">
-        <div class="era-n">04</div>
-        <h3><span data-tr="en">Agentic payments</span><span data-tr="es">Pagos agénticos</span></h3>
-        <p><span data-tr="en">Need on-chain, verifiable mandates.</span><span data-tr="es">Necesitan mandatos on-chain verificables.</span></p>
-        <span class="era-tag"><span data-tr="en">What we do</span><span data-tr="es">Lo que hacemos</span></span>
-      </div>
-    </div>
-  </section>
-</div>
-</div>
-
-<div class="wrap">
-  <section id="evidence">
-    <p class="eyebrow">
-      <span data-tr="en">Proof, not a pitch</span>
-      <span data-tr="es">Evidencia, no promesas</span>
-    </p>
-    <h2 class="sh">
-      <span data-tr="en">Three transactions you can go check right now.</span>
-      <span data-tr="es">Tres transacciones que puedes ir a comprobar ahora mismo.</span>
-    </h2>
-    <p class="lead">
-      <span data-tr="en">Every one of these settled on Stellar testnet. Open any of them in a public explorer.</span>
-      <span data-tr="es">Las tres quedaron asentadas en Stellar testnet. Ábrelas en un explorador público.</span>
-    </p>
-
-    <div class="ev-list">
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">The contract paid and checked its own limit while doing it</span>
-            <span data-tr="es">El contrato pagó y revisó su propio límite mientras lo hacía</span>
-          </h3>
-          <p>
-            <span data-tr="en">The payer isn't a person's wallet. It's a Soroban contract that adds up what it already spent today and refuses anything past the cap, mid-payment, not before. Go over, and the network itself says no.</span>
-            <span data-tr="es">Quien paga no es la billetera de una persona. Es un contrato de Soroban que suma lo que ya pagó hoy y rechaza lo que se pase del tope, a mitad del pago, no antes. Si te pasas, la red misma dice que no.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <span class="hash">22f31871dce75743…9647324fc7</span>
-          <a class="verify" href="https://stellar.expert/explorer/testnet/tx/22f31871dce757438fe306ac40c6395908cb7a08eb19b349d09fd29647324fc7" target="_blank" rel="noopener">
-            <span data-tr="en">Verify ↗</span>
-            <span data-tr="es">Verificar ↗</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">A real charge, paid through x402</span>
-            <span data-tr="es">Un cobro real, pagado con x402</span>
-          </h3>
-          <p>
-            <span data-tr="en">Settled at a live bazaar running on Stellar, using the same MCP protocol already in place, with no extra effort.</span>
-            <span data-tr="es">Se pagó en un bazaar en vivo sobre Stellar, con el mismo protocolo MCP ya implementado, sin esfuerzos extra.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <span class="hash">fda497c5fd6b9b40…5ac6db93c2</span>
-          <a class="verify" href="https://stellar.expert/explorer/testnet/tx/fda497c5fd6b9b402ab2839b632730b8710b65dae7aa08c873a19b5ac6db93c2" target="_blank" rel="noopener">
-            <span data-tr="en">Verify ↗</span>
-            <span data-tr="es">Verificar ↗</span>
-          </a>
-        </div>
-      </div>
-
-      <div class="ev">
-        <div>
-          <h3>
-            <span data-tr="en">The decision, anchored to the payment</span>
-            <span data-tr="es">La decisión, anclada al pago</span>
-          </h3>
-          <p>
-            <span data-tr="en">A fingerprint of the authorization is written to Stellar, permanently tied to the payment it approved. Anyone can check the two match, no need to trust whoever runs our server.</span>
-            <span data-tr="es">Una huella de la autorización queda escrita en Stellar, atada para siempre al pago que aprobó. Cualquiera puede comprobar que coinciden sin tener que confiar en quien opera nuestro servidor.</span>
-          </p>
-        </div>
-        <div class="tx">
-          <span class="hash">feda66884b503dd0…4430bdd446</span>
-          <a class="verify" href="https://stellar.expert/explorer/testnet/tx/feda66884b503dd0505f07a9d6be05b27dfd96c82200cf0b5996374430bdd446" target="_blank" rel="noopener">
-            <span data-tr="en">Verify ↗</span>
-            <span data-tr="es">Verificar ↗</span>
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-</div>
-
-<div class="band">
-<div class="wrap">
-  <section class="merchant" id="bazaar">
-    <p class="eyebrow">
-      <span data-tr="en">Where it already runs</span>
-      <span data-tr="es">Dónde ya funciona</span>
-    </p>
-    <p class="big">
-      <span data-tr="en">It already pays a real bazaar on Stellar.</span>
-      <span data-tr="es">Ya le paga a un bazaar real sobre Stellar.</span>
-    </p>
-    <p class="note">
-      <span data-tr="en">The agent reads the bazaar's live catalog, puts together an offer that fits its budget, and pays through x402, the open payment protocol the store already speaks. Any store that speaks x402 can plug in the same way, no custom integration needed. That's because it's built on an open MCP protocol.</span>
-      <span data-tr="es">El agente lee el catálogo en vivo del bazaar, arma una oferta que cabe en su presupuesto y paga con x402, el protocolo abierto de pago que la tienda ya habla. Cualquier tienda que hable x402 se puede sumar de la misma forma, sin integración a medida. Gracias a que está construido sobre un protocolo MCP abierto.</span>
-    </p>
-    <p class="src">
-      <a href="https://stellar-bazaar-x402.vercel.app" target="_blank" rel="noopener">stellar-bazaar-x402.vercel.app</a>
-    </p>
-  </section>
-</div>
-
-<div class="wrap">
-  <section id="status">
-    <p class="eyebrow">
-      <span data-tr="en">Where it stands</span>
-      <span data-tr="es">En qué punto está</span>
-    </p>
-    <h2 class="sh">
-      <span data-tr="en">Seven phases done, the eighth in progress.</span>
-      <span data-tr="es">Siete fases listas; la octava, en curso.</span>
-    </h2>
-
-    <div class="status">
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">Verifiable, revocable agent identity</span>
-          <span data-tr="es">Identidad del agente, verificable y revocable</span>
-        </div>
-        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">An agent that reads a real catalog and signs what it intends to pay for</span>
-          <span data-tr="es">Un agente que lee un catálogo real y firma lo que pretende pagar</span>
-        </div>
-        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">Spending limit and signed consent, enforced in infrastructure</span>
-          <span data-tr="es">Límite de gasto y consentimiento firmado, aplicados en infraestructura</span>
-        </div>
-        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">A real charge, paid at a live store on Stellar</span>
-          <span data-tr="es">Un cobro real, pagado en una tienda en vivo sobre Stellar</span>
-        </div>
-        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">Every decision kept as evidence and anchored on Stellar</span>
-          <span data-tr="es">Cada decisión guardada como evidencia y anclada en Stellar</span>
-        </div>
-        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">A platform where partners and real stores plug in without writing code</span>
-          <span data-tr="es">Una plataforma donde partners y tiendas reales se suman sin escribir código</span>
-        </div>
-        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">Agentic commerce on Stellar: UCP, AP2 mandates and disputes</span>
-          <span data-tr="es">Comercio agéntico sobre Stellar: UCP, mandatos AP2 y disputas</span>
-        </div>
-        <div class="st"><span data-tr="en">Shipped</span><span data-tr="es">Listo</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">Real agents buying: Claude and ChatGPT through an MCP connector</span>
-          <span data-tr="es">Agentes reales comprando: Claude y ChatGPT con un conector MCP</span>
-        </div>
-        <div class="st"><span data-tr="en">In progress</span><span data-tr="es">En curso</span></div>
-      </div>
-      <div class="status-row">
-        <div class="what">
-          <span data-tr="en">A scoring model that rates agents by their payment history</span>
-          <span data-tr="es">Un modelo de scoring que califica a los agentes según su historial de pagos</span>
-        </div>
-        <div class="st pending"><span data-tr="en">Not started</span><span data-tr="es">Sin iniciar</span></div>
-      </div>
-    </div>
-  </section>
-</div>
-</div>
-
-<div class="close">
-  <div class="wrap">
-    <p class="big">
-      <span data-tr="en">See how it works.</span>
-      <span data-tr="es">Mira cómo funciona.</span>
-    </p>
-    <div class="cta-row">
-      <a class="btn" href="https://realops.agentpey.com">
-        <span data-tr="en">Open the live pilot →</span>
-        <span data-tr="es">Abrir el piloto en vivo →</span>
-      </a>
-      <p class="cta-note">
-        <span data-tr="en">Testnet only.</span>
-        <span data-tr="es">Solo en testnet.</span>
-      </p>
+    <div class="grp" aria-hidden="true">
+      <div class="lg"><svg><use href="#i-stellar"/></svg>Stellar</div>
+      <div class="lg"><svg><use href="#i-circle"/></svg>USDC</div>
+      <div class="lg"><svg class="o"><use href="#i-ucp"/></svg>UCP</div>
+      <div class="lg"><svg class="o"><use href="#i-ap2"/></svg>AP2</div>
+      <div class="lg"><svg class="o"><use href="#i-x402"/></svg>x402</div>
+      <div class="lg"><svg><use href="#i-mcp"/></svg>MCP</div>
+      <div class="lg"><svg><use href="#i-claude"/></svg>Claude</div>
+      <div class="lg"><svg><use href="#i-openai"/></svg>ChatGPT</div>
     </div>
   </div>
 </div>
 
-<div class="wrap">
-  <footer>
+<main>
+  <section class="proof" id="live">
+    <div class="in">
+      <p class="eyebrow"><span data-tr="en">Today on agentpey.com</span><span data-tr="es">Hoy en agentpey.com</span></p>
+      <h2><span data-tr="en">Live on the network.</span><span data-tr="es">En vivo en la red.</span></h2>
+      <div class="nums" id="hero-stats" aria-live="polite">
+        <div class="stat"><b id="live-stores">…</b><span><span data-tr="en">stores</span><span data-tr="es">tiendas</span></span></div>
+        <div class="stat"><b id="live-purchases">…</b><span><span data-tr="en">agent purchases</span><span data-tr="es">compras de agentes</span></span></div>
+        <div class="stat"><b id="live-usdc">…</b><span><span data-tr="en">USDC paid</span><span data-tr="es">USDC pagados</span></span></div>
+        <div class="stat"><b id="live-disputes">…</b><span><span data-tr="en">claims resolved on-chain</span><span data-tr="es">reclamos resueltos en la red</span></span></div>
+      </div>
+      <p class="stats-note"><span data-tr="en">Read live from the store directory and the network, as on <a href="/en-vivo">/en-vivo</a>.</span><span data-tr="es">Leído en vivo del directorio de tiendas y de la red, como en <a href="/en-vivo">/en-vivo</a>.</span></p>
+
+      <div class="explore" id="explore">
+        <a href="/en-vivo"><span class="k"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></span><span class="d"><span data-tr="en">Every purchase an agent makes, read from the network.</span><span data-tr="es">Cada compra de un agente, leída de la red.</span></span><span class="go" aria-hidden="true">→</span></a>
+        <a href="/tiendas"><span class="k"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></span><span class="d"><span data-tr="en">The stores agents can buy from.</span><span data-tr="es">Las tiendas donde los agentes pueden comprar.</span></span><span class="go" aria-hidden="true">→</span></a>
+        <a href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T124-reembolso-real.md" target="_blank" rel="noopener"><span class="k"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></span><span class="d"><span data-tr="en">A real refund, from claim to verdict.</span><span data-tr="es">Un reembolso real, del reclamo al veredicto.</span></span><span class="go" aria-hidden="true">↗</span></a>
+        <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener"><span class="k"><span data-tr="en">Open tools</span><span data-tr="es">Herramientas abiertas</span></span><span class="d"><span data-tr="en">@agentpey/ucp-stellar on npm.</span><span data-tr="es">@agentpey/ucp-stellar en npm.</span></span><span class="go" aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+  </section>
+
+  <div class="close">
+    <div class="in">
+      <h2><span data-tr="en">Watch an agent buy.</span><span data-tr="es">Mira a un agente comprar.</span></h2>
+      <div class="cta">
+        <a class="btn" href="https://realops.agentpey.com"><span data-tr="en">Open the live pilot →</span><span data-tr="es">Abre el piloto en vivo →</span></a>
+        <a class="btn line" href="/tiendas"><span data-tr="en">View the stores</span><span data-tr="es">Ver las tiendas</span></a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="in">
     <div>
       <span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span>
       <span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span>
     </div>
-    <div>
-      <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-        <span>GitHub</span>
-      </a>
+    <div class="fl">
+      <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+      <a href="https://realops.agentpey.com">RealOps</a>
+      <a href="https://signaldesk.agentpey.com">SignalDesk</a>
     </div>
-  </footer>
-</div>
+  </div>
+</footer>
 
 <script>
-  /* The activity feed's relative timestamps, re-rendered on every language switch. */
-  (function () {
-    var root = document.documentElement;
-
-    /* Real, fixed timestamps (data-at) rendered as live relative time: the
-       events themselves are a frozen snapshot, not a simulated live feed;
-       only the "time ago" label keeps ticking, honestly, against the clock. */
-    var ES_UNITS = { second: "segundo", minute: "minuto", hour: "hora", day: "día", month: "mes", year: "año" };
-    var STEPS = [[60, "second"], [60, "minute"], [24, "hour"], [30, "day"], [12, "month"]];
-
-    function timeAgo(iso, lang) {
-      var diffSec = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
-      var value = diffSec;
-      var unit = "second";
-      for (var i = 0; i < STEPS.length; i++) {
-        if (value < STEPS[i][0]) { unit = STEPS[i][1]; break; }
-        value = Math.floor(value / STEPS[i][0]);
-        unit = i + 1 < STEPS.length ? STEPS[i + 1][1] : "year";
-      }
-      if (lang === "es") {
-        return "hace " + value + " " + ES_UNITS[unit] + (value === 1 ? "" : "s");
-      }
-      return value + " " + unit + (value === 1 ? "" : "s") + " ago";
-    }
-
-    function renderFeedTimes() {
-      var lang = root.lang === "es" ? "es" : "en";
-      var nodes = document.querySelectorAll(".feed-when[data-at]");
-      for (var i = 0; i < nodes.length; i++) {
-        nodes[i].textContent = timeAgo(nodes[i].dataset.at, lang);
-      }
-    }
-
-    document.addEventListener("agentpey:lang", renderFeedTimes);
-    renderFeedTimes();
-    setInterval(renderFeedTimes, 30000);
-  })();
-</script>
-
-<script>
-  /* The hero's numbers, read live from /api/live: never written by hand (T152). A failed read says so, and retries once. */
+  /* The numbers, read live from /api/live: never written by hand (T152). A failed read says so, and retries once. */
   (function () {
     function set(id, value) { var n = document.getElementById(id); if (n) n.textContent = value; }
     function fmt(v) { return Number(v).toLocaleString(document.documentElement.lang === "es" ? "es-CL" : "en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
@@ -1145,10 +299,6 @@
       if (title) document.title = title;
       var buttons = document.querySelectorAll("[data-set-lang]");
       for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
-      var texts = document.querySelectorAll("[data-text-en]");
-      for (var j = 0; j < texts.length; j++) texts[j].textContent = texts[j].getAttribute("data-text-" + lang);
-      var holders = document.querySelectorAll("[data-placeholder-en]");
-      for (var k = 0; k < holders.length; k++) holders[k].setAttribute("placeholder", holders[k].getAttribute("data-placeholder-" + lang));
       document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
     }
     var buttons = document.querySelectorAll("[data-set-lang]");
@@ -1164,6 +314,9 @@
     apply(root.lang === "es" ? "es" : "en");
   })();
 </script>
+
+<script src="/vendor/three.min.js"></script>
+<script src="/scene.js"></script>
 
 </body>
 </html>
