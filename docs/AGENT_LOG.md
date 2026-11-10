@@ -9389,3 +9389,13 @@ Por qué: diseño más moderno y con menos texto; el usuario eligió la variante
 Pendiente: el OK del usuario para el push y el PR; revisar las guías de marca de Anthropic, OpenAI, Stellar y Circle antes de
 publicar; la vista móvil se escribió pero no se vio en pantalla; `/en-vivo`, `/tiendas` y las demás páginas conservan el
 estilo anterior.
+
+## 2026-11-10 — cc/t166-runbook
+
+Agente: Claude Code.
+
+Qué: el runbook del 11-nov para cerrar la Fase 9 en `docs/fase-9-compra-protegida/evidencia/T166.md` (se partió del guion de `cc/t166-corrida`, sección 0 nueva: preparación de esta noche, quién hace qué, orden para no esperar, ventana propuesta). Solo documentos. Antes, la landing nueva (PR #102) quedó mergeada y en vivo.
+
+Por qué: la Fase 9 vence el 11-nov y el sprint de la Fase 10 parte el 11-nov (según el usuario).
+
+Pendiente: que el usuario fije la hora de la corrida, reconecte el conector de Claude y firme la respuesta del comercio; el OK para gastar y para el seco de `reconcile:pending`.
