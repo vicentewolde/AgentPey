@@ -16,11 +16,11 @@
 ## Fase 10 · en planificación (10-nov, `P-24`)
 
 El spec está **aprobado** el 10-nov ([spec](fase-10-instaward-comunidad/SPEC.md), T182 a T206, decisiones `Y-1` a `Y-6`) para el Instaward de noviembre
-(USD 4.000, enviado el 9-nov, sprint del 23-nov al 21-dic **si el capítulo lo aprueba**). Las tareas empiezan el 23-nov, y solo si el capítulo aprueba el Instaward.
+(USD 4.000, enviado el 9-nov, sprint de 4 semanas, 23-nov sugerido y por confirmar, **si el capítulo lo aprueba**). Las tareas empiezan con el sprint, y solo si el capítulo aprueba el Instaward.
 
-- [ ] Del usuario: pegar el texto exacto del anexo A (hoy provisional)
+- [x] Anexo A: puesto el texto exacto enviado (10-nov); D3 no promete la asistencia en Stellar
 - [ ] Del usuario: suscribir Tapline en Shopify antes del ~12-nov (decidido el 10-nov: USD 1/mes por 3 meses, luego 25)
-- [ ] Antes del 23-nov: cerrar la Fase 9 en vivo, pedir el hardware del tótem, preguntarle al capítulo por Luma
+- [ ] Antes del inicio del sprint (23-nov sugerido): cerrar la Fase 9 en vivo, pedir el hardware del tótem, preguntarle al capítulo por Luma
 
 ## Progreso de la Fase 9 (cerrada el 2026-11-11, `P-25`)
 
