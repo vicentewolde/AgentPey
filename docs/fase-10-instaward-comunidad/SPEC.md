@@ -1,6 +1,6 @@
 # Spec Fase 10 · Compras protegidas con la comunidad y tótem de llegada
 
-- **Estado:** Borrador (2026-11-10), a la espera de la aprobación del usuario (`P-15`)
+- **Estado:** Aprobado (2026-11-10), con el anexo A todavía provisional (el usuario pega el texto exacto). Las tareas se empiezan el 23-nov, y solo si el capítulo aprueba el Instaward
 - **Rama base:** `main`
 - **Tareas:** T182 a T206 (la numeración sigue la de la Fase 9, cuyo último número es T181)
 - **Fechas:** 23-nov → 21-dic-2026 (30 días), **solo si el capítulo aprueba el Instaward**. Si no lo aprueba, el spec queda como plan y el usuario decide si construye algo
@@ -324,7 +324,7 @@ del organizador.
 - [x] ¿Cómo se marca la entrega de un digital? **Enlace de descarga propio**, decidido el 10-nov (`Y-5`)
 - [x] Suscripción de Tapline: **suscribir** (USD 1/mes por 3 meses y luego 25), decidido el 10-nov; el pago lo hace el usuario en Shopify
 - [ ] **El texto exacto del anexo A:** lo pega el usuario antes de aprobar
-- [ ] Prefijo de decisiones `Y-` y carpeta `docs/fase-10-instaward-comunidad/`: propuestos, a confirmar con el spec
+- [x] Prefijo de decisiones `Y-` y carpeta `docs/fase-10-instaward-comunidad/`: aprobados con el spec el 10-nov
 - [ ] ¿El tótem va en `apps/totem` o dentro de `apps/web`? Se decide en el plan de T196
 - [ ] ¿Quién imprime la carcasa 3D y cuándo es el evento de entrega? Los fija el usuario con el capítulo
 
@@ -332,6 +332,7 @@ del organizador.
 
 | Fecha | Cambio |
 |---|---|
+| 2026-11-10 | **Aprobado** por el usuario, sin cambios en las tareas; `Y-2`, `Y-3` y `Y-6` quedan como se propusieron; el anexo A sigue provisional |
 | 2026-11-10 | Borrador a partir del encargo de la sesión de investigación y de la lectura del código. Respuestas del usuario sobre `confirm`, cuenta por persona, entrega digital y suscripción. Anexo A provisional |
 
 ---
