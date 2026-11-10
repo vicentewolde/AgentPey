@@ -1022,7 +1022,7 @@ primero hace perder el pedido de un comprador que ya pagó.
 ### P-24 · Se abre la Fase 10: compras protegidas con la comunidad y un tótem de llegada, para el Instaward de noviembre · `Vigente`
 **Fecha:** 2026-11-10 · **Origen:** pedido del usuario (10-nov), pasado por la sesión de investigación y confirmado en este chat
 
-El Instaward de noviembre (USD 4.000, Stellar Chile, enviado el 9-nov, inicio sugerido el 23-nov, por confirmar) promete tres entregables que no
+El Instaward de noviembre (USD 4.000, Stellar Chile, enviado el 9-nov, sprint del 11-nov al 10-dic; el formulario sugería el 23-nov) promete tres entregables que no
 están en el repo: la confirmación del comprador con evidencia sellada y una cuenta de gasto por persona; cinco o más compras reales
 de la comunidad en la tienda Tapline; y un tótem de llegada para eventos con tarjeta NFC o QR rotativo. Entran en alcance, en
 testnet: una versión nueva del contrato `purchase-escrow` (`confirm`), un escrow propio para Tapline, evidencia de reclamos,
@@ -1030,7 +1030,7 @@ cuenta por persona (reabre T171 y `R-33`, `Y-4`), las herramientas `confirm_purc
 Tapline en Vitrinee, una página pública de compras, y el servicio, la vista del organizador, el lector y la carcasa del tótem, con
 la lectura de Luma y de Passport y la huella de la asistencia en Stellar.
 
-Spec en `docs/fase-10-instaward-comunidad/SPEC.md`, decisiones `Y-`, tareas T182 a T206. **El usuario aprobó el spec el 10-nov**: las tareas empiezan con el sprint (23-nov sugerido, por confirmar), y solo si el capítulo aprueba el Instaward (`P-15`). El anexo A es el texto exacto enviado (T201, la asistencia en Stellar, es un extra que no se prometió). Sigue fuera: mainnet, rieles fiat o de tarjeta, otras plataformas de
+Spec en `docs/fase-10-instaward-comunidad/SPEC.md`, decisiones `Y-`, tareas T182 a T206. **El usuario aprobó el spec el 10-nov**: las tareas empiezan con el sprint (11-nov → 10-dic, según el usuario), y solo si el capítulo aprueba el Instaward (`P-15`). El anexo A es el texto exacto enviado (T201, la asistencia en Stellar, es un extra que no se prometió). Sigue fuera: mainnet, rieles fiat o de tarjeta, otras plataformas de
 tienda, otros comercios, reemplazar Luma o Passport, reconocimiento facial. Si el capítulo no aprueba el Instaward, el spec queda
 como plan y el usuario decide qué construir.
 

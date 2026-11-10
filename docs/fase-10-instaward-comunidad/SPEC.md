@@ -1,9 +1,9 @@
 # Spec Fase 10 · Compras protegidas con la comunidad y tótem de llegada
 
-- **Estado:** Aprobado (2026-11-10). El anexo A es el texto exacto enviado (puesto el 10-nov). Las tareas empiezan al arrancar el sprint (fecha sugerida 23-nov, por confirmar), y solo si el capítulo aprueba el Instaward
+- **Estado:** Aprobado (2026-11-10). El anexo A es el texto exacto enviado (puesto el 10-nov). El sprint arranca el 11-nov (lo indica el usuario; Tellus no lo confirmó por escrito) y las tareas solo si el capítulo aprueba el Instaward
 - **Rama base:** `main`
 - **Tareas:** T182 a T206 (la numeración sigue la de la Fase 9, cuyo último número es T181)
-- **Fechas:** 4 semanas desde el inicio del sprint. El 23-nov (→ 21-dic-2026) es la fecha **sugerida, por confirmar**: la propuso la investigación en el campo "Suggested sprint start date" y no la confirmó ni Tellus ni el capítulo. La plataforma muestra Chapter review → Final approval → Sprint kick-off; si el sprint arranca antes, las 4 semanas terminan antes del 21-dic. **Solo si el capítulo aprueba el Instaward**; si no lo aprueba, el spec queda como plan y el usuario decide si construye algo
+- **Fechas:** 30 días, del **11-nov al 10-dic-2026**. El usuario indicó el 10-nov que el sprint parte el 11-nov; Tellus no lo confirmó por escrito (su correo del 10-nov dice solo que AgentPey fue seleccionado). El 23-nov del formulario era solo el campo "Suggested sprint start date". **Solo si el capítulo aprueba el Instaward**; si no lo aprueba, el spec queda como plan y el usuario decide si construye algo
 - **Referencias:** [`P-24`](../DECISIONES.md) (alcance), [`P-15`](../DECISIONES.md) (método), [`P-10`](../DECISIONES.md) (perímetro de "nunca Codex"), [`P-20`](../DECISIONES.md) (T171 pasó a una fase futura; aquí vuelve), [spec de la Fase 9](../fase-9-compra-protegida/SPEC.md) (escrow, `X-1` a `X-33`), [spec de la Fase 8](../fase-8-agentes-reales/SPEC.md) (MCP, `R-33`), [INSTRUCCIONES de Vitrinee](../fase-6-agentguard-comercializacion/vitrinee/INSTRUCCIONES.md). Decisiones de la fase con prefijo `Y-` en [`DECISIONES.md`](DECISIONES.md)
 
 ## 1. Objetivo
@@ -19,7 +19,7 @@ veredicto reembolsa desde el pago retenido. La Fase 10 suma **personas reales y 
    compró o con un QR que cambia cada 30 s, y el organizador ve en su teléfono quién llegó.
 
 La fase cumple los tres entregables del **Instaward de noviembre** enviado a Stellar Chile (Stellar Passport) el 9-nov-2026
-(USD 4.000, inicio sugerido el 23-nov, por confirmar). El texto enviado está en el [anexo A](#anexo-a--texto-enviado-al-instaward-9-nov-2026):
+(USD 4.000, sprint del 11-nov al 10-dic; el formulario sugería el 23-nov). El texto enviado está en el [anexo A](#anexo-a--texto-enviado-al-instaward-9-nov-2026):
 **lo que dice el anexo es el compromiso**, y este spec no promete ni más ni menos.
 
 > **Sobre el anexo A.** Es el texto exacto de los campos que se escribieron en el formulario el 9-nov (transcrito por la sesión
@@ -45,7 +45,7 @@ contrato** para Tapline (`Y-2`) y el de `agentcommerce` no se toca.
 - Reconocimiento facial o rastreo automático de personas.
 - Auditoría externa de seguridad.
 - Tocar la tienda `agentcommerce` (la de la demo en vivo) y el escrow `CBQFELK5…DO27A`.
-- Cerrar la Fase 9 (T162–T167 en vivo): es una **dependencia anterior al 23-nov**, no una tarea de esta fase (sección 8).
+- Cerrar la Fase 9 (T162–T167 en vivo): es una **dependencia anterior al sprint (vence el 11-nov)**, no una tarea de esta fase (sección 8).
 
 ## 4. Diseño
 
@@ -121,7 +121,7 @@ toca contratos; bitácora, evidencia en `evidencia/T<n>.md` y `ESTADO.md`. **Nin
 fondos, firma, autorización) salvo que el usuario lo decida para una tarea del tótem que no toque firma ni fondos. Cada
 despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las horas son estimaciones de este borrador.
 
-### Semana 1 (23–29 nov) · D1
+### Semana 1 (11–17 nov) · D1
 
 #### T182 · `confirm` en el contrato de escrow
 - **Estimación:** 8 h · **Depende de:** nada
@@ -185,7 +185,7 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 - **Hecho cuando:**
   - [ ] `evidencia/T190.md` con: el ID del contrato y sus tests; los hashes de una liberación por confirmación, una por vencimiento y un reclamo con evidencia sellada; el pago sobre el tope rechazado
 
-### Semana 2 (30-nov – 6-dic) · D2
+### Semana 2 (18–24 nov) · D2
 
 #### T191 · Tapline en Vitrinee con su propio escrow
 - **Estimación:** 8 h · **Depende de:** T183 y el OK del usuario (cuentas y credenciales de Shopify)
@@ -218,7 +218,7 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 - **Hecho cuando:**
   - [ ] una página pública lista cada compra y su resultado (retenida, confirmada, liberada, reembolsada), leído de Stellar y sin datos personales
 
-### Semanas 3 y 4 (7–21 dic) · D3
+### Semanas 3 y 4 (25 nov – 10 dic) · D3 (semana 3: 25 nov–2 dic, T196 a T201; semana 4: 3–10 dic, T202 a T206)
 
 #### T196 · El servicio de llegada y sus datos
 - **Estimación:** 10 h · **Depende de:** nada
@@ -296,13 +296,14 @@ tarjeta comprada se usa en el tótem de un evento y la llegada aparece en el tel
 
 | Semana | Tareas |
 |---|---|
-| Antes del inicio del sprint (23-nov sugerido) | Cerrar la Fase 9 (T162–T167 en vivo), la tienda Tapline y su catálogo (tarea A del encargo), pedir el hardware, preguntar al capítulo por Luma |
-| 1 (23–29 nov, si se confirma) | T182 a T190 |
-| 2 (30-nov – 6-dic) | T191 a T195 |
-| 3 y 4 (7–21 dic) | T196 a T206 |
+| Antes del sprint (11-nov) | Cerrar la Fase 9 (T162–T167 en vivo), la tienda Tapline y su catálogo (tarea A del encargo), pedir el hardware, preguntar al capítulo por Luma |
+| 1 (11–17 nov) | T182 a T190 |
+| 2 (18–24 nov) | T191 a T195 |
+| 3 (25 nov – 2 dic) | T196 a T201 |
+| 4 (3–10 dic) | T202 a T206; evento de entrega ~6–7 dic, a acordar con el capítulo |
 
-Las fechas de la tabla cuentan desde la fecha sugerida (23-nov); si el sprint arranca antes, se corren todas. Hoy no hay fecha
-confirmada: depende de la aprobación final del capítulo.
+La línea de corte de la semana 2 es la noche del 24-nov. Start-Up Chile cierra el 24-nov a las 13:00 y pide un MVP del 11 al 13: es carga del usuario
+en paralelo y no está en este plan. La fecha del 11-nov la indica el usuario; si el capítulo fija otra, se corren todas.
 
 **Línea de corte:** T201 (la asistencia en Stellar) es un extra que no se prometió y no se hace si algo aprieta; si al final de la
 semana 2 falta algo, se corta T201 primero y después T200 (la API de Luma, queda el CSV). **D1 y las compras de D2 no se cortan.** Sin el tótem físico, el registro funciona con el QR en el teléfono
@@ -327,7 +328,7 @@ del organizador.
 - [x] ¿Cómo se marca la entrega de un digital? **Enlace de descarga propio**, decidido el 10-nov (`Y-5`)
 - [x] Suscripción de Tapline: **suscribir** (USD 1/mes por 3 meses y luego 25), decidido el 10-nov; el pago lo hace el usuario en Shopify
 - [x] **El texto exacto del anexo A:** puesto el 10-nov, transcrito del formulario enviado (pasado por la sesión de investigación)
-- [ ] **La fecha de inicio del sprint:** el 23-nov es sugerida; la fija la aprobación final del capítulo y Tellus
+- [x] **La fecha de inicio del sprint:** 11-nov, indicada por el usuario el 10-nov (Tellus no lo confirmó por escrito)
 - [x] Prefijo de decisiones `Y-` y carpeta `docs/fase-10-instaward-comunidad/`: aprobados con el spec el 10-nov
 - [ ] ¿El tótem va en `apps/totem` o dentro de `apps/web`? Se decide en el plan de T196
 - [ ] ¿Quién imprime la carcasa 3D y cuándo es el evento de entrega? Los fija el usuario con el capítulo
@@ -336,6 +337,7 @@ del organizador.
 
 | Fecha | Cambio |
 |---|---|
+| 2026-11-10 | Fechas corridas: el sprint parte el 11-nov y dura hasta el 10-dic (S1 11–17 nov, S2 18–24, S3 25 nov–2 dic, S4 3–10 dic), según el usuario; el 23-nov era solo la fecha sugerida del formulario |
 | 2026-11-10 | Anexo A reemplazado por el texto exacto enviado: D3 sin asistencia en Stellar (T201 pasa a extra), evidencia de D3 = tótem, lista en vivo y video, semana 4 con video y revisión final con el líder del capítulo, presupuesto de D3 con "3D design and printing", tercer documento de apoyo (`tapline-cl.myshopify.com`). Fecha del 23-nov: sugerida, por confirmar |
 | 2026-11-10 | **Aprobado** por el usuario, sin cambios en las tareas; `Y-2`, `Y-3` y `Y-6` quedan como se propusieron; el anexo A sigue provisional |
 | 2026-11-10 | Borrador a partir del encargo de la sesión de investigación y de la lectura del código. Respuestas del usuario sobre `confirm`, cuenta por persona, entrega digital y suscripción. Anexo A provisional |
@@ -349,7 +351,7 @@ del organizador.
 ### Project scope
 - **Project name:** AgentPey
 - **Requested funding (USD):** 4000
-- **Suggested sprint start date:** 2026-11-23 (solo una sugerencia, ver la sección 8)
+- **Suggested sprint start date:** 2026-11-23 (solo una sugerencia; el sprint parte el 11-nov, ver la sección 8)
 - **Supporting documents:**
   - https://github.com/vicentewolde/AgentPey
   - https://agentpey.com
