@@ -9371,3 +9371,21 @@ Por qué: la auditoría de código encontró un pago sin reconciliación y un re
 
 Pendiente: el OK del usuario para encender `VITRINEE_RECONCILE_PENDING=1`, decidir la sesión varada `95ea7770…` (solo se
 corrió en simulación de pruebas, no contra producción), la revisión del spec (`P-15`), el push y publicar `@agentpey/ucp-stellar` (`P-22`).
+
+## 2026-11-10 — cc/landing-rediseno
+
+Agente: Claude Code.
+
+Qué: rediseño de la portada `apps/web/public/landing.html` a pedido del usuario, que la veía "hecha por IA". Una escena 3D
+(`scene.js`, Three.js r128 servido desde `/vendor/three.min.js`, sin CDN): personas con teléfono caminan entre tiendas,
+llevan monedas a una bóveda y cada moneda cae por dos anillos (los límites `per_tx` y `per_day`). Titular nuevo ("Agents
+buy. You stay in charge." / "Los agentes compran. Tú sigues al mando."), franja de logos sin caja, las cuatro cifras de
+`/api/live` y cuatro enlaces (en vivo, tiendas, evidencia, npm). EN/ES con el mismo mecanismo `data-tr`. Salen de la portada
+las secciones largas (actividad congelada, cómo funciona, eras, evidencia con hashes, bazaar, estado): siguen en el historial
+de git y en `/en-vivo` y `/tiendas`. Maqueta y logos: marcas de Stellar, Claude, OpenAI, MCP y Circle de Simple Icons.
+
+Por qué: diseño más moderno y con menos texto; el usuario eligió la variante 3D entre dos maquetas.
+
+Pendiente: el OK del usuario para el push y el PR; revisar las guías de marca de Anthropic, OpenAI, Stellar y Circle antes de
+publicar; la vista móvil se escribió pero no se vio en pantalla; `/en-vivo`, `/tiendas` y las demás páginas conservan el
+estilo anterior.
