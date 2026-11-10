@@ -77,7 +77,7 @@
   .sub { color: var(--dim); font-size: 19px; margin-top: 22px; max-width: 380px; }
   .cta { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
   .cap { position: absolute; z-index: 2; left: 0; right: 0; bottom: 18px; pointer-events: none; }
-  .cap span { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .cap span { display: block; font-family: var(--mono); font-size: 12px; line-height: 1.4; color: var(--dim); }
 
   /* logo strip: every mark is a white glyph with no box, the name beside it */
   .marq { background: var(--ink); border-bottom: 1px solid var(--hair); overflow: hidden; }
@@ -116,8 +116,16 @@
   footer .fl { display: flex; gap: 24px; flex-wrap: wrap; }
   footer a:hover { color: #fff; }
 
+  @media (min-width: 1100px) and (max-width: 1499px) {
+    .copy { max-width: 470px; }
+  }
+  @media (max-width: 1099px) {
+    .hero { min-height: max(90vh, 880px); }
+    .copy { margin-top: 28px; }
+  }
   @media (max-width: 860px) {
-    .nl, .lang { display: none; }
+    .nl { display: none; }
+    .nr { gap: 12px; }
     .nums { grid-template-columns: repeat(2, minmax(0,1fr)); }
     .stat:nth-child(odd) { padding-left: 0; border-left: 0; }
     .explore a { grid-template-columns: 1fr auto; row-gap: 4px; }
@@ -128,6 +136,16 @@
     .hero { min-height: clamp(720px, 96vh, 900px); }
     .copy { margin-top: 18px; }
     .sub { font-size: 17px; }
+  }
+  @media (max-width: 400px) {
+    nav.top { gap: 12px; }
+    .brand { font-size: 19px; gap: 8px; }
+    .brand svg { width: 24px; height: 24px; }
+    .nr { gap: 8px; }
+    .btn.sm { height: 36px; padding: 0 12px; font-size: 13px; }
+    .btn { padding: 0 20px; font-size: 15px; }
+    .stat b { font-size: clamp(40px, 13vw, 56px); }
+    .explore .k { font-size: 24px; }
   }
   @media (prefers-reduced-motion: reduce) { .marq .row { animation: none; } .btn, .explore a { transition: none; } }
 </style>

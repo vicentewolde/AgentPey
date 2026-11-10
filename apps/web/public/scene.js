@@ -38,7 +38,7 @@
   // shops
   var stores = [], NS = 6, ACC = [0x6df2c0, 0xffffff, 0xffb199, 0x9fd0ff, 0x6df2c0, 0xffffff];
   for (i = 0; i < NS; i++) {
-    var a = (-64 + i * (128 / (NS - 1))) * Math.PI / 180, r = 9.6, px = Math.sin(a) * r, pz = -Math.cos(a) * r * 0.78;
+    var a = (-58 + i * (116 / (NS - 1))) * Math.PI / 180, r = 9.2, px = Math.sin(a) * r, pz = -Math.cos(a) * r * 0.78;
     var g = new THREE.Group(); g.position.set(px, 0, pz); g.rotation.y = Math.atan2(-px, -pz); world.add(g);
     var h = 2.4 + (i % 3) * 0.5;
     box(2.5, h, 2.1, mWhite, 0, h / 2, 0, g); box(2.62, 0.18, 2.22, mInk, 0, 0.09, 0, g); box(2.62, 0.14, 2.22, mInk, 0, h + 0.07, 0, g);
@@ -169,7 +169,11 @@
   hero.addEventListener("pointermove", function (e) { var b = hero.getBoundingClientRect(); mouse.x = (e.clientX - b.left) / b.width - 0.5; mouse.y = (e.clientY - b.top) / b.height - 0.5; });
   function size() {
     var w = hero.clientWidth, h = hero.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h;
-    if (w < 760) { R = 40; Hh = 23; shiftX = 0; shiftY = -3.8; } else if (w < 1100) { R = 31; Hh = 19; shiftX = 3.2; shiftY = -0.6; } else { R = 27.5; Hh = 16.5; shiftX = 6.8; shiftY = -1; }
+    if (w < 760) { R = 40; Hh = 23; shiftX = 0; shiftY = -3.8; }
+    else if (w < 1100) { R = 36; Hh = 21; shiftX = 0; shiftY = -4.4; }
+    else if (w < 1500) { R = 31; Hh = 17.5; shiftX = 6.2; shiftY = -1; }
+    else { R = 27.5; Hh = 16.5; shiftX = 6.8; shiftY = -1; }
+    scene.fog.near = R * 0.9; scene.fog.far = R * 2.5;
     world.position.set(shiftX, shiftY, 0); cam.updateProjectionMatrix();
   }
   function render(time) {
