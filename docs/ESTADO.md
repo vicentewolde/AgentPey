@@ -13,6 +13,15 @@
 
 **Convivencia (`P-19`).** Hasta el 17-oct la Fase 8 trabajó en paralelo, en el worktree `~/dev/AgentPay-fase8`; desde su cierre (`P-20`) hay una sola fase abierta y todo va en `~/dev/AgentPay`, una tarea a la vez. Los worktrees `AgentPay-fase8`, `-t154`, `-t155` y `-demo` se retiraron el 17-oct (todo estaba en `main`); queda `~/dev/AgentPay-codex`, la de Codex (`P-5`). Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
 
+## Fase 10 · en planificación (10-nov, `P-24`)
+
+El spec está en **borrador** ([spec](fase-10-instaward-comunidad/SPEC.md), T182 a T206, decisiones `Y-1` a `Y-6`) para el Instaward de noviembre
+(USD 4.000, enviado el 9-nov, sprint del 23-nov al 21-dic **si el capítulo lo aprueba**). No se construye nada hasta que el usuario lo apruebe.
+
+- [ ] Del usuario: pegar el texto exacto del anexo A (hoy provisional), confirmar el prefijo `Y-` y la carpeta, y aprobar el spec
+- [ ] Del usuario: suscribir Tapline en Shopify antes del ~12-nov (decidido el 10-nov: USD 1/mes por 3 meses, luego 25)
+- [ ] Antes del 23-nov: cerrar la Fase 9 en vivo, pedir el hardware del tótem, preguntarle al capítulo por Luma
+
 ## Progreso de la Fase 9 (cerrada el 2026-11-11, `P-25`)
 
 | Tarea | Estado | Rama / PR |

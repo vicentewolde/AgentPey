@@ -1019,6 +1019,24 @@ se decidieron como `X-32` y `X-33`. Siguen fuera: mainnet, la sesión varada del
 usuario) y publicar `@agentpey/ucp-stellar` 0.2.1 (`P-22`). **Alternativa descartada:** dejarlos como deuda anotada; el
 primero hace perder el pedido de un comprador que ya pagó.
 
+### P-24 · Se abre la Fase 10: compras protegidas con la comunidad y un tótem de llegada, para el Instaward de noviembre · `Propuesta`
+**Fecha:** 2026-11-10 · **Origen:** pedido del usuario (10-nov), pasado por la sesión de investigación y confirmado en este chat
+
+El Instaward de noviembre (USD 4.000, Stellar Chile, enviado el 9-nov, inicio sugerido el 23-nov) promete tres entregables que no
+están en el repo: la confirmación del comprador con evidencia sellada y una cuenta de gasto por persona; cinco o más compras reales
+de la comunidad en la tienda Tapline; y un tótem de llegada para eventos con tarjeta NFC o QR rotativo. Entran en alcance, en
+testnet: una versión nueva del contrato `purchase-escrow` (`confirm`), un escrow propio para Tapline, evidencia de reclamos,
+cuenta por persona (reabre T171 y `R-33`, `Y-4`), las herramientas `confirm_purchase` y `attach_evidence` del MCP, la tienda
+Tapline en Vitrinee, una página pública de compras, y el servicio, la vista del organizador, el lector y la carcasa del tótem, con
+la lectura de Luma y de Passport y la huella de la asistencia en Stellar.
+
+Spec en `docs/fase-10-instaward-comunidad/SPEC.md`, decisiones `Y-`, tareas T182 a T206. **El spec está en borrador: no se
+implementa nada hasta que el usuario lo apruebe** (`P-15`). Sigue fuera: mainnet, rieles fiat o de tarjeta, otras plataformas de
+tienda, otros comercios, reemplazar Luma o Passport, reconocimiento facial. Si el capítulo no aprueba el Instaward, el spec queda
+como plan y el usuario decide qué construir.
+
+**Alternativa descartada: meter el tótem en la Fase 9.** La Fase 9 todavía no está cerrada en vivo y tiene su propio plazo.
+
 
 ### P-25 · La Fase 9 se cierra el 11-nov con su corrida en vivo; la aprueba el usuario · `Vigente`
 **Fecha:** 2026-11-11 · **Origen:** el usuario ("eso lo apruebo yo"; "como esa fase no se ganó, la hice yo por mi cuenta")
