@@ -11,17 +11,17 @@
 
 ## Estado actual
 
-**Fecha:** 2026-11-10 · **Spec aprobado** por el usuario (`P-15`), con el anexo A provisional. El sprint empieza el 23-nov
-solo si el capítulo aprueba el Instaward enviado el 9-nov. Nada de esta fase está construido.
+**Fecha:** 2026-11-10 · **Spec aprobado** por el usuario (`P-15`); anexo A con el texto exacto enviado. El sprint empieza (fecha sugerida
+23-nov, por confirmar) solo si el capítulo aprueba el Instaward enviado el 9-nov. Nada de esta fase está construido.
 
-Pendiente: el usuario pega el texto exacto del anexo A (hoy provisional).
-Antes del 23-nov y fuera de esta fase: cerrar la Fase 9 en vivo, la tienda Tapline y su catálogo, pedir el hardware del tótem.
+Pendiente: la fecha de inicio real (la fija la aprobación final del capítulo).
+Antes del inicio y fuera de esta fase: cerrar la Fase 9 en vivo, la tienda Tapline y su catálogo, pedir el hardware del tótem.
 
 ## Progreso
 
 | Tarea | Estado |
 |---|---|
-| T182 a T206 | ⏳ pendientes (spec aprobado; empiezan el 23-nov) |
+| T182 a T206 | ⏳ pendientes (spec aprobado; empiezan al arrancar el sprint, 23-nov sugerido; T201 es un extra) |
 
 ## Bitácora
 

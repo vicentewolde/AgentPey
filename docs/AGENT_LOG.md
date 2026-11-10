@@ -6633,7 +6633,6 @@ Pendiente:
   rotar la contraseña del rol de Vitrinee; el `404` de Jumpseller (T101).
 - Siguiente: lo que quede antes del video del 29 (T101 sigue abierto).
 
-
 ## 2026-09-24 (7) — cc/fix-platform-setup
 
 Agente: Claude Code.
@@ -6746,7 +6745,6 @@ Pendiente:
   algo barato (el usuario contrata y firma; Claude Code verifica).
 - T101: respuesta de soporte de Jumpseller al `404 Account not found`.
 - Después del 29: rotación de la llave maestra de Vitrinee; SKU repetido.
-
 
 ## 2026-09-24 (14) — cc/t106-demo-day (T106 en curso)
 
@@ -7714,7 +7712,6 @@ de Render; el MCP no arranca hasta que estén sus 8 variables (`MCP_*` y `AGENT_
 Pendiente: variables y dominio `mcp.agentpey.com` en Render, CNAME en el DNS; compra real desde Claude (cierra
 T128). `AGENTS.md`: sin cambios. Exponential: T128 sigue `IN_PROGRESS`, con los dos PR enlazados.
 
-
 ## 2026-10-03 (13) — cc/t128-evidencia (sin push)
 
 Agente: Claude Code.
@@ -8308,7 +8305,6 @@ Mandato, y que el Vault solo lo escribe la plataforma hospedada. T145 cerrada; m
 Pendiente: el reembolso real de T124 (8 o 9-oct), T141, T130 cuando haya tienda, T142; después T146 y T144; al final
 T138, T139 y T140 (`R-24`). `AGENTS.md`: sin cambios. Exponential: ticket T145 a `DONE`.
 
-
 ## 2026-10-07 (4) — cc/t141-tiendas-agentes (sin push)
 
 Agente: Claude Code.
@@ -8420,6 +8416,7 @@ eso deja cada deploy en 503 y convierte una app que no sube en una caída total,
 
 Pendiente: health check del gateway y `healthCheckPath` en Render (con OK del usuario), después del 12-oct.
 `AGENTS.md`: sin cambios. Exponential: sin ticket.
+
 ## 2026-10-08 (3) — cc/t150-cierre
 
 Agente: Claude Code.
@@ -8871,7 +8868,6 @@ Pendiente: T138 y T139 como documentos, y la tarea de `R-33`. No tocar `contract
 `payTo` de Vitrinee hasta nuevo aviso del usuario. Exponential: sin cambios (T156 sin ticket propio). `AGENTS.md`: sin
 cambios.
 
-
 ## 2026-10-14 (8) — cc/fase-9-plan
 
 Agente: Claude Code.
@@ -9191,7 +9187,6 @@ menciones al chat paralelo de la Fase 8, y las rutas de la demo (`reclamo.zsh`, 
 
 Pendiente: merge de esta rama con OK del usuario. Exponential: sin cambios. `AGENTS.md`: sin cambios.
 
-
 ## 2026-10-22 (28) — cc/t172-freno-compradores
 
 Agente: Claude Code.
@@ -9381,6 +9376,16 @@ Qué: spec en borrador de la Fase 10 (`docs/fase-10-instaward-comunidad/`: SPEC,
 Por qué: el encargo de la sesión de investigación para el sprint del Instaward de noviembre (inicio sugerido el 23-nov).
 
 Pendiente: que el usuario pegue el texto exacto del anexo A (la plataforma pide sesión y no se pudo leer), apruebe el spec, y suscriba Tapline en Shopify. Tarea A (catálogo de Tapline) sin empezar. Exponential: sin cambios hasta aprobar. `AGENTS.md`: sin cambios.
+
+## 2026-11-10 — cc/fase-10-plan (anexo A exacto)
+
+Agente: Claude Code.
+
+Qué: el anexo A del spec de la Fase 10 pasa de provisional al texto exacto enviado el 9-nov (transcrito por la sesión de investigación). Cambios de fondo: D3 ya no promete la asistencia en Stellar (T201 es un extra), la evidencia de D3 es el tótem en un evento, la lista de llegadas en vivo y un video corto, la semana 4 lleva video y revisión final con el líder del capítulo, el presupuesto de D3 incluye "3D design and printing" y hay un tercer documento de apoyo (`tapline-cl.myshopify.com`). El 23-nov queda como fecha sugerida, por confirmar. Solo documentos.
+
+Por qué: lo enviado es el compromiso; el spec no debe prometer ni más ni menos.
+
+Pendiente: el push de la rama (PR #101 abierto, sin mergear; requiere OK del usuario) y la fecha real de inicio, que fija la aprobación final del capítulo.
 
 ## 2026-11-10 — cc/landing-rediseno
 

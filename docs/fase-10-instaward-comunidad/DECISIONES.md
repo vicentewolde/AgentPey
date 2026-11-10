@@ -53,7 +53,7 @@ la primera descarga llama `mark_shipped`: abre la ventana de liberación y desde
 archivo llegó.
 
 ### Y-6 · La asistencia se ancla como una huella, sin datos personales en la red · `Vigente` (aprobada con el spec el 10-nov)
-**Fecha:** 2026-11-10 · **Tarea:** T201
+**Fecha:** 2026-11-10 · **Tarea:** T201 (extra: lo enviado al capítulo no promete la asistencia en Stellar; solo aplica si se hace)
 
 La llegada de una persona a un evento se guarda en el servicio del tótem; en Stellar se ancla solo la huella (hash) de un registro
 firmado, con el evento y la hora. Ningún nombre, correo ni identificador de persona va a la red. Se decide en la tarea si reutiliza
