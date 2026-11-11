@@ -78,3 +78,12 @@ Decisiones del usuario (11-nov): la portada se rehace al estilo nuevo; las 13 p�
 **Motivo.** Una sola hoja impide que las páginas se vuelvan a separar, que es lo que pasó con la portada del 10-nov. **Alternativas
 descartadas:** copiar los tokens en cada página (se separan otra vez); un paquete de componentes (las páginas son HTML estático y una
 plantilla en TypeScript, sin un framework común).
+
+### Y-8 · La compra guarda cuándo la confirmó el comprador (`confirmed_at`), no solo un evento · `Vigente` (11-nov)
+**Fecha:** 2026-11-11 · **Tarea:** T182 · Hallazgo de la revisión independiente
+
+`confirm` y `release` dejan la compra en `Released`. Sin un campo, la única diferencia sería el evento `Confirmed`, y la RPC de Soroban
+guarda eventos unos pocos días; la página pública de compras de Tapline (T195) lee de Stellar y tiene que decir «confirmada». `Purchase`
+suma `confirmed_at: u64` (0 si no se confirmó) y el esquema de almacenamiento pasa a 2. El lector TypeScript lo trata como opcional, así
+que el escrow v1 de `agentcommerce` se sigue leyendo igual. **Alternativas descartadas:** un estado nuevo `Confirmed` (obliga a cambiar
+cada lector del estado: tienda, MCP, página en vivo); depender del evento (se pierde).

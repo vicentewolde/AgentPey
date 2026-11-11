@@ -303,6 +303,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "confirmed_at"
+                    },
+                    "val": {
+                      "u64": "1790000300"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "held_at"
                     },
                     "val": {

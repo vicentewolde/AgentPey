@@ -388,6 +388,14 @@
                   },
                   {
                     "key": {
+                      "symbol": "confirmed_at"
+                    },
+                    "val": {
+                      "u64": "1790000000"
+                    }
+                  },
+                  {
+                    "key": {
                       "symbol": "held_at"
                     },
                     "val": {
@@ -527,6 +535,14 @@
                   {
                     "key": {
                       "symbol": "closed_at"
+                    },
+                    "val": {
+                      "u64": "0"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "confirmed_at"
                     },
                     "val": {
                       "u64": "0"
