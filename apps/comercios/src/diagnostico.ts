@@ -130,7 +130,7 @@ export function chatgptEngine(timeoutMs = 300_000): Engine {
  * Google Search grounding on. Needs GEMINI_API_KEY. Grounding sources come back
  * as redirect links whose title is the site's domain, so the domain is used.
  */
-export function geminiEngine(apiKey: string, model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash"): Engine {
+export function geminiEngine(apiKey: string, model = process.env.GEMINI_MODEL ?? "gemini-flash-latest"): Engine {
   return {
     name: "gemini",
     async ask(question) {
