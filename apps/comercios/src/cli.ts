@@ -12,9 +12,8 @@ import { fileURLToPath } from "node:url";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import { openDb } from "./db.js";
-import Anthropic from "@anthropic-ai/sdk";
-
-import { analyzeProduct, DEFAULT_MODEL, pool, sampleProducts } from "./entender.js";
+import { analyzeProduct, pool, sampleProducts } from "./entender.js";
+import { createLlm } from "./llm.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { extractPolicy, readPolicyPages } from "./politicas.js";
 import { buyerQuestions, claudeEngine, judge } from "./diagnostico.js";
@@ -59,19 +58,15 @@ async function main(argv: string[]): Promise<void> {
     }
     if (command === "entender" && target !== undefined) {
       const n = Number(flag(rest, "--n") ?? 20);
-      const client = new Anthropic();
+      const llm = createLlm();
       const stores = target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
-      let tokensIn = 0;
-      let tokensOut = 0;
       for (const store of stores) {
         const sample = sampleProducts(db.products(store.id), n);
         const results = await pool(sample, 4, async (p) => {
           try {
-            const r = await analyzeProduct(client, store, p);
+            const r = await analyzeProduct(llm, store, p);
             if (r.kind === "ok") {
               db.saveAnalysis(store.id, p.id, r.model, r.analysis);
-              tokensIn += r.inputTokens;
-              tokensOut += r.outputTokens;
               return r.analysis.puntaje;
             }
             console.error(`${store.id}/${p.id}: ${r.reason}`);
@@ -84,11 +79,11 @@ async function main(argv: string[]): Promise<void> {
         const avg = scores.length === 0 ? 0 : scores.reduce((a, b) => a + b, 0) / scores.length;
         console.log(`${store.id}: ${scores.length}/${sample.length} fichas revisadas · puntaje promedio ${avg.toFixed(1)}/10`);
       }
-      console.log(`modelo ${DEFAULT_MODEL} · tokens: ${tokensIn} de entrada, ${tokensOut} de salida`);
+      console.log(`modelo ${llm.name}`);
       return;
     }
     if (command === "politicas" && target !== undefined) {
-      const client = new Anthropic();
+      const llm = createLlm();
       const fetcher = createFetcher();
       const stores = target === "all" ? STORES : target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
       for (const store of stores) {
@@ -98,12 +93,12 @@ async function main(argv: string[]): Promise<void> {
             console.log(`${store.id}: no se encontraron páginas de políticas`);
             continue;
           }
-          const policy = await extractPolicy(client, store, pages);
+          const policy = await extractPolicy(llm, store, pages);
           if (policy === undefined) {
             console.log(`${store.id}: no se pudo estructurar`);
             continue;
           }
-          db.savePolicy(store.id, DEFAULT_MODEL, pages.map((p) => p.url), policy);
+          db.savePolicy(store.id, llm.name, pages.map((p) => p.url), policy);
           console.log(`${store.id}: ${pages.length} páginas · devoluciones: ${policy.cambios_y_devoluciones.acepta}${policy.cambios_y_devoluciones.plazo_dias ? ` (${policy.cambios_y_devoluciones.plazo_dias} días)` : ""} · falta: ${policy.falta.length}`);
         } catch (error) {
           console.log(`${store.id}: falló (${(error as Error).message})`);
@@ -113,12 +108,18 @@ async function main(argv: string[]): Promise<void> {
     }
     if (command === "diagnostico" && target !== undefined) {
       const n = Number(flag(rest, "--n") ?? 8);
-      const client = new Anthropic();
-      const engines = [claudeEngine(client)];
+      const llm = createLlm();
+      const engines = [claudeEngine(llm)];
       const stores = target === "all" ? STORES : target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
       for (const store of stores) {
         const products = db.products(store.id);
-        const questions = await buyerQuestions(client, store, products, n);
+        let questions: string[];
+        try {
+          questions = await buyerQuestions(llm, store, products, n);
+        } catch (error) {
+          console.log(`${store.id}: no se pudieron escribir las preguntas (${(error as Error).message})`);
+          continue;
+        }
         let mentioned = 0;
         let cited = 0;
         let total = 0;

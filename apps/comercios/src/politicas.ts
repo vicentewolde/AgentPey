@@ -4,12 +4,10 @@
  * policy with a quote for every claim. The owner approves it; only then is it
  * offered to assistants (and mapped to the OpenAI feed's return fields).
  */
-import type Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
-import { DEFAULT_MODEL } from "./entender.js";
 import type { Fetcher } from "./http.js";
+import type { Llm } from "./llm.js";
 import { htmlToText, type Store } from "./model.js";
 
 const KEYWORDS = /despacho|env[ií]o|shipping|cambio|devoluci|refund|retracto|garant|t[eé]rminos|condiciones|terms|preguntas|faq|ayuda|medios-de-pago|formas-de-pago|pago|pol[ií]tica|policies/i;
@@ -68,17 +66,9 @@ Reglas:
 - No inventes plazos, costos ni coberturas. No completes con lo que "suelen" hacer las tiendas.
 - Español de Chile, frases cortas.`;
 
-export async function extractPolicy(client: Anthropic, store: Store, pages: { url: string; text: string }[], model = DEFAULT_MODEL): Promise<Policy | undefined> {
+export async function extractPolicy(llm: Llm, store: Store, pages: { url: string; text: string }[]): Promise<Policy | undefined> {
   const corpus = pages.map((p) => `=== ${p.url} ===\n${p.text.slice(0, 12000)}`).join("\n\n");
-  const response = await client.messages.parse({
-    model,
-    max_tokens: 16000,
-    system: SYSTEM,
-    messages: [{ role: "user", content: `Tienda: ${store.name} (${store.origin}), rubro ${store.rubro}.\n\n${corpus}` }],
-    output_config: { effort: "low", format: zodOutputFormat(PolicySchema) },
-  });
-  if (response.stop_reason !== "end_turn") return undefined;
-  return response.parsed_output ?? undefined;
+  return llm.structured(PolicySchema, SYSTEM, `Tienda: ${store.name} (${store.origin}), rubro ${store.rubro}.\n\n${corpus}`);
 }
 
 export async function readPolicyPages(store: Store, fetcher: Fetcher): Promise<{ url: string; text: string }[]> {

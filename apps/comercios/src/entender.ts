@@ -5,13 +5,10 @@
  * reorders what the store already says, and anything missing goes to the
  * owner as "por confirmar". Nothing is applied until the owner approves it.
  */
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
+import type { Llm } from "./llm.js";
 import type { Product, Store } from "./model.js";
-
-export const DEFAULT_MODEL = process.env.COMERCIOS_MODEL ?? "claude-opus-5-5";
 
 export const AnalysisSchema = z.object({
   entiende: z.string().describe("Una frase: qué producto es y para quién, según lo que dice la ficha."),
@@ -67,22 +64,12 @@ function productForPrompt(store: Store, p: Product): string {
 }
 
 export type AnalyzeResult =
-  | { readonly kind: "ok"; readonly analysis: Analysis; readonly model: string; readonly inputTokens: number; readonly outputTokens: number }
+  | { readonly kind: "ok"; readonly analysis: Analysis; readonly model: string }
   | { readonly kind: "skipped"; readonly reason: string };
 
-export async function analyzeProduct(client: Anthropic, store: Store, p: Product, model = DEFAULT_MODEL): Promise<AnalyzeResult> {
-  const response = await client.messages.parse({
-    model,
-    max_tokens: 16000,
-    system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: `Revisa esta ficha:\n\n${productForPrompt(store, p)}` }],
-    output_config: { effort: "low", format: zodOutputFormat(AnalysisSchema) },
-  });
-  if (response.stop_reason === "refusal") return { kind: "skipped", reason: "el modelo no quiso revisar esta ficha" };
-  if (response.stop_reason === "max_tokens") return { kind: "skipped", reason: "respuesta cortada" };
-  const parsed = response.parsed_output;
-  if (parsed === null || parsed === undefined) return { kind: "skipped", reason: "respuesta sin el formato esperado" };
-  return { kind: "ok", analysis: parsed, model, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens };
+export async function analyzeProduct(llm: Llm, store: Store, p: Product): Promise<AnalyzeResult> {
+  const analysis = await llm.structured(AnalysisSchema, SYSTEM, `Revisa esta ficha:\n\n${productForPrompt(store, p)}`);
+  return analysis === undefined ? { kind: "skipped", reason: "sin respuesta en el formato esperado" } : { kind: "ok", analysis, model: llm.name };
 }
 
 /** A spread sample: the catalogue sorted by price, then every k-th, so cheap and expensive items both show up. */

@@ -8,11 +8,9 @@
  * keys exist. Answers vary from run to run, so a diagnosis is a sample with a
  * date, never a ranking promise.
  */
-import type Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
-import { DEFAULT_MODEL } from "./entender.js";
+import type { Llm } from "./llm.js";
 import type { Product, Store } from "./model.js";
 
 export interface EngineAnswer {
@@ -31,50 +29,25 @@ const QuestionsSchema = z.object({
   preguntas: z.array(z.string()).describe("Preguntas de compra reales, en español de Chile, sin nombrar ninguna tienda."),
 });
 
+const QUESTIONS_SYSTEM = "Escribes preguntas que un comprador chileno le haría a un asistente de IA antes de comprar online. Naturales, concretas (presupuesto, uso, despacho, cuotas cuando aplique) y variadas: algunas genéricas ('dónde compro…') y otras de un producto específico. Nunca nombras una tienda.";
+
 /** Buyer questions for a store's catalogue, without naming the store, so the answer is not led. */
-export async function buyerQuestions(client: Anthropic, store: Store, products: readonly Product[], n = 8, model = DEFAULT_MODEL): Promise<string[]> {
+export async function buyerQuestions(llm: Llm, store: Store, products: readonly Product[], n = 8): Promise<string[]> {
   const categories = [...new Set(products.map((p) => p.category).filter((c): c is string => c !== undefined))].slice(0, 25);
   const examples = products.filter((p) => p.price !== undefined).slice(0, 40).map((p) => `${p.title} ($${p.price})`);
-  const response = await client.messages.parse({
-    model,
-    max_tokens: 4000,
-    system: "Escribes preguntas que un comprador chileno le haría a un asistente de IA antes de comprar online. Naturales, concretas (presupuesto, uso, despacho, cuotas cuando aplique) y variadas: algunas genéricas ('dónde compro…') y otras de un producto específico. Nunca nombras una tienda.",
-    messages: [{ role: "user", content: `Rubro: ${store.rubro}. Categorías: ${categories.join("; ")}.\nEjemplos del catálogo:\n${examples.join("\n")}\n\nEscribe ${n} preguntas.` }],
-    output_config: { effort: "low", format: zodOutputFormat(QuestionsSchema) },
-  });
-  return (response.parsed_output?.preguntas ?? []).slice(0, n);
+  const out = await llm.structured(QuestionsSchema, QUESTIONS_SYSTEM, `Rubro: ${store.rubro}. Categorías: ${categories.join("; ")}.\nEjemplos del catálogo:\n${examples.join("\n")}\n\nEscribe ${n} preguntas.`);
+  return (out?.preguntas ?? []).slice(0, n);
 }
 
-/** Claude answering as a shopping assistant, with web search located in Chile. */
-export function claudeEngine(client: Anthropic, model = DEFAULT_MODEL): Engine {
+const ASSISTANT_SYSTEM = "Eres un asistente de compras. El usuario está en Chile y quiere comprar online. Recomienda tiendas y productos concretos con enlaces, como lo harías normalmente.";
+
+/** Claude answering as a shopping assistant, with web search (through the subscription or the API). */
+export function claudeEngine(llm: Llm): Engine {
   return {
     name: "claude",
     async ask(question) {
-      const messages: Anthropic.MessageParam[] = [{ role: "user", content: question }];
-      let response: Anthropic.Message | undefined;
-      for (let turn = 0; turn < 3; turn++) {
-        response = await client.messages.create({
-          model,
-          max_tokens: 8000,
-          system: "Eres un asistente de compras. El usuario está en Chile y quiere comprar online. Recomienda tiendas y productos concretos con enlaces, como lo harías normalmente.",
-          tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5, user_location: { type: "approximate", country: "CL" } }],
-          messages,
-          output_config: { effort: "low" },
-        });
-        if (response.stop_reason !== "pause_turn") break;
-        messages.push({ role: "assistant", content: response.content });
-      }
-      const urls = new Set<string>();
-      let text = "";
-      for (const block of response?.content ?? []) {
-        if (block.type === "text") {
-          text += block.text;
-          for (const c of block.citations ?? []) if ("url" in c && typeof c.url === "string") urls.add(c.url);
-        } else if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
-          for (const r of block.content) if (r.type === "web_search_result") urls.add(r.url);
-        }
-      }
-      return { engine: "claude", text, urls: [...urls] };
+      const r = await llm.searchAnswer(ASSISTANT_SYSTEM, question);
+      return { engine: "claude", text: r.text, urls: r.urls };
     },
   };
 }
