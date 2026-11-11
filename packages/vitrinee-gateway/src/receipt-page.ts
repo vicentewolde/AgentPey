@@ -10,12 +10,12 @@
  * English by default with Spanish beside it, as every page of the pilot, and no
  * script: the language switch is two anchors that reload with `?lang=`.
  *
- * It wears the look of agentpey.com (same tokens, fonts, header and footer) so the
- * receipt a store owner or a buyer opens does not feel like another product. The
- * links in the header are absolute: this page lives on a store's subdomain.
+ * It wears AgentPey's one stylesheet (T207, Y-7): this gateway serves `/brand/agentpey.css` on every store's host
+ * (`brand.ts`), so the receipt looks like agentpey.com and follows the system's light or dark theme. The links in
+ * the header are absolute: this page lives on a store's subdomain.
  */
 import type { ReceiptVerification } from "@vitrinee/anchor";
-import { stellarExpertTxUrl } from "@vitrinee/core";
+import { stellarExpertAddressUrl, stellarExpertTxUrl } from "@vitrinee/core";
 
 export interface ReceiptPageInput {
   readonly orderId: string;
@@ -91,11 +91,13 @@ export function receiptPage(input: ReceiptPageInput): string {
   // A verification from before T159 has no `held`: read as a receipt paid directly.
   const held = v.checks.held ?? null;
   const check = (ok: boolean, title: keyof typeof COPY, what: keyof typeof COPY, reason?: string): string => `
-    <li class="check ${ok ? "ok" : "bad"}">
-      <span class="tick" aria-hidden="true">${ok ? "✓" : "✕"}</span>
-      <div><strong>${t(title)}</strong> <span class="state">${ok ? t("pass") : t("fail")}</span>
-      <p>${t(what)}${ok || reason === undefined ? "" : ` <em>${escape(reason)}</em>`}</p></div>
-    </li>`;
+      <li class="check ${ok ? "ok" : "bad"}">
+        <span class="rc-tick ${ok ? "ap-ok" : "ap-bad"}" aria-hidden="true">${ok ? "✓" : "✕"}</span>
+        <div class="rc-check-body">
+          <p class="rc-check-head"><strong>${t(title)}</strong> <span class="ap-pill ${ok ? "ap-ok" : "ap-bad"}">${ok ? t("pass") : t("fail")}</span></p>
+          <p class="ap-muted ap-small">${t(what)}${ok || reason === undefined ? "" : ` <em class="rc-reason">${escape(reason)}</em>`}</p>
+        </div>
+      </li>`;
 
   const items =
     r === null
@@ -103,14 +105,19 @@ export function receiptPage(input: ReceiptPageInput): string {
       : r.items
           .map(
             (item) =>
-              `<tr><td>${escape(item.name)}</td><td class="num">${String(item.quantity)}</td><td class="num">${escape(item.unitPriceUSDC)}</td></tr>`,
+              `<tr><td>${escape(item.name)}</td><td class="ap-num">${String(item.quantity)}</td><td class="ap-num">${escape(item.unitPriceUSDC)}</td></tr>`,
           )
           .join("");
+
+  const account = (address: string): string =>
+    `<a class="ap-hash" href="${escape(stellarExpertAddressUrl(address))}" title="${escape(address)}">${escape(short(address))}</a>`;
 
   const links: string[] = [];
   if (r !== null) links.push(`<a href="${escape(stellarExpertTxUrl(r.settlementTxHash))}">${t("payment")}</a>`);
   if (input.anchorTxHash !== undefined) links.push(`<a href="${escape(stellarExpertTxUrl(input.anchorTxHash))}">${t("anchor")}</a>`);
   links.push(`<a href="${escape(`/receipts/${v.hash}/verify`)}">${t("json")}</a>`);
+
+  const verdict = v.valid ? t(held === null ? "valid" : "validHeld") : t("invalid");
 
   return `<!doctype html>
 <html lang="${lang}">
@@ -122,117 +129,87 @@ export function receiptPage(input: ReceiptPageInput): string {
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/brand/agentpey.css">
 <style>
-  :root {
-    color-scheme: light;
-    --paper: #fbfaf8; --paper-2: #f2f0ea; --ink: #0f1211; --ink-2: #434946; --ink-3: #7d8481; --rule: #e3e0d9;
-    --accent: #0a7a56; --accent-soft: #e3f3ec; --bad: #b3261e; --bad-soft: #fbeceb;
-    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
-    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  .rc-main { max-width: calc(var(--ap-read) + 32px); }
+  .rc-head { display: grid; gap: 10px; }
+  .verdict .ap-note { font-family: var(--ap-display); font-weight: 600; font-size: clamp(1.15rem, 2.6vw, 1.4rem); line-height: 1.25; letter-spacing: -0.016em; padding: 18px 22px; border-radius: var(--ap-radius); }
+  ul.checks { list-style: none; margin: 0; padding: 0; display: grid; }
+  .check { display: flex; gap: 14px; align-items: flex-start; padding-block: 14px; }
+  .check:first-child { padding-top: 0; }
+  .check:last-child { padding-bottom: 0; }
+  .check + .check { border-top: 1px solid var(--ap-hair); }
+  .rc-tick { flex: none; width: 28px; height: 28px; border-radius: var(--ap-pill); display: grid; place-items: center; font-weight: 600; font-size: 0.875rem; }
+  .rc-tick.ap-ok { background: var(--ap-ok-soft); color: var(--ap-ok); }
+  .rc-tick.ap-bad { background: var(--ap-bad-soft); color: var(--ap-bad); }
+  .rc-check-body { display: grid; gap: 4px; min-width: 0; }
+  .rc-check-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .rc-reason { color: var(--ap-bad); font-style: normal; overflow-wrap: anywhere; }
+  .rc-table th.ap-num { text-align: right; }
+  .rc-table tfoot td { font-weight: 600; }
+  .rc-links { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 0.9375rem; }
+  .rc-lang { display: flex; align-items: center; }
+  @media (max-width: 560px) {
+    .ap-header .ap-wrap { flex-wrap: wrap; gap: 4px 16px; padding-block: 8px; }
+    .ap-header .ap-nav { width: 100%; gap: 4px 16px; }
+    .rc-lang { margin-left: auto; }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-  .wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 56px); }
-  .narrow { max-width: 760px; }
-  a { color: var(--accent); }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
-
-  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
-  .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; }
-  .brand .logo { width: 24px; height: 24px; flex: none; }
-  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
-  .utils > a { font-size: 13px; color: var(--ink-3); text-decoration: none; }
-  .utils > a:hover { color: var(--ink); }
-  .lang { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; }
-  .lang a { color: var(--ink-3); text-decoration: none; }
-  .lang a[aria-current] { color: var(--ink); }
-  .lang span { color: var(--rule); }
-
-  .hero { padding: clamp(28px, 4vw, 48px) 0 8px; }
-  .eyebrow { font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin: 0; display: flex; align-items: center; gap: 8px; }
-  .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1.06; letter-spacing: -0.016em; margin: 16px 0 0; }
-  .verdict { margin: 22px 0 18px; padding: 14px 18px; border-radius: 10px; border: 1px solid var(--rule); font-weight: 600; font-size: 1.02rem; }
-  .verdict.ok { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, var(--rule)); }
-  .verdict.bad { background: var(--bad-soft); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, var(--rule)); }
-
-  ul.checks { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 10px; }
-  .check { display: flex; gap: 14px; background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
-  .check p { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
-  .tick { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; }
-  .ok .tick { background: var(--accent); } .bad .tick { background: var(--bad); }
-  .state { font-size: 11.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; margin-left: 6px; }
-  .ok .state { color: var(--accent); } .bad .state { color: var(--bad); }
-
-  table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; font-size: 15px; }
-  th, td { padding: 11px 16px; text-align: left; border-bottom: 1px solid var(--rule); }
-  th { color: var(--ink-3); font-weight: 500; font-size: 12.5px; background: var(--paper-2); }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  tfoot td { font-weight: 600; border-bottom: 0; }
-  dl { display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 8px 16px; margin: 22px 0; font-size: 14px; }
-  dt { color: var(--ink-3); } dd { margin: 0; font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
-  .links { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 18px 0 36px; font-size: 13.5px; }
-  .links a { font-weight: 500; }
-
-  footer { padding: 26px 0 40px; font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--rule); display: grid; gap: 8px; }
-  footer a { color: var(--ink-3); }
-  .hash { font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; }
-  @media (max-width: 560px) { dl { grid-template-columns: 1fr; gap: 2px; } dd { margin-bottom: 10px; } }
+  .ap-footer .ap-hash { background: transparent; padding: 0; color: var(--ap-ink-2); }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <div class="top">
-    <a class="brand" href="${SITE}/">
-      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
-      <span>AgentPey</span>
-    </a>
-    <div class="utils">
-      <a href="${SITE}/">${t("home")}</a>
-      <a href="${SITE}/en-vivo">${t("live")}</a>
-      <a href="${SITE}/tiendas">${t("stores")}</a>
-      <span class="lang"><a href="?lang=en"${lang === "en" ? ' aria-current="true"' : ""}>EN</a><span aria-hidden="true">/</span><a href="?lang=es"${lang === "es" ? ' aria-current="true"' : ""}>ES</a></span>
-      <a href="https://github.com/vicentewolde/AgentPey" rel="noopener">GitHub</a>
-    </div>
-  </div>
+<body class="ap">
+<header class="ap-header"><div class="ap-wrap">
+  <a class="ap-brand" href="${SITE}/">
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+    AgentPey</a>
+  <nav class="ap-nav" aria-label="AgentPey">
+    <a href="${SITE}/">${t("home")}</a>
+    <a href="${SITE}/en-vivo">${t("live")}</a>
+    <a href="${SITE}/tiendas">${t("stores")}</a>
+    <a href="https://github.com/vicentewolde/AgentPey" rel="noopener">GitHub</a>
+    <span class="rc-lang"><span class="ap-lang"><a href="?lang=en" hreflang="en"${lang === "en" ? ' aria-current="true"' : ""}>EN</a><a href="?lang=es" hreflang="es"${lang === "es" ? ' aria-current="true"' : ""}>ES</a></span></span>
+  </nav>
+</div></header>
 
-  <main class="narrow">
-    <header class="hero">
-      <p class="eyebrow"><i aria-hidden="true"></i>${t("eyebrow")}</p>
-      <h1>${t("title")}</h1>
-    </header>
-    <p class="verdict ${v.valid ? "ok" : "bad"}">${v.valid ? t(held === null ? "valid" : "validHeld") : t("invalid")}</p>
+<main class="ap-wrap ap-main rc-main">
+  <div class="rc-head">
+    <p class="ap-eyebrow">${t("eyebrow")}</p>
+    <h1>${t("title")}</h1>
+  </div>
+  <div class="verdict ${v.valid ? "ok" : "bad"}"><p class="ap-note ${v.valid ? "ap-ok" : "ap-bad"}" role="status">${verdict}</p></div>
+  <section class="ap-card">
     <ul class="checks">
       ${check(v.checks.signature.ok, "signature", "signatureWhat", v.checks.signature.reason)}
       ${check(v.checks.anchored.ok, "anchored", "anchoredWhat", v.checks.anchored.reason)}
       ${check(v.checks.settlement.ok, "settlement", held === null ? "settlementWhat" : "settlementHeldWhat", v.checks.settlement.reason)}
       ${held === null ? "" : check(held.ok, "held", "heldWhat", held.reason)}
     </ul>
-    ${
-      r === null
-        ? ""
-        : `<table>
-      <thead><tr><th>${t("product")}</th><th class="num">${t("quantity")}</th><th class="num">USDC</th></tr></thead>
-      <tbody>${items}</tbody>
-      <tfoot><tr><td>${t("total")}</td><td></td><td class="num">${escape(r.amountUSDC)} USDC</td></tr></tfoot>
-    </table>
-    <dl>
+  </section>
+  ${
+    r === null
+      ? ""
+      : `<div class="ap-table-wrap"><table class="ap-table rc-table">
+    <thead><tr><th>${t("product")}</th><th class="ap-num">${t("quantity")}</th><th class="ap-num">USDC</th></tr></thead>
+    <tbody>${items}</tbody>
+    <tfoot><tr><td>${t("total")}</td><td></td><td class="ap-num">${escape(r.amountUSDC)} USDC</td></tr></tfoot>
+  </table></div>
+  <section class="ap-card">
+    <dl class="ap-dl">
       <dt>${t("order")}</dt><dd>${escape(input.orderId)}</dd>
       <dt>${t("issued")}</dt><dd>${escape(r.issuedAt.replace("T", " ").slice(0, 16))} UTC</dd>
-      <dt>${t("store")}</dt><dd title="${escape(r.merchantAccount)}">${escape(short(r.merchantAccount))}</dd>
-      <dt>${t("payer")}</dt><dd title="${escape(r.payerAccount)}">${escape(short(r.payerAccount))}</dd>
-    </dl>`
-    }
-    <p class="links">${links.join("")}</p>
-  </main>
+      <dt>${t("store")}</dt><dd>${account(r.merchantAccount)}</dd>
+      <dt>${t("payer")}</dt><dd>${account(r.payerAccount)}</dd>
+    </dl>
+  </section>`
+  }
+  <p class="rc-links">${links.join("")}</p>
+</main>
 
-  <footer>
-    <span>${t("testnet")}</span>
-    <span class="hash">SHA-256 ${escape(v.hash)}</span>
-  </footer>
-</div>
+<footer class="ap-footer"><div class="ap-wrap">
+  <span>${t("testnet")}</span>
+  <span class="ap-hash">SHA-256 ${escape(v.hash)}</span>
+</div></footer>
 </body>
 </html>`;
 }

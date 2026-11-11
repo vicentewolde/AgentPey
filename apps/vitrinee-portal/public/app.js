@@ -152,39 +152,39 @@ function renderStores() {
   list.forEach(function (c) {
     var head = el("div", { className: "store-head" }, [
       el("h3", { text: c.name }),
-      el("span", { className: "pill" + (c.status === "active" ? "" : " off"), text: t(c.status === "active" ? "active" : "disabled") }),
+      el("span", { className: "ap-pill" + (c.status === "active" ? " ap-ok" : ""), text: t(c.status === "active" ? "active" : "disabled") }),
     ]);
     var url = el("p", { className: "store-url" }, [
       el("a", { href: c.storeUrl + "/.well-known/agent-storefront.json", target: "_blank", rel: "noopener", text: c.storeUrl.replace(/^https?:\/\//, "") }),
       el("span", { className: "muted small", text: "  ·  " + t("manifest") }),
     ]);
-    var box = el("div", { className: "store" }, [head, url]);
+    var box = el("div", { className: "ap-card store" }, [head, url]);
     // A claim to answer comes first: its time is short (T163).
     if (c.orders.some(function (o) { return o.dispute && o.dispute.answerUrl; })) {
-      box.appendChild(el("p", { className: "notice", text: t("disputesWaiting") }));
+      box.appendChild(el("p", { className: "ap-note ap-warn", text: t("disputesWaiting") }));
     }
     if (!c.orders.length) {
       box.appendChild(el("p", { className: "empty", text: t("noOrders") }));
     } else {
       var rows = c.orders.map(function (o) {
-        var proof = el("td", {}, [
+        var proof = el("td", { "data-label": t("thProof") }, [
           el("a", { href: o.paymentUrl, target: "_blank", rel: "noopener", text: t("payment") }),
           o.receiptUrl ? el("span", { text: " · " }) : null,
           o.receiptUrl ? el("a", { href: o.receiptUrl, target: "_blank", rel: "noopener", text: t("receipt") }) : null,
         ]);
         var paid = o.status === "paid";
-        var status = [el("span", { className: "pill" + (paid ? "" : " warn"), text: t(paid ? "statusPaid" : "statusUnfulfilled") })];
+        var status = [el("span", { className: "ap-pill" + (paid ? " ap-ok" : " ap-warn"), text: t(paid ? "statusPaid" : "statusUnfulfilled") })];
         if (o.dispute) status.push(el("br"), disputeCell(o.dispute));
         return el("tr", {}, [
-          el("td", { text: new Date(o.createdAt).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" }) }),
-          el("td", { text: (o.items || []).map(function (i) { return i.name + (i.quantity > 1 ? " × " + i.quantity : ""); }).join(", ") }),
-          el("td", { className: "num", text: o.amountUSDC }),
-          el("td", {}, status),
+          el("td", { "data-label": t("thDate"), text: new Date(o.createdAt).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" }) }),
+          el("td", { "data-label": t("thProduct"), text: (o.items || []).map(function (i) { return i.name + (i.quantity > 1 ? " × " + i.quantity : ""); }).join(", ") }),
+          el("td", { className: "ap-num", "data-label": t("thAmount"), text: o.amountUSDC }),
+          el("td", { "data-label": t("thStatus") }, status),
           proof,
         ]);
       });
       var head2 = el("tr", {}, ["thDate", "thProduct", "thAmount", "thStatus", "thProof"].map(function (k) { return el("th", { text: t(k) }); }));
-      box.appendChild(el("div", { className: "table-wrap" }, [el("table", {}, [el("thead", {}, [head2]), el("tbody", {}, rows)])]));
+      box.appendChild(el("div", { className: "ap-table-wrap" }, [el("table", { className: "ap-table" }, [el("thead", {}, [head2]), el("tbody", {}, rows)])]));
     }
     holder.appendChild(box);
   });
@@ -194,14 +194,14 @@ function renderStores() {
 function disputeCell(d) {
   if (d.status === "disputed" && d.answerUrl) {
     var when = new Date(d.respondBy).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" });
-    return el("span", {}, [
-      el("span", { className: "pill warn", text: t("disputeOpen") + " " + when }),
+    return el("span", { className: "vt-dispute" }, [
+      el("span", { className: "ap-pill ap-warn", text: t("disputeOpen") + " " + when }),
       el("span", { text: " " }),
-      el("a", { href: d.answerUrl, target: "_blank", rel: "noopener", text: t("disputeAnswer") }),
+      el("a", { className: "ap-btn ap-btn-sm", href: d.answerUrl, target: "_blank", rel: "noopener", text: t("disputeAnswer") }),
     ]);
   }
-  if (d.status === "disputed") return el("span", { className: "pill warn", text: t("disputeLate") });
-  return el("span", { className: "pill" + (d.status === "responded" ? " warn" : ""), text: t(d.status === "responded" ? "disputeResponded" : "disputeClosed") });
+  if (d.status === "disputed") return el("span", { className: "ap-pill ap-bad", text: t("disputeLate") });
+  return el("span", { className: "ap-pill" + (d.status === "responded" ? " ap-warn" : ""), text: t(d.status === "responded" ? "disputeResponded" : "disputeClosed") });
 }
 
 /* ---------- registration ---------- */
@@ -266,12 +266,12 @@ function paintResult() {
   node.hidden = false;
   node.textContent = "";
   if (r.ok) {
-    node.className = "notice";
+    node.className = "ap-note ap-ok";
     node.appendChild(document.createTextNode(t("published") + " "));
     node.appendChild(el("a", { href: r.body.comercio.storeUrl + "/.well-known/agent-storefront.json", target: "_blank", rel: "noopener", text: r.body.comercio.storeUrl.replace(/^https?:\/\//, "") }));
     node.appendChild(document.createTextNode(" (" + r.body.products + " " + t("products") + "). " + t("publishedMore")));
   } else {
-    node.className = "notice err";
+    node.className = "ap-note ap-bad";
     node.textContent = refusalMessage(r.body);
   }
 }

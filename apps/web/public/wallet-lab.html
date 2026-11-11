@@ -7,7 +7,8 @@
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/brand/agentpey.css">
 <script>
   /* Language before paint: English unless the visitor chose Spanish. */
   (function () {
@@ -21,78 +22,75 @@
   })();
 </script>
 <style>
-  :root {
-    color-scheme: light;
-    --paper: #fbfaf8; --paper-2: #f2f0ea; --ink: #0f1211; --ink-2: #434946; --ink-3: #707875; --rule: #e3e0d9;
-    --accent: #0a7a56; --accent-wash: #e9f3ee; --danger: #b3261e; --danger-wash: #fbeceb;
-    --serif: "Instrument Serif", ui-serif, Georgia, serif; --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
+  /* Page layout only, with the --ap-* tokens of /brand/agentpey.css. */
   html[lang="en"] [data-tr="es"], html[lang="es"] [data-tr="en"] { display: none; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 16px 72px; }
-  h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(34px, 6vw, 52px); line-height: 1.05; margin: 0 0 12px; }
-  p.lede { color: var(--ink-2); margin: 0 0 28px; max-width: 62ch; }
-  .lang { float: right; font-size: 14px; }
-  .lang button { background: none; border: 0; color: var(--ink-3); cursor: pointer; font: inherit; padding: 2px 4px; }
-  .card { background: #fff; border: 1px solid var(--rule); border-radius: 10px; padding: 20px; margin: 0 0 16px; }
-  .card h2 { font-size: 15px; font-weight: 600; margin: 0 0 6px; }
-  .card p { margin: 0 0 12px; color: var(--ink-2); font-size: 14px; }
-  .btn { background: var(--ink); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font: 500 15px var(--sans); cursor: pointer; }
-  .btn:disabled { opacity: .4; cursor: default; }
-  .status { margin-top: 10px; font-size: 14px; min-height: 1.5em; overflow-wrap: anywhere; }
-  .ok { color: var(--accent); } .err { color: var(--danger); }
-  code, .mono { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-  pre { background: var(--paper-2); border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .lab { max-width: calc(var(--ap-read) + 32px); }
+  .lab-top { display: flex; justify-content: flex-end; }
+  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 3px 10px; border-radius: var(--ap-pill); font: 500 0.8125rem/1.4 var(--ap-text); color: var(--ap-ink-2); cursor: pointer; }
+  .lang button:hover { color: var(--ap-ink); }
+  html[lang="en"] .lang button[data-lang="en"], html[lang="es"] .lang button[data-lang="es"] { background: var(--ap-ink); color: var(--ap-bg); }
+  .intro { display: grid; gap: 14px; }
+  .lede { color: var(--ap-ink-2); }
+  .ap-card { display: grid; gap: 12px; justify-items: start; }
+  .ap-card > * { max-width: 100%; }
+  .ap-card h2 { font-size: 1.25rem; line-height: 1.2; letter-spacing: -0.012em; }
+  .ap-card > p { color: var(--ap-ink-2); font-size: 0.9375rem; }
+  .ap-table-wrap { width: 100%; background: var(--ap-bg); }
+  .ap-table td, .ap-table th { overflow-wrap: anywhere; }
+  .ap-table tbody tr:first-child td { border-top: 0; }
+  .ap-table thead + tbody tr:first-child td { border-top: 1px solid var(--ap-hair); }
+  .status { font-size: 0.9375rem; overflow-wrap: anywhere; width: 100%; }
+  .status:empty { display: none; }
+  .ok { color: var(--ap-ok); } .err { color: var(--ap-bad); }
+  pre { width: 100%; margin: 0; background: var(--ap-bg); color: var(--ap-ink); border-radius: var(--ap-radius-sm); padding: 14px 16px; overflow-x: auto; font-family: var(--ap-mono); font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
 </head>
-<body>
-<main class="wrap">
-  <div class="lang"><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button></div>
+<body class="ap">
+<main class="ap-wrap ap-main lab">
+  <div class="lab-top"><div class="ap-lang lang"><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button></div></div>
+  <header class="intro">
   <h1><span data-tr="en">Wallet lab</span><span data-tr="es">Laboratorio de wallets</span></h1>
-  <p class="lede">
+  <p class="lede ap-sub">
     <span data-tr="en">Checks, wallet by wallet, what AgentPey's signing pages need: a SEP-53 message signature that our server verifies, and a transaction signature. Testnet only. Nothing here moves money: the test transaction is checked by the server and never sent.</span>
     <span data-tr="es">Comprueba, wallet por wallet, lo que necesitan las páginas de firma de AgentPey: una firma de mensaje SEP-53 que nuestro servidor verifica, y una firma de transacción. Solo testnet. Nada de esto mueve dinero: el servidor revisa la transacción de prueba y nunca la envía.</span>
   </p>
+  </header>
 
-  <section class="card">
+  <section class="ap-card">
     <h2><span data-tr="en">0. What this page sees</span><span data-tr="es">0. Lo que ve esta página</span></h2>
     <p><span data-tr="en">Whether each wallet's extension is reachable from this page. An extension that does not show up here cannot be used here, even if it is installed.</span><span data-tr="es">Si la extensión de cada wallet se puede usar desde esta página. Una extensión que no aparece aquí no se puede usar aquí, aunque esté instalada.</span></p>
-    <table><tbody id="detected"><tr><td>…</td></tr></tbody></table>
-    <button id="detect" class="btn" type="button" style="margin-top:12px"><span data-tr="en">Check again</span><span data-tr="es">Revisar de nuevo</span></button>
+    <div class="ap-table-wrap"><table class="ap-table"><tbody id="detected"><tr><td>…</td></tr></tbody></table></div>
+    <button id="detect" class="ap-btn ap-btn-secondary" type="button"><span data-tr="en">Check again</span><span data-tr="es">Revisar de nuevo</span></button>
   </section>
 
-  <section class="card">
+  <section class="ap-card">
     <h2><span data-tr="en">1. Connect a wallet</span><span data-tr="es">1. Conecta una wallet</span></h2>
     <p><span data-tr="en">Pick the wallet to test. Use a testnet account.</span><span data-tr="es">Elige la wallet que vas a probar. Usa una cuenta de testnet.</span></p>
-    <button id="connect" class="btn" type="button"><span data-tr="en">Choose a wallet</span><span data-tr="es">Elegir una wallet</span></button>
+    <button id="connect" class="ap-btn" type="button"><span data-tr="en">Choose a wallet</span><span data-tr="es">Elegir una wallet</span></button>
     <div id="connect-status" class="status"></div>
   </section>
 
-  <section class="card">
+  <section class="ap-card">
     <h2><span data-tr="en">2. Sign a message (SEP-53)</span><span data-tr="es">2. Firma un mensaje (SEP-53)</span></h2>
     <p><span data-tr="en">The same kind of message every sign-in asks for. The server checks it with the code the real pages use.</span><span data-tr="es">El mismo tipo de mensaje que pide cada inicio de sesión. El servidor lo revisa con el mismo código de las páginas reales.</span></p>
-    <button id="message" class="btn" type="button" disabled><span data-tr="en">Sign the message</span><span data-tr="es">Firmar el mensaje</span></button>
+    <button id="message" class="ap-btn" type="button" disabled><span data-tr="en">Sign the message</span><span data-tr="es">Firmar el mensaje</span></button>
     <div id="message-status" class="status"></div>
   </section>
 
-  <section class="card">
+  <section class="ap-card">
     <h2><span data-tr="en">3. Sign a transaction</span><span data-tr="es">3. Firma una transacción</span></h2>
     <p><span data-tr="en">A test transaction from your account. The server checks your signature and drops it; it is never sent to Stellar.</span><span data-tr="es">Una transacción de prueba desde tu cuenta. El servidor revisa tu firma y la descarta; nunca se envía a Stellar.</span></p>
-    <button id="transaction" class="btn" type="button" disabled><span data-tr="en">Sign the transaction</span><span data-tr="es">Firmar la transacción</span></button>
+    <button id="transaction" class="ap-btn" type="button" disabled><span data-tr="en">Sign the transaction</span><span data-tr="es">Firmar la transacción</span></button>
     <div id="transaction-status" class="status"></div>
   </section>
 
-  <section class="card">
+  <section class="ap-card">
     <h2><span data-tr="en">Result</span><span data-tr="es">Resultado</span></h2>
-    <table>
+    <div class="ap-table-wrap"><table class="ap-table">
       <thead><tr><th>Wallet</th><th><span data-tr="en">Signs a message</span><span data-tr="es">Firma mensaje</span></th><th><span data-tr="en">Signs a transaction</span><span data-tr="es">Firma transacción</span></th><th><span data-tr="en">Verifies on the server</span><span data-tr="es">Verifica en el servidor</span></th></tr></thead>
       <tbody><tr><td id="r-wallet">-</td><td id="r-message">-</td><td id="r-transaction">-</td><td id="r-server">-</td></tr></tbody>
-    </table>
-    <p style="margin-top:12px"><span data-tr="en">Copy this and send it back:</span><span data-tr="es">Copia esto y envíalo de vuelta:</span></p>
+    </table></div>
+    <p><span data-tr="en">Copy this and send it back:</span><span data-tr="es">Copia esto y envíalo de vuelta:</span></p>
     <pre id="report">{}</pre>
   </section>
 </main>
@@ -132,7 +130,7 @@
   };
   var status = function (id, ok, text) {
     var el = document.getElementById(id);
-    el.className = "status " + (ok === null ? "" : ok ? "ok" : "err");
+    el.className = "status ap-note" + (ok === null ? "" : ok ? " ap-ok" : " ap-bad");
     el.textContent = text;
   };
   var reason = function (error) {

@@ -1,15 +1,17 @@
 <!doctype html>
-<html lang="en" data-title-en="AgentPey · AI agents buying on Stellar" data-title-es="AgentPey · agentes de IA comprando en Stellar">
+<html lang="en" data-theme="dark" data-title-en="AgentPey · AI agents buying on Stellar" data-title-es="AgentPey · agentes de IA comprando en Stellar">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>AgentPey · AI agents buying on Stellar</title>
 <meta name="description" content="AI agents buying at real stores on Stellar testnet: Claude and ChatGPT pay in USDC through UCP from a smart contract that caps each payment, every receipt is signed and anchored, and refund claims end in a verdict on-chain." />
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/brand/agentpey.css">
 <script>
   /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
   (function () {
@@ -23,212 +25,115 @@
   })();
 </script>
 <style>
-  /* The hero is a small 3D market on a blue table: people with phones walk between shops, carry coins to a vault, and every coin drops
-     through two rings, the limits. One palette (blue, ink, white, mint, flare), one display face, almost no text. */
-  :root {
-    color-scheme: light;
-    --blue: #176bff;
-    --ink: #070b16;
-    --mint: #6df2c0;
-    --flare: #ff5a36;
-    --dim: rgba(255,255,255,.74);
-    --hair: rgba(255,255,255,.12);
-    --display: "Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
-    --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-    --wrap: 1240px;
-  }
-  * { box-sizing: border-box; }
-  html { background: var(--ink); }
+  /* The landing is always dark, keynote style (DISENO-WEB.md): a centered hero with the medal from the posts, then a bento
+     of cards. Layout only; colors, fonts and radii come from /brand/agentpey.css, except the medal's own metal and glass,
+     which are the post's numbers (DISENO.md). */
+  html { background: var(--ap-bg); }
   html[lang="en"] [data-tr="es"],
   html[lang="es"] [data-tr="en"] { display: none; }
-  body { margin: 0; background: var(--ink); color: #fff; font-family: var(--body); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
-  a { color: inherit; text-decoration: none; }
-  h1, h2, p { margin: 0; }
-  .in { max-width: var(--wrap); margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
-  :focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; }
-  button { font: inherit; }
 
-  .hero { position: relative; background: var(--blue); min-height: clamp(660px, 90vh, 880px); overflow: hidden; }
-  #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .fallback { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 64px 64px; }
-  .ui { position: relative; z-index: 2; padding-bottom: 76px; pointer-events: none; }
-  .ui a, .ui button { pointer-events: auto; }
-  nav.top { display: flex; align-items: center; gap: 26px; height: 76px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -.02em; }
-  .brand svg { width: 28px; height: 28px; }
-  .nl { display: flex; gap: 26px; margin-left: 18px; font-size: 15px; color: var(--dim); }
-  .nl a:hover { color: #fff; }
-  .nr { margin-left: auto; display: flex; align-items: center; gap: 16px; }
-  .lang { font-family: var(--mono); font-size: 12px; color: var(--dim); display: flex; gap: 6px; align-items: center; }
-  .lang button { background: none; border: 0; padding: 4px 2px; color: var(--dim); cursor: pointer; font-family: var(--mono); font-size: 12px; }
-  .lang button[aria-pressed="true"] { color: #fff; font-weight: 500; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding: 0 26px; font-weight: 600; font-size: 16px; font-family: var(--body); border: 2px solid transparent; cursor: pointer; transition: transform .18s ease; background: #fff; color: var(--blue); box-shadow: 4px 4px 0 var(--ink); }
-  .btn:hover { transform: translate(-2px, -2px); }
-  .btn.dark { background: var(--ink); color: #fff; box-shadow: 4px 4px 0 rgba(255,255,255,.35); }
-  .btn.line { background: transparent; border-color: rgba(255,255,255,.7); color: #fff; box-shadow: none; }
-  .btn.sm { height: 40px; padding: 0 18px; font-size: 14px; }
-  .copy { margin-top: clamp(28px, 9vh, 84px); max-width: 560px; }
-  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-  .live-dot { width: 9px; height: 9px; background: var(--mint); border-radius: 50%; flex: none; }
-  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(42px, 6.6vw, 100px); line-height: .94; letter-spacing: -.045em; font-variation-settings: "opsz" 96; text-wrap: balance; }
-  h1 u { text-decoration: none; background: var(--ink); display: inline-block; line-height: .9; padding: .03em .14em .09em; margin-top: .06em; }
-  html[lang="es"] h1 { font-size: clamp(38px, 5.7vw, 86px); }
-  .sub { color: var(--dim); font-size: 19px; margin-top: 22px; max-width: 380px; }
-  .cta { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
-  .cap { position: absolute; z-index: 2; left: 0; right: 0; bottom: 18px; pointer-events: none; }
-  .cap span { display: block; font-family: var(--mono); font-size: 12px; line-height: 1.4; color: var(--dim); }
+  /* top bar, inside the hero (the hero is the page's only <header>) */
+  .hero .ap-header { position: relative; background: transparent; border-bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .bar-r { display: flex; align-items: center; gap: 14px; }
+  .lang { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--ap-pill); background: var(--ap-surface); }
+  .lang button { font: 500 0.8125rem/1.2 var(--ap-text); padding: 4px 10px; border: 0; border-radius: var(--ap-pill); background: transparent; color: var(--ap-ink-2); cursor: pointer; }
+  .lang button:hover { color: var(--ap-ink); }
+  .lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
 
-  /* logo strip: every mark is a white glyph with no box, the name beside it */
-  .marq { background: var(--ink); border-bottom: 1px solid var(--hair); overflow: hidden; }
-  .marq .row { display: flex; width: max-content; padding-block: 26px 30px; animation: slide 46s linear infinite; }
-  .marq .grp { display: flex; align-items: center; gap: 68px; padding-right: 68px; }
-  .lg { display: flex; align-items: center; gap: 16px; white-space: nowrap; font-family: var(--display); font-weight: 600; font-size: 27px; letter-spacing: -.02em; color: rgba(255,255,255,.95); }
-  .lg svg { width: 32px; height: 32px; fill: currentColor; flex: none; }
-  .lg svg.o { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  @keyframes slide { to { transform: translateX(-50%); } }
+  /* hero: medal, headline, subtitle, call to action */
+  .stage { text-align: center; padding-block: clamp(36px, 8vh, 80px) clamp(64px, 12vh, 120px); }
+  .medal { position: relative; width: clamp(150px, 22vw, 220px); aspect-ratio: 1; margin: 0 auto clamp(40px, 7vh, 64px); }
+  .medal::before { content: ""; position: absolute; inset: -70%; border-radius: 50%; background: radial-gradient(circle, rgba(23,107,255,.30), rgba(23,107,255,0) 62%); z-index: -1; }
+  .medal-ring { position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(150deg, #fdfdfe, #c3c9d0 35%, #f2f4f6 55%, #8e97a1); }
+  .medal-disc { position: absolute; inset: 8.5%; border-radius: 50%; background: radial-gradient(circle at 50% 22%, #4d95ff, #176bff 45%, #0a2f86); display: grid; place-items: center; }
+  .medal-disc svg { width: 34%; height: 34%; color: #fff; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ap-ok); flex: none; }
+  .stage h1 { font-size: clamp(2.6rem, 7.4vw, 5rem); line-height: 1.04; }
+  .stage h1 .l { display: block; }
+  html[lang="es"] .stage h1 { font-size: clamp(2.15rem, 6.8vw, 4.6rem); }
+  .stage .ap-sub { margin: 20px auto 0; max-width: 30ch; }
+  .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
 
-  .proof { padding-block: 88px 0; }
-  .proof .eyebrow { color: var(--mint); }
-  h2 { font-family: var(--display); font-weight: 700; font-size: clamp(36px, 5.2vw, 76px); line-height: .96; letter-spacing: -.04em; text-wrap: balance; font-variation-settings: "opsz" 72; }
-  .nums { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-top: 1px solid var(--hair); margin-top: 44px; }
-  .stat { padding: 28px 24px 30px 0; border-bottom: 1px solid var(--hair); }
-  .stat + .stat { padding-left: 24px; border-left: 1px solid var(--hair); }
-  .stat b { display: block; font-family: var(--display); font-weight: 800; font-size: clamp(48px, 6vw, 96px); letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
-  .stat > span { color: rgba(255,255,255,.62); font-size: 15px; display: block; margin-top: 8px; }
-  .stats-note { margin-top: 16px; font-family: var(--mono); font-size: 12px; color: rgba(255,255,255,.5); }
-  .stats-note a { text-decoration: underline; text-underline-offset: 3px; }
+  /* the page's buttons: the sheet's pill (.btn is the class the tests pin) */
+  .ap a.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 26px; border-radius: var(--ap-pill); background: var(--ap-accent); color: var(--ap-accent-ink); font: 500 1.0625rem/1.2 var(--ap-text); letter-spacing: -0.012em; text-decoration: none; transition: filter .15s ease; }
+  .ap a.btn:hover { filter: brightness(1.08); text-decoration: none; }
+  .ap a.btn.line { background: var(--ap-surface); color: var(--ap-ink); }
+  .ap a.btn.sm { min-height: 34px; padding: 6px 16px; font-size: 0.9375rem; }
 
-  .explore { margin-top: 72px; border-top: 1px solid var(--hair); }
-  .explore a { display: grid; grid-template-columns: 220px minmax(0,1fr) auto; gap: 24px; align-items: center; padding: 26px 0; border-bottom: 1px solid var(--hair); transition: padding .2s ease; }
-  .explore a:hover { padding-left: 14px; }
-  .explore .k { font-family: var(--display); font-weight: 700; font-size: 28px; letter-spacing: -.03em; }
-  .explore .d { color: rgba(255,255,255,.64); }
-  .explore .go { font-family: var(--mono); font-size: 18px; color: var(--mint); }
+  /* bento */
+  .bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .bento > * { min-width: 0; }
+  .wide { grid-column: 1 / -1; }
+  .card-num h2 { font-size: clamp(2rem, 4.6vw, 3rem); }
+  .nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-top: 32px; }
+  .stat b { display: block; font-family: var(--ap-display); font-weight: 600; font-size: clamp(2.25rem, 5vw, 3.5rem); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .stat > span { display: block; margin-top: 8px; color: var(--ap-ink-2); font-size: 0.9375rem; }
+  .ap .stats-note { margin-top: 28px; }
+  .ap .works { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--ap-hair); display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--ap-ink-2); font-size: 0.9375rem; }
+  .works span { color: var(--ap-ink); font-weight: 500; }
+  .ap a.go { display: flex; flex-direction: column; gap: 8px; color: var(--ap-ink); text-decoration: none; transition: background-color .15s ease; }
+  .ap a.go:hover { background: var(--ap-surface-2); text-decoration: none; }
+  .go h3 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.022em; }
+  .go .arrow { margin-top: auto; padding-top: 28px; color: var(--ap-link); font-size: 1.5rem; line-height: 1; }
 
-  .close { background: var(--blue); margin-top: 96px; padding-block: 104px; position: relative; overflow: hidden; }
-  .close::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 64px 64px; }
-  .close .in { position: relative; display: flex; justify-content: space-between; align-items: end; gap: 40px; flex-wrap: wrap; }
-  .close h2 { font-size: clamp(44px, 7.4vw, 112px); line-height: .9; max-width: 11ch; }
-  .close .cta { margin: 0; }
-  footer { padding-block: 40px 28px; }
-  footer .in { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; color: rgba(255,255,255,.55); font-size: 14px; }
-  footer .fl { display: flex; gap: 24px; flex-wrap: wrap; }
-  footer a:hover { color: #fff; }
+  /* closing call */
+  .close { text-align: center; padding-block: clamp(72px, 14vh, 128px); }
+  .close h2 { font-size: clamp(2.2rem, 6vw, 4rem); letter-spacing: -0.028em; }
 
-  @media (min-width: 1100px) and (max-width: 1499px) {
-    .copy { max-width: 470px; }
-  }
-  @media (max-width: 1099px) {
-    .hero { min-height: max(90vh, 880px); }
-    .copy { margin-top: 28px; }
-  }
-  @media (max-width: 860px) {
-    .nl { display: none; }
-    .nr { gap: 12px; }
-    .nums { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .stat:nth-child(odd) { padding-left: 0; border-left: 0; }
-    .explore a { grid-template-columns: 1fr auto; row-gap: 4px; }
-    .explore .d { grid-column: 1; grid-row: 2; }
-    .explore .go { grid-column: 2; grid-row: 1; }
-  }
   @media (max-width: 760px) {
-    .hero { min-height: clamp(720px, 96vh, 900px); }
-    .copy { margin-top: 18px; }
-    .sub { font-size: 17px; }
+    .hide-sm { display: none; }
+    .bento { grid-template-columns: minmax(0, 1fr); }
+    .nums { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 28px; }
   }
-  @media (max-width: 400px) {
-    nav.top { gap: 12px; }
-    .brand { font-size: 19px; gap: 8px; }
-    .brand svg { width: 24px; height: 24px; }
-    .nr { gap: 8px; }
-    .btn.sm { height: 36px; padding: 0 12px; font-size: 13px; }
-    .btn { padding: 0 20px; font-size: 15px; }
-    .stat b { font-size: clamp(40px, 13vw, 56px); }
-    .explore .k { font-size: 24px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .medal { animation: float 7s ease-in-out infinite; }
+    @keyframes float { 50% { transform: translateY(-8px); } }
   }
-  @media (prefers-reduced-motion: reduce) { .marq .row { animation: none; } .btn, .explore a { transition: none; } }
 </style>
 </head>
-<body>
-
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <symbol id="i-stellar" viewBox="0 0 24 24"><path d="M12.003 1.716c-1.37 0-2.7.27-3.948.78A10.18 10.18 0 0 0 2.66 7.901a10.136 10.136 0 0 0-.797 3.954c0 .258.01.516.027.775a1.942 1.942 0 0 1-1.055 1.88L0 14.934v1.902l2.463-1.26.072-.032v.005l.77-.39.758-.385.066-.039 14.807-7.56 1.666-.847 3.392-1.732V2.694L17.792 5.86 3.744 13.025l-.104.055-.017-.115a8.286 8.286 0 0 1-.071-1.105c0-2.255.88-4.377 2.474-5.977a8.462 8.462 0 0 1 2.71-1.82 8.513 8.513 0 0 1 3.2-.654h.067a8.41 8.41 0 0 1 4.09 1.055l1.628-.83.126-.066a10.11 10.11 0 0 0-5.845-1.853zM24 7.143 5.047 16.808l-1.666.847L0 19.382v1.902l3.282-1.671 2.91-1.485 14.058-7.153.105-.055.016.115c.05.369.072.743.072 1.11 0 2.255-.88 4.383-2.475 5.978a8.461 8.461 0 0 1-2.71 1.82 8.305 8.305 0 0 1-3.2.654h-.06c-1.441 0-2.86-.369-4.102-1.061l-.066.033-1.683.857c.594.418 1.232.776 1.903 1.062a10.11 10.11 0 0 0 3.947.797 10.09 10.09 0 0 0 7.17-2.975 10.136 10.136 0 0 0 2.969-7.18c0-.259-.005-.523-.027-.781a1.942 1.942 0 0 1 1.055-1.88L24 9.044z"/></symbol>
-  <symbol id="i-circle" viewBox="0 0 24 24"><path d="M20.788 3.832c-.101-.105-.197-.213-.301-.317-.103-.103-.211-.202-.32-.302A11.903 11.903 0 0 0 12 0a11.926 11.926 0 0 0-8.486 3.514C-1.062 8.09-1.16 15.47 3.213 20.168c.099.108.197.214.3.32.104.103.21.2.317.3A11.92 11.92 0 0 0 12 24c3.206 0 6.22-1.247 8.487-3.512 4.576-4.576 4.673-11.956.301-16.656zm-16.655.301A11.057 11.057 0 0 1 12 .874c2.825 0 5.49 1.048 7.55 2.958l-1.001 1.002A9.646 9.646 0 0 0 12 2.292a9.644 9.644 0 0 0-6.865 2.844A9.644 9.644 0 0 0 2.292 12c0 2.448.9 4.753 2.542 6.549L3.831 19.55C-.201 15.191-.101 8.367 4.133 4.133zm13.798 1.318v.002l-1.015 1.014A7.346 7.346 0 0 0 12 4.589 7.357 7.357 0 0 0 6.761 6.76 7.362 7.362 0 0 0 4.589 12a7.34 7.34 0 0 0 1.877 4.913l-1.014 1.016A8.77 8.77 0 0 1 3.167 12a8.77 8.77 0 0 1 2.588-6.245A8.771 8.771 0 0 1 12 3.167c2.213 0 4.301.809 5.931 2.284zM18.537 12c0 1.745-.681 3.387-1.916 4.622S13.746 18.538 12 18.538a6.491 6.491 0 0 1-4.296-1.621l-.001-.004c-.11-.094-.22-.188-.324-.291a6.027 6.027 0 0 1-.293-.326A6.47 6.47 0 0 1 5.466 12c0-1.746.679-3.387 1.914-4.621A6.488 6.488 0 0 1 12 5.465c1.599 0 3.105.576 4.295 1.62.111.096.224.19.326.295.104.104.2.214.295.324A6.482 6.482 0 0 1 18.537 12zM7.084 17.534h.001A7.349 7.349 0 0 0 12 19.413a7.35 7.35 0 0 0 5.239-2.174A7.354 7.354 0 0 0 19.412 12a7.364 7.364 0 0 0-1.876-4.916l1.013-1.012A8.777 8.777 0 0 1 20.834 12a8.765 8.765 0 0 1-2.589 6.246A8.764 8.764 0 0 1 12 20.834a8.782 8.782 0 0 1-5.93-2.285l1.014-1.015zm12.783 2.333A11.046 11.046 0 0 1 12 23.125a11.042 11.042 0 0 1-7.551-2.957l1.004-1.001a9.64 9.64 0 0 0 6.549 2.542 9.639 9.639 0 0 0 6.865-2.846A9.642 9.642 0 0 0 21.71 12a9.64 9.64 0 0 0-2.543-6.548l1.001-1.002c4.031 4.359 3.935 11.182-.301 15.417z"/></symbol>
-  <symbol id="i-mcp" viewBox="0 0 24 24"><path d="M13.85 0a4.16 4.16 0 0 0-2.95 1.217L1.456 10.66a.835.835 0 0 0 0 1.18.835.835 0 0 0 1.18 0l9.442-9.442a2.49 2.49 0 0 1 3.541 0 2.49 2.49 0 0 1 0 3.541L8.59 12.97l-.1.1a.835.835 0 0 0 0 1.18.835.835 0 0 0 1.18 0l.1-.098 7.03-7.034a2.49 2.49 0 0 1 3.542 0l.049.05a2.49 2.49 0 0 1 0 3.54l-8.54 8.54a1.96 1.96 0 0 0 0 2.755l1.753 1.753a.835.835 0 0 0 1.18 0 .835.835 0 0 0 0-1.18l-1.753-1.753a.266.266 0 0 1 0-.394l8.54-8.54a4.185 4.185 0 0 0 0-5.9l-.05-.05a4.16 4.16 0 0 0-2.95-1.218c-.2 0-.401.02-.6.048a4.17 4.17 0 0 0-1.17-3.552A4.16 4.16 0 0 0 13.85 0m0 3.333a.84.84 0 0 0-.59.245L6.275 10.56a4.186 4.186 0 0 0 0 5.902 4.186 4.186 0 0 0 5.902 0L19.16 9.48a.835.835 0 0 0 0-1.18.835.835 0 0 0-1.18 0l-6.985 6.984a2.49 2.49 0 0 1-3.54 0 2.49 2.49 0 0 1 0-3.54l6.983-6.985a.835.835 0 0 0 0-1.18.84.84 0 0 0-.59-.245"/></symbol>
-  <symbol id="i-claude" viewBox="0 0 24 24"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></symbol>
-  <symbol id="i-ucp" viewBox="0 0 24 24"><path d="M3 9.5 4.6 4h14.8L21 9.5M3 9.5h18M3 9.5v10.5h18V9.5M9.5 20v-6h5v6"/></symbol>
-  <symbol id="i-ap2" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3zM8.5 12l2.5 2.5 4.5-5"/></symbol>
-  <symbol id="i-x402" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM7.5 12h9M13 8.5l3.5 3.5-3.5 3.5"/></symbol>
-  <symbol id="i-openai" viewBox="0 0 24 24"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654 2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></symbol>
-</svg>
+<body class="ap">
 
 <header class="hero">
-  <div class="fallback" id="fallback"></div>
-  <canvas id="scene" role="img" aria-label="A small 3D market: people with phones walk between shops and carry coins that drop through two limit rings into a vault."></canvas>
-  <div class="ui">
-    <div class="in">
-      <nav class="top">
-        <a class="brand" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#070b16" stroke-width="60"/></svg>AgentPey</a>
-        <div class="nl">
-          <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
-          <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
-          <a href="#explore"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></a>
-        </div>
-        <div class="nr">
-          <div class="lang">
-            <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
-            <span aria-hidden="true">/</span>
-            <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
-          </div>
-          <a class="btn dark sm" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
-        </div>
+  <div class="ap-header"><div class="ap-wrap">
+    <a class="ap-brand" href="/">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+      AgentPey</a>
+    <div class="bar-r">
+      <nav class="ap-nav hide-sm" aria-label="AgentPey">
+        <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+        <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+        <a href="#explore"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></a>
+        <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
       </nav>
-      <div class="copy">
-        <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
-        <h1>
-          <span data-tr="en">Agents buy. You stay <u>in charge.</u></span>
-          <span data-tr="es">Los agentes compran. Tú sigues <u>al mando.</u></span>
-        </h1>
-        <p class="sub"><span data-tr="en">The payment rail for AI agents on Stellar.</span><span data-tr="es">El riel de pagos para agentes de IA en Stellar.</span></p>
-        <div class="cta">
-          <a class="btn" href="/en-vivo"><span data-tr="en">See agents buying, live →</span><span data-tr="es">Mira a los agentes comprar, en vivo →</span></a>
-        </div>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
       </div>
     </div>
+  </div></div>
+
+  <div class="ap-wrap stage">
+    <div class="medal" aria-hidden="true">
+      <div class="medal-ring"></div>
+      <div class="medal-disc"><svg viewBox="0 0 512 512"><defs><mask id="ap-cut-medal" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut-medal)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg></div>
+    </div>
+    <p class="ap-eyebrow eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <h1>
+      <span data-tr="en"><span class="l">Agents buy.</span> <span class="l">You stay <span class="ap-grad">in charge.</span></span></span>
+      <span data-tr="es"><span class="l">Los agentes compran.</span> <span class="l">Tú sigues <span class="ap-grad">al mando.</span></span></span>
+    </h1>
+    <p class="ap-sub"><span data-tr="en">The payment rail for AI agents on Stellar.</span><span data-tr="es">El riel de pagos para agentes de IA en Stellar.</span></p>
+    <div class="cta">
+      <a class="btn" href="/en-vivo"><span data-tr="en">See agents buying, live →</span><span data-tr="es">Mira a los agentes comprar, en vivo →</span></a>
+    </div>
   </div>
-  <div class="cap"><div class="in"><span><span data-tr="en">Illustration: agents, shops, two limit rings, one escrow.</span><span data-tr="es">Ilustración: agentes, tiendas, dos anillos de límite, un escrow.</span></span></div></div>
 </header>
 
-<div class="marq" aria-label="Works with">
-  <div class="row">
-    <div class="grp">
-      <div class="lg"><svg><use href="#i-stellar"/></svg>Stellar</div>
-      <div class="lg"><svg><use href="#i-circle"/></svg>USDC</div>
-      <div class="lg"><svg class="o"><use href="#i-ucp"/></svg>UCP</div>
-      <div class="lg"><svg class="o"><use href="#i-ap2"/></svg>AP2</div>
-      <div class="lg"><svg class="o"><use href="#i-x402"/></svg>x402</div>
-      <div class="lg"><svg><use href="#i-mcp"/></svg>MCP</div>
-      <div class="lg"><svg><use href="#i-claude"/></svg>Claude</div>
-      <div class="lg"><svg><use href="#i-openai"/></svg>ChatGPT</div>
-    </div>
-    <div class="grp" aria-hidden="true">
-      <div class="lg"><svg><use href="#i-stellar"/></svg>Stellar</div>
-      <div class="lg"><svg><use href="#i-circle"/></svg>USDC</div>
-      <div class="lg"><svg class="o"><use href="#i-ucp"/></svg>UCP</div>
-      <div class="lg"><svg class="o"><use href="#i-ap2"/></svg>AP2</div>
-      <div class="lg"><svg class="o"><use href="#i-x402"/></svg>x402</div>
-      <div class="lg"><svg><use href="#i-mcp"/></svg>MCP</div>
-      <div class="lg"><svg><use href="#i-claude"/></svg>Claude</div>
-      <div class="lg"><svg><use href="#i-openai"/></svg>ChatGPT</div>
-    </div>
-  </div>
-</div>
-
-<main>
-  <section class="proof" id="live">
-    <div class="in">
-      <p class="eyebrow"><span data-tr="en">Today on agentpey.com</span><span data-tr="es">Hoy en agentpey.com</span></p>
+<main class="ap-wrap">
+  <div class="bento">
+    <section class="ap-card wide card-num" id="live">
+      <p class="ap-eyebrow"><span data-tr="en">Today on agentpey.com</span><span data-tr="es">Hoy en agentpey.com</span></p>
       <h2><span data-tr="en">Live on the network.</span><span data-tr="es">En vivo en la red.</span></h2>
       <div class="nums" id="hero-stats" aria-live="polite">
         <div class="stat"><b id="live-stores">…</b><span><span data-tr="en">stores</span><span data-tr="es">tiendas</span></span></div>
@@ -236,42 +141,51 @@
         <div class="stat"><b id="live-usdc">…</b><span><span data-tr="en">USDC paid</span><span data-tr="es">USDC pagados</span></span></div>
         <div class="stat"><b id="live-disputes">…</b><span><span data-tr="en">claims resolved on-chain</span><span data-tr="es">reclamos resueltos en la red</span></span></div>
       </div>
-      <p class="stats-note"><span data-tr="en">Read live from the store directory and the network, as on <a href="/en-vivo">/en-vivo</a>.</span><span data-tr="es">Leído en vivo del directorio de tiendas y de la red, como en <a href="/en-vivo">/en-vivo</a>.</span></p>
+      <p class="stats-note ap-small ap-muted"><span data-tr="en">Read live from the store directory and the network, as on <a href="/en-vivo">/en-vivo</a>.</span><span data-tr="es">Leído en vivo del directorio de tiendas y de la red, como en <a href="/en-vivo">/en-vivo</a>.</span></p>
+      <p class="works" aria-label="Works with"><span>Stellar</span><span>USDC</span><span>UCP</span><span>AP2</span><span>x402</span><span>MCP</span><span>Claude</span><span>ChatGPT</span></p>
+    </section>
 
-      <div class="explore" id="explore">
-        <a href="/en-vivo"><span class="k"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></span><span class="d"><span data-tr="en">Every purchase an agent makes, read from the network.</span><span data-tr="es">Cada compra de un agente, leída de la red.</span></span><span class="go" aria-hidden="true">→</span></a>
-        <a href="/tiendas"><span class="k"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></span><span class="d"><span data-tr="en">The stores agents can buy from.</span><span data-tr="es">Las tiendas donde los agentes pueden comprar.</span></span><span class="go" aria-hidden="true">→</span></a>
-        <a href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T124-reembolso-real.md" target="_blank" rel="noopener"><span class="k"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></span><span class="d"><span data-tr="en">A real refund, from claim to verdict.</span><span data-tr="es">Un reembolso real, del reclamo al veredicto.</span></span><span class="go" aria-hidden="true">↗</span></a>
-        <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener"><span class="k"><span data-tr="en">Open tools</span><span data-tr="es">Herramientas abiertas</span></span><span class="d"><span data-tr="en">@agentpey/ucp-stellar on npm.</span><span data-tr="es">@agentpey/ucp-stellar en npm.</span></span><span class="go" aria-hidden="true">↗</span></a>
-      </div>
-    </div>
-  </section>
+    <a class="ap-card go" href="/en-vivo">
+      <h3><span data-tr="en">Live</span><span data-tr="es">En vivo</span></h3>
+      <p class="ap-muted"><span data-tr="en">Every purchase an agent makes, read from the network.</span><span data-tr="es">Cada compra de un agente, leída de la red.</span></p>
+      <span class="arrow" aria-hidden="true">→</span>
+    </a>
+    <a class="ap-card go" href="/tiendas">
+      <h3><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></h3>
+      <p class="ap-muted"><span data-tr="en">The stores agents can buy from.</span><span data-tr="es">Las tiendas donde los agentes pueden comprar.</span></p>
+      <span class="arrow" aria-hidden="true">→</span>
+    </a>
+
+    <a class="ap-card go" id="explore" href="https://github.com/vicentewolde/AgentPey/blob/main/docs/fase-8-agentes-reales/evidencia/T124-reembolso-real.md" target="_blank" rel="noopener">
+          <h3><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></h3>
+          <p class="ap-muted"><span data-tr="en">A real refund, from claim to verdict.</span><span data-tr="es">Un reembolso real, del reclamo al veredicto.</span></p>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+    <a class="ap-card go" href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">
+          <h3><span data-tr="en">Open tools</span><span data-tr="es">Herramientas abiertas</span></h3>
+          <p class="ap-muted"><span data-tr="en">@agentpey/ucp-stellar on npm.</span><span data-tr="es">@agentpey/ucp-stellar en npm.</span></p>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </a>
+  </div>
 
   <div class="close">
-    <div class="in">
-      <h2><span data-tr="en">Watch an agent buy.</span><span data-tr="es">Mira a un agente comprar.</span></h2>
-      <div class="cta">
-        <a class="btn" href="https://realops.agentpey.com"><span data-tr="en">Open the live pilot →</span><span data-tr="es">Abre el piloto en vivo →</span></a>
-        <a class="btn line" href="/tiendas"><span data-tr="en">View the stores</span><span data-tr="es">Ver las tiendas</span></a>
-      </div>
+    <h2><span data-tr="en">Watch an agent buy.</span><span data-tr="es">Mira a un agente comprar.</span></h2>
+    <div class="cta">
+      <a class="btn" href="https://realops.agentpey.com"><span data-tr="en">Open the live pilot →</span><span data-tr="es">Abre el piloto en vivo →</span></a>
+      <a class="btn line" href="/tiendas"><span data-tr="en">View the stores</span><span data-tr="es">Ver las tiendas</span></a>
     </div>
   </div>
 </main>
 
-<footer>
-  <div class="in">
-    <div>
-      <span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span>
-      <span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span>
-    </div>
-    <div class="fl">
-      <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
-      <a href="https://realops.agentpey.com">RealOps</a>
-      <a href="https://signaldesk.agentpey.com">SignalDesk</a>
-    </div>
-  </div>
-</footer>
+<footer class="ap-footer"><div class="ap-wrap">
+  <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
+  <span class="ap-row">
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+    <a href="https://realops.agentpey.com">RealOps</a>
+    <a href="https://signaldesk.agentpey.com">SignalDesk</a>
+  </span>
+</div></footer>
 
 <script>
   /* The numbers, read live from /api/live: never written by hand (T152). A failed read says so, and retries once. */
@@ -333,8 +247,6 @@
   })();
 </script>
 
-<script src="/vendor/three.min.js"></script>
-<script src="/scene.js"></script>
 
 </body>
 </html>

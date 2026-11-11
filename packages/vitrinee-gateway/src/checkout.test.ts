@@ -202,7 +202,7 @@ describe("POST /checkout/:productId — payment and order", () => {
     expect(en).toContain('href="https://agentpey.com/"');
     expect(en).toContain('href="https://agentpey.com/en-vivo"');
     expect(en).toContain('href="https://agentpey.com/tiendas"');
-    expect(en).toContain("Instrument+Serif");
+    expect(en).toContain('href="/brand/agentpey.css"');
     expect(en).not.toContain("<script");
 
     // The cookie agentpey.com sets for its subdomains picks the language when the URL does not.

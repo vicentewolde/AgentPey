@@ -41,7 +41,7 @@ describe("the static pages", () => {
     expect(button).toBeGreaterThan(html.indexOf('class="utils"'));
     expect(button).toBeLessThan(html.indexOf('<header class="hero">'));
     expect(html).not.toContain('id="wallet-panel"');
-    expect(html).toContain('<a id="return-link" class="btn big">');
+    expect(html).toContain('<a id="return-link" class="ap-btn">');
   });
 
   it("resolve/responder.html signs with the tested module, shows no em dash, and every Spanish line has its English one (T126)", async () => {
@@ -80,18 +80,14 @@ describe("the static pages", () => {
     expect(html).toContain('href="/tiendas"');
   });
 
-  // The 3D hero: Three.js is served from this origin and never a CDN, and the scene code reads no data and writes no HTML.
-  it("landing.html draws its 3D hero from /scene.js and a self-hosted Three.js, never a CDN", async () => {
+  // T207 (Y-7): the 3D scene gave way to the medal of the brand's posts; the landing loads no Three.js and no CDN script.
+  it("landing.html draws its hero without Three.js or a CDN, with the brand's one stylesheet", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "landing.html"), "utf8");
-    expect(html).toContain('<script src="/vendor/three.min.js"></script>');
-    expect(html).toContain('<script src="/scene.js"></script>');
+    expect(html).not.toContain("three.min.js");
+    expect(html).not.toContain("scene.js");
     expect(html).not.toMatch(/cdnjs|unpkg\.com|jsdelivr/);
-    const three = await readFile(resolve(PUBLIC_DIR, "vendor/three.min.js"), "utf8");
-    expect(three.length).toBeGreaterThan(100_000);
-    const scene = await readFile(resolve(PUBLIC_DIR, "scene.js"), "utf8");
-    expect(scene).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write|fetch\(/);
-    expect(scene).not.toContain("—");
-    expect(scene).toContain('document.querySelector(".hero")');
+    expect(html).toContain('href="/brand/agentpey.css"');
+    expect(html).toContain('class="medal"');
   });
 
   // T152: the landing's numbers are read live, never written by hand, and it points at the live pages.

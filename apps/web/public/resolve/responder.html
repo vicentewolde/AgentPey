@@ -8,7 +8,8 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/brand/agentpey.css">
 <script>
   /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
   (function () {
@@ -22,157 +23,68 @@
   })();
 </script>
 <style>
-  :root {
-    color-scheme: light;
-    --paper: #fbfaf8;
-    --paper-2: #f2f0ea;
-    --ink: #0f1211;
-    --ink-2: #434946;
-    --ink-3: #707875;
-    --rule: #e3e0d9;
-    --accent: #0a7a56;
-    --accent-wash: #e9f3ee;
-    --danger: #b3261e;
-    --danger-wash: #fbeceb;
-    --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
-    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  }
-
-  * { box-sizing: border-box; }
-
+  /* Page layout only; colors, type and shapes come from /brand/agentpey.css (T207). */
   html[lang="en"] [data-tr="es"],
   html[lang="es"] [data-tr="en"] { display: none; }
 
-  body {
-    margin: 0;
-    background: var(--paper);
-    color: var(--ink);
-    font-family: var(--sans);
-    font-size: 16px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
+  /* top bar: brand, wallet, apps and the EN/ES switch */
+  .ap-header .ap-wrap { flex-wrap: wrap; padding-block: 8px; }
+  .utils { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 18px; }
+  .ap-lang button { appearance: none; border: 0; margin: 0; background: transparent; color: var(--ap-ink-2); cursor: pointer;
+    font: 500 0.8125rem/1.4 var(--ap-text); padding: 3px 10px; border-radius: var(--ap-pill); }
+  .ap-lang button:hover { color: var(--ap-ink); }
+  .ap-lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
+  /* The wallet lives in the top bar, where every web3 site puts it (T108, T114). */
+  .wallet-top.connected { background: var(--ap-surface); color: var(--ap-ink); font-family: var(--ap-mono); font-size: 0.8125rem; letter-spacing: 0; }
+  .wallet-top.connected::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ap-ok); }
+  .wallet-top:disabled { cursor: wait; }
 
-  .wrap { width: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 56px) 72px; }
+  /* hero */
+  .hero { display: grid; gap: 14px; justify-items: start; padding-top: 8px; }
+  .hero h1 { margin-top: 4px; }
+  .intro { max-width: var(--ap-read); color: var(--ap-ink-2); font-size: 1.0625rem; }
 
-  /* ---------- top bar (shared pilot chrome) ---------- */
-  .top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; padding: 22px 0 0; }
-  .mark { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
-  .mark .logo { width: 24px; height: 24px; flex: none; }
-  .mark .tagline { font-weight: 400; color: var(--ink-3); font-size: 12.5px; letter-spacing: 0; border-left: 1px solid var(--rule); padding-left: 10px; margin-left: 2px; }
-  @media (max-width: 560px) { .mark .tagline { display: none; } }
-  .utils { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
-  .apps { display: flex; align-items: center; gap: 16px; }
-  .apps a { font-size: 13px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
-  .apps a:hover { color: var(--accent); }
-  .gh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); text-decoration: none; font-size: 13px; }
-  .gh:hover { color: var(--ink); }
-  .lang { display: flex; align-items: center; gap: 8px; }
-  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 2px 1px; font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); cursor: pointer; }
-  .lang span { color: var(--rule); font-size: 11.5px; }
-  .lang button:hover { color: var(--ink-2); background: none; transform: none; }
-  html[lang="en"] .lang button[data-set-lang="en"],
-  html[lang="es"] .lang button[data-set-lang="es"] { color: var(--ink); }
-  .mark:focus-visible, .apps a:focus-visible, .gh:focus-visible, .lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
-
-  .eyebrow.live { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: live-pulse 2s ease-out infinite; }
-  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 6px transparent; } }
-  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
-
-  /* ---------- page ---------- */
-  .hero { padding: clamp(30px, 6vw, 54px) 0 32px; }
-  .kicker { margin: 22px 0 0; color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-  h1 { margin: 12px 0 0; font-family: var(--serif); font-size: clamp(2.25rem, 7vw, 3.25rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; }
-  .intro { max-width: 80ch; margin: 16px 0 0; color: var(--ink-2); }
-  .session-id { margin: 16px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
-
-  .panel { border-top: 1px solid var(--rule); padding: 28px 0; }
-  .panel:last-child { border-bottom: 1px solid var(--rule); }
-  .panel-kicker { color: var(--ink-3); font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
-  h2 { margin: 6px 0 8px; font-family: var(--serif); font-size: 1.75rem; font-weight: 400; letter-spacing: -0.015em; line-height: 1.15; }
-  .lead { max-width: 80ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; }
-
-  .grant { margin: 0; }
-  .grant-row { display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 1fr); gap: 16px; padding: 15px 0; border-top: 1px dashed var(--rule); }
-  .grant-row:first-child { border-top: 0; }
-  .grant dt { color: var(--ink-3); font-size: 14px; }
-  .grant dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-  .time-note { margin: 18px 0 0; color: var(--ink-3); font-size: 13px; }
-  .time-note strong { color: var(--ink-2); font-weight: 500; }
-
-  .btn { appearance: none; display: inline-block; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: var(--paper); cursor: pointer; font-family: var(--sans); font-size: 14px; font-weight: 500; padding: 11px 18px; text-decoration: none; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
-  .btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
-  .btn:disabled { background: var(--rule); border-color: var(--rule); color: var(--ink-3); cursor: not-allowed; }
-  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  .btn.secondary { background: transparent; border-color: var(--rule); color: var(--ink); }
-  .btn.secondary:hover:not(:disabled) { background: var(--paper-2); border-color: var(--ink-3); }
+  /* steps */
+  .step { display: grid; gap: 14px; }
+  .step h2 { font-size: clamp(1.35rem, 2.6vw, 1.75rem); line-height: 1.15; }
+  .lead { max-width: var(--ap-read); color: var(--ap-ink-2); font-size: 0.9375rem; }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .status { min-height: 1.5em; margin: 14px 0 0; color: var(--ink-2); font-size: 14px; }
-  .status.ok { color: var(--accent); }
-  .status.err { color: var(--danger); }
-  .notice { border-left: 3px solid var(--accent); background: var(--accent-wash); color: var(--ink-2); margin: 0; padding: 13px 15px; font-size: 14px; }
-  .notice.err { border-color: var(--danger); background: var(--danger-wash); color: var(--danger); }
-  /* The wallet lives in the top bar, where every web3 site puts it (T114, as on the signing page). */
-  .wallet-top { appearance: none; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--accent); border-radius: 999px;
-          background: var(--paper); color: var(--accent); cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 7px 14px; }
-  .wallet-top:hover:not(:disabled) { background: var(--accent-wash); }
-  .wallet-top:disabled { opacity: .6; cursor: wait; }
-  .wallet-top.connected { border-color: var(--rule); color: var(--ink); font-family: var(--mono); font-weight: 500; }
-  .wallet-top.connected::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-  .wallet-address { margin: 14px 0 0; color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
-  .result { margin: 14px 0 0; }
-  .result-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; border-top: 1px dashed var(--rule); padding: 10px 0; font-size: 13px; }
-  .result-row:first-child { border-top: 0; }
-  .result dt { color: var(--ink-3); }
-  .result dd { margin: 0; color: var(--ink); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+  .ap-note.status:empty { display: none; }
+  .ap-dl > div { display: contents; }
+  .result dd { font-family: var(--ap-mono); font-size: 0.8125rem; letter-spacing: 0; }
+  .wallet-address { font-family: var(--ap-mono); font-size: 0.8125rem; letter-spacing: 0; color: var(--ap-ink-2); overflow-wrap: anywhere; }
+  .time-note { color: var(--ap-ink-2); font-size: 0.875rem; }
+  .time-note strong { color: var(--ap-ink); font-weight: 600; }
 
-  @media (max-width: 520px) {
-    .wrap { padding-bottom: 56px; }
-    .grant-row, .result-row { grid-template-columns: 1fr; gap: 5px; }
-  }
-  /* ---------- T126: the merchant's answer ---------- */
-  label { display: block; margin: 18px 0 6px; color: var(--ink-2); font-size: 14px; }
-  .field { width: 100%; max-width: 80ch; border: 1px solid var(--rule); border-radius: 7px; background: #fff; color: var(--ink); font-family: var(--sans); font-size: 14.5px; padding: 10px 12px; }
-  .field:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .field.mono { font-family: var(--mono); font-size: 12px; margin-top: 12px; }
-  .field.short { max-width: 14ch; }
-  .choices { border: 0; margin: 0; padding: 0; }
-  .choices label { display: flex; align-items: center; gap: 9px; margin: 8px 0; color: var(--ink); font-size: 15px; cursor: pointer; }
+  /* T126: the merchant's answer */
+  .choices { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+  .step .ap-choice { background: var(--ap-bg); }
   #claim-facts dd { white-space: pre-line; }
-  .actions + .field, .field + .actions { margin-top: 12px; }
+  #claim-text { font-family: var(--ap-mono); font-size: 0.8125rem; letter-spacing: 0; min-height: 96px; }
+  #accepted { max-width: 14ch; }
+  .ap-field { margin-top: 4px; }
 </style>
 </head>
-<body>
+<body class="ap">
 <script src="/wallet-kit.js" data-needs="message transaction"></script>
 
-<main class="wrap">
-  <div class="top">
-    <a class="mark" href="/">
-      <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><g fill="none" stroke="#171A1F" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g><path d="M378 112l54 54" fill="none" stroke="#176BFF" stroke-width="60"/></svg>
-      <span>AgentPey</span>
-      <span class="tagline"><span data-tr="en">Payment infrastructure for agents</span><span data-tr="es">Infraestructura de pagos para agentes</span></span>
-    </a>
-    <div class="utils">
-      <button id="wallet-btn" class="wallet-top" type="button" hidden><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button>
-      <nav class="apps" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a></nav>
-      <div class="lang">
-        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
-        <span aria-hidden="true">/</span>
-        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
-      </div>
-      <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-        <span>GitHub</span>
-      </a>
+<header class="ap-header"><div class="ap-wrap">
+  <a class="ap-brand" href="/">
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+    AgentPey</a>
+  <div class="utils">
+    <button id="wallet-btn" class="ap-btn ap-btn-sm wallet-top" type="button" hidden><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button>
+    <nav class="ap-nav" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <div class="ap-lang lang">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
     </div>
   </div>
-
+</div></header>
+<main class="ap-wrap ap-main">
   <header class="hero">
-    <p class="eyebrow live"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
-    <p class="kicker">AgentResolve</p>
+    <span class="ap-pill ap-ok"><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></span>
+    <p class="ap-eyebrow">AgentResolve</p>
     <h1><span data-tr="en">Answer a claim</span><span data-tr="es">Responder un reclamo</span></h1>
     <p class="intro">
       <span data-tr="en">A buyer asked for a refund on one of your receipts. Read the claim, give your side and sign it with the wallet that receives your payments. The arbiter decides with both versions, and a person confirms the verdict before any money moves.</span>
@@ -180,10 +92,10 @@
     </p>
   </header>
 
-  <p id="page-notice" class="notice" hidden></p>
+  <p id="page-notice" class="ap-note ap-info" hidden></p>
 
-  <section class="panel">
-    <p class="panel-kicker"><span data-tr="en">01 · The claim</span><span data-tr="es">01 · El reclamo</span></p>
+  <section class="ap-card step">
+    <p class="ap-eyebrow"><span data-tr="en">01 · The claim</span><span data-tr="es">01 · El reclamo</span></p>
     <h2 class="file-mode"><span data-tr="en">Load the claim the arbiter sent you</span><span data-tr="es">Carga el reclamo que te envió el árbitro</span></h2>
     <p class="lead file-mode">
       <span data-tr="en">It is a file named claim.jws. Choose it, or paste its content. Nothing leaves this page until you download your answer.</span>
@@ -194,46 +106,50 @@
       <span data-tr="en">The buyer opened it in your store's escrow, so the payment for this order is frozen until the arbiter decides. Your store keeps the claim next to the order; it is the one the escrow holds.</span>
       <span data-tr="es">El comprador lo abrió en el escrow de tu tienda, así que el pago de este pedido queda congelado hasta que el árbitro decida. Tu tienda guarda el reclamo junto al pedido; es el mismo que guarda el escrow.</span>
     </p>
-    <div id="file-inputs">
+    <div id="file-inputs" class="ap-stack">
       <div class="actions"><input id="claim-file" type="file" accept=".jws,.txt,text/plain"></div>
-      <textarea id="claim-text" class="field mono" rows="4" spellcheck="false" data-placeholder-en="Or paste the claim here (eyJ...)" data-placeholder-es="O pega el reclamo aquí (eyJ...)"></textarea>
-      <div class="actions"><button id="read-btn" class="btn secondary" type="button"><span data-tr="en">Read the claim</span><span data-tr="es">Leer el reclamo</span></button></div>
+      <textarea id="claim-text" rows="4" spellcheck="false" data-placeholder-en="Or paste the claim here (eyJ...)" data-placeholder-es="O pega el reclamo aquí (eyJ...)"></textarea>
+      <div class="actions"><button id="read-btn" class="ap-btn ap-btn-secondary" type="button"><span data-tr="en">Read the claim</span><span data-tr="es">Leer el reclamo</span></button></div>
     </div>
-    <p id="claim-status" class="status" role="status"></p>
-    <dl id="claim-facts" class="grant" hidden></dl>
+    <p id="claim-status" class="ap-note status" role="status"></p>
+    <dl id="claim-facts" class="ap-dl grant" hidden></dl>
   </section>
 
-  <section id="wallet-panel" class="panel" hidden>
-    <p class="panel-kicker"><span data-tr="en">02 · Your wallet</span><span data-tr="es">02 · Tu wallet</span></p>
+  <section id="wallet-panel" class="ap-card step" hidden>
+    <p class="ap-eyebrow"><span data-tr="en">02 · Your wallet</span><span data-tr="es">02 · Tu wallet</span></p>
     <h2><span data-tr="en">Connect the wallet that receives this store's payments</span><span data-tr="es">Conecta la wallet donde recibe sus pagos esta tienda</span></h2>
     <p class="lead">
       <span data-tr="en">Only that account can answer: it is the payout account your store wrote into the receipt. Use the Connect wallet button at the top right.</span>
       <span data-tr="es">Solo esa cuenta puede responder: es la cuenta de cobro que tu tienda puso en el recibo. Usa el botón Conectar wallet de arriba a la derecha.</span>
     </p>
-    <p class="wallet-address"><span data-tr="en">Expected account:</span><span data-tr="es">Cuenta esperada:</span> <span id="expected-account"></span></p>
-    <p id="wallet-status" class="status" role="status"></p>
+    <p class="ap-small ap-muted"><span data-tr="en">Expected account:</span><span data-tr="es">Cuenta esperada:</span> <span id="expected-account" class="ap-hash"></span></p>
+    <p id="wallet-status" class="ap-note status" role="status"></p>
   </section>
 
-  <section id="answer-panel" class="panel" hidden>
-    <p class="panel-kicker"><span data-tr="en">03 · Your answer</span><span data-tr="es">03 · Tu respuesta</span></p>
-    <h2><span data-tr="en">What do you say about this claim?</span><span data-tr="es">¿Qué dices sobre este reclamo?</span></h2>
-    <fieldset class="choices">
-      <label><input type="radio" name="position" value="contest" checked> <span data-tr="en">I contest it: no refund is owed</span><span data-tr="es">Lo rechazo: no corresponde reembolso</span></label>
-      <label><input type="radio" name="position" value="accept_partial"> <span data-tr="en">I accept part of it</span><span data-tr="es">Acepto una parte</span></label>
-      <label><input type="radio" name="position" value="accept_full"> <span data-tr="en">I accept it in full</span><span data-tr="es">Lo acepto completo</span></label>
+  <section id="answer-panel" class="ap-card step" hidden>
+    <p class="ap-eyebrow"><span data-tr="en">03 · Your answer</span><span data-tr="es">03 · Tu respuesta</span></p>
+    <h2 id="position-title"><span data-tr="en">What do you say about this claim?</span><span data-tr="es">¿Qué dices sobre este reclamo?</span></h2>
+    <fieldset class="choices" aria-labelledby="position-title">
+      <label class="ap-choice"><input type="radio" name="position" value="contest" checked> <span data-tr="en">I contest it: no refund is owed</span><span data-tr="es">Lo rechazo: no corresponde reembolso</span></label>
+      <label class="ap-choice"><input type="radio" name="position" value="accept_partial"> <span data-tr="en">I accept part of it</span><span data-tr="es">Acepto una parte</span></label>
+      <label class="ap-choice"><input type="radio" name="position" value="accept_full"> <span data-tr="en">I accept it in full</span><span data-tr="es">Lo acepto completo</span></label>
     </fieldset>
-    <p id="partial-row" hidden>
-      <label for="accepted"><span data-tr="en">Amount you accept to refund, in USDC (less than the amount claimed)</span><span data-tr="es">Monto que aceptas reembolsar, en USDC (menos que lo reclamado)</span></label>
-      <input id="accepted" class="field short" type="text" inputmode="decimal" placeholder="0.50">
+    <p id="partial-row" class="ap-field" hidden>
+      <label class="ap-label" for="accepted"><span data-tr="en">Amount you accept to refund, in USDC (less than the amount claimed)</span><span data-tr="es">Monto que aceptas reembolsar, en USDC (menos que lo reclamado)</span></label>
+      <input id="accepted" type="text" inputmode="decimal" placeholder="0.50">
     </p>
-    <label for="statement"><span data-tr="en">Your statement (up to 2000 characters)</span><span data-tr="es">Tus descargos (hasta 2000 caracteres)</span></label>
-    <textarea id="statement" class="field" rows="6" maxlength="2000"></textarea>
-    <label for="evidence"><span data-tr="en">Evidence: one item per line, up to 5 (tracking numbers, links)</span><span data-tr="es">Evidencia: una por línea, hasta 5 (números de seguimiento, enlaces)</span></label>
-    <textarea id="evidence" class="field" rows="3"></textarea>
+    <div class="ap-field">
+      <label class="ap-label" for="statement"><span data-tr="en">Your statement (up to 2000 characters)</span><span data-tr="es">Tus descargos (hasta 2000 caracteres)</span></label>
+      <textarea id="statement" rows="6" maxlength="2000"></textarea>
+    </div>
+    <div class="ap-field">
+      <label class="ap-label" for="evidence"><span data-tr="en">Evidence: one item per line, up to 5 (tracking numbers, links)</span><span data-tr="es">Evidencia: una por línea, hasta 5 (números de seguimiento, enlaces)</span></label>
+      <textarea id="evidence" rows="3"></textarea>
+    </div>
   </section>
 
-  <section id="sign-panel" class="panel" hidden>
-    <p class="panel-kicker"><span data-tr="en">04 · Sign and send</span><span data-tr="es">04 · Firma y envía</span></p>
+  <section id="sign-panel" class="ap-card step" hidden>
+    <p class="ap-eyebrow"><span data-tr="en">04 · Sign and send</span><span data-tr="es">04 · Firma y envía</span></p>
     <h2><span data-tr="en">Sign your answer</span><span data-tr="es">Firma tu respuesta</span></h2>
     <p class="lead file-mode">
       <span data-tr="en">Your wallet shows a short message with the receipt, the claim, your position and the hash of your answer. Signing moves no money. Then download the file and send it back to the arbiter.</span>
@@ -243,11 +159,11 @@
       <span data-tr="en">Your wallet shows a transaction that records the hash of your answer in your store's escrow, before the time to answer ends. It moves no money besides the network fee, a fraction of a cent in XLM. Your store keeps the answer next to the order, and the arbiter reads it there: no file to send.</span>
       <span data-tr="es">Tu wallet te muestra una transacción que deja el hash de tu respuesta en el escrow de tu tienda, antes de que venza el plazo. No mueve dinero salvo la comisión de la red, una fracción de centavo en XLM. Tu tienda guarda la respuesta junto al pedido y el árbitro la lee ahí: no hay archivo que enviar.</span>
     </p>
-    <div class="actions"><button id="sign-btn" class="btn" type="button" disabled><span data-tr="en">Sign with your wallet</span><span data-tr="es">Firmar con tu wallet</span></button></div>
-    <p id="sign-status" class="status" role="status"></p>
-    <div id="done-row" hidden>
-      <dl id="done-facts" class="result"></dl>
-      <div class="actions file-mode"><a id="download-link" class="btn" download><span data-tr="en">Download your answer</span><span data-tr="es">Descargar tu respuesta</span></a></div>
+    <div class="actions"><button id="sign-btn" class="ap-btn" type="button" disabled><span data-tr="en">Sign with your wallet</span><span data-tr="es">Firmar con tu wallet</span></button></div>
+    <p id="sign-status" class="ap-note status" role="status"></p>
+    <div id="done-row" class="ap-stack" hidden>
+      <dl id="done-facts" class="ap-dl result"></dl>
+      <div class="actions file-mode"><a id="download-link" class="ap-btn" download><span data-tr="en">Download your answer</span><span data-tr="es">Descargar tu respuesta</span></a></div>
     </div>
   </section>
 </main>
@@ -340,7 +256,7 @@ function setStatus(id, kind, message) {
 function paintStatus(id) {
   var state = statuses[id];
   var el = document.getElementById(id);
-  el.className = "status " + (state.kind === "error" ? "err" : state.kind === "ok" ? "ok" : "");
+  el.className = "ap-note status " + (state.kind === "error" ? "ap-bad" : state.kind === "ok" ? "ap-ok" : "ap-info");
   el.textContent = state.message.wallet ? AgentpeyWallet.describe(state.message.wallet, lang()) : state.message.key ? t(state.message.key) : state.message.text;
 }
 
