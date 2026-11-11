@@ -1,0 +1,14 @@
+{
+  "name": "@agentpey/comercios",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AgentPey for Chilean stores (Start-Up Chile demo): catalogue ingest, AI-readable feeds, enrichment, policies, AI-traffic measurement, promotion ranking and an agent channel. No Stellar, no crypto.",
+  "scripts": {
+    "cli": "tsx src/cli.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "~4.5.4"
+  }
+}
