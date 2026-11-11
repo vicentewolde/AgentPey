@@ -39,7 +39,7 @@ export async function buyerQuestions(llm: Llm, store: Store, products: readonly 
   return (out?.preguntas ?? []).slice(0, n);
 }
 
-const ASSISTANT_SYSTEM = "Eres un asistente de compras. El usuario está en Chile y quiere comprar online. Recomienda tiendas y productos concretos con enlaces, como lo harías normalmente.";
+const ASSISTANT_SYSTEM = "Eres un asistente de compras. El usuario está en Chile y quiere comprar online. Recomienda tiendas y productos concretos con enlaces. Busca en internet para verificar precios, stock y despacho actuales antes de responder.";
 
 /** Claude answering as a shopping assistant, with web search (through the subscription or the API). */
 export function claudeEngine(llm: Llm): Engine {
@@ -154,9 +154,20 @@ export function geminiEngine(apiKey: string, model = process.env.GEMINI_MODEL ??
       for (const chunk of candidate?.groundingMetadata?.groundingChunks ?? []) {
         const title = chunk.web?.title ?? "";
         if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(title)) urls.add(`https://${title}/`);
-        else if (chunk.web?.uri !== undefined) urls.add(chunk.web.uri);
+        else if (chunk.web?.uri !== undefined) urls.add(await resolveRedirect(chunk.web.uri));
       }
       return { engine: "gemini", text, urls: [...urls] };
     },
   };
+}
+
+/** Google's grounding links redirect to the real page; follow one hop to learn which site it is. */
+async function resolveRedirect(uri: string): Promise<string> {
+  if (!uri.includes("grounding-api-redirect")) return uri;
+  try {
+    const res = await fetch(uri, { redirect: "manual", signal: AbortSignal.timeout(10_000) });
+    return res.headers.get("location") ?? uri;
+  } catch {
+    return uri;
+  }
 }
