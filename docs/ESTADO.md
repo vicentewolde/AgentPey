@@ -6,21 +6,22 @@
 > tablero visual en Exponential (`planificacion-exponential/SYNC.md`), pausado desde el 11-nov (`P-26`).
 
 **Actualizado:** 2026-11-11
-**Fase actual:** Fase 9 **cerrada** el 2026-11-11 (`P-25`), T157–T167 más T180 y T181. Sigue la Fase 10 (Instaward de noviembre, sprint 11-nov → 10-dic, confirmado por el usuario), cuyo spec está en el PR #101. Fases 1 a 8 cerradas.
+**Fase actual:** Fase 9 **cerrada** el 2026-11-11 (`P-25`), T157–T167 más T180 y T181. Sigue la Fase 10 (Instaward de noviembre, sprint 11-nov → 10-dic, confirmado por el usuario), con el spec aprobado ([spec](fase-10-instaward-comunidad/SPEC.md), `P-24`). Fases 1 a 8 cerradas.
 
 **Última tarea terminada:** Fase 9: T166 y T167, la corrida en vivo del 11-nov ([evidencia](fase-9-compra-protegida/evidencia/T166.md), [mapa e informe](fase-9-compra-protegida/evidencia/T167.md)): dos compras desde Claude, un reclamo rechazado por el árbitro, una liberación sola, y una tercera compra con el reembolso por veredicto (`8a5f1813…`). Informe aprobado por el usuario.
-**Siguiente paso:** mergear juntos, cuando el usuario dé el OK, el PR #101 (spec de la Fase 10), #103 (el receptor nombra cada aviso de un veredicto, `X-35`) y #104 (evidencia y cierre de la Fase 9); `prod:check` antes y después. Después, T182 (el escrow acepta la confirmación del comprador), primera tarea del sprint; el entorno de Rust está listo (`~/.cargo/bin` en el PATH, `cargo test -p purchase-escrow` 35). Antes de cada corrida de la Fase 10, simular un pago del rail contra el techo del facilitator y revisar los TTL (`X-34`). Exponential pausado (`P-26`).
+**Siguiente paso:** Fase 10, T182: el escrow acepta la confirmación del comprador ([spec](fase-10-instaward-comunidad/SPEC.md)); rama `cc/t182-…` desde `origin/main`, plan y OK del usuario antes de implementar. El entorno de Rust está listo (`~/.cargo/bin` en el PATH, `cargo test -p purchase-escrow` 35). Antes de cada corrida, simular un pago del rail contra el techo del facilitator y revisar los TTL (`X-34`). PR #101, #103 y #104 mergeados el 11-nov. Exponential pausado (`P-26`).
 
 **Convivencia (`P-19`).** Hasta el 17-oct la Fase 8 trabajó en paralelo, en el worktree `~/dev/AgentPay-fase8`; desde su cierre (`P-20`) hay una sola fase abierta y todo va en `~/dev/AgentPay`, una tarea a la vez. Los worktrees `AgentPay-fase8`, `-t154`, `-t155` y `-demo` se retiraron el 17-oct (todo estaba en `main`); queda `~/dev/AgentPay-codex`, la de Codex (`P-5`). Antes de cada push: `git fetch` y rebase sobre `origin/main`. El rail del MCP (5 USDC por día) es compartido: la Fase 8 no compra sin preguntar. Antes de una corrida en vivo o de grabar, se avisa para que la otra fase no mergee (cada push a `main` despliega).
 
-## Fase 10 · en planificación (10-nov, `P-24`)
+## Fase 10 · spec aprobado, sprint 11-nov → 10-dic (`P-24`)
 
 El spec está **aprobado** el 10-nov ([spec](fase-10-instaward-comunidad/SPEC.md), T182 a T206, decisiones `Y-1` a `Y-6`) para el Instaward de noviembre
 (USD 4.000, enviado el 9-nov, sprint del 11-nov al 10-dic, **si el capítulo lo aprueba**; el 23-nov del formulario era solo la fecha sugerida). Las tareas empiezan con el sprint, y solo si el capítulo aprueba el Instaward.
 
 - [x] Anexo A: puesto el texto exacto enviado (10-nov); D3 no promete la asistencia en Stellar
-- [ ] Del usuario: suscribir Tapline en Shopify antes del ~12-nov (decidido el 10-nov: USD 1/mes por 3 meses, luego 25)
-- [ ] Antes del sprint (vence el 11-nov): cerrar la Fase 9 en vivo, pedir el hardware del tótem, preguntarle al capítulo por Luma
+- [x] Del usuario: suscribir Tapline en Shopify (hecho el 11-nov; USD 1/mes por 3 meses, luego 25). La tienda sigue pública y sin contraseña
+- [x] Cerrar la Fase 9 en vivo (11-nov, `P-25`)
+- [ ] Pedir el hardware del tótem y preguntarle al capítulo por Luma (antes de la semana 3)
 
 ## Progreso de la Fase 9 (cerrada el 2026-11-11, `P-25`)
 
