@@ -38,28 +38,55 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Connect to AgentPey</title>
 <style>
-  :root { --bg: #f7f7f5; --fg: #17171a; --muted: #5d5d66; --card: #ffffff; --line: #e3e3de; --accent: #2d5bff; --ok: #1d7a46; --err: #b42318; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #111114; --fg: #f1f1f3; --muted: #a2a2ad; --card: #1b1b20; --line: #2c2c33; --accent: #7a9bff; --ok: #5fd08f; --err: #ff8b80; } }
+  /* AgentPey's design system (T207, Y-7), the subset this page uses, inline: this page's CSP allows inline styles
+     only and no external font, so these are apps/web/public/brand/agentpey.css's tokens with the system font. */
+  :root {
+    --ap-bg: #f5f5f7; --ap-surface: #ffffff; --ap-ink: #1d1d1f; --ap-ink-2: #6e6e73; --ap-hair: #d2d2d7;
+    --ap-accent: #176bff; --ap-accent-ink: #ffffff; --ap-link: #0a5bd9;
+    --ap-ok: #1a7f45; --ap-ok-soft: #e8f6ee; --ap-bad: #c4122f; --ap-bad-soft: #fdecee; --ap-warn: #a35200; --ap-warn-soft: #fff3e0;
+    --ap-text: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --ap-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --ap-radius: 18px; --ap-radius-sm: 12px; --ap-pill: 980px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ap-bg: #000000; --ap-surface: #1c1c1e; --ap-ink: #f5f5f7; --ap-ink-2: #86868b; --ap-hair: #38383a;
+      --ap-accent: #2997ff; --ap-accent-ink: #000000; --ap-link: #2997ff;
+      --ap-ok: #30d158; --ap-ok-soft: #0f2a19; --ap-bad: #ff6961; --ap-bad-soft: #3a1414; --ap-warn: #ffb340; --ap-warn-soft: #3a2a0c;
+      color-scheme: dark;
+    }
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 460px; margin: 48px auto; padding: 0 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
-  h1 { font-size: 20px; margin: 0 0 8px; }
-  p { margin: 8px 0; color: var(--muted); }
-  strong { color: var(--fg); }
-  button { width: 100%; margin-top: 16px; padding: 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  .deny { display: block; margin-top: 12px; text-align: center; color: var(--muted); }
-  .status { min-height: 24px; margin-top: 12px; }
-  .status.ok { color: var(--ok); }
-  .status.error { color: var(--err); }
-  .warn { color: var(--fg); border-left: 3px solid var(--err); padding-left: 10px; }
-  code { word-break: break-all; }
+  body.ap { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--ap-bg); color: var(--ap-ink); font: 17px/1.47 var(--ap-text); letter-spacing: -0.012em; -webkit-font-smoothing: antialiased; }
+  main { width: 100%; max-width: 440px; padding: 40px 16px; }
+  .brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 24px; font-weight: 600; font-size: 1.1875rem; letter-spacing: -0.02em; }
+  .brand svg { width: 26px; height: 26px; flex: none; }
+  .card { background: var(--ap-surface); border-radius: var(--ap-radius); padding: clamp(24px, 6vw, 36px); display: grid; gap: 14px; }
+  h1 { margin: 0 0 4px; text-align: center; font-size: 1.75rem; line-height: 1.12; font-weight: 600; letter-spacing: -0.022em; text-wrap: balance; }
+  p { margin: 0; color: var(--ap-ink-2); font-size: 0.9375rem; }
+  strong { color: var(--ap-ink); font-weight: 600; }
+  code { font-family: var(--ap-mono); font-size: 0.8125rem; color: var(--ap-ink); background: var(--ap-bg); border-radius: 8px; padding: 2px 8px; overflow-wrap: anywhere; }
+  .warn { border-radius: var(--ap-radius-sm); padding: 12px 16px; background: var(--ap-warn-soft); color: var(--ap-warn); font-size: 0.875rem; }
+  button { width: 100%; min-height: 48px; margin-top: 8px; padding: 12px 22px; border: 0; border-radius: var(--ap-pill); background: var(--ap-accent); color: var(--ap-accent-ink); font: 500 1.0625rem/1.2 var(--ap-text); letter-spacing: -0.012em; cursor: pointer; transition: filter .15s ease; }
+  button:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .4; cursor: not-allowed; filter: none; }
+  .deny { display: block; justify-self: center; padding: 6px 12px; color: var(--ap-link); text-decoration: none; font-size: 0.9375rem; }
+  .deny:hover { text-decoration: underline; text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--ap-accent); outline-offset: 3px; border-radius: 6px; }
+  button:focus-visible { border-radius: var(--ap-pill); }
+  .status { min-height: 24px; text-align: center; font-size: 0.9375rem; color: var(--ap-ink-2); }
+  .status:empty { display: none; }
+  .status.ok, .status.error { border-radius: var(--ap-radius-sm); padding: 10px 14px; }
+  .status.ok { background: var(--ap-ok-soft); color: var(--ap-ok); }
+  .status.error { background: var(--ap-bad-soft); color: var(--ap-bad); }
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } }
 </style>
 <script nonce="${nonce}" src="${escapeHtml(input.walletKitSrc)}" data-needs="message" integrity="${escapeHtml(input.walletKitIntegrity)}" crossorigin="anonymous"></script>
 </head>
-<body>
+<body class="ap">
 <main>
+  <div class="brand"><svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>AgentPey</div>
   <div class="card">
     <h1 data-t="title">Connect to AgentPey</h1>
     <p><strong>${escapeHtml(input.clientName)}</strong> <span data-t="asks">wants to search, quote and pay in AgentPey stores for you, from your spending account on Stellar testnet, within its limits.</span></p>

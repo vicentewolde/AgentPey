@@ -4,122 +4,98 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Comprador x402 · compra agéntica</title>
+<link rel="icon" href="/brand/agentpey-mark.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="/brand/agentpey.css" />
 <style>
-  :root {
-    --bg: #0b0e14; --panel: #121722; --panel-2: #171d2b; --line: #232b3d;
-    --ink: #e7ecf5; --dim: #8b97ad; --faint: #5d6880;
-    --accent: #5b8cff; --ok: #2fd08b; --bad: #ff5f6d; --warn: #ffc457;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
-  }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  /* Layout of the console's own content only; colors, fonts and radii come from /brand/agentpey.css (T207, Y-7). */
   button { font: inherit; cursor: pointer; }
-  header {
-    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-    padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--panel);
-  }
-  .brand { font-size: 17px; font-weight: 650; letter-spacing: -0.2px; }
-  .brand span { color: var(--faint); font-weight: 400; }
-  .meta { margin-left: auto; display: flex; gap: 20px; flex-wrap: wrap; }
-  .meta div { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .6px; }
-  .meta b { display: block; font-size: 12.5px; color: var(--ink); font-weight: 550; text-transform: none; letter-spacing: 0; font-family: var(--mono); }
-  .badge { padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600;
-           background: rgba(91,140,255,.14); color: var(--accent); border: 1px solid rgba(91,140,255,.3); }
-  main { display: grid; grid-template-columns: minmax(420px, 1.25fr) minmax(400px, 1fr); gap: 0; min-height: calc(100vh - 59px); }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
-  section { padding: 20px 22px; }
-  #left { border-right: 1px solid var(--line); }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .9px; color: var(--faint); margin: 0 0 14px; font-weight: 600; }
-  h2 em { font-style: normal; color: var(--dim); text-transform: none; letter-spacing: 0; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-  .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
-    cursor: pointer; transition: border-color .12s, transform .12s; display: flex; flex-direction: column;
-  }
-  .card:hover { border-color: #33405c; transform: translateY(-1px); }
-  .card[aria-selected="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .vt-brand-by { font-family: var(--ap-text); font-weight: 400; font-size: 0.8125rem; color: var(--ap-ink-2); letter-spacing: -0.005em; }
+  .vt-head { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; padding-block: 8px; }
+  .ap-header .ap-wrap.vt-head { max-width: none; }
+  .meta { margin-left: auto; display: flex; gap: 6px 20px; flex-wrap: wrap; }
+  .meta div { font-size: 0.75rem; color: var(--ap-ink-2); font-weight: 600; }
+  .meta b { display: block; font-size: 0.8125rem; color: var(--ap-ink); font-weight: 500; font-family: var(--ap-mono); letter-spacing: 0; }
+  main.vt-console { display: grid; grid-template-columns: minmax(420px, 1.25fr) minmax(400px, 1fr); gap: 28px; max-width: 1280px; margin: 0 auto; padding: 32px var(--ap-gutter-r) 64px var(--ap-gutter); }
+  @media (max-width: 1000px) { main.vt-console { grid-template-columns: minmax(0, 1fr); } }
+  main.vt-console section { min-width: 0; }
+  main.vt-console h2 { font-size: 1.25rem; letter-spacing: -0.012em; margin: 0 0 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  main.vt-console h2 em { font-style: normal; font-family: var(--ap-text); font-weight: 400; font-size: 0.8125rem; color: var(--ap-ink-2); letter-spacing: 0; }
+  main.vt-console h2 #refresh { margin-left: auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 16px; }
+  .card { background: var(--ap-surface); border-radius: var(--ap-radius); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: filter .12s ease; }
+  .card:hover { filter: brightness(0.98); }
+  .card[aria-selected="true"] { outline: 2px solid var(--ap-accent); outline-offset: 0; }
   .card.sold { opacity: .45; cursor: not-allowed; }
-  .thumb { aspect-ratio: 4/3; background: #0e1320 center/cover no-repeat; display: grid; place-items: center; position: relative; }
+  .thumb { aspect-ratio: 4/3; background: var(--ap-surface-2) center/cover no-repeat; display: grid; place-items: center; position: relative; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .thumb .initial {
-    width: 100%; height: 100%; display: grid; place-items: center;
-    font-size: 40px; font-weight: 700; color: rgba(231,236,245,.22);
-    background: linear-gradient(135deg, #141b2b, #1d2537);
-  }
-  .card .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-  .card .name { font-weight: 600; font-size: 13.5px; line-height: 1.3; }
-  .card .usdc { font-family: var(--mono); font-size: 15px; color: var(--ok); font-weight: 600; }
-  .card .clp, .card .stock { font-size: 11.5px; color: var(--faint); font-family: var(--mono); }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
-  label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--faint); margin: 0 0 5px; font-weight: 600; }
-  input[type=text], input[type=number] {
-    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--ink); font: 13px var(--mono);
-  }
-  input:focus { outline: none; border-color: var(--accent); }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-  .row.three { grid-template-columns: 90px 1fr 1fr; }
-  .buy {
-    width: 100%; padding: 13px; border-radius: 10px; border: 0; background: var(--accent); color: #fff;
-    font-weight: 650; font-size: 14.5px; margin-top: 4px;
-  }
-  .buy:disabled { background: #2a3550; color: var(--faint); cursor: not-allowed; }
-  .buy.busy { background: var(--warn); color: #221a00; }
-  .ghost { background: transparent; border: 1px solid var(--line); color: var(--dim); padding: 7px 11px; border-radius: 8px; font-size: 12px; }
-  .ghost:hover { border-color: var(--accent); color: var(--ink); }
-  .toggle { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--dim); margin-top: 10px; }
+  .thumb .initial { width: 100%; height: 100%; display: grid; place-items: center; font: 600 2.5rem var(--ap-display); color: var(--ap-ink-2); background: var(--ap-surface-2); }
+  .card .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .card .name { font-weight: 600; font-size: 0.9375rem; line-height: 1.3; }
+  .card .usdc { font-family: var(--ap-mono); font-size: 0.9375rem; color: var(--ap-ink); font-weight: 600; letter-spacing: 0; }
+  .card .clp, .card .stock { font-size: 0.75rem; color: var(--ap-ink-2); font-family: var(--ap-mono); letter-spacing: 0; }
+  .panel { margin-bottom: 16px; }
+  label { display: block; font-size: 0.8125rem; color: var(--ap-ink); margin: 0 0 6px; font-weight: 600; }
+  .ap input[type=text], .ap input[type=number] { font-family: var(--ap-mono); font-size: 0.875rem; letter-spacing: 0; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+  .row.three { grid-template-columns: 90px minmax(0, 1fr) minmax(0, 1fr); }
+  @media (max-width: 560px) { .row, .row.three { grid-template-columns: minmax(0, 1fr); } }
+  .buy.ap-btn { width: 100%; margin-top: 4px; }
+  .buy.busy { background: var(--ap-warn-soft); color: var(--ap-warn); }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--ap-ink-2); font-weight: 400; margin-top: 12px; }
+  .toggle input { accent-color: var(--ap-accent); }
   #log {
-    background: #080b11; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
-    font: 12px/1.65 var(--mono); white-space: pre-wrap; word-break: break-word;
-    max-height: 340px; overflow-y: auto; color: #b9c4d8; margin-bottom: 14px;
+    background: var(--ap-surface); border-radius: var(--ap-radius); padding: 16px 18px;
+    font: 0.75rem/1.65 var(--ap-mono); letter-spacing: 0; white-space: pre-wrap; word-break: break-word;
+    max-height: 340px; overflow-y: auto; color: var(--ap-ink-2); margin-bottom: 16px;
   }
   #log:empty { display: none; }
-  #log .in { color: var(--accent); }
-  #log .out { color: var(--ok); }
-  #log .err { color: var(--bad); }
-  .proof dl { display: grid; grid-template-columns: 116px 1fr; gap: 7px 14px; margin: 0 0 14px; }
-  .proof dt { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--faint); font-weight: 600; padding-top: 2px; }
-  .proof dd { margin: 0; font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
-  .checks { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
-  .check { display: flex; gap: 9px; align-items: baseline; font-size: 12.5px; }
+  #log .in { color: var(--ap-link); }
+  #log .out { color: var(--ap-ok); }
+  #log .err { color: var(--ap-bad); }
+  .proof dl { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 8px 16px; margin: 0 0 16px; }
+  .proof dt { font-size: 0.8125rem; color: var(--ap-ink-2); font-weight: 600; padding-top: 1px; }
+  .proof dd { margin: 0; font-family: var(--ap-mono); font-size: 0.8125rem; letter-spacing: 0; word-break: break-all; }
+  @media (max-width: 560px) { .proof dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .proof dd { margin-bottom: 8px; } }
+  .checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .check { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 0.875rem; }
   .check b { font-weight: 600; min-width: 74px; }
-  .check span { color: var(--dim); font-family: var(--mono); font-size: 11.5px; }
-  .verdict { padding: 10px 14px; border-radius: 9px; font-weight: 650; font-size: 13.5px; margin-bottom: 12px; }
-  .verdict.ok { background: rgba(47,208,139,.12); color: var(--ok); border: 1px solid rgba(47,208,139,.3); }
-  .verdict.bad { background: rgba(255,95,109,.12); color: var(--bad); border: 1px solid rgba(255,95,109,.3); }
+  .check span { color: var(--ap-ink-2); font-family: var(--ap-mono); font-size: 0.75rem; letter-spacing: 0; overflow-wrap: anywhere; }
+  .verdict { font-weight: 600; margin-bottom: 14px; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .empty { color: var(--faint); font-size: 13px; padding: 30px 0; text-align: center; }
-  .error { background: rgba(255,95,109,.1); border: 1px solid rgba(255,95,109,.3); color: #ffa8ae;
-           padding: 11px 14px; border-radius: 9px; font-size: 13px; margin-bottom: 14px; }
+  .empty { color: var(--ap-ink-2); font-size: 0.875rem; padding: 30px 0; text-align: center; }
+  .error { margin-bottom: 16px; }
 </style>
 </head>
-<body>
-<header>
-  <div class="brand">Comprador x402 <span>· cliente de demostración</span></div>
-  <span class="badge" id="network">stellar:testnet</span>
-  <div class="meta">
-    <div>Tienda<b id="merchant">…</b></div>
-    <div>Pagador<b id="payer">…</b></div>
-    <div>Tope<b id="cap">…</b></div>
+<body class="ap">
+<header class="ap-header">
+  <div class="ap-wrap vt-head">
+    <span class="ap-brand">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+      Comprador x402 <span class="vt-brand-by">· cliente de demostración</span>
+    </span>
+    <span class="ap-pill ap-info" id="network">stellar:testnet</span>
+    <div class="meta">
+      <div>Tienda<b id="merchant">…</b></div>
+      <div>Pagador<b id="payer">…</b></div>
+      <div>Tope<b id="cap">…</b></div>
+    </div>
   </div>
 </header>
 
-<main>
+<main class="vt-console">
   <section id="left">
     <h2>Bazaar en vivo <em id="count"></em>
-      <button class="ghost" id="refresh" style="float:right;margin-top:-4px">Recargar</button>
+      <button class="ap-btn ap-btn-secondary ap-btn-sm" id="refresh">Recargar</button>
     </h2>
     <div class="grid" id="catalog"><div class="empty">Leyendo /discovery/resources…</div></div>
   </section>
 
   <section id="right">
     <h2>Pedido</h2>
-    <div class="panel">
+    <div class="ap-card panel">
       <div id="selection" class="empty" style="padding:8px 0">Elige un producto del bazaar.</div>
       <div id="form" hidden>
         <div class="row three">
@@ -131,7 +107,7 @@
           <div><label for="address">Dirección</label><input type="text" id="address" value="Av. Irarrázaval 1234" /></div>
           <div><label for="maxusdc">Tope por pago (USDC)</label><input type="text" id="maxusdc" value="100" /></div>
         </div>
-        <button class="buy" id="go">Pagar con x402</button>
+        <button class="ap-btn buy" id="go">Pagar con x402</button>
         <label class="toggle"><input type="checkbox" id="dry" /> Dry run — llegar al 402 y no pagar</label>
       </div>
     </div>
@@ -165,7 +141,7 @@ async function loadBazaar() {
   const response = await fetch("/api/bazaar");
   const data = await response.json();
   if (!response.ok) {
-    $("catalog").innerHTML = `<div class="error">${esc(data.message ?? "el gateway no respondió")}</div>`;
+    $("catalog").innerHTML = `<div class="ap-note ap-bad error">${esc(data.message ?? "el gateway no respondió")}</div>`;
     return;
   }
   products = data.products;
@@ -277,12 +253,12 @@ $("go").onclick = async () => {
         if (event === "log") logLine(data.line);
         else if (event === "done") renderProof(data);
         else if (event === "failed") {
-          $("error").innerHTML = `<div class="error"><b>${esc(data.code)}</b> — ${esc(data.message)}</div>`;
+          $("error").innerHTML = `<div class="ap-note ap-bad error"><b>${esc(data.code)}</b> — ${esc(data.message)}</div>`;
         }
       }
     }
   } catch (error) {
-    $("error").innerHTML = `<div class="error">${esc(error.message)}</div>`;
+    $("error").innerHTML = `<div class="ap-note ap-bad error">${esc(error.message)}</div>`;
   } finally {
     $("go").disabled = false; $("go").classList.remove("busy"); $("go").textContent = label;
     loadBazaar();
@@ -292,8 +268,8 @@ $("go").onclick = async () => {
 function renderProof(data) {
   if (data.dryRun || data.order === null) {
     const accepts = data.requirements;
-    $("proof").innerHTML = `<div class="panel proof">
-      <div class="verdict ok">402 recibido — la tienda cotizó el pago y nadie pagó</div>
+    $("proof").innerHTML = `<div class="ap-card panel proof">
+      <div class="ap-note ap-ok verdict ok">402 recibido — la tienda cotizó el pago y nadie pagó</div>
       <dl>
         <dt>Cobro</dt><dd>${esc(accepts.amount)} stroops USDC</dd>
         <dt>payTo</dt><dd>${esc(accepts.payTo)}</dd>
@@ -305,8 +281,8 @@ function renderProof(data) {
   const verification = data.verification;
   lastReceipt = order.receiptJws;
   const anchor = order.anchor ?? {};
-  $("proof").innerHTML = `<div class="panel proof">
-    ${verification ? `<div class="verdict ${verification.valid ? "ok" : "bad"}">${verification.valid ? "✅ Recibo válido — las tres verificaciones pasan" : "❌ Recibo inválido"}</div>` : ""}
+  $("proof").innerHTML = `<div class="ap-card panel proof">
+    ${verification ? `<div class="ap-note verdict ${verification.valid ? "ap-ok ok" : "ap-bad bad"}">${verification.valid ? "✅ Recibo válido — las tres verificaciones pasan" : "❌ Recibo inválido"}</div>` : ""}
     <dl>
       <dt>Pedido</dt><dd>${esc(order.orderId)}</dd>
       <dt>${esc(order.platform)}</dt><dd>${esc(order.platformOrderId ?? "—")} · ${esc(order.status)}</dd>
@@ -320,8 +296,8 @@ function renderProof(data) {
     </dl>
     ${verification ? renderChecks(verification) : ""}
     <div class="actions">
-      <button class="ghost" id="reverify">Verificar de nuevo</button>
-      <button class="ghost" id="tamper">Adulterar el monto y verificar</button>
+      <button class="ap-btn ap-btn-secondary ap-btn-sm" id="reverify">Verificar de nuevo</button>
+      <button class="ap-btn ap-btn-secondary ap-btn-sm" id="tamper">Adulterar el monto y verificar</button>
     </div>
   </div>`;
   $("reverify").onclick = () => verifyReceipt(false);

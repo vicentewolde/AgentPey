@@ -129,9 +129,9 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 - **Qué hace:** una hoja de estilos única, `apps/web/public/brand/agentpey.css`, con lo que las publicaciones no definen para la web (estados, enlaces, foco, formularios, modo oscuro: `Y-7`, [DISENO-WEB.md](DISENO-WEB.md)); el gateway de Vitrinee sirve la misma hoja en sus dominios; y las 13 páginas la usan, la portada incluida (se rehace al estilo nuevo)
 - **Límites:** cambia la apariencia, nunca el comportamiento: los `id`, los textos que leen las pruebas y los scripts quedan. Fuera: el tema de Shopify de Tapline y las demos RealOps, SignalDesk y el tablero de estado
 - **Hecho cuando:**
-  - [ ] las 13 páginas de [DISENO-WEB.md](DISENO-WEB.md) §4 cargan la hoja única y no usan Bricolage, DM Mono ni el naranja
-  - [ ] capturas de cada página en claro y oscuro, a 1280 y 390 px, en `evidencia/T207.md`
-  - [ ] `pnpm check` y `vitrinee:check` en verde
+  - [x] las 13 páginas de [DISENO-WEB.md](DISENO-WEB.md) §4 cargan la hoja única y no usan Bricolage, DM Mono ni el naranja
+  - [x] capturas de cada página en claro y oscuro, a 1280 y 390 px, en `evidencia/T207.md`
+  - [x] `pnpm check` y `vitrinee:check` en verde
 
 ### Semana 1 (11–17 nov) · D1
 
