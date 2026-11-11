@@ -59,3 +59,22 @@ La llegada de una persona a un evento se guarda en el servicio del tótem; en St
 firmado, con el evento y la hora. Ningún nombre, correo ni identificador de persona va a la red. Se decide en la tarea si reutiliza
 `receipt-registry` (otro workspace de Cargo, con permiso del usuario) o lleva un contrato propio; nada en mainnet.
 **Alternativa descartada: guardar la asistencia entera en la red:** mezcla datos personales con un registro que no se puede borrar.
+
+### Y-7 · Las páginas de AgentPey siguen el diseño de sus publicaciones, con una hoja de estilos única · `Vigente` (decidida el 11-nov)
+**Fecha:** 2026-11-11 · **Tarea:** T207 · Pedido del usuario: «mejorar el diseño de todas las páginas… que sigan el nuevo diseño que creé en las publicaciones»
+
+El diseño de las publicaciones de AgentPey (sesión de AgentSales, `docs/marca/agentpey/DISENO.md` de ese proyecto) pasa a todas
+las páginas: negro o niebla, tinta `#1d1d1f`, un solo azul `#176bff`, degradado azul a menta en una sola palabra, Inter Tight 600
+e Inter, tarjetas sin bordes ni sombras. Se dejan Bricolage Grotesque, Instrument Sans, DM Mono y el naranja `#ff5a36`.
+
+Lo que ese diseño no define para la web se define aquí y se documenta en [DISENO-WEB.md](DISENO-WEB.md): enlaces `#0a5bd9`
+(el azul de marca sobre la niebla da 4,2:1, bajo el mínimo AA), botones en píldora con el acento, foco con contorno del acento,
+estados bien, mal y aviso con su par claro y oscuro, monoespaciada del sistema solo para hashes, y modo oscuro por la preferencia
+del sistema (la portada, siempre oscura). Todo vive en `apps/web/public/brand/agentpey.css`; el gateway de Vitrinee sirve el mismo
+archivo en sus dominios (`packages/vitrinee-gateway/src/brand.ts`) y la página de inicio de sesión del MCP lo lleva en línea por su CSP.
+
+Decisiones del usuario (11-nov): la portada se rehace al estilo nuevo; las 13 páginas van de una vez; T207 va antes de T182.
+
+**Motivo.** Una sola hoja impide que las páginas se vuelvan a separar, que es lo que pasó con la portada del 10-nov. **Alternativas
+descartadas:** copiar los tokens en cada página (se separan otra vez); un paquete de componentes (las páginas son HTML estático y una
+plantilla en TypeScript, sin un framework común).
