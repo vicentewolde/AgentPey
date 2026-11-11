@@ -61,7 +61,7 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "64kb" }));
 // AgentPey's one stylesheet and logo (T207, Y-7), the same files agentpey.com serves; a closed list, not the folder.
 const brandDir = resolve(here, "../../web/public/brand");
-for (const file of ["agentpey.css", "agentpey-mark.svg"]) {
+for (const file of ["agentpey.css", "agentpey-mark.svg", "agentpey-favicon.svg"]) {
   app.get(`/brand/${file}`, (_req: Request, res: Response) => res.sendFile(file, { root: brandDir }));
 }
 app.use(express.static(publicDir, { index: "index.html" }));

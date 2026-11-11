@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AgentPey · Revoke a permission</title>
-<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
@@ -27,13 +26,9 @@
   html[lang="en"] [data-tr="es"],
   html[lang="es"] [data-tr="en"] { display: none; }
 
-  /* top bar: brand, wallet, apps and the EN/ES switch */
-  .ap-header .ap-wrap { flex-wrap: wrap; padding-block: 8px; }
-  .utils { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 18px; }
-  .ap-lang button { appearance: none; border: 0; margin: 0; background: transparent; color: var(--ap-ink-2); cursor: pointer;
-    font: 500 0.8125rem/1.4 var(--ap-text); padding: 3px 10px; border-radius: var(--ap-pill); }
-  .ap-lang button:hover { color: var(--ap-ink); }
-  .ap-lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
+  /* top bar, one row at every width: brand, then the nav, the wallet and the EN/ES switch, always last (agentpey.css) */
+  .utils { display: flex; align-items: center; justify-content: flex-end; gap: 10px 18px; min-width: 0; }
+  @media (max-width: 560px) { .utils { gap: 10px; } }
   /* The wallet lives in the top bar, where every web3 site puts it (T108, T114). */
   .wallet-top.connected { background: var(--ap-surface); color: var(--ap-ink); font-family: var(--ap-mono); font-size: 0.8125rem; letter-spacing: 0; }
   .wallet-top.connected::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ap-ok); }
@@ -65,9 +60,9 @@
     <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
     AgentPey</a>
   <div class="utils">
+    <nav class="ap-nav ap-hide-sm" aria-label="AgentPey"><a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
     <button id="wallet-btn" class="ap-btn ap-btn-sm wallet-top" type="button" hidden><span data-tr="en">Connect wallet</span><span data-tr="es">Conectar wallet</span></button>
-    <nav class="ap-nav" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://signaldesk.agentpey.com">SignalDesk</a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
-    <div class="ap-lang lang">
+    <div class="ap-lang lang" role="group" aria-label="Language">
       <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
       <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
     </div>
@@ -75,7 +70,7 @@
 </div></header>
 <main class="ap-wrap ap-main">
   <header class="hero">
-    <span class="ap-pill ap-ok"><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></span>
+    <p class="ap-live"><span class="ap-live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
     <p class="ap-eyebrow"><span data-tr="en">Revocation</span><span data-tr="es">Revocación</span></p>
     <h1><span data-tr="en">Revoke a permission</span><span data-tr="es">Revocar un permiso</span></h1>
     <p class="intro">
@@ -102,8 +97,8 @@
       <span data-tr="es">Solo esa wallet puede revocarlo. No es una regla de esta página: el contrato en Stellar rechaza una revocación que no venga firmada por ella.</span>
     </p>
     <p class="lead">
-      <span data-tr="en">Use the Connect wallet button at the top right and choose your wallet: it asks for a verification signature, which moves no money.</span>
-      <span data-tr="es">Usa el botón Conectar wallet de arriba a la derecha y elige tu wallet: te pide una firma de verificación, que no mueve dinero.</span>
+      <span data-tr="en">Use the Connect wallet button above and choose your wallet: it asks for a verification signature, which moves no money.</span>
+      <span data-tr="es">Usa el botón Conectar wallet de arriba y elige tu wallet: te pide una firma de verificación, que no mueve dinero.</span>
     </p>
     <p id="wallet-status" class="ap-note status" role="status"></p>
     <p id="wallet-address" class="wallet-address" hidden></p>
@@ -122,7 +117,7 @@
       <span data-tr="en">Your wallet will ask you to approve writing the revocation to Stellar Testnet. After that, the agent can no longer pay.</span>
       <span data-tr="es">Tu wallet te pedirá una aprobación para escribir la revocación en Stellar Testnet. Después de esto, el agente deja de poder pagar.</span>
     </p>
-    <div class="actions"><button id="revoke-btn" class="ap-btn" type="button"><span data-tr="en">Revoke the permission</span><span data-tr="es">Revocar el permiso</span></button></div>
+    <div class="actions"><button id="revoke-btn" class="ap-btn ap-btn-danger" type="button"><span data-tr="en">Revoke the permission</span><span data-tr="es">Revocar el permiso</span></button></div>
     <p id="revoke-status" class="ap-note status" role="status"></p>
   </section>
 
@@ -137,6 +132,18 @@
     <p id="return-row" class="actions" hidden><a id="return-link" class="ap-btn ap-btn-secondary"><span data-tr="en">Back</span><span data-tr="es">Volver</span></a></p>
   </section>
 </main>
+
+<footer class="ap-footer"><div class="ap-wrap">
+  <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
+  <span class="ap-row">
+    <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+    <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+    <a href="https://realops.agentpey.com">RealOps</a>
+    <a href="https://signaldesk.agentpey.com">SignalDesk</a>
+  </span>
+</div></footer>
 
 <script>
 var mandateId = "";

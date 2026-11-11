@@ -3,7 +3,7 @@
  *
  * The one stylesheet and the logo live in `apps/web/public/brand/` and agentpey.com serves them from there. The portal
  * (vitrinee.agentpey.com) and each store's pages (the receipt) are other origins, so this gateway serves the very same
- * two files at the same paths: a page links `/brand/agentpey.css` wherever it is, and there is still one file to edit.
+ * files (stylesheet, logo, favicon) at the same paths: a page links `/brand/agentpey.css` wherever it is, and there is still one file to edit.
  *
  * A closed list, never a static folder: nothing else in that directory (a brand-kit zip, older logos) is served here.
  */
@@ -19,6 +19,7 @@ export const BRAND_DIR = fileURLToPath(new URL("../../../apps/web/public/brand",
 export const BRAND_FILES: Readonly<Record<string, { readonly file: string; readonly type: string }>> = {
   "/brand/agentpey.css": { file: "agentpey.css", type: "text/css; charset=utf-8" },
   "/brand/agentpey-mark.svg": { file: "agentpey-mark.svg", type: "image/svg+xml" },
+  "/brand/agentpey-favicon.svg": { file: "agentpey-favicon.svg", type: "image/svg+xml" },
 };
 
 export function brandRouter(dir: string = BRAND_DIR, log: (message: string, fields?: Record<string, unknown>) => void = () => {}): Router {

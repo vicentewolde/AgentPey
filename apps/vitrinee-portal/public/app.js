@@ -66,6 +66,11 @@ var T = {
 };
 
 function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
+/** An amount in the page's language (12,50 in Spanish), exact to the stroop; anything unreadable is shown as it came. */
+function usdc(value) {
+  var n = Number(value);
+  return Number.isFinite(n) ? n.toLocaleString(lang() === "es" ? "es-CL" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 7 }) : String(value);
+}
 function t(key) { var e = T[key]; return e ? e[lang()] : key; }
 
 var state = { account: null, me: null, result: null, statusKey: null, statusKind: "" };
@@ -178,7 +183,7 @@ function renderStores() {
         return el("tr", {}, [
           el("td", { "data-label": t("thDate"), text: new Date(o.createdAt).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" }) }),
           el("td", { "data-label": t("thProduct"), text: (o.items || []).map(function (i) { return i.name + (i.quantity > 1 ? " × " + i.quantity : ""); }).join(", ") }),
-          el("td", { className: "ap-num", "data-label": t("thAmount"), text: o.amountUSDC }),
+          el("td", { className: "ap-num", "data-label": t("thAmount"), text: usdc(o.amountUSDC) }),
           el("td", { "data-label": t("thStatus") }, status),
           proof,
         ]);

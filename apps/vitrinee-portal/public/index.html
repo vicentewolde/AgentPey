@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vitrinee · Sell to AI agents</title>
 <meta name="description" content="Connect your Jumpseller or Shopify store to AI agents that pay in USDC on Stellar testnet. No code.">
-<link rel="icon" href="/brand/agentpey-mark.svg" type="image/svg+xml">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
@@ -29,10 +29,6 @@
 
   .vt-brand-by { font-family: var(--ap-text); font-weight: 400; font-size: 0.8125rem; color: var(--ap-ink-2); letter-spacing: -0.005em; }
   @media (max-width: 560px) { .vt-brand-by { display: none; } }
-  .vt-utils { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 18px; }
-  .ap-lang button { appearance: none; border: 0; background: transparent; font: inherit; padding: 3px 10px; border-radius: var(--ap-pill); color: var(--ap-ink-2); cursor: pointer; }
-  .ap-lang button:hover { color: var(--ap-ink); }
-  .ap-lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
 
   .vt-hero { padding-block: clamp(24px, 6vw, 56px) 8px; display: grid; gap: 18px; justify-items: center; text-align: center; }
   .vt-hero h1 { max-width: 18ch; }
@@ -59,7 +55,14 @@
   .slug-row { display: flex; align-items: center; border: 1px solid var(--ap-hair); border-radius: var(--ap-radius-sm); background: var(--ap-surface); overflow: hidden; }
   .slug-row:focus-within { outline: 2px solid var(--ap-accent); outline-offset: 1px; border-color: transparent; }
   .ap .slug-row input { border: 0; border-radius: 0; min-width: 0; outline: none; }
-  .slug-row span { padding: 0 14px; color: var(--ap-ink-2); font-family: var(--ap-mono); font-size: 0.8125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+  .ap .slug-row input { flex: 1 1 8rem; }
+  .slug-row span { flex: none; padding: 0 14px; color: var(--ap-ink-2); font-family: var(--ap-mono); font-size: 0.8125rem; white-space: nowrap; }
+  /* Phones: the host goes on its own line, whole, under what the merchant types. */
+  @media (max-width: 560px) {
+    .slug-row { flex-wrap: wrap; }
+    .ap .slug-row input { flex-basis: 100%; }
+    .slug-row span { flex-basis: 100%; padding: 0 14px 10px; white-space: normal; overflow-wrap: anywhere; }
+  }
   .slug-state { font-size: 0.8125rem; min-height: 1.2em; color: var(--ap-ink-2); }
   .slug-state.ok { color: var(--ap-ok); }
   .slug-state.err { color: var(--ap-bad); }
@@ -108,9 +111,9 @@
     <span>Vitrinee</span>
     <span class="vt-brand-by"><span data-tr="en">by AgentPey</span><span data-tr="es">de AgentPey</span></span>
   </a>
-  <div class="vt-utils">
-    <nav class="ap-nav" aria-label="Pilot apps"><a href="https://realops.agentpey.com">RealOps</a><a href="https://agentpey.com">AgentPey</a></nav>
-    <div class="ap-lang">
+  <div class="ap-bar">
+    <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="https://agentpey.com/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a class="ap-hide-sm" href="https://agentpey.com/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <div class="ap-lang lang" role="group" aria-label="Language">
       <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
       <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
     </div>
@@ -217,6 +220,18 @@
     <p id="add-result" class="ap-note" role="status" hidden></p>
   </section>
 </main>
+
+<footer class="ap-footer"><div class="ap-wrap">
+  <span><span data-tr="en">Vitrinee by AgentPey · Stellar testnet. Santiago, Chile.</span><span data-tr="es">Vitrinee de AgentPey · Stellar testnet. Santiago, Chile.</span></span>
+  <span class="ap-row">
+    <a href="https://agentpey.com/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+    <a href="https://agentpey.com/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+    <a href="https://realops.agentpey.com">RealOps</a>
+    <a href="https://signaldesk.agentpey.com">SignalDesk</a>
+  </span>
+</div></footer>
 
 <script src="/portal/app.js"></script>
 

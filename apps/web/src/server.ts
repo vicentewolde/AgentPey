@@ -1152,6 +1152,8 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".md": "text/markdown; charset=utf-8",
+  // The brand's logo and favicon (T207): served as an image, or the browser shows no tab icon.
+  ".svg": "image/svg+xml",
 };
 
 async function serveStatic(pathname: string, res: ServerResponse, host: string | undefined): Promise<void> {

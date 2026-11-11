@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AgentPey · stores AI agents can buy from</title>
 <meta name="description" content="Stores an AI agent can buy from today on Stellar testnet: each one listed in the Vitrinee directory, with its UCP profile and its latest receipt anchored on the network." />
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
@@ -27,15 +27,10 @@
   html[lang="en"] [data-tr="es"],
   html[lang="es"] [data-tr="en"] { display: none; }
 
-  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 3px 10px; border-radius: var(--ap-pill); font: 500 0.8125rem/1.4 var(--ap-text); color: var(--ap-ink-2); cursor: pointer; }
-  .lang button:hover { color: var(--ap-ink); }
-  .lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
 
   .hero { padding-block: clamp(8px, 3vw, 32px) clamp(8px, 2vw, 20px); display: grid; gap: 18px; justify-items: center; text-align: center; }
   .hero h1 { max-width: 18ch; }
   .hero .ap-sub { max-width: 40em; font-size: clamp(1.05rem, 1.8vw, 1.25rem); }
-  .ap-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ap-ok); }
 
   .block { display: grid; gap: 20px; }
   .block > header { display: grid; gap: 8px; }
@@ -46,7 +41,8 @@
   #stores > .state { grid-column: 1 / -1; }
   .store-card { display: flex; flex-direction: column; gap: 16px; }
   .store-card h3 { overflow-wrap: anywhere; }
-  .host { font-family: var(--ap-mono); font-size: 0.8125rem; color: var(--ap-ink-2); overflow-wrap: anywhere; margin-top: 4px; }
+  /* a domain breaks only after a dot (the script puts a <wbr> there), never ".com" alone */
+  .host { font-family: var(--ap-mono); font-size: 0.8125rem; color: var(--ap-ink-2); overflow-wrap: normal; word-break: normal; margin-top: 4px; }
   .links { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.9375rem; }
   .count { color: var(--ap-ink-2); font-size: 0.9375rem; }
   .count strong { font-family: var(--ap-display); font-weight: 600; font-size: 2.25rem; line-height: 1; letter-spacing: -0.028em; color: var(--ap-ink); margin-right: 8px; }
@@ -61,10 +57,11 @@
   .source { font-size: 0.8125rem; color: var(--ap-ink-2); max-width: 60em; }
   .ap .source a { color: var(--ap-ink-2); text-decoration: underline; text-underline-offset: 3px; }
 
-  .steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px; }
+  .steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .steps li { display: flex; flex-direction: column; gap: 8px; color: var(--ap-ink-2); font-size: 0.9375rem; }
   .steps strong { display: block; font-family: var(--ap-display); font-weight: 600; font-size: 1.25rem; line-height: 1.2; letter-spacing: -0.012em; color: var(--ap-ink); margin-bottom: 4px; }
-  .steps pre { margin: 8px 0 0; background: var(--ap-bg); color: var(--ap-ink); border-radius: var(--ap-radius-sm); padding: 12px 14px; overflow-x: auto; font-family: var(--ap-mono); font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .steps li { min-width: 0; }
+  .steps .ap-cmd { margin-top: 8px; }
   .steps .copy { align-self: flex-start; margin-top: 4px; }
 </style>
 </head>
@@ -74,19 +71,18 @@
   <a class="ap-brand" href="/">
     <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
     AgentPey</a>
-  <nav class="ap-nav" aria-label="AgentPey">
-    <a href="/"><span data-tr="en">Home</span><span data-tr="es">Inicio</span></a>
-    <div class="ap-lang lang">
+  <div class="ap-bar">
+    <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a class="ap-hide-sm" href="/tiendas" aria-current="page"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <div class="ap-lang lang" role="group" aria-label="Language">
       <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
       <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
     </div>
-    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
-  </nav>
+  </div>
 </div></header>
 
 <main class="ap-wrap ap-main">
   <header class="hero">
-    <p class="ap-eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <p class="ap-live" id="live-state"><span class="ap-live-dot" aria-hidden="true"></span><span class="ap-when-up"><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></span><span class="ap-when-down"><span data-tr="en">Stellar Testnet · feed unavailable</span><span data-tr="es">Stellar Testnet · sin datos ahora</span></span></p>
     <h1>
       <span data-tr="en">Stores an AI agent can <span class="ap-grad">buy from</span> today.</span>
       <span data-tr="es">Tiendas donde un agente de IA ya puede <span class="ap-grad">comprar</span>.</span>
@@ -118,7 +114,7 @@
         <strong><span data-tr="en">Claude or ChatGPT, through the AgentPey connector</span><span data-tr="es">Claude o ChatGPT, con el conector de AgentPey</span></strong>
         <span data-tr="en">Add it as a custom connector (Claude) or an app in developer mode (ChatGPT). In this pilot, only the wallet that owns the connector's payment rail can sign in.</span>
         <span data-tr="es">Agrégalo como conector personalizado (Claude) o como app en modo desarrollador (ChatGPT). En este piloto, solo puede iniciar sesión la wallet dueña del rail que paga.</span>
-        <pre id="mcp-url">https://mcp.agentpey.com/mcp</pre>
+        <pre id="mcp-url" class="ap-cmd">https://mcp.agentpey.com/mcp</pre>
         <button type="button" class="copy ap-btn ap-btn-secondary ap-btn-sm" data-copy="mcp-url" data-text-en="Copy URL" data-text-es="Copiar URL">Copy URL</button>
         <p class="ap-small"><a href="https://github.com/vicentewolde/AgentPey/blob/main/apps/mcp/README.md" target="_blank" rel="noopener"><span data-tr="en">Exact steps for each chat</span><span data-tr="es">Pasos exactos para cada chat</span></a></p>
       </li>
@@ -126,14 +122,14 @@
         <strong><span data-tr="en">Your own agent, with the npm package</span><span data-tr="es">Tu propio agente, con el paquete de npm</span></strong>
         <span data-tr="en">Read a store's UCP profile, quote a checkout and pay it from a classic account or a <code>policy_rail</code>; only a <code>policy_rail</code> has its limit enforced by the network. The package never holds a key.</span>
         <span data-tr="es">Lee el perfil UCP de una tienda, cotiza un checkout y págalo desde una cuenta clásica o un <code>policy_rail</code>; solo con un <code>policy_rail</code> la red aplica el tope. El paquete nunca guarda una llave.</span>
-        <pre>npm install @agentpey/ucp-stellar</pre>
+        <pre class="ap-cmd">npm install @agentpey/ucp-stellar</pre>
         <p class="ap-small"><a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">@agentpey/ucp-stellar</a></p>
       </li>
       <li class="ap-card">
         <strong><span data-tr="en">Check a store yourself</span><span data-tr="es">Revisa una tienda por tu cuenta</span></strong>
         <span data-tr="en">The open conformance kit checks that a store implements the Stellar payment handler, one line per check.</span>
         <span data-tr="es">El kit de conformidad abierto comprueba que una tienda implemente el medio de pago de Stellar, una línea por comprobación.</span>
-        <pre>pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --profile-only</pre>
+        <pre class="ap-cmd">pnpm run ucp:stellar:conformance -- https://agentcommerce.vitrinee.agentpey.com --profile-only</pre>
       </li>
     </ol>
   </section>
@@ -142,7 +138,15 @@
 
 <footer class="ap-footer"><div class="ap-wrap">
   <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
-  <a href="/api/stores">/api/stores</a>
+  <span class="ap-row">
+    <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+    <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+    <a href="https://realops.agentpey.com">RealOps</a>
+    <a href="https://signaldesk.agentpey.com">SignalDesk</a>
+    <a href="/api/stores">/api/stores</a>
+  </span>
 </div></footer>
 
 <script>
@@ -195,6 +199,16 @@
     function date(iso) {
       try { return new Date(iso).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" }); } catch (e) { return iso; }
     }
+    /* A domain that may break only after its dots: text nodes and <wbr> elements, never HTML. */
+    function host(name) {
+      var node = el("div", "host");
+      name.split(".").forEach(function (part, i, all) {
+        node.appendChild(document.createTextNode(part + (i < all.length - 1 ? "." : "")));
+        if (i < all.length - 1) node.appendChild(document.createElement("wbr"));
+      });
+      return node;
+    }
+    function num(v) { return Number(v).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
     function row(dl, label, value, mono) {
       dl.appendChild(el("dt", "", label));
       var dd = el("dd", mono ? "ap-mono" : "", value);
@@ -205,7 +219,7 @@
       var c = el("article", "ap-card store-card");
       var head = el("div");
       head.appendChild(el("h3", "", store.name));
-      head.appendChild(el("div", "host", store.url.replace(/^https:\/\//, "")));
+      head.appendChild(host(store.url.replace(/^https:\/\//, "")));
       c.appendChild(head);
 
       var links = el("div", "links");
@@ -228,7 +242,7 @@
         var r = store.latest.receipt;
         var dl = el("dl");
         row(dl, t("order"), r.order_ref, true);
-        row(dl, t("amount"), r.amount_usdc + " USDC");
+        row(dl, t("amount"), num(r.amount_usdc) + " USDC");
         row(dl, t("when"), date(r.anchored_at));
         row(dl, t("hash"), short(r.hash), true);
         box.appendChild(dl);
@@ -250,6 +264,7 @@
       var source = document.getElementById("source");
       if (failed) {
         list.replaceChildren(el("p", "state ap-note ap-warn", t("error")));
+        document.getElementById("live-state").classList.add("ap-down");
         source.hidden = true;
         return;
       }

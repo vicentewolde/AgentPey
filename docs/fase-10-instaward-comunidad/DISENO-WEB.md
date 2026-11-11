@@ -36,6 +36,9 @@ Ejemplos de las publicaciones: [post de X](diseno/x-instawards-es.png) (estilo �
 | Mal (rechazado, fallido) | `#c4122f` sobre `#fdecee` | `#ff6961` sobre `#3a1414` | |
 | Aviso (en espera, plazo) | `#a35200` sobre `#fff3e0` | `#ffb340` sobre `#3a2a0c` | |
 | Hashes y direcciones | `ui-monospace` del sistema | igual | Las publicaciones no tienen monoespaciada; un hash sin ella no se lee. Solo para datos, nunca en titulares |
+| Botón destructivo (`.ap-btn-danger`, revocar) | fondo `#c4122f`, texto blanco (6,0:1) | fondo `#ff6961`, texto negro (7,5:1) | `--ap-bad-ink`: el blanco sobre `#ff6961` da 2,8:1 |
+| «En vivo» (`.ap-live`) | punto `--ap-ok` y texto secundario | igual | Nunca una píldora de estado de adorno; con `.ap-down` el punto pasa a aviso y el texto dice que no hay datos |
+| Hover | nunca `--ap-surface-2` bajo texto secundario | igual | En oscuro, `#86868b` sobre `#2c2c2e` da 3,85:1; los hover usan `--ap-bg` o mueven la flecha |
 | Modo oscuro | — | con la preferencia del sistema, o forzado con `<html data-theme="dark">` | La portada es siempre oscura (como el post de X); las páginas de trámite siguen al sistema |
 
 Contrastes medidos el 11-nov con la fórmula de WCAG 2: todos los pares de texto de la tabla dan ≥ 4,5:1.
@@ -64,16 +67,23 @@ En el `<head>`, antes de los estilos propios de la página:
 <footer class="ap-footer"><div class="ap-wrap"><span>AgentPey · Stellar testnet · Santiago de Chile</span><span>…</span></div></footer>
 ```
 
-Componentes de la hoja: `.ap-card` (con `.ap-card-hero` negra y `.ap-card-blue`), `.ap-btn` (`.ap-btn-secondary`,
+**El encabezado es uno solo:** la marca a la izquierda y, a la derecha y en este orden, En vivo (`/en-vivo`), Tiendas
+(`/tiendas`), GitHub, el botón Conectar wallet en las páginas de firma y el selector de idioma, siempre al final
+(`.ap-bar`). En una fila a todo ancho: bajo 560 px los enlaces con `.ap-hide-sm` se esconden y el pie los repite. El
+recibo usa los mismos enlaces absolutos a `https://agentpey.com`; el portal y el panel de Vitrinee conservan su marca.
+El favicon de todas las páginas es `/brand/agentpey-favicon.svg` (la marca en blanco sobre `#176bff`, visible en pestañas
+claras y oscuras). Los comandos para copiar van en `<pre class="ap-cmd">`: una línea que se desplaza, nunca cortada.
+
+Componentes de la hoja: `.ap-card` (con `.ap-card-hero` negra y `.ap-card-blue`), `.ap-btn` (`.ap-btn-secondary`, `.ap-btn-danger`,
 `.ap-btn-quiet`, `.ap-btn-sm`), `.ap-pill` y `.ap-note` con `.ap-ok`, `.ap-bad`, `.ap-warn` y `.ap-info`, `.ap-field`,
-`.ap-label`, `.ap-hint`, `.ap-choice`, `.ap-table`, `.ap-dl`, `.ap-hash`, `.ap-lang`, `.ap-grid`, `.ap-row`, `.ap-stack`,
+`.ap-label`, `.ap-hint`, `.ap-choice`, `.ap-table`, `.ap-dl`, `.ap-hash`, `.ap-cmd`, `.ap-lang`, `.ap-live`, `.ap-bar`, `.ap-grid`, `.ap-row`, `.ap-stack`,
 `.ap-inset`, `.ap-eyebrow`, `.ap-sub`, `.ap-muted`, `.ap-grad`.
 
 Una página puede tener estilos propios para su contenido (una escena, un tablero), pero **solo con los tokens `--ap-*`**:
 ningún color, fuente ni radio escrito a mano.
 
 **Dónde se sirve la hoja:** en agentpey.com desde `apps/web/public/brand/`; en `vitrinee.agentpey.com` y en cada tienda, el
-gateway de Vitrinee sirve el mismo archivo en `/brand/agentpey.css` y `/brand/agentpey-mark.svg`. La página de inicio de sesión
+gateway de Vitrinee sirve el mismo archivo en `/brand/agentpey.css`, `/brand/agentpey-mark.svg` y `/brand/agentpey-favicon.svg`. La página de inicio de sesión
 del MCP (`mcp.agentpey.com`) la lleva en línea, porque su CSP solo permite estilos en línea y ninguna fuente externa: ahí se ve con
 la fuente del sistema.
 

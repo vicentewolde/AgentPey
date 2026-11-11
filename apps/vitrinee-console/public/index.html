@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Comprador x402 · compra agéntica</title>
-<link rel="icon" href="/brand/agentpey-mark.svg" type="image/svg+xml" />
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
@@ -13,29 +13,29 @@
   /* Layout of the console's own content only; colors, fonts and radii come from /brand/agentpey.css (T207, Y-7). */
   button { font: inherit; cursor: pointer; }
   .vt-brand-by { font-family: var(--ap-text); font-weight: 400; font-size: 0.8125rem; color: var(--ap-ink-2); letter-spacing: -0.005em; }
-  .vt-head { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; padding-block: 8px; }
-  .ap-header .ap-wrap.vt-head { max-width: none; }
-  .meta { margin-left: auto; display: flex; gap: 6px 20px; flex-wrap: wrap; }
+  @media (max-width: 560px) { .vt-brand-by { display: none; } }
+  .meta { display: flex; gap: 6px 28px; flex-wrap: wrap; }
   .meta div { font-size: 0.75rem; color: var(--ap-ink-2); font-weight: 600; }
   .meta b { display: block; font-size: 0.8125rem; color: var(--ap-ink); font-weight: 500; font-family: var(--ap-mono); letter-spacing: 0; }
-  main.vt-console { display: grid; grid-template-columns: minmax(420px, 1.25fr) minmax(400px, 1fr); gap: 28px; max-width: 1280px; margin: 0 auto; padding: 32px var(--ap-gutter-r) 64px var(--ap-gutter); }
-  @media (max-width: 1000px) { main.vt-console { grid-template-columns: minmax(0, 1fr); } }
+  main.vt-console { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; padding-block: 32px 64px; }
+  main.vt-console > .meta { grid-column: 1 / -1; }
+  @media (max-width: 860px) { main.vt-console { grid-template-columns: minmax(0, 1fr); } }
   main.vt-console section { min-width: 0; }
   main.vt-console h2 { font-size: 1.25rem; letter-spacing: -0.012em; margin: 0 0 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
   main.vt-console h2 em { font-style: normal; font-family: var(--ap-text); font-weight: 400; font-size: 0.8125rem; color: var(--ap-ink-2); letter-spacing: 0; }
   main.vt-console h2 #refresh { margin-left: auto; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 16px; }
   .card { background: var(--ap-surface); border-radius: var(--ap-radius); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: filter .12s ease; }
-  .card:hover { filter: brightness(0.98); }
+  .card:hover { box-shadow: inset 0 0 0 1px var(--ap-hair); }
   .card[aria-selected="true"] { outline: 2px solid var(--ap-accent); outline-offset: 0; }
   .card.sold { opacity: .45; cursor: not-allowed; }
   .thumb { aspect-ratio: 4/3; background: var(--ap-surface-2) center/cover no-repeat; display: grid; place-items: center; position: relative; }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .thumb .initial { width: 100%; height: 100%; display: grid; place-items: center; font: 600 2.5rem var(--ap-display); color: var(--ap-ink-2); background: var(--ap-surface-2); }
+  .thumb .initial { width: 100%; height: 100%; display: grid; place-items: center; font: 600 2.5rem var(--ap-display); color: var(--ap-ink); background: var(--ap-surface-2); }
   .card .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
   .card .name { font-weight: 600; font-size: 0.9375rem; line-height: 1.3; }
-  .card .usdc { font-family: var(--ap-mono); font-size: 0.9375rem; color: var(--ap-ink); font-weight: 600; letter-spacing: 0; }
-  .card .clp, .card .stock { font-size: 0.75rem; color: var(--ap-ink-2); font-family: var(--ap-mono); letter-spacing: 0; }
+  .card .usdc { font-size: 0.9375rem; color: var(--ap-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card .clp, .card .stock { font-size: 0.75rem; color: var(--ap-ink-2); font-variant-numeric: tabular-nums; }
   .panel { margin-bottom: 16px; }
   label { display: block; font-size: 0.8125rem; color: var(--ap-ink); margin: 0 0 6px; font-weight: 600; }
   .ap input[type=text], .ap input[type=number] { font-family: var(--ap-mono); font-size: 0.875rem; letter-spacing: 0; }
@@ -61,6 +61,7 @@
   @media (max-width: 560px) { .proof dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .proof dd { margin-bottom: 8px; } }
   .checks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
   .check { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 0.875rem; }
+  .check .ap-pill { min-width: 28px; justify-content: center; }
   .check b { font-weight: 600; min-width: 74px; }
   .check span { color: var(--ap-ink-2); font-family: var(--ap-mono); font-size: 0.75rem; letter-spacing: 0; overflow-wrap: anywhere; }
   .verdict { font-weight: 600; margin-bottom: 14px; }
@@ -70,22 +71,27 @@
 </style>
 </head>
 <body class="ap">
-<header class="ap-header">
-  <div class="ap-wrap vt-head">
-    <span class="ap-brand">
-      <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
-      Comprador x402 <span class="vt-brand-by">· cliente de demostración</span>
-    </span>
-    <span class="ap-pill ap-info" id="network">stellar:testnet</span>
-    <div class="meta">
-      <div>Tienda<b id="merchant">…</b></div>
-      <div>Pagador<b id="payer">…</b></div>
-      <div>Tope<b id="cap">…</b></div>
-    </div>
+<header class="ap-header"><div class="ap-wrap">
+  <span class="ap-brand">
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+    Comprador x402 <span class="vt-brand-by">· cliente de demostración</span>
+  </span>
+  <div class="ap-bar">
+    <nav class="ap-nav ap-hide-sm" aria-label="AgentPey">
+      <a href="https://agentpey.com/en-vivo">En vivo</a>
+      <a href="https://agentpey.com/tiendas">Tiendas</a>
+      <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <p class="ap-live"><span class="ap-live-dot" aria-hidden="true"></span><span id="network">stellar:testnet</span></p>
   </div>
-</header>
+</div></header>
 
-<main class="vt-console">
+<main class="ap-wrap vt-console">
+  <div class="meta">
+    <div>Tienda<b id="merchant">…</b></div>
+    <div>Pagador<b id="payer">…</b></div>
+    <div>Tope<b id="cap">…</b></div>
+  </div>
   <section id="left">
     <h2>Bazaar en vivo <em id="count"></em>
       <button class="ap-btn ap-btn-secondary ap-btn-sm" id="refresh">Recargar</button>
@@ -117,6 +123,15 @@
     <div id="proof"></div>
   </section>
 </main>
+
+<footer class="ap-footer"><div class="ap-wrap">
+  <span>AgentPey · Stellar testnet. Ningún valor real cambia de manos. Santiago, Chile.</span>
+  <span class="ap-row">
+    <a href="https://agentpey.com/en-vivo">En vivo</a>
+    <a href="https://agentpey.com/tiendas">Tiendas</a>
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+  </span>
+</div></footer>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -211,9 +226,11 @@ $("qty").oninput = updateTotal;
 $("dry").onchange = updateTotal;
 $("refresh").onclick = loadBazaar;
 
-function logLine(line) {
-  const cls = line.startsWith("→") ? "in" : line.startsWith("←") ? "out" : line.includes("❌") ? "err" : "";
-  $("log").insertAdjacentHTML("beforeend", `<div class="${cls}">${esc(line)}</div>`);
+/** The agent's narration marks a failed step with ❌ (apps/vitrinee-agent); the log reads that mark, then shows ✓ and ×. */
+function logLine(line, failed = false) {
+  const cls = line.startsWith("→") ? "in" : line.startsWith("←") ? "out" : failed || line.includes("❌") ? "err" : "";
+  const shown = line.replace(/✅/g, "✓").replace(/❌/g, "×");
+  $("log").insertAdjacentHTML("beforeend", `<div class="${cls}">${esc(shown)}</div>`);
   $("log").scrollTop = $("log").scrollHeight;
 }
 
@@ -269,7 +286,7 @@ function renderProof(data) {
   if (data.dryRun || data.order === null) {
     const accepts = data.requirements;
     $("proof").innerHTML = `<div class="ap-card panel proof">
-      <div class="ap-note ap-ok verdict ok">402 recibido — la tienda cotizó el pago y nadie pagó</div>
+      <div class="ap-note ap-ok verdict ok">402 recibido: la tienda cotizó el pago y nadie pagó</div>
       <dl>
         <dt>Cobro</dt><dd>${esc(accepts.amount)} stroops USDC</dd>
         <dt>payTo</dt><dd>${esc(accepts.payTo)}</dd>
@@ -282,7 +299,7 @@ function renderProof(data) {
   lastReceipt = order.receiptJws;
   const anchor = order.anchor ?? {};
   $("proof").innerHTML = `<div class="ap-card panel proof">
-    ${verification ? `<div class="ap-note verdict ${verification.valid ? "ap-ok ok" : "ap-bad bad"}">${verification.valid ? "✅ Recibo válido — las tres verificaciones pasan" : "❌ Recibo inválido"}</div>` : ""}
+    ${verification ? `<div class="ap-note verdict ${verification.valid ? "ap-ok ok" : "ap-bad bad"}">${verification.valid ? "Recibo válido: pasan las tres verificaciones" : "Recibo inválido"}</div>` : ""}
     <dl>
       <dt>Pedido</dt><dd>${esc(order.orderId)}</dd>
       <dt>${esc(order.platform)}</dt><dd>${esc(order.platformOrderId ?? "—")} · ${esc(order.status)}</dd>
@@ -307,7 +324,7 @@ function renderProof(data) {
 function renderChecks(v) {
   const { signature, anchored, settlement } = v.checks;
   const row = (ok, title, detail) =>
-    `<div class="check">${ok ? "✅" : "❌"}<b>${title}</b><span>${esc(detail)}</span></div>`;
+    `<div class="check"><span class="ap-pill ${ok ? "ap-ok" : "ap-bad"}" aria-label="${ok ? "pasa" : "falla"}">${ok ? "✓" : "×"}</span><b>${title}</b><span>${esc(detail)}</span></div>`;
   return `<div class="checks">
     ${row(signature.ok, "Firma", signature.ok ? `Ed25519 de ${signature.signer ?? "?"}` : (signature.reason ?? "inválida"))}
     ${row(anchored.ok, "Anclaje", anchored.ok && anchored.record ? `receipt-registry · ledger ${anchored.record.ledger}` : (anchored.reason ?? "no anclado"))}
@@ -325,10 +342,10 @@ async function verifyReceipt(tamper) {
   })).json();
   if (result.tampered) logLine(`  editado     amountUSDC ${result.tampered.from} → ${result.tampered.to}`);
   const { signature, anchored, settlement } = result.checks;
-  logLine(`  ${signature.ok ? "✅" : "❌"} firma      ${signature.ok ? signature.signer : (signature.reason ?? "inválida")}`);
-  logLine(`  ${anchored.ok ? "✅" : "❌"} anclaje    ${anchored.ok ? `ledger ${anchored.record?.ledger}` : (anchored.reason ?? "no anclado")}`);
-  logLine(`  ${settlement.ok ? "✅" : "❌"} pago       ${settlement.ok ? `ledger ${settlement.ledger}` : (settlement.reason ?? "no confirmado")}`);
-  logLine(result.valid ? "  ✅ RECIBO VÁLIDO" : "  ❌ RECIBO INVÁLIDO");
+  logLine(`  ${signature.ok ? "✓" : "×"} firma      ${signature.ok ? signature.signer : (signature.reason ?? "inválida")}`, !signature.ok);
+  logLine(`  ${anchored.ok ? "✓" : "×"} anclaje    ${anchored.ok ? `ledger ${anchored.record?.ledger}` : (anchored.reason ?? "no anclado")}`, !anchored.ok);
+  logLine(`  ${settlement.ok ? "✓" : "×"} pago       ${settlement.ok ? `ledger ${settlement.ledger}` : (settlement.reason ?? "no confirmado")}`, !settlement.ok);
+  logLine(result.valid ? "  ✓ RECIBO VÁLIDO" : "  × RECIBO INVÁLIDO", !result.valid);
 }
 
 loadSession().then(loadBazaar);

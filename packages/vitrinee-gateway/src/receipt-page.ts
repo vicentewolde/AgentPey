@@ -78,7 +78,6 @@ const COPY = {
   json: { en: "The same verification, as JSON", es: "La misma verificación, en JSON" },
   testnet: { en: "Stellar testnet. Test USDC, not real money.", es: "Stellar testnet. USDC de prueba, no dinero real." },
   eyebrow: { en: "Vitrinee · Stellar testnet", es: "Vitrinee · Stellar testnet" },
-  home: { en: "Home", es: "Inicio" },
   live: { en: "Live", es: "En vivo" },
   stores: { en: "Stores", es: "Tiendas" },
 } as const;
@@ -126,7 +125,7 @@ export function receiptPage(input: ReceiptPageInput): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${t("title")} · ${escape(input.orderId)}</title>
 <meta name="robots" content="noindex">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
@@ -149,12 +148,6 @@ export function receiptPage(input: ReceiptPageInput): string {
   .rc-table th.ap-num { text-align: right; }
   .rc-table tfoot td { font-weight: 600; }
   .rc-links { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 0.9375rem; }
-  .rc-lang { display: flex; align-items: center; }
-  @media (max-width: 560px) {
-    .ap-header .ap-wrap { flex-wrap: wrap; gap: 4px 16px; padding-block: 8px; }
-    .ap-header .ap-nav { width: 100%; gap: 4px 16px; }
-    .rc-lang { margin-left: auto; }
-  }
   .ap-footer .ap-hash { background: transparent; padding: 0; color: var(--ap-ink-2); }
 </style>
 </head>
@@ -163,13 +156,14 @@ export function receiptPage(input: ReceiptPageInput): string {
   <a class="ap-brand" href="${SITE}/">
     <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
     AgentPey</a>
-  <nav class="ap-nav" aria-label="AgentPey">
-    <a href="${SITE}/">${t("home")}</a>
-    <a href="${SITE}/en-vivo">${t("live")}</a>
-    <a href="${SITE}/tiendas">${t("stores")}</a>
-    <a href="https://github.com/vicentewolde/AgentPey" rel="noopener">GitHub</a>
-    <span class="rc-lang"><span class="ap-lang"><a href="?lang=en" hreflang="en"${lang === "en" ? ' aria-current="true"' : ""}>EN</a><a href="?lang=es" hreflang="es"${lang === "es" ? ' aria-current="true"' : ""}>ES</a></span></span>
-  </nav>
+  <div class="ap-bar">
+    <nav class="ap-nav" aria-label="AgentPey">
+      <a class="ap-hide-sm" href="${SITE}/en-vivo">${t("live")}</a>
+      <a class="ap-hide-sm" href="${SITE}/tiendas">${t("stores")}</a>
+      <a href="https://github.com/vicentewolde/AgentPey" rel="noopener">GitHub</a>
+    </nav>
+    <span class="ap-lang"><a href="?lang=en" hreflang="en"${lang === "en" ? ' aria-current="true"' : ""}>EN</a><a href="?lang=es" hreflang="es"${lang === "es" ? ' aria-current="true"' : ""}>ES</a></span>
+  </div>
 </div></header>
 
 <main class="ap-wrap ap-main rc-main">
@@ -209,6 +203,7 @@ export function receiptPage(input: ReceiptPageInput): string {
 <footer class="ap-footer"><div class="ap-wrap">
   <span>${t("testnet")}</span>
   <span class="ap-hash">SHA-256 ${escape(v.hash)}</span>
+  <span class="ap-row"><a href="${SITE}/en-vivo">${t("live")}</a><a href="${SITE}/tiendas">${t("stores")}</a></span>
 </div></footer>
 </body>
 </html>`;
