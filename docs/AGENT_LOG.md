@@ -9399,3 +9399,13 @@ Qué: el runbook del 11-nov para cerrar la Fase 9 en `docs/fase-9-compra-protegi
 Por qué: la Fase 9 vence el 11-nov y el sprint de la Fase 10 parte el 11-nov (según el usuario).
 
 Pendiente: que el usuario fije la hora de la corrida, reconecte el conector de Claude y firme la respuesta del comercio; el OK para gastar y para el seco de `reconcile:pending`.
+
+## 2026-11-11 — cc/t166-runbook
+
+Agente: Claude Code
+
+Qué: el primer intento de la corrida de T166 (10-nov de noche) falló en los dos pagos: el facilitator de OpenZeppelin rechazó `invalid_exact_stellar_payload_fee_exceeds_maximum`, sin mover dinero. Causa medida con simulaciones: el código de `policy_rail` (wasm `8690d1f5…`) cruzó el umbral de 30 días de su `extend_ttl`, y cada pago cargaba la renta de 90 días de código (64,2 M stroops). Arreglo con OK del usuario: `ExtendFootprintTTL` del código hasta el máximo de la red, tx `61c43b56…`; el pago simula ahora en 38 907 stroops (`VALID`). Todo anotado en `evidencia/T166.md` §3. Sin cambios de código ni deploy.
+
+Por qué: la Fase 9 vence el 11-nov y la corrida estaba bloqueada en el primer pago.
+
+Pendiente: la corrida A y B con cotizaciones nuevas; renovar la instancia del rail del MCP antes del ~2-dic (cruza su umbral y la renovación, ~269 000 stroops, volvería a pasar el techo), con OK del usuario.
