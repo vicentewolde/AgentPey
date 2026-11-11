@@ -818,3 +818,33 @@ aparte del proceso de la tienda; la tienda ya tiene la cuenta operadora, la cola
 **Sin verificar contra servicios reales:** la RPC y la transacción real de `expire` solo se probaron con un escrow en
 memoria; la firma de la cuenta operadora no se ejercitó.
 
+
+### X-34 · El TTL del `policy_rail` se renueva fuera del pago, hasta el máximo de la red · `Vigente`
+**Fecha:** 2026-11-11 · **Tarea:** T166 · OK del usuario para las tres transacciones ("Ok, apruebo", y "corrige todo lo necesario")
+
+`policy_rail` llama `instance().extend_ttl(30 días, 90 días)` dentro de su `__check_auth`, y eso renueva también el código del
+contrato. Cuando al wasm le quedaron menos de 30 días (10-nov), cada pago cargó la renta de 90 días de código, que desde el
+protocolo 23 se cobra por el tamaño en memoria del módulo: 64,2 M stroops. El facilitator de OpenZeppelin rechaza todo pago cuya
+comisión simulada pase de 50 000 stroops, así que rechazó los dos primeros pagos de la corrida, antes de enviar nada.
+
+1. **Se renueva aparte**, con `ExtendFootprintTTL` pagada por la cuenta del agente del MCP, hasta el máximo (3 110 000 ledgers,
+   ~180 días): el código (`61c43b56…`) y la instancia de los dos rails que lo usan (`4bbdf9f6…`, `5e68b7a0…`). Vivos hasta el
+   ledger ~8,78 M (≈ mayo de 2027). El pago volvió a simular en ~38 900 stroops.
+2. **Antes de cada corrida o sprint** se simula un pago del rail contra el techo del facilitator y se revisa el TTL de los
+   contratos que pagan (`evidencia/T166.md` §3 tiene los scripts de lectura).
+
+**Motivo.** Es lo único bajo nuestro control que arregla el pago sin cambiar código ni desplegar. **Alternativas descartadas:** un
+facilitator propio con un techo de 200 000 (como SignalDesk, `R-27`): no alcanza para 64 M y pide código y deploy; bajar el
+umbral o el horizonte del contrato: cambia un contrato desplegado con fondos.
+
+### X-35 · El receptor de avisos nombra cada aviso de un veredicto por su paso, no todos como `dispute.resolved` · `Vigente`
+**Fecha:** 2026-11-11 · **Tarea:** T166 (hallazgo de la corrida), arreglo en `cc/webhook-verdict-names`
+
+Un veredicto produce hasta tres avisos con el mismo cuerpo (`escrowEvents`): `dispute.resolved`, el reembolso si lo hubo y la
+liberación al comercio de lo que sobra. El receptor de agentpey.com los nombraba por el estado del escrow (`resolved`), así que
+el registro mostró `dispute.resolved` dos veces en A (con `escrow.released`) y en C (con `escrow.refunded`). Ahora reconstruye la
+secuencia de la tienda con `amount_atomic` y `refund_atomic` del cuerpo y nombra cada aviso por su orden de llegada: la cola de
+la tienda envía uno a la vez y en orden. Sin los montos, solo el veredicto lleva nombre.
+
+**Alternativas descartadas:** poner el nombre del evento en el cuerpo (el esquema publicado de la extensión `2026-10-16` no admite
+campos nuevos en `escrow`) o en una cabecera (fuera de la firma RFC 9421, o un cambio de los componentes firmados).

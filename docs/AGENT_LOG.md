@@ -9419,3 +9419,13 @@ Qué: T166 corrida y cerrada (dos compras, un reclamo rechazado por el árbitro,
 Por qué: cerrar la Fase 9 el día en que vencía y no dejar nada «anotado» sin resolver.
 
 Pendiente: push y merge de las dos ramas (OK del usuario); la entrega del informe. La sesión varada `95ea7770…` se descartó por decisión del usuario (testnet).
+
+## 2026-11-11 (3) — cc/t166-runbook (cierre de la Fase 9)
+
+Agente: Claude Code
+
+Qué: la Fase 9 queda cerrada (`P-25`). Compra C con reembolso por veredicto (`8a5f1813…`, `refund_full` tras `accept_full` del comercio). Spec con los criterios de T162–T167 marcados con evidencia y estado «Cerrado»; bitácora con el bloque de T166–T167 y la retro; `ESTADO.md`, `ROADMAP.md` y la tabla de `CLAUDE.md` al día; decisiones `X-34` (TTL del rail renovado fuera del pago), `X-35` (nombres de los avisos de un veredicto), `P-25` (cierre) y `P-26` (Exponential pausado, también en las skills `/tarea`, `/fase-cerrar`, `/fase-plan` y `/estado`).
+
+Por qué: el usuario pidió dejar la fase cerrada y los documentos coordinados para que los lean otros agentes. El informe lo aprueba él: el Instaward de octubre no se ganó.
+
+Pendiente: mergear juntos #101, #103 y #104 con el OK del usuario (al mergear el segundo de #101 y #104 hay conflicto en `ESTADO.md`, `AGENT_LOG.md`, `ROADMAP.md`, `CLAUDE.md` y `docs/DECISIONES.md`; se resuelve conservando los dos lados). Después, T182.
