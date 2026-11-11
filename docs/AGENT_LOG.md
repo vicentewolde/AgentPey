@@ -9418,4 +9418,4 @@ Qué: T166 corrida y cerrada (dos compras, un reclamo rechazado por el árbitro,
 
 Por qué: cerrar la Fase 9 el día en que vencía y no dejar nada «anotado» sin resolver.
 
-Pendiente: push y merge de las dos ramas (OK del usuario); el minuto del video y la entrega del informe; `VITRINEE_RECONCILE_PENDING=1` en Render para la sesión varada `95ea7770…` (T180; el seco necesita `VITRINEE_DATABASE_URL`, que solo está en Render).
+Pendiente: push y merge de las dos ramas (OK del usuario); la entrega del informe. La sesión varada `95ea7770…` se descartó por decisión del usuario (testnet).
