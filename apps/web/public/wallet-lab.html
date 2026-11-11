@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AgentPey · Wallet lab</title>
 <meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
@@ -25,9 +26,6 @@
   /* Page layout only, with the --ap-* tokens of /brand/agentpey.css. */
   html[lang="en"] [data-tr="es"], html[lang="es"] [data-tr="en"] { display: none; }
   .lab { max-width: calc(var(--ap-read) + 32px); }
-  .lab-top { display: flex; justify-content: flex-end; }
-  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 3px 10px; border-radius: var(--ap-pill); font: 500 0.8125rem/1.4 var(--ap-text); color: var(--ap-ink-2); cursor: pointer; }
-  .lang button:hover { color: var(--ap-ink); }
   html[lang="en"] .lang button[data-lang="en"], html[lang="es"] .lang button[data-lang="es"] { background: var(--ap-ink); color: var(--ap-bg); }
   .intro { display: grid; gap: 14px; }
   .lede { color: var(--ap-ink-2); }
@@ -46,8 +44,16 @@
 </style>
 </head>
 <body class="ap">
+<header class="ap-header"><div class="ap-wrap">
+  <a class="ap-brand" href="/">
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+    AgentPey</a>
+  <div class="ap-bar">
+    <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a class="ap-hide-sm" href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <div class="ap-lang lang" role="group" aria-label="Language"><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button></div>
+  </div>
+</div></header>
 <main class="ap-wrap ap-main lab">
-  <div class="lab-top"><div class="ap-lang lang"><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button></div></div>
   <header class="intro">
   <h1><span data-tr="en">Wallet lab</span><span data-tr="es">Laboratorio de wallets</span></h1>
   <p class="lede ap-sub">
@@ -94,6 +100,18 @@
     <pre id="report">{}</pre>
   </section>
 </main>
+
+<footer class="ap-footer"><div class="ap-wrap">
+  <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
+  <span class="ap-row">
+    <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+    <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+    <a href="https://realops.agentpey.com">RealOps</a>
+    <a href="https://signaldesk.agentpey.com">SignalDesk</a>
+  </span>
+</div></footer>
 
 <script src="/wallet-kit.js" data-needs="message"></script>
 <script>

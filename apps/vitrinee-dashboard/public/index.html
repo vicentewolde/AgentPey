@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Vitrinee · pedidos</title>
     <meta name="description" content="Pedidos pagados por agentes, con su recibo firmado y su anclaje en Stellar." />
-    <link rel="icon" href="/brand/agentpey-mark.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap" />
@@ -17,10 +17,8 @@
       .vt-brand .ap-brand { font-size: 1.1875rem; }
       .vt-brand h1 { font-size: inherit; line-height: 1; letter-spacing: -0.02em; }
       .vt-brand p { font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .vt-right { display: flex; align-items: center; gap: 12px; flex: none; }
       @media (max-width: 560px) {
         .vt-brand { flex-direction: column; align-items: flex-start; gap: 2px; padding-block: 8px; }
-        .vt-right { flex-direction: column-reverse; align-items: flex-end; gap: 4px; flex: 0 1 auto; text-align: right; }
       }
 
       .muted { color: var(--ap-ink-2); }
@@ -41,7 +39,7 @@
       .ap-table th:first-child, .ap-table td:first-child { padding-left: 0; }
       .ap-table th:last-child, .ap-table td:last-child { padding-right: 0; }
       #orders-body tr { cursor: pointer; }
-      #orders-body tr:hover td { background: var(--ap-surface-2); }
+      #orders-body tr:hover td { background: var(--ap-bg); }
       #orders-body tr:focus-visible { outline: 2px solid var(--ap-accent); outline-offset: -2px; }
 
       /* State of an order (app.js: <span class="ok|pending|bad"><span class="dot"></span>label</span>) as a pill. */
@@ -57,6 +55,17 @@
       #orders-body td > .bad { background: var(--ap-bad-soft); }
       .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
+      /* Phones: each order is a card, each cell a labelled line, so the payment and the anchoring stay in view. */
+      @media (max-width: 560px) {
+        #orders-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+        #orders-table, #orders-body, #orders-body tr, #orders-body td { display: block; width: 100%; }
+        #orders-body tr { background: var(--ap-bg); border-radius: var(--ap-radius-sm); padding: 12px 14px; margin-top: 10px; }
+        #orders-body td, #orders-body td:first-child, #orders-body td:last-child { border: 0; padding: 4px 0; text-align: left; white-space: normal; }
+        #orders-body td[data-label]::before { content: attr(data-label); display: block; color: var(--ap-ink-2); font: 600 0.75rem/1.5 var(--ap-text); letter-spacing: 0; }
+        #orders-body tr:hover td { background: transparent; }
+      }
+
+      #refresh-state { display: block; }
       .empty { padding: 36px 0; text-align: center; display: grid; gap: 6px; }
 
       dialog {
@@ -106,9 +115,13 @@
         </span>
         <p id="merchant-line" class="muted">cargando tienda…</p>
       </div>
-      <div class="vt-right">
-        <span id="refresh-state" class="muted small" aria-live="polite"></span>
-        <span id="net-badge" class="ap-pill ap-info">testnet</span>
+      <div class="ap-bar">
+        <nav class="ap-nav ap-hide-sm" aria-label="AgentPey">
+          <a href="https://agentpey.com/en-vivo">En vivo</a>
+          <a href="https://agentpey.com/tiendas">Tiendas</a>
+          <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+        <p class="ap-live"><span class="ap-live-dot" aria-hidden="true"></span><span>Stellar <span id="net-badge">testnet</span></span></p>
       </div>
     </div></header>
 
@@ -123,7 +136,7 @@
       <section class="ap-card panel" aria-labelledby="orders-title">
         <div class="panel-head">
           <h2 id="orders-title">Pedidos</h2>
-          <p class="muted small">Se actualiza solo cada 5 s. Un anclaje pasa de <em>pendiente</em> a <em>anclado</em> en unos segundos.</p>
+          <p class="muted small">Se actualiza solo cada 5 s. Un anclaje pasa de <em>pendiente</em> a <em>anclado</em> en unos segundos. <span id="refresh-state" aria-live="polite"></span></p>
         </div>
         <div id="orders-empty" class="empty" hidden>
           <p>Todavía no hay pedidos.</p>
@@ -158,7 +171,9 @@
       <span>
         <a id="manifest-link" href="/.well-known/agent-storefront.json">manifest</a> ·
         <a href="/catalog">catálogo</a> ·
-        <a href="/discovery/resources">discovery</a>
+        <a href="/discovery/resources">discovery</a> ·
+        <a href="https://agentpey.com">AgentPey</a> ·
+        <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
       </span>
     </div></footer>
 

@@ -35,6 +35,7 @@
   --ap-ok: #1a7f45;
   --ap-ok-soft: #e8f6ee;
   --ap-bad: #c4122f;
+  --ap-bad-ink: #ffffff;
   --ap-bad-soft: #fdecee;
   --ap-warn: #a35200;
   --ap-warn-soft: #fff3e0;
@@ -57,7 +58,7 @@
   :root:not([data-theme="light"]) {
     --ap-bg: #000000;
     --ap-surface: #1c1c1e;
-    --ap-surface-2: #2c2c2e;
+    --ap-surface-2: #2c2c2e;  /* only under --ap-ink: --ap-ink-2 on it is 3.85:1, so hovers use --ap-bg */
     --ap-ink: #f5f5f7;
     --ap-ink-2: #86868b;
     --ap-hair: #38383a;
@@ -69,6 +70,7 @@
     --ap-ok: #30d158;
     --ap-ok-soft: #0f2a19;
     --ap-bad: #ff6961;
+    --ap-bad-ink: #000000;
     --ap-bad-soft: #3a1414;
     --ap-warn: #ffb340;
     --ap-warn-soft: #3a2a0c;
@@ -90,6 +92,7 @@
   --ap-ok: #30d158;
   --ap-ok-soft: #0f2a19;
   --ap-bad: #ff6961;
+  --ap-bad-ink: #000000;
   --ap-bad-soft: #3a1414;
   --ap-warn: #ffb340;
   --ap-warn-soft: #3a2a0c;
@@ -173,6 +176,22 @@ body.ap {
 .ap-footer .ap-wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
 .ap .ap-footer a { color: var(--ap-ink-2); }
 .ap .ap-footer a:hover { color: var(--ap-ink); }
+/* The one header: the brand on the left; on the right, in this order, the nav (Live, Stores, GitHub), the wallet button
+   on signing pages, and the language switch, always last. It stays one row at every width: under 560px the links
+   marked .ap-hide-sm give way (the footer repeats them). */
+.ap-bar { display: flex; align-items: center; justify-content: flex-end; gap: 10px 18px; min-width: 0; }
+.ap-header .ap-nav { flex-wrap: nowrap; }
+.ap-header .ap-nav a, .ap-header .ap-brand { white-space: nowrap; }
+@media (max-width: 560px) {
+  .ap .ap-hide-sm { display: none !important; }
+  .ap-header .ap-wrap, .ap-bar { gap: 10px; }
+}
+/* "Stellar Testnet · live": a dot and secondary text, never a state pill. .ap-down says the feed failed. */
+.ap-live { display: inline-flex; align-items: center; gap: 8px; margin: 0; color: var(--ap-ink-2); font-size: 0.875rem; font-weight: 600; letter-spacing: -0.005em; }
+.ap-live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ap-ok); flex: none; }
+.ap-live.ap-down .ap-live-dot { background: var(--ap-warn); }
+.ap-live .ap-when-down, .ap-live.ap-down .ap-when-up { display: none; }
+.ap-live.ap-down .ap-when-down { display: inline; }
 
 /* ---------------------------------------------------------------- cards: tone, never borders or shadows */
 .ap-card { background: var(--ap-surface); border-radius: var(--ap-radius); padding: clamp(20px, 3.4vw, 32px); min-width: 0; }
@@ -202,6 +221,8 @@ body.ap {
 .ap-btn.ap-btn-quiet:hover { text-decoration: underline; text-underline-offset: 3px; filter: none; }
 .ap-btn.ap-btn-secondary { background: var(--ap-surface-2); color: var(--ap-ink); box-shadow: inset 0 0 0 1px var(--ap-hair); }
 .ap a.ap-btn.ap-btn-secondary { color: var(--ap-ink); }
+.ap-btn.ap-btn-danger { background: var(--ap-bad); color: var(--ap-bad-ink); }
+.ap a.ap-btn.ap-btn-danger { color: var(--ap-bad-ink); }
 .ap-btn.ap-btn-sm { min-height: 34px; padding: 6px 16px; font-size: 0.9375rem; }
 
 /* ---------------------------------------------------------------- status pills and notes */
@@ -239,12 +260,17 @@ body.ap {
 .ap-dl dt { color: var(--ap-ink-2); }
 .ap-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 560px) { .ap-dl { grid-template-columns: minmax(0, 1fr); gap: 2px; } .ap-dl dd { margin-bottom: 10px; } }
+/* a command to copy: one line that scrolls, never broken mid-token */
+.ap .ap-cmd { display: block; max-width: 100%; margin: 0; padding: 12px 14px; border-radius: var(--ap-radius-sm); background: var(--ap-bg); color: var(--ap-ink); font: 0.8125rem/1.5 var(--ap-mono); letter-spacing: 0; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; }
 .ap-hash { font-family: var(--ap-mono); font-size: 0.8125rem; color: var(--ap-ink); background: var(--ap-bg); border-radius: 8px; padding: 2px 8px; overflow-wrap: anywhere; }
 
-/* ---------------------------------------------------------------- language switch (two anchors) */
+/* ---------------------------------------------------------------- language switch (two anchors, or two buttons) */
 .ap-lang { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--ap-pill); background: var(--ap-surface); font-size: 0.8125rem; }
 .ap .ap-lang a, .ap .ap-lang span { padding: 3px 10px; border-radius: var(--ap-pill); color: var(--ap-ink-2); }
 .ap .ap-lang [aria-current="true"], .ap .ap-lang [aria-current="page"] { background: var(--ap-ink); color: var(--ap-bg); }
 .ap .ap-lang a:hover { text-decoration: none; color: var(--ap-ink); }
+.ap .ap-lang button { appearance: none; border: 0; margin: 0; background: transparent; color: var(--ap-ink-2); cursor: pointer; font: 500 0.8125rem/1.4 var(--ap-text); padding: 3px 10px; border-radius: var(--ap-pill); }
+.ap .ap-lang button:hover { color: var(--ap-ink); }
+.ap .ap-lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
 
 @media (prefers-reduced-motion: reduce) { .ap * { transition: none !important; animation: none !important; } }

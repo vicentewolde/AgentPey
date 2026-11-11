@@ -92,7 +92,7 @@ async function load() {
 function render() {
   const total = orders.reduce((sum, order) => sum + Number(order.amountUSDC ?? 0), 0);
   $("stat-orders").textContent = String(orders.length);
-  $("stat-usdc").textContent = total.toLocaleString("es-CL", { maximumFractionDigits: 4 });
+  $("stat-usdc").textContent = total.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 7 });
   $("stat-anchored").textContent = String(orders.filter((o) => o.anchor?.status === "anchored").length);
 
   const body = $("orders-body");
@@ -102,21 +102,27 @@ function render() {
 
   for (const order of orders) {
     const row = el("tr", { tabIndex: 0 });
+    // Each cell carries its column's name, which the phone layout shows above the value.
+    const cell = (label, props, children) => {
+      const node = el("td", props, children);
+      node.dataset.label = label;
+      return node;
+    };
     row.append(
-      el("td", { className: "mono" }, short(order.orderId, 10, 4)),
-      el("td", {}, itemsOf(order).map((item) =>
+      cell("Pedido", { className: "mono" }, short(order.orderId, 10, 4)),
+      cell("Producto", {}, itemsOf(order).map((item) =>
         el("div", {}, [
           el("div", {}, text(item.name)),
           el("div", { className: "muted small mono" }, `${text(item.sku)} × ${text(item.quantity)}`),
         ]),
       )),
-      el("td", { className: "num" }, [
+      cell("USDC", { className: "num" }, [
         el("div", {}, money(order.amountUSDC)),
         el("div", { className: "muted small" }, `${Number(order.totalLocal).toLocaleString("es-CL")} ${text(order.currency)}`),
       ]),
-      el("td", {}, statusCell(platformLabel(order))),
-      el("td", {}, order.settlement?.txHash ? link(`${EXPLORER}/tx/${order.settlement.txHash}`, short(order.settlement.txHash)) : "—"),
-      el("td", {}, statusCell(anchorLabel(order.anchor))),
+      cell("En la tienda", {}, statusCell(platformLabel(order))),
+      cell("Pago", {}, order.settlement?.txHash ? link(`${EXPLORER}/tx/${order.settlement.txHash}`, short(order.settlement.txHash)) : "—"),
+      cell("Anclaje", {}, statusCell(anchorLabel(order.anchor))),
     );
     const open = () => showDetail(order.orderId);
     row.addEventListener("click", open);

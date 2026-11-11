@@ -6,8 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>AgentPey · AI agents buying on Stellar</title>
 <meta name="description" content="AI agents buying at real stores on Stellar testnet: Claude and ChatGPT pay in USDC through UCP from a smart contract that caps each payment, every receipt is signed and anchored, and refund claims end in a verdict on-chain." />
-<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAACrElEQVRYhe2VXYhMcRjGf++Z2TXYVhpjxswwZ9lyJzdEsUkotNkrwuYjrlwoSimS0rpws4gr1JZLihTZomUj97j0scPZ2TlpsWHtLnNeF3bHObNnvraGC/vUuXif//O+z9P/vKcD0/jfIZUK5yeblok6t0qKHL1oD7y7UJMA0bh5AfRwKY0KQ6J8dg2/Wb+tr8MJMWJ1yne/HqMS8+bm5hmgu8vpRJkDpCYeJxSJjxp0j41xP3JIG6Yc4MvwzzYg7KI+IbwBBoo21TUia29uBFYItIhw1y9ERQFAD7orMWi3+9NLxJBdHpUwBKSBtKR2fKQhNS/fAy2GcDt5RGdWFSAWM01gvYvqz1rpbj+toXLezqRNO5M2s70nw8BZT0CYa4wQqioABvs9OqULyJXtA+zLckKEMwAy3D9odK95OXondayaAIai+1y1OoFcVyXmE8heklPyomNQe7aGddjag8pO93mwVHNkgbkJdJGL6vlgWa+qCQCgr658wbvEeZS8AUEPFFDXqjUvh6IBEolEWIRWFzUU4MftqdlooNhJ0Vfwg+BegRkuqscx6lfGkuafscryctbRRKoDZWHVAUTZW0C1qaNtJd1EF0fjizb8KWWzKkcLRM89ld+caMJcheqzkmZTw8M6I9dqWVb+v+C/Azpp+WpiDj43EI1GZxMIZYDGccWYqHQCIz5DTUULX9UkKNorudEttm1/KzybvAOB0I68+e/uG9lM33G/wbGkuQ7HsytPQZ54zZ3v9YZzzsrYvr9jvyX0XL9I5d++IA+ymb7TleqhYAfi8aalwGoX9Tbbn35UzcBq4Qng4BzEvRfKVUD/VoCgQrurzgUkeL2W5p4AyWSyEbgHfB2n7mcyr9/XOsCkzzASiTQYdbO2iyOvs9m+x7UOMI1p/HP8Ankn2KvA3l7BAAAAAElFTkSuQmCC">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
@@ -34,11 +33,6 @@
 
   /* top bar, inside the hero (the hero is the page's only <header>) */
   .hero .ap-header { position: relative; background: transparent; border-bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .bar-r { display: flex; align-items: center; gap: 14px; }
-  .lang { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--ap-pill); background: var(--ap-surface); }
-  .lang button { font: 500 0.8125rem/1.2 var(--ap-text); padding: 4px 10px; border: 0; border-radius: var(--ap-pill); background: transparent; color: var(--ap-ink-2); cursor: pointer; }
-  .lang button:hover { color: var(--ap-ink); }
-  .lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
 
   /* hero: medal, headline, subtitle, call to action */
   .stage { text-align: center; padding-block: clamp(36px, 8vh, 80px) clamp(64px, 12vh, 120px); }
@@ -47,8 +41,7 @@
   .medal-ring { position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(150deg, #fdfdfe, #c3c9d0 35%, #f2f4f6 55%, #8e97a1); }
   .medal-disc { position: absolute; inset: 8.5%; border-radius: 50%; background: radial-gradient(circle at 50% 22%, #4d95ff, #176bff 45%, #0a2f86); display: grid; place-items: center; }
   .medal-disc svg { width: 34%; height: 34%; color: #fff; }
-  .eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; }
-  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ap-ok); flex: none; }
+  .stage .ap-live { margin-bottom: 18px; }
   .stage h1 { font-size: clamp(2.6rem, 7.4vw, 5rem); line-height: 1.04; }
   .stage h1 .l { display: block; }
   html[lang="es"] .stage h1 { font-size: clamp(2.15rem, 6.8vw, 4.6rem); }
@@ -72,17 +65,17 @@
   .ap .stats-note { margin-top: 28px; }
   .ap .works { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--ap-hair); display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--ap-ink-2); font-size: 0.9375rem; }
   .works span { color: var(--ap-ink); font-weight: 500; }
-  .ap a.go { display: flex; flex-direction: column; gap: 8px; color: var(--ap-ink); text-decoration: none; transition: background-color .15s ease; }
-  .ap a.go:hover { background: var(--ap-surface-2); text-decoration: none; }
+  .ap a.go { display: flex; flex-direction: column; gap: 8px; color: var(--ap-ink); text-decoration: none; }
+  .ap a.go:hover { text-decoration: none; }
   .go h3 { font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.022em; }
-  .go .arrow { margin-top: auto; padding-top: 28px; color: var(--ap-link); font-size: 1.5rem; line-height: 1; }
+  .go .arrow { margin-top: auto; padding-top: 28px; color: var(--ap-link); font-size: 1.5rem; line-height: 1; transition: transform .15s ease; }
+  .ap a.go:hover .arrow { transform: translateX(4px); }
 
   /* closing call */
   .close { text-align: center; padding-block: clamp(72px, 14vh, 128px); }
   .close h2 { font-size: clamp(2.2rem, 6vw, 4rem); letter-spacing: -0.028em; }
 
   @media (max-width: 760px) {
-    .hide-sm { display: none; }
     .bento { grid-template-columns: minmax(0, 1fr); }
     .nums { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 28px; }
   }
@@ -99,17 +92,12 @@
     <a class="ap-brand" href="/">
       <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
       AgentPey</a>
-    <div class="bar-r">
-      <nav class="ap-nav hide-sm" aria-label="AgentPey">
-        <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
-        <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
-        <a href="#explore"><span data-tr="en">Evidence</span><span data-tr="es">Evidencia</span></a>
-        <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-      <div class="lang" role="group" aria-label="Language">
-        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
-      </div>
+    <div class="ap-bar">
+      <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a class="ap-hide-sm" href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+      <div class="ap-lang lang" role="group" aria-label="Language">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+    </div>
     </div>
   </div></div>
 
@@ -118,7 +106,7 @@
       <div class="medal-ring"></div>
       <div class="medal-disc"><svg viewBox="0 0 512 512"><defs><mask id="ap-cut-medal" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut-medal)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg></div>
     </div>
-    <p class="ap-eyebrow eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <p class="ap-live" id="live-state"><span class="ap-live-dot" aria-hidden="true"></span><span class="ap-when-up"><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></span><span class="ap-when-down"><span data-tr="en">Stellar Testnet · feed unavailable</span><span data-tr="es">Stellar Testnet · sin datos ahora</span></span></p>
     <h1>
       <span data-tr="en"><span class="l">Agents buy.</span> <span class="l">You stay <span class="ap-grad">in charge.</span></span></span>
       <span data-tr="es"><span class="l">Los agentes compran.</span> <span class="l">Tú sigues <span class="ap-grad">al mando.</span></span></span>
@@ -180,6 +168,8 @@
 <footer class="ap-footer"><div class="ap-wrap">
   <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
   <span class="ap-row">
+    <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+    <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
     <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
     <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
     <a href="https://realops.agentpey.com">RealOps</a>
@@ -197,6 +187,8 @@
     function render() {
       if (usdc !== null) set("live-usdc", fmt(usdc));
       else if (failed) ["live-stores", "live-purchases", "live-usdc", "live-disputes"].forEach(function (id) { set(id, "n/a"); });
+      var state = document.getElementById("live-state");
+      if (state) state.classList.toggle("ap-down", failed && usdc === null);
     }
     function load(retry) {
       fetch("/api/live", { headers: { accept: "application/json" } })

@@ -37,6 +37,8 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Connect to AgentPey</title>
+<!-- the favicon of every AgentPey page (apps/web/public/brand/agentpey-favicon.svg), inline: the CSP allows data: images only -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22%3E%3Crect width=%22512%22 height=%22512%22 rx=%22112%22 fill=%22%23176bff%22/%3E%3Cg transform=%22translate(79 77) scale(.7)%22 fill=%22none%22 stroke-width=%2260%22%3E%3Cg stroke=%22%23fff%22%3E%3Cpath d=%22M72 416 196 96h86v320%22/%3E%3Cpath d=%22M136 282h146%22/%3E%3Cpath d=%22M282 112h96%22/%3E%3Cpath d=%22M432 166v84l-48 48H282%22/%3E%3C/g%3E%3Cpath d=%22M378 112l54 54%22 stroke=%22%23176bff%22/%3E%3C/g%3E%3C/svg%3E">
 <style>
   /* AgentPey's design system (T207, Y-7), the subset this page uses, inline: this page's CSP allows inline styles
      only and no external font, so these are apps/web/public/brand/agentpey.css's tokens with the system font. */

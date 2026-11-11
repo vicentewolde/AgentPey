@@ -12,6 +12,7 @@ describe("AgentPey's brand files on Vitrinee hosts (T207)", () => {
   const dir = mkdtempSync(join(tmpdir(), "brand-"));
   writeFileSync(join(dir, "agentpey.css"), ":root{--ap-accent:#176bff}");
   writeFileSync(join(dir, "agentpey-mark.svg"), "<svg></svg>");
+  writeFileSync(join(dir, "agentpey-favicon.svg"), "<svg></svg>");
   writeFileSync(join(dir, "agentpey-brand-kit.zip"), "zip");
   const app = express();
   app.use(brandRouter(dir));
@@ -24,7 +25,7 @@ describe("AgentPey's brand files on Vitrinee hosts (T207)", () => {
   });
   afterAll(() => server.close());
 
-  it("serves the stylesheet and the logo with their types", async () => {
+  it("serves the stylesheet, the logo and the favicon with their types", async () => {
     const css = await fetch(`${base}/brand/agentpey.css`);
     expect(css.status).toBe(200);
     expect(css.headers.get("content-type")).toContain("text/css");
@@ -33,6 +34,9 @@ describe("AgentPey's brand files on Vitrinee hosts (T207)", () => {
     const svg = await fetch(`${base}/brand/agentpey-mark.svg`);
     expect(svg.status).toBe(200);
     expect(svg.headers.get("content-type")).toContain("image/svg+xml");
+    const favicon = await fetch(`${base}/brand/agentpey-favicon.svg`);
+    expect(favicon.status).toBe(200);
+    expect(favicon.headers.get("content-type")).toContain("image/svg+xml");
   });
 
   it("serves nothing else from that folder", async () => {

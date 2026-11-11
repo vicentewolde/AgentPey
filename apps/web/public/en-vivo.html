@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AgentPey · live</title>
 <meta name="description" content="What AI agents are buying right now at stores on Stellar testnet: every purchase with its anchored receipt, and every dispute with its state, read from the network." />
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='none' stroke='%23171A1F' stroke-width='60'%3E%3Cpath d='M72 416 196 96h86v320'/%3E%3Cpath d='M136 282h146'/%3E%3Cpath d='M282 112h96'/%3E%3Cpath d='M432 166v84l-48 48H282'/%3E%3C/g%3E%3Cpath d='M378 112l54 54' fill='none' stroke='%23176BFF' stroke-width='60'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
@@ -26,16 +26,12 @@
   /* Page layout only, with the --ap-* tokens of /brand/agentpey.css. */
   html[lang="en"] [data-tr="es"], html[lang="es"] [data-tr="en"] { display: none; }
 
-  .lang button { appearance: none; background: none; border: 0; margin: 0; padding: 3px 10px; border-radius: var(--ap-pill); font: 500 0.8125rem/1.4 var(--ap-text); color: var(--ap-ink-2); cursor: pointer; }
-  .lang button:hover { color: var(--ap-ink); }
-  .lang button[aria-pressed="true"] { background: var(--ap-ink); color: var(--ap-bg); }
 
   .hero { padding-block: clamp(8px, 3vw, 32px) 0; display: grid; gap: 18px; justify-items: center; text-align: center; }
   .hero h1 { max-width: 18ch; }
   .hero .ap-sub { max-width: 40em; font-size: clamp(1.05rem, 1.8vw, 1.25rem); }
-  .ap-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
-  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ap-ok); animation: pulse 1.6s ease-out infinite; }
-  .live-dot.stale { background: var(--ap-warn); animation: none; }
+  .ap-live-dot { animation: pulse 1.6s ease-out infinite; }
+  .ap-live.ap-down .ap-live-dot { animation: none; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ap-ok) 55%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
 
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: clamp(12px, 2vw, 20px); }
@@ -49,7 +45,7 @@
   .row + .row { border-top: 1px solid var(--ap-hair); }
   .row.new { animation: arrive 2.4s ease-out; }
   @keyframes arrive { 0% { background: var(--ap-accent-soft); } 100% { background: transparent; } }
-  @media (prefers-reduced-motion: reduce) { .row.new, .live-dot { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .row.new, .ap-live-dot { animation: none; } }
   .what { font-weight: 600; overflow-wrap: anywhere; }
   .meta { margin-top: 6px; font-size: 0.875rem; color: var(--ap-ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
   .store { font-weight: 500; color: var(--ap-ink); }
@@ -57,10 +53,10 @@
   .amount small { font-family: var(--ap-text); font-weight: 500; font-size: 0.8125rem; letter-spacing: 0; color: var(--ap-ink-2); }
   .links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.8125rem; }
   .state { padding: 22px clamp(16px, 3vw, 28px); color: var(--ap-ink-2); }
-  .state.warn { color: var(--ap-warn); }
+  .feed:empty { display: none; }
   .source { font-size: 0.8125rem; color: var(--ap-ink-2); max-width: 60em; }
   .ap .source a { color: var(--ap-ink-2); text-decoration: underline; text-underline-offset: 3px; }
-  @media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr); } .amount { text-align: left; } .ap-nav { column-gap: 10px; justify-content: flex-end; font-size: 0.8125rem; } }
+  @media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr); } .amount { text-align: left; } }
 </style>
 </head>
 <body class="ap">
@@ -69,20 +65,18 @@
   <a class="ap-brand" href="/">
     <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
     AgentPey</a>
-  <nav class="ap-nav" aria-label="AgentPey">
-    <a href="/"><span data-tr="en">Home</span><span data-tr="es">Inicio</span></a>
-    <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
-    <div class="ap-lang lang">
+  <div class="ap-bar">
+    <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="/en-vivo" aria-current="page"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a class="ap-hide-sm" href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <div class="ap-lang lang" role="group" aria-label="Language">
       <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
       <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
     </div>
-    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
-  </nav>
+  </div>
 </div></header>
 
 <main class="ap-wrap ap-main">
   <header class="hero">
-    <p class="ap-eyebrow"><span class="live-dot" id="dot" aria-hidden="true"></span><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></p>
+    <p class="ap-live" id="live-state"><span class="ap-live-dot" id="dot" aria-hidden="true"></span><span class="ap-when-up"><span data-tr="en">Stellar Testnet · live</span><span data-tr="es">Stellar Testnet · en vivo</span></span><span class="ap-when-down"><span data-tr="en">Stellar Testnet · feed unavailable</span><span data-tr="es">Stellar Testnet · sin datos ahora</span></span></p>
     <h1>
       <span data-tr="en">What AI agents are <span class="ap-grad">buying</span> right now.</span>
       <span data-tr="es">Lo que los agentes de IA están <span class="ap-grad">comprando</span> ahora.</span>
@@ -101,6 +95,7 @@
   </div>
   <p class="refresh" id="refresh"></p>
 
+  <p class="ap-note ap-warn" id="feed-down" role="status" hidden></p>
   <ul class="feed" id="feed" aria-live="polite">
     <li class="state"><span data-tr="en">Reading the network…</span><span data-tr="es">Leyendo la red…</span></li>
   </ul>
@@ -112,7 +107,15 @@
 
 <footer class="ap-footer"><div class="ap-wrap">
   <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
-  <a href="/api/live">/api/live</a>
+  <span class="ap-row">
+    <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+    <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+    <a href="https://realops.agentpey.com">RealOps</a>
+    <a href="https://signaldesk.agentpey.com">SignalDesk</a>
+    <a href="/api/live">/api/live</a>
+  </span>
 </div></footer>
 
 <script>
@@ -196,10 +199,16 @@
 
     function render() {
       var feed = document.getElementById("feed");
-      var dot = document.getElementById("dot");
-      dot.className = "live-dot" + (failedAt ? " stale" : "");
+      var down = document.getElementById("feed-down");
+      /* The live line says "live" only while the last read worked; a failed read turns it to the warning state. */
+      document.getElementById("live-state").classList.toggle("ap-down", Boolean(failedAt));
+      down.hidden = !(failedAt && !data);
+      down.textContent = failedAt && !data ? t("down") : "";
       if (!data) {
-        if (failedAt) feed.replaceChildren(el("li", "state warn", t("down")));
+        if (failedAt) {
+          feed.replaceChildren();
+          ["s-purchases", "s-usdc", "s-disputes", "s-refunded"].forEach(function (id) { document.getElementById(id).textContent = "n/a"; });
+        }
         return;
       }
       document.getElementById("s-purchases").textContent = String(data.totals.purchases);
