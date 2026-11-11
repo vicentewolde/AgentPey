@@ -9409,3 +9409,13 @@ Qué: el primer intento de la corrida de T166 (10-nov de noche) falló en los do
 Por qué: la Fase 9 vence el 11-nov y la corrida estaba bloqueada en el primer pago.
 
 Pendiente: la corrida A y B con cotizaciones nuevas; renovar la instancia del rail del MCP antes del ~2-dic (cruza su umbral y la renovación, ~269 000 stroops, volvería a pasar el techo), con OK del usuario.
+
+## 2026-11-11 (2) — cc/t166-runbook y cc/webhook-verdict-names
+
+Agente: Claude Code
+
+Qué: T166 corrida y cerrada (dos compras, un reclamo rechazado por el árbitro, una liberación; `evidencia/T166.md`), T167 con mapa y borrador del informe. El «dispute.resolved doble» del registro no era un duplicado: era el veredicto y la liberación al comercio con la misma etiqueta; el receptor de `apps/web` ahora nombra cada aviso por su paso (rama `cc/webhook-verdict-names`, `314a0ea`, con prueba; sin cambiar el formato ni el esquema publicado). Se renovó la instancia de los rails `CB4WVTJ4…` y `CBDRI5B7…` (`4bbdf9f6…`, `5e68b7a0…`), con lo que los pagos no vuelven a pasar el techo del facilitator durante el sprint.
+
+Por qué: cerrar la Fase 9 el día en que vencía y no dejar nada «anotado» sin resolver.
+
+Pendiente: push y merge de las dos ramas (OK del usuario); el minuto del video y la entrega del informe; `VITRINEE_RECONCILE_PENDING=1` en Render para la sesión varada `95ea7770…` (T180; el seco necesita `VITRINEE_DATABASE_URL`, que solo está en Render).
