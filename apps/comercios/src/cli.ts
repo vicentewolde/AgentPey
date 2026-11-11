@@ -16,7 +16,7 @@ import { analyzeProduct, pool, sampleProducts } from "./entender.js";
 import { createLlm } from "./llm.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { extractPolicy, readPolicyPages } from "./politicas.js";
-import { buyerQuestions, claudeEngine, judge } from "./diagnostico.js";
+import { buyerQuestions, chatgptEngine, claudeEngine, judge, type Engine } from "./diagnostico.js";
 import { readiness } from "./readiness.js";
 import { createFetcher } from "./http.js";
 import { ingestStore } from "./ingest/index.js";
@@ -109,7 +109,10 @@ async function main(argv: string[]): Promise<void> {
     if (command === "diagnostico" && target !== undefined) {
       const n = Number(flag(rest, "--n") ?? 8);
       const llm = createLlm();
-      const engines = [claudeEngine(llm)];
+      const wanted = (flag(rest, "--motores") ?? "claude,chatgpt").split(",");
+      const engines: Engine[] = [];
+      if (wanted.includes("claude")) engines.push(claudeEngine(llm));
+      if (wanted.includes("chatgpt")) engines.push(chatgptEngine());
       const stores = target === "all" ? STORES : target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
       for (const store of stores) {
         const products = db.products(store.id);
@@ -138,7 +141,7 @@ async function main(argv: string[]): Promise<void> {
           }
         });
         const top = [...others.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([h, c]) => `${h} (${c})`).join(", ");
-        console.log(`${store.id}: aparece en ${mentioned}/${total} respuestas, citada en ${cited}/${total} · en su lugar: ${top}`);
+        console.log(`${store.id} [${engines.map((e) => e.name).join("+")}]: aparece en ${mentioned}/${total} respuestas, citada en ${cited}/${total} · en su lugar: ${top}`);
       }
       return;
     }

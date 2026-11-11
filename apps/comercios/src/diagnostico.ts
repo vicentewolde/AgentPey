@@ -84,3 +84,43 @@ export function judge(store: Store, answer: EngineAnswer): Verdict {
   for (const h of hosts) if (h !== domain && !NOT_STORES.test(`${h}.`)) counts.set(h, (counts.get(h) ?? 0) + 1);
   return { mentioned, cited, others: [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([h]) => h) };
 }
+
+/**
+ * ChatGPT through the Codex CLI signed in with the ChatGPT plan, web search on.
+ * Same OpenAI models, but not the ChatGPT app itself: answers are close, not identical.
+ */
+export function chatgptEngine(timeoutMs = 300_000): Engine {
+  return {
+    name: "chatgpt",
+    async ask(question) {
+      const { spawn } = await import("node:child_process");
+      const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+      const { tmpdir } = await import("node:os");
+      const { join } = await import("node:path");
+      const dir = mkdtempSync(join(tmpdir(), "codex-"));
+      const outFile = join(dir, "answer.md");
+      const prompt = `${ASSISTANT_SYSTEM}\n\nPregunta del usuario: ${question}`;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const env = { ...process.env };
+          delete env.OPENAI_API_KEY;
+          const child = spawn("codex", ["exec", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "-c", 'web_search="live"', "-o", outFile, prompt], { cwd: dir, env, stdio: ["ignore", "ignore", "pipe"] });
+          let err = "";
+          const timer = setTimeout(() => child.kill("SIGTERM"), timeoutMs);
+          child.stderr.on("data", (d: Buffer) => (err += d.toString()));
+          child.on("error", reject);
+          child.on("close", (code) => {
+            clearTimeout(timer);
+            if (code === 0) resolve();
+            else reject(new Error(`codex exec terminó con ${code}: ${err.slice(-300)}`));
+          });
+        });
+        const text = readFileSync(outFile, "utf8");
+        const urls = [...new Set([...text.matchAll(/https?:\/\/[^\s)\]>"']+/g)].map((m) => m[0].replace(/[.,;]+$/, "")))];
+        return { engine: "chatgpt", text, urls };
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  };
+}
