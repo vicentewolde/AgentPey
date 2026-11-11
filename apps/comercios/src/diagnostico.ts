@@ -124,3 +124,39 @@ export function chatgptEngine(timeoutMs = 300_000): Engine {
     },
   };
 }
+
+/**
+ * Gemini through the Gemini API (free tier of a Google AI Studio key), with
+ * Google Search grounding on. Needs GEMINI_API_KEY. Grounding sources come back
+ * as redirect links whose title is the site's domain, so the domain is used.
+ */
+export function geminiEngine(apiKey: string, model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash"): Engine {
+  return {
+    name: "gemini",
+    async ask(question) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: ASSISTANT_SYSTEM }] },
+          contents: [{ role: "user", parts: [{ text: question }] }],
+          tools: [{ google_search: {} }],
+        }),
+        signal: AbortSignal.timeout(120_000),
+      });
+      if (!res.ok) throw new Error(`Gemini respondió ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const data = (await res.json()) as {
+        candidates?: { content?: { parts?: { text?: string }[] }; groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] } }[];
+      };
+      const candidate = data.candidates?.[0];
+      const text = (candidate?.content?.parts ?? []).map((p) => p.text ?? "").join("");
+      const urls = new Set<string>(Array.from(text.matchAll(/https?:\/\/[^\s)\]>"']+/g), (m) => m[0].replace(/[.,;]+$/, "")));
+      for (const chunk of candidate?.groundingMetadata?.groundingChunks ?? []) {
+        const title = chunk.web?.title ?? "";
+        if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(title)) urls.add(`https://${title}/`);
+        else if (chunk.web?.uri !== undefined) urls.add(chunk.web.uri);
+      }
+      return { engine: "gemini", text, urls: [...urls] };
+    },
+  };
+}

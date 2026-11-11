@@ -16,11 +16,18 @@ import { analyzeProduct, pool, sampleProducts } from "./entender.js";
 import { createLlm } from "./llm.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { extractPolicy, readPolicyPages } from "./politicas.js";
-import { buyerQuestions, chatgptEngine, claudeEngine, judge, type Engine } from "./diagnostico.js";
+import { buyerQuestions, chatgptEngine, claudeEngine, geminiEngine, judge, type Engine } from "./diagnostico.js";
 import { readiness } from "./readiness.js";
 import { createFetcher } from "./http.js";
 import { ingestStore } from "./ingest/index.js";
 import { findStore, STORES } from "./stores.js";
+
+// Keys live in apps/comercios/.env.local (not in git). Missing file is fine.
+try {
+  process.loadEnvFile(fileURLToPath(new URL("../.env.local", import.meta.url)));
+} catch {
+  /* no .env.local */
+}
 
 const DB_PATH = fileURLToPath(new URL("../data/comercios.db", import.meta.url));
 
@@ -109,10 +116,15 @@ async function main(argv: string[]): Promise<void> {
     if (command === "diagnostico" && target !== undefined) {
       const n = Number(flag(rest, "--n") ?? 8);
       const llm = createLlm();
-      const wanted = (flag(rest, "--motores") ?? "claude,chatgpt").split(",");
+      const wanted = (flag(rest, "--motores") ?? "claude,chatgpt,gemini").split(",");
       const engines: Engine[] = [];
       if (wanted.includes("claude")) engines.push(claudeEngine(llm));
       if (wanted.includes("chatgpt")) engines.push(chatgptEngine());
+      if (wanted.includes("gemini")) {
+        const key = process.env.GEMINI_API_KEY;
+        if (key === undefined || key === "") console.error("Falta GEMINI_API_KEY en apps/comercios/.env.local; se omite Gemini.");
+        else engines.push(geminiEngine(key));
+      }
       const stores = target === "all" ? STORES : target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
       for (const store of stores) {
         const products = db.products(store.id);
