@@ -40,6 +40,17 @@ export function openDb(path: string) {
       status   text not null default 'propuesta',
       at       text not null
     );
+    create table if not exists answers (
+      store_id  text not null,
+      engine    text not null,
+      question  text not null,
+      text      text not null,
+      urls      text not null,
+      mentioned integer not null,
+      cited     integer not null,
+      others    text not null,
+      at        text not null
+    );
     create table if not exists ingest_runs (
       store_id   text not null,
       at         text not null,
@@ -92,6 +103,17 @@ export function openDb(path: string) {
     policy(storeId: string): { pages: string[]; status: string; data: unknown } | undefined {
       const r = db.prepare("select pages, status, data from policies where store_id = ?").get(storeId);
       return r === undefined ? undefined : { pages: JSON.parse(String(r.pages)) as string[], status: String(r.status), data: JSON.parse(String(r.data)) as unknown };
+    },
+    saveAnswer(storeId: string, a: { engine: string; question: string; text: string; urls: readonly string[]; mentioned: boolean; cited: boolean; others: readonly string[] }): void {
+      db.prepare("insert into answers (store_id, engine, question, text, urls, mentioned, cited, others, at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+        storeId, a.engine, a.question, a.text, JSON.stringify(a.urls), a.mentioned ? 1 : 0, a.cited ? 1 : 0, JSON.stringify(a.others), new Date().toISOString(),
+      );
+    },
+    answers(storeId: string): { engine: string; question: string; text: string; urls: string[]; mentioned: boolean; cited: boolean; others: string[]; at: string }[] {
+      return db.prepare("select * from answers where store_id = ? order by at").all(storeId).map((r) => ({
+        engine: String(r.engine), question: String(r.question), text: String(r.text), urls: JSON.parse(String(r.urls)) as string[],
+        mentioned: Number(r.mentioned) === 1, cited: Number(r.cited) === 1, others: JSON.parse(String(r.others)) as string[], at: String(r.at),
+      }));
     },
     close(): void {
       db.close();

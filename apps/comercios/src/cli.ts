@@ -4,6 +4,7 @@
  *   summary                          products per store and last run
  *   entender <storeId|piloto> [--n 20]   Claude reviews a sample of products (needs ANTHROPIC_API_KEY)
  *   politicas <storeId|piloto|all>       find and structure shipping/returns/warranty pages
+ *   diagnostico <storeId|piloto|all> [--n 8]   ask AI assistants buyer questions; does the store show up?
  *   report                           readiness per store; writes data/feeds/<id>.jsonl and <id>.llms.txt
  */
 import { fileURLToPath } from "node:url";
@@ -16,6 +17,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { analyzeProduct, DEFAULT_MODEL, pool, sampleProducts } from "./entender.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { extractPolicy, readPolicyPages } from "./politicas.js";
+import { buyerQuestions, claudeEngine, judge } from "./diagnostico.js";
 import { readiness } from "./readiness.js";
 import { createFetcher } from "./http.js";
 import { ingestStore } from "./ingest/index.js";
@@ -106,6 +108,36 @@ async function main(argv: string[]): Promise<void> {
         } catch (error) {
           console.log(`${store.id}: falló (${(error as Error).message})`);
         }
+      }
+      return;
+    }
+    if (command === "diagnostico" && target !== undefined) {
+      const n = Number(flag(rest, "--n") ?? 8);
+      const client = new Anthropic();
+      const engines = [claudeEngine(client)];
+      const stores = target === "all" ? STORES : target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
+      for (const store of stores) {
+        const products = db.products(store.id);
+        const questions = await buyerQuestions(client, store, products, n);
+        let mentioned = 0;
+        let cited = 0;
+        let total = 0;
+        const others = new Map<string, number>();
+        await pool(questions.flatMap((q) => engines.map((e) => ({ q, e }))), 3, async ({ q, e }) => {
+          try {
+            const answer = await e.ask(q);
+            const v = judge(store, answer);
+            db.saveAnswer(store.id, { engine: e.name, question: q, text: answer.text, urls: answer.urls, ...v });
+            total++;
+            if (v.mentioned) mentioned++;
+            if (v.cited) cited++;
+            for (const o of v.others.slice(0, 5)) others.set(o, (others.get(o) ?? 0) + 1);
+          } catch (error) {
+            console.error(`${store.id} · ${e.name} · ${q}: ${(error as Error).message}`);
+          }
+        });
+        const top = [...others.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([h, c]) => `${h} (${c})`).join(", ");
+        console.log(`${store.id}: aparece en ${mentioned}/${total} respuestas, citada en ${cited}/${total} · en su lugar: ${top}`);
       }
       return;
     }
