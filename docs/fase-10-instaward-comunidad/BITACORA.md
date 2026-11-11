@@ -19,9 +19,21 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 
 | Tarea | Estado |
 |---|---|
-| T182 a T206 | ⏳ pendientes (spec aprobado; el sprint parte el 11-nov; T201 es un extra) |
+| T207 Todas las páginas con el diseño de las publicaciones | ✅ en producción el 11-nov (PR #106, [evidencia](evidencia/T207.md)) |
+| T182 `confirm` en el contrato de escrow | 👀 código y pruebas listos en `cc/t182-confirm` ([evidencia](evidencia/T182.md)) |
+| T183 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
 
 - 2026-11-10: spec escrito y **aprobado por el usuario**, hecho a partir del encargo de la sesión de investigación y de leer el código de la Fase 9. El
   usuario decidió `confirm` (`Y-1`), la cuenta por persona (`Y-4`), la entrega digital (`Y-5`) y la suscripción de Tapline.
+
+## 2026-11-11 · T207 y T182
+
+**T207.** Las 13 páginas de AgentPey siguen el diseño de las publicaciones de la marca, con una hoja de estilos única (`Y-7`). Revisada
+por un agente independiente en dos pasadas, corregida y en producción el 11-nov.
+
+**T182.** El comprador ya puede confirmar que está conforme: en el contrato, `confirm` paga a la tienda en el acto, desde una compra
+retenida o despachada. Solo lo firma la wallet de la persona (o la cuenta que pagó, si es una cuenta normal); ni el agente, ni la tienda,
+ni el árbitro pueden. Con una disputa abierta no se puede. 42 pruebas del escrow en verde. Falta desplegarlo para Tapline (T183, con OK).
+

@@ -140,8 +140,8 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 - **Archivos principales:** `contracts/purchase-escrow/`
 - **Descripción:** la función `confirm` de 4.2, con su evento y la autorización de `principal()`.
 - **Hecho cuando:**
-  - [ ] tests: confirmar desde `Held` y desde `Shipped` libera al `payee`; confirmar con una disputa abierta, ya liberada o por quien no es `principal` se rechaza; un pagador clásico confirma firmando él mismo
-  - [ ] `cargo test` en verde y los 35 tests de la Fase 9 siguen pasando
+  - [x] tests: confirmar desde `Held` y desde `Shipped` libera al `payee`; confirmar con una disputa abierta, ya liberada o por quien no es `principal` se rechaza; un pagador clásico confirma firmando él mismo
+  - [x] `cargo test` en verde y los 35 tests de la Fase 9 siguen pasando
 
 #### T183 · Despliegue del escrow v2 para Tapline
 - **Estimación:** 4 h · **Depende de:** T182 y el OK del usuario para el despliegue

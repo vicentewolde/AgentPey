@@ -9454,3 +9454,13 @@ Qué: T207 (agregada al spec de la Fase 10 a pedido del usuario): las 13 página
 Por qué: el usuario lo pidió antes de empezar el sprint, con la portada rehecha y todas las páginas de una vez.
 
 Pendiente: OK del usuario para el merge (despliega en Render). Después, T182 (plan aprobado el 11-nov).
+
+## 2026-11-11 (5) — cc/t182-confirm
+
+Agente: Claude Code
+
+Qué: T182, `confirm(order_ref)` en `purchase-escrow`: libera al `payee` desde `Held` o `Shipped`, firmado por la cuenta clásica que pagó o por el `principal()` del rail (`Y-1`), nunca por la llave del agente; eventos `Confirmed` y `Released`; estado y `Purchase` sin cambios. 7 pruebas nuevas, 42 en verde, wasm compila. Antes, T207 quedó en producción (PR #106).
+
+Por qué: primera tarea del sprint de la Fase 10 (D1), plan aprobado por el usuario el 11-nov.
+
+Pendiente: OK del usuario para el merge (no despliega ningún contrato; Render solo reconstruye). Después, T183: desplegar el escrow v2 para Tapline, con OK y XLM de testnet.
