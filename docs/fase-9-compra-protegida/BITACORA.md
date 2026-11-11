@@ -36,8 +36,8 @@ escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el e
 | T163 El comercio recibe el aviso y responde desde su página | 🔨 mergeada; respuesta tardía rechazada en la red (`759bc186…`); falta una respuesta a tiempo firmada por el usuario |
 | T164 El despacho abre la ventana de liberación | 🔨 mergeada (PR #97); faltan los hashes de un despacho real |
 | T165 Cada cambio de la disputa llega al agente | 🔨 código listo; suite UCP 49 · 8 · 20; falta el registro de una disputa real |
-| T166 Corrida completa y QA | ⏳ pendiente |
-| T167 Video, mapa de tiempos e informe final | ⏳ pendiente |
+| T166 Corrida completa y QA | ✅ hecha el 11-nov ([evidencia](evidencia/T166.md)) |
+| T167 Video, mapa de tiempos e informe final | ⏳ video grabado por el usuario; mapa y borrador del informe en [evidencia/T167.md](evidencia/T167.md); falta el minuto del video y entregar el informe |
 
 ---
 
