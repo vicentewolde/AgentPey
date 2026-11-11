@@ -701,7 +701,7 @@ fn the_buyer_confirms_a_held_purchase_and_the_store_is_paid_at_once() {
     f.client.confirm(&order_ref);
     assert_eq!(f.last_signer(), f.principal);
     let purchase = f.client.get(&order_ref).unwrap();
-    assert_eq!((purchase.status, purchase.refund, purchase.closed_at), (Status::Released, 0, NOW));
+    assert_eq!((purchase.status, purchase.refund, purchase.closed_at, purchase.confirmed_at), (Status::Released, 0, NOW, NOW));
     assert_eq!(f.token.balance(&f.payee), PRICE);
     assert_eq!(f.token.balance(&f.rail), 0);
     // The other purchase stays held, and its money stays in the escrow.
@@ -718,6 +718,22 @@ fn the_buyer_confirms_a_shipped_purchase_before_the_window_closes() {
     f.client.confirm(&order_ref);
     assert_eq!(f.status(&order_ref), Status::Released);
     assert_eq!(f.token.balance(&f.payee), PRICE);
+}
+
+#[test]
+fn a_confirm_after_the_window_closes_still_pays_the_store_and_says_it_was_confirmed() {
+    let f = Fixture::setup();
+    let by_buyer = f.shipped(1);
+    let by_window = f.shipped(2);
+    f.advance(RELEASE + 1);
+    f.client.confirm(&by_buyer);
+    f.client.release(&by_window);
+    let confirmed = f.client.get(&by_buyer).unwrap();
+    let released = f.client.get(&by_window).unwrap();
+    assert_eq!((confirmed.status, released.status), (Status::Released, Status::Released));
+    // Only the stored purchase tells them apart once the events are gone.
+    assert_eq!((confirmed.confirmed_at, released.confirmed_at), (NOW + RELEASE + 1, 0));
+    assert_eq!(f.token.balance(&f.payee), 2 * PRICE);
 }
 
 #[test]

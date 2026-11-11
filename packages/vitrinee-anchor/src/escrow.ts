@@ -18,7 +18,8 @@ import { z } from "zod";
 
 import { hashToBytes } from "./scval.js";
 
-export const ESCROW_STORAGE_SCHEMA_VERSION = 1;
+/** 2 since T182 (`confirmed_at`). A version-1 escrow (`agentcommerce`) still decodes: the field is optional. */
+export const ESCROW_STORAGE_SCHEMA_VERSION = 2;
 
 /**
  * The `purchase-escrow` code a verifier trusts: the SHA-256 of the deployed
@@ -66,6 +67,8 @@ export interface EscrowPurchase {
   refundOwedAtomic: bigint;
   /** Unix seconds; `null` while the purchase is open. */
   closedAt: number | null;
+  /** Unix seconds when the buyer confirmed it (T182); `null` otherwise, and always on a version-1 escrow. */
+  confirmedAt?: number | null;
 }
 
 /** What verification needs: read-only, so a verifier never holds a key. */
@@ -236,6 +239,8 @@ const purchaseScSchema = z
     refund: atomic,
     refund_owed: atomic,
     closed_at: seconds,
+    // Version 2 (T182); absent in a version-1 escrow.
+    confirmed_at: seconds.optional(),
   })
   // The contract never refunds more than the purchase, nor owes more than it refunded.
   .refine((p) => p.refund <= p.amount && p.refund_owed <= p.refund, "refund above the purchase");
@@ -274,6 +279,7 @@ export function decodePurchase(value: xdr.ScVal): EscrowPurchase {
     refundAtomic: p.refund,
     refundOwedAtomic: p.refund_owed,
     closedAt: orNull(p.closed_at),
+    confirmedAt: p.confirmed_at === undefined ? null : orNull(p.confirmed_at),
   };
 }
 

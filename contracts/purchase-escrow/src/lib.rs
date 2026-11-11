@@ -36,6 +36,11 @@
 //! plus an absent arbiter could `hold` with a fake payer and collect through
 //! `expire`. The receipt verifier compares the payer with the settled
 //! transaction (T159), and the arbiter's deadline is the backstop.
+//! `confirm` (T182) makes that fake payer faster: a payer contract the operator
+//! controls, or the operator's own account, can confirm at once, without
+//! shipping or waiting for the release window. The money still goes only to
+//! `payee`; what the real buyer loses is the dispute. The same T159 check is
+//! the answer, and it has to run at `hold`, not at release.
 #![no_std]
 
 use soroban_sdk::{
@@ -43,7 +48,8 @@ use soroban_sdk::{
     contracttype, token, Address, Bytes, BytesN, Env,
 };
 
-pub const STORAGE_SCHEMA_VERSION: u32 = 1;
+/// 2 since T182: `Purchase` gained `confirmed_at`.
+pub const STORAGE_SCHEMA_VERSION: u32 = 2;
 
 /// Domain of the message a rail's owner signs to open a dispute. Exactly 32 bytes.
 pub const OPEN_DOMAIN: &[u8; 32] = b"agentpey/purchase-escrow/open/v1";
@@ -166,6 +172,9 @@ pub struct Purchase {
     pub refund_owed: i128,
     /// When it was released, resolved or expired; 0 while open.
     pub closed_at: u64,
+    /// When the buyer confirmed it (T182); 0 if it was released by the window or closed any other way. Kept in the
+    /// purchase, not only in the `Confirmed` event, because the RPC keeps events for days and a page reads it later.
+    pub confirmed_at: u64,
 }
 
 #[contracttype]
@@ -366,6 +375,7 @@ impl PurchaseEscrow {
             refund: 0,
             refund_owed: 0,
             closed_at: 0,
+            confirmed_at: 0,
         };
         Self::save(&env, &purchase);
         env.storage().persistent().set(&payment_key, &order_ref);
@@ -422,6 +432,7 @@ impl PurchaseEscrow {
             None => return Err(Error::UnsupportedPayer),
         }
         let now = env.ledger().timestamp();
+        purchase.confirmed_at = now;
         Self::close(&env, &config, &mut purchase, Status::Released, 0, now)?;
         Confirmed { order_ref: order_ref.clone(), payer: purchase.payer.clone() }.publish(&env);
         Released { order_ref, payee: config.payee, amount: purchase.amount }.publish(&env);

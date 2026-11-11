@@ -89,7 +89,15 @@ describe("reading a purchase-escrow (T159)", () => {
       refundAtomic: 500_000n,
       refundOwedAtomic: 0n,
       closedAt: 1_792_005_157,
+      confirmedAt: null,
     });
+  });
+
+  it("reads when the buyer confirmed (T182), and a version-1 purchase without the field as never confirmed", () => {
+    const released = { status: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Released")]), refund: i128(0n) };
+    expect(decodePurchase(purchaseScVal({ ...released, confirmed_at: u64(1_792_005_150) })).confirmedAt).toBe(1_792_005_150);
+    expect(decodePurchase(purchaseScVal({ ...released, confirmed_at: u64(0) })).confirmedAt).toBeNull();
+    expect(decodePurchase(purchaseScVal(released)).confirmedAt).toBeNull();
   });
 
   it("refuses a purchase the contract could never hold, with a typed error", () => {
@@ -139,6 +147,7 @@ describe("reading a purchase-escrow (T159)", () => {
       ["refund", "i128"],
       ["refund_owed", "i128"],
       ["closed_at", "u64"],
+      ["confirmed_at", "u64"],
     ]);
     const config = /pub struct Config \{([\s\S]*?)\n\}/.exec(CONTRACT_SOURCE)?.[1] ?? "";
     expect([...config.matchAll(/^\s+pub (\w+): /gm)].map(([, name]) => name)).toEqual(["operator", "payee", "arbiter", "token", "release_window", "response_window", "resolve_window"]);
