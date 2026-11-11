@@ -43,7 +43,7 @@ imposible de saltar por prompt injection.
 | [docs/fase-8-agentes-reales/SPEC.md](docs/fase-8-agentes-reales/SPEC.md) | **Cerrada el 2026-10-17 (T128–T156, `P-20`).** El spec de la Fase 8: servidor MCP, Claude y ChatGPT comprando, tienda de terceros, conformidad UCP, AP2, MPP, SDK. T130 quedó en pausa fuera de la fase y T171 (`R-33`) aprobada para una fase futura |
 | [docs/fase-8-agentes-reales/BITACORA.md](docs/fase-8-agentes-reales/BITACORA.md) | Bitácora tarea a tarea de la Fase 8, empieza en T128 |
 | [docs/fase-8-agentes-reales/DECISIONES.md](docs/fase-8-agentes-reales/DECISIONES.md) | Decisiones de la Fase 8 (prefijo `R-`) |
-| [docs/fase-9-compra-protegida/SPEC.md](docs/fase-9-compra-protegida/SPEC.md) | **Fase en curso, principal, abierta 2026-10-14 (`P-19`), spec aprobado.** Una compra protegida de punta a punta: el contrato `purchase-escrow`, el recibo atado al pago, el reclamo desde el chat, la respuesta del comercio, el despacho y los webhooks de disputa. Tareas T157–T167, para el Instaward, hasta el 11-nov |
+| [docs/fase-9-compra-protegida/SPEC.md](docs/fase-9-compra-protegida/SPEC.md) | **Cerrada el 2026-11-11 (T157–T167, T180, T181, `P-25`).** Una compra protegida de punta a punta: el contrato `purchase-escrow`, el recibo atado al pago, el reclamo desde el chat, la respuesta del comercio, el despacho y los webhooks de disputa. Corrida en vivo en `evidencia/T166.md` |
 | [docs/fase-9-compra-protegida/BITACORA.md](docs/fase-9-compra-protegida/BITACORA.md) | Bitácora tarea a tarea de la Fase 9, empieza en T157 |
 | [docs/fase-9-compra-protegida/DECISIONES.md](docs/fase-9-compra-protegida/DECISIONES.md) | Decisiones de la Fase 9 (prefijo `X-`) |
 | [docs/planificacion-exponential/README.md](docs/planificacion-exponential/README.md) | **El tablero espejo (`P-13`, ajustado por `P-15`):** Exponential como tablero, el repo como registro, el ritual de sincronización y cómo se adaptan las skills `/start-ticket`, `/ship-ticket`, `/to-prd` y `/to-expo`. `SYNC.md` es la tabla hito ↔ ticket |
@@ -171,7 +171,7 @@ dos herramientas pise trabajo de la otra ni pierda contexto:
    estructura del proyecto, va a `docs/DECISIONES.md` con prefijo `P-`.
 4. Actualiza `docs/ESTADO.md`: estado de la tarea, siguiente paso y notas
    breves (`P-15`).
-5. `pnpm run exp:sync`: mueve las tarjetas del tablero de Exponential según el
+5. ~~`pnpm run exp:sync`~~ **pausado desde el 2026-11-11 (`P-26`)**: no se corre ni se crean tickets. Antes movía las tarjetas del tablero de Exponential según el
    estado de los tickets (`docs/planificacion-exponential/README.md`).
 6. Commit con mensaje que explique el **porqué**, no solo el qué.
 

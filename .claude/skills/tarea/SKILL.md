@@ -59,7 +59,7 @@ Primero 3 o 4 líneas en lenguaje llano de qué vas a hacer (regla 3). Después:
 - `evidencia/$ARGUMENTS.md` de la fase: las salidas crudas.
 - Toda decisión nueva, con motivo y alternativa descartada, al `DECISIONES.md` de la fase (o `docs/DECISIONES.md` con `P-` si cruza fases; `VT-` si es de Vitrinee). Di si `AGENTS.md` también tiene que cambiar para que Codex se entere.
 - `docs/ESTADO.md`: tarea 👀, siguiente paso y notas breves.
-- `docs/AGENT_LOG.md`: entrada con rama, qué, por qué, qué queda pendiente y una línea "Exponential: qué cambié".
+- `docs/AGENT_LOG.md`: entrada con rama, qué, por qué, qué queda pendiente (la línea "Exponential: qué cambié" ya no va: Exponential está pausado, `P-26`).
 
 ## 6. Commit
 - `git add` **por nombre de archivo**, nunca un directorio ni `-A`.
@@ -78,4 +78,4 @@ Y detente ahí. No empieces otra tarea.
 1. `git push -u origin <rama>` y `gh pr create`, con un cuerpo que enlace la tarea del spec.
 2. Ticket a `QA` con `--pr <url>`.
 3. Con el OK del usuario para el merge: fast-forward a `main`. Antes de pushear `main`, lista `git log origin/main..main` y confirma que cada commit es de esta tarea y está aprobado.
-4. Borra la rama. Ticket a `DONE`, `pnpm run exp:sync`, fila de `SYNC.md`, y la tarea ✅ en `docs/ESTADO.md`.
+4. Borra la rama. Ticket a `DONE`, `pnpm run exp:sync` y fila de `SYNC.md` (pausado desde el 2026-11-11, `P-26`: no se hace); la tarea ✅ en `docs/ESTADO.md`.

@@ -29,6 +29,6 @@ Objetivo: dejar `docs/fase-$ARGUMENTS-…/SPEC.md` en estado **Aprobado**, con t
 5. **Aprobación.** Muestra un resumen: objetivo, número de tareas, riesgos principales y decisiones nuevas. Solo cuando el usuario diga que aprueba:
    - Cambia el estado del spec a **Aprobado** y agrega una fila al registro de cambios.
    - Actualiza la tabla de progreso de `docs/ESTADO.md`.
-   - Espejo (`P-13`): un ticket `T<n> · …` por tarea en Exponential, con `--branch cc/t<n>-<slug>`, y su fila en `SYNC.md` con método `SPEC`.
+   - Espejo (`P-13`) (pausado desde el 2026-11-11, `P-26`: no se hace): un ticket `T<n> · …` por tarea en Exponential, con `--branch cc/t<n>-<slug>`, y su fila en `SYNC.md` con método `SPEC`.
 
 No escribas código de la aplicación en este comando.

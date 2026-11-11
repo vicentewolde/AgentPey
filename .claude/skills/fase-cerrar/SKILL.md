@@ -28,7 +28,7 @@ Contexto:
    - `BITACORA.md` de la fase: **Estado actual** con "Cerrada" y el rango de tareas.
    - `ROADMAP.md` y la tabla de `CLAUDE.md`: la fase como cerrada.
    - `docs/ESTADO.md`: fase siguiente y siguiente paso `/fase-plan <n+1>`.
-   - `docs/AGENT_LOG.md`: entrada de cierre. Exponential: tickets `DONE`, `pnpm run exp:sync`.
+   - `docs/AGENT_LOG.md`: entrada de cierre. Exponential: tickets `DONE`, `pnpm run exp:sync` (pausado desde el 2026-11-11, `P-26`: no se hace).
 
 6. **Retro breve.** Tres líneas: qué funcionó, qué no, y qué cambiar en la próxima fase. Si algo afecta la forma de trabajar, propón editar `CLAUDE.md` o las skills.
 

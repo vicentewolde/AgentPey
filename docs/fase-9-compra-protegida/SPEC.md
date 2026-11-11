@@ -1,6 +1,6 @@
 # Spec Fase 9 · Una compra protegida, de punta a punta
 
-- **Estado:** Aprobado (2026-10-14)
+- **Estado:** Cerrado (2026-11-11) · aprobado el 2026-10-14 · tareas T157–T167, más T180 y T181 (`P-23`); cierre en `P-25`
 - **Rama base:** `main`
 - **Tareas:** T157 a T167 (T168 a T170 reservadas si hace falta partir alguna; la Fase 8 numera desde T171)
 - **Fechas:** 13-oct → 11-nov-2026 (30 días). Arranca el 14-oct, con un día de atraso
@@ -232,8 +232,8 @@ explícito del usuario.
 - **Archivos principales:** `apps/mcp/src/shopper.ts`, `apps/mcp/src/tools.ts`
 - **Descripción:** si la compra tiene escrow, `open_claim` firma el mensaje de 4.3 y envía `open`. Sigue sin ser de solo lectura y pide confirmación (`R-10`). Las compras sin escrow siguen como hoy.
 - **Hecho cuando:**
-  - [ ] hay una **grabación de un reclamo hecho desde Claude** o ChatGPT y el hash de la disputa abierta
-  - [ ] un reclamo firmado por otra llave se rechaza en la red
+  - [x] hay una **grabación de un reclamo hecho desde Claude** o ChatGPT y el hash de la disputa abierta (11-nov, video del usuario; disputa [`129b4dd6…`](https://stellar.expert/explorer/testnet/tx/129b4dd6178712f8988d378374e37de95682eb4fe081af09f282f51c9187e6c7), [T166](evidencia/T166.md))
+  - [x] un reclamo firmado por otra llave se rechaza en la red (simulado en testnet sin enviar: `Error(Crypto, InvalidInput)`, [T162](evidencia/T162.md) §1)
 
 #### T163 · El comercio recibe el aviso y responde desde su página
 - **Estimación:** 10 h · **Delegable a Codex:** no · **Depende de:** T162
@@ -243,25 +243,25 @@ explícito del usuario.
   - `responder` firma la transacción `respond` con wallet-kit (Freighter o xBull) dentro del plazo y deja de bajar un archivo; el documento de la respuesta se publica junto a la orden y la red guarda su hash;
   - el árbitro lee la respuesta de la orden y comprueba su hash contra la red.
 - **Hecho cuando:**
-  - [ ] hay hash de una respuesta en plazo
-  - [ ] hay hash de una respuesta tardía rechazada
-  - [ ] el árbitro decide con la respuesta sin intercambiar archivos
+  - [x] hay hash de una respuesta en plazo ([`17a8b6e5…`](https://stellar.expert/explorer/testnet/tx/17a8b6e5757fd5e382dbd3f9103ae95b1374cc321438887a3f9b9f2f78cbfd64), firmada por el usuario el 11-nov)
+  - [x] hay hash de una respuesta tardía rechazada ([`759bc186…`](https://stellar.expert/explorer/testnet/tx/759bc186694fef49cddba622b5cb18e5b90f14f626027aad3882c35e50b6703e), `ResponseWindowClosed`, [T163](evidencia/T163.md) §3)
+  - [x] el árbitro decide con la respuesta sin intercambiar archivos (`resolve:verify` del 11-nov: la respuesta archivada es la de la red)
 
 #### T164 · El despacho abre la ventana de liberación
 - **Estimación:** 6 h · **Delegable a Codex:** no · **Depende de:** T160
 - **Archivos principales:** `packages/vitrinee-gateway/src/ucp/order-events.ts`
 - **Descripción:** cuando la orden pasa a `shipped` (Shopify, T147), la tienda llama `mark_shipped`, y una tarea de la tienda llama `release` al vencer la ventana. Jumpseller no informa despachos (`R-17`) y queda documentado.
 - **Hecho cuando:**
-  - [ ] un despacho marcado en Shopify abre la ventana (hash)
-  - [ ] la liberación ocurre sola al vencer (hash)
+  - [x] un despacho marcado en Shopify abre la ventana (hash) ([`e228eaa5…`](https://stellar.expert/explorer/testnet/tx/e228eaa5b9954eb03bef977e7afced69a852d1fe989068e1fa4333e80c42a1da))
+  - [x] la liberación ocurre sola al vencer (hash) ([`fc80f2e5…`](https://stellar.expert/explorer/testnet/tx/fc80f2e541769d459176dfcea26c34718d5ea911486af61ce745ed92a60777c2))
 
 #### T165 · Cada cambio de la disputa llega al agente
 - **Estimación:** 6 h · **Delegable a Codex:** no · **Depende de:** T162–T164
 - **Archivos principales:** `packages/vitrinee-gateway/src/ucp/order-events.ts`, `orders.ts`
 - **Descripción:** eventos `dispute.opened`, `dispute.responded`, `dispute.resolved`, `escrow.released` y `escrow.refunded` en la cola de webhooks firmados (RFC 9421). El receptor de agentpey.com los verifica.
 - **Hecho cuando:**
-  - [ ] hay un **registro de avisos entregados y verificados** para una disputa completa
-  - [ ] la suite UCP sigue igual o mejor (hoy 49/8/20)
+  - [x] hay un **registro de avisos entregados y verificados** para una disputa completa (nueve avisos del 11-nov, [T166](evidencia/T166.md); el receptor nombra cada aviso de un veredicto desde `X-35`)
+  - [x] la suite UCP sigue igual o mejor (hoy 49/8/20) (11-nov: 49/8/20)
 
 ### Semana 4 (3–11 nov) · D3
 
@@ -269,16 +269,16 @@ explícito del usuario.
 - **Estimación:** 8 h · **Delegable a Codex:** no · **Depende de:** T157–T165
 - **Descripción:** la compra entera en testnet: Claude busca → paga dentro de sus topes → pedido → retenido → despacho → reclamo desde el chat → aviso y respuesta → veredicto → reembolso. Se corrigen los errores que aparezcan y se congela el código. Antes de correr, aviso al usuario para que el chat de la Fase 8 no mergee.
 - **Hecho cuando:**
-  - [ ] la corrida completa está en `evidencia/T166.md`, con cada hash
-  - [ ] `pnpm check` y `cargo test` están en verde
+  - [x] la corrida completa está en `evidencia/T166.md`, con cada hash
+  - [x] `pnpm check` y `cargo test` están en verde
 
 #### T167 · Video, mapa de tiempos e informe final
 - **Estimación:** 6 h (el usuario graba) · **Delegable a Codex:** no · **Depende de:** T166
 - **Descripción:** guion de la corrida, video narrado, mapa "minuto → paso → hash en Stellar Expert", informe final para el líder del capítulo.
 - **Hecho cuando:**
-  - [ ] el video está grabado
-  - [ ] el mapa de tiempos está completo
-  - [ ] el informe final está entregado
+  - [x] el video está grabado (por el usuario, 11-nov)
+  - [x] el mapa de tiempos está completo ([T167](evidencia/T167.md))
+  - [x] el informe final está entregado (aprobado por el usuario el 11-nov: el Instaward de octubre no se ganó y la fase la revisa él, `P-25`)
 
 **Total estimado:** unas 88 h en 30 días.
 
@@ -368,6 +368,7 @@ de las tareas T154 y T155 se retiraron el 17-oct; queda `AgentPay-codex`, la de 
 | 2026-10-16 | T161 cerrada (PR #92): en producción la orden retenida `ord_mv9s83yb…` muestra `held` y valida contra los esquemas; `get_order` lee el escrow de la red. D1 completo |
 | 2026-10-16 | T161 en revisión: `receipt.escrow` en la orden, extensión del recibo `2026-10-16`, la disputa del escrow como ajuste de UCP y `escrow` en `get_order` (`X-27`) |
 | 2026-10-17 | Cierre de la Fase 8 (`P-20`): esta pasa a ser la única fase abierta. Se quitan del spec el chat paralelo de la Fase 8 y la coordinación de merges con él; el trabajo va en la carpeta principal, sin worktrees de tareas |
+| 2026-11-11 | **Cerrada** (`P-25`). T166 corrida en vivo el 11-nov (dos compras, un reclamo rechazado por el árbitro, una liberación sola, y una tercera compra con el reembolso por veredicto) y T167 con video, mapa e informe aprobado por el usuario. Criterios de T162 a T167 marcados con su evidencia. Exponential pausado (`P-26`) |
 | 2026-10-16 | T158 en revisión: el árbitro resuelve en el escrow las compras pagadas a un escrow; la disputa la abre el pagador, el plazo es el del contrato y el reembolso sale del pago retenido (`X-26`). Veredicto real con reembolso completo ejecutado |
 
 ---

@@ -12,15 +12,11 @@
 
 ## Estado actual
 
-**Fecha:** 2026-10-14 · Fase abierta (`P-19`), en paralelo con el cierre de la Fase 8. **Spec aprobado** por el
-usuario el 14-oct, con sus decisiones `X-1` a `X-13`. **Chequeo del día 1 hecho:** el facilitator x402 liquida un
-pago hacia un contrato, así que el pago al escrow puede ir por el mismo camino que hoy (`X-14`). Siguiente: T157, el
-contrato de escrow, **cerrada** ([PR #88](https://github.com/vicentewolde/AgentPey/pull/88)): el contrato está en testnet, con un pago liberado y uno reembolsado de verdad. T159 cerrada ([PR #89](https://github.com/vicentewolde/AgentPey/pull/89)), en producción desde las 21:46 UTC. Orden nuevo, aprobado por el usuario: T159 → T160 → T158 (`X-21`). **T160 cerrada** ([PR #90](https://github.com/vicentewolde/AgentPey/pull/90)): desde el 15-oct
-`agentcommerce` cobra a su escrow, y la primera compra real quedó retenida. **T158 cerrada** ([PR #91](https://github.com/vicentewolde/AgentPey/pull/91)): un
-veredicto real reembolsó desde el pago retenido el 16-oct. **T161 cerrada** ([PR #92](https://github.com/vicentewolde/AgentPey/pull/92)): la orden muestra dónde está el pago en el
-escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el entregable D1. **T162 mergeada el
-27-oct** ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95)): el reclamo del chat abre la disputa en el escrow. Falta el reclamo en vivo desde Claude, grabado. **T163, código listo el 4-nov** (rama
-`cc/t163-respuesta-comercio`): el comercio responde desde su página firmando con su wallet, y el árbitro decide desde la orden. Después: T164.
+**Fecha:** 2026-11-11 · **Cerrada** (`P-25`), T157 a T167 más T180 y T181 (`P-23`). Las once tareas están en `main`. La
+corrida en vivo de T166 (11-nov) recorrió la compra protegida entera desde Claude: dos compras, un reclamo que el árbitro
+rechazó, una liberación sola al vencer la ventana, y una tercera compra con el reembolso por veredicto. Video grabado por el
+usuario, mapa de tiempos e informe en [evidencia/T167.md](evidencia/T167.md), aprobado por él: el Instaward de octubre no se
+ganó, así que no hay líder de capítulo para esta fase. Sigue la Fase 10.
 
 ## Progreso
 
@@ -32,12 +28,14 @@ escrow, en producción desde las 21:43 UTC del 16-oct. Con T161 se completa el e
 | T159 Un pago, un recibo, en la red | ✅ terminada |
 | T160 El checkout paga al escrow | ✅ terminada |
 | T161 La orden muestra el estado del escrow | ✅ terminada |
-| T162 El reclamo desde el chat abre la disputa en la red | 🔨 mergeada; falta el reclamo en vivo desde Claude |
-| T163 El comercio recibe el aviso y responde desde su página | 🔨 mergeada; respuesta tardía rechazada en la red (`759bc186…`); falta una respuesta a tiempo firmada por el usuario |
-| T164 El despacho abre la ventana de liberación | 🔨 mergeada (PR #97); faltan los hashes de un despacho real |
-| T165 Cada cambio de la disputa llega al agente | 🔨 código listo; suite UCP 49 · 8 · 20; falta el registro de una disputa real |
+| T162 El reclamo desde el chat abre la disputa en la red | ✅ terminada (PR #95; reclamo en vivo el 11-nov) |
+| T163 El comercio recibe el aviso y responde desde su página | ✅ terminada (PR #96; respuesta a tiempo firmada por el usuario el 11-nov) |
+| T164 El despacho abre la ventana de liberación | ✅ terminada (PR #97; despacho y liberación reales el 11-nov) |
+| T165 Cada cambio de la disputa llega al agente | ✅ terminada (PR #98; registro de una disputa real el 11-nov; suite UCP 49 · 8 · 20) |
 | T166 Corrida completa y QA | ✅ hecha el 11-nov ([evidencia](evidencia/T166.md)) |
-| T167 Video, mapa de tiempos e informe final | ⏳ video grabado por el usuario; mapa y borrador del informe en [evidencia/T167.md](evidencia/T167.md); falta el minuto del video y entregar el informe |
+| T167 Video, mapa de tiempos e informe final | ✅ terminada ([evidencia/T167.md](evidencia/T167.md)) |
+| T180 Reconciliar los pagos varados (`P-23`) | ✅ terminada (PR #99); no se corrió contra la sesión varada real del 8-nov, que el usuario decidió no rescatar |
+| T181 Un keeper que llame `expire` (`P-23`) | ✅ terminada (PR #99) |
 
 ---
 
@@ -281,3 +279,29 @@ suite oficial de UCP sigue igual: 49 bien, 8 fallas y 20 omitidas, las mismas de
 **Lo que falta.** El registro de una disputa real, con cada aviso entregado y verificado: sale de la corrida de T166.
 
 **Decisiones:** `X-31` y `VT-53`. **Evidencia:** [`evidencia/T165.md`](evidencia/T165.md).
+
+---
+
+## 2026-11-11 · T166 y T167 · La corrida en vivo y el cierre
+
+**Qué quedó funcionando.** Desde Claude, con el conector de AgentPey, se compraron imanes en `agentcommerce` (Shopify) y el
+pago quedó retenido en el escrow de la tienda. Uno se liberó solo diez minutos después del despacho. Otro recibió un reclamo,
+el comercio lo respondió firmando con su wallet y el árbitro lo rechazó porque llegó seis minutos después del pago y sin
+evidencia; una persona confirmó el veredicto y la red lo ejecutó. Una tercera compra se reclamó antes del despacho, el comercio
+aceptó devolver todo y el árbitro ordenó el reembolso desde el pago retenido. Cada paso tiene su transacción en Stellar Expert
+([evidencia/T166.md](evidencia/T166.md)) y su minuto en el video ([evidencia/T167.md](evidencia/T167.md)).
+
+**Lo que se encontró en la corrida y se resolvió.**
+- El primer intento de pago fue rechazado por el facilitator sin mover dinero: el código del `policy_rail` llegó a su umbral de
+  renovación y cada pago cargaba 64 M stroops de renta. Se renovaron fuera del pago el código y la instancia de los dos rails
+  (`X-34`).
+- El registro de avisos mostraba `dispute.resolved` dos veces: eran el veredicto y la liberación al comercio, con la misma
+  etiqueta. El receptor de agentpey.com ahora los distingue (`X-35`).
+- Un pedido «sin envío» en Shopify no tiene botón de despacho: marcarlo «Fulfilled» basta para que la tienda abra la ventana.
+
+**Retro.**
+- Funcionó: la corrida guiada paso a paso en el chat, con cada hash anotado al momento; ninguna ventana de plazos se perdió.
+- No funcionó: el bloqueo del primer pago apareció recién en vivo; una simulación del pago antes de correr lo habría mostrado.
+- Cambiar en la Fase 10: antes de cada corrida, simular un pago del rail contra el techo del facilitator y revisar el TTL de los
+  contratos que pagan (rail) y cobran (escrow).
+

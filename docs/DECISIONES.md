@@ -1019,3 +1019,20 @@ se decidieron como `X-32` y `X-33`. Siguen fuera: mainnet, la sesión varada del
 usuario) y publicar `@agentpey/ucp-stellar` 0.2.1 (`P-22`). **Alternativa descartada:** dejarlos como deuda anotada; el
 primero hace perder el pedido de un comprador que ya pagó.
 
+
+### P-25 · La Fase 9 se cierra el 11-nov con su corrida en vivo; la aprueba el usuario · `Vigente`
+**Fecha:** 2026-11-11 · **Origen:** el usuario ("eso lo apruebo yo"; "como esa fase no se ganó, la hice yo por mi cuenta")
+
+Las tareas T157 a T167, más T180 y T181 (`P-23`), están en `main` o en sus PR, con la corrida de T166 en vivo: dos compras desde
+Claude, un reclamo rechazado por el árbitro, una liberación sola y, aparte, una tercera compra con el reembolso por veredicto
+(`fase-9-compra-protegida/evidencia/T166.md`). El Instaward de octubre no se ganó: el informe final de T167 no va a un líder de
+capítulo, lo aprueba el usuario. Lo que queda sin demostrar está escrito como tal: T180 no se corrió contra la sesión varada del
+8-nov (`95ea7770…`), que el usuario decidió no rescatar (plata de testnet). **Alternativa descartada:** dejar la fase abierta hasta
+enviar el informe a alguien de afuera.
+
+### P-26 · Exponential se pausa: ni tickets nuevos ni `exp:sync` · `Vigente` — pausa `P-13`
+**Fecha:** 2026-11-11 · **Origen:** el usuario ("Exponential, no lo actualices por ahora… no lo vamos a seguir haciendo")
+
+El tablero espejo (`P-13`, ajustado por `P-15`) deja de actualizarse: al cerrar una tarea o una fase no se corre
+`pnpm run exp:sync` ni se crean tickets. El estado vive en `docs/ESTADO.md` y en la `BITACORA.md` de la fase. Se retoma solo si el
+usuario lo pide. **Alternativa descartada:** seguir sincronizando por costumbre.

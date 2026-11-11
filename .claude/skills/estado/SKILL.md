@@ -19,7 +19,7 @@ Pasos:
 2. Lee la última entrada de `docs/AGENT_LOG.md` (el archivo es largo: lee solo el final). Dice qué dejó pendiente la sesión anterior, de Claude Code o de Codex.
 3. Lee del spec de la fase actual (la ruta está en ESTADO) solo la sección de tareas y los criterios de aceptación.
 4. Contrasta: ¿la rama, los commits y el árbol de trabajo coinciden con lo que dice ESTADO? Señala lo que no calce: tarea hecha pero no marcada, rama `cc/` o `codex/` sin mergear, cambios sin commitear, commits en `main` que no están en `origin/main`.
-5. Espejo de Exponential (`P-13`), solo lectura:
+5. Espejo de Exponential (`P-13`), solo lectura (pausado desde el 2026-11-11, `P-26`: no se hace); sáltalo:
    ```bash
    exponential tickets list --workspace personal-cmud6knil0045l704wuoc5b1r --product agentpey --json
    ```

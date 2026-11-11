@@ -10,7 +10,7 @@
 > cualquiera —humano o Claude Code— que necesite entender el proyecto entero
 > antes de tocar una fase específica.
 
-Última revisión: 2026-10-17 · Fase en curso: **Fase 9, spec aprobado** — una compra protegida de punta a punta, con escrow en la red, para el Instaward (`P-19`) — Fases 1 a 8 cerradas (T1–T156; la Fase 8 el 2026-10-17, `P-20`; ver [docs/DECISIONES.md](docs/DECISIONES.md))
+Última revisión: 2026-11-11 · **Fases 1 a 9 cerradas** (T1–T167; la Fase 9 el 2026-11-11, `P-25`). Siguiente: la Fase 10, para el Instaward de noviembre (spec en el PR #101; ver [docs/DECISIONES.md](docs/DECISIONES.md))
 
 ---
 
@@ -670,7 +670,7 @@ cortada. El criterio 1 (una compra desde Claude en una tienda de terceros) no
 se cumplió: T130 sigue en pausa fuera de la fase. T171, el MCP para una lista
 cerrada de wallets (`R-33`), quedó aprobada para una fase futura.
 
-### 4.9 · Fase 9 — Una compra protegida, de punta a punta 🔄 en curso, abierta 2026-10-14
+### 4.9 · Fase 9 — Una compra protegida, de punta a punta ✅ cerrada 2026-11-11 (`P-25`)
 
 La abre `P-19`: los tres entregables del Instaward enviado a Stellar Chile el
 7-oct. Las piezas de una compra hecha por un agente ya existen, pero funcionan
@@ -682,6 +682,12 @@ lo libera o reembolsa por veredicto, con plazos aplicados por la red. Termina
 con una compra grabada de punta a punta, el 11-nov. Tareas T157 a T167,
 decisiones con prefijo `X-`, en
 [docs/fase-9-compra-protegida/SPEC.md](docs/fase-9-compra-protegida/SPEC.md).
+
+**Cerrada el 11-nov (`P-25`)**, con T180 y T181 (`P-23`). La corrida en vivo
+desde Claude dejó, en testnet, una compra con reclamo rechazado por el árbitro,
+una liberada sola al vencer la ventana y otra con el reembolso por veredicto
+([evidencia](docs/fase-9-compra-protegida/evidencia/T166.md)). El Instaward de
+octubre no se ganó: el informe lo aprobó el usuario.
 
 ---
 
