@@ -10,7 +10,7 @@
 > cualquiera —humano o Claude Code— que necesite entender el proyecto entero
 > antes de tocar una fase específica.
 
-Última revisión: 2026-11-11 · **Fases 1 a 9 cerradas** (T1–T167; la Fase 9 el 2026-11-11, `P-25`). Siguiente: la Fase 10, para el Instaward de noviembre (spec en el PR #101; ver [docs/DECISIONES.md](docs/DECISIONES.md))
+Última revisión: 2026-11-11 · **Fases 1 a 9 cerradas** (T1–T167; la Fase 9 el 2026-11-11, `P-25`). Fase en curso: la Fase 10, para el Instaward de noviembre, spec aprobado, sprint 11-nov → 10-dic (`P-24`; ver [docs/DECISIONES.md](docs/DECISIONES.md))
 
 ---
 
