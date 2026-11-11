@@ -121,6 +121,18 @@ toca contratos; bitácora, evidencia en `evidencia/T<n>.md` y `ESTADO.md`. **Nin
 fondos, firma, autorización) salvo que el usuario lo decida para una tarea del tótem que no toque firma ni fondos. Cada
 despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las horas son estimaciones de este borrador.
 
+### Antes del sprint · el diseño de la marca en todas las páginas
+
+#### T207 · Todas las páginas con el diseño de las publicaciones (agregada el 11-nov, a pedido del usuario)
+- **Estimación:** 2 días · **Depende de:** nada · **Va antes de T182** (decidido por el usuario el 11-nov)
+- **Por qué:** el usuario pidió que agentpey.com, Vitrinee, los recibos y las páginas de reclamo sigan el diseño nuevo de las publicaciones de AgentPey (estilo Apple: negro o niebla, un solo azul, Inter Tight e Inter), antes de que la comunidad las use en el sprint
+- **Qué hace:** una hoja de estilos única, `apps/web/public/brand/agentpey.css`, con lo que las publicaciones no definen para la web (estados, enlaces, foco, formularios, modo oscuro: `Y-7`, [DISENO-WEB.md](DISENO-WEB.md)); el gateway de Vitrinee sirve la misma hoja en sus dominios; y las 13 páginas la usan, la portada incluida (se rehace al estilo nuevo)
+- **Límites:** cambia la apariencia, nunca el comportamiento: los `id`, los textos que leen las pruebas y los scripts quedan. Fuera: el tema de Shopify de Tapline y las demos RealOps, SignalDesk y el tablero de estado
+- **Hecho cuando:**
+  - [ ] las 13 páginas de [DISENO-WEB.md](DISENO-WEB.md) §4 cargan la hoja única y no usan Bricolage, DM Mono ni el naranja
+  - [ ] capturas de cada página en claro y oscuro, a 1280 y 390 px, en `evidencia/T207.md`
+  - [ ] `pnpm check` y `vitrinee:check` en verde
+
 ### Semana 1 (11–17 nov) · D1
 
 #### T182 · `confirm` en el contrato de escrow
@@ -339,6 +351,7 @@ del organizador.
 |---|---|
 | 2026-11-10 | Fechas corridas: el sprint parte el 11-nov y dura hasta el 10-dic (S1 11–17 nov, S2 18–24, S3 25 nov–2 dic, S4 3–10 dic), según el usuario; el 23-nov era solo la fecha sugerida del formulario |
 | 2026-11-10 | Anexo A reemplazado por el texto exacto enviado: D3 sin asistencia en Stellar (T201 pasa a extra), evidencia de D3 = tótem, lista en vivo y video, semana 4 con video y revisión final con el líder del capítulo, presupuesto de D3 con "3D design and printing", tercer documento de apoyo (`tapline-cl.myshopify.com`). Fecha del 23-nov: sugerida, por confirmar |
+| 2026-11-11 | T207 agregada a pedido del usuario: todas las páginas con el diseño de las publicaciones, antes de T182, con la portada rehecha y las 13 páginas de una vez (`Y-7`) |
 | 2026-11-10 | **Aprobado** por el usuario, sin cambios en las tareas; `Y-2`, `Y-3` y `Y-6` quedan como se propusieron; el anexo A sigue provisional |
 | 2026-11-10 | Borrador a partir del encargo de la sesión de investigación y de la lectura del código. Respuestas del usuario sobre `confirm`, cuenta por persona, entrega digital y suscripción. Anexo A provisional |
 

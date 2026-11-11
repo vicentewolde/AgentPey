@@ -11,6 +11,7 @@
 import { VitrineeError, isVitrineeError } from "@vitrinee/core";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
+import { brandRouter } from "../brand.js";
 import type { ComercioStore } from "./comercios.js";
 import { routeHost } from "./hosts.js";
 import { createPortalRouter, type PortalOptions } from "./portal.js";
@@ -38,6 +39,8 @@ export function createPlatformApp({ platformHost, pool, comercios, rootComercio,
   app.disable("x-powered-by");
   app.set("trust proxy", true);
   const portalRouter = portal === undefined ? undefined : createPortalRouter({ ...portal, platformHost, comercios, log });
+  // AgentPey's stylesheet and logo on the portal host (T207, Y-7); a store's host gets them from its own app.
+  const brand = brandRouter(undefined, log);
 
   const serveStore = async (slug: string, req: Request, res: Response, next: NextFunction) => {
     const store = await pool.get(slug);
@@ -64,6 +67,7 @@ export function createPlatformApp({ platformHost, pool, comercios, rootComercio,
 
   // Only the portal host gets this far. The portal answers its own paths and
   // passes every other one on.
+  app.use(brand);
   if (portalRouter !== undefined) app.use(portalRouter);
 
   app.use(async (req, res, next) => {

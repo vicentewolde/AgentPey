@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { z, ZodError } from "zod";
 
 import { AnchorWorker, type Anchorer, type Holder } from "./anchoring.js";
+import { brandRouter } from "./brand.js";
 import { checkoutRoutes, completeCheckout, fulfilOrder, orderResponse, preflightCheckout, type CheckoutDeps } from "./checkout.js";
 import type { GatewayConfig } from "./config.js";
 import { SERVICE_CARD_PATH, listResources, listServiceCards, paginationFrom } from "./discovery.js";
@@ -151,6 +152,8 @@ export function createApp({
   // Render and every other PaaS terminate TLS in front of the app.
   app.set("trust proxy", true);
   app.use(express.json({ limit: "64kb" }));
+  // AgentPey's stylesheet and logo, so this store's own pages (the receipt) wear the brand (T207, Y-7).
+  app.use(brandRouter(undefined, log));
 
   const registryClient =
     anchorer === undefined || registry === undefined
