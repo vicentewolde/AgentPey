@@ -23,18 +23,23 @@ const VECTOR_MESSAGE: &str = "6167656e747065792f70757263686173652d657363726f772f
 /// Any valid account address: the classic payer of `X-16`.
 const CLASSIC_PAYER: &str = "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K";
 
-/// Stands in for a `policy_rail`: the one function the escrow calls.
+/// Stands in for a `policy_rail`: the two functions the escrow calls.
 #[contract]
 pub struct MockRail;
 
 #[contractimpl]
 impl MockRail {
-    pub fn __constructor(env: Env, owner: BytesN<32>) {
+    pub fn __constructor(env: Env, owner: BytesN<32>, principal: Address) {
         env.storage().instance().set(&0u32, &owner);
+        env.storage().instance().set(&1u32, &principal);
     }
 
     pub fn owner(env: Env) -> BytesN<32> {
         env.storage().instance().get(&0u32).unwrap()
+    }
+
+    pub fn principal(env: Env) -> Address {
+        env.storage().instance().get(&1u32).unwrap()
     }
 }
 
@@ -49,6 +54,8 @@ struct Fixture {
     minter: StellarAssetClient<'static>,
     rail: Address,
     rail_owner: SigningKey,
+    /// The person's wallet behind the rail: the only one who confirms its purchases (`Y-1`).
+    principal: Address,
 }
 
 fn hash(env: &Env, seed: u8) -> BytesN<32> {
@@ -93,7 +100,8 @@ impl Fixture {
 
         // Fixed keys: the snapshots stay the same from one `cargo test` to the next.
         let rail_owner = SigningKey::from_bytes(&[7; 32]);
-        let rail = env.register(MockRail, (BytesN::from_array(&env, &rail_owner.verifying_key().to_bytes()),));
+        let principal = Address::generate(&env);
+        let rail = env.register(MockRail, (BytesN::from_array(&env, &rail_owner.verifying_key().to_bytes()), principal.clone()));
 
         Fixture {
             client: PurchaseEscrowClient::new(&env, &contract),
@@ -105,6 +113,7 @@ impl Fixture {
             arbiter,
             rail,
             rail_owner,
+            principal,
             env,
         }
     }
@@ -673,4 +682,124 @@ const RAIL_SOURCE: &str = include_str!("../../policy-rail/src/lib.rs");
 fn the_declared_rail_interface_matches_policy_rails_source() {
     let squash = |s: &str| s.split_whitespace().collect::<std::vec::Vec<_>>().join(" ");
     assert!(squash(RAIL_SOURCE).contains("pub fn owner(env: Env) -> Result<BytesN<32>, Error>"), "policy_rail's owner() changed shape");
+    assert!(squash(RAIL_SOURCE).contains("pub fn principal(env: Env) -> Result<Address, Error>"), "policy_rail's principal() changed shape");
+}
+
+// ------------------------------------------------------------- confirm (T182, Y-1)
+
+fn confirm_by(f: &Fixture, signer: &Address, order_ref: &Bytes) {
+    let args = (order_ref.clone(),);
+    let invoke = MockAuthInvoke { contract: &f.contract, fn_name: "confirm", args: args.clone().into_val(&f.env), sub_invokes: &[] };
+    f.env.mock_auths(&[MockAuth { address: signer, invoke: &invoke }]);
+}
+
+#[test]
+fn the_buyer_confirms_a_held_purchase_and_the_store_is_paid_at_once() {
+    let f = Fixture::setup();
+    let order_ref = f.held(1);
+    let other = f.held(2);
+    f.client.confirm(&order_ref);
+    assert_eq!(f.last_signer(), f.principal);
+    let purchase = f.client.get(&order_ref).unwrap();
+    assert_eq!((purchase.status, purchase.refund, purchase.closed_at), (Status::Released, 0, NOW));
+    assert_eq!(f.token.balance(&f.payee), PRICE);
+    assert_eq!(f.token.balance(&f.rail), 0);
+    // The other purchase stays held, and its money stays in the escrow.
+    assert_eq!(f.status(&other), Status::Held);
+    assert_eq!(f.token.balance(&f.contract), PRICE);
+    assert_eq!(f.client.unallocated(), 0);
+}
+
+#[test]
+fn the_buyer_confirms_a_shipped_purchase_before_the_window_closes() {
+    let f = Fixture::setup();
+    let order_ref = f.shipped(1);
+    f.advance(RELEASE / 2);
+    f.client.confirm(&order_ref);
+    assert_eq!(f.status(&order_ref), Status::Released);
+    assert_eq!(f.token.balance(&f.payee), PRICE);
+}
+
+#[test]
+fn a_confirmed_purchase_cannot_be_released_disputed_or_confirmed_again() {
+    let f = Fixture::setup();
+    let order_ref = f.shipped(1);
+    f.client.confirm(&order_ref);
+    f.advance(RELEASE + 1);
+    assert_eq!(f.client.try_release(&order_ref), Err(Ok(Error::WrongStatus)));
+    let claim = hash(&f.env, 42);
+    let sig = f.sign_open(&f.rail_owner, &order_ref, &claim);
+    assert_eq!(f.client.try_open(&order_ref, &claim, &Some(sig)), Err(Ok(Error::WrongStatus)));
+    assert_eq!(f.client.try_confirm(&order_ref), Err(Ok(Error::WrongStatus)));
+    assert_eq!(f.token.balance(&f.payee), PRICE);
+}
+
+#[test]
+fn nothing_is_confirmed_once_a_dispute_is_open_or_the_purchase_is_closed() {
+    let f = Fixture::setup();
+    let disputed = f.held(1);
+    f.opened(&disputed);
+    let answered = f.held(2);
+    f.opened(&answered);
+    f.client.respond(&answered, &hash(&f.env, 50));
+    let resolved = f.held(3);
+    f.opened(&resolved);
+    f.advance(RESPONSE + 1); // the arbiter waits for the store's window (`ResponseWindowOpen`)
+    f.client.resolve(&resolved, &hash(&f.env, 60), &PRICE);
+    let released = f.shipped(4);
+    f.advance(RELEASE);
+    f.client.release(&released);
+    for order_ref in [&disputed, &answered, &resolved, &released] {
+        assert_eq!(f.client.try_confirm(order_ref), Err(Ok(Error::WrongStatus)));
+    }
+    assert_eq!(f.client.try_confirm(&order(&f.env, 99)), Err(Ok(Error::PurchaseNotFound)));
+    assert_eq!((f.status(&disputed), f.status(&answered)), (Status::Disputed, Status::Responded));
+}
+
+#[test]
+fn only_the_rails_principal_confirms_never_the_agent_the_store_or_anyone_else() {
+    let f = Fixture::setup();
+    let order_ref = f.held(1);
+    // The store's accounts, the arbiter and a stranger: the host refuses each one. (Mocking the rail's own address as a
+    // signer would replace the mock rail itself, so the agent's side is the no-auth case below.)
+    for signer in [f.payee.clone(), f.operator.clone(), f.arbiter.clone(), Address::generate(&f.env)] {
+        confirm_by(&f, &signer, &order_ref);
+        assert!(matches!(f.client.try_confirm(&order_ref), Err(Err(_))));
+    }
+    // With nobody's authorisation, neither: there is no signature argument the agent's key could fill.
+    f.env.set_auths(&[]);
+    assert!(matches!(f.client.try_confirm(&order_ref), Err(Err(_))));
+    assert_eq!(f.status(&order_ref), Status::Held);
+    assert_eq!(f.token.balance(&f.payee), 0);
+
+    confirm_by(&f, &f.principal, &order_ref);
+    f.client.confirm(&order_ref);
+    assert_eq!(f.status(&order_ref), Status::Released);
+}
+
+#[test]
+fn a_classic_payer_confirms_with_its_own_stellar_auth() {
+    let f = Fixture::setup();
+    let buyer = Address::from_str(&f.env, CLASSIC_PAYER);
+    let order_ref = f.held_by(1, &buyer, PRICE);
+    let second = f.held_by(2, &buyer, PRICE);
+    f.client.confirm(&order_ref);
+    assert_eq!(f.last_signer(), buyer);
+    assert_eq!(f.status(&order_ref), Status::Released);
+
+    confirm_by(&f, &f.payee, &second);
+    assert!(matches!(f.client.try_confirm(&second), Err(Err(_))));
+    assert_eq!(f.status(&second), Status::Held);
+}
+
+#[test]
+fn a_store_that_cannot_receive_leaves_the_purchase_held_for_the_buyer_to_confirm_later() {
+    let f = Fixture::setup();
+    let order_ref = f.held(1);
+    f.minter.set_authorized(&f.payee, &false);
+    assert_eq!(f.client.try_confirm(&order_ref), Err(Ok(Error::PayeeCannotReceive)));
+    assert_eq!(f.status(&order_ref), Status::Held);
+    f.minter.set_authorized(&f.payee, &true);
+    f.client.confirm(&order_ref);
+    assert_eq!(f.token.balance(&f.payee), PRICE);
 }

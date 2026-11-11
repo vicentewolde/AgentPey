@@ -102,10 +102,12 @@ pub enum Error {
     PayeeCannotReceive = 20,
 }
 
-/// The one function of `policy_rail` this contract calls: its owner's raw Ed25519 key.
+/// The two functions of `policy_rail` this contract calls: its owner's raw Ed25519 key (the agent's key, which opens a
+/// dispute) and its principal (the person's wallet, which confirms a purchase: `Y-1`).
 #[contractclient(name = "RailClient")]
 pub trait RailInterface {
     fn owner(env: Env) -> BytesN<32>;
+    fn principal(env: Env) -> Address;
 }
 
 #[contracttype]
@@ -202,6 +204,16 @@ pub struct Released {
     pub order_ref: Bytes,
     pub payee: Address,
     pub amount: i128,
+}
+
+/// The buyer confirmed the purchase and the payment went to the store before the release window closed (T182, `Y-1`).
+/// Published alongside `Released`, which every reader of a release already listens to.
+#[contractevent(topics = ["escrow", "confirmed"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Confirmed {
+    #[topic]
+    pub order_ref: Bytes,
+    pub payer: Address,
 }
 
 #[contractevent(topics = ["escrow", "opened"])]
@@ -390,6 +402,28 @@ impl PurchaseEscrow {
             return Err(Error::ReleaseTooEarly);
         }
         Self::close(&env, &config, &mut purchase, Status::Released, 0, now)?;
+        Released { order_ref, payee: config.payee, amount: purchase.amount }.publish(&env);
+        Ok(())
+    }
+
+    /// The buyer is satisfied: pays the store now, from `Held` or `Shipped`, without waiting for the release window
+    /// (T182). Only the buyer may confirm (`Y-1`): a classic payer signs the call itself; for a `policy_rail` payer it
+    /// is the rail's `principal()`, the person's wallet, never the agent's key, which can open a dispute but must not be
+    /// able to pay the store on its own. Refused once a dispute is open or the purchase is closed (`WrongStatus`).
+    pub fn confirm(env: Env, order_ref: Bytes) -> Result<(), Error> {
+        let config = Self::load_config(&env);
+        let mut purchase = Self::load(&env, &order_ref)?;
+        if purchase.status != Status::Held && purchase.status != Status::Shipped {
+            return Err(Error::WrongStatus);
+        }
+        match purchase.payer.to_payload() {
+            Some(AddressPayload::AccountIdPublicKeyEd25519(_)) => purchase.payer.require_auth(),
+            Some(AddressPayload::ContractIdHash(_)) => RailClient::new(&env, &purchase.payer).principal().require_auth(),
+            None => return Err(Error::UnsupportedPayer),
+        }
+        let now = env.ledger().timestamp();
+        Self::close(&env, &config, &mut purchase, Status::Released, 0, now)?;
+        Confirmed { order_ref: order_ref.clone(), payer: purchase.payer.clone() }.publish(&env);
         Released { order_ref, payee: config.payee, amount: purchase.amount }.publish(&env);
         Ok(())
     }
