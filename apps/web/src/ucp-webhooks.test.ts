@@ -98,6 +98,30 @@ describe("AgentPey's order webhook receiver (T147)", () => {
     expect(r.recent().map((w) => [w.escrow?.status, w.event, w.escrow?.refundAtomic])).toEqual([...steps].reverse().map(([status, event, refund]) => [status, event, refund]));
   });
 
+  it("names the deliveries of one verdict by the steps the store queues for it, not all as the verdict (T166)", async () => {
+    // A verdict that refunds nothing: the verdict, then the held payment released to the store. Same body, same state.
+    const none = receiver().r;
+    for (const [i, id] of ["99999999-2222-4333-8444-000000000020", "99999999-2222-4333-8444-000000000021", "99999999-2222-4333-8444-000000000022"].entries()) {
+      const delivery = deliver(order({ receipt: { escrow: { status: "resolved", amount_atomic: "5157895", refund_atomic: "0" } } }), { id });
+      expect((await none.receive(URL_, delivery.headers, delivery.body)).status).toBe(200);
+      expect(none.recent()[0]?.event).toBe(i === 0 ? "dispute.resolved" : i === 1 ? "escrow.released" : "dispute.resolved");
+    }
+    // A partial refund: the verdict, the refund, the release.
+    const partial = receiver().r;
+    for (const [i, id] of ["99999999-2222-4333-8444-000000000030", "99999999-2222-4333-8444-000000000031", "99999999-2222-4333-8444-000000000032"].entries()) {
+      const delivery = deliver(order({ receipt: { escrow: { status: "resolved", amount_atomic: "5157895", refund_atomic: "1000000" } } }), { id });
+      await partial.receive(URL_, delivery.headers, delivery.body);
+      expect(partial.recent()[0]?.event).toBe(["dispute.resolved", "escrow.refunded", "escrow.released"][i]);
+    }
+    // A full refund: the verdict, then the refund; nothing is released.
+    const full = receiver().r;
+    for (const [i, id] of ["99999999-2222-4333-8444-000000000040", "99999999-2222-4333-8444-000000000041"].entries()) {
+      const delivery = deliver(order({ receipt: { escrow: { status: "resolved", amount_atomic: "5157895", refund_atomic: "5157895" } } }), { id });
+      await full.receive(URL_, delivery.headers, delivery.body);
+      expect(full.recent()[0]?.event).toBe(["dispute.resolved", "escrow.refunded"][i]);
+    }
+  });
+
   it("never refuses a delivery for an escrow block it cannot read, nor names one by an inherited property (T165 review)", async () => {
     const { r } = receiver();
     const odd = deliver(order({ receipt: { escrow: { status: 42 } } }), { id: "99999999-2222-4333-8444-000000000010" });

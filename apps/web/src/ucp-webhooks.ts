@@ -73,7 +73,7 @@ const deliveredOrderSchema = z.looseObject({
   receipt: z
     .looseObject({
       escrow: z
-        .looseObject({ status: z.string().max(20), refund_atomic: z.string().max(40).optional(), refund_owed_atomic: z.string().max(40).optional() })
+        .looseObject({ status: z.string().max(20), amount_atomic: z.string().max(40).optional(), refund_atomic: z.string().max(40).optional(), refund_owed_atomic: z.string().max(40).optional() })
         .optional()
         .catch(undefined),
     })
@@ -93,6 +93,18 @@ const ESCROW_EVENT: ReadonlyMap<string, string> = new Map([
   ["released", "escrow.released"],
   ["expired", "escrow.refunded"],
 ]);
+
+/**
+ * The deliveries a verdict makes, in the order the store queues them (`escrowEvents`): the verdict itself, then the part
+ * refunded to the payer if any, then the part released to the store if any. Their bodies are the same order in the same
+ * state (`resolved`), so the state alone cannot tell them apart; their arrival can, because a store's queue sends one
+ * delivery at a time, in order. Without the amounts in the body, only the verdict is named.
+ */
+function verdictEvents(refundAtomic: string | undefined, amountAtomic: string | undefined): readonly string[] {
+  if (refundAtomic === undefined || amountAtomic === undefined || !/^\d{1,40}$/.test(refundAtomic) || !/^\d{1,40}$/.test(amountAtomic)) return ["dispute.resolved"];
+  const refund = BigInt(refundAtomic);
+  return ["dispute.resolved", ...(refund > 0n ? ["escrow.refunded"] : []), ...(refund < BigInt(amountAtomic) ? ["escrow.released"] : [])];
+}
 
 type WebhookKey = EcPublicJwk & { kid: string };
 
@@ -244,11 +256,18 @@ export function createOrderWebhookReceiver(options: OrderWebhookReceiverOptions 
     }
     const last = order.data.fulfillment?.events?.at(-1)?.type;
     const escrow = order.data.receipt?.escrow;
+    const orderRef = createHash("sha256").update(order.data.id).digest("hex").slice(0, 16);
+    let event = (escrow === undefined ? undefined : ESCROW_EVENT.get(escrow.status)) ?? last ?? "created";
+    // A verdict is several deliveries with one body: the n-th one received for this order in `resolved` is the n-th step.
+    if (escrow?.status === "resolved") {
+      const before = kept.filter((w) => w.orderRef === orderRef && w.escrow?.status === "resolved").length;
+      event = verdictEvents(escrow.refund_atomic, escrow.amount_atomic)[before] ?? event;
+    }
     const received: ReceivedWebhook = {
       webhookId,
       store: profile.origin,
-      orderRef: createHash("sha256").update(order.data.id).digest("hex").slice(0, 16),
-      event: (escrow === undefined ? undefined : ESCROW_EVENT.get(escrow.status)) ?? last ?? "created",
+      orderRef,
+      event,
       ...(escrow === undefined ? {} : { escrow: { status: escrow.status, refundAtomic: escrow.refund_atomic ?? null, refundOwedAtomic: escrow.refund_owed_atomic ?? null } }),
       occurredAt: new Date(Number(timestamp) * 1000).toISOString(),
       receivedAt: now().toISOString(),
