@@ -85,6 +85,7 @@ import {
 
 import { readEnv as readEnvFrom, requireEnv, requireSecretKey } from "./env.js";
 import { createPublicDiscovery, handleDiscoverySearch } from "./discovery-route.js";
+import { AUDIT_REQUEST_PATH, createAuditRequestLimiter, createPostgresAuditRequestStore, handleAuditRequest, type AuditRequestStore } from "./audit-requests.js";
 import { createIssuerRegistrationLimiter } from "./issuer-registration-limit.js";
 import { log, logError } from "./logging.js";
 
@@ -1166,15 +1167,18 @@ async function serveStatic(pathname: string, res: ServerResponse, host: string |
     sendJson(res, 404, { code: "NotFound", message: `no route for ${pathname}` });
     return;
   }
-  // `/` is the landing page; `/landing` stays as an alias, so links shared
-  // before the swap keep working.
+  // `/` is the Start-Up Chile page for Chilean stores (comercios.html, apart
+  // from the Fase 10 sprint). The Stellar landing moved to `/stellar`;
+  // `/landing` stays as its alias, so links shared before keep working.
   // `/consent/{id}` (T51's consent_url) is the hosted Mandate signing page,
   // whose id is read client-side from the URL path. The Phase 4 wallet demo
   // that lived at `/sign` and then at `/consent` was removed (C-120, decided
   // by the user): the landing's live button goes to RealOps, where a Mandate
   // gets signed here for real. Both old paths 404 like any unknown path.
   const relative =
-    pathname === "/" || pathname === "/landing"
+    pathname === "/" || pathname === "/comercios"
+      ? "/comercios.html"
+      : pathname === "/stellar" || pathname === "/landing"
       ? "/landing.html"
       : pathname.startsWith("/consent/")
         ? "/consent.html"
@@ -1299,6 +1303,23 @@ async function readLive(): Promise<LivePage> {
   return liveActivity.read();
 }
 
+/** Free audit requests from the Start-Up Chile page: at most 5 per address per hour, stored in Postgres. */
+const auditRequestLimiter = createAuditRequestLimiter({ maxPerWindow: 5, windowMs: 60 * 60 * 1000 });
+let auditRequestStorePromise: Promise<AuditRequestStore> | undefined;
+function auditRequestStore(): Promise<AuditRequestStore> {
+  auditRequestStorePromise ??= readEnv().then((env) => createPostgresAuditRequestStore({ connectionString: requireEnv(env, "DATABASE_URL") }));
+  // A failed start is not cached: the next request tries again.
+  auditRequestStorePromise.catch(() => { auditRequestStorePromise = undefined; });
+  return auditRequestStorePromise;
+}
+
+/** The visitor's address as Render's proxy reports it (first hop), else the socket's. Only used to count requests. */
+function clientAddress(req: IncomingMessage): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
+  return first !== undefined && first !== "" ? first : (req.socket.remoteAddress ?? "unknown");
+}
+
 const server = createServer((req, res) => {
   void handle(req, res).catch((error: unknown) => {
     logError("unhandled web request error", error, { method: req.method ?? "unknown", path: req.url ?? "", status: 500 });
@@ -1355,6 +1376,13 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     // The URL the store signed: agentpey.com terminates TLS in front, and the gateway forwards Host unchanged.
     const answer = await orderWebhooks.receive(`https://${req.headers.host ?? "agentpey.com"}${pathname}`, headers, body);
     sendJson(res, answer.status, answer.body);
+    return;
+  }
+
+  // Start-Up Chile page: a store asks for a free audit (audit-requests.ts).
+  if (pathname === AUDIT_REQUEST_PATH && req.method === "POST") {
+    const answer = await handleAuditRequest({ store: auditRequestStore, limiter: auditRequestLimiter }, clientAddress(req), await readJsonBody(req));
+    sendJson(res, answer.status, answer.body, { "cache-control": "no-store" });
     return;
   }
 

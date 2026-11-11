@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>AgentPey · que las IAs encuentren tu tienda</title>
+<meta name="description" content="Cada vez más personas le piden a una IA qué comprar. AgentPey ayuda a las tiendas chilenas que no usan Shopify a aparecer, a ser bien descritas y a medir lo que llega desde ChatGPT, Gemini y otros asistentes.">
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/brand/agentpey.css">
+<script>document.documentElement.classList.add("js");</script>
+<style>
+  /* Start-Up Chile page (not part of the Fase 10 sprint). Always dark, keynote style, like the Stellar landing.
+     Colors, fonts and radii come from /brand/agentpey.css; this block is layout and the scroll reveal only. */
+  html { background: var(--ap-bg); }
+  .hero .ap-header { position: relative; background: transparent; border-bottom: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+  .scene { padding-block: clamp(72px, 16vh, 160px); }
+  .scene + .scene { padding-top: 0; }
+  .center { text-align: center; }
+  .ap .big { font-size: clamp(2.4rem, 7vw, 4.6rem); line-height: 1.04; letter-spacing: -0.028em; }
+  .ap .mid { font-size: clamp(1.9rem, 5vw, 3.2rem); line-height: 1.08; letter-spacing: -0.026em; }
+  .ap .lede { margin: 22px auto 0; max-width: 34ch; }
+  .ap .ap-small.lede { max-width: 60ch; margin-top: 28px; }
+  .ap .ilustrativo, .ap .source { max-width: 70ch; margin: 28px auto 0; }
+  .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
+  .ap a.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 26px; border-radius: var(--ap-pill); background: var(--ap-accent); color: var(--ap-accent-ink); font: 500 1.0625rem/1.2 var(--ap-text); text-decoration: none; }
+  .ap a.btn:hover { filter: brightness(1.08); text-decoration: none; }
+
+  /* the question, typed into a chat bubble */
+  .chat { max-width: 560px; margin: 40px auto 0; display: grid; gap: 14px; text-align: left; }
+  .bubble { padding: 16px 20px; border-radius: 22px; font-size: clamp(1.05rem, 2.2vw, 1.25rem); line-height: 1.4; }
+  .bubble.me { justify-self: end; max-width: 92%; background: var(--ap-accent); color: var(--ap-accent-ink); border-bottom-right-radius: 6px; min-height: 1.4em; }
+  .bubble.ai { justify-self: start; max-width: 80%; background: var(--ap-surface); color: var(--ap-ink-2); border-bottom-left-radius: 6px; }
+  .caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.15em; background: currentColor; }
+
+  /* two stores */
+  .stores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 44px; text-align: left; }
+  .store { transition: opacity .6s ease, transform .6s ease, box-shadow .6s ease; }
+  .store h3 { font-size: clamp(1.3rem, 2.6vw, 1.7rem); }
+  .store .price { font-family: var(--ap-display); font-weight: 600; font-size: 1.6rem; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .store .photo { aspect-ratio: 16 / 10; border-radius: var(--ap-radius-sm); margin-bottom: 18px; background: linear-gradient(135deg, #2c2c2e, #3a3a3c); display: grid; place-items: center; color: var(--ap-ink-2); font-size: .875rem; }
+  .store.a .photo { background: radial-gradient(circle at 30% 30%, #4d95ff, #176bff 45%, #0a2f86); color: #fff; }
+  .store ul { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .store li { color: var(--ap-ink); }
+  .store li.vague { color: var(--ap-ink-2); font-style: italic; }
+  .checks li::before { content: "✓"; color: var(--ap-ok); font-weight: 600; margin-right: 8px; }
+  .checks li.miss::before { content: "?"; color: var(--ap-warn); }
+  .verdict { margin-top: 18px; font-weight: 600; }
+  .verdict.out { color: var(--ap-ink-2); }
+  .verdict.in { color: var(--ap-ok); }
+  .judged .store.a { opacity: .45; transform: scale(.97); }
+  .judged .store.b { box-shadow: 0 0 0 2px var(--ap-accent); }
+
+  /* three questions */
+  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 44px; text-align: left; }
+  .three .n { font-family: var(--ap-display); font-weight: 600; font-size: 2.6rem; line-height: 1; color: var(--ap-ink-2); }
+  .three h3 { margin-top: 18px; font-size: clamp(1.25rem, 2.4vw, 1.5rem); }
+
+  /* numbers */
+  .nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 44px; }
+  .stat b { display: block; font-family: var(--ap-display); font-weight: 600; font-size: clamp(2.6rem, 6vw, 4rem); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .stat span { display: block; margin-top: 10px; color: var(--ap-ink-2); }
+
+  /* platforms */
+  .plats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 30px; }
+  .plats span { padding: 8px 18px; border-radius: var(--ap-pill); background: var(--ap-surface); font-weight: 500; }
+
+  /* steps */
+  .steps { display: grid; gap: 20px; margin-top: 44px; text-align: left; }
+  .steps .ap-card { display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; align-items: start; }
+  .steps .n { grid-row: span 2; font-family: var(--ap-display); font-weight: 600; font-size: 2.2rem; line-height: 1; color: var(--ap-accent); }
+  .steps h3 { font-size: clamp(1.25rem, 2.4vw, 1.5rem); }
+
+  /* form */
+  .audit { max-width: 640px; margin: 44px auto 0; text-align: left; }
+  .audit form { display: grid; gap: 18px; }
+  .audit .row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+  .audit button { justify-self: start; }
+  #audit-status:empty { display: none; }
+  #audit-status { padding: 14px 16px; border-radius: var(--ap-radius-sm); }
+  #audit-status.ok { background: var(--ap-ok-soft); color: var(--ap-ok); }
+  #audit-status.bad { background: var(--ap-bad-soft); color: var(--ap-bad); }
+
+  .social { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+  /* scroll reveal: only with JS, and never when the visitor asks for less motion */
+  @media (prefers-reduced-motion: no-preference) {
+    .js .rv { opacity: 0; transform: translateY(28px); transition: opacity .8s ease, transform .8s ease; }
+    .js .rv.in { opacity: 1; transform: none; }
+    .caret { animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+  }
+  @media (max-width: 760px) {
+    .stores, .three, .nums, .audit .row2 { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body class="ap">
+<header class="hero">
+  <div class="ap-header"><div class="ap-wrap">
+    <a class="ap-brand" href="/">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+      AgentPey</a>
+    <div class="ap-bar">
+      <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="#como-funciona">Cómo funciona</a><a href="#auditoria">Auditoría gratis</a></nav>
+    </div>
+  </div></div>
+  <div class="ap-wrap scene center">
+    <p class="ap-eyebrow rv">Para tiendas online chilenas</p>
+    <h1 class="big rv">Tu próximo cliente ya le preguntó a una <span class="ap-grad">IA</span> antes de entrar a tu tienda.</h1>
+    <p class="ap-sub lede rv">Y la IA ya decidió qué tiendas mostrarle. AgentPey te ayuda a estar en esa lista.</p>
+    <div class="cta rv"><a class="btn" href="#auditoria">Pide tu auditoría gratis</a></div>
+  </div>
+</header>
+
+<main class="ap-wrap">
+  <!-- 1. The question -->
+  <section class="scene center" aria-labelledby="t-pregunta">
+    <p class="ap-eyebrow rv">Imagina a alguien en Concepción</p>
+    <h2 class="mid rv" id="t-pregunta">Le escribe esto a su asistente de IA:</h2>
+    <div class="chat rv" id="chat">
+      <p class="bubble me" id="question">Notebook para programar, hasta $900 mil, que llegue a Concepción antes del viernes y en 12 cuotas.</p>
+      <p class="bubble ai">Revisando tiendas…</p>
+    </div>
+  </section>
+
+  <!-- 2. Two stores, the same notebook -->
+  <section class="scene center" aria-labelledby="t-tiendas">
+    <h2 class="mid rv" id="t-tiendas">Dos tiendas venden el mismo notebook.</h2>
+    <div class="stores" id="stores">
+      <article class="ap-card store a rv">
+        <div class="photo" aria-hidden="true">Fotos de estudio</div>
+        <p class="ap-eyebrow">Tienda A</p>
+        <h3>Notebook Pro 14"</h3>
+        <ul>
+          <li class="vague">"Alto rendimiento."</li>
+          <li class="vague">"Diseño premium."</li>
+          <li class="vague">"Despacho a todo Chile."</li>
+        </ul>
+        <p class="price">$849.990</p>
+      </article>
+      <article class="ap-card store b rv">
+        <div class="photo" aria-hidden="true">Foto simple</div>
+        <p class="ap-eyebrow">Tienda B</p>
+        <h3>Notebook Pro 14"</h3>
+        <ul>
+          <li>16 GB de RAM, 512 GB SSD, 10 h de batería</li>
+          <li>12 cuotas sin interés</li>
+          <li>Llega a Concepción en 48 h</li>
+        </ul>
+        <p class="price">$869.990</p>
+      </article>
+    </div>
+    <p class="ap-sub lede rv">La tienda A tiene mejores fotos y es más barata.</p>
+  </section>
+
+  <!-- 3. What the AI reads -->
+  <section class="scene center" aria-labelledby="t-lee">
+    <h2 class="mid rv" id="t-lee">Pero la IA no mira fotos. Lee datos.</h2>
+    <div class="stores" id="judged">
+      <article class="ap-card store a rv">
+        <p class="ap-eyebrow">Tienda A</p>
+        <ul class="checks">
+          <li class="miss">¿Sirve para programar? No lo dice.</li>
+          <li class="miss">¿Llega a Concepción antes del viernes? No lo dice.</li>
+          <li class="miss">¿12 cuotas? No lo dice.</li>
+        </ul>
+        <p class="verdict out">Fuera de la lista corta.</p>
+      </article>
+      <article class="ap-card store b rv">
+        <p class="ap-eyebrow">Tienda B</p>
+        <ul class="checks">
+          <li>16 GB de RAM: sirve para programar.</li>
+          <li>Llega en 48 h.</li>
+          <li>12 cuotas sin interés.</li>
+        </ul>
+        <p class="verdict in">En la lista corta.</p>
+      </article>
+    </div>
+    <p class="ap-sub lede rv">La venta se decidió antes de que alguien viera tu sitio.</p>
+    <p class="ilustrativo ap-small ap-muted rv">Ejemplo ilustrativo: tiendas y productos inventados. Cada asistente decide a su manera, y tener buenos datos no garantiza una recomendación.</p>
+  </section>
+
+  <!-- 4. Three questions -->
+  <section class="scene center" aria-labelledby="t-tres">
+    <h2 class="mid rv" id="t-tres">Tres preguntas que hoy deciden una venta.</h2>
+    <div class="three">
+      <div class="ap-card rv"><span class="n">1</span><h3>¿Te puede encontrar?</h3><p class="ap-muted">Si tu catálogo no está en un formato que la IA pueda leer, no entras a la comparación.</p></div>
+      <div class="ap-card rv"><span class="n">2</span><h3>¿Te entiende?</h3><p class="ap-muted">"Premium" no responde nada. Medidas, compatibilidad, despacho y cuotas, sí.</p></div>
+      <div class="ap-card rv"><span class="n">3</span><h3>¿Calzas con lo que busca?</h3><p class="ap-muted">Precio, stock y condiciones al día, para que la IA te elija con información correcta.</p></div>
+    </div>
+  </section>
+
+  <!-- 5. Numbers (verify each in its primary source before publishing) -->
+  <section class="scene center" aria-labelledby="t-numeros">
+    <h2 class="mid rv" id="t-numeros">Ya está pasando.</h2>
+    <div class="nums">
+      <div class="stat rv"><b>+71%</b><span>tráfico desde IAs a tiendas online en un año</span></div>
+      <div class="stat rv"><b>+90%</b><span>más conversión de esas visitas que del resto</span></div>
+      <div class="stat rv"><b>+83%</b><span>más ingreso por visita</span></div>
+    </div>
+    <p class="source ap-small ap-muted rv">Adobe, análisis publicado el 29 de octubre de 2026: retail online de Estados Unidos, septiembre de 2026 contra septiembre de 2025. Que estas visitas conviertan más no prueba que la IA sea la causa.</p>
+  </section>
+
+  <!-- 6. The gap -->
+  <section class="scene center" aria-labelledby="t-hueco">
+    <h2 class="mid rv" id="t-hueco">Shopify ya está preparando a sus tiendas para esto.</h2>
+    <p class="ap-sub lede rv">¿Y si vendes en otra plataforma?</p>
+    <div class="plats rv" aria-label="Plataformas"><span>Jumpseller</span><span>Bsale</span><span>WooCommerce</span><span>VTEX</span></div>
+  </section>
+
+  <!-- 7. How it works (pilot) -->
+  <section class="scene center" id="como-funciona" aria-labelledby="t-como">
+    <p class="ap-eyebrow rv">Piloto abierto para tiendas chilenas</p>
+    <h2 class="mid rv" id="t-como">AgentPey, en tres pasos.</h2>
+    <div class="steps">
+      <div class="ap-card rv"><span class="n">1</span><h3>Conecta tu catálogo</h3><p class="ap-muted">Desde tu plataforma, un feed o un CSV. Lo dejamos en formatos que los asistentes de IA pueden leer.</p></div>
+      <div class="ap-card rv"><span class="n">2</span><h3>Completa lo que falta, con tu aprobación</h3><p class="ap-muted">Detectamos los datos que un asistente necesita y tu catálogo no tiene: medidas, compatibilidad, despacho por comuna, cuotas. Te proponemos el texto y tú decides.</p></div>
+      <div class="ap-card rv"><span class="n">3</span><h3>Mide lo que llega desde las IAs</h3><p class="ap-muted">Visitas desde ChatGPT, Gemini, Perplexity y otros, las ventas que vienen de ahí, y cómo te describen.</p></div>
+    </div>
+    <p class="ap-small ap-muted lede rv">Estamos construyendo AgentPey junto a las primeras tiendas del piloto.</p>
+  </section>
+
+  <!-- 8. Free audit -->
+  <section class="scene center" id="auditoria" aria-labelledby="t-auditoria">
+    <h2 class="mid rv" id="t-auditoria">¿Qué dice la IA de tu tienda?</h2>
+    <p class="ap-sub lede rv">Le hacemos 20 preguntas de compra de tu categoría a ChatGPT, Gemini y Perplexity. Te contamos si apareces, cómo te describen y qué te falta. Gratis.</p>
+    <div class="audit ap-card rv">
+      <form id="audit-form" novalidate>
+        <div class="row2">
+          <label class="ap-field"><span class="ap-label">Tu nombre</span><input type="text" name="nombre" autocomplete="name" maxlength="120" required></label>
+          <label class="ap-field"><span class="ap-label">Correo</span><input type="email" name="correo" autocomplete="email" maxlength="200" required></label>
+        </div>
+        <div class="row2">
+          <label class="ap-field"><span class="ap-label">Tu tienda</span><input type="text" name="tienda" placeholder="tutienda.cl" maxlength="200" required></label>
+          <label class="ap-field"><span class="ap-label">Plataforma</span>
+            <select name="plataforma" required>
+              <option value="">Elige una</option>
+              <option value="jumpseller">Jumpseller</option>
+              <option value="bsale">Bsale</option>
+              <option value="woocommerce">WooCommerce</option>
+              <option value="vtex">VTEX</option>
+              <option value="shopify">Shopify</option>
+              <option value="otra">Otra</option>
+            </select>
+          </label>
+        </div>
+        <label class="ap-field"><span class="ap-label">¿Algo que debamos saber? (opcional)</span><textarea name="mensaje" maxlength="1000" placeholder="Por ejemplo: qué vendes o qué te gustaría saber."></textarea></label>
+        <div class="trap" aria-hidden="true"><label>No llenar este campo<input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+        <p class="ap-hint">Usamos estos datos solo para hacerte la auditoría y contactarte. Si quieres que los borremos, escríbenos a <a href="mailto:vicente@agentpey.com">vicente@agentpey.com</a>.</p>
+        <button class="ap-btn" type="submit" id="audit-send">Pedir mi auditoría</button>
+        <p id="audit-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+    <p class="ap-sub lede rv">¿Se viene el Black Friday? Te medimos gratis lo que llega desde las IAs entre el 27 y el 30 de noviembre.</p>
+  </section>
+</main>
+
+<footer class="ap-footer"><div class="ap-wrap">
+  <span>AgentPey · Santiago, Chile · <a href="mailto:vicente@agentpey.com">vicente@agentpey.com</a></span>
+  <span class="social">
+    <a href="https://www.instagram.com/agentpey" target="_blank" rel="noopener">Instagram</a>
+    <a href="https://x.com/agentpeyai" target="_blank" rel="noopener">X</a>
+    <a href="https://www.linkedin.com/company/agentpey" target="_blank" rel="noopener">LinkedIn</a>
+    <a href="/stellar">Para desarrolladores →</a>
+  </span>
+</div></footer>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Scroll reveal: each .rv appears once, when it enters the screen.
+  var items = document.querySelectorAll(".rv");
+  if (reduce || !("IntersectionObserver" in window)) {
+    items.forEach(function (el) { el.classList.add("in"); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { threshold: 0.18 });
+    items.forEach(function (el) { io.observe(el); });
+  }
+
+  // The question types itself the first time the chat is seen.
+  var q = document.getElementById("question");
+  var full = q.textContent;
+  if (!reduce && "IntersectionObserver" in window) {
+    q.textContent = "";
+    var caret = document.createElement("span");
+    caret.className = "caret";
+    q.appendChild(caret);
+    var typed = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) return;
+      typed.disconnect();
+      var i = 0;
+      var timer = setInterval(function () {
+        i += 1;
+        q.textContent = full.slice(0, i);
+        q.appendChild(caret);
+        if (i >= full.length) { clearInterval(timer); caret.remove(); }
+      }, 32);
+    }, { threshold: 0.6 });
+    typed.observe(q);
+  }
+
+  // The AI's verdict: store A fades and B is outlined once the second pair is in view.
+  var judged = document.getElementById("judged");
+  if (reduce || !("IntersectionObserver" in window)) {
+    judged.classList.add("judged");
+  } else {
+    var jo = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) { setTimeout(function () { judged.classList.add("judged"); }, 700); jo.disconnect(); }
+    }, { threshold: 0.5 });
+    jo.observe(judged);
+  }
+
+  // The free audit form: sent as JSON, answered in plain text (never as HTML).
+  var form = document.getElementById("audit-form");
+  var status = document.getElementById("audit-status");
+  var send = document.getElementById("audit-send");
+  var names = { nombre: "tu nombre", correo: "el correo", tienda: "la tienda", plataforma: "la plataforma", mensaje: "el mensaje" };
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    form.querySelectorAll("[aria-invalid]").forEach(function (el) { el.removeAttribute("aria-invalid"); });
+    var data = {};
+    new FormData(form).forEach(function (v, k) { data[k] = String(v); });
+    status.className = "";
+    status.textContent = "";
+    send.disabled = true;
+    fetch("/api/auditoria", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data) })
+      .then(function (r) { return r.json().then(function (body) { return { status: r.status, body: body }; }); })
+      .then(function (a) {
+        if (a.body && a.body.ok) {
+          form.reset();
+          status.className = "ok";
+          status.textContent = "Listo. Te escribimos dentro de los próximos días hábiles con tu auditoría.";
+          return;
+        }
+        status.className = "bad";
+        if (a.status === 400 && a.body && a.body.fields) {
+          a.body.fields.forEach(function (f) { var el = form.elements[f]; if (el) el.setAttribute("aria-invalid", "true"); });
+          status.textContent = "Revisa " + a.body.fields.map(function (f) { return names[f] || f; }).join(", ") + ".";
+        } else {
+          status.textContent = (a.body && a.body.message) || "No pudimos enviar tu solicitud. Escríbenos a vicente@agentpey.com.";
+        }
+      })
+      .catch(function () {
+        status.className = "bad";
+        status.textContent = "No pudimos enviar tu solicitud. Escríbenos a vicente@agentpey.com.";
+      })
+      .then(function () { send.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

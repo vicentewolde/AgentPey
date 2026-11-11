@@ -110,5 +110,18 @@ describe("the static pages", () => {
     expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
     expect(html).not.toContain("\u2014");
   });
-});
 
+  // Start-Up Chile page (apart from the Fase 10 sprint): the free audit form posts to /api/auditoria and shows answers as
+  // text; the store example is labelled as made up; the Stellar landing is one link away.
+  it("comercios.html posts the audit to /api/auditoria, labels its example, and writes nothing as HTML", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "comercios.html"), "utf8");
+    expect(html).toContain('fetch("/api/auditoria"');
+    expect(html).toContain("Ejemplo ilustrativo");
+    expect(html).toContain('href="/brand/agentpey.css"');
+    expect(html).toContain('href="/stellar"');
+    expect(html).toContain('name="sitio_web"');
+    expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+    expect(html).not.toMatch(/cdnjs|unpkg\.com|jsdelivr/);
+    expect(html).not.toContain("\u2014");
+  });
+});
