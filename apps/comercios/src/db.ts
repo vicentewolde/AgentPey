@@ -7,6 +7,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
 
 export type Db = ReturnType<typeof openDb>;
@@ -50,6 +51,25 @@ export function openDb(path: string) {
       cited     integer not null,
       others    text not null,
       at        text not null
+    );
+    create table if not exists events (
+      store_id   text not null,
+      kind       text not null,
+      source     text not null,
+      at         text not null,
+      total      integer,
+      order_id   text,
+      products   text not null default '[]',
+      demo       integer not null default 0
+    );
+    create index if not exists events_store on events (store_id, at);
+    create table if not exists clicks (
+      id         text primary key,
+      store_id   text not null,
+      product_id text not null,
+      url        text not null,
+      channel    text not null,
+      at         text not null
     );
     create table if not exists ingest_runs (
       store_id   text not null,
@@ -114,6 +134,37 @@ export function openDb(path: string) {
         engine: String(r.engine), question: String(r.question), text: String(r.text), urls: JSON.parse(String(r.urls)) as string[],
         mentioned: Number(r.mentioned) === 1, cited: Number(r.cited) === 1, others: JSON.parse(String(r.others)) as string[], at: String(r.at),
       }));
+    },
+    saveEvent(e: MeasureEvent): void {
+      db.prepare("insert into events (store_id, kind, source, at, total, order_id, products, demo) values (?, ?, ?, ?, ?, ?, ?, ?)").run(
+        e.storeId, e.kind, e.source, e.at, e.total ?? null, e.orderId ?? null, JSON.stringify(e.productIds ?? []), e.demo === true ? 1 : 0,
+      );
+    },
+    replaceDemoEvents(storeId: string, events: readonly MeasureEvent[]): void {
+      db.exec("begin");
+      try {
+        db.prepare("delete from events where store_id = ? and demo = 1").run(storeId);
+        const insert = db.prepare("insert into events (store_id, kind, source, at, total, order_id, products, demo) values (?, ?, ?, ?, ?, ?, ?, 1)");
+        for (const e of events) insert.run(e.storeId, e.kind, e.source, e.at, e.total ?? null, e.orderId ?? null, JSON.stringify(e.productIds ?? []));
+        db.exec("commit");
+      } catch (error) {
+        db.exec("rollback");
+        throw error;
+      }
+    },
+    events(storeId: string): MeasureEvent[] {
+      return db.prepare("select * from events where store_id = ? order by at").all(storeId).map((r) => ({
+        storeId: String(r.store_id), kind: String(r.kind) as MeasureEvent["kind"], source: String(r.source) as Source, at: String(r.at),
+        ...(r.total === null ? {} : { total: Number(r.total) }), ...(r.order_id === null ? {} : { orderId: String(r.order_id) }),
+        productIds: JSON.parse(String(r.products)) as string[], demo: Number(r.demo) === 1,
+      }));
+    },
+    saveClick(c: { id: string; storeId: string; productId: string; url: string; channel: string }): void {
+      db.prepare("insert into clicks (id, store_id, product_id, url, channel, at) values (?, ?, ?, ?, ?, ?)").run(c.id, c.storeId, c.productId, c.url, c.channel, new Date().toISOString());
+    },
+    click(id: string): { storeId: string; productId: string; url: string; channel: string } | undefined {
+      const r = db.prepare("select store_id, product_id, url, channel from clicks where id = ?").get(id);
+      return r === undefined ? undefined : { storeId: String(r.store_id), productId: String(r.product_id), url: String(r.url), channel: String(r.channel) };
     },
     close(): void {
       db.close();

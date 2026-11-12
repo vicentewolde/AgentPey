@@ -5,6 +5,7 @@
  *   entender <storeId|piloto> [--n 20]   Claude reviews a sample of products (needs ANTHROPIC_API_KEY)
  *   politicas <storeId|piloto|all>       find and structure shipping/returns/warranty pages
  *   diagnostico <storeId|piloto|all> [--n 8]   ask AI assistants buyer questions; does the store show up?
+ *   demo-medicion <storeId|piloto>       load labelled sample measurement data for the panel
  *   report                           readiness per store; writes data/feeds/<id>.jsonl and <id>.llms.txt
  */
 import { fileURLToPath } from "node:url";
@@ -14,6 +15,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { openDb } from "./db.js";
 import { analyzeProduct, pool, sampleProducts } from "./entender.js";
 import { createLlm } from "./llm.js";
+import { demoEvents } from "./medir.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { extractPolicy, readPolicyPages } from "./politicas.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, geminiEngine, judge, type Engine } from "./diagnostico.js";
@@ -154,6 +156,20 @@ async function main(argv: string[]): Promise<void> {
         });
         const top = [...others.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([h, c]) => `${h} (${c})`).join(", ");
         console.log(`${store.id} [${engines.map((e) => e.name).join("+")}]: aparece en ${mentioned}/${total} respuestas, citada en ${cited}/${total} · en su lugar: ${top}`);
+      }
+      return;
+    }
+    if (command === "demo-medicion" && target !== undefined) {
+      const stores = target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
+      for (const store of stores) {
+        if (!store.sellsOnline) {
+          db.replaceDemoEvents(store.id, []);
+          console.log(`${store.id}: no vende en línea; sin datos de prueba de ventas`);
+          continue;
+        }
+        const events = demoEvents(store.id, db.products(store.id).map((p) => p.id));
+        db.replaceDemoEvents(store.id, events);
+        console.log(`${store.id}: ${events.length} eventos de prueba (rotulados como demo)`);
       }
       return;
     }
