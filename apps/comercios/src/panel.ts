@@ -154,7 +154,7 @@ export function panel(d: PanelData): string {
   const promover = `
 <section class="ap-card ap-stack">
   <div class="ap-eyebrow">5 · Promover</div><h2>Qué productos impulsar primero</h2>
-  <div class="demo">Simulación: los avisos dentro de las IAs todavía no existen en Chile. Este ranking usa stock, calidad de la ficha, precio y lo que la gente pregunta.</div>
+  <div class="demo">Recomendación, sin campaña conectada todavía. Los avisos en ChatGPT llegaron a Chile en octubre de 2026 (beta, de a poco). Este ranking usa stock, calidad de la ficha, precio y lo que la gente pregunta; el margen lo aportas tú.</div>
   <table><thead><tr><th>Producto</th><th>Precio</th><th>Por qué</th></tr></thead><tbody>
   ${d.promote.map((r) => `<tr><td><a href="${esc(r.product.url)}">${esc(r.product.title)}</a></td><td>${clp(r.product.price)}</td><td class="ap-muted">${esc(r.reasons.join(" · ") || "buen candidato")}</td></tr>`).join("")}
   </tbody></table>

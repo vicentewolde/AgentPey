@@ -1,10 +1,11 @@
 /**
- * Problem 5, "gastar bien" — a SIMULATION. There are no ads inside AI
- * assistants in Chile yet (OpenAI's feed accepts US, CA and MX only, 11-nov-2026),
- * so this ranks which products would be worth promoting first, from data we do
- * have: in stock, a listing an assistant can use, a price that can carry a
- * promotion, and AI answers where the store did not show up. The owner adds
- * margin when known; without it, price stands in. Every screen says "simulación".
+ * Problem 5, "gastar bien" — a RECOMMENDATION, not a running campaign.
+ * ChatGPT Ads reached Chile on 21-oct-2026 (beta, gradual rollout; reported by
+ * Marketing Directo and Ecosistema Startup citing OpenAI), but AgentPey is not
+ * connected to any ads account. This ranks which products would be worth
+ * promoting first, from data we do have: in stock, a listing an assistant can
+ * use, a price that can carry a promotion, and AI answers where the store did
+ * not show up. The owner adds margin when known; without it, price stands in.
  */
 import type { Product } from "./model.js";
 
