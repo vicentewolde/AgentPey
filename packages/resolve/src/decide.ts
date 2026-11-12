@@ -6,7 +6,7 @@
  * hash goes on chain. Nothing here pays: `resolve` in the contract does, and
  * only after a person confirms this exact hash (`E-18`).
  */
-import type { Arbiter } from "./arbiter.js";
+import type { Arbiter, EvidenceFileCheck } from "./arbiter.js";
 import type { CheckedClaim } from "./claim.js";
 import type { VerifiedResponse } from "./response.js";
 import { AGENTRESOLVE_VERDICT_TYPE, agentResolveVerdictSchema, boundProposal, verdictHash } from "./verdict.js";
@@ -21,6 +21,8 @@ export interface DecideDisputeInput {
   readonly response: VerifiedResponse | null;
   /** The merchant's time to answer, told to the arbiter: 48 h by default (`E-22`), the escrow's own (`X-26`). */
   readonly responseWindowSeconds?: number;
+  /** Each file the claim lists, checked against its sealed hash (T184). */
+  readonly evidenceFiles?: readonly EvidenceFileCheck[];
   readonly now?: Date;
 }
 
@@ -38,6 +40,7 @@ export async function decideDispute(input: DecideDisputeInput): Promise<DecidedD
     disputedAtomic: checked.disputedAtomic,
     response: input.response?.response ?? null,
     ...(input.responseWindowSeconds === undefined ? {} : { responseWindowSeconds: input.responseWindowSeconds }),
+    ...(input.evidenceFiles === undefined ? {} : { evidenceFiles: input.evidenceFiles }),
   });
   const proposed = BigInt(decision.proposal.refund_atomic);
   const bounded = boundProposal(decision.proposal.outcome, proposed, checked.disputedAtomic);

@@ -4,6 +4,7 @@ export {
   CLAIM_REASONS,
   agentResolveClaimSchema,
   checkClaim,
+  claimEvidenceItemSchema,
   claimEvidenceSchema,
   claimHash,
   signClaim,
@@ -41,6 +42,7 @@ export {
   type ArbiterDecision,
   type ArbiterEffort,
   type ClaudeArbiterOptions,
+  type EvidenceFileCheck,
 } from "./arbiter.js";
 
 export { decideDispute, type DecideDisputeInput, type DecidedDispute } from "./decide.js";
@@ -65,3 +67,21 @@ export {
   type ResponsePosition,
   type VerifiedResponse,
 } from "./response.js";
+
+export {
+  EVIDENCE_MEDIA_TYPES,
+  EVIDENCE_READ_MAX_SECONDS,
+  MAX_EVIDENCE_FILE_BYTES,
+  claimFiles,
+  evidenceExtension,
+  evidenceFileHash,
+  evidenceReadMessage,
+  fileEvidenceFor,
+  fileEvidenceSchema,
+  signEvidenceRead,
+  sniffEvidenceType,
+  verifyEvidenceRead,
+  type EvidenceMediaType,
+  type EvidenceRead,
+  type FileEvidence,
+} from "./evidence.js";
