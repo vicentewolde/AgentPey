@@ -1,5 +1,6 @@
 import type { StoreAdapter } from "@vitrinee/adapters";
-import { AgentResolveReader, EscrowClient, ReceiptRegistryClient, escrowReaders, verifyReceipt, type DisputeReader, type EscrowReaderFactory, type RegistryReader } from "@vitrinee/anchor";
+import { rpc } from "@stellar/stellar-sdk";
+import { AgentResolveReader, EscrowClient, ReceiptRegistryClient, escrowReaders, railPrincipal, verifyReceipt, type DisputeReader, type EscrowReaderFactory, type RegistryReader } from "@vitrinee/anchor";
 import { MANIFEST_PATH, UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError, stellarDid } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddlewareFromHTTPServer } from "@x402/express";
@@ -28,6 +29,7 @@ import {
 } from "./ucp/catalog.js";
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { lookupDispute, lookupEscrow, registerUcpOrders, type EscrowWindows } from "./ucp/order.js";
+import { registerConfirmations } from "./confirmations.js";
 import { registerDisputes, type DisputeDeps } from "./disputes.js";
 import type { EvidenceStore } from "./evidence-store.js";
 import { SessionReconciler } from "./ucp/reconcile.js";
@@ -65,6 +67,8 @@ export interface AppDeps {
   disputeOrigins?: readonly string[];
   /** Where the files of disputes' claims are kept (T184). Memory when absent. */
   evidence?: EvidenceStore;
+  /** The wallet a policy_rail answers to; reads the rail on chain by default (T185). */
+  principalOf?: (rail: string) => Promise<string>;
   /** Calls `mark_shipped` and `release` on the store's escrow (T164). Defaults to the store's escrow over Soroban RPC. */
   escrowReleaseWriter?: EscrowReleaseDeps["writer"];
   escrowReleaseRetryDelaysMs?: readonly number[];
@@ -131,6 +135,7 @@ export function createApp({
   disputeWriter,
   disputeOrigins,
   evidence,
+  principalOf,
   escrowReleaseWriter,
   escrowReleaseRetryDelaysMs,
   escrowWatchIntervalMs,
@@ -362,6 +367,19 @@ export function createApp({
       ...(disputeOrigins === undefined ? {} : { allowedOrigins: disputeOrigins }),
       ...(evidence === undefined ? {} : { evidence }),
       now,
+      log,
+      onChange: (orderId) => void orderEvents.checkEscrow(orderId, { force: true }),
+    });
+    // The buyer's confirmation, signed from their wallet (T185, Y-1).
+    const rpcServer = new rpc.Server(config.stellar.rpcUrl, { allowHttp: config.stellar.rpcUrl.startsWith("http://") });
+    registerConfirmations(app, {
+      orders,
+      escrow: config.escrow,
+      readers: escrowReader,
+      writer: storeEscrow,
+      principalOf: principalOf ?? ((rail) => railPrincipal(rpcServer, rail)),
+      networkPassphrase: config.stellar.networkPassphrase,
+      ...(disputeOrigins === undefined ? {} : { allowedOrigins: disputeOrigins }),
       log,
       onChange: (orderId) => void orderEvents.checkEscrow(orderId, { force: true }),
     });
