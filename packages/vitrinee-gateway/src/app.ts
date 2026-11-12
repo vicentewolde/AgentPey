@@ -29,6 +29,7 @@ import {
 import { registerUcpCheckout } from "./ucp/checkout.js";
 import { lookupDispute, lookupEscrow, registerUcpOrders, type EscrowWindows } from "./ucp/order.js";
 import { registerDisputes, type DisputeDeps } from "./disputes.js";
+import type { EvidenceStore } from "./evidence-store.js";
 import { SessionReconciler } from "./ucp/reconcile.js";
 import { EscrowReleases, type EscrowReleaseDeps } from "./escrow-release.js";
 import { ucpVersionGuard, ucpVersionOf } from "./ucp/negotiation.js";
@@ -62,6 +63,8 @@ export interface AppDeps {
   disputeWriter?: DisputeDeps["writer"];
   /** Browser origins allowed to read and answer disputes (T163). Defaults to AgentPey's responder page. */
   disputeOrigins?: readonly string[];
+  /** Where the files of disputes' claims are kept (T184). Memory when absent. */
+  evidence?: EvidenceStore;
   /** Calls `mark_shipped` and `release` on the store's escrow (T164). Defaults to the store's escrow over Soroban RPC. */
   escrowReleaseWriter?: EscrowReleaseDeps["writer"];
   escrowReleaseRetryDelaysMs?: readonly number[];
@@ -127,6 +130,7 @@ export function createApp({
   escrows,
   disputeWriter,
   disputeOrigins,
+  evidence,
   escrowReleaseWriter,
   escrowReleaseRetryDelaysMs,
   escrowWatchIntervalMs,
@@ -356,6 +360,7 @@ export function createApp({
       writer,
       networkPassphrase: config.stellar.networkPassphrase,
       ...(disputeOrigins === undefined ? {} : { allowedOrigins: disputeOrigins }),
+      ...(evidence === undefined ? {} : { evidence }),
       now,
       log,
       onChange: (orderId) => void orderEvents.checkEscrow(orderId, { force: true }),

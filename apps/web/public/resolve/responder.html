@@ -204,6 +204,8 @@ var T = {
   reason: { en: "Reason", es: "Motivo" },
   description: { en: "What the buyer says", es: "Lo que dice el comprador" },
   evidence: { en: "Buyer's evidence", es: "Evidencia del comprador" },
+  file: { en: "File", es: "Archivo" },
+  fileSealed: { en: "sealed in the claim; the arbiter reviews it", es: "sellado en el reclamo; lo revisa el árbitro" },
   asked: { en: "Amount claimed", es: "Monto reclamado" },
   claimHash: { en: "Claim hash", es: "Hash del reclamo" },
   position: { en: "Your position", es: "Tu posición" },
@@ -289,6 +291,11 @@ function renderClaim() {
   if (!read) return;
   var claim = read.claim;
   var receipt = read.receipt;
+  // A file (T184) is named by its hash in the claim; its bytes stay with the store and open only on a signed link.
+  function evidenceLine(item) {
+    if (item.kind !== "file") return item.content;
+    return t("file") + ": " + item.name + " (" + item.mediaType + ", " + Math.max(1, Math.round(item.bytes / 1024)) + " KB) · sha256 " + item.sha256.slice(0, 16) + "… · " + t("fileSealed");
+  }
   facts.append(row(t("store"), receipt.platform + " · " + receipt.merchantDid));
   facts.append(row(t("order"), receipt.platformOrderId || receipt.orderId));
   facts.append(row(t("products"), (receipt.items || []).map(function (item) { return item.quantity + " × " + item.name; }).join(", ")));
@@ -296,7 +303,7 @@ function renderClaim() {
   facts.append(row(t("paidOn"), formatDate(receipt.issuedAt)));
   facts.append(row(t("reason"), t(claim.reason)));
   facts.append(row(t("description"), claim.description));
-  facts.append(row(t("evidence"), (claim.evidence || []).length ? claim.evidence.map(function (item) { return item.content; }).join("\n") : t("none")));
+  facts.append(row(t("evidence"), (claim.evidence || []).length ? claim.evidence.map(evidenceLine).join("\n") : t("none")));
   facts.append(row(t("asked"), formatAtomic(claim.amountAtomic) + " USDC"));
   facts.append(row(t("claimHash"), read.claimHash));
   facts.hidden = false;
