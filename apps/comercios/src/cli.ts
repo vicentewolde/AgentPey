@@ -4,8 +4,10 @@
  *   summary                          products per store and last run
  *   entender <storeId|piloto> [--n 20]   Claude reviews a sample of products (needs ANTHROPIC_API_KEY)
  *   politicas <storeId|piloto|all>       find and structure shipping/returns/warranty pages
- *   diagnostico <storeId|piloto|all> [--n 8]   ask AI assistants buyer questions; does the store show up?
+ *   diagnostico <storeId|piloto|black-friday|all> [--n 8] [--motores claude,chatgpt,gemini] [--nuevo]
+ *                                        ask AI assistants buyer questions; does the store show up? --nuevo drops the store's earlier answers
  *   demo-medicion <storeId|piloto>       load labelled sample measurement data for the panel
+ *   informe <storeId|piloto>              write data/informes/<id>.html and .pdf for the store
  *   report                           readiness per store; writes data/feeds/<id>.jsonl and <id>.llms.txt
  */
 import { fileURLToPath } from "node:url";
@@ -16,6 +18,11 @@ import { openDb } from "./db.js";
 import { analyzeProduct, pool, sampleProducts } from "./entender.js";
 import { createLlm } from "./llm.js";
 import { demoEvents } from "./medir.js";
+import { report } from "./informe.js";
+import type { Analysis } from "./entender.js";
+import type { Policy } from "./politicas.js";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { extractPolicy, readPolicyPages } from "./politicas.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, geminiEngine, judge, type Engine } from "./diagnostico.js";
@@ -127,9 +134,10 @@ async function main(argv: string[]): Promise<void> {
         if (key === undefined || key === "") console.error("Falta GEMINI_API_KEY en apps/comercios/.env.local; se omite Gemini.");
         else engines.push(geminiEngine(key));
       }
-      const stores = target === "all" ? STORES : target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
+      const stores = target === "all" ? STORES : target === "piloto" || target === "black-friday" ? STORES.filter((s) => s.source === target) : [findStore(target)];
       for (const store of stores) {
         const products = db.products(store.id);
+        if (rest.includes("--nuevo")) db.clearAnswers(store.id);
         let questions: string[];
         try {
           questions = await buyerQuestions(llm, store, products, n);
@@ -170,6 +178,31 @@ async function main(argv: string[]): Promise<void> {
         const events = demoEvents(store.id, db.products(store.id).map((p) => p.id));
         db.replaceDemoEvents(store.id, events);
         console.log(`${store.id}: ${events.length} eventos de prueba (rotulados como demo)`);
+      }
+      return;
+    }
+    if (command === "informe" && target !== undefined) {
+      const css = readFileSync(fileURLToPath(new URL("../../web/public/brand/agentpey.css", import.meta.url)), "utf8");
+      const dir = fileURLToPath(new URL("../data/informes/", import.meta.url));
+      mkdirSync(dir, { recursive: true });
+      const stores = target === "piloto" ? STORES.filter((s) => s.source === "piloto") : [findStore(target)];
+      const date = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
+      for (const store of stores) {
+        const products = db.products(store.id);
+        const html = report({
+          store, products, readiness: readiness(store, products),
+          analyses: db.analyses(store.id).map((a) => ({ productId: a.productId, data: a.data as Analysis })),
+          policy: db.policy(store.id)?.data as Policy | undefined,
+          answers: db.answers(store.id), date,
+        }, css);
+        const htmlPath = `${dir}${store.id}.html`;
+        writeFileSync(htmlPath, html);
+        try {
+          execFileSync("google-chrome", ["--headless=new", "--disable-gpu", "--no-pdf-header-footer", `--print-to-pdf=${dir}${store.id}.pdf`, `file://${htmlPath}`], { stdio: "ignore", timeout: 60_000 });
+          console.log(`${store.id}: ${dir}${store.id}.pdf`);
+        } catch {
+          console.log(`${store.id}: ${htmlPath} (no se pudo generar el PDF)`);
+        }
       }
       return;
     }

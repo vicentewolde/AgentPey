@@ -110,7 +110,7 @@ export function panel(d: PanelData): string {
   const entender = `
 <section class="ap-card ap-stack">
   <div class="ap-eyebrow">2 · Entender</div><h2>¿La IA entiende tu catálogo?</h2>
-  <table><tbody>${d.readiness.checks.map((c) => `<tr><td>${esc(c.label)}</td><td style="width:40%"><div class="bar"><i style="width:${pct(c.pass)}"></i></div></td><td>${pct(c.pass)}</td></tr>`).join("")}</tbody></table>
+  <table><tbody>${d.readiness.checks.map((c) => c.notVisible ? `<tr><td>${esc(c.label)}</td><td colspan="2" class="ap-muted">No visible en los datos públicos de tu plataforma; no cuenta en el puntaje</td></tr>` : `<tr><td>${esc(c.label)}</td><td style="width:40%"><div class="bar"><i style="width:${pct(c.pass)}"></i></div></td><td>${pct(c.pass)}</td></tr>`).join("")}</tbody></table>
   ${contradictions.length ? `<details open><summary>${contradictions.length} contradicciones en ${d.analyses.length} fichas revisadas</summary><ul>${contradictions.slice(0, 6).map((c) => `<li><b>${esc(byId.get(c.id)?.title ?? c.id)}</b>: ${esc(c.detalle)}</li>`).join("")}</ul></details>` : ""}
   ${example ? `<details><summary>Ejemplo: cómo queda una ficha (propuesta, tú apruebas)</summary>
     <p class="before">${esc(byId.get(example.productId)?.title ?? "")}</p><p><b>${esc(example.data.titulo_propuesto)}</b></p>

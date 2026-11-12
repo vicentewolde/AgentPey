@@ -13,6 +13,8 @@ export interface Check {
   /** Share of products that pass, 0–1. */
   readonly pass: number;
   readonly failing: readonly string[];
+  /** True when the store's public data cannot show this field (it may still exist inside the platform); left out of the score. */
+  readonly notVisible?: boolean;
 }
 
 export interface Readiness {
@@ -48,10 +50,13 @@ export function readiness(store: Store, products: readonly Product[]): Readiness
   if (products.length === 0) return { score: 0, products: 0, checks: [], rejected: 0 };
   const checks: Check[] = CHECKS.map((c) => {
     const failing = products.filter((p) => !c.ok(p));
-    return { key: c.key, label: c.label, weight: c.weight, pass: 1 - failing.length / products.length, failing: failing.map((p) => p.id) };
+    // Shopify's public catalogue never includes barcodes: a 0% there says nothing about the store.
+    const notVisible = c.key === "gtin" && store.platform === "shopify" && failing.length === products.length;
+    return { key: c.key, label: c.label, weight: c.weight, pass: 1 - failing.length / products.length, failing: failing.map((p) => p.id), ...(notVisible ? { notVisible } : {}) };
   });
-  const total = CHECKS.reduce((a, c) => a + c.weight, 0);
-  const score = Math.round((checks.reduce((a, c) => a + c.weight * c.pass, 0) / total) * 100);
+  const counted = checks.filter((c) => c.notVisible !== true);
+  const total = counted.reduce((a, c) => a + c.weight, 0);
+  const score = Math.round((counted.reduce((a, c) => a + c.weight * c.pass, 0) / total) * 100);
   const rejected = products.filter((p) => toOpenAiRow(store, p).problems.some((x) => x.level === "rechazo")).length;
   return { score, products: products.length, checks, rejected };
 }

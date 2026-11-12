@@ -99,6 +99,13 @@ describe("OpenAI feed and readiness", () => {
     expect(conditionOf({ ...base, title: "iPhone 13 reacondicionado" })).toBe("refurbished");
   });
 
+  it("leaves Shopify's invisible barcodes out of the score", () => {
+    const r = readiness(store, [{ ...base, gtin: undefined }]);
+    expect(r.checks.find((c) => c.key === "gtin")!.notVisible).toBe(true);
+    expect(r.score).toBe(100);
+    expect(readiness({ ...store, platform: "woocommerce" }, [{ ...base, gtin: undefined }]).score).toBeLessThan(100);
+  });
+
   it("scores a complete catalogue at 100 and an empty-ish one lower", () => {
     expect(readiness(store, [base]).score).toBe(100);
     const weak = readiness(store, [{ ...base, description: "", attributes: {}, brand: undefined, gtin: undefined, category: undefined }]);

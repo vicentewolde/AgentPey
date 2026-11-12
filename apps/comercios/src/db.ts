@@ -129,6 +129,9 @@ export function openDb(path: string) {
         storeId, a.engine, a.question, a.text, JSON.stringify(a.urls), a.mentioned ? 1 : 0, a.cited ? 1 : 0, JSON.stringify(a.others), new Date().toISOString(),
       );
     },
+    clearAnswers(storeId: string): void {
+      db.prepare("delete from answers where store_id = ?").run(storeId);
+    },
     answers(storeId: string): { engine: string; question: string; text: string; urls: string[]; mentioned: boolean; cited: boolean; others: string[]; at: string }[] {
       return db.prepare("select * from answers where store_id = ? order by at").all(storeId).map((r) => ({
         engine: String(r.engine), question: String(r.question), text: String(r.text), urls: JSON.parse(String(r.urls)) as string[],
