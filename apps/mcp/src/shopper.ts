@@ -339,6 +339,40 @@ export class Shopper {
   }
 
   /** The order as the store shows it, and its receipt checked independently of the store. */
+  /**
+   * Confirming a purchase pays the store at once, so the person gives it with their own wallet (T185, `Y-1`): this
+   * returns the link to the page where they sign, and signs nothing. The agent's key cannot confirm, in the contract
+   * either; the link only opens the page. Refused for an order the escrow no longer holds.
+   */
+  async confirmPurchase(input: { store: string; order_id: string }) {
+    const { store } = await this.store(input.store);
+    const order = await this.readOrder(store, input.order_id);
+    const receipt = order.receipt;
+    if (receipt === undefined) throw new AgentPassError("InvalidArguments", "this order has no receipt, so there is no held payment to confirm", { details: { orderId: input.order_id } });
+    const signedReceipt = checkReceiptSignature(receipt.jws);
+    const contract = signedReceipt.ok ? signedReceipt.claims?.escrow?.contract : undefined;
+    if (contract === undefined) throw new AgentPassError("InvalidArguments", "this order was not paid into a store escrow, so there is nothing to confirm", { details: { orderId: input.order_id } });
+    const state = await readEscrowState({
+      orderId: order.id,
+      signed: signedReceipt.ok && signedReceipt.claims !== null ? { receiptHash: signedReceipt.hash, contract } : null,
+      storeBlock: receipt.escrow,
+      readers: this.deps.escrows,
+      now: (this.deps.now ?? (() => new Date()))(),
+    });
+    const status = state.escrow?.status ?? null;
+    if (status !== "held" && status !== "shipped") {
+      throw new AgentPassError("InvalidArguments", `this purchase cannot be confirmed now: ${status === null ? "its escrow state could not be read" : `it is ${status}`}`, { details: { orderId: order.id, status } });
+    }
+    const confirmUrl = `https://agentpey.com/resolve/confirmar?order=${encodeURIComponent(`${store.name}/orders/${order.id}`).replaceAll("%2F", "/")}`;
+    return {
+      order_id: order.id,
+      store: store.name,
+      escrow_status: status,
+      confirm_url: confirmUrl,
+      next_step: `Give the person this link: ${confirmUrl} . Confirming pays ${store.name} now, cannot be undone and ends the chance to open a claim. They sign it in their own wallet; you cannot confirm for them, and nothing has been paid yet. Do not say the purchase is confirmed until get_order shows it released.`,
+    };
+  }
+
   async getOrder(input: { store: string; order_id: string }) {
     const { store } = await this.store(input.store);
     const order = await this.readOrder(store, input.order_id);

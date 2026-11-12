@@ -100,6 +100,13 @@ export const outputSchemas = {
       })
       .nullable(),
   }),
+  confirm_purchase: z.object({
+    order_id: z.string(),
+    store: z.string(),
+    escrow_status: z.enum(["held", "shipped"]),
+    confirm_url: z.string(),
+    next_step: z.string(),
+  }),
   open_claim: z.object({
     claim_id: z.string(),
     claim_hash: z.string(),
@@ -226,6 +233,19 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
       annotations: { title: "Get an order", ...READ_ONLY },
     },
     async (input) => run(async () => shopper.getOrder(input), log),
+  );
+
+  server.registerTool(
+    "confirm_purchase",
+    {
+      title: "Give the link to confirm a purchase",
+      description:
+        "The person is happy with a purchase held in the store's escrow and wants the store paid now instead of at the end of the window. This does not confirm anything: confirming moves money and is signed by the person's own wallet, never by you. It returns confirm_url, the page where they connect their wallet and sign. Give them the link and next_step; never call it done until get_order shows the purchase released.",
+      inputSchema: z.object({ store: z.string().trim().min(1).max(200), order_id: z.string().trim().min(1).max(200) }),
+      outputSchema: outputSchemas.confirm_purchase,
+      annotations: { title: "Confirm a purchase", ...READ_ONLY },
+    },
+    async (input) => run(async () => shopper.confirmPurchase(input), log),
   );
 
   server.registerTool(
