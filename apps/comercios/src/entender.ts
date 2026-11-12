@@ -40,7 +40,7 @@ Reglas:
 - "atributos_extraidos" solo con datos que aparecen literalmente en la ficha, con su cita en "evidencia".
 - "descripcion_propuesta" reordena y aclara lo que la ficha ya dice, en español de Chile, en 80 a 200 palabras, sin superlativos vacíos. Si la ficha no tiene casi nada, la propuesta queda corta: no rellenes.
 - "titulo_propuesto": marca + tipo de producto + 1 o 2 atributos clave que estén en la ficha. Máximo 150 caracteres.
-- Busca contradicciones (por ejemplo "usado" en el título y "nuevo" en la descripción, o precios distintos).
+- Busca contradicciones DENTRO de la ficha: entre título, descripción, marca, URL, etiquetas de producto y atributos (por ejemplo "usado" en el título y "nuevo" en la descripción, o un color distinto en la URL). No son contradicciones: el rubro de la tienda (es una etiqueta nuestra y la tienda puede vender otras cosas), ni las etiquetas internas de campañas u ofertas ("BLACK FRIDAY", "OFERTA CYBER"). Si algo es solo ambiguo, ponlo como "falta_dato", no como contradicción.
 - "condicion_chilena": falta información que un comprador en Chile pregunta (despacho a regiones, cuotas, garantía legal, boleta o factura), solo si es relevante para el producto.
 - "preguntas_sin_respuesta": de 3 a 6, como las haría un comprador real.
 - El puntaje mide cuánto puede usar la ficha un asistente, no la calidad del producto.`;
