@@ -18,6 +18,7 @@
     "escrow:binding": "tsx --tsconfig tsconfig.scripts.json scripts/escrow-binding.ts",
     "resolve:deposit": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts deposit",
     "resolve:open": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts open",
+    "resolve:evidence": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts evidence",
     "resolve:decide": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts decide",
     "resolve:execute": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts execute",
     "resolve:verify": "tsx --tsconfig tsconfig.scripts.json scripts/resolve.ts verify",

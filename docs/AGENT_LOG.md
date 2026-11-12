@@ -9484,3 +9484,13 @@ Qué: T183. Escrow v2 desplegado en testnet como escrow de ensayo (`CDSCZJEM6QR6
 Por qué: OK del usuario para el despliegue el 11-nov (wallet de cobro de Tapline y plazos de `agentcommerce`).
 
 Pendiente: OK para mergear (no despliega contratos; Render reconstruye). `confirm` de un pagador rail, desde la página de firma (T185). El contrato de Tapline, en T191.
+
+## 2026-11-11 (8) — cc/t184-evidencia-sellada
+
+Agente: Claude Code
+
+Qué: T184. Los reclamos traen archivos sellados por su sha256 (`Y-3`); la tienda los guarda en `vitrinee.dispute_evidence` si el reclamo sellado los nombra y los entrega con enlaces firmados por el árbitro, el comercio o el comprador; `resolve:open --evidence-file`, `resolve:evidence`, y `resolve:decide` que comprueba cada huella. `pnpm check` en verde.
+
+Por qué: plan aprobado por el usuario el 11-nov.
+
+Pendiente: la corrida en testnet (compra en `agentcommerce`, reclamo con foto, `decide`), con OK del usuario: el clasificador bloqueó la compra sin él. Merge con OK.

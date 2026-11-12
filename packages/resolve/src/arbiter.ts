@@ -67,6 +67,19 @@ export interface ArbiterCase {
   readonly response: AgentResolveResponse | null;
   /** The merchant's time to answer, in seconds: 48 h in `agent-resolve` (`E-22`), the escrow's own (T158, `X-26`). */
   readonly responseWindowSeconds?: number;
+  /**
+   * What became of each file the claim lists (T184): `verified` when the file the store kept hashes to its entry,
+   * `altered` when it does not, `missing` when there was none to read. The model does not see the files: a person
+   * reviews them before confirming the verdict.
+   */
+  readonly evidenceFiles?: readonly EvidenceFileCheck[];
+}
+
+export interface EvidenceFileCheck {
+  readonly sha256: string;
+  readonly name: string;
+  readonly mediaType: string;
+  readonly status: "verified" | "altered" | "missing";
 }
 
 export interface ArbiterDecision {
@@ -121,8 +134,19 @@ export function caseMessage(input: ArbiterCase): string {
     quoted(claimData),
     "</claim_data>",
     "",
+    ...filesSection(input.evidenceFiles ?? []),
     ...responseSection(input.response, input.responseWindowSeconds ?? RESPONSE_WINDOW_SECONDS),
   ].join("\n");
+}
+
+/** The files' checks are AgentPey's, not the claimant's: they go outside the quoted claim. */
+function filesSection(files: readonly EvidenceFileCheck[]): string[] {
+  if (files.length === 0) return [];
+  return [
+    "EVIDENCE FILES (checked by AgentPey against the hashes sealed in the signed claim; you cannot see their contents, a person reviews them before your verdict is confirmed. A file that is altered or missing supports nothing):",
+    quoted(files.map((f) => ({ name: f.name, mediaType: f.mediaType, sha256: f.sha256, status: f.status }))),
+    "",
+  ];
 }
 
 /** A response window in words: minutes under two hours, hours above. */

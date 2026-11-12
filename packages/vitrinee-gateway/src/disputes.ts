@@ -17,17 +17,23 @@
  *
  * Every route is public, like the order itself: the chain is the gate. Reads and the two answer steps are CORS-open
  * to AgentPey's responder page only.
+ *
+ * A claim may bring files (T184, `Y-3`): the claim names each by its sha256 and the escrow seals the claim, so the store
+ * keeps a file only when it is one the sealed claim names, and hands it out only on a read link signed by the arbiter,
+ * the payout account or the claimant. Never public: a photo of a parcel can show a person's address.
  */
 import { createHash } from "node:crypto";
 
 import { canonicalJson, jwsDocumentHash } from "@agentpass/core";
+import { EVIDENCE_READ_MAX_SECONDS, MAX_EVIDENCE_FILE_BYTES, claimFiles, evidenceFileHash, sniffEvidenceType, verifyEvidenceRead, type FileEvidence } from "@agentpey/resolve/evidence";
 import { agentResolveResponseSchema } from "@agentpey/resolve/response";
 import { decodeEscrowCall, type EscrowClient, type EscrowPurchase, type EscrowReaderFactory } from "@vitrinee/anchor";
 import { VitrineeError, stellarExpertTxUrl } from "@vitrinee/core";
-import type { Express, NextFunction, Request, Response } from "express";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { z } from "zod";
 
 import type { StoreEscrow } from "./config.js";
+import { MemoryEvidenceStore, type EvidenceStore } from "./evidence-store.js";
 import type { OrderRecord, OrderStore } from "./orders.js";
 
 /** AgentPey's responder page, the one origin allowed to call these routes from a browser. */
@@ -41,7 +47,13 @@ const MAX_CLAIM_BYTES = 32 * 1024;
 const MAX_RESPOND_FEE_STROOPS = 10_000_000n;
 
 /** The claim's own fields the store holds an answer to: its id and the amount asked. Read from a claim already hash-checked. */
-const claimPayloadSchema = z.looseObject({ claimId: z.string(), amountAtomic: z.string().regex(/^[1-9]\d*$/) });
+const claimPayloadSchema = z.looseObject({
+  claimId: z.string(),
+  amountAtomic: z.string().regex(/^[1-9]\d*$/),
+  claimant: z.string().optional(),
+  evidence: z.array(z.looseObject({ kind: z.string() })).optional(),
+});
+const readQuerySchema = z.strictObject({ reader: z.string().regex(/^G[A-Z2-7]{55}$/), exp: z.string().regex(/^\d{1,12}$/), sig: z.string().regex(/^[0-9a-f]{128}$/) });
 const claimBodySchema = z.strictObject({ claim_jws: z.string().trim().min(1).max(MAX_CLAIM_BYTES) });
 const prepareBodySchema = z.strictObject({ response: z.record(z.string(), z.unknown()) });
 /** Without `signed_xdr`: only to hand over the document of an answer the escrow already holds. */
@@ -74,6 +86,8 @@ export interface DisputeDeps {
   allowedOrigins?: readonly string[];
   now?: () => Date;
   log?: (message: string, fields?: Record<string, unknown>) => void;
+  /** The files of the claims (T184). Memory when absent. */
+  evidence?: EvidenceStore;
   /** The escrow just moved for this order (a claim or an answer landed): tell the platform now (T165). */
   onChange?: (orderId: string) => void;
 }
@@ -95,6 +109,7 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
   const now = deps.now ?? (() => new Date());
   const log = deps.log ?? (() => {});
   const payeeDid = `did:stellar:testnet:${escrow.payee}`;
+  const evidence = deps.evidence ?? new MemoryEvidenceStore();
 
   const cors = (req: Request, res: Response, next: NextFunction) => {
     const origin = req.get("origin");
@@ -173,6 +188,12 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
     deps.onChange?.(id);
   };
 
+  /** The files the kept claim names; none until the claim is kept. */
+  const filesOf = (record: OrderRecord): FileEvidence[] => {
+    const claim = record.dispute?.claimJws === undefined ? null : claimPayload(record.dispute.claimJws);
+    return claimFiles(claim?.evidence ?? []);
+  };
+
   const view = (record: OrderRecord, purchase: EscrowPurchase | null = null) => {
     const response = record.dispute?.response;
     return {
@@ -182,6 +203,8 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
       // Until when the store may answer, while a dispute is open: the page shows it. Null when unknown.
       respond_by: purchase?.status === "disputed" && purchase.openedAt !== null ? new Date((purchase.openedAt + escrow.responseWindowSeconds) * 1000).toISOString() : null,
       claim_jws: record.dispute?.claimJws ?? null,
+      // The claim's files and whether the store has each; reading one takes a signed link (T184).
+      evidence: filesOf(record).map((f) => ({ sha256: f.sha256, media_type: f.mediaType, bytes: f.bytes, name: f.name, kept: (record.dispute?.evidenceKept ?? []).includes(f.sha256) })),
       response:
         response === undefined
           ? null
@@ -213,6 +236,64 @@ export function registerDisputes(app: Express, deps: DisputeDeps): void {
       deps.onChange?.(id);
     }
     res.json(view(heldOrder(id), purchase));
+  });
+
+  // A file of the claim, kept once it is one the claim names and that claim is still the one the escrow seals (T184).
+  app.post(
+    "/orders/:id/dispute/evidence",
+    express.raw({ type: () => true, limit: MAX_EVIDENCE_FILE_BYTES }),
+    async (req: Request, res: Response) => {
+      const id = String(req.params["id"]);
+      const record = heldOrder(id);
+      const claimJws = record.dispute?.claimJws;
+      if (claimJws === undefined) throw refused("the store does not have this dispute's claim yet: send the claim first", { orderId: id });
+      const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+      if (bytes.byteLength === 0) throw new VitrineeError("ValidationError", "send the file as the request body", { details: {} });
+      const sha256 = evidenceFileHash(bytes);
+      const entry = filesOf(record).find((f) => f.sha256 === sha256);
+      if (entry === undefined) throw refused("the claim names no file with this hash", { sha256 });
+      const declared = (req.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
+      if (entry.bytes !== bytes.byteLength || sniffEvidenceType(bytes) !== entry.mediaType || declared !== entry.mediaType) {
+        throw refused("the file is not of the type and size the claim names", { sha256 });
+      }
+      // The claim the store kept could be stale only if the chain moved on; read it again before keeping anything.
+      const purchase = await purchaseOf(id);
+      if (purchase.claimHash === null || jwsDocumentHash(claimJws) !== purchase.claimHash) throw refused("this claim is not the one the escrow holds", { orderId: id });
+      await evidence.put(id, sha256, { mediaType: entry.mediaType, bytes });
+      if (!(record.dispute?.evidenceKept ?? []).includes(sha256)) {
+        await deps.orders.update(id, (order) => {
+          order.dispute = { ...order.dispute, evidenceKept: [...(order.dispute?.evidenceKept ?? []), sha256] };
+        });
+        log("dispute evidence kept", { orderId: id, sha256, bytes: bytes.byteLength });
+      }
+      res.json(view(heldOrder(id), purchase));
+    },
+  );
+
+  // A file of the claim, to someone in the dispute, on a link they signed for a few minutes (T184).
+  app.get("/orders/:id/dispute/evidence/:sha256", async (req: Request, res: Response) => {
+    res.set("Cache-Control", "no-store");
+    const id = String(req.params["id"]);
+    const sha256 = String(req.params["sha256"]);
+    const record = heldOrder(id);
+    const query = readQuerySchema.safeParse(req.query);
+    if (!query.success) throw new VitrineeError("EvidenceReadDenied", "a file of a dispute opens only with a signed read link", { details: {} });
+    const { reader, exp, sig } = query.data;
+    const expiresAt = Number(exp);
+    const nowSeconds = Math.floor(now().getTime() / 1000);
+    if (expiresAt < nowSeconds || expiresAt > nowSeconds + EVIDENCE_READ_MAX_SECONDS) throw new VitrineeError("EvidenceReadDenied", "the read link has expired or reaches too far ahead", { details: { exp: expiresAt } });
+    const claim = record.dispute?.claimJws === undefined ? null : claimPayload(record.dispute.claimJws);
+    const claimant = claim?.claimant?.split(":").pop();
+    const parties = [escrow.arbiter, escrow.payee, ...(claimant === undefined ? [] : [claimant])];
+    if (!parties.includes(reader) || !verifyEvidenceRead({ escrow: escrow.contract, orderId: id, sha256, reader, expiresAt }, sig)) {
+      throw new VitrineeError("EvidenceReadDenied", "only the arbiter, the store's payout account or the claimant may read this file", { details: {} });
+    }
+    const entry = filesOf(record).find((f) => f.sha256 === sha256);
+    const file = entry === undefined ? undefined : await evidence.get(id, sha256);
+    if (entry === undefined || file === undefined) throw new VitrineeError("OrderNotFound", "the store keeps no such file for this dispute", { details: { orderId: id, sha256 } });
+    log("dispute evidence read", { orderId: id, sha256, reader });
+    res.set({ "Content-Type": entry.mediaType, "Content-Disposition": `attachment; filename="${sha256.slice(0, 16)}"`, "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'" });
+    res.send(file.bytes);
   });
 
   app.post("/orders/:id/dispute/response/prepare", async (req: Request, res: Response) => {
