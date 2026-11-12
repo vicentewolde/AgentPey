@@ -167,7 +167,8 @@ try{var c=window.Shopify&&window.Shopify.checkout;if(c&&c.order_id){window.Agent
 export function demoEvents(storeId: string, productIds: readonly string[], days = 28): MeasureEvent[] {
   let seed = createHash("sha256").update(storeId).digest().readUInt32BE(0);
   const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
-  const weights: [Source, number, number][] = [["sin_ia", 900, 0.012], ["chatgpt", 22, 0.025], ["gemini", 8, 0.02], ["perplexity", 5, 0.03], ["copilot", 3, 0.015], ["claude", 2, 0.03]];
+  // About 1% of visits from AI assistants, converting somewhat better than the rest: a plausible start, not a forecast.
+  const weights: [Source, number, number][] = [["sin_ia", 900, 0.012], ["chatgpt", 6, 0.02], ["gemini", 2, 0.018], ["perplexity", 1, 0.025], ["copilot", 0.6, 0.015], ["claude", 0.4, 0.025]];
   const out: MeasureEvent[] = [];
   const start = Date.UTC(2026, 9, 14);
   for (let d = 0; d < days; d++) {
