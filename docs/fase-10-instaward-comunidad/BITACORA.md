@@ -22,7 +22,7 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T207 Todas las páginas con el diseño de las publicaciones | ✅ en producción el 11-nov (PR #106, [evidencia](evidencia/T207.md)) |
 | T182 `confirm` en el contrato de escrow | ✅ en `main` ([PR #107](https://github.com/vicentewolde/AgentPey/pull/107), [evidencia](evidencia/T182.md)); el contrato se despliega en T183 |
 | T183 Escrow v2 en testnet | 👀 desplegado `CDSCZJEM…E3UML` y ensayado ([evidencia](evidencia/T183.md)); el de Tapline va con T191 (`Y-9`) |
-| T184 Evidencia sellada | 👀 código y pruebas listos en `cc/t184-evidencia-sellada` ([evidencia](evidencia/T184.md)); falta la corrida en testnet |
+| T184 Evidencia sellada | ✅ en `main` ([PR #110](https://github.com/vicentewolde/AgentPey/pull/110)) y corrida en testnet con foto ([evidencia](evidencia/T184.md)) |
 | T185 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
@@ -54,4 +54,4 @@ porque su cuenta firmante nace en ese alta (`Y-9`); el cobro irá a la wallet qu
 guarda la huella del reclamo, así que si alguien cambia la foto después, deja de calzar. La tienda guarda el archivo solo
 si el reclamo sellado lo nombra, y se lo entrega solo al árbitro, al comercio o al comprador, con un enlace que firman con
 su propia llave y que vence en minutos, porque una foto de un paquete puede mostrar una dirección. El árbitro revisa cada
-archivo antes de decidir y le dice al modelo cuáles calzan. Falta la corrida en testnet, que espera el OK del usuario.
+archivo antes de decidir y le dice al modelo cuáles calzan. La corrida en testnet salió bien: un reclamo con una foto quedó abierto en la red, la tienda la guardó, y el árbitro la leyó, comprobó su huella y rechazó el reclamo (era una prueba, sin daño real).

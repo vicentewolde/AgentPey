@@ -9494,3 +9494,13 @@ Qué: T184. Los reclamos traen archivos sellados por su sha256 (`Y-3`); la tiend
 Por qué: plan aprobado por el usuario el 11-nov.
 
 Pendiente: la corrida en testnet (compra en `agentcommerce`, reclamo con foto, `decide`), con OK del usuario: el clasificador bloqueó la compra sin él. Merge con OK.
+
+## 2026-11-11 (9) — cc/t184-cierre
+
+Agente: Claude Code
+
+Qué: T184 cerrada. PR #110 en `main` y desplegado (`prod:check` 11/11). Corrida en testnet: orden `ord_mwcttzyu62a6ca12aa`, reclamo con foto abierto en la red (`16b19e33…`), foto entregada a la tienda, `resolve:decide` la verificó y el árbitro rechazó el reclamo de prueba (`be7ca388…`). Evidencia en `evidencia/T184.md`.
+
+Por qué: OK del usuario para la compra y el merge.
+
+Resultado: el veredicto no se confirmó; la ventana del árbitro cerró a las 02:01 UTC y el escrow venció con reembolso completo al rail (`resolve:verify`). Siguiente: T185.
