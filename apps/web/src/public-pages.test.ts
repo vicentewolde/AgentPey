@@ -14,7 +14,7 @@ const PUBLIC_DIR = resolve(fileURLToPath(new URL("../public", import.meta.url)))
  * that break a page without any test noticing.
  */
 describe("the static pages", () => {
-  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "tiendas.html", "en-vivo.html"]) {
+  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "resolve/confirmar.html", "tiendas.html", "en-vivo.html"]) {
     it(`${name} never combines timeZoneName with dateStyle or timeStyle`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
       const combined = /\{[^}]*(dateStyle|timeStyle)[^}]*timeZoneName[^}]*\}|\{[^}]*timeZoneName[^}]*(dateStyle|timeStyle)[^}]*\}/;
@@ -25,7 +25,7 @@ describe("the static pages", () => {
 
   // T143: every signing page loads the wallet layer from this origin, never a CDN, and says what it signs, so the
   // picker offers only the wallets that can (LOBSTR signs testnet transactions for mainnet: not where one is signed).
-  const needs: Record<string, string> = { "consent.html": "message transaction", "revocar.html": "message transaction", "resolve/responder.html": "message transaction", "wallet-lab.html": "message" };
+  const needs: Record<string, string> = { "consent.html": "message transaction", "revocar.html": "message transaction", "resolve/responder.html": "message transaction", "resolve/confirmar.html": "transaction", "wallet-lab.html": "message" };
   for (const [name, signs] of Object.entries(needs)) {
     it(`${name} loads /wallet-kit.js from this origin for "${signs}", and no wallet script from a CDN`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
