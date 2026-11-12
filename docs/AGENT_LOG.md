@@ -9504,3 +9504,13 @@ Qué: T184 cerrada. PR #110 en `main` y desplegado (`prod:check` 11/11). Corrida
 Por qué: OK del usuario para la compra y el merge.
 
 Resultado: el veredicto no se confirmó; la ventana del árbitro cerró a las 02:01 UTC y el escrow venció con reembolso completo al rail (`resolve:verify`). Siguiente: T185.
+
+## 2026-11-12 (10) — cc/sitio-t185
+
+Agente: Claude Code
+
+Qué: T185, primera mitad. La tienda gana `GET /orders/:id/confirm` y `POST …/confirm/prepare|submit` (`confirmations.ts`): arma `confirm` para la cuenta que pagó o el principal de su rail (leído en la red con `railPrincipal`) y lo envía solo si es exactamente esa llamada. Página `agentpey.com/resolve/confirmar` para firmar con la wallet. Herramienta MCP `confirm_purchase` que solo entrega el enlace. Pruebas: tienda 533, web 361, mcp 73.
+
+Por qué: plan aprobado por el usuario el 12-nov; los cambios se acumulan en esta rama para un solo merge (CI lenta). Los cambios del sitio web que pida el usuario se suman aquí.
+
+Pendiente: `attach_evidence` (página de subida), probar `confirmar` con Freighter, los cambios del sitio, y el merge con OK.
