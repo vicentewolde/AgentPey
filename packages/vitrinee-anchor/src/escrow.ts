@@ -28,7 +28,12 @@ export const ESCROW_STORAGE_SCHEMA_VERSION = 2;
  * mean the contract's own rules apply. The retired `d0d1d877…` is left out: it
  * could freeze a refund (`X-19`). A test pins this list to the deployments.
  */
-export const PURCHASE_ESCROW_WASM_HASHES: readonly string[] = ["f5c6bbb6a54a017b71efd62e1aa87bd9b1babf5a688c74e253100586d6602fc5"];
+export const PURCHASE_ESCROW_WASM_HASHES: readonly string[] = [
+  // v1 (T157): agentcommerce
+  "f5c6bbb6a54a017b71efd62e1aa87bd9b1babf5a688c74e253100586d6602fc5",
+  // v2 (T182, T183): confirm and confirmed_at, schema 2
+  "cdd8260a606528392202fa1ade6686c9aef2d962a396ece34541ef21d2e81e10",
+];
 
 export const ESCROW_STATUSES = ["held", "shipped", "released", "disputed", "responded", "resolved", "expired"] as const;
 export type EscrowStatus = (typeof ESCROW_STATUSES)[number];

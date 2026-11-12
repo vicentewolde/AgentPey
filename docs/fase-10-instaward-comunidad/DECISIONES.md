@@ -87,3 +87,17 @@ guarda eventos unos pocos días; la página pública de compras de Tapline (T195
 suma `confirmed_at: u64` (0 si no se confirmó) y el esquema de almacenamiento pasa a 2. El lector TypeScript lo trata como opcional, así
 que el escrow v1 de `agentcommerce` se sigue leyendo igual. **Alternativas descartadas:** un estado nuevo `Confirmed` (obliga a cambiar
 cada lector del estado: tienda, MCP, página en vivo); depender del evento (se pierde).
+
+### Y-9 · El contrato de Tapline se despliega al darla de alta (T191); T183 prueba el v2 en el escrow de ensayo · `Vigente` (11-nov)
+
+**Contexto.** `deploy:purchase-escrow --store` lee la cuenta firmante (`operator`) y la de cobro (`payee`) del perfil UCP
+vivo de la tienda (`X-4`). Tapline todavía no está en Vitrinee: su cuenta firmante la crea el alta (`onboarding.ts`), que es
+T191.
+
+**Decisión.** T183 despliega el v2 en el escrow de ensayo (el v1 queda en `retiredPurchaseEscrows`), lo agrega a la lista
+de hashes permitidos y hace allí el ensayo de liberación por confirmación y por vencimiento. El contrato de Tapline se
+despliega en T191, recién dada de alta, con el mismo wasm, el cobro en `GBNELM66…F2UAT` (dado por el usuario el 11-nov)
+y los plazos de `agentcommerce`: 600 s para liberar, 900 para responder y 3600 para el árbitro.
+
+**Motivo.** Escribir a mano el `operator` rompería `X-4`, y crear la llave de Tapline fuera del alta la dejaría fuera de la
+base sellada de la plataforma. **Alternativa descartada:** un `--operator` manual en el script.
