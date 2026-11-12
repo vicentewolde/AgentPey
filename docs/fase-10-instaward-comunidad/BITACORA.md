@@ -20,7 +20,7 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | Tarea | Estado |
 |---|---|
 | T207 Todas las páginas con el diseño de las publicaciones | ✅ en producción el 11-nov (PR #106, [evidencia](evidencia/T207.md)) |
-| T182 `confirm` en el contrato de escrow | 👀 código y pruebas listos en `cc/t182-confirm` ([evidencia](evidencia/T182.md)) |
+| T182 `confirm` en el contrato de escrow | ✅ en `main` ([PR #107](https://github.com/vicentewolde/AgentPey/pull/107), [evidencia](evidencia/T182.md)); el contrato se despliega en T183 |
 | T183 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora

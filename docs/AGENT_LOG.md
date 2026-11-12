@@ -9464,3 +9464,13 @@ Qué: T182, `confirm(order_ref)` en `purchase-escrow`: libera al `payee` desde `
 Por qué: primera tarea del sprint de la Fase 10 (D1), plan aprobado por el usuario el 11-nov.
 
 Pendiente: OK del usuario para el merge (no despliega ningún contrato; Render solo reconstruye). Después, T183: desplegar el escrow v2 para Tapline, con OK y XLM de testnet.
+
+## 2026-11-11 (6) — cc/docs-stellar-route
+
+Agente: Claude Code
+
+Qué: T182 marcada como hecha (PR #107 en `main`) en la bitácora y `ESTADO.md`. `DISENO-WEB.md` al día con las rutas nuevas: la raíz de agentpey.com es `comercios.html` (Start-Up Chile, de otra sesión) y la portada del Instaward está en `/stellar`; 14 páginas. Los enlaces «AgentPey» de RealOps y SignalDesk llevan a `/stellar`. Cerrados los PRs viejos #4, #5, #11 y #14 a pedido del usuario.
+
+Por qué: el usuario pidió dejar los documentos al día después de los cambios del sitio, antes de hacerle más cambios.
+
+Pendiente: T183, el escrow v2 para Tapline (OK del usuario el 11-nov, cobro `GBNELM66…F2UAT`, plazos de `agentcommerce`).
