@@ -25,16 +25,27 @@
   .ap .mid { font-size: clamp(1.9rem, 5vw, 3.2rem); line-height: 1.08; letter-spacing: -0.026em; }
   .ap .lede { margin: 22px auto 0; max-width: 34ch; }
   .ap .ap-small.lede { max-width: 60ch; margin-top: 28px; }
-  .ap .ilustrativo, .ap .source { max-width: 70ch; margin: 28px auto 0; }
+  .ap .source { max-width: 70ch; margin: 18px auto 0; font-size: .75rem; }
   .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
   .ap a.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 26px; border-radius: var(--ap-pill); background: var(--ap-accent); color: var(--ap-accent-ink); font: 500 1.0625rem/1.2 var(--ap-text); text-decoration: none; }
   .ap a.btn:hover { filter: brightness(1.08); text-decoration: none; }
 
-  /* the question, typed into a chat bubble */
-  .chat { max-width: 560px; margin: 40px auto 0; display: grid; gap: 14px; text-align: left; }
-  .bubble { padding: 16px 20px; border-radius: 22px; font-size: clamp(1.05rem, 2.2vw, 1.25rem); line-height: 1.4; }
-  .bubble.me { justify-self: end; max-width: 92%; background: var(--ap-accent); color: var(--ap-accent-ink); border-bottom-right-radius: 6px; min-height: 1.4em; }
-  .bubble.ai { justify-self: start; max-width: 80%; background: var(--ap-surface); color: var(--ap-ink-2); border-bottom-left-radius: 6px; }
+  /* chat window, like talking to an AI assistant */
+  .chat { max-width: 600px; margin: 40px auto 0; display: block; text-align: left; border: 1px solid var(--ap-line, rgba(255,255,255,.12)); border-radius: 24px; background: var(--ap-surface); overflow: hidden; }
+  .chat-top { display: flex; align-items: center; gap: 10px; padding: 14px 18px; font-weight: 600; font-size: .9375rem; border-bottom: 1px solid var(--ap-line, rgba(255,255,255,.12)); }
+  .chat-body { display: grid; gap: 22px; padding: 22px 18px 26px; }
+  .msg.ai { display: flex; gap: 12px; align-items: flex-start; }
+  .avatar { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ap-accent); color: var(--ap-accent-ink); }
+  .avatar svg { width: 16px; height: 16px; }
+  .bubble { margin: 0; padding: 12px 18px; border-radius: 22px; font-size: clamp(1rem, 2vw, 1.125rem); line-height: 1.45; }
+  .msg.me { display: flex; justify-content: flex-end; }
+  .bubble.me { max-width: 88%; background: var(--ap-bg); color: var(--ap-ink); border: 1px solid var(--ap-line, rgba(255,255,255,.12)); border-bottom-right-radius: 8px; min-height: 1.45em; }
+  .ai-text { margin: 3px 0 0; color: var(--ap-ink-2); font-size: clamp(1rem, 2vw, 1.125rem); line-height: 1.45; }
+  .dots { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .5; }
+  .composer { display: flex; align-items: center; justify-content: space-between; margin: 0 14px 14px; padding: 10px 10px 10px 18px; border: 1px solid var(--ap-line, rgba(255,255,255,.14)); border-radius: 999px; background: var(--ap-bg); color: var(--ap-ink-2); }
+  .send { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--ap-ink); color: var(--ap-bg); }
+  .send svg { width: 16px; height: 16px; }
   .caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.15em; background: currentColor; }
 
   /* two stores */
@@ -42,8 +53,11 @@
   .store { transition: opacity .6s ease, transform .6s ease, box-shadow .6s ease; }
   .store h3 { font-size: clamp(1.3rem, 2.6vw, 1.7rem); }
   .store .price { font-family: var(--ap-display); font-weight: 600; font-size: 1.6rem; margin-top: 10px; font-variant-numeric: tabular-nums; }
-  .store .photo { aspect-ratio: 16 / 10; border-radius: var(--ap-radius-sm); margin-bottom: 18px; background: linear-gradient(135deg, #2c2c2e, #3a3a3c); display: grid; place-items: center; color: var(--ap-ink-2); font-size: .875rem; }
-  .store.a .photo { background: radial-gradient(circle at 30% 30%, #4d95ff, #176bff 45%, #0a2f86); color: #fff; }
+  .store .photo { position: relative; aspect-ratio: 4 / 3; border-radius: var(--ap-radius-sm); margin-bottom: 18px; background: #ececee; overflow: hidden; }
+  .store .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .store .photo .tag { position: absolute; top: 10px; left: 10px; padding: 3px 10px; border-radius: 999px; background: #e5384d; color: #fff; font-size: .8125rem; font-weight: 600; }
+  .store .price s { margin-left: 8px; font-size: 1rem; font-weight: 400; color: var(--ap-ink-2); }
+  .store .buy { display: block; margin-top: 14px; padding: 10px; border-radius: 10px; text-align: center; font-weight: 600; font-size: .9375rem; background: var(--ap-ink); color: var(--ap-bg); }
   .store ul { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
   .store li { color: var(--ap-ink); }
   .store li.vague { color: var(--ap-ink-2); font-style: italic; }
@@ -90,6 +104,10 @@
     .js .rv { opacity: 0; transform: translateY(28px); transition: opacity .8s ease, transform .8s ease; }
     .js .rv.in { opacity: 1; transform: none; }
     .caret { animation: blink 1s steps(1) infinite; }
+    .dots i { animation: pulse 1.2s ease-in-out infinite; }
+    .dots i:nth-child(2) { animation-delay: .2s; }
+    .dots i:nth-child(3) { animation-delay: .4s; }
+    @keyframes pulse { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
     @keyframes blink { 50% { opacity: 0; } }
   }
   @media (max-width: 760px) {
@@ -104,25 +122,30 @@
       <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
       AgentPey</a>
     <div class="ap-bar">
-      <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="#como-funciona">Cómo funciona</a><a href="#auditoria">Auditoría gratis</a></nav>
+      <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="#como-funciona">Cómo funciona</a><a href="#demo">Demo gratis</a></nav>
     </div>
   </div></div>
   <div class="ap-wrap scene center">
-    <p class="ap-eyebrow rv">Para tiendas online chilenas</p>
+    <p class="ap-eyebrow rv">Para e-commerce</p>
     <h1 class="big rv">Tu próximo cliente ya le preguntó a una <span class="ap-grad">IA</span> antes de entrar a tu tienda.</h1>
     <p class="ap-sub lede rv">Y la IA ya decidió qué tiendas mostrarle. AgentPey te ayuda a estar en esa lista.</p>
-    <div class="cta rv"><a class="btn" href="#auditoria">Pide tu auditoría gratis</a></div>
+    <div class="cta rv"><a class="btn" href="#demo">Pide tu demo gratis</a></div>
   </div>
 </header>
 
 <main class="ap-wrap">
   <!-- 1. The question -->
   <section class="scene center" aria-labelledby="t-pregunta">
-    <p class="ap-eyebrow rv">Imagina a alguien en Concepción</p>
+    <p class="ap-eyebrow rv">Imagina que alguien</p>
     <h2 class="mid rv" id="t-pregunta">Le escribe esto a su asistente de IA:</h2>
-    <div class="chat rv" id="chat">
-      <p class="bubble me" id="question">Notebook para programar, hasta $900 mil, que llegue a Concepción antes del viernes y en 12 cuotas.</p>
-      <p class="bubble ai">Revisando tiendas…</p>
+    <div class="chat rv" id="chat" aria-label="Ejemplo de conversación con un asistente de IA">
+      <div class="chat-top"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span>Asistente de IA</div>
+      <div class="chat-body">
+        <div class="msg me"><p class="bubble me" id="question">Notebook para programar, hasta $900 mil, que llegue a Concepción antes del viernes y en 12 cuotas.</p></div>
+        <div class="msg ai"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span>
+          <p class="ai-text">Revisando tiendas que cumplan con todo<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p></div>
+      </div>
+      <div class="composer" aria-hidden="true"><span>Escribe un mensaje…</span><span class="send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
     </div>
   </section>
 
@@ -131,7 +154,7 @@
     <h2 class="mid rv" id="t-tiendas">Dos tiendas venden el mismo notebook.</h2>
     <div class="stores" id="stores">
       <article class="ap-card store a rv">
-        <div class="photo" aria-hidden="true">Fotos de estudio</div>
+        <div class="photo"><img src="/img/tienda-a.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="tag">-15%</span></div>
         <p class="ap-eyebrow">Tienda A</p>
         <h3>Notebook Pro 14"</h3>
         <ul>
@@ -139,10 +162,11 @@
           <li class="vague">"Diseño premium."</li>
           <li class="vague">"Despacho a todo Chile."</li>
         </ul>
-        <p class="price">$849.990</p>
+        <p class="price">$849.990 <s>$999.990</s></p>
+        <span class="buy" aria-hidden="true">Agregar al carro</span>
       </article>
       <article class="ap-card store b rv">
-        <div class="photo" aria-hidden="true">Foto simple</div>
+        <div class="photo"><img src="/img/tienda-b.jpg" alt="" loading="lazy" onerror="this.remove()"></div>
         <p class="ap-eyebrow">Tienda B</p>
         <h3>Notebook Pro 14"</h3>
         <ul>
@@ -151,6 +175,7 @@
           <li>Llega a Concepción en 48 h</li>
         </ul>
         <p class="price">$869.990</p>
+        <span class="buy" aria-hidden="true">Agregar al carro</span>
       </article>
     </div>
     <p class="ap-sub lede rv">La tienda A tiene mejores fotos y es más barata.</p>
@@ -180,7 +205,6 @@
       </article>
     </div>
     <p class="ap-sub lede rv">La venta se decidió antes de que alguien viera tu sitio.</p>
-    <p class="ilustrativo ap-small ap-muted rv">Ejemplo ilustrativo: tiendas y productos inventados. Cada asistente decide a su manera, y tener buenos datos no garantiza una recomendación.</p>
   </section>
 
   <!-- 4. Three questions -->
@@ -201,7 +225,7 @@
       <div class="stat rv"><b>+90%</b><span>más conversión de esas visitas que del resto</span></div>
       <div class="stat rv"><b>+83%</b><span>más ingreso por visita</span></div>
     </div>
-    <p class="source ap-small ap-muted rv"><a href="https://business.adobe.com/blog/ai-traffic-higher-revenue-per-visit-retail-holiday" target="_blank" rel="noopener">Adobe, 29 de octubre de 2026</a>: visitas que llegan a tiendas online de Estados Unidos desde un enlace de una IA, septiembre de 2026 contra septiembre de 2025 (más de un billón de visitas). Que estas visitas conviertan más no prueba que la IA sea la causa.</p>
+    <p class="source ap-small ap-muted rv"><a href="https://business.adobe.com/blog/ai-traffic-higher-revenue-per-visit-retail-holiday" target="_blank" rel="noopener">* Adobe, 29/10/26</a></p>
   </section>
 
   <!-- 6. Others are getting ready -->
@@ -210,21 +234,19 @@
     <p class="ap-sub lede rv">Con AgentPey, tú también. Sin cambiarte de plataforma.</p>
   </section>
 
-  <!-- 7. How it works (pilot) -->
+  <!-- 7. How it works -->
   <section class="scene center" id="como-funciona" aria-labelledby="t-como">
-    <p class="ap-eyebrow rv">Piloto abierto para tiendas chilenas</p>
     <h2 class="mid rv" id="t-como">AgentPey, en tres pasos.</h2>
     <div class="steps">
       <div class="ap-card rv"><span class="n">1</span><h3>Conecta tu catálogo</h3><p class="ap-muted">Desde tu plataforma, un feed o un CSV. Lo dejamos en formatos que los asistentes de IA pueden leer.</p></div>
       <div class="ap-card rv"><span class="n">2</span><h3>Completa lo que falta, con tu aprobación</h3><p class="ap-muted">Detectamos los datos que un asistente necesita y tu catálogo no tiene: medidas, compatibilidad, despacho por comuna, cuotas. Te proponemos el texto y tú decides.</p></div>
       <div class="ap-card rv"><span class="n">3</span><h3>Mide lo que llega desde las IAs</h3><p class="ap-muted">Visitas desde ChatGPT, Gemini, Perplexity y otros, las ventas que vienen de ahí, y cómo te describen.</p></div>
     </div>
-    <p class="ap-small ap-muted lede rv">Estamos construyendo AgentPey junto a las primeras tiendas del piloto.</p>
   </section>
 
-  <!-- 8. Free audit -->
-  <section class="scene center" id="auditoria" aria-labelledby="t-auditoria">
-    <h2 class="mid rv" id="t-auditoria">¿Qué dice la IA de tu tienda?</h2>
+  <!-- 8. Free demo -->
+  <section class="scene center" id="demo" aria-labelledby="t-demo">
+    <h2 class="mid rv" id="t-demo">¿Qué dice la IA de tu tienda?</h2>
     <p class="ap-sub lede rv">Le hacemos 20 preguntas de compra de tu categoría a ChatGPT, Gemini y Perplexity. Te contamos si apareces, cómo te describen y qué te falta. Gratis.</p>
     <div class="audit ap-card rv">
       <form id="audit-form" novalidate>
@@ -248,8 +270,7 @@
         </div>
         <label class="ap-field"><span class="ap-label">¿Algo que debamos saber? (opcional)</span><textarea name="mensaje" maxlength="1000" placeholder="Por ejemplo: qué vendes o qué te gustaría saber."></textarea></label>
         <div class="trap" aria-hidden="true"><label>No llenar este campo<input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
-        <p class="ap-hint">Usamos estos datos solo para hacerte la auditoría y contactarte. Si quieres que los borremos, escríbenos a <a href="mailto:vicente@agentpey.com">vicente@agentpey.com</a>.</p>
-        <button class="ap-btn" type="submit" id="audit-send">Pedir mi auditoría</button>
+        <button class="ap-btn" type="submit" id="audit-send">Pedir mi demo</button>
         <p id="audit-status" role="status" aria-live="polite"></p>
       </form>
     </div>
@@ -334,7 +355,7 @@
         if (a.body && a.body.ok) {
           form.reset();
           status.className = "ok";
-          status.textContent = "Listo. Te escribimos dentro de los próximos días hábiles con tu auditoría.";
+          status.textContent = "Listo. Te escribimos dentro de los próximos días hábiles con tu demo.";
           return;
         }
         status.className = "bad";
