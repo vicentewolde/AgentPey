@@ -9474,3 +9474,13 @@ Qué: T182 marcada como hecha (PR #107 en `main`) en la bitácora y `ESTADO.md`.
 Por qué: el usuario pidió dejar los documentos al día después de los cambios del sitio, antes de hacerle más cambios.
 
 Pendiente: T183, el escrow v2 para Tapline (OK del usuario el 11-nov, cobro `GBNELM66…F2UAT`, plazos de `agentcommerce`).
+
+## 2026-11-11 (7) — cc/t183-escrow-v2
+
+Agente: Claude Code
+
+Qué: T183. Escrow v2 desplegado en testnet como escrow de ensayo (`CDSCZJEM6QR6ZZKGRTLAX36GVN6UVFRISDDW7MGMGCWKZO5JVF6E3UML`, wasm `cdd8260a…`); el v1 de ensayo queda retirado. El wasm entra a `PURCHASE_ESCROW_WASM_HASHES`. `escrow:rehearsal --scenario confirmed` (nuevo): pagador clásico, `hold` y `confirm`. Ensayo de liberación por confirmación y por vencimiento, con hashes en `evidencia/T183.md`. Decisión `Y-9`: el contrato de Tapline va con T191.
+
+Por qué: OK del usuario para el despliegue el 11-nov (wallet de cobro de Tapline y plazos de `agentcommerce`).
+
+Pendiente: OK para mergear (no despliega contratos; Render reconstruye). `confirm` de un pagador rail, desde la página de firma (T185). El contrato de Tapline, en T191.
