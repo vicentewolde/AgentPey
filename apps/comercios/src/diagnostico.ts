@@ -35,8 +35,13 @@ const QUESTIONS_SYSTEM = "Escribes preguntas que un comprador chileno le haría 
 export async function buyerQuestions(llm: Llm, store: Store, products: readonly Product[], n = 8): Promise<string[]> {
   const categories = [...new Set(products.map((p) => p.category).filter((c): c is string => c !== undefined))].slice(0, 25);
   const examples = products.filter((p) => p.price !== undefined).slice(0, 40).map((p) => `${p.title} ($${p.price})`);
-  const out = await llm.structured(QuestionsSchema, QUESTIONS_SYSTEM, `Rubro: ${store.rubro}. Categorías: ${categories.join("; ")}.\nEjemplos del catálogo:\n${examples.join("\n")}\n\nEscribe ${n} preguntas.`);
-  return (out?.preguntas ?? []).slice(0, n);
+  const base = examples.length === 0
+    ? `Rubro: ${store.rubro}. No hay un catálogo legible: basa las preguntas solo en el rubro, como las haría alguien que busca ${store.rubro} en Chile (puede ser para una obra o un proyecto, no solo para el hogar).`
+    : `Rubro: ${store.rubro}. Categorías: ${categories.join("; ")}.\nEjemplos del catálogo:\n${examples.join("\n")}`;
+  const out = await llm.structured(QuestionsSchema, QUESTIONS_SYSTEM, `${base}\n\nEscribe ${n} preguntas.`);
+  const questions = (out?.preguntas ?? []).slice(0, n);
+  if (questions.length === 0) throw new Error("el modelo no devolvió preguntas");
+  return questions;
 }
 
 const ASSISTANT_SYSTEM = "Eres un asistente de compras. El usuario está en Chile y quiere comprar online. Recomienda tiendas y productos concretos con enlaces. Busca en internet para verificar precios, stock y despacho actuales antes de responder.";
