@@ -9503,4 +9503,4 @@ Qué: T184 cerrada. PR #110 en `main` y desplegado (`prod:check` 11/11). Corrida
 
 Por qué: OK del usuario para la compra y el merge.
 
-Pendiente: el veredicto sin confirmar vence solo a las 02:01 UTC (reembolso por vencimiento al rail; el usuario decide si lo confirma). Siguiente: T185.
+Resultado: el veredicto no se confirmó; la ventana del árbitro cerró a las 02:01 UTC y el escrow venció con reembolso completo al rail (`resolve:verify`). Siguiente: T185.
