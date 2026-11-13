@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en" data-title-en="AgentPey · Add a photo to a claim" data-title-es="AgentPey · Agregar una foto a un reclamo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · Add a photo to a claim</title>
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/brand/agentpey.css">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the three agentpey.com subdomains. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
+<style>
+  .step { margin-top: 18px; }
+  .step h2 { margin: 6px 0 8px; font-size: 1.25rem; }
+  .ap-dl { margin: 12px 0 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .files { display: grid; gap: 14px; margin: 14px 0 0; padding: 0; list-style: none; }
+  .file { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--ap-line, rgba(127,127,127,.25)); border-radius: 14px; }
+  .file-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .file-head img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; background: var(--ap-surface); }
+  .file-head b { overflow-wrap: anywhere; }
+  .code { width: 100%; min-height: 4.4em; resize: none; font-family: var(--ap-mono); font-size: 0.8125rem; overflow-wrap: anywhere; }
+  .picker input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+</style>
+</head>
+<body class="ap">
+<header class="ap-header"><div class="ap-wrap">
+  <a class="ap-brand" href="/">
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+    AgentPey</a>
+  <div class="utils">
+    <nav class="ap-nav ap-hide-sm" aria-label="AgentPey"><a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <div class="ap-lang lang" role="group" aria-label="Language">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+    </div>
+  </div>
+</div></header>
+<main class="ap-wrap ap-main">
+  <header>
+    <p class="ap-eyebrow"><span data-tr="en">Add a photo to a claim</span><span data-tr="es">Agregar una foto a un reclamo</span></p>
+    <h1><span data-tr="en">Show what happened with your purchase</span><span data-tr="es">Muestra qué pasó con tu compra</span></h1>
+    <p class="ap-sub">
+      <span data-tr="en">Your file stays in this browser until the claim is open. Here it gets a code: paste it in the chat, and the claim your assistant opens seals it, so nobody can swap the file afterwards. Only the store, the arbiter and you can see it.</span>
+      <span data-tr="es">Tu archivo se queda en este navegador hasta que el reclamo esté abierto. Aquí recibe un código: pégalo en el chat, y el reclamo que abra tu asistente lo sella, así nadie puede cambiar el archivo después. Solo lo pueden ver la tienda, el árbitro y tú.</span>
+    </p>
+  </header>
+  <section class="ap-card step">
+    <p class="ap-eyebrow"><span data-tr="en">01 · The purchase</span><span data-tr="es">01 · La compra</span></p>
+    <p id="order-status" class="ap-note" role="status"></p>
+    <dl id="facts" class="ap-dl" hidden></dl>
+  </section>
+  <section class="ap-card step" id="pick-panel" hidden>
+    <p class="ap-eyebrow"><span data-tr="en">02 · Your files</span><span data-tr="es">02 · Tus archivos</span></p>
+    <h2><span data-tr="en">Choose a photo or a PDF</span><span data-tr="es">Elige una foto o un PDF</span></h2>
+    <p class="ap-hint">
+      <span data-tr="en">Up to 5 files. A photo is made smaller here and loses its hidden data, its location included. A PDF goes as it is, up to 2 MB.</span>
+      <span data-tr="es">Hasta 5 archivos. Una foto se achica aquí y pierde sus datos ocultos, incluida su ubicación. Un PDF va tal cual, hasta 2 MB.</span>
+    </p>
+    <div class="actions"><label class="ap-btn picker"><input id="file-input" type="file" accept="image/*,application/pdf"><span data-tr="en">Choose a file</span><span data-tr="es">Elegir un archivo</span></label></div>
+    <p id="pick-status" class="ap-note" role="status"></p>
+    <ul id="files" class="files"></ul>
+  </section>
+  <section class="ap-card step" id="next-panel" hidden>
+    <p class="ap-eyebrow"><span data-tr="en">03 · Back to the chat</span><span data-tr="es">03 · De vuelta al chat</span></p>
+    <p class="ap-hint">
+      <span data-tr="en">Copy each code and paste it in the chat. Keep this page open: when your assistant opens the claim, the files go to the store from here by themselves. If you close it, open this link again and choose the same files.</span>
+      <span data-tr="es">Copia cada código y pégalo en el chat. Deja esta página abierta: cuando tu asistente abra el reclamo, los archivos se envían solos a la tienda desde aquí. Si la cierras, abre este enlace de nuevo y elige los mismos archivos.</span>
+    </p>
+    <p id="sync-status" class="ap-note" role="status"></p>
+  </section>
+</main>
+<footer class="ap-footer"><div class="ap-wrap"><span>AgentPey · Stellar testnet · Santiago de Chile</span><span><a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a></span></div></footer>
+<script type="module">
+import { parseOrderParam } from "./responder.js";
+
+// The same rules as the store (`@agentpey/resolve/evidence`): what a claim may bring, and how big.
+var MAX_BYTES = 2 * 1024 * 1024;
+var MAX_FILES = 5;
+var CODE_PREFIX = "ap-evidence:v1:";
+var T = {
+  loading: { en: "Reading the purchase…", es: "Leyendo la compra…" },
+  bad: { en: "This link does not point to a purchase held in an AgentPey store's escrow.", es: "Este enlace no apunta a una compra retenida en el escrow de una tienda de AgentPey." },
+  ready: { en: "This purchase is held in the store's escrow. You can add files to a claim over it.", es: "Esta compra está retenida en el escrow de la tienda. Puedes agregar archivos a un reclamo sobre ella." },
+  open: { en: "A claim is already open on this purchase. Choose the same files you gave codes for, and they go to the store.", es: "Ya hay un reclamo abierto sobre esta compra. Elige los mismos archivos de los que diste el código y se envían a la tienda." },
+  working: { en: "Preparing the file…", es: "Preparando el archivo…" },
+  tooMany: { en: "A claim brings up to 5 files.", es: "Un reclamo lleva hasta 5 archivos." },
+  badType: { en: "Only photos (JPEG, PNG, WebP) and PDFs. This browser could not read this file as either.", es: "Solo fotos (JPEG, PNG, WebP) y PDF. Este navegador no pudo leer este archivo como ninguno de ellos." },
+  insecure: { en: "This browser cannot compute the file's code on this page. Open the link exactly as your assistant gave it (https).", es: "Este navegador no puede calcular el código del archivo en esta página. Abre el enlace tal como te lo dio tu asistente (https)." },
+  tooBig: { en: "This PDF is larger than 2 MB.", es: "Este PDF pesa más de 2 MB." },
+  repeated: { en: "You already added this file.", es: "Ya agregaste este archivo." },
+  added: { en: "Added. Copy its code into the chat.", es: "Agregado. Copia su código en el chat." },
+  copy: { en: "Copy code", es: "Copiar código" },
+  copied: { en: "Copied", es: "Copiado" },
+  waiting: { en: "Waiting for your assistant to open the claim…", es: "Esperando que tu asistente abra el reclamo…" },
+  pending: { en: "Not sent yet", es: "Aún no enviado" },
+  sending: { en: "Sending to the store…", es: "Enviando a la tienda…" },
+  kept: { en: "The store has it", es: "La tienda lo tiene" },
+  notNamed: { en: "The claim was opened without this file's code, so the store cannot take it", es: "El reclamo se abrió sin el código de este archivo, así que la tienda no lo puede recibir" },
+  failed: { en: "Could not send it; trying again", es: "No se pudo enviar; reintentando" },
+  allKept: { en: "Done. The store has every file of the claim.", es: "Listo. La tienda tiene todos los archivos del reclamo." },
+  claimOpen: { en: "The claim is open. Sending the files it names…", es: "El reclamo está abierto. Enviando los archivos que nombra…" },
+  order: { en: "Order", es: "Pedido" },
+  store: { en: "Store", es: "Tienda" },
+  size: { en: "Size", es: "Tamaño" }
+};
+var order = null, view = null, items = [], statuses = {}, timer = null;
+function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
+function t(key) { return T[key] ? T[key][lang()] : key; }
+function setStatus(id, kind, key) { statuses[id] = { kind: kind, key: key }; paint(id); }
+function paint(id) {
+  var s = statuses[id], el = document.getElementById(id);
+  if (!s || !el) return;
+  el.className = "ap-note" + (s.kind === "ok" ? " ap-ok" : s.kind === "error" ? " ap-bad" : " ap-info");
+  el.textContent = s.key ? t(s.key) : "";
+}
+function fact(label, value) {
+  var wrap = document.createElement("div"), dt = document.createElement("dt"), dd = document.createElement("dd");
+  dt.textContent = label; dd.textContent = value;
+  wrap.append(dt, dd);
+  return wrap;
+}
+function sizeText(bytes) { return bytes < 1024 * 1024 ? Math.ceil(bytes / 1024) + " KB" : (bytes / 1024 / 1024).toFixed(1) + " MB"; }
+async function storeCall(path, init) {
+  var res = await fetch(order.origin + "/orders/" + encodeURIComponent(order.orderId) + "/dispute" + path, Object.assign({ cache: "no-store" }, init || {}));
+  var json = await res.json().catch(function () { return null; });
+  if (!res.ok || !json) throw new Error(json && json.message ? json.message : res.status + " " + res.statusText);
+  return json;
+}
+
+// What the store reads from the first bytes; the declared type must agree with it.
+function sniff(bytes) {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  var head = String.fromCharCode.apply(null, Array.prototype.slice.call(bytes, 0, 12));
+  if (head.slice(0, 4) === "RIFF" && head.slice(8, 12) === "WEBP") return "image/webp";
+  if (head.slice(0, 5) === "%PDF-") return "application/pdf";
+  return null;
+}
+async function sha256Hex(bytes) {
+  var digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  return Array.prototype.map.call(digest, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+}
+// A photo is drawn again as a JPEG: smaller than the store's limit, upright, and without its metadata (location included).
+async function photoAsJpeg(file) {
+  var bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  var longest = 2048;
+  for (var attempt = 0; attempt < 6; attempt++) {
+    var scale = Math.min(1, longest / Math.max(bitmap.width, bitmap.height));
+    var canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    var blob = await new Promise(function (done) { canvas.toBlob(done, "image/jpeg", attempt < 3 ? 0.85 : 0.7); });
+    if (blob && blob.size <= MAX_BYTES) return new Uint8Array(await blob.arrayBuffer());
+    longest = Math.round(longest * 0.75);
+  }
+  throw { key: "badType" };
+}
+function cleanName(name, type) {
+  var base = String(name || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, 180) || "evidencia";
+  return type === "image/jpeg" ? base.replace(/\.(heic|heif|png|webp|jpe?g|gif|bmp|tiff?)$/i, "") + ".jpg" : base;
+}
+async function prepare(file) {
+  var raw = new Uint8Array(await file.arrayBuffer());
+  var bytes, type;
+  if (sniff(raw) === "application/pdf") {
+    if (raw.byteLength > MAX_BYTES) throw { key: "tooBig" };
+    bytes = raw; type = "application/pdf";
+  } else {
+    try { bytes = await photoAsJpeg(file); } catch (e) { throw { key: "badType" }; }
+    type = "image/jpeg";
+  }
+  if (sniff(bytes) !== type) throw { key: "badType" };
+  var name = cleanName(file.name, type);
+  var sha = await sha256Hex(bytes);
+  return { bytes: bytes, type: type, name: name, sha256: sha, code: CODE_PREFIX + sha + ":" + type + ":" + bytes.byteLength + ":" + name, state: "pending" };
+}
+
+function renderFiles() {
+  var list = document.getElementById("files");
+  list.replaceChildren.apply(list, items.map(function (item, i) {
+    var li = document.createElement("li"); li.className = "file";
+    var head = document.createElement("div"); head.className = "file-head";
+    if (item.type === "image/jpeg") {
+      var img = document.createElement("img"); img.alt = "";
+      if (!item.url) item.url = URL.createObjectURL(new Blob([item.bytes], { type: item.type }));
+      img.src = item.url;
+      head.appendChild(img);
+    }
+    var title = document.createElement("div");
+    var b = document.createElement("b"); b.textContent = (i + 1) + ". " + item.name;
+    var small = document.createElement("div"); small.className = "ap-hint"; small.textContent = sizeText(item.bytes.byteLength) + " · " + t(item.state);
+    title.append(b, small);
+    head.appendChild(title);
+    var code = document.createElement("textarea"); code.className = "code"; code.readOnly = true; code.rows = 3; code.value = item.code;
+    code.setAttribute("aria-label", t("copy"));
+    var copy = document.createElement("button"); copy.type = "button"; copy.className = "ap-btn ap-btn-sm"; copy.textContent = item.copied ? t("copied") : t("copy");
+    copy.addEventListener("click", function () {
+      var mark = function () { item.copied = true; renderFiles(); };
+      try {
+        navigator.clipboard.writeText(item.code).then(mark, function () { code.focus(); code.select(); });
+      } catch (e) { code.focus(); code.select(); }
+    });
+    var actions = document.createElement("div"); actions.className = "actions"; actions.appendChild(copy);
+    li.append(head, code, actions);
+    return li;
+  }));
+  document.getElementById("next-panel").hidden = items.length === 0;
+}
+
+async function onPick(event) {
+  var input = event.target, file = input.files && input.files[0];
+  input.value = "";
+  if (!file) return;
+  if (items.length >= MAX_FILES) { setStatus("pick-status", "error", "tooMany"); return; }
+  if (!window.crypto || !crypto.subtle) { setStatus("pick-status", "error", "insecure"); return; }
+  setStatus("pick-status", "", "working");
+  try {
+    var item = await prepare(file);
+    if (items.some(function (x) { return x.sha256 === item.sha256; })) { setStatus("pick-status", "error", "repeated"); return; }
+    items.push(item);
+    setStatus("pick-status", "ok", "added");
+    renderFiles();
+    sync();
+  } catch (e) {
+    setStatus("pick-status", "error", e && e.key ? e.key : "badType");
+  }
+}
+
+// Once the store holds the claim, every file it names that the store lacks is sent; the store checks it against the seal.
+async function sync() {
+  if (timer) { clearTimeout(timer); timer = null; }
+  if (items.length === 0) return;
+  try {
+    view = await storeCall("");
+    if (!view.claim_jws) {
+      setStatus("sync-status", "", "waiting");
+    } else {
+      setStatus("sync-status", "", "claimOpen");
+      var named = {};
+      (view.evidence || []).forEach(function (f) { named[f.sha256] = f; });
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i], entry = named[item.sha256];
+        if (!entry) { item.state = "notNamed"; continue; }
+        if (entry.kept) { item.state = "kept"; continue; }
+        item.state = "sending"; renderFiles();
+        try {
+          view = await storeCall("/evidence", { method: "POST", headers: { "content-type": item.type }, body: item.bytes });
+          item.state = "kept";
+        } catch (e) { item.state = "failed"; }
+      }
+      renderFiles();
+      if (items.every(function (x) { return x.state === "kept"; })) { setStatus("sync-status", "ok", "allKept"); return; }
+      if (items.every(function (x) { return x.state === "kept" || x.state === "notNamed"; })) { setStatus("sync-status", "error", "notNamed"); return; }
+    }
+  } catch (e) {
+    // A failed read is retried; the files stay here.
+  }
+  timer = setTimeout(sync, 5000);
+}
+
+async function load() {
+  order = parseOrderParam(new URLSearchParams(location.search).get("order"), location.host);
+  if (!order) { setStatus("order-status", "error", "bad"); return; }
+  setStatus("order-status", "", "loading");
+  try { view = await storeCall(""); } catch (e) { setStatus("order-status", "error", "bad"); return; }
+  document.getElementById("facts").replaceChildren(fact(t("order"), order.orderId), fact(t("store"), order.origin.replace(/^https?:\/\//, "")));
+  document.getElementById("facts").hidden = false;
+  setStatus("order-status", "ok", view.claim_jws ? "open" : "ready");
+  document.getElementById("pick-panel").hidden = false;
+}
+document.getElementById("file-input").addEventListener("change", onPick);
+document.addEventListener("agentpey:lang", function () {
+  if (order && view) document.getElementById("facts").replaceChildren(fact(t("order"), order.orderId), fact(t("store"), order.origin.replace(/^https?:\/\//, "")));
+  Object.keys(statuses).forEach(paint);
+  renderFiles();
+});
+load();
+</script>
+<script>
+  /* EN/ES switch. Text lives in [data-tr] pairs; attributes that cannot hold markup carry data-*-en / data-*-es. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
+</script>
+</body>
+</html>

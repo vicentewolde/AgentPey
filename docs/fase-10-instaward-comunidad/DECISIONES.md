@@ -101,3 +101,17 @@ y los plazos de `agentcommerce`: 600 s para liberar, 900 para responder y 3600 p
 
 **Motivo.** Escribir a mano el `operator` rompería `X-4`, y crear la llave de Tapline fuera del alta la dejaría fuera de la
 base sellada de la plataforma. **Alternativa descartada:** un `--operator` manual en el script.
+
+### Y-10 · Una foto llega al reclamo como un código de evidencia; el archivo nunca pasa por el chat · `Vigente` (13-nov, aprobada por el usuario)
+
+**Contexto.** El reclamo sella la huella de cada archivo al firmarse (`Y-3`), así que la huella tiene que existir antes de
+abrirlo. El modelo no puede pasar los bytes de una foto a una herramienta sin riesgo de alterarlos, y la tienda solo guarda
+un archivo que el reclamo sellado nombra (T184).
+
+**Decisión.** `attach_evidence` entrega un enlace a `agentpey.com/resolve/evidencia`. Ahí el navegador de la persona achica
+la foto a un JPEG de hasta 2 MB (sin sus metadatos, ubicación incluida), calcula su sha256 y muestra un código
+`ap-evidence:v1:<sha256>:<tipo>:<bytes>:<nombre>`. La persona lo pega en el chat, `open_claim` lo convierte en la entrada
+del archivo y lo sella; un código que no se lee se rechaza antes de firmar. Con el reclamo abierto, la misma página envía el
+archivo a la tienda, que lo acepta solo si calza con la huella. No cambian la tienda ni el contrato.
+**Alternativa descartada: que la tienda guarde la foto antes del reclamo.** Ahorraba copiar un código, pero rompía la regla
+de T184 y obligaba a firmar la subida con la wallet.

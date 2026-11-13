@@ -14,7 +14,7 @@ const PUBLIC_DIR = resolve(fileURLToPath(new URL("../public", import.meta.url)))
  * that break a page without any test noticing.
  */
 describe("the static pages", () => {
-  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "resolve/confirmar.html", "tiendas.html", "en-vivo.html"]) {
+  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "resolve/confirmar.html", "resolve/evidencia.html", "tiendas.html", "en-vivo.html"]) {
     it(`${name} never combines timeZoneName with dateStyle or timeStyle`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
       const combined = /\{[^}]*(dateStyle|timeStyle)[^}]*timeZoneName[^}]*\}|\{[^}]*timeZoneName[^}]*(dateStyle|timeStyle)[^}]*\}/;
@@ -65,6 +65,20 @@ describe("the static pages", () => {
     expect(close).toMatch(/<a class="btn" href="https:\/\/realops\.agentpey\.com">/);
     const hero = html.slice(html.indexOf('<header class="hero">'), html.indexOf("</header>"));
     expect(hero).toMatch(/<a class="btn" href="\/en-vivo">/);
+  });
+
+  // T185: the evidence page hashes a file in the browser and sends it only to the store's dispute, never to a third party.
+  it("resolve/evidencia.html hashes in the browser, shows the evidence code, and sends the file only to the store", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "resolve/evidencia.html"), "utf8");
+    expect(html).toContain('crypto.subtle.digest("SHA-256"');
+    expect(html).toContain('var CODE_PREFIX = "ap-evidence:v1:";');
+    expect(html).toContain('from "./responder.js"');
+    expect(html).toContain('storeCall("/evidence"');
+    expect(html.match(/fetch\(/g)?.length).toBe(1);
+    expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+    expect(html).not.toMatch(/cdnjs|unpkg\.com|jsdelivr/);
+    expect(html).not.toContain("\u2014");
+    expect(html.match(/data-tr="es"/g)?.length).toBe(html.match(/data-tr="en"/g)?.length);
   });
 
   // T141: the store list is built from /api/stores, which carries text from the directory: never as HTML.

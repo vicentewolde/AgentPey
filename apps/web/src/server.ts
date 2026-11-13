@@ -1201,7 +1201,10 @@ async function serveStatic(pathname: string, res: ServerResponse, host: string |
             : // T185: where a buyer confirms a purchase with their own wallet (the agent never can, Y-1).
               pathname === "/resolve/confirmar"
               ? "/resolve/confirmar.html"
-              : (ucpPublicPath(pathname) ?? pathname);
+              : // T185: where a buyer picks a claim's photo; it is hashed in the browser and reaches only the store.
+                pathname === "/resolve/evidencia"
+                ? "/resolve/evidencia.html"
+                : (ucpPublicPath(pathname) ?? pathname);
   const filePath = join(PUBLIC_DIR, relative);
   // No user input reaches this join beyond the URL pathname of a same-origin
   // GET, and every route below is fixed — but refuse a path that escapes

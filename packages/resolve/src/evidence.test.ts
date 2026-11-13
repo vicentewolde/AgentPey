@@ -6,9 +6,13 @@ import { caseMessage } from "./arbiter.js";
 import { signClaim, verifyClaim } from "./claim.js";
 import {
   MAX_EVIDENCE_FILE_BYTES,
+  EVIDENCE_CODE_PREFIX,
   claimFiles,
+  evidenceCode,
   evidenceFileHash,
   fileEvidenceFor,
+  isEvidenceCode,
+  parseEvidenceCode,
   signEvidenceRead,
   sniffEvidenceType,
   verifyEvidenceRead,
@@ -67,6 +71,33 @@ describe("a file a claim brings (T184, Y-3)", () => {
     const files = message.indexOf("EVIDENCE FILES");
     expect(files).toBeGreaterThan(message.indexOf("</claim_data>"));
     expect(message.slice(files)).toContain('"status": "altered"');
+  });
+});
+
+describe("an evidence code, the way a file reaches a claim from a chat (T185)", () => {
+  it("reads back to the same entry, a name with colons included", () => {
+    const file = fileEvidenceFor(PNG, "caja: lado A.png")!;
+    const code = evidenceCode(file);
+    expect(code.startsWith(EVIDENCE_CODE_PREFIX)).toBe(true);
+    expect(isEvidenceCode(`  ${code} `)).toBe(true);
+    expect(parseEvidenceCode(`  ${code}\n`)).toEqual(file);
+  });
+
+  it("is refused when any part does not read, never guessed", () => {
+    const sha = evidenceFileHash(PNG);
+    for (const bad of [
+      `${EVIDENCE_CODE_PREFIX}${sha.slice(1)}:image/png:10:x.png`,
+      `${EVIDENCE_CODE_PREFIX}${sha.toUpperCase()}:image/png:10:x.png`,
+      `${EVIDENCE_CODE_PREFIX}${sha}:image/svg+xml:10:x.svg`,
+      `${EVIDENCE_CODE_PREFIX}${sha}:image/png:0:x.png`,
+      `${EVIDENCE_CODE_PREFIX}${sha}:image/png:${MAX_EVIDENCE_FILE_BYTES + 1}:x.png`,
+      `${EVIDENCE_CODE_PREFIX}${sha}:image/png:10:`,
+      `ap-evidence:v2:${sha}:image/png:10:x.png`,
+      "a photo of the box",
+    ]) {
+      expect(parseEvidenceCode(bad), bad).toBeNull();
+    }
+    expect(isEvidenceCode("a photo of the box")).toBe(false);
   });
 });
 
