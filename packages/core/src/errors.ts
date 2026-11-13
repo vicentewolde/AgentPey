@@ -169,6 +169,10 @@ export type AgentPassErrorCode =
   | "RateLimiterUnavailable"
   /** A tenant index is negative, non-integer, or outside BIP-32's hardened range. */
   | "InvalidTenantIndex"
+  /** The MCP's wallet list already gives this wallet a spending account (T186). */
+  | "WalletAlreadyListed"
+  /** The MCP's wallet list already uses this agent index for another person's key (T186). */
+  | "AgentIndexTaken"
   /** A partner-supplied external reference is malformed, or looks like personal data. */
   | "InvalidExternalRef"
   /** No partner in the directory has that id. */

@@ -171,6 +171,29 @@ wallet. The server refuses to start unless, on chain, the rail is owned by
 pnpm run mcp:setup -- --principal G... --reissue
 ```
 
+## One spending account per person
+
+Each person on the closed list gets their own `policy_rail` (their wallet as
+principal, their own limits) owned by an agent key derived for them alone from
+`MCP_AGENT_MNEMONIC`. The list is `apps/mcp/wallets.testnet.json`; it holds no
+secrets. Show what would be deployed:
+
+```bash
+pnpm run buyer:onboard -- --principal G... --per-tx 3 --per-day 5
+```
+
+Deploy it on testnet and add the person to the list:
+
+```bash
+pnpm run buyer:onboard -- --principal G... --per-tx 3 --per-day 5 --yes
+```
+
+The first time, add `--init-mnemonic` to create `MCP_AGENT_MNEMONIC` in
+`.env.local`, then copy it to Render. Never regenerate it: every derived key
+would change. The command moves no money; it prints the `rail:topup` command
+that funds the rail from AgentPey's testnet reserve. The server does not read
+the list yet (T187).
+
 ## Cut access
 
 Sign everyone out at once: put a new `MCP_OAUTH_SECRET` in Render (any 48+

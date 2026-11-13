@@ -9558,3 +9558,9 @@ Actualización (20-nov, noche): Vicente pidió una dirección genérica y fácil
 - `base guia` borra de la base local las guías que cambiaron de nombre.
 - Segunda muestra de las 41 preguntas: agentpey.com otra vez en 0 de 41.
 - Pendiente: el despliegue toca el gateway de producción, así que hay que correr `pnpm run prod:check` antes y después.
+
+## 2026-11-13 — cc/t186-cuenta-por-persona
+Agente: Claude Code
+Qué: T186. `pnpm run buyer:onboard` deriva la llave de agente de una persona (`MCP_AGENT_MNEMONIC`, SEP-0005), despliega su `policy_rail` con sus topes (solo con `--yes`), lo relee de la red y la anota en `apps/mcp/wallets.testnet.json` (esquema en `apps/mcp/src/wallets.ts`). Tres pruebas nuevas del contrato: la llave de una persona no gasta del rail de otra. `MCP_AGENT_MNEMONIC` ya está en `.env.local` del Dell (creada con `--init-mnemonic`), no en Render.
+Por qué: `Y-4`/`R-33`; T187, T189, T191 y T192 dependen de esto.
+Pendiente: desplegar el primer rail por persona en testnet y fondearlo (OK del usuario); merge; T187. T185 sigue esperando la prueba en vivo: el conector de claude.ai no conecta (falla la comprobación de todo conector propio, probado en Chrome).

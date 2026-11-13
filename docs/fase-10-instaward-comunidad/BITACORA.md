@@ -23,8 +23,9 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T182 `confirm` en el contrato de escrow | ✅ en `main` ([PR #107](https://github.com/vicentewolde/AgentPey/pull/107), [evidencia](evidencia/T182.md)); el contrato se despliega en T183 |
 | T183 Escrow v2 en testnet | 👀 desplegado `CDSCZJEM…E3UML` y ensayado ([evidencia](evidencia/T183.md)); el de Tapline va con T191 (`Y-9`) |
 | T184 Evidencia sellada | ✅ en `main` ([PR #110](https://github.com/vicentewolde/AgentPey/pull/110)) y corrida en testnet con foto ([evidencia](evidencia/T184.md)) |
-| T185 Acciones del asistente | 👀 `confirm_purchase` y `attach_evidence` hechas en `cc/sitio-t185` (sin mergear); falta la prueba en vivo con una wallet |
-| T186 a T206 | ⏳ pendientes (T201 es un extra) |
+| T185 Acciones del asistente | 👀 `confirm_purchase` y `attach_evidence` en `main` ([PR #114](https://github.com/vicentewolde/AgentPey/pull/114)); falta la prueba en vivo con una wallet (el conector de claude.ai no conecta desde el 13-nov) |
+| T186 Una cuenta de gasto por persona | 👀 script, lista y pruebas en `cc/t186-cuenta-por-persona` ([evidencia](evidencia/T186.md)); falta desplegar el primer rail con OK |
+| T187 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
 
@@ -75,3 +76,15 @@ transacción solo para la cuenta que corresponde (la que pagó, o la wallet a la
 agente) y la envía solo si es exactamente `confirm` de esa orden. Al firmar, la tienda cobra al tiro. Falta `attach_evidence`.
 Un detalle de diseño: la foto de un reclamo se sella al firmarlo, así que hay que subirla antes de abrir el reclamo;
 eso se resuelve con una página de subida (la segunda mitad de T185).
+
+## 2026-11-13 · T186
+
+**T186.** Ya se le puede dar a una persona su propia cuenta de gasto con un solo comando. El comando le crea una llave de
+agente que es solo suya (sale de una frase maestra que nunca se publica), despliega su `policy_rail` con su wallet como
+dueña de la plata y con los topes que se elijan, lo relee de la red para confirmar que quedó como se pidió, y la anota en
+la lista del MCP (`apps/mcp/wallets.testnet.json`, sin secretos). No mueve plata: el fondeo sigue siendo un paso aparte,
+con `rail:topup`. Las pruebas del contrato muestran que la llave de una persona no puede gastar del rail de otra, que el
+rail de una persona no aprueba mover la plata de otra, y que el tope diario de una no consume el de otra. Topes: por pago
+hasta el diario, y el diario hasta 50 USDC. Falta desplegar el primer rail en testnet, con OK. El MCP empieza a leer la
+lista en T187.
+
