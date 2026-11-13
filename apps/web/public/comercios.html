@@ -25,6 +25,7 @@
   .ap .mid { font-size: clamp(1.9rem, 5vw, 3.2rem); line-height: 1.08; letter-spacing: -0.026em; }
   .ap .lede { margin: 22px auto 0; max-width: 34ch; text-wrap: balance; }
   .ap .ap-small.lede { max-width: 60ch; margin-top: 28px; }
+  .ap .lede.hero-sub { max-width: 32ch; }
   .ap .lede.wide { max-width: 40ch; margin-top: 14px; }
   .ap .source { max-width: 70ch; margin: 18px auto 0; font-size: .75rem; }
   .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
@@ -210,6 +211,13 @@
   @media (max-width: 760px) {
     .three, .nums, .audit .row2 { grid-template-columns: minmax(0, 1fr); }
   }
+  /* wide screens: the chat grows past the page column, photos get lower and store B's facts run in two columns,
+     so the conversation takes fewer rows and less scrolling */
+  @media (min-width: 900px) {
+    .story .chat { justify-self: start; width: min(1080px, calc(100vw - 32px)); max-width: none; margin-inline: calc((100% - min(1080px, calc(100vw - 32px))) / 2); }
+    .shop-a .shot, .shop-b .thumb { aspect-ratio: 2 / 1; }
+    .shop-b dl { grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); }
+  }
   /* phones: the two stores stay side by side; the avatar steps aside and the type gets smaller */
   @media (max-width: 600px) {
     .pair-msg > .avatar { display: none; }
@@ -242,8 +250,8 @@
   </div></div>
   <div class="ap-wrap scene center">
     <p class="ap-eyebrow rv">Para e-commerce, marketplaces y tiendas online</p>
-    <h1 class="big rv">Hacemos que la <span class="ap-grad">IA</span> recomiende tu tienda.</h1>
-    <p class="ap-sub lede wide rv">Tus clientes ya le preguntan a la IA dónde comprar. <span class="wm">AgentPey</span> prepara tu catálogo para que la IA lo entienda y te elija a ti.</p>
+    <h1 class="big rv">Hacemos que las <span class="ap-grad">IAs</span> recomienden tu tienda</h1>
+    <p class="ap-sub lede hero-sub rv"><span class="wm">AgentPey</span> prepara tu catálogo para que la IA te elija a ti.</p>
     <div class="cta rv"><a class="btn" href="#demo">Pide tu demo gratis</a></div>
   </div>
   <div class="ribbon" role="img" aria-label="Para que te recomienden ChatGPT, Claude, Gemini, Grok, Perplexity y otros">
