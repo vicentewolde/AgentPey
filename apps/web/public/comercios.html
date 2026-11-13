@@ -26,7 +26,7 @@
   .ap .lede { margin: 22px auto 0; max-width: 34ch; text-wrap: balance; }
   .ap .ap-small.lede { max-width: 60ch; margin-top: 28px; }
   .ap .lede.hero-sub { max-width: 32ch; }
-  .ap .lede.wide { max-width: 40ch; margin-top: 14px; }
+  .ap .lede.wide { max-width: 58ch; margin-top: 14px; }
   .ap .source { max-width: 70ch; margin: 18px auto 0; font-size: .75rem; }
   .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
   .ap a.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 26px; border-radius: var(--ap-pill); background: var(--ap-accent); color: var(--ap-accent-ink); font: 500 1.0625rem/1.2 var(--ap-text); text-decoration: none; }
@@ -83,6 +83,12 @@
   .shop-b dt { color: #6e6e73; }
   .shop-b dd { margin: 0; font-weight: 500; }
   .shop-b .buy { background: #1d1d1f; color: #fff; }
+  /* once the AI picks store B, its card keeps a check, so looking back up shows which one won */
+  .shop-b { transition: box-shadow .5s ease; }
+  .shop-b .info { position: relative; }
+  .won { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 999px; background: var(--ap-ok); color: #04130b; font-size: .8125rem; font-weight: 700; transition: opacity .5s ease, transform .5s cubic-bezier(.2, .7, .2, 1); }
+  html:not(.story-live) .shop-b, .picked .shop-b { box-shadow: 0 0 0 3px var(--ap-ok); }
+  .story-live .track:not(.picked) .won { opacity: 0; transform: scale(.7); }
 
   /* the AI's pick */
   .ap .pick { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 22px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--ap-ok); }
@@ -228,6 +234,7 @@
     .ap .shop-a .poem { padding: 10px 10px 0; font-size: .875rem; }
     .shop-b .info { padding: 10px 10px 0; }
     .shop-b .info b { font-size: .95rem; }
+    .won { position: static; display: table; margin-bottom: 6px; padding: 2px 8px; font-size: .6875rem; }
     .shop-b dl { grid-template-columns: minmax(0, 1fr); gap: 0; font-size: .75rem; }
     .shop-b dd + dt { margin-top: 5px; }
     .shop-foot { padding: 10px 10px 12px; }
@@ -288,7 +295,7 @@
               <article class="shop shop-b" aria-label="Tienda B">
                 <div class="thumb"><img src="/img/tienda-b.jpg" alt="" onerror="this.remove()"></div>
                 <div class="info">
-                  <small>Tienda B</small><b>Notebook Pro 14&quot;</b>
+                  <span class="won" aria-hidden="true">✓ La elegida</span><small>Tienda B</small><b>Notebook Pro 14&quot;</b>
                   <dl>
                     <dt>Memoria</dt><dd>16 GB de RAM</dd>
                     <dt>Disco</dt><dd>512 GB SSD</dd>
@@ -480,6 +487,7 @@
       });
       if (last >= 2) finishTyping();
       thinking.classList.toggle("done", last >= 2);
+      track.classList.toggle("picked", last >= 3);
       if (last !== shownCap) {
         shownCap = last;
         cap.textContent = captions[last] || "";
