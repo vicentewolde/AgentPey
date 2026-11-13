@@ -9504,3 +9504,29 @@ Qué: T184 cerrada. PR #110 en `main` y desplegado (`prod:check` 11/11). Corrida
 Por qué: OK del usuario para la compra y el merge.
 
 Resultado: el veredicto no se confirmó; la ventana del árbitro cerró a las 02:01 UTC y el escrow venció con reembolso completo al rail (`resolve:verify`). Siguiente: T185.
+
+## 2026-11-12 (10) — cc/sitio-t185
+
+Agente: Claude Code
+
+Qué: T185, primera mitad. La tienda gana `GET /orders/:id/confirm` y `POST …/confirm/prepare|submit` (`confirmations.ts`): arma `confirm` para la cuenta que pagó o el principal de su rail (leído en la red con `railPrincipal`) y lo envía solo si es exactamente esa llamada. Página `agentpey.com/resolve/confirmar` para firmar con la wallet. Herramienta MCP `confirm_purchase` que solo entrega el enlace. Pruebas: tienda 533, web 361, mcp 73.
+
+Por qué: plan aprobado por el usuario el 12-nov; los cambios se acumulan en esta rama para un solo merge (CI lenta). Los cambios del sitio web que pida el usuario se suman aquí.
+
+Pendiente: `attach_evidence` (página de subida), probar `confirmar` con Freighter, los cambios del sitio, y el merge con OK.
+
+## 2026-11-13 — cc/sitio-home
+
+Agente: Claude Code
+
+Qué: la página de inicio para comercios (Start-Up Chile) quedó en producción
+(PR #112, merge `befb75e`): portada "Hacemos que las IAs recomienden tu
+tienda", la historia de las dos tiendas en un chat de IA que avanza con el
+scroll y la Tienda B marcada como la elegida. Solo los commits de la página,
+copiados desde `cc/sitio-t185`; `prod:check` 11/11 antes y después.
+
+Por qué: el usuario la aprobó pantalla por pantalla y pidió publicarla.
+
+Pendiente: `cc/sitio-t185` todavía tiene los commits de la página además de
+T185; al rebasarla sobre `origin/main` se descartan solos (mismo contenido).
+La segunda mitad de T185 (`attach_evidence`) sigue sin empezar.

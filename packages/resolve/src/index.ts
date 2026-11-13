@@ -69,10 +69,14 @@ export {
 } from "./response.js";
 
 export {
+  EVIDENCE_CODE_PREFIX,
   EVIDENCE_MEDIA_TYPES,
   EVIDENCE_READ_MAX_SECONDS,
   MAX_EVIDENCE_FILE_BYTES,
   claimFiles,
+  evidenceCode,
+  isEvidenceCode,
+  parseEvidenceCode,
   evidenceExtension,
   evidenceFileHash,
   evidenceReadMessage,

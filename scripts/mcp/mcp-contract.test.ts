@@ -18,7 +18,7 @@ import { createMcpApp } from "../../apps/mcp/src/http.js";
 import { QuoteBook } from "../../apps/mcp/src/quotes.js";
 import { Shopper, type ShopperDeps } from "../../apps/mcp/src/shopper.js";
 import { createMandate } from "../../packages/mandate/src/index.js";
-import { escrowOpenMessage, verifyClaim } from "../../packages/resolve/src/index.js";
+import { escrowOpenMessage, evidenceCode, fileEvidenceFor, verifyClaim } from "../../packages/resolve/src/index.js";
 import { MOCK_CATALOG, MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
 import { verifyReceipt, type EscrowDisputeOpenerFactory, type EscrowPurchase, type OpenInput } from "../../packages/vitrinee-anchor/src/index.js";
 import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
@@ -222,11 +222,12 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
   });
   afterAll(() => mcp.close());
 
-  it("lists six tools; only pay is destructive, and only search, product and order are read-only", async () => {
+  it("lists eight tools; only pay is destructive, and only quote, pay and open_claim write anything", async () => {
     const { tools } = (await mcp.rpc("tools/list")) as { tools: Array<{ name: string; annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean }; outputSchema?: unknown }> };
-    expect(tools.map((tool) => tool.name).sort()).toEqual(["get_order", "get_product", "open_claim", "pay", "quote", "search_products"]);
+    expect(tools.map((tool) => tool.name).sort()).toEqual(["attach_evidence", "confirm_purchase", "get_order", "get_product", "open_claim", "pay", "quote", "search_products"]);
     const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
-    for (const name of ["search_products", "get_product", "get_order"]) expect(byName[name]?.annotations?.readOnlyHint, name).toBe(true);
+    // confirm_purchase and attach_evidence only hand out a page: the person's wallet and browser do the rest (T185).
+    for (const name of ["search_products", "get_product", "get_order", "confirm_purchase", "attach_evidence"]) expect(byName[name]?.annotations?.readOnlyHint, name).toBe(true);
     for (const name of ["quote", "pay", "open_claim"]) expect(byName[name]?.annotations?.readOnlyHint, name).toBe(false);
     expect(byName["pay"]?.annotations?.destructiveHint).toBe(true);
     for (const tool of tools) expect(tool.outputSchema, tool.name).toBeDefined();
@@ -283,6 +284,24 @@ describe("AgentPey's MCP server, tool by tool (T128)", () => {
     // Paid straight to the store: nothing is opened on chain, the arbiter opens it as before (T162).
     expect(claimed.structuredContent!["dispute"]).toBeNull();
     expect(claimed.structuredContent!["next_step"]).toContain("pnpm run resolve:open");
+  });
+
+  it("refuses an evidence code that does not read, and files for a store paid straight, before signing anything (T185)", async () => {
+    const quoted = await mcp.call("quote", { store: storeName(), product_id: "gorro-andes", quantity: 1, destination: DESTINATION });
+    const paid = await mcp.call("pay", { quote_id: quoted.structuredContent!["quote_id"], confirm: true });
+    const orderId = paid.structuredContent!["order_id"];
+    const photo = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from("a parcel")]);
+    const code = evidenceCode(fileEvidenceFor(photo, "caja.jpg")!);
+    const signedBefore = mcp.logs.filter((line) => line.includes("claim signed")).length;
+    const cut = await mcp.call("open_claim", { store: storeName(), order_id: orderId, reason: "damaged", description: "Broken", evidence: [code.slice(0, 40)] });
+    expect(errorOf(cut)).toMatchObject({ error: "InvalidArguments", message: expect.stringContaining("evidence code does not read") });
+    const twice = await mcp.call("open_claim", { store: storeName(), order_id: orderId, reason: "damaged", description: "Broken", evidence: [code, code] });
+    expect(errorOf(twice)).toMatchObject({ error: "InvalidArguments", message: expect.stringContaining("twice") });
+    const straight = await mcp.call("open_claim", { store: storeName(), order_id: orderId, reason: "damaged", description: "Broken", evidence: [code] });
+    expect(errorOf(straight)).toMatchObject({ error: "InvalidArguments", message: expect.stringContaining("paid straight to the store") });
+    expect(mcp.logs.filter((line) => line.includes("claim signed")).length).toBe(signedBefore);
+    // No escrow holds it, so there is no page to give either.
+    expect(errorOf(await mcp.call("attach_evidence", { store: storeName(), order_id: orderId }))).toMatchObject({ error: "InvalidArguments" });
   });
 
   it("quotes a cart of two products as one checkout and pays it with one payment (T150)", async () => {
@@ -698,8 +717,27 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       expect(read.structuredContent!["escrow"]).toMatchObject({ contract: ESCROW_ID, status: "held", amount_usdc: "13.6736842", refund_usdc: "0.0000000", meaning: expect.stringContaining("held in the store's escrow") });
       // Read from the escrow the signed receipt names, not from the store's block (T161 review): nothing to warn about.
       expect(read.structuredContent!["escrow_notice"]).toBeNull();
-      const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived" });
+
+      // T185: confirming and adding a photo both hand the person a page; neither signs nor sends anything.
+      const pageOf = (page: string) => `https://agentpey.com/resolve/${page}?order=${encodeURIComponent(name)}/orders/${orderId}`;
+      const confirm = await mcp.call("confirm_purchase", { store: name, order_id: orderId });
+      expect(confirm.structuredContent).toMatchObject({ escrow_status: "held", confirm_url: `${pageOf("confirmar")}&escrow=${ESCROW_ID}` });
+      const attach = await mcp.call("attach_evidence", { store: name, order_id: orderId });
+      expect(attach.structuredContent).toMatchObject({ escrow_status: "held", evidence_url: pageOf("evidencia") });
+      expect(opener.sent).toEqual([]);
+
+      // The page hashed the photo in the browser and showed its code; the chat passes the code, never the bytes.
+      const photo = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from("a crushed box on the doorstep")]);
+      const file = fileEvidenceFor(photo, "caja.jpg")!;
+      const claimed = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Never arrived", evidence: ["The box was left open", evidenceCode(file)] });
       expect(claimed.isError).toBeFalsy();
+      expect(claimed.structuredContent!["evidence_url"]).toBe(pageOf("evidencia"));
+      // The signed claim seals the file by its hash; the escrow seals the claim.
+      expect((await verifyClaim(claimed.structuredContent!["claim_jws"] as string)).document.evidence).toEqual([{ kind: "text", content: "The box was left open" }, file]);
+      // What the page does once the dispute is open: the store takes the photo because the sealed claim names it.
+      const upload = await fetch(`${escrowServer.url}/orders/${orderId}/dispute/evidence`, { method: "POST", headers: { "content-type": "image/jpeg" }, body: photo });
+      expect(upload.status).toBe(200);
+      expect(((await upload.json()) as { evidence: unknown[] }).evidence).toEqual([{ sha256: file.sha256, media_type: "image/jpeg", bytes: photo.byteLength, name: "caja.jpg", kept: true }]);
       // The claim opened the dispute in the escrow, signed by the rail's owner over the escrow's message (T162).
       expect(claimed.structuredContent!["dispute"]).toMatchObject({ escrow: ESCROW_ID, status: "disputed", transaction: "9".repeat(64), respond_by: expect.any(String), claim_kept: true });
       // The store keeps the claim next to the order, for the merchant's page and the arbiter (T163).
@@ -713,6 +751,10 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       const again = await mcp.call("open_claim", { store: name, order_id: orderId, reason: "not_delivered", description: "Still nothing" });
       expect(errorOf(again)).toMatchObject({ error: "ResolveDisputeExists", payment_may_have_been_sent: false });
       expect(opener.sent).toHaveLength(1);
+      // A disputed purchase can be neither confirmed nor given more files.
+      for (const tool of ["confirm_purchase", "attach_evidence"]) {
+        expect(errorOf(await mcp.call(tool, { store: name, order_id: orderId })), tool).toMatchObject({ error: "InvalidArguments", message: expect.stringContaining("it is disputed") });
+      }
     } finally {
       await mcp.close();
       escrowStore.anchors.stop();

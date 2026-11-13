@@ -1,5 +1,5 @@
 /**
- * The six MCP tools (T128), each a thin face over `Shopper`. Inputs and
+ * The MCP tools (T128; confirm_purchase and attach_evidence since T185), each a thin face over `Shopper`. Inputs and
  * outputs are zod schemas the SDK publishes to the client and checks.
  *
  * `quote`, `pay` and `open_claim` are not read-only (R-10), so Claude and
@@ -100,6 +100,20 @@ export const outputSchemas = {
       })
       .nullable(),
   }),
+  confirm_purchase: z.object({
+    order_id: z.string(),
+    store: z.string(),
+    escrow_status: z.enum(["held", "shipped"]),
+    confirm_url: z.string(),
+    next_step: z.string(),
+  }),
+  attach_evidence: z.object({
+    order_id: z.string(),
+    store: z.string(),
+    escrow_status: z.enum(["held", "shipped"]),
+    evidence_url: z.string(),
+    next_step: z.string(),
+  }),
   open_claim: z.object({
     claim_id: z.string(),
     claim_hash: z.string(),
@@ -119,6 +133,8 @@ export const outputSchemas = {
         claim_kept: z.boolean(),
       })
       .nullable(),
+    /** When the claim brings files: the page that hands them to the store, should it have been closed (T185). */
+    evidence_url: z.string().nullable(),
     next_step: z.string(),
   }),
 } as const;
@@ -229,10 +245,36 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
   );
 
   server.registerTool(
+    "confirm_purchase",
+    {
+      title: "Give the link to confirm a purchase",
+      description:
+        "The person is happy with a purchase held in the store's escrow and wants the store paid now instead of at the end of the window. This does not confirm anything: confirming moves money and is signed by the person's own wallet, never by you. It returns confirm_url, the page where they connect their wallet and sign. Give them the link and next_step; never call it done until get_order shows the purchase released.",
+      inputSchema: z.object({ store: z.string().trim().min(1).max(200), order_id: z.string().trim().min(1).max(200) }),
+      outputSchema: outputSchemas.confirm_purchase,
+      annotations: { title: "Confirm a purchase", ...READ_ONLY },
+    },
+    async (input) => run(async () => shopper.confirmPurchase(input), log),
+  );
+
+  server.registerTool(
+    "attach_evidence",
+    {
+      title: "Give the link to add a photo to a claim",
+      description:
+        "Before open_claim, when the person has a photo or PDF that backs their claim (a damaged box, a wrong item, the courier's note). Files never pass through this chat: this returns evidence_url, the page where they choose each file; their browser hashes it and shows an evidence code. Ask them to paste the codes back, and pass each one as an item of open_claim's evidence. Opens nothing and signs nothing.",
+      inputSchema: z.object({ store: z.string().trim().min(1).max(200), order_id: z.string().trim().min(1).max(200) }),
+      outputSchema: outputSchemas.attach_evidence,
+      annotations: { title: "Add a photo to a claim", ...READ_ONLY },
+    },
+    async (input) => run(async () => shopper.attachEvidence(input), log),
+  );
+
+  server.registerTool(
     "open_claim",
     {
       title: "Open a refund claim",
-      description: `Sign a refund claim over an order's receipt, for AgentResolve. Reasons: ${CLAIM_REASONS.join(", ")}. When the order was paid into the store's escrow, this also opens the dispute on Stellar: the payment is frozen there and the store cannot collect it until the arbiter decides; dispute has the transaction and until when the store may answer. A purchase admits one dispute, so only when the person asks for it, after telling them that. For an order paid straight to the store, dispute is null and the arbiter opens it. Pass next_step on.`,
+      description: `Sign a refund claim over an order's receipt, for AgentResolve. Reasons: ${CLAIM_REASONS.join(", ")}. When the order was paid into the store's escrow, this also opens the dispute on Stellar: the payment is frozen there and the store cannot collect it until the arbiter decides; dispute has the transaction and until when the store may answer. A purchase admits one dispute, so only when the person asks for it, after telling them that. For an order paid straight to the store, dispute is null and the arbiter opens it. evidence holds text, links, and the evidence codes the person pasted from attach_evidence's page, exactly as given: each seals one file. Pass next_step on.`,
       inputSchema: claimInputSchema,
       outputSchema: outputSchemas.open_claim,
       annotations: { title: "Open a refund claim", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },

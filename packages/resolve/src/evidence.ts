@@ -64,6 +64,34 @@ export function fileEvidenceFor(bytes: Uint8Array, name: string): FileEvidence |
   return fileEvidenceSchema.parse({ kind: "file", sha256: evidenceFileHash(bytes), mediaType, bytes: bytes.byteLength, name: name.trim().slice(0, 200) || "evidence" });
 }
 
+/**
+ * How a file reaches a claim from a chat (T185): the evidence page hashes the file in the person's browser and shows
+ * this code, the person pastes it into the chat, and `open_claim` turns it back into the claim's entry. The bytes never
+ * pass through the chat or the model; the store later takes them only if they match the sealed entry.
+ * `ap-evidence:v1:<sha256>:<media type>:<bytes>:<name>`; the name is last, so it may itself hold a colon.
+ */
+export const EVIDENCE_CODE_PREFIX = "ap-evidence:v1:";
+
+export function evidenceCode(file: FileEvidence): string {
+  return `${EVIDENCE_CODE_PREFIX}${file.sha256}:${file.mediaType}:${file.bytes}:${file.name}`;
+}
+
+export function isEvidenceCode(text: string): boolean {
+  return text.trim().startsWith(EVIDENCE_CODE_PREFIX);
+}
+
+/** The claim's entry an evidence code names. @returns null for a code that does not read: never a guess. */
+export function parseEvidenceCode(code: string): FileEvidence | null {
+  const text = code.trim();
+  if (!text.startsWith(EVIDENCE_CODE_PREFIX)) return null;
+  const match = /^([0-9a-f]{64}):([a-z]+\/[a-z0-9.+-]+):([0-9]{1,9}):(.+)$/.exec(text.slice(EVIDENCE_CODE_PREFIX.length));
+  // The name is shown to the store and the arbiter: no line breaks or control characters in it.
+  // eslint-disable-next-line no-control-regex
+  if (match === null || /[\u0000-\u001f\u007f]/.test(match[4]!)) return null;
+  const parsed = fileEvidenceSchema.safeParse({ kind: "file", sha256: match[1], mediaType: match[2], bytes: Number(match[3]), name: match[4] });
+  return parsed.success ? parsed.data : null;
+}
+
 /** The files among a claim's evidence. */
 export function claimFiles(evidence: readonly { readonly kind: string }[]): FileEvidence[] {
   return evidence.flatMap((item) => {

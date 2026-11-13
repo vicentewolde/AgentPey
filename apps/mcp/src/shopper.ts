@@ -32,7 +32,7 @@ import {
   withPaymentSent,
 } from "@agentpey/agent";
 import type { AgentPayMandate } from "@agentpey/mandate";
-import { CLAIM_REASONS, signClaim, type ClaimReason } from "@agentpey/resolve";
+import { CLAIM_REASONS, isEvidenceCode, parseEvidenceCode, signClaim, type ClaimReason, type FileEvidence } from "@agentpey/resolve";
 import { getUcpProduct, searchUcpStore, type EscrowDisputeOpenerFactory, type EscrowReaderFactory, type ReceiptVerification } from "@vitrinee/anchor";
 import { checkReceiptSignature, stellarExpertTxUrl, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
 import type { Keypair } from "@stellar/stellar-sdk";
@@ -135,6 +135,31 @@ export const claimInputSchema = z.strictObject({
   evidence: z.array(z.string().trim().min(1).max(2000)).max(5).default([]),
 });
 export type ClaimInput = z.input<typeof claimInputSchema>;
+
+/** A page of agentpey.com for one order of one store, as `responder.js`'s `parseOrderParam` reads it. */
+function pageUrl(page: "confirmar" | "evidencia", store: string, orderId: string, escrow?: string): string {
+  const order = encodeURIComponent(`${store}/orders/${orderId}`).replaceAll("%2F", "/");
+  return `https://agentpey.com/resolve/${page}?order=${order}${escrow === undefined ? "" : `&escrow=${escrow}`}`;
+}
+
+/**
+ * A claim's evidence as the chat gives it: an evidence code from the evidence page becomes a sealed file entry, a link
+ * stays a link and anything else is text. A code that does not read is refused, never kept as text: the person meant a
+ * file, and a claim cannot be signed again once its dispute is open.
+ */
+function claimEvidence(items: readonly string[]) {
+  const files = new Set<string>();
+  return items.map((content) => {
+    if (isEvidenceCode(content)) {
+      const file: FileEvidence | null = parseEvidenceCode(content);
+      if (file === null) throw new AgentPassError("InvalidArguments", "an evidence code does not read: ask the person to copy it again from the evidence page, whole", { details: {} });
+      if (files.has(file.sha256)) throw new AgentPassError("InvalidArguments", "the same file is given twice", { details: { sha256: file.sha256 } });
+      files.add(file.sha256);
+      return file;
+    }
+    return { kind: /^https?:\/\//.test(content) ? ("url" as const) : ("text" as const), content };
+  });
+}
 
 /** What a UCP order says, as far as the MCP shows it. */
 const orderSchema = z.looseObject({
@@ -338,6 +363,65 @@ export class Shopper {
     };
   }
 
+  /**
+   * Confirming a purchase pays the store at once, so the person gives it with their own wallet (T185, `Y-1`): this
+   * returns the link to the page where they sign, and signs nothing. The agent's key cannot confirm, in the contract
+   * either; the link only opens the page. Refused for an order the escrow no longer holds.
+   */
+  async confirmPurchase(input: { store: string; order_id: string }) {
+    const { store, order, status, contract } = await this.heldInEscrow(input, "confirmed");
+    // The page checks the store's escrow and the transaction against this contract, read from the signed receipt.
+    const confirmUrl = pageUrl("confirmar", store.name, order.id, contract);
+    return {
+      order_id: order.id,
+      store: store.name,
+      escrow_status: status,
+      confirm_url: confirmUrl,
+      next_step: `Give the person this link: ${confirmUrl} . Confirming pays ${store.name} now, cannot be undone and ends the chance to open a claim. They sign it in their own wallet; you cannot confirm for them, and nothing has been paid yet. Do not say the purchase is confirmed until get_order shows it released.`,
+    };
+  }
+
+  /**
+   * A photo or PDF for a claim (T185, `Y-3`). The file never passes through the chat: this returns the page where the
+   * person picks it, their browser hashes it and shows an evidence code to paste back here, for open_claim. The claim
+   * seals that hash; once the dispute is open, the page hands the file to the store, which keeps it only if it matches.
+   * Opens nothing and signs nothing. Refused for a purchase that can no longer be disputed.
+   */
+  async attachEvidence(input: { store: string; order_id: string }) {
+    const { store, order, status } = await this.heldInEscrow(input, "disputed");
+    const evidenceUrl = pageUrl("evidencia", store.name, order.id);
+    return {
+      order_id: order.id,
+      store: store.name,
+      escrow_status: status,
+      evidence_url: evidenceUrl,
+      next_step: `Give the person this link: ${evidenceUrl} . They choose the photo or PDF there (up to 5 files, one at a time, 2 MB each; a larger photo is made smaller in their browser), and the page shows an evidence code for each. Ask them to paste the codes here, then pass them in open_claim's evidence, with their consent to open the claim. Ask them to keep the page open: once the dispute is open it sends the file to the store by itself. Never describe a file you have not seen; the arbiter checks each one against its code.`,
+    };
+  }
+
+  /** A purchase the store's escrow still holds, read on Stellar from the escrow its signed receipt names. */
+  private async heldInEscrow(input: { store: string; order_id: string }, action: "confirmed" | "disputed") {
+    const { store } = await this.store(input.store);
+    const order = await this.readOrder(store, input.order_id);
+    const receipt = order.receipt;
+    if (receipt === undefined) throw new AgentPassError("InvalidArguments", `this order has no receipt, so there is no held payment to be ${action}`, { details: { orderId: input.order_id } });
+    const signedReceipt = checkReceiptSignature(receipt.jws);
+    const contract = signedReceipt.ok ? signedReceipt.claims?.escrow?.contract : undefined;
+    if (contract === undefined) throw new AgentPassError("InvalidArguments", `this order was not paid into a store escrow, so there is no held payment to be ${action}`, { details: { orderId: input.order_id } });
+    const state = await readEscrowState({
+      orderId: order.id,
+      signed: signedReceipt.ok && signedReceipt.claims !== null ? { receiptHash: signedReceipt.hash, contract } : null,
+      storeBlock: receipt.escrow,
+      readers: this.deps.escrows,
+      now: (this.deps.now ?? (() => new Date()))(),
+    });
+    const status = state.escrow?.status ?? null;
+    if (status !== "held" && status !== "shipped") {
+      throw new AgentPassError("InvalidArguments", `this purchase cannot be ${action} now: ${status === null ? "its escrow state could not be read" : `it is ${status}`}`, { details: { orderId: order.id, status } });
+    }
+    return { store, order, status, contract };
+  }
+
   /** The order as the store shows it, and its receipt checked independently of the store. */
   async getOrder(input: { store: string; order_id: string }) {
     const { store } = await this.store(input.store);
@@ -399,6 +483,9 @@ export class Shopper {
    */
   async openClaim(raw: ClaimInput) {
     const input = claimInputSchema.parse(raw);
+    // Read before anything is fetched or signed: a bad code costs nothing.
+    const evidence = claimEvidence(input.evidence);
+    const hasFiles = evidence.some((item) => item.kind === "file");
     const { store } = await this.store(input.store);
     const order = await this.readOrder(store, input.order_id);
     const jws = order.receipt?.jws;
@@ -413,6 +500,10 @@ export class Shopper {
     }
     // The escrow comes from the signed receipt, never from the store's order (T161 review); checked before signing anything.
     const contract = receipt.claims.escrow?.contract;
+    // A file reaches the store through the dispute it holds in its escrow; a store paid straight has no place for it.
+    if (hasFiles && contract === undefined) {
+      throw new AgentPassError("InvalidArguments", "this order was paid straight to the store, so a claim over it cannot bring files: describe them in text instead", { details: { orderId: order.id } });
+    }
     let target: Awaited<ReturnType<typeof checkClaimableEscrow>> | null = null;
     if (contract !== undefined) {
       // The store signs the receipt, so the escrow it names is checked against the money: the payment credited that
@@ -442,7 +533,7 @@ export class Shopper {
         receipt: { hash: receipt.hash, jws },
         reason: input.reason as ClaimReason,
         description: input.description,
-        evidence: input.evidence.map((content) => ({ kind: /^https?:\/\//.test(content) ? ("url" as const) : ("text" as const), content })),
+        evidence,
         amountAtomic: receipt.claims.amountUSDCAtomic,
         createdAt: new Date().toISOString(),
       },
@@ -460,6 +551,7 @@ export class Shopper {
       return {
         ...base,
         dispute: null,
+        evidence_url: null,
         next_step: "Send claim_jws to the AgentResolve arbiter, who opens the dispute on Stellar with: pnpm run resolve:open -- --claim <file with claim_jws>",
       };
     }
@@ -478,12 +570,18 @@ export class Shopper {
     // The store keeps the claim with the order, so the merchant reads it and the arbiter decides without files (T163).
     const claimKept = await this.handClaimToStore(store, order.id, signed.jws);
     const until = dispute.respond_by === null ? "within the escrow's response window" : `until ${dispute.respond_by}`;
+    const evidenceUrl = hasFiles ? pageUrl("evidencia", store.name, order.id) : null;
+    const files =
+      evidenceUrl === null
+        ? ""
+        : ` The claim seals the files by their codes. If the evidence page is still open it sends them to the store now; if it was closed, ask the person to open ${evidenceUrl} again and choose the same files.`;
     return {
       ...base,
       dispute: { ...dispute, claim_kept: claimKept },
-      next_step: claimKept
+      evidence_url: evidenceUrl,
+      next_step: (claimKept
         ? `The dispute is open on Stellar: the payment stays held in the store's escrow and the store cannot collect it. The store has the claim next to the order and can answer ${until}; then the AgentResolve arbiter decides from the order, and any refund comes from the held payment.`
-        : `The dispute is open on Stellar: the payment stays held in the store's escrow and the store cannot collect it. The store can answer ${until}; then the AgentResolve arbiter decides, and any refund comes from the held payment. The store did not take the claim just now: send claim_jws to the arbiter, it is the claim the escrow recorded.`,
+        : `The dispute is open on Stellar: the payment stays held in the store's escrow and the store cannot collect it. The store can answer ${until}; then the AgentResolve arbiter decides, and any refund comes from the held payment. The store did not take the claim just now: send claim_jws to the arbiter, it is the claim the escrow recorded.`) + files,
     };
   }
 

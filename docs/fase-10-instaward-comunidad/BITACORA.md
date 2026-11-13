@@ -23,7 +23,8 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T182 `confirm` en el contrato de escrow | ✅ en `main` ([PR #107](https://github.com/vicentewolde/AgentPey/pull/107), [evidencia](evidencia/T182.md)); el contrato se despliega en T183 |
 | T183 Escrow v2 en testnet | 👀 desplegado `CDSCZJEM…E3UML` y ensayado ([evidencia](evidencia/T183.md)); el de Tapline va con T191 (`Y-9`) |
 | T184 Evidencia sellada | ✅ en `main` ([PR #110](https://github.com/vicentewolde/AgentPey/pull/110)) y corrida en testnet con foto ([evidencia](evidencia/T184.md)) |
-| T185 a T206 | ⏳ pendientes (T201 es un extra) |
+| T185 Acciones del asistente | 👀 `confirm_purchase` y `attach_evidence` hechas en `cc/sitio-t185` (sin mergear); falta la prueba en vivo con una wallet |
+| T186 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
 
@@ -55,3 +56,22 @@ guarda la huella del reclamo, así que si alguien cambia la foto después, deja 
 si el reclamo sellado lo nombra, y se lo entrega solo al árbitro, al comercio o al comprador, con un enlace que firman con
 su propia llave y que vence en minutos, porque una foto de un paquete puede mostrar una dirección. El árbitro revisa cada
 archivo antes de decidir y le dice al modelo cuáles calzan. La corrida en testnet salió bien: un reclamo con una foto quedó abierto en la red, la tienda la guardó, y el árbitro la leyó, comprobó su huella y rechazó el reclamo (era una prueba, sin daño real).
+
+## 2026-11-13 · T185 (segunda mitad)
+
+**T185, `attach_evidence`.** Claude ya puede ayudar a sumar una foto a un reclamo sin que la foto pase por el chat. La
+herramienta da un enlace (`agentpey.com/resolve/evidencia?order=…`); ahí la persona elige la foto o el PDF, el navegador
+achica la foto (y le quita la ubicación) y muestra un código que la persona pega en el chat. El reclamo sella ese código, y
+en cuanto el reclamo está abierto, la misma página le envía el archivo a la tienda, que lo guarda solo si calza (`Y-10`).
+Probado de punta a punta en un Chrome sin pantalla con una foto de 26 MB, que quedó en 1,7 MB. También se arregló un test
+del MCP que seguía esperando seis herramientas. Falta la prueba en vivo: confirmar una compra con una wallet real y abrir un
+reclamo con foto desde Claude.
+
+## 2026-11-12 · T185 (primera mitad)
+
+**T185, `confirm_purchase`.** Claude ya puede ayudar a confirmar una compra, pero no puede confirmarla él: la herramienta le
+da a la persona un enlace (`agentpey.com/resolve/confirmar?order=…`) y ahí conecta su wallet y firma. La tienda arma la
+transacción solo para la cuenta que corresponde (la que pagó, o la wallet a la que responde su rail, nunca la llave del
+agente) y la envía solo si es exactamente `confirm` de esa orden. Al firmar, la tienda cobra al tiro. Falta `attach_evidence`.
+Un detalle de diseño: la foto de un reclamo se sella al firmarlo, así que hay que subirla antes de abrir el reclamo;
+eso se resuelve con una página de subida (la segunda mitad de T185).
