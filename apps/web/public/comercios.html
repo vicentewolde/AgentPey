@@ -23,8 +23,9 @@
   .center { text-align: center; }
   .ap .big { font-size: clamp(2.4rem, 7vw, 4.6rem); line-height: 1.04; letter-spacing: -0.028em; }
   .ap .mid { font-size: clamp(1.9rem, 5vw, 3.2rem); line-height: 1.08; letter-spacing: -0.026em; }
-  .ap .lede { margin: 22px auto 0; max-width: 34ch; }
+  .ap .lede { margin: 22px auto 0; max-width: 34ch; text-wrap: balance; }
   .ap .ap-small.lede { max-width: 60ch; margin-top: 28px; }
+  .ap .lede.wide { max-width: 40ch; margin-top: 14px; }
   .ap .source { max-width: 70ch; margin: 18px auto 0; font-size: .75rem; }
   .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
   .ap a.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 26px; border-radius: var(--ap-pill); background: var(--ap-accent); color: var(--ap-accent-ink); font: 500 1.0625rem/1.2 var(--ap-text); text-decoration: none; }
@@ -44,7 +45,7 @@
   .story-live [data-at].on { opacity: 1; transform: none; }
   .thinking.done .dots { display: none; }
   .ap .intro-eyebrow { font-size: clamp(1.05rem, 2.2vw, 1.3rem); }
-  .track { position: relative; display: grid; gap: 22px; padding: 22px 18px 26px; will-change: transform; }
+  .track { position: relative; display: grid; gap: 40px; padding: 26px 18px 40px; will-change: transform; }
   .msg.ai > div { flex: 1; min-width: 0; }
   .msg.cont .avatar { visibility: hidden; }
 
@@ -80,13 +81,8 @@
   .shop-b .shop-foot { padding: 14px 0 0; }
   .shop-b .buy { background: #1d1d1f; color: #fff; }
 
-  /* the AI's comparison and its pick */
-  .cmp { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: .9375rem; }
-  .cmp th, .cmp td { padding: 9px 10px; border-bottom: 1px solid var(--ap-line, rgba(255,255,255,.12)); text-align: left; vertical-align: top; }
-  .cmp th { color: var(--ap-ink-2); font-weight: 500; font-size: .8125rem; }
-  .cmp .y { color: var(--ap-ok); }
-  .cmp .n { color: var(--ap-warn); }
-  .pick { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 12px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--ap-ok); }
+  /* the AI's pick */
+  .ap .pick { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 22px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--ap-ok); }
   .pick b { color: var(--ap-ok); }
 
   /* chat window, like talking to an AI assistant */
@@ -111,7 +107,7 @@
   .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 44px; }
   .three .ap-card { display: grid; justify-items: center; align-content: start; text-align: center; }
   .three h3 { text-wrap: balance; }
-  .three p { max-width: 30ch; margin-inline: auto; text-wrap: pretty; }
+  .three p { width: 100%; max-width: 32ch; margin: 14px auto 0; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
   .three .n { font-family: var(--ap-display); font-weight: 600; font-size: 2.6rem; line-height: 1; color: var(--ap-ink-2); }
   .three h3 { margin-top: 18px; font-size: clamp(1.25rem, 2.4vw, 1.5rem); }
 
@@ -144,12 +140,9 @@
   .ap .ap-header .ap-nav a.nav-cta { padding: 6px 16px; border-radius: var(--ap-pill); background: var(--ap-ink); color: var(--ap-bg); }
   .ap .ap-header .ap-nav a.nav-cta:hover { filter: brightness(.9); color: var(--ap-bg); }
 
-  /* AgentPey written as its logo inside titles: the mark, then the name, with the blue terminal */
-  :root { --ap-blue: #176bff; }
-  .wm { color: var(--ap-ink); white-space: nowrap; }
-  .wm-p { position: relative; display: inline-block; line-height: 1; }
-  /* the logo's blue diagonal takes the place of the P's top right corner */
-  .wm-p::after { content: ""; position: absolute; top: .2em; left: calc(100% - .35em); width: .32em; height: .12em; background: var(--ap-blue); transform: rotate(45deg); box-shadow: 0 0 0 .04em var(--ap-bg); }
+  /* AgentPey inside a sentence: plain text in the brand's blue, no mark */
+  :root { --ap-blue: #176bff; --ap-wm: #4d8eff; }
+  .wm { color: var(--ap-wm); white-space: nowrap; }
 
   /* Black Friday */
   .bf { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px 28px; max-width: 640px; margin: 44px auto 0; padding: 22px 26px; border-radius: var(--ap-radius); background: #fff; color: #000; text-align: left; }
@@ -206,10 +199,6 @@
     .story-live .on .shop-b dl > :nth-child(n+9) { animation-delay: .6s; }
     .story-live .on .shop-b dl > :nth-child(n+11) { animation-delay: .75s; }
     .story-live .on .shop-b dl > :nth-child(n+13) { animation-delay: .9s; }
-    .story-live .on .cmp tr { animation: rise .5s ease both; }
-    .story-live .on .cmp tr:nth-child(2) { animation-delay: .25s; }
-    .story-live .on .cmp tr:nth-child(3) { animation-delay: .5s; }
-    .story-live .on .cmp tr:nth-child(4) { animation-delay: .75s; }
     .cap.swap { animation: rise .6s ease both; }
     .ribbon-track { animation: ribbon 40s linear infinite; }
     @keyframes ribbon { to { transform: translateX(-50%); } }
@@ -220,13 +209,11 @@
     .three, .nums, .audit .row2 { grid-template-columns: minmax(0, 1fr); }
     .shop-b { grid-template-columns: minmax(0, 1fr); }
     .shop-b .thumb { aspect-ratio: 16 / 9; max-width: 100%; }
-    .cmp { font-size: .8125rem; }
-    .cmp th, .cmp td { padding: 7px 6px; }
   }
 </style>
 </head>
 <body class="ap">
-<a class="topbar" href="#demo"><span class="tb-tag">BLACK FRIDAY</span><span>27 – 30 nov: te medimos gratis lo que llega desde las <span class="ap-grad">IAs</span>.</span><span class="tb-go">Pide tu demo →</span></a>
+<a class="topbar" href="#demo"><span class="tb-tag">BLACK FRIDAY</span><span>27 – 30 nov: medimos gratis cuántas veces las <span class="ap-grad">IAs</span> te consultan.</span><span class="tb-go">Pide tu demo →</span></a>
 <header class="hero">
   <div class="ap-header"><div class="ap-wrap">
     <a class="ap-brand" href="/">
@@ -239,7 +226,7 @@
   <div class="ap-wrap scene center">
     <p class="ap-eyebrow rv">Para e-commerce, marketplaces y tiendas online</p>
     <h1 class="big rv">La <span class="ap-grad">IA</span> ya elige dónde compran tus clientes.</h1>
-    <p class="ap-sub lede rv">Haz que elija tu tienda. <span class="wm">Agent<span class="wm-p">P</span>ey</span> te ayuda a vender más.</p>
+    <p class="ap-sub lede rv"><span class="wm">AgentPey</span> ayuda a que la IA te recomiende más.</p>
     <div class="cta rv"><a class="btn" href="#demo">Pide tu demo gratis</a></div>
   </div>
   <div class="ribbon" role="img" aria-label="Para que te recomienden ChatGPT, Claude, Gemini, Grok, Perplexity y otros">
@@ -293,20 +280,7 @@
           </div></div>
 
           <div class="msg ai cont" data-at="4"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span><div>
-            <p class="ai-text">Comparé lo que dice cada una con lo que pediste:</p>
-            <table class="cmp">
-              <thead><tr><th scope="col">Lo que pediste</th><th scope="col">Tienda A</th><th scope="col">Tienda B</th></tr></thead>
-              <tbody>
-                <tr><td>Hasta $900 mil</td><td class="y">✓ $849.990</td><td class="y">✓ $869.990</td></tr>
-                <tr><td>Para programar</td><td class="n">? No lo dice</td><td class="y">✓ 16 GB de RAM</td></tr>
-                <tr><td>En Concepción antes del viernes</td><td class="n">? No lo dice</td><td class="y">✓ En 48 h</td></tr>
-                <tr><td>12 cuotas</td><td class="n">? No lo dice</td><td class="y">✓ Sin interés</td></tr>
-              </tbody>
-            </table>
-          </div></div>
-
-          <div class="msg ai cont" data-at="5"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span><div>
-            <p class="ai-text">Te recomiendo la Tienda B: es la única que confirma todo lo que pediste.</p>
+            <p class="ai-text">Comparé las dos con lo que pediste. Te recomiendo la Tienda B, porque es la única que confirma el precio, que sirve para programar, que llega a Concepción antes del viernes y que tiene 12 cuotas.</p>
             <p class="pick"><b>✓ Tienda B</b><span>Notebook Pro 14&quot; · $869.990 · llega en 48 h</span></p>
           </div></div>
         </div></div>
@@ -319,8 +293,8 @@
   <!-- 3. The sale -->
   <section class="scene center" aria-labelledby="t-venta">
     <h2 class="mid rv" id="t-venta">La Tienda B se llevó la venta.</h2>
-    <p class="ap-sub lede rv">Con <span class="wm">Agent<span class="wm-p">P</span>ey</span>, esa tienda eres tú.</p>
-    <p class="ap-small ap-muted lede rv">AgentPey mantiene tu catálogo completo y al día para que las IAs te encuentren, te entiendan y te recomienden.</p>
+    <p class="ap-sub lede rv">Con <span class="wm">AgentPey</span>, esa tienda eres tú.</p>
+    <p class="ap-sub lede wide rv"><span class="wm">AgentPey</span> mantiene tu catálogo completo y al día para que las IAs te encuentren, te entiendan y te recomienden.</p>
   </section>
 
   <!-- 4. Three questions -->
@@ -347,12 +321,12 @@
   <!-- 6. Others are getting ready -->
   <section class="scene center" aria-labelledby="t-hueco">
     <h2 class="mid rv" id="t-hueco">Los clientes que llegan desde una <span class="ap-grad">IA</span> compran más. ¿Se los vas a dejar a tu competencia?</h2>
-    <p class="ap-sub lede rv">Con <span class="wm">Agent<span class="wm-p">P</span>ey</span>, esas ventas llegan a tu tienda. Sin cambiarte de plataforma.</p>
+    <p class="ap-sub lede rv">Con <span class="wm">AgentPey</span>, esas ventas llegan a tu tienda. Sin cambiarte de plataforma.</p>
   </section>
 
   <!-- 7. How it works -->
   <section class="scene center" id="como-funciona" aria-labelledby="t-como">
-    <h2 class="mid rv" id="t-como"><span class="wm">Agent<span class="wm-p">P</span>ey</span>, en tres pasos.</h2>
+    <h2 class="mid rv" id="t-como"><span class="wm">AgentPey</span>, en tres pasos.</h2>
     <div class="steps">
       <div class="ap-card rv"><span class="n">1</span><h3>Conecta tu catálogo</h3><p class="ap-muted">Desde tu plataforma, un feed o un CSV. Lo dejamos en formatos que los asistentes de IA pueden leer.</p></div>
       <div class="ap-card rv"><span class="n">2</span><h3>Completa lo que falta, con tu aprobación</h3><p class="ap-muted">Detectamos los datos que un asistente necesita y tu catálogo no tiene: medidas, compatibilidad, despacho por comuna, cuotas. Te proponemos el texto y tú decides.</p></div>
@@ -435,7 +409,7 @@
   var q = document.getElementById("question");
   var thinking = track.querySelector(".thinking");
   var full = q.textContent;
-  var captions = ["", "", "La tienda A tiene fotos profesionales y es más barata.", "La tienda B es más simple y más cara, pero lo explica todo.", "La IA no mira fotos. Lee datos.", "Y elige a la tienda que le responde."];
+  var captions = ["", "", "La tienda A tiene fotos profesionales y es más barata.", "La tienda B es más simple y más cara, pero lo explica todo.", "La IA no mira fotos. Lee datos. Y elige a la tienda que le responde."];
   if (!reduce && "IntersectionObserver" in window) {
     document.documentElement.classList.add("story-live");
     var msgs = Array.prototype.slice.call(track.querySelectorAll("[data-at]"));
