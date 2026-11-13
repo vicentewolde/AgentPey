@@ -112,11 +112,11 @@ describe("the static pages", () => {
   });
 
   // Start-Up Chile page (apart from the Fase 10 sprint): the free audit form posts to /api/auditoria and shows answers as
-  // text; the store example is labelled as made up; the Stellar landing is one link away.
-  it("comercios.html posts the audit to /api/auditoria, labels its example, and writes nothing as HTML", async () => {
+  // text; the Stellar landing is one link away.
+  it("comercios.html posts the demo request to /api/auditoria, never says audit to visitors, and writes nothing as HTML", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "comercios.html"), "utf8");
     expect(html).toContain('fetch("/api/auditoria"');
-    expect(html).toContain("Ejemplo ilustrativo");
+    expect(html.replace(/\/api\/auditoria/g, "")).not.toMatch(/auditor[ií]a/i);
     expect(html).toContain('href="/brand/agentpey.css"');
     expect(html).toContain('href="/stellar"');
     expect(html).toContain('name="sitio_web"');
