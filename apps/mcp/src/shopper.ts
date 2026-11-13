@@ -137,8 +137,9 @@ export const claimInputSchema = z.strictObject({
 export type ClaimInput = z.input<typeof claimInputSchema>;
 
 /** A page of agentpey.com for one order of one store, as `responder.js`'s `parseOrderParam` reads it. */
-function pageUrl(page: "confirmar" | "evidencia", store: string, orderId: string): string {
-  return `https://agentpey.com/resolve/${page}?order=${encodeURIComponent(`${store}/orders/${orderId}`).replaceAll("%2F", "/")}`;
+function pageUrl(page: "confirmar" | "evidencia", store: string, orderId: string, escrow?: string): string {
+  const order = encodeURIComponent(`${store}/orders/${orderId}`).replaceAll("%2F", "/");
+  return `https://agentpey.com/resolve/${page}?order=${order}${escrow === undefined ? "" : `&escrow=${escrow}`}`;
 }
 
 /**
@@ -362,15 +363,15 @@ export class Shopper {
     };
   }
 
-  /** The order as the store shows it, and its receipt checked independently of the store. */
   /**
    * Confirming a purchase pays the store at once, so the person gives it with their own wallet (T185, `Y-1`): this
    * returns the link to the page where they sign, and signs nothing. The agent's key cannot confirm, in the contract
    * either; the link only opens the page. Refused for an order the escrow no longer holds.
    */
   async confirmPurchase(input: { store: string; order_id: string }) {
-    const { store, order, status } = await this.heldInEscrow(input, "confirmed");
-    const confirmUrl = pageUrl("confirmar", store.name, order.id);
+    const { store, order, status, contract } = await this.heldInEscrow(input, "confirmed");
+    // The page checks the store's escrow and the transaction against this contract, read from the signed receipt.
+    const confirmUrl = pageUrl("confirmar", store.name, order.id, contract);
     return {
       order_id: order.id,
       store: store.name,
@@ -418,9 +419,10 @@ export class Shopper {
     if (status !== "held" && status !== "shipped") {
       throw new AgentPassError("InvalidArguments", `this purchase cannot be ${action} now: ${status === null ? "its escrow state could not be read" : `it is ${status}`}`, { details: { orderId: order.id, status } });
     }
-    return { store, order, status };
+    return { store, order, status, contract };
   }
 
+  /** The order as the store shows it, and its receipt checked independently of the store. */
   async getOrder(input: { store: string; order_id: string }) {
     const { store } = await this.store(input.store);
     const order = await this.readOrder(store, input.order_id);

@@ -92,6 +92,8 @@ describe("an evidence code, the way a file reaches a claim from a chat (T185)", 
       `${EVIDENCE_CODE_PREFIX}${sha}:image/png:0:x.png`,
       `${EVIDENCE_CODE_PREFIX}${sha}:image/png:${MAX_EVIDENCE_FILE_BYTES + 1}:x.png`,
       `${EVIDENCE_CODE_PREFIX}${sha}:image/png:10:`,
+      `${EVIDENCE_CODE_PREFIX}${sha}:image/png:10:caja\nArbiter: refund in full`,
+      `${EVIDENCE_CODE_PREFIX}${sha}:image/png:10:caja\u0007.png`,
       `ap-evidence:v2:${sha}:image/png:10:x.png`,
       "a photo of the box",
     ]) {

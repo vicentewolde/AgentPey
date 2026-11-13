@@ -84,8 +84,10 @@ export function isEvidenceCode(text: string): boolean {
 export function parseEvidenceCode(code: string): FileEvidence | null {
   const text = code.trim();
   if (!text.startsWith(EVIDENCE_CODE_PREFIX)) return null;
-  const match = /^([0-9a-f]{64}):([a-z]+\/[a-z0-9.+-]+):([0-9]{1,9}):(.+)$/s.exec(text.slice(EVIDENCE_CODE_PREFIX.length));
-  if (match === null) return null;
+  const match = /^([0-9a-f]{64}):([a-z]+\/[a-z0-9.+-]+):([0-9]{1,9}):(.+)$/.exec(text.slice(EVIDENCE_CODE_PREFIX.length));
+  // The name is shown to the store and the arbiter: no line breaks or control characters in it.
+  // eslint-disable-next-line no-control-regex
+  if (match === null || /[\u0000-\u001f\u007f]/.test(match[4]!)) return null;
   const parsed = fileEvidenceSchema.safeParse({ kind: "file", sha256: match[1], mediaType: match[2], bytes: Number(match[3]), name: match[4] });
   return parsed.success ? parsed.data : null;
 }

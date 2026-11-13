@@ -21,7 +21,8 @@ import type { OrderRecord, OrderStore } from "./orders.js";
 
 /** How long a prepared `confirm` stays valid: long enough to read it in the wallet and sign. */
 export const CONFIRM_VALID_SECONDS = 300;
-const MAX_CONFIRM_FEE_STROOPS = 10_000_000n;
+/** A `confirm` costs a few hundredths of a lumen (23 625 stroops in the rehearsal); the buyer pays it, so keep it tight. */
+const MAX_CONFIRM_FEE_STROOPS = 1_000_000n;
 
 const prepareBodySchema = z.strictObject({ account: z.string().regex(/^G[A-Z2-7]{55}$/) });
 const submitBodySchema = z.strictObject({ signed_xdr: z.string().min(1).max(64 * 1024) });
@@ -136,8 +137,9 @@ export function registerConfirmations(app: Express, deps: ConfirmationDeps): voi
     const orderRef = args[0] instanceof Uint8Array ? Buffer.from(args[0]).toString("utf8") : null;
     const exact = call !== null && call.contract === escrow.contract && call.fn === "confirm" && args.length === 1 && orderRef === id && call.source === signer && call.feeStroops <= MAX_CONFIRM_FEE_STROOPS;
     if (!exact) throw refused("the signed transaction is not this store's confirm for this order, from the account that may give it", { orderId: id });
-    // Already paid out by an earlier send of this very confirmation: nothing to send again.
-    if (purchase.status !== "released" || purchase.confirmedAt === undefined || purchase.confirmedAt === null) {
+    // Already paid out by an earlier confirmation: nothing to send again, and this transaction is not the one that landed.
+    const already = purchase.status === "released" && purchase.confirmedAt !== undefined && purchase.confirmedAt !== null;
+    if (!already) {
       if (!confirmable(purchase)) throw refused("this purchase cannot be confirmed now", { status: purchase.status });
       try {
         await deps.writer.submitSigned("confirm", signedXdr);
@@ -147,6 +149,10 @@ export function registerConfirmations(app: Express, deps: ConfirmationDeps): voi
     }
     const after = await purchaseOf(id);
     if (after.status !== "released") throw new VitrineeError("EscrowError", "the confirm transaction landed but the escrow did not release the purchase", { details: { orderId: id, transaction: call.hash } });
+    if (already) {
+      res.json({ ...view(record, after, signer), transaction: null, explorer_url: null });
+      return;
+    }
     log("purchase confirmed by the buyer", { orderId: id, transaction: call.hash });
     deps.onChange?.(id);
     res.json({ ...view(record, after, signer), transaction: call.hash, explorer_url: stellarExpertTxUrl(call.hash) });

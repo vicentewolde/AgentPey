@@ -67,6 +67,15 @@ describe("the static pages", () => {
     expect(hero).toMatch(/<a class="btn" href="\/en-vivo">/);
   });
 
+  // T185 review: the store prepares the transaction and is the party paid, so the page reads it before the wallet does.
+  it("resolve/confirmar.html checks the store's transaction itself, against the escrow the assistant's link names", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "resolve/confirmar.html"), "utf8");
+    expect(html).toContain('import { checkConfirmXdr } from "./confirmar.js";');
+    expect(html).toContain("checkConfirmXdr(prepared.xdr, { escrow: escrow, orderId: order.orderId, source: address }) !== null");
+    expect(html).toContain('query.get("escrow")');
+    expect(html.indexOf("checkConfirmXdr(prepared.xdr")).toBeLessThan(html.indexOf("AgentpeyWallet.signTransaction"));
+  });
+
   // T185: the evidence page hashes a file in the browser and sends it only to the store's dispute, never to a third party.
   it("resolve/evidencia.html hashes in the browser, shows the evidence code, and sends the file only to the store", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "resolve/evidencia.html"), "utf8");

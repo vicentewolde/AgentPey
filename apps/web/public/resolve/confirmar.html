@@ -77,6 +77,7 @@
 <footer class="ap-footer"><div class="ap-wrap"><span>AgentPey · Stellar testnet · Santiago de Chile</span><span><a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a></span></div></footer>
 <script type="module">
 import { parseOrderParam } from "./responder.js";
+import { checkConfirmXdr } from "./confirmar.js";
 
 var T = {
   loading: { en: "Reading the purchase…", es: "Leyendo la compra…" },
@@ -98,7 +99,7 @@ var T = {
   state: { en: "State", es: "Estado" },
   store: { en: "Store", es: "Tienda" }
 };
-var order = null, view = null, address = "", statuses = {};
+var order = null, view = null, address = "", statuses = {}, escrow = "";
 function lang() { return document.documentElement.lang === "es" ? "es" : "en"; }
 function t(key) { return T[key] ? T[key][lang()] : key; }
 function setStatus(id, kind, key, extra) {
@@ -134,10 +135,14 @@ function refresh() {
   document.getElementById("sign-btn").disabled = !(view && view.can_confirm && address && address === view.signer);
 }
 async function load() {
-  order = parseOrderParam(new URLSearchParams(location.search).get("order"), location.host);
-  if (!order) { setStatus("order-status", "error", "bad"); return; }
+  var query = new URLSearchParams(location.search);
+  order = parseOrderParam(query.get("order"), location.host);
+  // The escrow comes from the assistant's link, which read it from the signed receipt: never only from the store.
+  escrow = /^C[A-Z2-7]{55}$/.test(query.get("escrow") || "") ? query.get("escrow") : "";
+  if (!order || !escrow) { setStatus("order-status", "error", "bad"); return; }
   setStatus("order-status", "", "loading");
   try { view = await storeCall(""); } catch (e) { setStatus("order-status", "error", "bad"); return; }
+  if (view.escrow !== escrow) { setStatus("order-status", "error", "bad"); return; }
   renderFacts();
   if (!view.can_confirm) { setStatus("order-status", "error", "notConfirmable"); return; }
   setStatus("order-status", "ok", "ready");
@@ -166,7 +171,9 @@ async function confirmPurchase() {
     setStatus("sign-status", "", "preparing");
     var prepared = await storeCall("/prepare", { account: address });
     // The store builds the transaction: it must be for this order, on this escrow, from this account.
-    if (prepared.order_id !== order.orderId || prepared.signer !== address || prepared.escrow !== view.escrow) throw { key: "mismatch" };
+    if (prepared.order_id !== order.orderId || prepared.signer !== address || prepared.escrow !== escrow) throw { key: "mismatch" };
+    // And the page reads the transaction itself: exactly confirm(order) on that escrow, from this account, small fee.
+    if (checkConfirmXdr(prepared.xdr, { escrow: escrow, orderId: order.orderId, source: address }) !== null) throw { key: "mismatch" };
     setStatus("sign-status", "", "waiting");
     var signedXdr = await AgentpeyWallet.signTransaction(prepared.xdr, address);
     setStatus("sign-status", "", "sending");

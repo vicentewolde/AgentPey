@@ -721,7 +721,7 @@ describe("a store with an escrow, through the MCP (T160)", () => {
       // T185: confirming and adding a photo both hand the person a page; neither signs nor sends anything.
       const pageOf = (page: string) => `https://agentpey.com/resolve/${page}?order=${encodeURIComponent(name)}/orders/${orderId}`;
       const confirm = await mcp.call("confirm_purchase", { store: name, order_id: orderId });
-      expect(confirm.structuredContent).toMatchObject({ escrow_status: "held", confirm_url: pageOf("confirmar") });
+      expect(confirm.structuredContent).toMatchObject({ escrow_status: "held", confirm_url: `${pageOf("confirmar")}&escrow=${ESCROW_ID}` });
       const attach = await mcp.call("attach_evidence", { store: name, order_id: orderId });
       expect(attach.structuredContent).toMatchObject({ escrow_status: "held", evidence_url: pageOf("evidencia") });
       expect(opener.sent).toEqual([]);

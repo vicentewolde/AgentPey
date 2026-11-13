@@ -1,4 +1,6 @@
-import { Account, BASE_FEE, Contract, Keypair, TransactionBuilder, nativeToScVal } from "@stellar/stellar-sdk";
+import { fileURLToPath } from "node:url";
+
+import { Account, Address, Asset, BASE_FEE, Contract, Keypair, Operation, TransactionBuilder, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import type { EscrowPurchase, EscrowReader, EscrowReaderFactory } from "@vitrinee/anchor";
 import { isVitrineeError } from "@vitrinee/core";
 import express, { type NextFunction, type Request, type Response } from "express";
@@ -8,6 +10,12 @@ import { registerConfirmations } from "./confirmations.js";
 import type { StoreEscrow } from "./config.js";
 import { OrderStore, type OrderRecord } from "./orders.js";
 import { listen } from "./test/listen.js";
+
+interface ConfirmPage {
+  checkConfirmXdr(xdr: string, expected: { escrow: string; orderId: string; source: string }): string | null;
+  MAX_CONFIRM_FEE_STROOPS: number;
+}
+const page = (await import(fileURLToPath(new URL("../../../apps/web/public/resolve/confirmar.js", import.meta.url)))) as ConfirmPage;
 
 const PASSPHRASE = "Test SDF Network ; September 2015";
 const ESCROW = "CDSCZJEM6QR6ZZKGRTLAX36GVN6UVFRISDDW7MGMGCWKZO5JVF6E3UML";
@@ -33,6 +41,23 @@ const callXdr = (orderRef: string, source: string, fn = "confirm", contract = ES
     .build()
     .toXDR();
 
+/** Two calls in one transaction, as a store that tries to slip a second operation past the buyer would build it. */
+const twoCalls = (source: string): string =>
+  new TransactionBuilder(new Account(source, "1"), { fee: BASE_FEE, networkPassphrase: PASSPHRASE })
+    .addOperation(new Contract(ESCROW).call("confirm", nativeToScVal(Buffer.from(ORDER, "utf8"), { type: "bytes" })))
+    .addOperation(Operation.payment({ destination: STORE_ESCROW.payee, asset: Asset.native(), amount: "100" }))
+    .setTimeout(300)
+    .build()
+    .toXDR();
+
+/** `confirm` with one auth entry of the given kind, as a simulated transaction carries it. */
+function withAuth(source: string, credentials: xdr.SorobanCredentials): string {
+  const args = () => new xdr.InvokeContractArgs({ contractAddress: new Contract(ESCROW).address().toScAddress(), functionName: "confirm", args: [nativeToScVal(Buffer.from(ORDER, "utf8"), { type: "bytes" })] });
+  const invocation = new xdr.SorobanAuthorizedInvocation({ function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(args()), subInvocations: [] });
+  const op = Operation.invokeHostFunction({ func: xdr.HostFunction.hostFunctionTypeInvokeContract(args()), auth: [new xdr.SorobanAuthorizationEntry({ credentials, rootInvocation: invocation })] });
+  return new TransactionBuilder(new Account(source, "1"), { fee: BASE_FEE, networkPassphrase: PASSPHRASE }).addOperation(op).setTimeout(300).build().toXDR();
+}
+
 let servers: Array<{ close: () => Promise<void> }> = [];
 afterEach(async () => {
   await Promise.all(servers.map((s) => s.close()));
@@ -53,7 +78,7 @@ async function start(payer: string, status: EscrowPurchase["status"] = "held") {
       prepareConfirm: async (input, signer) => callXdr(input.orderRef, signer),
       submitSigned: async (_name, signedXdr) => {
         sent.push(signedXdr);
-        held = { ...held, status: "released" };
+        held = { ...held, status: "released", confirmedAt: 2 };
         return { txHash: "a".repeat(64), ledger: 1 };
       },
     },
@@ -100,6 +125,8 @@ describe("the buyer's confirmation (T185, Y-1)", () => {
       callXdr(ORDER, principal.publicKey(), "release"),
       callXdr(ORDER, principal.publicKey(), "confirm", RAIL),
       callXdr(ORDER, principal.publicKey(), "confirm", ESCROW, "999999999"),
+      twoCalls(principal.publicKey()),
+      TransactionBuilder.buildFeeBumpTransaction(agentKey, "20000", TransactionBuilder.fromXDR(callXdr(ORDER, principal.publicKey()), PASSPHRASE) as never, PASSPHRASE).toXDR(),
     ]) {
       expect((await post("submit", { signed_xdr: xdr })).status).toBe(409);
     }
@@ -107,6 +134,11 @@ describe("the buyer's confirmation (T185, Y-1)", () => {
     const ok = await post("submit", { signed_xdr: callXdr(ORDER, principal.publicKey()) });
     expect(ok.status).toBe(200);
     expect(((await ok.json()) as { status: string }).status).toBe("released");
+    expect(sent).toHaveLength(1);
+    // Sent again once the escrow says the buyer confirmed it: nothing goes out, and no transaction is claimed as the one.
+    const again = await post("submit", { signed_xdr: callXdr(ORDER, principal.publicKey()) });
+    expect(again.status).toBe(200);
+    expect(await again.json()).toMatchObject({ status: "released", transaction: null });
     expect(sent).toHaveLength(1);
   });
 
@@ -117,5 +149,43 @@ describe("the buyer's confirmation (T185, Y-1)", () => {
       expect((await post("submit", { signed_xdr: callXdr(ORDER, principal.publicKey()) })).status).toBe(409);
       expect(sent).toHaveLength(0);
     }
+  });
+});
+
+describe("the confirmation page reads the transaction before the wallet sees it (T185 review)", () => {
+  const expected = { escrow: ESCROW, orderId: ORDER, source: principal.publicKey() };
+
+  it("passes exactly confirm(order) on the escrow, from the account that signs, with or without its source-account auth", () => {
+    expect(page.checkConfirmXdr(callXdr(ORDER, principal.publicKey()), expected)).toBeNull();
+    expect(page.checkConfirmXdr(withAuth(principal.publicKey(), xdr.SorobanCredentials.sorobanCredentialsSourceAccount()), expected)).toBeNull();
+  });
+
+  it("refuses anything else the store could hand the wallet", () => {
+    const addressAuth = xdr.SorobanCredentials.sorobanCredentialsAddress(
+      new xdr.SorobanAddressCredentials({ address: new Address(agentKey.publicKey()).toScAddress(), nonce: xdr.Int64.fromString("1"), signatureExpirationLedger: 1, signature: xdr.ScVal.scvVoid() }),
+    );
+    const cases: Record<string, string> = {
+      "another source": callXdr(ORDER, agentKey.publicKey()),
+      "another order": callXdr("ord_other", principal.publicKey()),
+      "another function": callXdr(ORDER, principal.publicKey(), "release"),
+      "another contract": callXdr(ORDER, principal.publicKey(), "confirm", RAIL),
+      "a high fee": callXdr(ORDER, principal.publicKey(), "confirm", ESCROW, String(page.MAX_CONFIRM_FEE_STROOPS + 1)),
+      "two operations": twoCalls(principal.publicKey()),
+      "a fee bump": TransactionBuilder.buildFeeBumpTransaction(agentKey, "20000", TransactionBuilder.fromXDR(callXdr(ORDER, principal.publicKey()), PASSPHRASE) as never, PASSPHRASE).toXDR(),
+      "an address credential": withAuth(principal.publicKey(), addressAuth),
+      "garbage": "AAAA",
+    };
+    const reasons = Object.fromEntries(Object.entries(cases).map(([what, tx]) => [what, page.checkConfirmXdr(tx, expected)]));
+    expect(reasons).toEqual({
+      "another source": "another source account",
+      "another order": "another order",
+      "another function": "not confirm",
+      "another contract": "another contract",
+      "a high fee": "fee too high",
+      "two operations": "not exactly one operation",
+      "a fee bump": "not a plain transaction",
+      "an address credential": "an authorization other than the source account",
+      garbage: "unreadable transaction",
+    });
   });
 });

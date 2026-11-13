@@ -76,8 +76,8 @@
   <section class="ap-card step" id="next-panel" hidden>
     <p class="ap-eyebrow"><span data-tr="en">03 · Back to the chat</span><span data-tr="es">03 · De vuelta al chat</span></p>
     <p class="ap-hint">
-      <span data-tr="en">Copy each code and paste it in the chat. Keep this page open: when your assistant opens the claim, the files go to the store from here by themselves. If you close it, open this link again and choose the same files.</span>
-      <span data-tr="es">Copia cada código y pégalo en el chat. Deja esta página abierta: cuando tu asistente abra el reclamo, los archivos se envían solos a la tienda desde aquí. Si la cierras, abre este enlace de nuevo y elige los mismos archivos.</span>
+      <span data-tr="en">Copy each code and paste it in the chat. Keep this page open: when your assistant opens the claim, the files go to the store from here by themselves. A photo here is a new copy of yours, so save it: if this page gets closed, open the link again and choose that saved copy.</span>
+      <span data-tr="es">Copia cada código y pégalo en el chat. Deja esta página abierta: cuando tu asistente abra el reclamo, los archivos se envían solos a la tienda desde aquí. Una foto aquí es una copia nueva de la tuya, así que guárdala: si esta página se cierra, abre el enlace de nuevo y elige esa copia guardada.</span>
     </p>
     <p id="sync-status" class="ap-note" role="status"></p>
   </section>
@@ -104,6 +104,7 @@ var T = {
   added: { en: "Added. Copy its code into the chat.", es: "Agregado. Copia su código en el chat." },
   copy: { en: "Copy code", es: "Copiar código" },
   copied: { en: "Copied", es: "Copiado" },
+  save: { en: "Save this copy", es: "Guardar esta copia" },
   waiting: { en: "Waiting for your assistant to open the claim…", es: "Esperando que tu asistente abra el reclamo…" },
   pending: { en: "Not sent yet", es: "Aún no enviado" },
   sending: { en: "Sending to the store…", es: "Enviando a la tienda…" },
@@ -176,7 +177,11 @@ function cleanName(name, type) {
 async function prepare(file) {
   var raw = new Uint8Array(await file.arrayBuffer());
   var bytes, type;
-  if (sniff(raw) === "application/pdf") {
+  var rawType = sniff(raw), rawSha = rawType === null ? "" : await sha256Hex(raw);
+  // A saved copy picked again: the claim already names these exact bytes, so they go as they are.
+  var known = view && (view.evidence || []).find(function (f) { return f.sha256 === rawSha && f.media_type === rawType && f.bytes === raw.byteLength; });
+  if (known) return { bytes: raw, type: rawType, name: known.name, sha256: rawSha, code: CODE_PREFIX + rawSha + ":" + rawType + ":" + raw.byteLength + ":" + known.name, state: "pending" };
+  if (rawType === "application/pdf") {
     if (raw.byteLength > MAX_BYTES) throw { key: "tooBig" };
     bytes = raw; type = "application/pdf";
   } else {
@@ -215,6 +220,11 @@ function renderFiles() {
       } catch (e) { code.focus(); code.select(); }
     });
     var actions = document.createElement("div"); actions.className = "actions"; actions.appendChild(copy);
+    if (item.type === "image/jpeg") {
+      if (!item.url) item.url = URL.createObjectURL(new Blob([item.bytes], { type: item.type }));
+      var save = document.createElement("a"); save.className = "ap-btn ap-btn-sm ap-btn-secondary"; save.href = item.url; save.download = item.name; save.textContent = t("save");
+      actions.appendChild(save);
+    }
     li.append(head, code, actions);
     return li;
   }));
