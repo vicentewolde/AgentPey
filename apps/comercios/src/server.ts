@@ -20,7 +20,7 @@ import { indexPage, panel, sellerPage } from "./panel.js";
 import type { Policy } from "./politicas.js";
 import { rankForPromotion } from "./promover.js";
 import { readiness } from "./readiness.js";
-import { STORES } from "./stores.js";
+import { STORES as ALL_STORES } from "./stores.js";
 import { reply, searchProducts, trackedLink, type Turn } from "./vender.js";
 
 try {
@@ -29,11 +29,41 @@ try {
   /* no .env.local */
 }
 
-const db = openDb(fileURLToPath(new URL("../data/comercios.db", import.meta.url)));
+const db = openDb(process.env.DB_PATH ?? fileURLToPath(new URL("../data/comercios.db", import.meta.url)));
 const CSS = readFileSync(fileURLToPath(new URL("../../web/public/brand/agentpey.css", import.meta.url)), "utf8");
+/**
+ * PUBLIC=1 is the hosted mode: only the stores listed in PUBLIC_STORES are
+ * visible (Black Friday stores and any pilot without a written OK stay out),
+ * the AI seller must use the paid API (the subscription cannot serve the
+ * public), and the seller endpoint is rate-limited per IP.
+ */
+const PUBLIC = process.env.PUBLIC === "1";
+const STORES = PUBLIC
+  ? ALL_STORES.filter((s) => (process.env.PUBLIC_STORES ?? "").split(",").map((x) => x.trim()).includes(s.id))
+  : ALL_STORES;
+if (PUBLIC && process.env.COMERCIOS_LLM !== "api") throw new Error("PUBLIC=1 necesita COMERCIOS_LLM=api y ANTHROPIC_API_KEY");
+if (PUBLIC && STORES.length === 0) throw new Error("PUBLIC=1 necesita PUBLIC_STORES con al menos una tienda");
 const llm = createLlm();
 const PORT = Number(process.env.PORT ?? 3100);
-const HOST = process.env.HOST ?? "127.0.0.1";
+const HOST = process.env.HOST ?? (PUBLIC ? "0.0.0.0" : "127.0.0.1");
+
+const SELLER_LIMIT = Number(process.env.SELLER_LIMIT_PER_HOUR ?? 30);
+const hits = new Map<string, number[]>();
+/** True when this IP has used up its seller questions for the last hour. */
+function limited(ip: string, now = Date.now()): boolean {
+  if (!PUBLIC) return false;
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < 3_600_000);
+  if (recent.length >= SELLER_LIMIT) {
+    hits.set(ip, recent);
+    return true;
+  }
+  hits.set(ip, [...recent, now]);
+  return false;
+}
+function clientIp(req: IncomingMessage): string {
+  const fwd = req.headers["x-forwarded-for"];
+  return (typeof fwd === "string" ? fwd.split(",")[0]!.trim() : undefined) ?? req.socket.remoteAddress ?? "?";
+}
 const productCache = new Map<string, ReturnType<typeof db.products>>();
 const products = (id: string) => {
   let p = productCache.get(id);
@@ -57,7 +87,8 @@ async function readBody(req: IncomingMessage, limit = 64_000): Promise<unknown> 
 }
 
 function origin(req: IncomingMessage): string {
-  return `http://${req.headers.host ?? `${HOST}:${PORT}`}`;
+  const proto = req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+  return `${proto}://${req.headers.host ?? `${HOST}:${PORT}`}`;
 }
 
 /** An AgentPey link for a product: records the click, then /ir/<id> redirects to the store. */
@@ -113,6 +144,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && m) {
       const store = STORES.find((s) => s.id === m![1]);
       if (store === undefined) return json(res, 404, { error: "No existe esa tienda" });
+      if (limited(clientIp(req))) return json(res, 429, { error: "Demasiadas preguntas seguidas; prueba de nuevo en un rato" });
       const body = (await readBody(req)) as { pregunta?: unknown; historial?: unknown };
       const pregunta = typeof body.pregunta === "string" ? body.pregunta.trim().slice(0, 500) : "";
       if (pregunta === "") return json(res, 400, { error: "Falta la pregunta" });
