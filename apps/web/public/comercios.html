@@ -49,36 +49,38 @@
   .msg.ai > div { flex: 1; min-width: 0; }
   .msg.cont .avatar { visibility: hidden; }
 
+  /* the two stores side by side, their rows lined up (photo, what the store says, price) so the eye compares across */
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto 1fr auto; gap: 0 14px; margin-top: 12px; }
+  .shop { grid-row: span 3; display: grid; grid-template-rows: subgrid; row-gap: 0; min-width: 0; border-radius: 18px; overflow: hidden; text-align: left; }
+  .shop-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; padding: 12px 16px 16px; }
+  .shop .price { font-family: var(--ap-display); font-weight: 600; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .shop .price s { margin-left: 6px; font-size: .85rem; font-weight: 400; opacity: .55; }
+  .shop .buy { padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: .8125rem; white-space: nowrap; }
+
   /* store A: a cinematic product page, all mood and no data */
-  .shop { margin-top: 12px; border-radius: 18px; overflow: hidden; text-align: left; }
   .shop-a { background: #050506; color: #f5f5f7; border: 1px solid rgba(255,255,255,.08); }
-  .shop-a .shot { position: relative; aspect-ratio: 16 / 9; max-width: 100%; overflow: hidden; background: #111; }
+  .shop-a .shot { position: relative; aspect-ratio: 4 / 3; max-width: 100%; overflow: hidden; background: #111; }
   .shop-a .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .shop-a .shot::after { content: ""; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, #050506); }
-  .shop-a .over { position: absolute; left: 22px; right: 22px; bottom: 16px; z-index: 1; }
-  .shop-a .over small { display: block; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase; color: #a1a1a6; }
-  .shop-a .over b { display: block; margin-top: 4px; font-family: var(--ap-display); font-weight: 700; font-size: clamp(1.6rem, 4.4vw, 2.6rem); line-height: 1; letter-spacing: -0.03em; }
-  .shop-a .tag { position: absolute; top: 14px; left: 14px; z-index: 1; padding: 3px 10px; border-radius: 999px; background: #e5384d; color: #fff; font-size: .8125rem; font-weight: 600; }
-  .shop-a .poem { display: grid; gap: 2px; padding: 6px 22px 0; font-family: var(--ap-display); font-weight: 600; font-size: clamp(1.05rem, 2.6vw, 1.35rem); line-height: 1.3; }
+  .shop-a .over { position: absolute; left: 16px; right: 16px; bottom: 12px; z-index: 1; }
+  .shop-a .over small { display: block; font-size: .6875rem; letter-spacing: .16em; text-transform: uppercase; color: #a1a1a6; }
+  .shop-a .over b { display: block; margin-top: 4px; font-family: var(--ap-display); font-weight: 700; font-size: clamp(1.1rem, 2.6vw, 1.6rem); line-height: 1; letter-spacing: -0.03em; }
+  .shop-a .tag { position: absolute; top: 12px; left: 12px; z-index: 1; padding: 3px 10px; border-radius: 999px; background: #e5384d; color: #fff; font-size: .8125rem; font-weight: 600; }
+  .ap .shop-a .poem { display: grid; align-content: start; gap: 4px; padding: 12px 16px 0; font-family: var(--ap-display); font-weight: 600; font-size: clamp(.95rem, 2vw, 1.15rem); line-height: 1.3; }
   .shop-a .poem span:nth-child(2) { color: #c7c7cc; }
   .shop-a .poem span:nth-child(3) { color: #8e8e93; }
-  .shop-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 22px 20px; }
-  .shop .price { font-family: var(--ap-display); font-weight: 600; font-size: 1.45rem; font-variant-numeric: tabular-nums; }
-  .shop .price s { margin-left: 8px; font-size: .95rem; font-weight: 400; opacity: .55; }
-  .shop .buy { padding: 9px 18px; border-radius: 999px; font-weight: 600; font-size: .9375rem; }
   .shop-a .buy { background: #f5f5f7; color: #050506; }
 
   /* store B: plainer, but it answers every question */
-  .shop-b { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); background: #fff; color: #1d1d1f; }
-  .shop-b .thumb { background: #f2f2f4; }
+  .shop-b { background: #fff; color: #1d1d1f; }
+  .shop-b .thumb { aspect-ratio: 4 / 3; max-width: 100%; overflow: hidden; background: #f2f2f4; }
   .shop-b .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .shop-b .info { padding: 16px 20px 18px; min-width: 0; }
-  .shop-b .info small { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: #6e6e73; }
-  .shop-b .info b { display: block; margin-top: 2px; font-family: var(--ap-display); font-size: 1.2rem; }
-  .shop-b dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 12px 0 0; font-size: .875rem; line-height: 1.35; }
+  .shop-b .info { padding: 12px 16px 0; min-width: 0; }
+  .shop-b .info small { font-size: .6875rem; letter-spacing: .1em; text-transform: uppercase; color: #6e6e73; }
+  .shop-b .info b { display: block; margin-top: 2px; font-family: var(--ap-display); font-size: 1.1rem; }
+  .shop-b dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 10px 0 0; font-size: .875rem; line-height: 1.35; }
   .shop-b dt { color: #6e6e73; }
   .shop-b dd { margin: 0; font-weight: 500; }
-  .shop-b .shop-foot { padding: 14px 0 0; }
   .shop-b .buy { background: #1d1d1f; color: #fff; }
 
   /* the AI's pick */
@@ -207,8 +209,23 @@
   }
   @media (max-width: 760px) {
     .three, .nums, .audit .row2 { grid-template-columns: minmax(0, 1fr); }
-    .shop-b { grid-template-columns: minmax(0, 1fr); }
-    .shop-b .thumb { aspect-ratio: 16 / 9; max-width: 100%; }
+  }
+  /* phones: the two stores stay side by side; the avatar steps aside and the type gets smaller */
+  @media (max-width: 600px) {
+    .pair-msg > .avatar { display: none; }
+    .pair { gap: 0 8px; }
+    .shop { border-radius: 14px; }
+    .shop-a .over { left: 10px; right: 10px; bottom: 8px; }
+    .shop-a .tag { top: 8px; left: 8px; padding: 2px 8px; font-size: .75rem; }
+    .ap .shop-a .poem { padding: 10px 10px 0; font-size: .875rem; }
+    .shop-b .info { padding: 10px 10px 0; }
+    .shop-b .info b { font-size: .95rem; }
+    .shop-b dl { grid-template-columns: minmax(0, 1fr); gap: 0; font-size: .75rem; }
+    .shop-b dd + dt { margin-top: 5px; }
+    .shop-foot { padding: 10px 10px 12px; }
+    .shop .price { font-size: 1.05rem; }
+    .shop .price s { display: block; margin: 0; font-size: .75rem; }
+    .shop .buy { padding: 6px 10px; font-size: .75rem; }
   }
 </style>
 </head>
@@ -225,8 +242,8 @@
   </div></div>
   <div class="ap-wrap scene center">
     <p class="ap-eyebrow rv">Para e-commerce, marketplaces y tiendas online</p>
-    <h1 class="big rv">La <span class="ap-grad">IA</span> ya elige dónde compran tus clientes.</h1>
-    <p class="ap-sub lede rv"><span class="wm">AgentPey</span> ayuda a que la IA te recomiende más.</p>
+    <h1 class="big rv">Hacemos que la <span class="ap-grad">IA</span> recomiende tu tienda.</h1>
+    <p class="ap-sub lede wide rv">Tus clientes ya le preguntan a la IA dónde comprar. <span class="wm">AgentPey</span> prepara tu catálogo para que la IA lo entienda y te elija a ti.</p>
     <div class="cta rv"><a class="btn" href="#demo">Pide tu demo gratis</a></div>
   </div>
   <div class="ribbon" role="img" aria-label="Para que te recomienden ChatGPT, Claude, Gemini, Grok, Perplexity y otros">
@@ -251,35 +268,33 @@
           <div class="msg ai thinking"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span>
             <p class="ai-text">Revisando tiendas que cumplan con todo<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p></div>
 
-          <div class="msg ai" data-at="2"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span><div>
-            <p class="ai-text">Encontré dos tiendas con ese notebook. La primera:</p>
-            <article class="shop shop-a" aria-label="Tienda A">
-              <div class="shot"><img src="/img/tienda-a.jpg" alt="" onerror="this.remove()"><span class="tag">-15%</span>
-                <p class="over"><small>Tienda A</small><b>Notebook Pro 14&quot;</b></p></div>
-              <p class="poem"><span>Potencia que inspira.</span><span>Diseño que enamora.</span><span>Hecho para quienes van más allá.</span></p>
-              <div class="shop-foot"><span class="price">$849.990 <s>$999.990</s></span><span class="buy" aria-hidden="true">Agregar al carro</span></div>
-            </article>
-          </div></div>
-
-          <div class="msg ai cont" data-at="3"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span><div>
-            <p class="ai-text">Y la segunda:</p>
-            <article class="shop shop-b" aria-label="Tienda B">
-              <div class="thumb"><img src="/img/tienda-b.jpg" alt="" onerror="this.remove()"></div>
-              <div class="info">
-                <small>Tienda B</small><b>Notebook Pro 14&quot;</b>
-                <dl>
-                  <dt>Memoria</dt><dd>16 GB de RAM</dd>
-                  <dt>Disco</dt><dd>512 GB SSD</dd>
-                  <dt>Peso</dt><dd>1,4 kg</dd>
-                  <dt>Despacho</dt><dd>Concepción en 48 h</dd>
-                  <dt>Pago</dt><dd>12 cuotas sin interés</dd>
-                </dl>
+          <div class="msg ai pair-msg" data-at="2"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span><div>
+            <p class="ai-text">Encontré dos tiendas con ese notebook:</p>
+            <div class="pair">
+              <article class="shop shop-a" aria-label="Tienda A">
+                <div class="shot"><img src="/img/tienda-a.jpg" alt="" onerror="this.remove()"><span class="tag">-15%</span>
+                  <p class="over"><small>Tienda A</small><b>Notebook Pro 14&quot;</b></p></div>
+                <p class="poem"><span>Potencia que inspira.</span><span>Diseño que enamora.</span><span>Hecho para quienes van más allá.</span></p>
+                <div class="shop-foot"><span class="price">$849.990 <s>$999.990</s></span><span class="buy" aria-hidden="true">Agregar al carro</span></div>
+              </article>
+              <article class="shop shop-b" aria-label="Tienda B">
+                <div class="thumb"><img src="/img/tienda-b.jpg" alt="" onerror="this.remove()"></div>
+                <div class="info">
+                  <small>Tienda B</small><b>Notebook Pro 14&quot;</b>
+                  <dl>
+                    <dt>Memoria</dt><dd>16 GB de RAM</dd>
+                    <dt>Disco</dt><dd>512 GB SSD</dd>
+                    <dt>Peso</dt><dd>1,4 kg</dd>
+                    <dt>Despacho</dt><dd>Concepción en 48 h</dd>
+                    <dt>Pago</dt><dd>12 cuotas sin interés</dd>
+                  </dl>
+                </div>
                 <div class="shop-foot"><span class="price">$869.990</span><span class="buy" aria-hidden="true">Agregar al carro</span></div>
-              </div>
-            </article>
+              </article>
+            </div>
           </div></div>
 
-          <div class="msg ai cont" data-at="4"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span><div>
+          <div class="msg ai" data-at="3"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span><div>
             <p class="ai-text">Comparé las dos con lo que pediste. Te recomiendo la Tienda B, porque es la única que confirma el precio, que sirve para programar, que llega a Concepción antes del viernes y que tiene 12 cuotas.</p>
             <p class="pick"><b>✓ Tienda B</b><span>Notebook Pro 14&quot; · $869.990 · llega en 48 h</span></p>
           </div></div>
@@ -409,7 +424,7 @@
   var q = document.getElementById("question");
   var thinking = track.querySelector(".thinking");
   var full = q.textContent;
-  var captions = ["", "", "La tienda A tiene fotos profesionales y es más barata.", "La tienda B es más simple y más cara, pero lo explica todo.", "La IA no mira fotos. Lee datos. Y elige a la tienda que le responde."];
+  var captions = ["", "", "A tiene fotos profesionales y es más barata. B es más simple y más cara, pero lo explica todo.", "La IA no mira fotos. Lee datos. Y elige a la tienda que le responde."];
   if (!reduce && "IntersectionObserver" in window) {
     document.documentElement.classList.add("story-live");
     var msgs = Array.prototype.slice.call(track.querySelectorAll("[data-at]"));
