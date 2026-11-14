@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { filterEnv } from "./env-filter.js";
 import {
   APP_TARGETS,
+  COMERCIOS_TARGET,
   MCP_TARGET,
   REALOPS_TARGET,
   SIGNALDESK_TARGET,
@@ -20,6 +21,7 @@ const CONFIG = {
   signaldeskHost: "signaldesk.agentpey.com",
   vitrineeHost: "vitrinee.agentpey.com",
   mcpHost: "mcp.agentpey.com",
+  comerciosHost: "panel.agentpey.com",
 };
 
 describe("normaliseHost", () => {
@@ -43,6 +45,7 @@ describe("resolveTarget", () => {
     expect(resolveTarget(hostMap, "signaldesk.agentpey.com")).toBe(SIGNALDESK_TARGET);
     expect(resolveTarget(hostMap, "vitrinee.agentpey.com")).toBe(VITRINEE_TARGET);
     expect(resolveTarget(hostMap, "mcp.agentpey.com")).toBe(MCP_TARGET);
+    expect(resolveTarget(hostMap, "panel.agentpey.com")).toBe(COMERCIOS_TARGET);
   });
 
   it("matches case-insensitively and ignores a :port suffix", () => {
@@ -262,5 +265,20 @@ describe("AgentPey's MCP server (T128)", () => {
   it("listens on a port no other app uses", () => {
     expect(new Set(APP_TARGETS.map((target) => target.port)).size).toBe(APP_TARGETS.length);
   });
-});
 
+  it("the panel receives only its own variables, renamed, and none of AgentPey's keys", () => {
+    const env = filterEnv(
+      { COMERCIOS_PUBLIC: "1", COMERCIOS_ANTHROPIC_API_KEY: "k", COMERCIOS_PUBLIC_STORES: "a", COMERCIOS_DB_PATH: "/d", ISSUER_SECRET_KEY: "s", DATABASE_URL: "u", MASTER_MNEMONIC: "m" },
+      COMERCIOS_TARGET.envKeys,
+      { PORT: "4106" },
+      COMERCIOS_TARGET.envAliases,
+    );
+    expect(env.PUBLIC).toBe("1");
+    expect(env.ANTHROPIC_API_KEY).toBe("k");
+    expect(env.PUBLIC_STORES).toBe("a");
+    expect(env.DB_PATH).toBe("/d");
+    expect(env.ISSUER_SECRET_KEY).toBeUndefined();
+    expect(env.DATABASE_URL).toBeUndefined();
+    expect(env.MASTER_MNEMONIC).toBeUndefined();
+  });
+});

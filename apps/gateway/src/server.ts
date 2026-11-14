@@ -64,6 +64,7 @@ const hostMap = buildHostMap({
   signaldeskHost: process.env.GATEWAY_SIGNALDESK_HOST ?? "signaldesk.agentpey.com",
   vitrineeHost,
   mcpHost: process.env.GATEWAY_MCP_HOST ?? "mcp.agentpey.com",
+  comerciosHost: process.env.GATEWAY_COMERCIOS_HOST ?? "panel.agentpey.com",
 });
 
 /**

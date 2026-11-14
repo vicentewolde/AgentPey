@@ -33,7 +33,7 @@
  * the other two's — see `env-filter.ts`, which does the actual copying.
  */
 
-export type AppName = "web" | "realops" | "signaldesk" | "vitrinee" | "mcp";
+export type AppName = "web" | "realops" | "signaldesk" | "vitrinee" | "mcp" | "comercios";
 
 export interface AppTarget {
   readonly name: AppName;
@@ -228,8 +228,34 @@ export const MCP_TARGET: AppTarget = {
   critical: false,
 };
 
+/**
+ * The AgentPey panel for Chilean stores (Start-Up Chile): store panels, the AI
+ * seller, the measurement beacon and the agent channel. It serves only the
+ * stores named in `COMERCIOS_PUBLIC_STORES`, and its AI seller needs its own
+ * Anthropic key. Every name is `COMERCIOS_`-prefixed and aliased back, so the
+ * key and the list reach this child and no other, and none of AgentPey's keys
+ * reach it. Not critical: a panel that is down must not take the pilot with it.
+ */
+export const COMERCIOS_TARGET: AppTarget = {
+  name: "comercios",
+  port: 4106,
+  entry: "apps/comercios/src/server.ts",
+  envKeys: [],
+  envAliases: {
+    PUBLIC: "COMERCIOS_PUBLIC",
+    PUBLIC_STORES: "COMERCIOS_PUBLIC_STORES",
+    DB_PATH: "COMERCIOS_DB_PATH",
+    ANTHROPIC_API_KEY: "COMERCIOS_ANTHROPIC_API_KEY",
+    SELLER_LIMIT_PER_HOUR: "COMERCIOS_SELLER_LIMIT_PER_HOUR",
+  },
+  // Without these the panel would start in its local mode and show every store
+  // it has data for. Better that its host answers 503.
+  requiredEnv: ["COMERCIOS_PUBLIC", "COMERCIOS_PUBLIC_STORES", "COMERCIOS_DB_PATH", "COMERCIOS_ANTHROPIC_API_KEY"],
+  critical: false,
+};
+
 /** Every app this gateway runs, in the order they are started. */
-export const APP_TARGETS: readonly AppTarget[] = [WEB_TARGET, REALOPS_TARGET, SIGNALDESK_TARGET, VITRINEE_TARGET, MCP_TARGET];
+export const APP_TARGETS: readonly AppTarget[] = [WEB_TARGET, REALOPS_TARGET, SIGNALDESK_TARGET, VITRINEE_TARGET, MCP_TARGET, COMERCIOS_TARGET];
 
 /**
  * The required variables `env` is missing for `target`, by name, never by
@@ -245,6 +271,7 @@ export interface HostMapConfig {
   readonly signaldeskHost: string;
   readonly vitrineeHost: string;
   readonly mcpHost: string;
+  readonly comerciosHost: string;
 }
 
 export type HostMap = ReadonlyMap<string, AppTarget>;
@@ -260,6 +287,7 @@ export function buildHostMap(config: HostMapConfig): HostMap {
     [config.signaldeskHost, SIGNALDESK_TARGET],
     [config.vitrineeHost, VITRINEE_TARGET],
     [config.mcpHost, MCP_TARGET],
+    [config.comerciosHost, COMERCIOS_TARGET],
   ];
   const map = new Map<string, AppTarget>();
   for (const [host, target] of entries) {

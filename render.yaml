@@ -52,6 +52,11 @@ services:
       # T128 — AgentPey's MCP server, the URL Claude and ChatGPT connect to
       # (https://mcp.agentpey.com/mcp). One CNAME in Vercel, `mcp`, to this service.
       - mcp.agentpey.com
+      # Start-Up Chile — the AgentPey panel for Chilean stores
+      # (apps/comercios, `COMERCIOS_TARGET`). One CNAME in Vercel, `panel`, to
+      # this service. It stays at 503 until the four COMERCIOS_ variables in
+      # apps/comercios/DEPLOY.md are set in the dashboard.
+      - panel.agentpey.com
     envVars:
       # pnpm@11.24.0 (pinned via packageManager in package.json) requires
       # Node >=22.13 to run under Corepack — 22.11.0 makes Corepack crash

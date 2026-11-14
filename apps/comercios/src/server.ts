@@ -34,18 +34,18 @@ const CSS = readFileSync(fileURLToPath(new URL("../../web/public/brand/agentpey.
 /**
  * PUBLIC=1 is the hosted mode: only the stores listed in PUBLIC_STORES are
  * visible (Black Friday stores and any pilot without a written OK stay out),
- * the AI seller must use the paid API (the subscription cannot serve the
+ * the AI seller always uses the paid API (the subscription cannot serve the
  * public), and the seller endpoint is rate-limited per IP.
  */
 const PUBLIC = process.env.PUBLIC === "1";
 const STORES = PUBLIC
   ? ALL_STORES.filter((s) => (process.env.PUBLIC_STORES ?? "").split(",").map((x) => x.trim()).includes(s.id))
   : ALL_STORES;
-if (PUBLIC && process.env.COMERCIOS_LLM !== "api") throw new Error("PUBLIC=1 necesita COMERCIOS_LLM=api y ANTHROPIC_API_KEY");
+if (PUBLIC && (process.env.ANTHROPIC_API_KEY ?? "") === "") throw new Error("PUBLIC=1 necesita ANTHROPIC_API_KEY");
 if (PUBLIC && STORES.length === 0) throw new Error("PUBLIC=1 necesita PUBLIC_STORES con al menos una tienda");
-const llm = createLlm();
+const llm = createLlm(PUBLIC ? "api" : undefined);
 const PORT = Number(process.env.PORT ?? 3100);
-const HOST = process.env.HOST ?? (PUBLIC ? "0.0.0.0" : "127.0.0.1");
+const HOST = process.env.HOST ?? "127.0.0.1";
 
 const SELLER_LIMIT = Number(process.env.SELLER_LIMIT_PER_HOUR ?? 30);
 const hits = new Map<string, number[]>();
