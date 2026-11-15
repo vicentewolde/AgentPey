@@ -203,7 +203,8 @@ export const VITRINEE_TARGET: AppTarget = {
 /**
  * AgentPey's MCP server (T128, `R-1`, `R-7`): what Claude and ChatGPT connect
  * to. It holds the key that owns its own `policy_rail` and the secret that
- * signs its OAuth tokens; neither reaches any other app, and it gets none of
+ * signs its OAuth tokens, and since T187 the phrase its per-person agent keys
+ * derive from (`MCP_AGENT_MNEMONIC`, not `MASTER_MNEMONIC`); none reaches any other app, and it gets none of
  * the other apps' keys: not `AGENT_SECRET_KEY`, not `ISSUER_SECRET_KEY`, not
  * `MASTER_MNEMONIC`, not `DATABASE_URL`. Its names are its own (`MCP_`), so it
  * needs no aliases. Not critical: a chat connector that is down must not take
@@ -221,6 +222,8 @@ export const MCP_TARGET: AppTarget = {
     "MCP_MANDATE_JWS",
     "MCP_ALLOWED_WALLET",
     "MCP_OAUTH_SECRET",
+    // T187: the phrase each listed person's agent key derives from. Optional: without it only MCP_ALLOWED_WALLET is served.
+    "MCP_AGENT_MNEMONIC",
     // Public: the AgentPass registry the credential and the Mandate are anchored in.
     "AGENT_REGISTRY_CONTRACT_ID",
   ],

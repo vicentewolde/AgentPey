@@ -10,6 +10,7 @@ import { Keypair } from "@stellar/stellar-sdk";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createMcpApp } from "../http.js";
+import type { ShopperDirectory } from "../runtime.js";
 import type { Shopper } from "../shopper.js";
 import { createOAuthServer, DEFAULT_REDIRECT_URIS, loggableRedirectUri } from "./server.js";
 
@@ -36,7 +37,9 @@ afterEach(async () => {
 const TEST_BUNDLE = join(mkdtempSync(join(tmpdir(), "mcp-wallet-kit-")), "wallet-kit.js");
 writeFileSync(TEST_BUNDLE, "window.AgentpeyWallet = {};");
 
-async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string; issuer?: string; wallet?: Keypair; walletKitBundle?: string } = {}): Promise<Started> {
+async function start(
+  options: { fetchImpl?: typeof fetch; resourcePath?: string; issuer?: string; wallet?: Keypair; walletKitBundle?: string; others?: Keypair[]; shopper?: Shopper | ShopperDirectory } = {},
+): Promise<Started> {
   const server = createServer();
   servers.push(server);
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
@@ -52,7 +55,7 @@ async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string;
   const oauth = createOAuthServer({
     publicUrl: issuer,
     resource,
-    allowedWallet: wallet.publicKey(),
+    allowedWallets: [wallet, ...(options.others ?? [])].map((key) => key.publicKey()),
     secret: SECRET,
     now: () => clock.now,
     log,
@@ -60,7 +63,7 @@ async function start(options: { fetchImpl?: typeof fetch; resourcePath?: string;
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
   // Tools are never called here: only `tools/list`, which does not touch the shopper.
-  const app = createMcpApp({ shopper: {} as unknown as Shopper, log, auth: { oauth, resource, allowInsecureIssuer: true } });
+  const app = createMcpApp({ shopper: options.shopper ?? ({} as unknown as Shopper), log, auth: { oauth, resource, allowInsecureIssuer: true } });
   server.on("request", app);
   return { url, resource, wallet, logs, clock, close: () => new Promise((done) => server.close(() => done())) };
 }
@@ -97,18 +100,18 @@ const requestOf = (html: string): string => {
 };
 
 /** The whole sign-in, as the page and the app do it: a code for this wallet. */
-async function signIn(s: Started, signer: Keypair = s.wallet) {
+async function signIn(s: Started, signer: Keypair = s.wallet, account: Keypair = s.wallet) {
   const clientId = await register(s);
   const { verifier, challenge } = pkce();
   const page = await authorizePage(s, clientId, challenge);
   const request = requestOf(await page.text());
-  const asked = await post(`${s.url}/authorize/challenge`, { request, account: s.wallet.publicKey() });
-  const approved = await post(`${s.url}/authorize/approve`, { request, account: s.wallet.publicKey(), challenge: asked.json["challenge"], signature: signStellarMessage(signer, asked.json["message"] as string) });
+  const asked = await post(`${s.url}/authorize/challenge`, { request, account: account.publicKey() });
+  const approved = await post(`${s.url}/authorize/approve`, { request, account: account.publicKey(), challenge: asked.json["challenge"], signature: signStellarMessage(signer, asked.json["message"] as string) });
   return { clientId, verifier, approved };
 }
 
-async function tokens(s: Started) {
-  const { clientId, verifier, approved } = await signIn(s);
+async function tokens(s: Started, account: Keypair = s.wallet) {
+  const { clientId, verifier, approved } = await signIn(s, account, account);
   const redirect = new URL(approved.json["redirect"] as string);
   const exchange = await post(`${s.url}/token`, { grant_type: "authorization_code", code: redirect.searchParams.get("code")!, code_verifier: verifier, redirect_uri: CLAUDE, client_id: clientId, resource: s.resource }, true);
   return { clientId, redirect, exchange, code: redirect.searchParams.get("code")!, verifier };
@@ -446,5 +449,84 @@ describe("the MCP server's own OAuth (T128, R-7)", () => {
     expect(logs).not.toContain(exchange.json["access_token"] as string);
     expect(logs).not.toContain(exchange.json["refresh_token"] as string);
     expect(logs).not.toContain(SECRET);
+  });
+});
+
+/** A shopper that only records who searched: enough to see which person's account a request reached. */
+function recordingShopper(name: string, calls: string[]): Shopper {
+  return {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    searchProducts: async () => {
+      calls.push(name);
+      return { products: [], unavailable: [] };
+    },
+  } as unknown as Shopper;
+}
+
+const searchTool = (s: Started, token: string) =>
+  fetch(`${s.url}/mcp`, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-protocol-version": "2025-06-18", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "search_products", arguments: { query: "imán" } } }),
+  });
+
+describe("a closed list of wallets, each with its own account (T187, R-33)", () => {
+  it("signs in every wallet on the list, and each one's tools spend from that wallet's own account", async () => {
+    const [ana, beto] = [Keypair.random(), Keypair.random()];
+    const calls: string[] = [];
+    const accounts = new Map([
+      [ana.publicKey(), recordingShopper("ana", calls)],
+      [beto.publicKey(), recordingShopper("beto", calls)],
+    ]);
+    const s = await start({ wallet: ana, others: [beto], shopper: { wallets: [...accounts.keys()], forWallet: (wallet) => accounts.get(wallet) } });
+
+    const anaToken = (await tokens(s, ana)).exchange.json["access_token"] as string;
+    const betoToken = (await tokens(s, beto)).exchange.json["access_token"] as string;
+    expect((await searchTool(s, betoToken)).status).toBe(200);
+    expect((await searchTool(s, anaToken)).status).toBe(200);
+    expect((await searchTool(s, betoToken)).status).toBe(200);
+    expect(calls).toEqual(["beto", "ana", "beto"]);
+  });
+
+  it("refuses a wallet that is not on the list, even with its own valid signature", async () => {
+    const s = await start({ others: [Keypair.random()] });
+    const request = requestOf(await (await authorizePage(s, await register(s), pkce().challenge)).text());
+    const asked = await post(`${s.url}/authorize/challenge`, { request, account: Keypair.random().publicKey() });
+    expect(asked).toMatchObject({ status: 403, json: { error: "access_denied" } });
+  });
+
+  it("never lets one listed wallet sign in as another", async () => {
+    const beto = Keypair.random();
+    const s = await start({ others: [beto] });
+    // The first wallet's key, answering a challenge for the second wallet.
+    const { approved } = await signIn(s, s.wallet, beto);
+    expect(approved).toMatchObject({ status: 403, json: { error: "access_denied" } });
+  });
+
+  it("shows which wallet may sign in only when there is one, so the page never lists the others", async () => {
+    const one = await start();
+    const several = await start({ others: [Keypair.random()] });
+    const page = async (s: Started) => (await authorizePage(s, await register(s), pkce().challenge)).text();
+    const single = await page(one);
+    expect(single).toContain(`${one.wallet.publicKey().slice(0, 6)}…${one.wallet.publicKey().slice(-6)}`);
+    const listed = await page(several);
+    expect(listed).toContain('data-t="invited"');
+    expect(listed).not.toContain(several.wallet.publicKey().slice(0, 6));
+  });
+
+  it("turns away a token whose wallet the server no longer serves, instead of using someone else's account", async () => {
+    const beto = Keypair.random();
+    const calls: string[] = [];
+    // Beto may sign in, but the directory has no account for him: his checks failed at startup.
+    const s = await start({ others: [beto], shopper: { wallets: [], forWallet: () => undefined } });
+    const betoToken = (await tokens(s, beto)).exchange.json["access_token"] as string;
+    const res = await searchTool(s, betoToken);
+    expect(res.status).toBe(401);
+    expect(calls).toEqual([]);
+  });
+
+  it("will not start without a wallet that can sign in", () => {
+    expect(() => createOAuthServer({ publicUrl: "http://127.0.0.1:1", resource: "http://127.0.0.1:1/mcp", allowedWallets: [], secret: SECRET })).toThrow(expect.objectContaining({ code: "ConfigError" }));
+    expect(() => createOAuthServer({ publicUrl: "http://127.0.0.1:1", resource: "http://127.0.0.1:1/mcp", allowedWallets: ["GNOTAWALLET"], secret: SECRET })).toThrow(expect.objectContaining({ code: "ConfigError" }));
   });
 });

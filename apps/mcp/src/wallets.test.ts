@@ -2,7 +2,7 @@ import { hasErrorCode } from "@agentpass/core";
 import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 
-import { EMPTY_WALLETS_FILE, type WalletEntry, addWallet, assertCanAdd, formatWalletsFile, nextAgentIndex, parseWalletsFile } from "./wallets.js";
+import { EMPTY_WALLETS_FILE, type WalletEntry, addWallet, assertCanAdd, formatWalletsFile, nextAgentIndex, parseWalletsFile, withAgentDocuments } from "./wallets.js";
 
 const railId = (): string => StrKey.encodeContract(Keypair.random().rawPublicKey());
 
@@ -69,4 +69,15 @@ describe("the MCP wallet list", () => {
     expect(() => parseWalletsFile(JSON.stringify({ network: "mainnet", wallets: [] }))).toThrow(expect.objectContaining({ code: "ConfigError" }));
     expect(() => parseWalletsFile("{")).toThrow(expect.objectContaining({ code: "ConfigError" }));
   });
+
+  it("puts a person's credential and Mandate on their own entry, and nowhere else", () => {
+    const [a, b] = [entry(1), entry(2)];
+    const file = withAgentDocuments(addWallet(addWallet(EMPTY_WALLETS_FILE, a), b), b.wallet, 2, { credential: "c.r.d", mandate: "m.n.d" });
+    expect(file.wallets[1]).toMatchObject({ wallet: b.wallet, credential: "c.r.d", mandate: "m.n.d" });
+    expect(file.wallets[0]).not.toHaveProperty("credential");
+    expect(() => withAgentDocuments(file, a.wallet, 2, { credential: "c.r.d", mandate: "m.n.d" })).toThrow(expect.objectContaining({ code: "ConfigError" }));
+    expect(() => withAgentDocuments(file, Keypair.random().publicKey(), 1, { credential: "c.r.d", mandate: "m.n.d" })).toThrow(expect.objectContaining({ code: "ConfigError" }));
+    expect(() => withAgentDocuments(file, a.wallet, 1, { credential: "not a jws", mandate: "m.n.d" })).toThrow();
+  });
 });
+

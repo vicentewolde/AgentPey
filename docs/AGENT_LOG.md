@@ -9576,3 +9576,9 @@ Agente: Claude Code
 Qué: T189. `pnpm run rail:over-limit` envía a la red un pago sobre el `per_tx` de un rail por persona (huella y nonce del pago válido, `scripts/lib/over-limit.ts`), con control y lectura del motivo antes de enviar. Corrida: 1,5 USDC contra `per_tx` 1 en `CBWBQVI5…GI374`, tx fallida `3f81fe8f…`, saldo sin cambio.
 Por qué: evidencia de D1 (T190): el tope lo aplica la red.
 Pendiente: merge de T186 y T189 cuando el usuario lo pida (pidió acumular); T187, T188, T190.
+
+## 2026-11-15 — cc/t187-mcp-por-wallet
+Agente: Claude Code
+Qué: T187. OAuth con `allowedWallets` (el token lleva la wallet a las herramientas), un `Shopper` por cuenta (`createShoppers`, `planListedAccounts`), cada petición con la cuenta de su wallet, `mcp:setup --agent-index` (credencial y Mandato por persona en la lista), `MCP_AGENT_MNEMONIC` opcional y pasado por el gateway. Credencial y Mandato del comprador de prueba anclados. En local: 2 wallets servidas, el comprador de prueba cotiza desde su rail.
+Por qué: `R-33`/`Y-4`; base de T191 y T192.
+Pendiente: compra pagada por el comprador de prueba (OK del usuario); tras el merge, copiar `MCP_AGENT_MNEMONIC` a Render y probar que la wallet original sigue comprando. `scripts/_t187-e2e.mts` es temporal y no se commitea.

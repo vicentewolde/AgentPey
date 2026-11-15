@@ -25,6 +25,7 @@ export const MAX_AGENT_INDEX = 2 ** 30 - 1;
 
 const account = z.string().refine((value) => StrKey.isValidEd25519PublicKey(value), "not a Stellar account (G...)");
 const contract = z.string().refine((value) => StrKey.isValidContract(value), "not a Stellar contract id (C...)");
+const jws = z.string().regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/, "not a compact JWS");
 
 export const walletEntrySchema = z.strictObject({
   /** The person's wallet: the rail's `principal`, and the account that signs in. */
@@ -38,6 +39,13 @@ export const walletEntrySchema = z.strictObject({
   perTx: decimalAmountSchema,
   perDay: decimalAmountSchema,
   addedAt: z.iso.datetime(),
+  /**
+   * The agent's AgentPass credential and its Mandate (T187), issued and anchored by `pnpm run mcp:setup --
+   * --principal G... --agent-index <n>`. Signed documents, not secrets. Until both are here the person cannot shop:
+   * the server lists the entry as disabled.
+   */
+  credential: jws.optional(),
+  mandate: jws.optional(),
 });
 export type WalletEntry = z.infer<typeof walletEntrySchema>;
 
@@ -104,6 +112,19 @@ export function addWallet(file: WalletsFile, entry: WalletEntry): WalletsFile {
     throw new AgentPassError("ConfigError", "the new entry collides with one already listed", { details: { problems: checked.error.issues.map((issue) => issue.message) } });
   }
   return checked.data;
+}
+
+/**
+ * The list with this person's credential and Mandate in place (T187). @throws AgentPassError `ConfigError` when the
+ * wallet is not listed or the index does not match, so documents never land on someone else's entry.
+ */
+export function withAgentDocuments(file: WalletsFile, wallet: string, agentIndex: number, documents: { readonly credential: string; readonly mandate: string }): WalletsFile {
+  const at = file.wallets.findIndex((entry) => entry.wallet === wallet);
+  if (at === -1 || file.wallets[at]!.agentIndex !== agentIndex) {
+    throw new AgentPassError("ConfigError", "this wallet is not on the list with that agent index; run buyer:onboard first", { details: { wallet, agentIndex } });
+  }
+  const wallets = file.wallets.map((entry, i) => (i === at ? walletEntrySchema.parse({ ...entry, ...documents }) : entry));
+  return walletsFileSchema.parse({ network: file.network, wallets });
 }
 
 /** Stable, human-diffable JSON: the file is reviewed in pull requests. */

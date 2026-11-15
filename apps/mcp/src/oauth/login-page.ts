@@ -17,8 +17,8 @@ export interface LoginPageInput {
   readonly redirectHost: string;
   /** Whether the app asking is a local one (a loopback redirect): any local process could be it. */
   readonly loopback: boolean;
-  /** The one wallet that can sign in, shortened for display. */
-  readonly walletHint: string;
+  /** When one wallet can sign in, that wallet shortened for display; absent when there are several (T187), so the page never lists them. */
+  readonly walletHint?: string;
   /** The `integrity` of `/wallet-kit.js` (`walletKitIntegrity()`). */
   readonly walletKitIntegrity: string;
   /** Where the page loads it from: `/wallet-kit.js?v=<fingerprint>`, so a new bundle is never matched with a cached old one. */
@@ -93,7 +93,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
     <h1 data-t="title">Connect to AgentPey</h1>
     <p><strong>${escapeHtml(input.clientName)}</strong> <span data-t="asks">wants to search, quote and pay in AgentPey stores for you, from your spending account on Stellar testnet, within its limits.</span></p>
     <p><span data-t="returns">After you sign in you go back to</span> <strong>${escapeHtml(input.redirectHost)}</strong>.</p>
-    <p><span data-t="only">Only this wallet can sign in:</span> <code>${escapeHtml(input.walletHint)}</code></p>
+    ${input.walletHint === undefined ? '<p data-t="invited">Only wallets invited to AgentPey can sign in, each with its own spending account.</p>' : `<p><span data-t="only">Only this wallet can sign in:</span> <code>${escapeHtml(input.walletHint)}</code></p>`}
     <p class="warn" data-t="yours">Continue only if you started this connection yourself, from your own Claude, ChatGPT or Grok. If someone sent you this link, close it.</p>
     ${input.loopback ? '<p class="warn" data-t="local">The app asking runs on this computer. Any program here could claim to be it.</p>' : ""}
     <button id="sign" type="button" data-t="sign">Sign in with your wallet</button>
@@ -105,7 +105,7 @@ export function loginPage(input: LoginPageInput, nonce: string): string {
 const DATA = ${data};
 const TEXT = {
   en: { missing: "The wallet connection did not load. Reload the page.", waiting: "Choose your wallet and sign…", wrong: "That wallet cannot sign in here.", failed: "Sign-in failed. Try again.", done: "Signed in. Going back…" },
-  es: { yours: "Continúa solo si tú iniciaste esta conexión, desde tu propio Claude, ChatGPT o Grok. Si alguien te mandó este enlace, ciérralo.", local: "La app que pide acceso corre en este computador. Cualquier programa aquí podría hacerse pasar por ella.", title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", sign: "Iniciar sesión con tu wallet", deny: "Cancelar", missing: "No se cargó la conexión con las wallets. Vuelve a cargar la página.", waiting: "Elige tu wallet y firma…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
+  es: { yours: "Continúa solo si tú iniciaste esta conexión, desde tu propio Claude, ChatGPT o Grok. Si alguien te mandó este enlace, ciérralo.", local: "La app que pide acceso corre en este computador. Cualquier programa aquí podría hacerse pasar por ella.", title: "Conectar con AgentPey", asks: "quiere buscar, cotizar y pagar por ti en las tiendas de AgentPey, desde tu cuenta de gastos en Stellar testnet y dentro de sus límites.", returns: "Después de iniciar sesión vuelves a", only: "Solo esta wallet puede iniciar sesión:", invited: "Solo pueden iniciar sesión las wallets invitadas a AgentPey, cada una con su propia cuenta de gastos.", sign: "Iniciar sesión con tu wallet", deny: "Cancelar", missing: "No se cargó la conexión con las wallets. Vuelve a cargar la página.", waiting: "Elige tu wallet y firma…", wrong: "Esa wallet no puede iniciar sesión aquí.", failed: "No se pudo iniciar sesión. Inténtalo de nuevo.", done: "Sesión iniciada. Volviendo…" },
 };
 const lang = (navigator.language || "en").toLowerCase().startsWith("es") ? "es" : "en";
 const t = (key) => (TEXT[lang] && TEXT[lang][key]) || TEXT.en[key] || key;

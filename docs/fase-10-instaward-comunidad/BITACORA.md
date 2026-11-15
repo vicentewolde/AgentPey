@@ -26,7 +26,8 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T185 Acciones del asistente | 👀 `confirm_purchase` y `attach_evidence` en `main` ([PR #114](https://github.com/vicentewolde/AgentPey/pull/114)); falta la prueba en vivo con una wallet (el conector de claude.ai no conecta desde el 13-nov) |
 | T186 Una cuenta de gasto por persona | 👀 script, lista y pruebas en `cc/t186-cuenta-por-persona`; primer rail por persona en testnet (`CBWBQVI5…GI374`, fondeado con 2 USDC) ([evidencia](evidencia/T186.md)); falta el merge |
 | T189 Un pago sobre el tope, rechazado por la red | 👀 hecho en testnet: 1,5 USDC contra un `per_tx` de 1, transacción fallida [`3f81fe8f…`](https://stellar.expert/explorer/testnet/tx/3f81fe8f407106876e6ef44bab327a8bb69d452717c12e0fe8a7a1ca76717c3f) ([evidencia](evidencia/T189.md)); en `cc/t189-sobre-el-tope`, sin mergear |
-| T187, T188 y T190 a T206 | ⏳ pendientes (T201 es un extra) |
+| T187 El MCP elige el rail según la wallet | 👀 código y pruebas en `cc/t187-mcp-por-wallet`; corrida local: el comprador de prueba inicia sesión y cotiza desde su propio rail ([evidencia](evidencia/T187.md)); falta una compra pagada con su rail (OK) |
+| T188 y T190 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
 
@@ -98,4 +99,15 @@ el ledger como fallida ([`3f81fe8f…`](https://stellar.expert/explorer/testnet/
 y el saldo del rail siguió en 2 USDC. Hasta ahora estos rechazos se mostraban solo simulados, sin hash; para enviarlo de
 verdad, el script arma el pago con la huella de uno válido y, antes de enviar, comprueba que el mismo camino con
 exactamente el tope sí pasa y que el motivo del rechazo es el tope (`PerTxExceeded`).
+
+## 2026-11-15 · T187
+
+**T187.** El servidor MCP ya atiende a varias personas, cada una con su propia cuenta. Inicia sesión cualquier wallet de
+la lista cerrada, y todo lo que pide su chat (buscar, cotizar, pagar, reclamar) sale de su propio rail, con su propia
+llave de agente, su credencial y su Mandato; nunca de la cuenta de otra persona. Al arrancar, el servidor revisa en la red
+cada cuenta: si la original falla, no arranca (como antes); si falla una de la lista, la deja fuera y lo anota, y las
+demás siguen. Con varias wallets, la página de inicio de sesión ya no muestra cuál puede entrar, para no listar a las
+personas. `mcp:setup` emite la credencial y el Mandato de cada persona con los topes de su rail. Probado en local contra
+testnet: el comprador de prueba inició sesión firmando con su wallet y su cotización sale de su rail
+(`CBWBQVI5…GI374`); una wallet fuera de la lista recibió 403. Falta una compra pagada con su rail.
 

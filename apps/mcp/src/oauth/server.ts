@@ -12,19 +12,21 @@
  *   registration logs the URIs it asked for, so a new client's callback shows
  *   up in the logs.
  * - `GET /authorize` shows a page where the person signs a message with their
- *   wallet (SEP-53). Only the configured wallet, the principal of the MCP's
- *   spending account, gets a code. The challenge to sign is itself a signed
+ *   wallet (SEP-53). Only a wallet on the closed list, the principal of its
+ *   own spending account (T187, `R-33`), gets a code. The challenge to sign is itself a signed
  *   token, so asking for one costs the server no memory; it is spent only
  *   when a valid signature answers it.
  * - `POST /token` trades the code for an access token bound to this MCP
  *   resource (PKCE S256 required), and refreshes it. Each refresh token works
  *   once and is replaced in the same answer (OAuth 2.1 §4.3.1).
  * - `verifier` checks access tokens for the `/mcp` route: signature, kind,
- *   audience, expiry, and that the subject is still the allowed wallet.
+ *   audience, expiry, and that the subject is still on the list. It hands the
+ *   wallet on (`AuthInfo.extra.wallet`), so each tool spends from that
+ *   person's own account.
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-import { verifyStellarMessage } from "@agentpass/core";
+import { AgentPassError, verifyStellarMessage } from "@agentpass/core";
 import { WALLET_ICONS_PATH, WALLET_KIT_BUNDLE, WALLET_KIT_PATH, walletIconFile, walletKitIntegrity as walletKitIntegrityOf, walletKitVersion } from "@agentpey/wallet-kit";
 import { OAuthError, OAuthErrorCode, type AuthInfo, type OAuthMetadata, type OAuthTokenVerifier } from "@modelcontextprotocol/server";
 import { StrKey } from "@stellar/stellar-sdk";
@@ -67,8 +69,11 @@ export interface OAuthServerOptions {
   readonly publicUrl: string;
   /** The protected resource, e.g. `https://mcp.agentpey.com/mcp`. Every access token's audience. */
   readonly resource: string;
-  /** The only Stellar account that can sign in: the principal of the MCP's rail. */
-  readonly allowedWallet: string;
+  /**
+   * The Stellar accounts that can sign in (T187): each the principal of its own spending account, and only those whose
+   * account checked out on chain at startup. A wallet removed from it can no longer refresh nor use its token.
+   */
+  readonly allowedWallets: readonly string[];
   readonly secret: string;
   /** Exact redirect URIs a client may register, besides loopback ones. Defaults to `DEFAULT_REDIRECT_URIS`: Claude's, ChatGPT's and the Grok chat's. */
   readonly redirectUris?: readonly string[];
@@ -205,7 +210,16 @@ export interface OAuthServer {
   readonly metadata: OAuthMetadata;
 }
 
+/** A wallet as the sign-in page shows it: enough to recognise, not the whole address. */
+function shortWallet(wallet: string): string {
+  return `${wallet.slice(0, 6)}…${wallet.slice(-6)}`;
+}
+
 export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
+  const allowed = new Set(options.allowedWallets);
+  if (allowed.size === 0 || [...allowed].some((wallet) => !StrKey.isValidEd25519PublicKey(wallet))) {
+    throw new AgentPassError("ConfigError", "the MCP needs at least one wallet that can sign in, each a Stellar account (G...)", { details: { wallets: allowed.size } });
+  }
   const now = options.now ?? (() => new Date());
   const issuer = options.publicUrl.replace(/\/+$/, "");
   const signer = new TokenSigner(options.secret, issuer, now);
@@ -267,10 +281,11 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     async verifyAccessToken(token: string): Promise<AuthInfo> {
       const payload = await signer.verify("access", token, { audience: options.resource });
       const claims = accessClaimsSchema.safeParse(payload);
-      if (!claims.success || claims.data.sub !== options.allowedWallet) {
+      if (!claims.success || !allowed.has(claims.data.sub)) {
         throw new OAuthError(OAuthErrorCode.InvalidToken, "the access token is invalid, expired, or not for this resource");
       }
-      return { token, clientId: claims.data.client_id, scopes: claims.data.scope.split(" "), expiresAt: claims.data.exp, resource: new URL(options.resource) };
+      // Which person this is: the tools spend from that wallet's own account, never another's.
+      return { token, clientId: claims.data.client_id, scopes: claims.data.scope.split(" "), expiresAt: claims.data.exp, resource: new URL(options.resource), extra: { wallet: claims.data.sub } };
     },
   };
 
@@ -368,7 +383,8 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
             clientName: client.name,
             redirectHost: new URL(query.data.redirect_uri).host,
             loopback: isLoopback(query.data.redirect_uri),
-            walletHint: `${options.allowedWallet.slice(0, 6)}…${options.allowedWallet.slice(-6)}`,
+            // One wallet: show which. Several: show none, so the page never lists who else can sign in.
+            ...(allowed.size === 1 ? { walletHint: shortWallet([...allowed][0]!) } : {}),
             walletKitIntegrity,
             walletKitSrc: `${WALLET_KIT_PATH}?v=${walletKitVersion(walletKitIntegrity)}`,
           },
@@ -387,7 +403,7 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     if (!body.success) return oauthFail(res, 400, "invalid_request", "request and a Stellar account are required");
     const request = await readRequest(body.data.request);
     if (request === null) return oauthFail(res, 400, "invalid_request", "the authorization request expired; start again from the app");
-    if (body.data.account !== options.allowedWallet) return oauthFail(res, 403, "access_denied", "this wallet cannot sign in here");
+    if (!allowed.has(body.data.account)) return oauthFail(res, 403, "access_denied", "this wallet cannot sign in here");
     // Nothing is stored: the challenge is a signed token, so asking for many costs the server nothing.
     const claims = {
       account: body.data.account,
@@ -408,7 +424,7 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
     if (request === null || !challenge.success || challenge.data.request_hash !== sha256(body.data.request) || challenge.data.account !== body.data.account) {
       return oauthFail(res, 400, "invalid_request", "the sign-in expired; start again");
     }
-    if (body.data.account !== options.allowedWallet || !verifyStellarMessage(body.data.account, challengeMessage(issuerHost, challenge.data), body.data.signature)) {
+    if (!allowed.has(body.data.account) || !verifyStellarMessage(body.data.account, challengeMessage(issuerHost, challenge.data), body.data.signature)) {
       log("oauth sign-in refused", { account: body.data.account });
       return oauthFail(res, 403, "access_denied", "the signature does not prove control of the allowed wallet");
     }
@@ -460,7 +476,7 @@ export function createOAuthServer(options: OAuthServerOptions): OAuthServer {
       subject = claims.data.sub;
       scope = claims.data.scope;
     }
-    if (subject !== options.allowedWallet) return oauthFail(res, 400, "invalid_grant", "this wallet can no longer sign in here");
+    if (!allowed.has(subject)) return oauthFail(res, 400, "invalid_grant", "this wallet can no longer sign in here");
 
     const accessToken = await signer.sign("access", { client_id: client.clientId, scope }, { subject, audience: options.resource });
     const refreshToken = await signer.sign("refresh", { client_id: client.clientId, scope }, { subject, audience: options.resource, jti: randomUUID() });

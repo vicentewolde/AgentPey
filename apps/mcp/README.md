@@ -191,8 +191,21 @@ pnpm run buyer:onboard -- --principal G... --per-tx 3 --per-day 5 --yes
 The first time, add `--init-mnemonic` to create `MCP_AGENT_MNEMONIC` in
 `.env.local`, then copy it to Render. Never regenerate it: every derived key
 would change. The command moves no money; it prints the `rail:topup` command
-that funds the rail from AgentPey's testnet reserve. The server does not read
-the list yet (T187).
+that funds the rail from AgentPey's testnet reserve.
+
+Then issue the person's credential and Mandate (anchored on testnet, with their
+rail's limits, written to their entry in the list):
+
+```bash
+pnpm run mcp:setup -- --principal G... --agent-index <n>
+```
+
+The server serves `MCP_ALLOWED_WALLET` and every listed person whose account
+checks out on chain at startup; each signed-in wallet spends only from its own
+rail. A listed person that does not check out is logged as `listed wallet
+disabled` with the reason, and the others keep working. Without
+`MCP_AGENT_MNEMONIC` (in `.env.local` and on Render) only `MCP_ALLOWED_WALLET`
+is served.
 
 ## Cut access
 
