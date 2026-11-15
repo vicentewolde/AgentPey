@@ -21,6 +21,7 @@ import {
   createOnChainMandateVerifier,
   createX402Catalog,
   expandPlatformVenues,
+  toScaledAmount,
   verifyIntent,
 } from "@agentpey/agent";
 import { verifyMandate } from "@agentpey/mandate";
@@ -52,6 +53,8 @@ type Log = (message: string, fields?: Record<string, unknown>) => void;
 interface RailGetters {
   owner(): Promise<contract.AssembledTransaction<unknown>>;
   principal(): Promise<contract.AssembledTransaction<unknown>>;
+  per_tx(): Promise<contract.AssembledTransaction<unknown>>;
+  per_day(): Promise<contract.AssembledTransaction<unknown>>;
 }
 
 /** One person's spending account: whose wallet signs in, which key spends, from which rail, under which documents. */
@@ -67,6 +70,8 @@ export interface SpendingAccount {
   readonly rail: string;
   readonly credentialJws: string;
   readonly mandateJws: string;
+  /** The limits the list says its rail enforces; checked against the rail on chain at startup. Absent for the original. */
+  readonly limits?: { readonly perTx: string; readonly perDay: string };
 }
 
 /** A listed person the server will not serve, and why. Logged at startup; no secret in it. */
@@ -139,20 +144,34 @@ export function planListedAccounts(
       off("MCP_AGENT_MNEMONIC does not derive the listed agent key");
       continue;
     }
-    accounts.push({ label: `agent index ${entry.agentIndex}`, agentIndex: entry.agentIndex, wallet: entry.wallet, agentSecret: key.secret, rail: entry.rail, credentialJws: entry.credential, mandateJws: entry.mandate });
+    accounts.push({ label: `agent index ${entry.agentIndex}`, agentIndex: entry.agentIndex, wallet: entry.wallet, agentSecret: key.secret, rail: entry.rail, credentialJws: entry.credential, mandateJws: entry.mandate, limits: { perTx: entry.perTx, perDay: entry.perDay } });
   }
   return { accounts, disabled };
 }
 
-/** The rail's owner key and principal, read from the network (simulation, no fee). */
-async function readRail(contractId: string): Promise<{ owner: string; principal: string }> {
+/** The rail's owner key, principal and limits (atomic units), read from the network (simulation, no fee). */
+async function readRail(contractId: string): Promise<{ owner: string; principal: string; perTx: bigint; perDay: bigint }> {
   const client = await contract.Client.from<RailGetters>({ contractId, rpcUrl: TESTNET.rpcUrl, networkPassphrase: TESTNET.passphrase });
   const owner = unwrap((await client.owner()).result);
   const principal = unwrap((await client.principal()).result);
-  if (!(owner instanceof Uint8Array) || typeof principal !== "string") {
-    throw new AgentPassError("ConfigError", "the rail did not answer owner and principal as a policy_rail does", { details: { contractId } });
+  const perTx = unwrap((await client.per_tx()).result);
+  const perDay = unwrap((await client.per_day()).result);
+  if (!(owner instanceof Uint8Array) || typeof principal !== "string" || typeof perTx !== "bigint" || typeof perDay !== "bigint") {
+    throw new AgentPassError("ConfigError", "the rail did not answer owner, principal and limits as a policy_rail does", { details: { contractId } });
   }
-  return { owner: StrKey.encodeEd25519PublicKey(Buffer.from(owner)), principal };
+  return { owner: StrKey.encodeEd25519PublicKey(Buffer.from(owner)), principal, perTx, perDay };
+}
+
+/**
+ * Refuses a listed account whose rail enforces other limits than the list says: the list is what people read, the rail
+ * is what the network enforces, and the Mandate was issued with the list's numbers.
+ */
+export function assertRailLimits(onChain: { perTx: bigint; perDay: bigint }, listed: { perTx: string; perDay: string }, label: string): void {
+  if (onChain.perTx !== toScaledAmount(listed.perTx) || onChain.perDay !== toScaledAmount(listed.perDay)) {
+    throw new AgentPassError("ConfigError", `${label}: the rail's limits on chain are not the listed ones`, {
+      details: { onChain: { perTx: onChain.perTx.toString(), perDay: onChain.perDay.toString() }, listed },
+    });
+  }
 }
 
 /** What every account's shopper shares: the registry, the directory's escrows and receipts, AgentResolve's arbiter. */
@@ -205,7 +224,9 @@ async function createAccountShopper(shared: Shared, account: SpendingAccount, lo
     throw new AgentPassError("MandateAgentMismatch", `${account.label}: the Mandate does not empower its agent key`, {});
   }
   await shared.mandateVerifier.verify(account.mandateJws);
-  assertRailMatches(await readRail(account.rail), { agent: agentKey.publicKey(), wallet: account.wallet, label: account.label });
+  const rail = await readRail(account.rail);
+  assertRailMatches(rail, { agent: agentKey.publicKey(), wallet: account.wallet, label: account.label });
+  if (account.limits !== undefined) assertRailLimits(rail, account.limits, account.label);
 
   const ledger = createInMemorySpendLedger();
   const policyRail = createLocalPolicyRail({ ledger });
@@ -293,7 +314,15 @@ export async function createShoppers(env: McpEnv, log: Log, options: { readonly 
   };
   const shoppers = new Map<string, Shopper>([[original.wallet, await createAccountShopper(shared, original, log)]]);
 
-  const plan = planListedAccounts(options.wallets ?? readWalletsFile(), { mnemonic: env.MCP_AGENT_MNEMONIC, originalWallet: original.wallet });
+  // A list that cannot be read disables the list, never the original account (T187 review).
+  let listed: WalletsFile;
+  try {
+    listed = options.wallets ?? readWalletsFile();
+  } catch (error) {
+    log("wallet list unreadable", { error: isAgentPassError(error) ? error.message : "unknown" });
+    listed = EMPTY_WALLETS_FILE;
+  }
+  const plan = planListedAccounts(listed, { mnemonic: env.MCP_AGENT_MNEMONIC, originalWallet: original.wallet });
   const disabled = [...plan.disabled];
   for (const account of plan.accounts) {
     try {

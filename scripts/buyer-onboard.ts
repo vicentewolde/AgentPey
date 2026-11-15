@@ -115,6 +115,15 @@ async function main(): Promise<void> {
   process.stdout.write(`  limits       ${args.perTx} USDC per payment · ${args.perDay} USDC per day, enforced by the network\n`);
   process.stdout.write(`  asset        ${BAZAAR_USDC_ISSUER} (USDC)\n\n`);
 
+  // Every onboarding creates the agent's account (below), so an index whose key already has one was used before: by
+  // someone since removed from the list, or by a run that deployed and then failed to write. Reusing it would hand
+  // this person a key that may still own another rail and still be named by an anchored credential (T187 review).
+  if ((await getAccountState(TESTNET.horizonUrl, agent.publicKey)).funded) {
+    throw new AgentPassError("AgentIndexTaken", "this index's agent key already has an account on testnet: it was used before", {
+      details: { agentIndex, agent: agent.publicKey, fix: "pass --index with a number never used, e.g. one above every index ever listed" },
+    });
+  }
+
   if (!args.confirmed) {
     process.stdout.write("  dry run      nothing deployed. Add --yes to deploy this rail on testnet.\n\n");
     return;
@@ -123,11 +132,10 @@ async function main(): Promise<void> {
   const env = await readEnvFile(ENV_PATH);
   const admin = Keypair.fromSecret(requireEnv(env, "ADMIN_SECRET_KEY", "run `pnpm run bootstrap` first"));
 
-  // The agent signs its own transactions later (credential, purchases): it needs an account, which costs only testnet XLM.
-  if (!(await getAccountState(TESTNET.horizonUrl, agent.publicKey)).funded) {
-    await fundWithFriendbot(TESTNET.friendbotUrl, agent.publicKey);
-    process.stdout.write("  agent        account created with Friendbot (testnet XLM for fees)\n");
-  }
+  // The agent signs its own transactions later (credential, purchases): it needs an account, which costs only testnet
+  // XLM. Created first, so the index is marked as used on chain even if anything below fails.
+  await fundWithFriendbot(TESTNET.friendbotUrl, agent.publicKey);
+  process.stdout.write("  agent        account created with Friendbot (testnet XLM for fees)\n");
 
   process.stdout.write("  building     …\n");
   await stellarCli(["contract", "build"], admin.secret());

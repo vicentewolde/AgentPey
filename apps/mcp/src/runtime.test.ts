@@ -2,7 +2,7 @@ import { deriveTenantKeypair, generateMasterMnemonic } from "@agentpey/tenancy";
 import { Keypair, StrKey } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 
-import { assertRailMatches, planListedAccounts } from "./runtime.js";
+import { assertRailLimits, assertRailMatches, planListedAccounts } from "./runtime.js";
 import type { WalletEntry } from "./wallets.js";
 
 describe("assertRailMatches (T128, R-7)", () => {
@@ -72,3 +72,15 @@ describe("planListedAccounts (T187, R-33)", () => {
     expect(JSON.stringify(plan.disabled)).not.toContain(mnemonic.split(" ")[0]! + " " + mnemonic.split(" ")[1]!);
   });
 });
+
+describe("assertRailLimits (T187 review)", () => {
+  it("passes when the rail enforces exactly the listed limits", () => {
+    expect(() => assertRailLimits({ perTx: 10_000_000n, perDay: 20_000_000n }, { perTx: "1.0000000", perDay: "2" }, "agent index 1")).not.toThrow();
+  });
+
+  it("refuses a rail whose limits on chain differ from the list's", () => {
+    expect(() => assertRailLimits({ perTx: 30_000_000n, perDay: 20_000_000n }, { perTx: "1", perDay: "2" }, "agent index 1")).toThrow(expect.objectContaining({ code: "ConfigError", message: expect.stringMatching(/limits/) }));
+    expect(() => assertRailLimits({ perTx: 10_000_000n, perDay: 50_000_000n }, { perTx: "1", perDay: "2" }, "agent index 1")).toThrow(expect.objectContaining({ code: "ConfigError" }));
+  });
+});
+
