@@ -9582,3 +9582,8 @@ Agente: Claude Code
 Qué: T187. OAuth con `allowedWallets` (el token lleva la wallet a las herramientas), un `Shopper` por cuenta (`createShoppers`, `planListedAccounts`), cada petición con la cuenta de su wallet, `mcp:setup --agent-index` (credencial y Mandato por persona en la lista), `MCP_AGENT_MNEMONIC` opcional y pasado por el gateway. Credencial y Mandato del comprador de prueba anclados. En local: 2 wallets servidas, el comprador de prueba cotiza desde su rail.
 Por qué: `R-33`/`Y-4`; base de T191 y T192.
 Pendiente: compra pagada por el comprador de prueba (OK del usuario); tras el merge, copiar `MCP_AGENT_MNEMONIC` a Render y probar que la wallet original sigue comprando. `scripts/_t187-e2e.mts` es temporal y no se commitea.
+
+## 2026-11-15 — cc/t187-mcp-por-wallet (cierre local)
+Agente: Claude Code
+Qué: revisión independiente de T186/T187/T189 sin hallazgos graves; tres observaciones corregidas (`195b53c`). Con OK del usuario, el comprador de prueba pagó el imán desde su rail en el servidor local: `ord_mwi71o5s46dbef233d`, tx `81db5b00…128c`, retenido en el escrow de `agentcommerce`.
+Pendiente: merge de las tres ramas apiladas (cuando el usuario lo pida); copiar `MCP_AGENT_MNEMONIC` a Render y probar en producción que la wallet original sigue comprando. Siguiente tarea: T188.
