@@ -9564,3 +9564,9 @@ Agente: Claude Code
 Qué: T186. `pnpm run buyer:onboard` deriva la llave de agente de una persona (`MCP_AGENT_MNEMONIC`, SEP-0005), despliega su `policy_rail` con sus topes (solo con `--yes`), lo relee de la red y la anota en `apps/mcp/wallets.testnet.json` (esquema en `apps/mcp/src/wallets.ts`). Tres pruebas nuevas del contrato: la llave de una persona no gasta del rail de otra. `MCP_AGENT_MNEMONIC` ya está en `.env.local` del Dell (creada con `--init-mnemonic`), no en Render.
 Por qué: `Y-4`/`R-33`; T187, T189, T191 y T192 dependen de esto.
 Pendiente: desplegar el primer rail por persona en testnet y fondearlo (OK del usuario); merge; T187. T185 sigue esperando la prueba en vivo: el conector de claude.ai no conecta (falla la comprobación de todo conector propio, probado en Chrome).
+
+## 2026-11-15 — cc/t186-cuenta-por-persona
+Agente: Claude Code
+Qué: con OK del usuario, primer rail por persona en testnet: comprador de prueba `GBLXRJYX…UXT5A` (llave en `.env.local` como `T186_TEST_BUYER_SECRET_KEY`), índice 1, rail `CBWBQVI5…GI374` con 1/2 USDC, fondeado con 2 USDC (tx `8b7a3950…`). `apps/mcp/wallets.testnet.json` creado.
+Por qué: cerrar T186 y dejar un rail para T189 (pago sobre el tope).
+Pendiente: merge (OK del usuario); T187.

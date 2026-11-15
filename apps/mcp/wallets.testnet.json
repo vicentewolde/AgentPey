@@ -1,0 +1,14 @@
+{
+  "network": "testnet",
+  "wallets": [
+    {
+      "wallet": "GBLXRJYXUTBRJEOQCGSQYF2A2NNJMMT27TAVPVEIUU5ARN2PAT7UXT5A",
+      "agentIndex": 1,
+      "agent": "GD6PZZHSWHMXGZB7TMIN7XO5SJEU7BWEAXDPE5KV4XN3ZY5T3JFNUDB6",
+      "rail": "CBWBQVI5DK2KAVALSWTQO7A3WWBX7FFLCN2F5V46AG2VO3VNAEUGI374",
+      "perTx": "1.0000000",
+      "perDay": "2.0000000",
+      "addedAt": "2026-11-15T18:16:47.127Z"
+    }
+  ]
+}

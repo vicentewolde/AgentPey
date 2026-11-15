@@ -24,7 +24,7 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T183 Escrow v2 en testnet | 👀 desplegado `CDSCZJEM…E3UML` y ensayado ([evidencia](evidencia/T183.md)); el de Tapline va con T191 (`Y-9`) |
 | T184 Evidencia sellada | ✅ en `main` ([PR #110](https://github.com/vicentewolde/AgentPey/pull/110)) y corrida en testnet con foto ([evidencia](evidencia/T184.md)) |
 | T185 Acciones del asistente | 👀 `confirm_purchase` y `attach_evidence` en `main` ([PR #114](https://github.com/vicentewolde/AgentPey/pull/114)); falta la prueba en vivo con una wallet (el conector de claude.ai no conecta desde el 13-nov) |
-| T186 Una cuenta de gasto por persona | 👀 script, lista y pruebas en `cc/t186-cuenta-por-persona` ([evidencia](evidencia/T186.md)); falta desplegar el primer rail con OK |
+| T186 Una cuenta de gasto por persona | 👀 script, lista y pruebas en `cc/t186-cuenta-por-persona`; primer rail por persona en testnet (`CBWBQVI5…GI374`, fondeado con 2 USDC) ([evidencia](evidencia/T186.md)); falta el merge |
 | T187 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
@@ -85,6 +85,7 @@ dueña de la plata y con los topes que se elijan, lo relee de la red para confir
 la lista del MCP (`apps/mcp/wallets.testnet.json`, sin secretos). No mueve plata: el fondeo sigue siendo un paso aparte,
 con `rail:topup`. Las pruebas del contrato muestran que la llave de una persona no puede gastar del rail de otra, que el
 rail de una persona no aprueba mover la plata de otra, y que el tope diario de una no consume el de otra. Topes: por pago
-hasta el diario, y el diario hasta 50 USDC. Falta desplegar el primer rail en testnet, con OK. El MCP empieza a leer la
+hasta el diario, y el diario hasta 50 USDC. El 15-nov, con OK del usuario, se desplegó el primer rail por persona en testnet
+para un comprador de prueba (1 USDC por pago, 2 por día) y se fondeó con 2 USDC de la reserva. El MCP empieza a leer la
 lista en T187.
 
