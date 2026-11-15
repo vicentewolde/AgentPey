@@ -9570,3 +9570,9 @@ Agente: Claude Code
 Qué: con OK del usuario, primer rail por persona en testnet: comprador de prueba `GBLXRJYX…UXT5A` (llave en `.env.local` como `T186_TEST_BUYER_SECRET_KEY`), índice 1, rail `CBWBQVI5…GI374` con 1/2 USDC, fondeado con 2 USDC (tx `8b7a3950…`). `apps/mcp/wallets.testnet.json` creado.
 Por qué: cerrar T186 y dejar un rail para T189 (pago sobre el tope).
 Pendiente: merge (OK del usuario); T187.
+
+## 2026-11-15 — cc/t189-sobre-el-tope
+Agente: Claude Code
+Qué: T189. `pnpm run rail:over-limit` envía a la red un pago sobre el `per_tx` de un rail por persona (huella y nonce del pago válido, `scripts/lib/over-limit.ts`), con control y lectura del motivo antes de enviar. Corrida: 1,5 USDC contra `per_tx` 1 en `CBWBQVI5…GI374`, tx fallida `3f81fe8f…`, saldo sin cambio.
+Por qué: evidencia de D1 (T190): el tope lo aplica la red.
+Pendiente: merge de T186 y T189 cuando el usuario lo pida (pidió acumular); T187, T188, T190.

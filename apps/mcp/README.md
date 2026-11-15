@@ -221,6 +221,14 @@ set -a; source .env.local; set +a; MCP_PUBLIC_URL=http://localhost:3010 pnpm --f
 pnpm run ucp:probe-per-tx -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624503640370 --quantity 2 --rail mcp
 ```
 
+Or have the network refuse one on chain, from a per-person rail on the list
+(it sends a payment over `per_tx` and leaves a failed transaction; no USDC
+moves). Without `--yes` it only simulates:
+
+```bash
+pnpm run rail:over-limit -- --rail C... --yes
+```
+
 ## Tests
 
 ```bash

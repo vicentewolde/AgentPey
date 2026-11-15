@@ -57,6 +57,7 @@
     "exp:sync": "tsx --tsconfig tsconfig.scripts.json scripts/exponential/sync-board.ts",
     "mcp:setup": "tsx --tsconfig tsconfig.scripts.json scripts/mcp-setup.ts",
     "buyer:onboard": "tsx --tsconfig tsconfig.scripts.json scripts/buyer-onboard.ts",
+    "rail:over-limit": "tsx --tsconfig tsconfig.scripts.json scripts/rail-over-limit.ts",
     "ucp:buy": "tsx --tsconfig tsconfig.scripts.json scripts/ucp-buy.ts",
     "team:pay": "tsx --tsconfig tsconfig.scripts.json scripts/team-budget.ts",
     "team:summary": "tsx --tsconfig tsconfig.scripts.json scripts/team-summary.ts",

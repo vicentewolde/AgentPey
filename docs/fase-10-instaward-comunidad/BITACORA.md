@@ -25,7 +25,8 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T184 Evidencia sellada | ✅ en `main` ([PR #110](https://github.com/vicentewolde/AgentPey/pull/110)) y corrida en testnet con foto ([evidencia](evidencia/T184.md)) |
 | T185 Acciones del asistente | 👀 `confirm_purchase` y `attach_evidence` en `main` ([PR #114](https://github.com/vicentewolde/AgentPey/pull/114)); falta la prueba en vivo con una wallet (el conector de claude.ai no conecta desde el 13-nov) |
 | T186 Una cuenta de gasto por persona | 👀 script, lista y pruebas en `cc/t186-cuenta-por-persona`; primer rail por persona en testnet (`CBWBQVI5…GI374`, fondeado con 2 USDC) ([evidencia](evidencia/T186.md)); falta el merge |
-| T187 a T206 | ⏳ pendientes (T201 es un extra) |
+| T189 Un pago sobre el tope, rechazado por la red | 👀 hecho en testnet: 1,5 USDC contra un `per_tx` de 1, transacción fallida [`3f81fe8f…`](https://stellar.expert/explorer/testnet/tx/3f81fe8f407106876e6ef44bab327a8bb69d452717c12e0fe8a7a1ca76717c3f) ([evidencia](evidencia/T189.md)); en `cc/t189-sobre-el-tope`, sin mergear |
+| T187, T188 y T190 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
 
@@ -88,4 +89,13 @@ rail de una persona no aprueba mover la plata de otra, y que el tope diario de u
 hasta el diario, y el diario hasta 50 USDC. El 15-nov, con OK del usuario, se desplegó el primer rail por persona en testnet
 para un comprador de prueba (1 USDC por pago, 2 por día) y se fondeó con 2 USDC de la reserva. El MCP empieza a leer la
 lista en T187.
+
+## 2026-11-15 · T189
+
+**T189.** Hay una prueba en la red de que el tope lo pone la red y no el agente. Al rail del comprador de prueba (tope de
+1 USDC por pago) se le pidió pagar 1,5 USDC con la firma de su propia llave, y la red lo rechazó: la transacción quedó en
+el ledger como fallida ([`3f81fe8f…`](https://stellar.expert/explorer/testnet/tx/3f81fe8f407106876e6ef44bab327a8bb69d452717c12e0fe8a7a1ca76717c3f))
+y el saldo del rail siguió en 2 USDC. Hasta ahora estos rechazos se mostraban solo simulados, sin hash; para enviarlo de
+verdad, el script arma el pago con la huella de uno válido y, antes de enviar, comprueba que el mismo camino con
+exactamente el tope sí pasa y que el motivo del rechazo es el tope (`PerTxExceeded`).
 
