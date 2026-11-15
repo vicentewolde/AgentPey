@@ -104,7 +104,8 @@ export interface OrderFulfillmentEvent {
   trackingNumber?: string;
   trackingUrl?: string;
   carrier?: string;
-  source: "platform" | "simulation";
+  /** `download`: a digital order, delivered by its first download (T188). */
+  source: "platform" | "simulation" | "download";
   /** The platform's own id for the shipment, so it is never recorded twice. */
   platformRef?: string;
   /**
@@ -300,7 +301,7 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
         trackingNumber: z.string().optional(),
         trackingUrl: z.string().optional(),
         carrier: z.string().optional(),
-        source: z.enum(["platform", "simulation"]),
+        source: z.enum(["platform", "simulation", "download"]),
         platformRef: z.string().optional(),
         lines: z.array(z.object({ id: z.string().min(1), quantity: z.number().int().positive() })).min(1).optional(),
       }),

@@ -29,6 +29,7 @@ import type { Express, Request, Response } from "express";
 
 import type { OrderRecord, OrderStore } from "../orders.js";
 import { orderLineId, shippedUnits } from "./lines.js";
+import { isDigitalOrder, type DigitalProducts } from "../digital.js";
 import type { OrderEvents } from "./order-events.js";
 import { SHIPPING_OPTION_TITLE, receiptExtension } from "./checkout.js";
 import { ucpVersionOf } from "./negotiation.js";
@@ -141,7 +142,7 @@ export function ucpOrder(
   origin: string,
   lookup: DisputeLookup = { kind: "none" },
   version: UcpVersion = UCP_LATEST_VERSION,
-  options: { tracking?: boolean; escrow?: EscrowLookup } = {},
+  options: { tracking?: boolean; escrow?: EscrowLookup; digital?: boolean } = {},
 ) {
   const totalMinor = toMinorUnits(record.totalLocal, record.currency);
   const shipping = record.buyer.shipping;
@@ -207,7 +208,21 @@ export function ucpOrder(
     }),
     fulfillment: {
       expectations:
-        shipping === undefined
+        shipping !== undefined && options.digital === true
+        ? [
+            {
+              id: "exp_1",
+              line_items: allLines,
+              // A digital order (T188): delivered by its first download. The link is never printed here, where anyone
+              // holding the receipt reads: whoever paid signs one for themselves.
+              method_type: "digital",
+              description: "Download, for whoever paid: their agent signs a short-lived link to /orders/{id}/download",
+              // UCP requires a destination; as for a parcel, the country only.
+              destination: { address_country: shipping.country },
+              fulfillable_on: "now",
+            },
+          ]
+        : shipping === undefined
           ? []
           : [
               {
@@ -333,6 +348,8 @@ export function registerUcpOrders(
   disputeTimeoutMs: number = DISPUTE_READ_TIMEOUT_MS,
   events: OrderEvents | null = null,
   escrows: EscrowReaderFactory | null = null,
+  /** The store's digital products (T188): an order made only of them says it is delivered by download. */
+  digital: DigitalProducts | null = null,
 ): void {
   const windows = new Map<string, EscrowWindows>();
   app.get(`${prefix}/orders/:id`, async (req: Request, res: Response) => {
@@ -352,6 +369,6 @@ export function registerUcpOrders(
       return;
     }
     const [lookup, escrow] = await Promise.all([lookupDispute(record, disputes, log, disputeTimeoutMs), lookupEscrow(record, escrows, windows, log, disputeTimeoutMs)]);
-    res.json(ucpOrder({ ...record, ucpCheckoutId: record.ucpCheckoutId }, originOf(req), lookup, ucpVersionOf(res), { escrow }));
+    res.json(ucpOrder({ ...record, ucpCheckoutId: record.ucpCheckoutId }, originOf(req), lookup, ucpVersionOf(res), { escrow, digital: digital !== null && isDigitalOrder(record, digital) }));
   });
 }

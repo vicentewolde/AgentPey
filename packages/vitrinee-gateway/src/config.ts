@@ -10,6 +10,7 @@ import {
 } from "@vitrinee/core";
 import { z } from "zod";
 
+import { parseDigitalProducts, type DigitalProducts } from "./digital.js";
 import { parseBlockedPayers, parsePayerLimit, type PayerGuardSettings } from "./payer-guard.js";
 import { parseAllowedPlatforms, parseRequireAp2, type PlatformPolicy } from "./ucp/platform-policy.js";
 
@@ -66,6 +67,11 @@ const envSchema = z.object({
   ALLOWED_PLATFORMS: optionalString,
   /** `true`: only a platform that negotiated AP2 may open a checkout (T172, VT-49). Unset (the default): not required. */
   REQUIRE_AP2: optionalString,
+  /**
+   * The store's digital products (T188, Y-5): a JSON object from product id to `{ url, name, mediaType? }`. An order made
+   * only of them is delivered by its first download. Unset (the default): every product ships as a parcel.
+   */
+  DIGITAL_PRODUCTS: optionalString,
 });
 
 export interface GatewayConfig {
@@ -101,6 +107,8 @@ export interface GatewayConfig {
   payerGuard: PayerGuardSettings;
   /** Which platforms may open a checkout here (T172, VT-49): an allowlist and whether AP2 is required. Both off by default. */
   platformPolicy: PlatformPolicy;
+  /** Which products are digital, and where each file lives (T188). Empty: none. */
+  digitalProducts: DigitalProducts;
 }
 
 /** The store's escrow as its own contract says it is (T160): published in the profile and the manifest. */
@@ -190,5 +198,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     ordersFile: e.ORDERS_FILE,
     payerGuard: { blocked: parseBlockedPayers(e.BLOCKED_PAYERS), limit: parsePayerLimit(e.PAYER_LIMIT) },
     platformPolicy: { requireAp2: parseRequireAp2(e.REQUIRE_AP2), allowedPlatforms: parseAllowedPlatforms(e.ALLOWED_PLATFORMS) },
+    digitalProducts: parseDigitalProducts(e.DIGITAL_PRODUCTS),
   };
 }

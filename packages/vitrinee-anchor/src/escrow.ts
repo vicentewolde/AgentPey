@@ -12,7 +12,7 @@
  * `Purchase`, `Status`, STORAGE_SCHEMA_VERSION 1). A test pins it to that
  * source; if the contract's layout changes, bump the version on both sides.
  */
-import { Address, BASE_FEE, Contract, Keypair, Transaction, TransactionBuilder, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Address, BASE_FEE, Contract, Keypair, StrKey, Transaction, TransactionBuilder, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { VitrineeError } from "@vitrinee/core";
 import { z } from "zod";
 
@@ -616,11 +616,8 @@ export function escrowPolicy(readers: EscrowReaderFactory, arbiters: readonly st
   };
 }
 
-/**
- * The wallet a `policy_rail` answers to (`principal()`), read from the rail's own stored `Config` (T185). A confirmation
- * of a purchase paid from a rail is signed by this account, never by the agent key that spends day to day (`Y-1`).
- */
-export async function railPrincipal(server: Pick<rpc.Server, "getLedgerEntries">, rail: string): Promise<string> {
+/** A rail's stored `Config`, read from its instance on chain; empty when the contract has none. */
+async function readRailConfig(server: Pick<rpc.Server, "getLedgerEntries">, rail: string): Promise<RailConfig> {
   const key = xdr.LedgerKey.contractData(
     new xdr.LedgerKeyContractData({ contract: new Contract(rail).address().toScAddress(), key: xdr.ScVal.scvLedgerKeyContractInstance(), durability: xdr.ContractDataDurability.persistent }),
   );
@@ -634,9 +631,37 @@ export async function railPrincipal(server: Pick<rpc.Server, "getLedgerEntries">
   const instance = data !== undefined && data.type === "contractData" ? data.contractData.val : null;
   const storage = instance !== null && instance.type === "scvContractInstance" ? (instance.instance.storage ?? []) : [];
   const stored = storage.find((item) => JSON.stringify(scValToNative(item.key)) === JSON.stringify(["Config"]));
-  const principal = stored === undefined ? undefined : (scValToNative(stored.val) as { principal?: unknown }).principal;
-  if (typeof principal !== "string" || !/^G[A-Z2-7]{55}$/.test(principal)) {
-    throw new VitrineeError("EscrowError", "this payer is not a policy_rail the store can read", { details: { rail } });
-  }
+  return stored === undefined ? {} : (scValToNative(stored.val) as RailConfig);
+}
+
+interface RailConfig {
+  readonly owner?: unknown;
+  readonly principal?: unknown;
+}
+
+const notARail = (rail: string) => new VitrineeError("EscrowError", "this payer is not a policy_rail the store can read", { details: { rail } });
+
+function principalOf(config: RailConfig, rail: string): string {
+  const principal = config.principal;
+  if (typeof principal !== "string" || !/^G[A-Z2-7]{55}$/.test(principal)) throw notARail(rail);
   return principal;
+}
+
+/**
+ * A `policy_rail`'s owner (the agent key that spends) and principal (the wallet that owns the money), read from the
+ * rail's own configuration on chain: who may download a digital product the rail paid (T188).
+ */
+export async function railKeys(server: Pick<rpc.Server, "getLedgerEntries">, rail: string): Promise<{ owner: string; principal: string }> {
+  const config = await readRailConfig(server, rail);
+  const owner = config.owner;
+  if (!(owner instanceof Uint8Array) || owner.length !== 32) throw notARail(rail);
+  return { owner: StrKey.encodeEd25519PublicKey(Buffer.from(owner)), principal: principalOf(config, rail) };
+}
+
+/**
+ * The wallet a `policy_rail` answers to (`principal()`), read from the rail's own stored `Config` (T185). A confirmation
+ * of a purchase paid from a rail is signed by this account, never by the agent key that spends day to day (`Y-1`).
+ */
+export async function railPrincipal(server: Pick<rpc.Server, "getLedgerEntries">, rail: string): Promise<string> {
+  return principalOf(await readRailConfig(server, rail), rail);
 }

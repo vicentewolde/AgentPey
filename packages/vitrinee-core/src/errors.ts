@@ -36,6 +36,10 @@ export const ERROR_CODES = [
   "SigningKeyNotFunded",
   "DisputeRefused",
   "EvidenceReadDenied",
+  // A digital product's download asked for without a valid link from whoever paid (T188, Y-5, Y-11).
+  "DownloadDenied",
+  // The digital file could not be fetched from where the store keeps it (T188).
+  "DownloadUnavailable",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -71,6 +75,8 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   DisputeRefused: 409,
   // A dispute file asked for without a valid read link from someone in the dispute (T184).
   EvidenceReadDenied: 401,
+  DownloadDenied: 401,
+  DownloadUnavailable: 502,
 };
 
 export interface VitrineeErrorOptions {

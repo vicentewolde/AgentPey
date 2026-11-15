@@ -1,6 +1,6 @@
 import type { StoreAdapter } from "@vitrinee/adapters";
 import { rpc } from "@stellar/stellar-sdk";
-import { AgentResolveReader, EscrowClient, ReceiptRegistryClient, escrowReaders, railPrincipal, verifyReceipt, type DisputeReader, type EscrowReaderFactory, type RegistryReader } from "@vitrinee/anchor";
+import { AgentResolveReader, EscrowClient, ReceiptRegistryClient, escrowReaders, railKeys, railPrincipal, verifyReceipt, type DisputeReader, type EscrowReaderFactory, type RegistryReader } from "@vitrinee/anchor";
 import { MANIFEST_PATH, UCP_LEGACY_VERSION, UCP_PROFILE_PATH, UCP_REST_PREFIX, VitrineeError, isVitrineeError, stellarDid } from "@vitrinee/core";
 import type { FacilitatorClient } from "@x402/core/server";
 import { paymentMiddlewareFromHTTPServer } from "@x402/express";
@@ -31,6 +31,7 @@ import { registerUcpCheckout } from "./ucp/checkout.js";
 import { lookupDispute, lookupEscrow, registerUcpOrders, type EscrowWindows } from "./ucp/order.js";
 import { registerConfirmations } from "./confirmations.js";
 import { registerDisputes, type DisputeDeps } from "./disputes.js";
+import { isDigitalOrder, registerDownloads } from "./digital.js";
 import type { EvidenceStore } from "./evidence-store.js";
 import { SessionReconciler } from "./ucp/reconcile.js";
 import { EscrowReleases, type EscrowReleaseDeps } from "./escrow-release.js";
@@ -69,6 +70,10 @@ export interface AppDeps {
   evidence?: EvidenceStore;
   /** The wallet a policy_rail answers to; reads the rail on chain by default (T185). */
   principalOf?: (rail: string) => Promise<string>;
+  /** The owner and principal of a policy_rail; reads the rail on chain by default (T188). */
+  railKeysOf?: (rail: string) => Promise<{ owner: string; principal: string }>;
+  /** Fetches a digital product's file from where the store keeps it (T188). Tests inject a fake. */
+  digitalFetch?: typeof fetch;
   /** Calls `mark_shipped` and `release` on the store's escrow (T164). Defaults to the store's escrow over Soroban RPC. */
   escrowReleaseWriter?: EscrowReleaseDeps["writer"];
   escrowReleaseRetryDelaysMs?: readonly number[];
@@ -136,6 +141,8 @@ export function createApp({
   disputeOrigins,
   evidence,
   principalOf,
+  railKeysOf,
+  digitalFetch,
   escrowReleaseWriter,
   escrowReleaseRetryDelaysMs,
   escrowWatchIntervalMs,
@@ -344,6 +351,7 @@ export function createApp({
     ...(shipmentWatchIntervalMs === undefined ? {} : { watchIntervalMs: shipmentWatchIntervalMs }),
     ...(escrowWatchIntervalMs === undefined ? {} : { escrowWatchIntervalMs }),
     ...(releases === undefined ? {} : { releases }),
+    ...(config.digitalProducts.size === 0 ? {} : { isDigital: (record: Parameters<typeof isDigitalOrder>[0]) => isDigitalOrder(record, config.digitalProducts) }),
   });
   app.orderEvents = orderEvents;
   const checkoutDeps = { ...deps, sessions, x402, ready, ap2Key, orderEvents };
@@ -354,7 +362,18 @@ export function createApp({
   app.sessionReconciler = reconciler;
   if (reconcilePending ?? process.env["VITRINEE_RECONCILE_PENDING"] === "1") orderEvents.attachReconciler(reconciler);
   // Where each order's payment stands in the escrow it was paid into (T161): the same read-only readers verification uses.
-  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents, escrowReader);
+  registerUcpOrders(app, UCP_REST_PREFIX, orders, baseUrlOf, disputeReader, log, disputeTimeoutMs, orderEvents, escrowReader, config.digitalProducts);
+  // A digital order is delivered by its first download, which opens the escrow's window like a parcel would (T188, Y-5).
+  const railRpc = new rpc.Server(config.stellar.rpcUrl, { allowHttp: config.stellar.rpcUrl.startsWith("http://") });
+  registerDownloads(app, {
+    orders,
+    products: config.digitalProducts,
+    railKeysOf: railKeysOf ?? ((rail) => railKeys(railRpc, rail)),
+    delivered: (orderId) => orderEvents.recordShipment(orderId, { source: "download", state: "fulfilled", platformRef: "download" }),
+    ...(digitalFetch === undefined ? {} : { fetchImpl: digitalFetch }),
+    now,
+    log,
+  });
   // The claim and the merchant's answer of a dispute in the store's escrow, kept with the order (T163, X-29).
   if (config.escrow !== undefined && storeEscrow !== undefined) {
     const writer = disputeWriter ?? storeEscrow;

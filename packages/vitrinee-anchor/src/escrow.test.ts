@@ -15,6 +15,7 @@ import {
   isSignatureRefused,
   paymentKey,
   purchaseKey,
+  railKeys,
   railPrincipal,
   sameHold,
   type EscrowPurchase,
@@ -464,5 +465,12 @@ describe("railPrincipal, the wallet a rail answers to (T185, Y-1)", () => {
       await expect(railPrincipal(server as never, RAIL)).rejects.toMatchObject({ code: "EscrowError" });
     }
     await expect(railPrincipal({ getLedgerEntries: async () => ({ entries: [] }) } as never, RAIL)).rejects.toMatchObject({ code: "EscrowError" });
+  });
+  it("reads the owner key too, for who may download what the rail paid (T188)", async () => {
+    const owner = Keypair.random();
+    const server = { getLedgerEntries: async () => instanceWith([config({ owner: xdr.ScVal.scvBytes(owner.rawPublicKey()), principal: new Address(principal).toScVal() })]) };
+    expect(await railKeys(server as never, RAIL)).toEqual({ owner: owner.publicKey(), principal });
+    const noOwner = { getLedgerEntries: async () => instanceWith([config({ principal: new Address(principal).toScVal() })]) };
+    await expect(railKeys(noOwner as never, RAIL)).rejects.toMatchObject({ code: "EscrowError" });
   });
 });

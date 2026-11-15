@@ -34,7 +34,7 @@ import {
 import type { AgentPayMandate } from "@agentpey/mandate";
 import { CLAIM_REASONS, isEvidenceCode, parseEvidenceCode, signClaim, type ClaimReason, type FileEvidence } from "@agentpey/resolve";
 import { getUcpProduct, searchUcpStore, type EscrowDisputeOpenerFactory, type EscrowReaderFactory, type ReceiptVerification } from "@vitrinee/anchor";
-import { checkReceiptSignature, stellarExpertTxUrl, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
+import { checkReceiptSignature, signDownloadLink, stellarExpertTxUrl, usdcAtomicToDecimal, type UcpProduct } from "@vitrinee/core";
 import type { Keypair } from "@stellar/stellar-sdk";
 import { z } from "zod";
 
@@ -169,6 +169,8 @@ const orderSchema = z.looseObject({
   totals: z.array(z.looseObject({ type: z.string(), amount: z.number() })).optional(),
   line_items: z.array(z.looseObject({ quantity: z.unknown().optional(), item: z.looseObject({ id: z.string().optional(), title: z.string().optional() }).optional() })).optional(),
   adjustments: z.array(z.looseObject({ type: z.string(), status: z.string().optional() })).optional(),
+  // A digital order says so here (T188); the link itself is never on this public page.
+  fulfillment: z.looseObject({ expectations: z.array(z.looseObject({ method_type: z.string() })).optional() }).optional(),
   receipt: z
     .looseObject({
       jws: z.string(),
@@ -182,6 +184,9 @@ const orderSchema = z.looseObject({
     })
     .optional(),
 });
+
+/** How long a download link the agent signs lasts (T188): enough to click it from the chat. */
+const DOWNLOAD_LINK_SECONDS = 10 * 60;
 
 function storeError(message: string, details: Record<string, unknown>): AgentPassError {
   return new AgentPassError("InvalidVenueId", message, { details });
@@ -447,6 +452,7 @@ export class Shopper {
       order_id: order.id,
       store: store.name,
       checkout_id: order.checkout_id ?? null,
+      download: this.downloadLink(store, order),
       total: { amount: order.totals?.find((line) => line.type === "total")?.amount ?? null, currency: order.currency ?? null },
       items: (order.line_items ?? []).map((line) => ({ id: line.item?.id ?? null, title: line.item?.title ?? null, quantity: line.quantity ?? null })),
       dispute: receipt?.dispute?.status ?? null,
@@ -629,6 +635,22 @@ export class Shopper {
       return { ok: false, reason: "the receipt pays another merchant than the one AgentPey's directory lists for this store" };
     }
     return { ok: true, reason: null };
+  }
+
+  /**
+   * A digital order's download (T188, `Y-5`): a link this account's agent key signs for itself, valid ten minutes.
+   * Only whoever paid can use it, and the store records the first download as the delivery, which opens the escrow's
+   * release window. Asking again mints a fresh link. `null` for an order that is not digital.
+   */
+  private downloadLink(store: Store, order: z.infer<typeof orderSchema>): { url: string; expires_at: string; note: string } | null {
+    if (!(order.fulfillment?.expectations ?? []).some((expectation) => expectation.method_type === "digital")) return null;
+    const expiresAt = Math.floor((this.deps.now ?? (() => new Date()))().getTime() / 1000) + DOWNLOAD_LINK_SECONDS;
+    const query = signDownloadLink(this.deps.agentKey, { store: new URL(store.url).host, orderId: order.id, expiresAt });
+    return {
+      url: `${store.url}/orders/${encodeURIComponent(order.id)}/download?${query.toString()}`,
+      expires_at: new Date(expiresAt * 1000).toISOString(),
+      note: "Only you can use this link, for ten minutes. Your first download counts as the delivery: from then the release window runs, and you can confirm or open a claim. Ask for the order again for a new link.",
+    };
   }
 
   private async readOrder(store: Store, orderId: string): Promise<z.infer<typeof orderSchema>> {

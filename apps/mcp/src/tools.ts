@@ -66,6 +66,8 @@ export const outputSchemas = {
     order_id: z.string(),
     store: z.string(),
     checkout_id: z.string().nullable(),
+    /** A digital order's download (T188): a link only this person can use, for ten minutes. null for a parcel. */
+    download: z.object({ url: z.string(), expires_at: z.string(), note: z.string() }).nullable(),
     total: money,
     items: z.array(z.object({ id: z.string().nullable(), title: z.string().nullable(), quantity: z.unknown() })),
     dispute: z.string().nullable(),
@@ -236,7 +238,7 @@ export function createAgentPeyMcpServer(shopper: Shopper, log?: (message: string
     {
       title: "Get an order and check its receipt",
       description:
-        "Read an order from its store and verify its receipt independently of the store: that it is this order's receipt from this store, the merchant's signature, its anchor on Stellar, and the payment on Stellar. For a store with an escrow, escrow says where the payment stands (held, shipped, released, disputed, responded, resolved or expired), read on Stellar, and its meaning says it in a sentence; tell the person in those words. When escrow_notice is set, pass it on too.",
+        "Read an order from its store and verify its receipt independently of the store: that it is this order's receipt from this store, the merchant's signature, its anchor on Stellar, and the payment on Stellar. For a store with an escrow, escrow says where the payment stands (held, shipped, released, disputed, responded, resolved or expired), read on Stellar, and its meaning says it in a sentence; tell the person in those words. When escrow_notice is set, pass it on too. For a digital product, download has the link to get it: give the person the url and its note; it is theirs alone and lasts ten minutes, so call get_order again for a fresh one.",
       inputSchema: z.object({ store: z.string().trim().min(1).max(200), order_id: z.string().trim().min(1).max(200) }),
       outputSchema: outputSchemas.get_order,
       annotations: { title: "Get an order", ...READ_ONLY },

@@ -1,5 +1,6 @@
 import { MockStoreAdapter } from "@vitrinee/adapters";
-import { STELLAR_X402_HANDLER, UCP_REST_PREFIX, verifyHttpMessageSignature, type EcPublicJwk } from "@vitrinee/core";
+import { Keypair } from "@stellar/stellar-sdk";
+import { STELLAR_X402_HANDLER, UCP_REST_PREFIX, signDownloadLink, verifyHttpMessageSignature, type EcPublicJwk } from "@vitrinee/core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createApp, type VitrineeApp } from "../app.js";
@@ -63,7 +64,12 @@ afterEach(async () => {
   }
 });
 
-async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter; retryDelaysMs?: number[]; stopped?: boolean; escrow?: ReturnType<typeof fakeEscrow> } = {}) {
+/** A store whose `gorro-andes` is a digital product (T188), paid by a rail whose owner is `RAIL_OWNER`. */
+const DIGITAL_RAIL = "CB4WVTJ4LVB6GUWSTJE4FQ2MH364Q2HW3FHXGSZF4KJ55SGEBIFGRQ6L";
+const RAIL_OWNER = Keypair.random();
+const DIGITAL_ENV = { DIGITAL_PRODUCTS: JSON.stringify({ "gorro-andes": { url: "https://cdn.shopify.com/s/files/gorro.pdf", name: "gorro.pdf", mediaType: "application/pdf" } }) };
+
+async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter; retryDelaysMs?: number[]; stopped?: boolean; escrow?: ReturnType<typeof fakeEscrow>; digital?: boolean } = {}) {
   const profiles = fakePlatformProfiles({
     [PLATFORM]: platformProfile("2026-08-25", WEBHOOK),
     [QUIET_PLATFORM]: platformProfile("2026-08-25"),
@@ -75,7 +81,13 @@ async function store(options: { orders?: OrderStore; adapter?: MockStoreAdapter;
   const orders = options.orders ?? new OrderStore();
   const app = createApp({
     platformProfiles: profiles,
-    config: options.escrow === undefined ? testConfig() : escrowConfig(),
+    config: options.escrow === undefined ? testConfig(options.digital === true ? DIGITAL_ENV : {}) : escrowConfig(options.digital === true ? DIGITAL_ENV : {}),
+    ...(options.digital === true
+      ? {
+          railKeysOf: async () => ({ owner: RAIL_OWNER.publicKey(), principal: Keypair.random().publicKey() }),
+          digitalFetch: async () => new Response(Buffer.from("%PDF-1.7 gorro"), { headers: { "content-type": "application/pdf" } }),
+        }
+      : {}),
     ...(options.escrow === undefined ? {} : { holder: options.escrow.holder, escrows: options.escrow.escrows, escrowReleaseWriter: options.escrow.releaser }),
     adapter,
     facilitator: uniqueFacilitator(),
@@ -517,3 +529,48 @@ describe("shipping events (T147)", () => {
     await expect(s.app.orderEvents.recordShipment("ord_missing", { source: "simulation" })).rejects.toMatchObject({ code: "OrderNotFound" });
   });
 });
+
+describe("a digital order, delivered by its first download (T188, Y-5)", () => {
+  it("opens the escrow's release window on the first download, once, and says it is digital without printing a link", async () => {
+    const escrow = fakeEscrow();
+    const s = await store({ escrow, digital: true });
+    const { orderId } = await s.buy();
+    await waitFor(() => s.profiles.sent[0]);
+    await s.app.anchors.idle();
+    // Paid by a rail: its owner, the buyer's agent, may download.
+    await s.orders.update(orderId, (o) => {
+      o.settlement.payer = DIGITAL_RAIL;
+    });
+
+    const view = (await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`)).body as unknown as { fulfillment: { expectations: Array<{ method_type: string }> } };
+    expect(view.fulfillment.expectations.map((e) => e.method_type)).toEqual(["digital"]);
+    expect(JSON.stringify(view)).not.toContain("sig=");
+    expect(ucpErrors(ORDER_SCHEMA, view as unknown as Record<string, unknown>, "2026-08-25")).toEqual([]);
+
+    const host = new URL(s.url).host;
+    const download = () => fetch(`${s.url}/orders/${orderId}/download?${signDownloadLink(RAIL_OWNER, { store: host, orderId, expiresAt: Math.floor(Date.now() / 1000) + 300 }).toString()}`);
+    expect((await download()).status).toBe(200);
+    const shipped = await waitFor(() => [...escrow.purchases.values()].find((p) => p.orderRef === orderId && p.status === "shipped"));
+    expect(shipped.shippedAt).not.toBeNull();
+    await waitFor(() => s.orders.get(orderId)?.escrowRelease?.status === "shipped");
+
+    // A second download hands the file over again and changes nothing: one delivery event, the same window.
+    expect((await download()).status).toBe(200);
+    await s.app.orderEvents.idle();
+    const record = s.orders.get(orderId)!;
+    expect(record.fulfillmentEvents?.filter((e) => e.source === "download")).toHaveLength(1);
+    expect(record.fulfillmentState).toBe("fulfilled");
+    expect(record.escrowRelease?.shippedTx).toBe("d".repeat(64));
+  });
+
+  it("leaves a physical order to the platform, as before", async () => {
+    const escrow = fakeEscrow();
+    const s = await store({ escrow });
+    const { orderId } = await s.buy();
+    await s.app.anchors.idle();
+    const view = (await s.call("GET", `${UCP_REST_PREFIX}/orders/${orderId}`)).body as unknown as { fulfillment: { expectations: Array<{ method_type: string }> } };
+    expect(view.fulfillment.expectations.map((e) => e.method_type)).toEqual(["shipping"]);
+    expect((await fetch(`${s.url}/orders/${orderId}/download?reader=x`)).status).toBe(404);
+  });
+});
+

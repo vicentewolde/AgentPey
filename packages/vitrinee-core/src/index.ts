@@ -7,3 +7,4 @@ export * from "./explorer.js";
 export * from "./jws.js";
 export * from "./ucp.js";
 export * from "./http-signatures.js";
+export * from "./download.js";
