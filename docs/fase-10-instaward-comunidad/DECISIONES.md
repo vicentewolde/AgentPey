@@ -116,7 +116,7 @@ archivo a la tienda, que lo acepta solo si calza con la huella. No cambian la ti
 **Alternativa descartada: que la tienda guarde la foto antes del reclamo.** Ahorraba copiar un código, pero rompía la regla
 de T184 y obligaba a firmar la subida con la wallet.
 
-### Y-11 · La descarga de un producto digital la firma quien pagó; el archivo lo trae la tienda desde donde el comercio lo guarda · `Propuesta` (15-nov, aplicada en T188; espera la revisión del usuario)
+### Y-11 · La descarga de un producto digital la firma quien pagó; el archivo lo trae la tienda desde donde el comercio lo guarda · `Vigente` (15-nov, aplicada en T188; aprobada por el usuario el 15-nov)
 
 **Contexto.** `Y-5` dice que un pedido digital recibe un enlace de descarga único y que la primera descarga marca la entrega.
 Al implementarlo apareció que la página del pedido es pública (cualquiera con el recibo la lee, y muestra el `checkout_id`),

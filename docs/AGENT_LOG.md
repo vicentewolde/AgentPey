@@ -9590,6 +9590,6 @@ Pendiente: merge de las tres ramas apiladas (cuando el usuario lo pida); copiar 
 
 ## 2026-11-15 — cc/t188-entrega-digital
 Agente: Claude Code
-Qué: T188. Productos digitales por tienda (`DIGITAL_PRODUCTS` / `COMERCIO_DIGITAL_PRODUCTS`), `GET /orders/:id/download` con enlace firmado por quien pagó (`@vitrinee/core` download links, `railKeys` en anchor), la primera descarga registra la entrega (`recordShipment` origen `download`) y abre la ventana del escrow; la página UCP dice `digital` sin enlace; `get_order` del MCP da `download`. Decisión `Y-11` propuesta.
+Qué: T188. Productos digitales por tienda (`DIGITAL_PRODUCTS` / `COMERCIO_DIGITAL_PRODUCTS`), `GET /orders/:id/download` con enlace firmado por quien pagó (`@vitrinee/core` download links, `railKeys` en anchor), la primera descarga registra la entrega (`recordShipment` origen `download`) y abre la ventana del escrow; la página UCP dice `digital` sin enlace; `get_order` del MCP da `download`. Decisión `Y-11` aprobada por el usuario (15-nov).
 Por qué: `Y-5`; Tapline vende la credencial digital del evento.
-Pendiente: que el usuario revise `Y-11`; corrida en vivo con T193; merge de la pila T186→T188 cuando el usuario lo pida.
+Pendiente: corrida en vivo con T193; merge de la pila T186→T188 cuando el usuario lo pida.
