@@ -97,7 +97,11 @@ export const SCHEMA_SQL: readonly string[] = [
 ];
 
 export async function migrate(q: Queryable): Promise<void> {
-  for (const statement of SCHEMA_SQL) await q.query(statement);
+  // `create schema if not exists` needs CREATE on the database even when the schema is there,
+  // and the `comercios` role does not have it: the setup script creates the schema as the admin.
+  const { rows } = await q.query(`select 1 from pg_namespace where nspname = $1`, [SCHEMA]);
+  const statements = rows.length > 0 ? SCHEMA_SQL.slice(1) : SCHEMA_SQL;
+  for (const statement of statements) await q.query(statement);
 }
 
 const iso = (v: unknown): string => (v instanceof Date ? v.toISOString() : new Date(String(v)).toISOString());

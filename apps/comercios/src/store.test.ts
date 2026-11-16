@@ -111,6 +111,25 @@ describe("Postgres store", () => {
     db.close();
   });
 
+  it("a role without CREATE on the database can migrate once the admin made the schema", async () => {
+    // Like production: the setup script creates the schema as the admin, then migrates as the role.
+    const pg = new PGlite();
+    try {
+      await pg.query(`create role panel nocreatedb nocreaterole`);
+      await pg.query(`revoke create on database ${(await pg.query<{ d: string }>("select current_database() d")).rows[0]!.d} from public`);
+      await pg.query(`create schema comercios`);
+      await pg.query(`grant usage, create on schema comercios to panel`);
+      await pg.query(`set role panel`);
+      await expect(pg.query(`create schema if not exists comercios`)).rejects.toThrow(/permission denied/);
+      await migrate(pg as unknown as Queryable);
+      await migrate(pg as unknown as Queryable);
+      const { rows } = await pg.query<{ owner: string }>(`select tableowner owner from pg_tables where schemaname = 'comercios' and tablename = 'products'`);
+      expect(rows).toEqual([{ owner: "panel" }]);
+    } finally {
+      await pg.close();
+    }
+  });
+
   it("unknown clicks and policies come back undefined", async () => {
     const pgs = pgStore(q);
     expect(await pgs.click("000000000000")).toBeUndefined();
