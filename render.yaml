@@ -53,9 +53,11 @@ services:
       # (https://mcp.agentpey.com/mcp). One CNAME in Vercel, `mcp`, to this service.
       - mcp.agentpey.com
       # Start-Up Chile — the AgentPey panel for Chilean stores
-      # (apps/comercios, `COMERCIOS_TARGET`). One CNAME in Vercel, `panel`, to
-      # this service. It stays at 503 until the four COMERCIOS_ variables in
-      # apps/comercios/DEPLOY.md are set in the dashboard.
+      # (apps/comercios, `COMERCIOS_TARGET`). One CNAME, `panel`, to this
+      # service — in Cloudflare, which serves agentpey.com's DNS (Vercel is
+      # only the registrar). It stays at 503 until the four COMERCIOS_
+      # variables in apps/comercios/DEPLOY.md are set in the dashboard; its
+      # data lives in the pilot's Postgres, `comercios` schema, not on disk.
       - panel.agentpey.com
     envVars:
       # pnpm@11.24.0 (pinned via packageManager in package.json) requires

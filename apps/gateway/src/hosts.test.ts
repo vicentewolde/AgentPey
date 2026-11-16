@@ -268,7 +268,7 @@ describe("AgentPey's MCP server (T128)", () => {
 
   it("the panel receives only its own variables, renamed, and none of AgentPey's keys", () => {
     const env = filterEnv(
-      { COMERCIOS_PUBLIC: "1", COMERCIOS_ANTHROPIC_API_KEY: "k", COMERCIOS_PUBLIC_STORES: "a", COMERCIOS_DB_PATH: "/d", ISSUER_SECRET_KEY: "s", DATABASE_URL: "u", MASTER_MNEMONIC: "m" },
+      { COMERCIOS_PUBLIC: "1", COMERCIOS_ANTHROPIC_API_KEY: "k", COMERCIOS_PUBLIC_STORES: "a", COMERCIOS_DATABASE_URL: "panel", ISSUER_SECRET_KEY: "s", DATABASE_URL: "agentpey", MASTER_MNEMONIC: "m" },
       COMERCIOS_TARGET.envKeys,
       { PORT: "4106" },
       COMERCIOS_TARGET.envAliases,
@@ -276,9 +276,12 @@ describe("AgentPey's MCP server (T128)", () => {
     expect(env.PUBLIC).toBe("1");
     expect(env.ANTHROPIC_API_KEY).toBe("k");
     expect(env.PUBLIC_STORES).toBe("a");
-    expect(env.DB_PATH).toBe("/d");
+    // The panel's own role, never AgentPey's admin connection.
+    expect(env.DATABASE_URL).toBe("panel");
     expect(env.ISSUER_SECRET_KEY).toBeUndefined();
-    expect(env.DATABASE_URL).toBeUndefined();
+    // Without its own, it gets none: AgentPey's never falls through.
+    expect(filterEnv({ DATABASE_URL: "agentpey" }, COMERCIOS_TARGET.envKeys, { PORT: "4106" }, COMERCIOS_TARGET.envAliases).DATABASE_URL).toBeUndefined();
+    expect(missingEnv(COMERCIOS_TARGET, { COMERCIOS_PUBLIC: "1", COMERCIOS_PUBLIC_STORES: "a", COMERCIOS_ANTHROPIC_API_KEY: "k", DATABASE_URL: "agentpey" })).toEqual(["COMERCIOS_DATABASE_URL"]);
     expect(env.MASTER_MNEMONIC).toBeUndefined();
   });
 });

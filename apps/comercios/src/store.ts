@@ -1,0 +1,222 @@
+/**
+ * What the panel server reads and writes, behind one async interface with two
+ * backends:
+ *
+ * - SQLite (`sqliteStore`), the local file the CLI fills. Used when the server
+ *   runs on this machine.
+ * - Postgres (`pgStore`), the hosted mode. Render wipes the service's files on
+ *   every deploy, so the hosted panel keeps its data in the pilot's existing
+ *   Postgres, in its own `comercios` schema, reached by a role that sees only
+ *   that schema (same pattern as Vitrinee).
+ *
+ * `importStores` copies the chosen stores from the local SQLite file to
+ * Postgres: their catalogue, listing reviews, policies, AI answers and demo
+ * events are replaced; real measurement events and clicks are never touched.
+ */
+import type { Db } from "./db.js";
+import type { MeasureEvent, Source } from "./medir.js";
+import type { Product } from "./model.js";
+
+export interface Answer {
+  engine: string;
+  question: string;
+  text: string;
+  urls: string[];
+  mentioned: boolean;
+  cited: boolean;
+  others: string[];
+  at: string;
+}
+export interface Click {
+  storeId: string;
+  productId: string;
+  url: string;
+  channel: string;
+}
+
+export interface PanelStore {
+  products(storeId: string): Promise<Product[]>;
+  analyses(storeId: string): Promise<{ productId: string; status: string; data: unknown }[]>;
+  policy(storeId: string): Promise<{ pages: string[]; status: string; data: unknown } | undefined>;
+  answers(storeId: string): Promise<Answer[]>;
+  events(storeId: string): Promise<MeasureEvent[]>;
+  saveEvent(e: MeasureEvent): Promise<void>;
+  saveClick(c: Click & { id: string }): Promise<void>;
+  click(id: string): Promise<Click | undefined>;
+}
+
+export function sqliteStore(db: Db): PanelStore {
+  return {
+    products: async (id) => db.products(id),
+    analyses: async (id) => db.analyses(id),
+    policy: async (id) => db.policy(id),
+    answers: async (id) => db.answers(id),
+    events: async (id) => db.events(id),
+    saveEvent: async (e) => db.saveEvent(e),
+    saveClick: async (c) => db.saveClick(c),
+    click: async (id) => db.click(id),
+  };
+}
+
+/** The part of `pg.Pool`, `pg.PoolClient` and PGlite this module uses. */
+export interface Queryable {
+  query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
+}
+
+export const SCHEMA = "comercios";
+
+/** Idempotent; run by the setup script as the `comercios` role, so the role owns the tables. */
+export const SCHEMA_SQL: readonly string[] = [
+  `create schema if not exists ${SCHEMA}`,
+  `create table if not exists ${SCHEMA}.products (
+     store_id text not null, id text not null, data jsonb not null,
+     primary key (store_id, id))`,
+  `create table if not exists ${SCHEMA}.analyses (
+     store_id text not null, product_id text not null, model text not null, data jsonb not null,
+     status text not null default 'propuesta', at timestamptz not null,
+     primary key (store_id, product_id))`,
+  `create table if not exists ${SCHEMA}.policies (
+     store_id text primary key, model text not null, pages jsonb not null, data jsonb not null,
+     status text not null default 'propuesta', at timestamptz not null)`,
+  `create table if not exists ${SCHEMA}.answers (
+     seq bigserial primary key, store_id text not null, engine text not null, question text not null,
+     text text not null, urls jsonb not null, mentioned boolean not null, cited boolean not null,
+     others jsonb not null, at timestamptz not null)`,
+  `create index if not exists answers_store on ${SCHEMA}.answers (store_id, at)`,
+  `create table if not exists ${SCHEMA}.events (
+     seq bigserial primary key, store_id text not null, kind text not null, source text not null,
+     at timestamptz not null, total bigint, order_id text, products jsonb not null default '[]',
+     demo boolean not null default false)`,
+  `create index if not exists events_store on ${SCHEMA}.events (store_id, at)`,
+  `create table if not exists ${SCHEMA}.clicks (
+     id text primary key, store_id text not null, product_id text not null, url text not null,
+     channel text not null, at timestamptz not null default now())`,
+  `create table if not exists ${SCHEMA}.ingest_runs (
+     seq bigserial primary key, store_id text not null, at timestamptz not null, method text not null,
+     count integer not null, notes jsonb not null)`,
+];
+
+export async function migrate(q: Queryable): Promise<void> {
+  for (const statement of SCHEMA_SQL) await q.query(statement);
+}
+
+const iso = (v: unknown): string => (v instanceof Date ? v.toISOString() : new Date(String(v)).toISOString());
+
+export function pgStore(q: Queryable): PanelStore {
+  return {
+    async products(storeId) {
+      const { rows } = await q.query(`select data from ${SCHEMA}.products where store_id = $1 order by id`, [storeId]);
+      return rows.map((r) => r.data as Product);
+    },
+    async analyses(storeId) {
+      const { rows } = await q.query(`select product_id, status, data from ${SCHEMA}.analyses where store_id = $1 order by product_id`, [storeId]);
+      return rows.map((r) => ({ productId: String(r.product_id), status: String(r.status), data: r.data }));
+    },
+    async policy(storeId) {
+      const { rows } = await q.query(`select pages, status, data from ${SCHEMA}.policies where store_id = $1`, [storeId]);
+      const r = rows[0];
+      return r === undefined ? undefined : { pages: r.pages as string[], status: String(r.status), data: r.data };
+    },
+    async answers(storeId) {
+      const { rows } = await q.query(`select * from ${SCHEMA}.answers where store_id = $1 order by at, seq`, [storeId]);
+      return rows.map((r) => ({
+        engine: String(r.engine), question: String(r.question), text: String(r.text), urls: r.urls as string[],
+        mentioned: r.mentioned === true, cited: r.cited === true, others: r.others as string[], at: iso(r.at),
+      }));
+    },
+    async events(storeId) {
+      const { rows } = await q.query(`select * from ${SCHEMA}.events where store_id = $1 order by at, seq`, [storeId]);
+      return rows.map((r) => ({
+        storeId: String(r.store_id), kind: String(r.kind) as MeasureEvent["kind"], source: String(r.source) as Source, at: iso(r.at),
+        ...(r.total === null ? {} : { total: Number(r.total) }), ...(r.order_id === null ? {} : { orderId: String(r.order_id) }),
+        productIds: r.products as string[], demo: r.demo === true,
+      }));
+    },
+    async saveEvent(e) {
+      await q.query(
+        `insert into ${SCHEMA}.events (store_id, kind, source, at, total, order_id, products, demo) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [e.storeId, e.kind, e.source, e.at, e.total ?? null, e.orderId ?? null, JSON.stringify(e.productIds ?? []), e.demo === true],
+      );
+    },
+    async saveClick(c) {
+      await q.query(`insert into ${SCHEMA}.clicks (id, store_id, product_id, url, channel) values ($1, $2, $3, $4, $5)`, [c.id, c.storeId, c.productId, c.url, c.channel]);
+    },
+    async click(id) {
+      const { rows } = await q.query(`select store_id, product_id, url, channel from ${SCHEMA}.clicks where id = $1`, [id]);
+      const r = rows[0];
+      return r === undefined ? undefined : { storeId: String(r.store_id), productId: String(r.product_id), url: String(r.url), channel: String(r.channel) };
+    },
+  };
+}
+
+type Column = "text" | "jsonb" | "timestamptz" | "bigint" | "integer" | "boolean";
+
+/**
+ * Inserts rows in batches: each batch is one query whose only parameter is a
+ * JSON array of rows, unpacked by Postgres. Row by row, a big catalogue and
+ * its demo events would be some 140,000 round trips to the hosted database.
+ */
+async function insertMany(q: Queryable, table: string, columns: Record<string, Column>, rows: readonly unknown[][], batch = 1000): Promise<void> {
+  const names = Object.keys(columns);
+  const exprs = Object.values(columns).map((type, i) => (type === "jsonb" ? `x->${i}` : type === "text" ? `x->>${i}` : `(x->>${i})::${type}`));
+  const sql = `insert into ${SCHEMA}.${table} (${names.join(", ")}) select ${exprs.join(", ")} from jsonb_array_elements($1::jsonb) x`;
+  for (let i = 0; i < rows.length; i += batch) await q.query(sql, [JSON.stringify(rows.slice(i, i + batch))]);
+}
+
+export interface ImportCount {
+  storeId: string;
+  products: number;
+  analyses: number;
+  policy: boolean;
+  answers: number;
+  demoEvents: number;
+}
+
+/**
+ * Replaces, for each store and inside one transaction per store, the data the
+ * CLI produces. `q` must be a single connection (a `PoolClient`, or PGlite),
+ * since a pool may run `begin` and `commit` on different connections.
+ *
+ * @throws Error if a store has no products in the source (nothing to publish).
+ */
+export async function importStores(q: Queryable, source: Db, storeIds: readonly string[]): Promise<ImportCount[]> {
+  const raw = source.raw;
+  const counts: ImportCount[] = [];
+  for (const storeId of storeIds) {
+    const products = raw.prepare("select id, data from products where store_id = ?").all(storeId);
+    if (products.length === 0) throw new Error(`la tienda ${storeId} no tiene productos en la base local`);
+    const analyses = raw.prepare("select product_id, model, data, status, at from analyses where store_id = ?").all(storeId);
+    const policy = raw.prepare("select model, pages, data, status, at from policies where store_id = ?").get(storeId);
+    const answers = raw.prepare("select engine, question, text, urls, mentioned, cited, others, at from answers where store_id = ? order by at").all(storeId);
+    const demo = raw.prepare("select kind, source, at, total, order_id, products from events where store_id = ? and demo = 1 order by at").all(storeId);
+    const runs = raw.prepare("select at, method, count, notes from ingest_runs where store_id = ? order by rowid").all(storeId);
+
+    await q.query("begin");
+    try {
+      for (const table of ["products", "analyses", "policies", "answers", "ingest_runs"]) {
+        await q.query(`delete from ${SCHEMA}.${table} where store_id = $1`, [storeId]);
+      }
+      await q.query(`delete from ${SCHEMA}.events where store_id = $1 and demo`, [storeId]);
+      const json = (v: unknown) => JSON.parse(String(v)) as unknown;
+      await insertMany(q, "products", { store_id: "text", id: "text", data: "jsonb" }, products.map((p) => [storeId, p.id, json(p.data)]));
+      await insertMany(q, "analyses", { store_id: "text", product_id: "text", model: "text", data: "jsonb", status: "text", at: "timestamptz" },
+        analyses.map((a) => [storeId, a.product_id, a.model, json(a.data), a.status, a.at]));
+      if (policy !== undefined) {
+        await insertMany(q, "policies", { store_id: "text", model: "text", pages: "jsonb", data: "jsonb", status: "text", at: "timestamptz" },
+          [[storeId, policy.model, json(policy.pages), json(policy.data), policy.status, policy.at]]);
+      }
+      await insertMany(q, "answers", { store_id: "text", engine: "text", question: "text", text: "text", urls: "jsonb", mentioned: "boolean", cited: "boolean", others: "jsonb", at: "timestamptz" },
+        answers.map((a) => [storeId, a.engine, a.question, a.text, json(a.urls), Number(a.mentioned) === 1, Number(a.cited) === 1, json(a.others), a.at]));
+      await insertMany(q, "events", { store_id: "text", kind: "text", source: "text", at: "timestamptz", total: "bigint", order_id: "text", products: "jsonb", demo: "boolean" },
+        demo.map((e) => [storeId, e.kind, e.source, e.at, e.total, e.order_id, json(e.products), true]));
+      await insertMany(q, "ingest_runs", { store_id: "text", at: "timestamptz", method: "text", count: "integer", notes: "jsonb" },
+        runs.map((r) => [storeId, r.at, r.method, r.count, json(r.notes)]));
+      await q.query("commit");
+    } catch (error) {
+      await q.query("rollback");
+      throw error;
+    }
+    counts.push({ storeId, products: products.length, analyses: analyses.length, policy: policy !== undefined, answers: answers.length, demoEvents: demo.length });
+  }
+  return counts;
+}

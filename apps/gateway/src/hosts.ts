@@ -244,13 +244,16 @@ export const COMERCIOS_TARGET: AppTarget = {
   envAliases: {
     PUBLIC: "COMERCIOS_PUBLIC",
     PUBLIC_STORES: "COMERCIOS_PUBLIC_STORES",
-    DB_PATH: "COMERCIOS_DB_PATH",
+    // The panel's own Postgres role, limited to the `comercios` schema
+    // (apps/comercios/scripts/setup-postgres.ts). Never AgentPey's DATABASE_URL:
+    // the container's is not in envKeys, and this alias takes the name.
+    DATABASE_URL: "COMERCIOS_DATABASE_URL",
     ANTHROPIC_API_KEY: "COMERCIOS_ANTHROPIC_API_KEY",
     SELLER_LIMIT_PER_HOUR: "COMERCIOS_SELLER_LIMIT_PER_HOUR",
   },
   // Without these the panel would start in its local mode and show every store
   // it has data for. Better that its host answers 503.
-  requiredEnv: ["COMERCIOS_PUBLIC", "COMERCIOS_PUBLIC_STORES", "COMERCIOS_DB_PATH", "COMERCIOS_ANTHROPIC_API_KEY"],
+  requiredEnv: ["COMERCIOS_PUBLIC", "COMERCIOS_PUBLIC_STORES", "COMERCIOS_DATABASE_URL", "COMERCIOS_ANTHROPIC_API_KEY"],
   critical: false,
 };
 
