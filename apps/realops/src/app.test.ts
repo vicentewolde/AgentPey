@@ -60,8 +60,10 @@ describe("the public pages", () => {
     }
   });
 
-  it("links to SignalDesk, so a visitor can check both services exist", async () => {
-    expect(await (await fetch(baseUrl)).text()).toContain("https://signaldesk.example");
+  it("names SignalDesk without linking it: it has no public address since 17-nov-2026", async () => {
+    const html = await (await fetch(baseUrl)).text();
+    expect(html).toContain("SignalDesk");
+    expect(html).not.toContain("https://signaldesk.");
   });
 
   it("says the signature happens on AgentPey's domain, not here", async () => {
