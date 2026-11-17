@@ -79,7 +79,7 @@ export function panel(d: PanelData): string {
   const header = `
 <section class="ap-stack">
   <div class="ap-row"><span class="ap-eyebrow">AgentPey · panel del comercio</span>
-    ${s.source === "piloto" ? `<span class="tag ok">Piloto</span>` : `<span class="tag warn">Diagnóstico con datos públicos</span>`}</div>
+    ${s.source === "piloto" ? `<span class="tag ok">Piloto</span>` : s.source === "propia" ? `<span class="tag ok">Tienda propia</span>` : `<span class="tag warn">Diagnóstico con datos públicos</span>`}</div>
   <h1>${esc(s.name)}</h1>
   <p class="ap-muted">${esc(s.rubro)} · ${esc(s.platform)} · <a href="${esc(s.origin)}">${esc(s.origin.replace(/^https?:\/\//, ""))}</a> · ${d.products.length.toLocaleString("es-CL")} productos leídos</p>
 </section>`;
@@ -163,7 +163,7 @@ export function panel(d: PanelData): string {
   const agentes = `
 <section class="ap-card ap-stack">
   <div class="ap-eyebrow">6 · Vender por agentes · prototipo</div><h2>Tu catálogo, disponible para agentes de compra</h2>
-  ${s.source === "piloto" ? `<p>Un agente (Claude, ChatGPT u otro con MCP) se conecta a <code>${esc(d.mcpUrl)}</code>, busca en tu catálogo y le entrega al comprador un enlace que pasa por AgentPey: la visita y la compra quedan atribuidas a este canal.</p>` : `<p class="ap-muted">Disponible para tiendas del piloto.</p>`}
+  ${s.source === "piloto" || s.source === "propia" ? `<p>Un agente (Claude, ChatGPT u otro con MCP) se conecta a <code>${esc(d.mcpUrl)}</code>, busca en tu catálogo y le entrega al comprador un enlace que pasa por AgentPey: la visita y la compra quedan atribuidas a este canal.</p>` : `<p class="ap-muted">Disponible para tiendas del piloto.</p>`}
   <p><a class="ap-btn" href="/tienda/${esc(s.id)}/vendedor">Probar el vendedor con IA de ${esc(s.name)}</a></p>
 </section>`;
 
@@ -206,9 +206,9 @@ f.addEventListener("submit", async (e) => {
 export function indexPage(rows: readonly { store: Store; products: number; score: number; appear: string }[]): string {
   const body = `
 <section class="ap-stack"><span class="ap-eyebrow">AgentPey · comercios</span><h1>Tiendas en la demo</h1>
-<p class="ap-muted">Piloto: aceptaron participar. Diagnóstico: tiendas de Black Friday 2026, solo con datos públicos.</p></section>
+<p class="ap-muted">Piloto: aceptaron participar. Propia: tienda de AgentPey, para probar todo de punta a punta. Diagnóstico: tiendas de Black Friday 2026, solo con datos públicos.</p></section>
 <section class="ap-card"><table><thead><tr><th>Tienda</th><th>Tipo</th><th>Productos</th><th>Catálogo listo</th><th>Aparece en IAs</th></tr></thead><tbody>
-${rows.map((r) => `<tr><td><a href="/tienda/${esc(r.store.id)}">${esc(r.store.name)}</a></td><td>${r.store.source === "piloto" ? "Piloto" : "Diagnóstico"}</td><td>${r.products.toLocaleString("es-CL")}</td><td>${r.score}/100</td><td>${esc(r.appear)}</td></tr>`).join("")}
+${rows.map((r) => `<tr><td><a href="/tienda/${esc(r.store.id)}">${esc(r.store.name)}</a></td><td>${r.store.source === "piloto" ? "Piloto" : r.store.source === "propia" ? "Propia" : "Diagnóstico"}</td><td>${r.products.toLocaleString("es-CL")}</td><td>${r.score}/100</td><td>${esc(r.appear)}</td></tr>`).join("")}
 </tbody></table></section>`;
   return page("Comercios · AgentPey", body);
 }

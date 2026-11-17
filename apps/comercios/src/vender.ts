@@ -74,8 +74,38 @@ export function scoreProducts(products: readonly Product[], question: string): {
   return scored.filter((x) => x.score >= best * 0.4);
 }
 
+/** Up to this many products, the seller sees the whole catalogue: keywords miss "¿qué llevo si hace calor?". */
+export const SMALL_CATALOG = 40;
+
+/**
+ * Candidates for the seller. A small catalogue goes whole (best keyword matches
+ * first) and the model chooses; a big one goes through `scoreProducts`, and if
+ * a conversational question matches nothing that strictly, through the products
+ * that match any of its words.
+ */
 export function searchProducts(products: readonly Product[], question: string, k = 8): Product[] {
-  return scoreProducts(products, question).slice(0, k).map((x) => x.p);
+  const ceiling = priceCeiling(question);
+  const affordable = products.filter((p) => ceiling === undefined || p.price === undefined || p.price <= ceiling);
+  const strict = scoreProducts(products, question).map((x) => x.p);
+  if (affordable.length <= SMALL_CATALOG) {
+    const first = new Set(strict.map((p) => p.id));
+    return [...strict, ...affordable.filter((p) => !first.has(p.id) && p.available !== false)].slice(0, Math.max(k, SMALL_CATALOG));
+  }
+  if (strict.length > 0) return strict.slice(0, k);
+  return loose(affordable, question).slice(0, k);
+}
+
+/** Products matching any word of the question, most matches first. */
+function loose(products: readonly Product[], question: string): Product[] {
+  const qs = terms(question);
+  return products
+    .map((p) => {
+      const text = fold(`${p.title} ${p.category ?? ""} ${p.description.slice(0, 2000)}`);
+      return { p, n: qs.filter((t) => hit(text, t)).length * (p.available === false ? 0.3 : 1) };
+    })
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .map((x) => x.p);
 }
 
 export const ReplySchema = z.object({
