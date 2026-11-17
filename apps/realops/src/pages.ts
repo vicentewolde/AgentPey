@@ -183,8 +183,8 @@ const STYLE = `
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 `;
 
-/** Where the other two apps of the pilot live, for the top bar. */
-const PILOT_LINKS = { agentpey: "https://agentpey.com/stellar", signalDesk: "https://signaldesk.agentpey.com" } as const;
+/** Where AgentPey lives, for the top bar. SignalDesk has no public address since 17-nov-2026. */
+const PILOT_LINKS = { agentpey: "https://agentpey.com/stellar" } as const;
 
 const ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g fill="none" stroke="#171A1F" stroke-width="60">' +
@@ -315,7 +315,7 @@ ${FAVICON}
     <a class="mark" href="/">${LOGO}<span>RealOps</span><span class="tagline">${trHtml("Agent platform", "Plataforma de agentes")}</span></a>
     <nav class="nav">${nav}</nav>
     <div class="utils">
-      <nav class="apps" aria-label="Pilot apps"><a href="${PILOT_LINKS.agentpey}">AgentPey</a><a href="${PILOT_LINKS.signalDesk}">SignalDesk</a></nav>
+      <nav class="apps" aria-label="Pilot apps"><a href="${PILOT_LINKS.agentpey}">AgentPey</a></nav>
       ${LANG_BUTTONS}
       ${GITHUB_LINK}
     </div>
@@ -329,7 +329,7 @@ ${FAVICON}
       "<strong>RealOps does not authorize payments.</strong> It asks, and AgentPey decides. Your Mandate is always signed on AgentPey's domain, never here.",
       "<strong>RealOps no autoriza pagos.</strong> Pide, y AgentPey decide. Tu Mandato se firma siempre en el dominio de AgentPey, nunca aquí.",
     )}</p>
-    <nav aria-label="Pilot"><a href="${PILOT_LINKS.agentpey}">AgentPey</a><a href="${PILOT_LINKS.signalDesk}">SignalDesk</a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <nav aria-label="Pilot"><a href="${PILOT_LINKS.agentpey}">AgentPey</a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
   </footer>
 </main>
 <script>${LANG_SWITCH}</script>
@@ -338,8 +338,9 @@ ${FAVICON}
 `;
 }
 
-export function homePage(signalDeskUrl: string): string {
-  const signalDesk = `<a href="${escape(signalDeskUrl)}">SignalDesk</a>`;
+export function homePage(_signalDeskUrl: string): string {
+  // SignalDesk has no public address since 17-nov-2026, so it is named, not linked.
+  const signalDesk = "SignalDesk";
   return layout({
     title: bilingual("Home", "Inicio"),
     body: `
@@ -374,8 +375,8 @@ export function homePage(signalDeskUrl: string): string {
     <div class="card">
       <h2>${tr(bilingual("The pilot's merchant", "El comercio del piloto"))}</h2>
       <p>${trHtml(
-        `Agents buy from ${signalDesk}, an x402 merchant that runs separately and can be opened on its own. It is linked here precisely so you can check that the two services are different.`,
-        `Los agentes compran en ${signalDesk}, un comercio x402 que funciona aparte y se puede abrir por separado. Está enlazado aquí justamente para que compruebes que los dos servicios son distintos.`,
+        `Agents buy from ${signalDesk}, an x402 merchant that runs separately from RealOps.`,
+        `Los agentes compran en ${signalDesk}, un comercio x402 que funciona aparte de RealOps.`,
       )}</p>
       <p class="meta">${tr(
         bilingual(
