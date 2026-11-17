@@ -52,7 +52,8 @@ const text = (s: string, isError = false) => ({ content: [{ type: "text", text: 
 
 /** One JSON-RPC message in, one answer out (undefined for notifications). */
 export function handleMcp(deps: AgentDeps, msg: JsonRpc): unknown {
-  const pilots = deps.stores.filter((s) => s.source === "piloto");
+  // Stores whose data may be shown: pilots that said yes, and Vicente's own store.
+  const pilots = deps.stores.filter((s) => s.source === "piloto" || s.source === "propia");
   switch (msg.method) {
     case "initialize":
       return ok(msg.id, {

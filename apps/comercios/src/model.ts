@@ -5,7 +5,8 @@
 export type Platform = "shopify" | "woocommerce" | "vtex" | "jumpseller" | "prestashop" | "propia";
 
 /** How a store came into the demo. Only "piloto" stores said yes; the rest are public-data diagnostics. */
-export type StoreOrigin = "piloto" | "black-friday";
+/** "propia": a store Vicente runs himself (Tapline), so its data needs no one else's OK. */
+export type StoreOrigin = "piloto" | "black-friday" | "propia";
 
 export interface Store {
   readonly id: string;

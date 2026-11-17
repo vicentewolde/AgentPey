@@ -3,7 +3,7 @@
  * the chosen stores into it from the local SQLite file. Run by the user: it
  * prints a secret (the role's connection string) for Render.
  *
- *   npx tsx scripts/setup-postgres.ts --env <path/.env.local> [--check] <tienda> [<tienda> ...]
+ *   npx tsx scripts/setup-postgres.ts --env <path/.env.local> [--check | --solo-importar] <tienda> [<tienda> ...]
  *
  * In order, stopping at the first problem:
  *
@@ -21,7 +21,11 @@
  * `--check` changes nothing and prints no secret: it checks the admin
  * connection, and that every store has data in the local file.
  *
- * Re-running rotates the role's password: load the new value into Render.
+ * `--solo-importar` only does step 4, for stores added later: it keeps the
+ * role's password (nothing to change in Render) and prints no secret. The
+ * admin acts as the role (`set role`), so the role still owns every row.
+ *
+ * Re-running without it rotates the role's password: load the new value into Render.
  * The admin connection is `DATABASE_URL` in the file given with `--env`
  * (the main checkout's `.env.local`). Never printed.
  */
@@ -44,6 +48,7 @@ const die = (message: string): never => {
 
 const args = process.argv.slice(2);
 const check = args.includes("--check");
+const importOnly = args.includes("--solo-importar");
 const envIndex = args.indexOf("--env");
 const envPath = envIndex === -1 ? undefined : args[envIndex + 1];
 const stores = args.filter((a, i) => !a.startsWith("--") && i !== envIndex + 1);
@@ -103,7 +108,7 @@ async function reachableOutsideSchema(admin: pg.Pool): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
-  out(check ? "setup-postgres --check (no cambia nada, no imprime secretos)" : "setup-postgres");
+  out(check ? "setup-postgres --check (no cambia nada, no imprime secretos)" : importOnly ? "setup-postgres --solo-importar (no cambia la contraseña, no imprime secretos)" : "setup-postgres");
   out();
 
   const adminUrl = parseEnv(readFileSync(envPath!, "utf8")).DATABASE_URL;
@@ -130,6 +135,29 @@ async function main(): Promise<void> {
       }
       out();
       out("Revisión lista. Corre sin --check para aplicar (imprime un secreto para Render).");
+      return;
+    }
+
+    if (importOnly) {
+      if (!exists) die(`el rol ${ROLE} no existe: corre primero sin --solo-importar`);
+      const reachable = await reachableOutsideSchema(admin);
+      if (reachable.length > 0) die(`el rol alcanza tablas fuera de su esquema: ${reachable.join(", ")}`);
+      out("✓ el rol no alcanza ninguna tabla fuera de su esquema");
+      // The admin created the role, so it holds ADMIN OPTION and may let itself act as it.
+      await admin.query(`grant ${ROLE} to current_user with inherit false, set true`);
+      const client = await admin.connect();
+      try {
+        await client.query(`set role ${ROLE}`);
+        await migrate(client);
+        for (const c of await importStores(client, source, stores)) {
+          out(`✓ ${c.storeId}: ${c.products} productos, ${c.analyses} revisiones, política ${c.policy ? "sí" : "no"}, ${c.answers} respuestas de IA, ${c.demoEvents} eventos de demostración`);
+        }
+        await client.query("reset role");
+      } finally {
+        client.release();
+      }
+      out();
+      out("Listo. La contraseña del rol no cambió: no hay nada que actualizar en Render.");
       return;
     }
 
