@@ -205,6 +205,7 @@ f.addEventListener("submit", async (e) => {
 
 export function indexPage(rows: readonly { store: Store; products: number; score: number; appear: string }[]): string {
   const body = `
+<section class="ap-card ap-stack"><h2>¿La IA recomienda tu tienda?</h2><p class="ap-muted">Diagnóstico gratis en 2 minutos: escribe tu tienda y mira si te nombran cuando un cliente pregunta dónde comprar.</p><p><a class="ap-btn" href="/diagnostico">Hacer mi diagnóstico</a></p></section>
 <section class="ap-stack"><span class="ap-eyebrow">AgentPey · comercios</span><h1>Tiendas en la demo</h1>
 <p class="ap-muted">Piloto: aceptaron participar. Propia: tienda de AgentPey, para probar todo de punta a punta. Diagnóstico: tiendas de Black Friday 2026, solo con datos públicos.</p></section>
 <section class="ap-card"><table><thead><tr><th>Tienda</th><th>Tipo</th><th>Productos</th><th>Catálogo listo</th><th>Aparece en IAs</th></tr></thead><tbody>

@@ -250,6 +250,12 @@ export const COMERCIOS_TARGET: AppTarget = {
     DATABASE_URL: "COMERCIOS_DATABASE_URL",
     ANTHROPIC_API_KEY: "COMERCIOS_ANTHROPIC_API_KEY",
     SELLER_LIMIT_PER_HOUR: "COMERCIOS_SELLER_LIMIT_PER_HOUR",
+    // The public quick diagnosis: optional keys for ChatGPT and Gemini (Claude
+    // always runs) and its daily caps, all spent on AgentPey's accounts.
+    OPENAI_API_KEY: "COMERCIOS_OPENAI_API_KEY",
+    GEMINI_API_KEY: "COMERCIOS_GEMINI_API_KEY",
+    DIAG_PER_DAY: "COMERCIOS_DIAG_PER_DAY",
+    DIAG_PER_IP_PER_DAY: "COMERCIOS_DIAG_PER_IP_PER_DAY",
   },
   // Without these the panel would start in its local mode and show every store
   // it has data for. Better that its host answers 503.

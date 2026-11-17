@@ -16,6 +16,7 @@
 import type { Db } from "./db.js";
 import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
+import type { QuickResult } from "./rapido.js";
 
 export interface Answer {
   engine: string;
@@ -43,10 +44,20 @@ export interface PanelStore {
   saveEvent(e: MeasureEvent): Promise<void>;
   saveClick(c: Click & { id: string }): Promise<void>;
   click(id: string): Promise<Click | undefined>;
+  /** The public quick diagnosis ("pon tu URL"), with the email the owner left, if any. */
+  saveQuick(r: QuickResult, email: string | undefined): Promise<void>;
+  quick(id: string): Promise<QuickResult | undefined>;
+  /** The latest quick diagnosis of a domain since a time, so a repeat does not spend again. */
+  recentQuick(domain: string, since: string): Promise<QuickResult | undefined>;
 }
 
+/** Locally the quick diagnoses live in memory: the SQLite file is the CLI's, and they are only a demo there. */
 export function sqliteStore(db: Db): PanelStore {
+  const quick = new Map<string, QuickResult>();
   return {
+    saveQuick: async (r) => void quick.set(r.id, r),
+    quick: async (id) => quick.get(id),
+    recentQuick: async (domain, since) => [...quick.values()].filter((r) => r.domain === domain && r.at >= since).at(-1),
     products: async (id) => db.products(id),
     analyses: async (id) => db.analyses(id),
     policy: async (id) => db.policy(id),
@@ -91,6 +102,9 @@ export const SCHEMA_SQL: readonly string[] = [
   `create table if not exists ${SCHEMA}.clicks (
      id text primary key, store_id text not null, product_id text not null, url text not null,
      channel text not null, at timestamptz not null default now())`,
+  `create table if not exists ${SCHEMA}.diagnosticos (
+     id text primary key, domain text not null, email text, data jsonb not null, at timestamptz not null)`,
+  `create index if not exists diagnosticos_domain on ${SCHEMA}.diagnosticos (domain, at)`,
   `create table if not exists ${SCHEMA}.ingest_runs (
      seq bigserial primary key, store_id text not null, at timestamptz not null, method text not null,
      count integer not null, notes jsonb not null)`,
@@ -144,6 +158,17 @@ export function pgStore(q: Queryable): PanelStore {
     },
     async saveClick(c) {
       await q.query(`insert into ${SCHEMA}.clicks (id, store_id, product_id, url, channel) values ($1, $2, $3, $4, $5)`, [c.id, c.storeId, c.productId, c.url, c.channel]);
+    },
+    async saveQuick(r, email) {
+      await q.query(`insert into ${SCHEMA}.diagnosticos (id, domain, email, data, at) values ($1, $2, $3, $4, $5)`, [r.id, r.domain, email ?? null, JSON.stringify(r), r.at]);
+    },
+    async quick(id) {
+      const { rows } = await q.query(`select data from ${SCHEMA}.diagnosticos where id = $1`, [id]);
+      return rows[0]?.data as QuickResult | undefined;
+    },
+    async recentQuick(domain, since) {
+      const { rows } = await q.query(`select data from ${SCHEMA}.diagnosticos where domain = $1 and at >= $2 order by at desc limit 1`, [domain, since]);
+      return rows[0]?.data as QuickResult | undefined;
     },
     async click(id) {
       const { rows } = await q.query(`select store_id, product_id, url, channel from ${SCHEMA}.clicks where id = $1`, [id]);
