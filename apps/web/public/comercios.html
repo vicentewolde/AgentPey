@@ -41,7 +41,9 @@
   .story-live .story-stage { position: sticky; top: 0; height: 100vh; height: 100svh; align-content: center; padding-block: 12px; }
   .story-live .chat { height: min(calc(100svh - 104px), 800px); }
   .story-live .chat-body { flex: 1; min-height: 0; overflow: hidden; }
-  .story-live .cap { display: block; margin: 0; min-height: 1.5em; text-align: center; font-family: var(--ap-display); font-weight: 600; font-size: clamp(1.05rem, 2.4vw, 1.35rem); letter-spacing: -0.01em; }
+  /* the narration sits above the chat, as a bright note, so it is read while the chat plays */
+  .story-live .cap { display: block; margin: 0; max-width: min(760px, 100%); padding: 10px 18px; border-radius: 14px; background: var(--ap-accent); color: #fff; text-align: center; font-family: var(--ap-display); font-weight: 600; font-size: clamp(1rem, 2.4vw, 1.3rem); line-height: 1.3; letter-spacing: -0.01em; box-shadow: 0 8px 28px rgba(23, 107, 255, .35); }
+  .story-live .cap:empty { display: none; }
   .story-live [data-at] { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s cubic-bezier(.2, .7, .2, 1); }
   .story-live [data-at].on { opacity: 1; transform: none; }
   .thinking.done .dots { display: none; }
@@ -167,6 +169,7 @@
   .ap a.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 12px; padding: 9px max(16px, env(safe-area-inset-right, 0px)) 9px max(16px, env(safe-area-inset-left, 0px)); background: #fff; color: #000; font-size: .875rem; text-align: center; text-decoration: none; }
   .topbar .tb-tag { padding: 2px 8px; border-radius: 6px; background: #000; color: #fff; font-family: var(--ap-display); font-weight: 700; font-size: .75rem; letter-spacing: .08em; box-shadow: 2px 2px 0 #e5384d; }
   .topbar .tb-go { font-weight: 600; }
+  .topbar .tb-short { display: none; font-weight: 600; }
   .topbar .ap-grad { background: linear-gradient(90deg, #176bff, #0f9e8c); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
   /* ribbon of the AIs at the foot of the hero: one monochrome style for every logo */
@@ -226,6 +229,11 @@
   }
   /* phones: the two stores stay side by side; the avatar steps aside and the type gets smaller */
   @media (max-width: 600px) {
+    .story-live .chat { height: min(calc(100svh - 150px), 800px); }
+    .story-live .cap { padding: 8px 14px; font-size: .95rem; }
+    .ap a.topbar { flex-wrap: nowrap; gap: 8px; padding-block: 6px; font-size: .8125rem; }
+    .topbar .tb-long, .topbar .tb-go { display: none; }
+    .topbar .tb-short { display: inline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pair-msg > .avatar { display: none; }
     .pair { gap: 0 8px; }
     .shop { border-radius: 14px; }
@@ -245,7 +253,7 @@
 </style>
 </head>
 <body class="ap">
-<a class="topbar" href="#demo"><span class="tb-tag">BLACK FRIDAY</span><span>27 – 30 nov: medimos gratis cuántas veces las <span class="ap-grad">IAs</span> te consultan.</span><span class="tb-go">Pide tu demo →</span></a>
+<a class="topbar" href="#demo"><span class="tb-tag">BLACK FRIDAY</span><span class="tb-long">27 – 30 nov: medimos gratis cuántas veces las <span class="ap-grad">IAs</span> te consultan.</span><span class="tb-short">27–30 nov · medición gratis →</span><span class="tb-go">Pide tu demo →</span></a>
 <header class="hero">
   <div class="ap-header"><div class="ap-wrap">
     <a class="ap-brand" href="/">
@@ -276,6 +284,7 @@
   <!-- 2. The conversation plays as you scroll: two stores, the same notebook, and the AI picks one -->
   <section class="story" id="story" aria-label="Ejemplo de conversación con un asistente de IA">
     <div class="story-stage">
+      <p class="cap" id="cap" aria-hidden="true"></p>
       <div class="chat" id="chat">
         <div class="chat-top"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z" fill="currentColor"/></svg></span>Asistente de IA</div>
         <div class="chat-body" id="chat-body"><div class="track" id="track">
@@ -316,7 +325,6 @@
         </div></div>
         <div class="composer" aria-hidden="true"><span>Escribe un mensaje…</span><span class="send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
       </div>
-      <p class="cap" id="cap" aria-hidden="true"></p>
     </div>
   </section>
 
@@ -439,7 +447,7 @@
   var q = document.getElementById("question");
   var thinking = track.querySelector(".thinking");
   var full = q.textContent;
-  var captions = ["", "", "A tiene fotos profesionales y es más barata. B es más simple y más cara, pero lo explica todo.", "La IA no mira fotos. Lee datos. Y elige a la tienda que le responde."];
+  var captions = ["", "Un cliente le pregunta a la IA dónde comprar. Mira qué pasa.", "A tiene fotos profesionales y es más barata. B es más simple y más cara, pero lo explica todo.", "La IA no mira fotos. Lee datos. Y elige a la tienda que le responde."];
   if (!reduce && "IntersectionObserver" in window) {
     document.documentElement.classList.add("story-live");
     var msgs = Array.prototype.slice.call(track.querySelectorAll("[data-at]"));
