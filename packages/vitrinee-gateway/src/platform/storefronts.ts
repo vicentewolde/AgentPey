@@ -18,6 +18,7 @@ import { createAdapter } from "../adapters.js";
 import { createApp, type AppDeps, type VitrineeApp } from "../app.js";
 import type { GatewayConfig } from "../config.js";
 import { verifyStoreEscrow } from "../escrow.js";
+import type { EvidenceStore } from "../evidence-store.js";
 import { OrderStore, type OrderPersistence } from "../orders.js";
 import type { CheckoutSessionPersistence } from "../ucp/sessions.js";
 import { openComercioSecrets, type Comercio, type ComercioStore } from "./comercios.js";
@@ -34,6 +35,8 @@ export interface StorefrontPoolOptions {
   ordersFor: (comercio: Comercio) => OrderPersistence;
   /** Where each store keeps its UCP checkout sessions (T122). Memory when absent. */
   sessionsFor?: (comercio: Comercio) => CheckoutSessionPersistence;
+  /** Where each store keeps its disputes' files (T184). Memory when absent. */
+  evidenceFor?: (comercio: Comercio) => EvidenceStore;
   /** Tests inject a fake facilitator, registry and Horizon per store. */
   appDeps?: (comercio: Comercio, config: GatewayConfig) => Partial<Omit<AppDeps, "config" | "adapter" | "orders">>;
   createAdapter?: (config: GatewayConfig) => StoreAdapter;
@@ -109,6 +112,7 @@ export class StorefrontPool {
       adapter,
       orders,
       ...(this.options.sessionsFor === undefined ? {} : { sessions: this.options.sessionsFor(comercio) }),
+      ...(this.options.evidenceFor === undefined ? {} : { evidence: this.options.evidenceFor(comercio) }),
       log: (message, fields) => this.log(message, { comercio: comercio.slug, ...fields }),
       ...this.options.appDeps?.(comercio, config),
     });

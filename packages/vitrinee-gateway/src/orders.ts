@@ -88,6 +88,8 @@ export interface OrderDisputeDocuments {
    * `respond` transaction (`null` when the document arrived after the answer landed, without it).
    */
   response?: { document: Record<string, unknown>; hash: string; transaction: string | null };
+  /** The sha256 of each file of the claim the store keeps (T184); the bytes live in the evidence store. */
+  evidenceKept?: string[];
 }
 
 /**
@@ -352,6 +354,7 @@ export const orderRecordSchema = z.preprocess(upgradeLegacyOrder, z.object({
     .object({
       claimJws: z.string().min(1).optional(),
       response: z.object({ document: z.record(z.string(), z.unknown()), hash: z.string().regex(/^[0-9a-f]{64}$/), transaction: z.string().regex(/^[0-9a-f]{64}$/).nullable() }).optional(),
+      evidenceKept: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(5).optional(),
     })
     .optional(),
 }));

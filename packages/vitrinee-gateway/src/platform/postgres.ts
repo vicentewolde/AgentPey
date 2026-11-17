@@ -9,6 +9,7 @@
 import { VitrineeError } from "@vitrinee/core";
 import pg from "pg";
 
+import type { EvidenceFile, EvidenceStore } from "../evidence-store.js";
 import { orderRecordSchema, type OrderPersistence, type OrderRecord } from "../orders.js";
 import { checkoutSessionSchema, sessionFromRecord, type CheckoutSession, type CheckoutSessionPersistence } from "../ucp/sessions.js";
 import { comercioSchema, type Comercio, type ComercioStore } from "./comercios.js";
@@ -52,6 +53,16 @@ export const VITRINEE_SCHEMA_SQL: readonly string[] = [
      updated_at  timestamptz not null default now()
    )`,
   `create index if not exists checkout_sessions_comercio_idx on vitrinee.checkout_sessions (comercio_id, expires_at)`,
+  // The files a dispute's claim names by hash (T184, Y-3): apart from the order record, which stays small.
+  `create table if not exists vitrinee.dispute_evidence (
+     comercio_id text        not null references vitrinee.comercios(id),
+     order_id    text        not null,
+     sha256      text        not null,
+     media_type  text        not null,
+     bytes       bytea       not null,
+     created_at  timestamptz not null default now(),
+     primary key (comercio_id, order_id, sha256)
+   )`,
 ];
 
 export function createVitrineePool(connectionString: string): pg.Pool {
@@ -209,6 +220,36 @@ export class PostgresOrderPersistence implements OrderPersistence {
     } catch (error) {
       if (error instanceof VitrineeError) throw error;
       throw storageError("could not save the order", error);
+    }
+  }
+}
+
+/** One comercio's dispute files. Every statement carries the comercio id, like its orders. */
+export class PostgresEvidenceStore implements EvidenceStore {
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly comercioId: string,
+  ) {}
+
+  async get(orderId: string, sha256: string): Promise<EvidenceFile | undefined> {
+    let rows: { media_type: string; bytes: Buffer }[];
+    try {
+      rows = (await this.pool.query(`select media_type, bytes from vitrinee.dispute_evidence where comercio_id = $1 and order_id = $2 and sha256 = $3`, [this.comercioId, orderId, sha256])).rows;
+    } catch (error) {
+      throw storageError("could not read the evidence file", error);
+    }
+    return rows[0] === undefined ? undefined : { mediaType: rows[0].media_type, bytes: rows[0].bytes };
+  }
+
+  async put(orderId: string, sha256: string, file: EvidenceFile): Promise<void> {
+    try {
+      await this.pool.query(
+        `insert into vitrinee.dispute_evidence (comercio_id, order_id, sha256, media_type, bytes) values ($1, $2, $3, $4, $5)
+         on conflict (comercio_id, order_id, sha256) do nothing`,
+        [this.comercioId, orderId, sha256, file.mediaType, file.bytes],
+      );
+    } catch (error) {
+      throw storageError("could not save the evidence file", error);
     }
   }
 }

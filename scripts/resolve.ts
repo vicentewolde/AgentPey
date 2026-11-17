@@ -2,7 +2,8 @@
  * AgentResolve from the command line — T124 (`E-14` to `E-19`).
  *
  *   pnpm run resolve:deposit -- --merchant <G...> --amount 3.00
- *   pnpm run resolve:open    -- --receipt .vitrinee/last-ucp-receipt.jws --reason not_delivered --description "…" [--evidence "…"]… [--amount 1.00]
+ *   pnpm run resolve:open    -- --receipt .vitrinee/last-ucp-receipt.jws --reason not_delivered --description "…" [--evidence "…"]… [--evidence-file <photo|pdf>]… [--amount 1.00] [--order <store host>/orders/<id>]
+ *   pnpm run resolve:evidence -- --order <store host>/orders/<id> --claim <claim.jws> --file <photo|pdf>…
  *   pnpm run resolve:decide  -- --receipt <hash> [--response <response.json>]
  *   pnpm run resolve:decide  -- --order <store host>/orders/<order id>
  *   pnpm run resolve:check-response -- --receipt <hash> --response <response.json>
@@ -46,10 +47,16 @@ import { randomUUID } from "node:crypto";
 
 import { AgentPassError, didToStellarAddress, isAgentPassError, stellarAddressToDid } from "@agentpass/core";
 import { toScaledAmount, fromScaledAmount } from "@agentpey/agent";
-import type { AgentResolveVerdict, ClaimReason, ResponseContext, VerifiedResponse } from "@agentpey/resolve";
+import type { AgentResolveVerdict, ClaimReason, EvidenceFileCheck, FileEvidence, ResponseContext, VerifiedResponse } from "@agentpey/resolve";
 import {
   CLAIM_REASONS,
+  EVIDENCE_READ_MAX_SECONDS,
   agentResolveResponseSchema,
+  claimFiles,
+  evidenceExtension,
+  evidenceFileHash,
+  fileEvidenceFor,
+  signEvidenceRead,
   agentResolveVerdictSchema,
   assertMayDecide,
   checkClaim,
@@ -86,7 +93,7 @@ import {
   type DisputeView,
 } from "./lib/dispute-venue.js";
 import { withRetry } from "./lib/network-retry.js";
-import { readOrderDispute, type OrderDisputeDocuments } from "./lib/order-dispute.js";
+import { readEvidenceFromStore, readOrderDispute, sendClaimToStore, sendEvidenceToStore, type OrderDisputeDocuments } from "./lib/order-dispute.js";
 import { orderRefHex } from "./lib/purchase-escrow.js";
 import { readEnvFile } from "./lib/env-file.js";
 import { TESTNET } from "./lib/network.js";
@@ -111,6 +118,8 @@ const { values } = parseArgs({
     reason: { type: "string" },
     description: { type: "string" },
     evidence: { type: "string", multiple: true },
+    "evidence-file": { type: "string", multiple: true },
+    file: { type: "string", multiple: true },
     confirm: { type: "string" },
     response: { type: "string" },
     order: { type: "string" },
@@ -339,6 +348,7 @@ async function open(): Promise<void> {
     section("[comprador] firma el reclamo");
     verified = await verifiedReceipt(receiptJws);
     const amountAtomic = values.amount === undefined ? verified.receipt.amountUSDCAtomic : toScaledAmount(values.amount).toString();
+    const files = await readEvidenceFiles(values["evidence-file"] ?? []);
     const signed = await signClaim(
       {
         type: "AgentResolveClaim",
@@ -347,7 +357,7 @@ async function open(): Promise<void> {
         receipt: { hash: verified.hash, jws: receiptJws },
         reason: values.reason as ClaimReason,
         description: values.description,
-        evidence: (values.evidence ?? []).map((content) => ({ kind: /^https?:\/\//.test(content) ? ("url" as const) : ("text" as const), content })),
+        evidence: [...(values.evidence ?? []).map((content) => ({ kind: /^https?:\/\//.test(content) ? ("url" as const) : ("text" as const), content })), ...files.map((f) => f.entry)],
         amountAtomic,
         createdAt: new Date().toISOString(),
       },
@@ -359,11 +369,19 @@ async function open(): Promise<void> {
     line("reclamo", `${signed.document.claimId} (${signed.document.reason})`);
     line("pide", usdc(BigInt(amountAtomic)));
     line("firmante", signed.document.claimant);
+    for (const f of files) line("archivo", `${f.entry.name} · ${f.entry.mediaType} · ${f.entry.bytes} bytes · sha256 ${f.entry.sha256}`);
   }
 
   const venue = venueOf(verified.receipt, verified.hash, contractId);
   if (venue.kind === "escrow") {
     await openInEscrow(env, venue, claimJws, receiptJws, verified, arbiter);
+    const listed = claimFiles((await verifyClaim(claimJws)).document.evidence);
+    if (listed.length > 0) {
+      const dir = stateDir(verified.hash);
+      await keepLocalEvidence(dir, values["evidence-file"] ?? []);
+      if (values.order !== undefined) await handEvidenceToStore(values.order, claimJws, values["evidence-file"] ?? []);
+      else out(`Los archivos van a la tienda con: pnpm run resolve:evidence -- --order <tienda>/orders/${venue.key} --claim ${resolve(dir, "claim.jws")} --file <archivo>…\n`);
+    }
     return;
   }
 
@@ -477,6 +495,74 @@ async function keepClaimFromOrder(dir: string, claimJws: string, receiptJws: str
   await writeFile(resolve(dir, "receipt.jws"), `${receiptJws}\n`);
 }
 
+
+/** The files a claim brings (T184): each read, typed by its bytes and sealed by its sha256. */
+async function readEvidenceFiles(paths: readonly string[]): Promise<Array<{ path: string; bytes: Buffer; entry: FileEvidence }>> {
+  return Promise.all(
+    paths.map(async (path) => {
+      const bytes = await readFile(resolve(path));
+      const entry = fileEvidenceFor(bytes, path.split("/").pop() ?? "evidence");
+      if (entry === null) usage(`--evidence-file ${path}: only JPG, PNG, WEBP or PDF up to 2 MB`);
+      return { path, bytes, entry };
+    }),
+  );
+}
+
+/** A copy of the claim's files next to the claim, named by hash: `decide` reads them when no store is given. */
+async function keepLocalEvidence(dir: string, paths: readonly string[]): Promise<void> {
+  if (paths.length === 0) return;
+  await mkdir(resolve(dir, "evidence"), { recursive: true });
+  for (const f of await readEvidenceFiles(paths)) await writeFile(resolve(dir, "evidence", `${f.entry.sha256}.${evidenceExtension(f.entry.mediaType)}`), f.bytes);
+}
+
+/** The claim, then each of its files, to the store that keeps the order. */
+async function handEvidenceToStore(order: string, claimJws: string, paths: readonly string[]): Promise<void> {
+  section("[comprador] entrega el reclamo y sus archivos a la tienda");
+  await sendClaimToStore(order, claimJws);
+  line("✅ reclamo", "la tienda lo guardó (calza con el claim_hash del escrow)");
+  const listed = new Set(claimFiles((await verifyClaim(claimJws)).document.evidence).map((f) => f.sha256));
+  for (const f of await readEvidenceFiles(paths)) {
+    if (!listed.has(f.entry.sha256)) usage(`${f.path} is not a file this claim lists`);
+    await sendEvidenceToStore(order, f.bytes, f.entry.mediaType);
+    line("✅ archivo", `${f.entry.name} (sha256 ${f.entry.sha256.slice(0, 16)}…)`);
+  }
+}
+
+async function evidence(): Promise<void> {
+  if (values.order === undefined || values.claim === undefined || (values.file ?? []).length === 0) usage("usage: resolve:evidence -- --order <store host>/orders/<id> --claim <claim.jws> --file <photo|pdf>…");
+  out("\nAgentResolve · archivos del reclamo · testnet");
+  const claimJws = (await readFile(resolve(values.claim), "utf8")).trim();
+  await handEvidenceToStore(values.order, claimJws, values.file ?? []);
+  out("");
+}
+
+/**
+ * Each file the claim lists, checked against its sealed hash (T184): read from the store on a link the arbiter signs, or
+ * from the copy `open` kept. Saved under `evidence/`, by hash, for the person who confirms the verdict to look at.
+ */
+async function checkEvidence(dir: string, claimFilesListed: readonly FileEvidence[], order: string | undefined, escrow: string | undefined, orderId: string, arbiter: Keypair): Promise<EvidenceFileCheck[]> {
+  if (claimFilesListed.length === 0) return [];
+  section("Archivos del reclamo");
+  await mkdir(resolve(dir, "evidence"), { recursive: true });
+  const checks: EvidenceFileCheck[] = [];
+  for (const f of claimFilesListed) {
+    const path = resolve(dir, "evidence", `${f.sha256}.${evidenceExtension(f.mediaType)}`);
+    let bytes: Buffer | null = null;
+    if (order !== undefined && escrow !== undefined) {
+      const query = signEvidenceRead(arbiter, { escrow, orderId, sha256: f.sha256, expiresAt: Math.floor(Date.now() / 1000) + EVIDENCE_READ_MAX_SECONDS - 60 });
+      bytes = await readEvidenceFromStore(order, query, f.sha256);
+    } else {
+      bytes = await readFile(path).catch(() => null);
+    }
+    const status: EvidenceFileCheck["status"] = bytes === null ? "missing" : evidenceFileHash(bytes) === f.sha256 ? "verified" : "altered";
+    if (bytes !== null && status === "verified") await writeFile(path, bytes);
+    line(status === "verified" ? "✅ archivo" : status === "altered" ? "❌ alterado" : "⚠️  falta", `${f.name} · ${f.mediaType} · ${status === "verified" ? path : `sha256 sellado ${f.sha256.slice(0, 16)}…`}`);
+    checks.push({ sha256: f.sha256, name: f.name, mediaType: f.mediaType, status });
+  }
+  out("  Míralos antes de confirmar el veredicto: el árbitro solo sabe si calzan, no ve su contenido.");
+  return checks;
+}
+
 async function decide(): Promise<void> {
   const { env, contractId } = await context();
   const fromStore = values.order === undefined ? undefined : await fromOrder(values.order);
@@ -531,7 +617,8 @@ async function decide(): Promise<void> {
     line("✅ respuesta", `${describePosition(response)}, firmada por ${didToStellarAddress(response.response.respondent)} (cuenta de cobro del recibo)`);
   }
 
-  const { verdict, hash } = await decideDispute({ checked, receiptHash: verified.hash, claimHash: claimHash(claimJws), arbiter: createClaudeArbiterWithKey(apiKey), response, responseWindowSeconds: windowSeconds });
+  const evidenceFiles = await checkEvidence(dir, claimFiles(claim.document.evidence), values.order, venue.kind === "escrow" ? venue.contractId : undefined, venue.key, arbiterKey);
+  const { verdict, hash } = await decideDispute({ checked, receiptHash: verified.hash, claimHash: claimHash(claimJws), arbiter: createClaudeArbiterWithKey(apiKey), response, responseWindowSeconds: windowSeconds, evidenceFiles });
   // Every verdict is kept, in order: asking again until one comes out
   // convenient must leave a trail. `verdict.json` is the latest, the only one
   // `execute` will pay.
@@ -786,7 +873,7 @@ async function verify(): Promise<void> {
   process.exitCode = ok ? 0 : 1;
 }
 
-const COMMANDS: Record<string, () => Promise<void>> = { deposit, open, decide, execute, verify, "check-response": checkResponse };
+const COMMANDS: Record<string, () => Promise<void>> = { deposit, open, evidence, decide, execute, verify, "check-response": checkResponse };
 
 const run = COMMANDS[command];
 (run ?? (() => Promise.reject(new AgentPassError("InvalidArguments", `unknown command "${command}": ${Object.keys(COMMANDS).join(", ")}`, { details: {} }))))().catch((error: unknown) => {

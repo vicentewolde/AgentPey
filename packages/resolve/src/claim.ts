@@ -23,6 +23,8 @@ import { receiptHash } from "@vitrinee/core";
 import type { Keypair } from "@stellar/stellar-sdk/base";
 import { z } from "zod";
 
+import { fileEvidenceSchema } from "./evidence.js";
+
 export const AGENTRESOLVE_CLAIM_TYP = "agentresolve-claim+jwt";
 export const AGENTRESOLVE_CLAIM_TYPE = "AgentResolveClaim";
 
@@ -30,10 +32,14 @@ export const CLAIM_REASONS = ["not_delivered", "not_as_described", "damaged", "u
 
 const hex64 = z.string().regex(/^[0-9a-f]{64}$/, "expected a lowercase hex sha256");
 
+/** Text or a link: what a claim brought before T184, and all a merchant's response brings. */
 export const claimEvidenceSchema = z.strictObject({
   kind: z.enum(["text", "url"]),
   content: z.string().trim().min(1).max(2000),
 });
+
+/** One item of a claim's evidence: text, a link, or a file sealed by its sha256 (T184, `Y-3`). */
+export const claimEvidenceItemSchema = z.union([claimEvidenceSchema, fileEvidenceSchema]);
 
 export const agentResolveClaimSchema = z.strictObject({
   type: z.literal(AGENTRESOLVE_CLAIM_TYPE),
@@ -44,7 +50,13 @@ export const agentResolveClaimSchema = z.strictObject({
   receipt: z.strictObject({ hash: hex64, jws: z.string().min(1) }),
   reason: z.enum(CLAIM_REASONS),
   description: z.string().trim().min(1).max(2000),
-  evidence: z.array(claimEvidenceSchema).max(5),
+  evidence: z
+    .array(claimEvidenceItemSchema)
+    .max(5)
+    .refine((items) => {
+      const files = items.flatMap((item) => (item.kind === "file" ? [item.sha256] : []));
+      return new Set(files).size === files.length;
+    }, "the same file is listed twice"),
   /** How much is asked back, in the receipt asset's atomic units. */
   amountAtomic: z.string().regex(/^[1-9]\d*$/, "expected a positive integer in atomic units"),
   createdAt: z.iso.datetime(),

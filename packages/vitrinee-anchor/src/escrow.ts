@@ -28,7 +28,12 @@ export const ESCROW_STORAGE_SCHEMA_VERSION = 2;
  * mean the contract's own rules apply. The retired `d0d1d877…` is left out: it
  * could freeze a refund (`X-19`). A test pins this list to the deployments.
  */
-export const PURCHASE_ESCROW_WASM_HASHES: readonly string[] = ["f5c6bbb6a54a017b71efd62e1aa87bd9b1babf5a688c74e253100586d6602fc5"];
+export const PURCHASE_ESCROW_WASM_HASHES: readonly string[] = [
+  // v1 (T157): agentcommerce
+  "f5c6bbb6a54a017b71efd62e1aa87bd9b1babf5a688c74e253100586d6602fc5",
+  // v2 (T182, T183): confirm and confirmed_at, schema 2
+  "cdd8260a606528392202fa1ade6686c9aef2d962a396ece34541ef21d2e81e10",
+];
 
 export const ESCROW_STATUSES = ["held", "shipped", "released", "disputed", "responded", "resolved", "expired"] as const;
 export type EscrowStatus = (typeof ESCROW_STATUSES)[number];
@@ -510,6 +515,29 @@ export class EscrowClient implements EscrowReader, EscrowDisputeOpener {
     }
   }
 
+  /**
+   * The buyer's `confirm`, built for the buyer's wallet to sign (T185, `Y-1`): the escrow's `confirm` needs the payer's own
+   * authorization (a classic payer) or its rail's principal's (a rail payer), which the transaction's source satisfies. The
+   * store never holds that key and the agent's key cannot stand in for it. Simulated here, returned unsigned.
+   */
+  async prepareConfirm(input: { orderRef: string }, signer: string, validForSeconds = 300): Promise<string> {
+    let account: Awaited<ReturnType<EscrowRpc["getAccount"]>>;
+    try {
+      account = await this.server.getAccount(signer);
+    } catch (error) {
+      throw new VitrineeError("EscrowError", "could not load the account that confirms", { cause: error, details: { stage: "prepare" } });
+    }
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: this.config_.networkPassphrase })
+      .addOperation(this.contract.call("confirm", nativeToScVal(Buffer.from(input.orderRef, "utf8"), { type: "bytes" })))
+      .setTimeout(validForSeconds)
+      .build();
+    try {
+      return (await this.server.prepareTransaction(tx)).toXDR();
+    } catch (error) {
+      throw new VitrineeError("EscrowError", `simulation of confirm failed: ${error instanceof Error ? error.message.slice(0, 300) : String(error)}`, { cause: error, details: { stage: "simulate" } });
+    }
+  }
+
   /** Sends a transaction a wallet already signed, and waits for it, with the same stages as `submit`. */
   async submitSigned(name: string, signedXdr: string): Promise<OpenResult> {
     let tx: ReturnType<typeof TransactionBuilder.fromXDR>;
@@ -586,4 +614,29 @@ export function escrowPolicy(readers: EscrowReaderFactory, arbiters: readonly st
     wasmHashes: PURCHASE_ESCROW_WASM_HASHES,
     arbiters,
   };
+}
+
+/**
+ * The wallet a `policy_rail` answers to (`principal()`), read from the rail's own stored `Config` (T185). A confirmation
+ * of a purchase paid from a rail is signed by this account, never by the agent key that spends day to day (`Y-1`).
+ */
+export async function railPrincipal(server: Pick<rpc.Server, "getLedgerEntries">, rail: string): Promise<string> {
+  const key = xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({ contract: new Contract(rail).address().toScAddress(), key: xdr.ScVal.scvLedgerKeyContractInstance(), durability: xdr.ContractDataDurability.persistent }),
+  );
+  let entries: Awaited<ReturnType<typeof server.getLedgerEntries>>["entries"];
+  try {
+    entries = (await server.getLedgerEntries(key)).entries;
+  } catch (error) {
+    throw new VitrineeError("EscrowError", "could not read the rail on Stellar", { cause: error, details: { rail } });
+  }
+  const data = entries[0]?.val;
+  const instance = data !== undefined && data.type === "contractData" ? data.contractData.val : null;
+  const storage = instance !== null && instance.type === "scvContractInstance" ? (instance.instance.storage ?? []) : [];
+  const stored = storage.find((item) => JSON.stringify(scValToNative(item.key)) === JSON.stringify(["Config"]));
+  const principal = stored === undefined ? undefined : (scValToNative(stored.val) as { principal?: unknown }).principal;
+  if (typeof principal !== "string" || !/^G[A-Z2-7]{55}$/.test(principal)) {
+    throw new VitrineeError("EscrowError", "this payer is not a policy_rail the store can read", { details: { rail } });
+  }
+  return principal;
 }

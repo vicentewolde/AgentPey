@@ -6,6 +6,7 @@ export {
   ESCROW_STORAGE_SCHEMA_VERSION,
   EscrowClient,
   PURCHASE_ESCROW_WASM_HASHES,
+  railPrincipal,
   configKey,
   decodeEscrowCall,
   decodeEscrowConfig,

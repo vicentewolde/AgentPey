@@ -10,6 +10,10 @@
  *
  *   released   hold → mark_shipped → (release window) → release
  *   refunded   hold → open, signed by the rail's owner → respond → resolve, full refund
+ *   confirmed  (T183) a classic payer (AGENT_SECRET_KEY's account) sends USDC straight to the escrow
+ *              → hold with that account as payer → confirm, signed by the payer → paid out at once.
+ *              A rail payer's confirm is signed by the rail's principal, a person's wallet: that one
+ *              is proven from the signing page (T185), not here.
  *   late-response (T163) hold → open → respond prepared inside the window, sent after it → the
  *              network refuses it (ResponseWindowClosed, a failed transaction with its own hash)
  *              → expire after the arbiter's window, full refund
@@ -19,7 +23,7 @@
  * Moves `--amount` USDC (default 0.05) per scenario out of the UCP rail; the
  * refund brings one of them back. Needs the user's OK each time it runs.
  *
- *   --scenario released|refunded|both|late-response   default both (late-response only on its own)
+ *   --scenario released|refunded|both|confirmed|late-response   default both (confirmed and late-response only on their own)
  *   --amount <usdc>                     default 0.05
  *   --resume <order_ref>                finish a `refunded` run that stopped after `hold`
  *   --paid <tx hash>                    late-response: record a payment that already reached the escrow (a
@@ -101,9 +105,9 @@ function step(name: string, hash: string): void {
   out(`  ${name.padEnd(13)} ${hash}  ${EXPLORER}/${hash}`);
 }
 
-async function hold(r: Rehearsal, orderRef: string, paymentTx: string): Promise<void> {
+async function hold(r: Rehearsal, orderRef: string, paymentTx: string, payer: string = r.rail): Promise<void> {
   step("hold", await invoke(r, r.operator, [
-    "hold", "--order_ref", orderRefHex(orderRef), "--payer", r.rail, "--amount", r.amountAtomic.toString(),
+    "hold", "--order_ref", orderRefHex(orderRef), "--payer", payer, "--amount", r.amountAtomic.toString(),
     "--tx_hash", paymentTx, "--receipt_hash", sha256(`rehearsal receipt for ${orderRef} paid by ${paymentTx}`),
   ]));
 }
@@ -128,6 +132,23 @@ async function released(r: Rehearsal, orderRef: string): Promise<void> {
   }
   const purchase = await get(r, orderRef);
   out(`  status       ${purchase.status} · refund ${purchase.refund} · ${purchase.amount} to the payee`);
+}
+
+/** Released by the buyer (T182): a classic payer confirms, and the escrow pays the payee without waiting. */
+async function confirmed(r: Rehearsal, orderRef: string): Promise<void> {
+  out(`\nconfirmed · ${orderRef}`);
+  const payer = r.railOwner;
+  const { txHash: paymentTx } = await stellarCliTx(
+    ["contract", "invoke", "--id", r.token, "--", "transfer", "--from", payer.publicKey(), "--to", r.escrow, "--amount", r.amountAtomic.toString()],
+    payer.secret(),
+  );
+  if (paymentTx === undefined) throw new AgentPassError("CommandFailed", "the payment submitted no transaction", { details: { orderRef } });
+  step("payment", paymentTx);
+  await hold(r, orderRef, paymentTx, payer.publicKey());
+  step("confirm", await invoke(r, payer, ["confirm", "--order_ref", orderRefHex(orderRef)]));
+  const purchase = await get(r, orderRef);
+  if (purchase.status !== "Released") throw new AgentPassError("CommandFailed", "the escrow did not release a confirmed purchase", { details: { orderRef, status: purchase.status } });
+  out(`  status       ${purchase.status} · ${purchase.amount} to the payee, confirmed by ${payer.publicKey()}`);
 }
 
 async function refunded(r: Rehearsal, orderRef: string, resume: boolean): Promise<void> {
@@ -204,7 +225,7 @@ async function lateResponse(r: Rehearsal, orderRef: string, paid: string | undef
 }
 
 async function main(): Promise<void> {
-  const scenario = z.enum(["released", "refunded", "both", "late-response"]).parse(flag("--scenario", "both"));
+  const scenario = z.enum(["released", "refunded", "both", "confirmed", "late-response"]).parse(flag("--scenario", "both"));
   const amount = flag("--amount", "0.05");
   const env = await readEnvFile(resolve(REPO_ROOT, ".env.local"));
   const vitrineeEnv = await readEnvFile(resolve(REPO_ROOT, ".env.vitrinee.local"));
@@ -244,6 +265,11 @@ async function main(): Promise<void> {
   if (scenario === "late-response") {
     const paid = ARGV.includes("--paid") ? z.string().regex(/^[0-9a-f]{64}$/).parse(flag("--paid", "")) : undefined;
     await lateResponse(r, `rehearsal-${stamp}-l`, paid);
+    out("");
+    return;
+  }
+  if (scenario === "confirmed") {
+    await confirmed(r, `rehearsal-${stamp}-c`);
     out("");
     return;
   }

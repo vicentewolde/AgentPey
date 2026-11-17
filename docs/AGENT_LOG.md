@@ -9464,3 +9464,69 @@ Qué: T182, `confirm(order_ref)` en `purchase-escrow`: libera al `payee` desde `
 Por qué: primera tarea del sprint de la Fase 10 (D1), plan aprobado por el usuario el 11-nov.
 
 Pendiente: OK del usuario para el merge (no despliega ningún contrato; Render solo reconstruye). Después, T183: desplegar el escrow v2 para Tapline, con OK y XLM de testnet.
+
+## 2026-11-11 (6) — cc/docs-stellar-route
+
+Agente: Claude Code
+
+Qué: T182 marcada como hecha (PR #107 en `main`) en la bitácora y `ESTADO.md`. `DISENO-WEB.md` al día con las rutas nuevas: la raíz de agentpey.com es `comercios.html` (Start-Up Chile, de otra sesión) y la portada del Instaward está en `/stellar`; 14 páginas. Los enlaces «AgentPey» de RealOps y SignalDesk llevan a `/stellar`. Cerrados los PRs viejos #4, #5, #11 y #14 a pedido del usuario.
+
+Por qué: el usuario pidió dejar los documentos al día después de los cambios del sitio, antes de hacerle más cambios.
+
+Pendiente: T183, el escrow v2 para Tapline (OK del usuario el 11-nov, cobro `GBNELM66…F2UAT`, plazos de `agentcommerce`).
+
+## 2026-11-11 (7) — cc/t183-escrow-v2
+
+Agente: Claude Code
+
+Qué: T183. Escrow v2 desplegado en testnet como escrow de ensayo (`CDSCZJEM6QR6ZZKGRTLAX36GVN6UVFRISDDW7MGMGCWKZO5JVF6E3UML`, wasm `cdd8260a…`); el v1 de ensayo queda retirado. El wasm entra a `PURCHASE_ESCROW_WASM_HASHES`. `escrow:rehearsal --scenario confirmed` (nuevo): pagador clásico, `hold` y `confirm`. Ensayo de liberación por confirmación y por vencimiento, con hashes en `evidencia/T183.md`. Decisión `Y-9`: el contrato de Tapline va con T191.
+
+Por qué: OK del usuario para el despliegue el 11-nov (wallet de cobro de Tapline y plazos de `agentcommerce`).
+
+Pendiente: OK para mergear (no despliega contratos; Render reconstruye). `confirm` de un pagador rail, desde la página de firma (T185). El contrato de Tapline, en T191.
+
+## 2026-11-11 (8) — cc/t184-evidencia-sellada
+
+Agente: Claude Code
+
+Qué: T184. Los reclamos traen archivos sellados por su sha256 (`Y-3`); la tienda los guarda en `vitrinee.dispute_evidence` si el reclamo sellado los nombra y los entrega con enlaces firmados por el árbitro, el comercio o el comprador; `resolve:open --evidence-file`, `resolve:evidence`, y `resolve:decide` que comprueba cada huella. `pnpm check` en verde.
+
+Por qué: plan aprobado por el usuario el 11-nov.
+
+Pendiente: la corrida en testnet (compra en `agentcommerce`, reclamo con foto, `decide`), con OK del usuario: el clasificador bloqueó la compra sin él. Merge con OK.
+
+## 2026-11-11 (9) — cc/t184-cierre
+
+Agente: Claude Code
+
+Qué: T184 cerrada. PR #110 en `main` y desplegado (`prod:check` 11/11). Corrida en testnet: orden `ord_mwcttzyu62a6ca12aa`, reclamo con foto abierto en la red (`16b19e33…`), foto entregada a la tienda, `resolve:decide` la verificó y el árbitro rechazó el reclamo de prueba (`be7ca388…`). Evidencia en `evidencia/T184.md`.
+
+Por qué: OK del usuario para la compra y el merge.
+
+Resultado: el veredicto no se confirmó; la ventana del árbitro cerró a las 02:01 UTC y el escrow venció con reembolso completo al rail (`resolve:verify`). Siguiente: T185.
+
+## 2026-11-12 (10) — cc/sitio-t185
+
+Agente: Claude Code
+
+Qué: T185, primera mitad. La tienda gana `GET /orders/:id/confirm` y `POST …/confirm/prepare|submit` (`confirmations.ts`): arma `confirm` para la cuenta que pagó o el principal de su rail (leído en la red con `railPrincipal`) y lo envía solo si es exactamente esa llamada. Página `agentpey.com/resolve/confirmar` para firmar con la wallet. Herramienta MCP `confirm_purchase` que solo entrega el enlace. Pruebas: tienda 533, web 361, mcp 73.
+
+Por qué: plan aprobado por el usuario el 12-nov; los cambios se acumulan en esta rama para un solo merge (CI lenta). Los cambios del sitio web que pida el usuario se suman aquí.
+
+Pendiente: `attach_evidence` (página de subida), probar `confirmar` con Freighter, los cambios del sitio, y el merge con OK.
+
+## 2026-11-13 — cc/sitio-home
+
+Agente: Claude Code
+
+Qué: la página de inicio para comercios (Start-Up Chile) quedó en producción
+(PR #112, merge `befb75e`): portada "Hacemos que las IAs recomienden tu
+tienda", la historia de las dos tiendas en un chat de IA que avanza con el
+scroll y la Tienda B marcada como la elegida. Solo los commits de la página,
+copiados desde `cc/sitio-t185`; `prod:check` 11/11 antes y después.
+
+Por qué: el usuario la aprobó pantalla por pantalla y pidió publicarla.
+
+Pendiente: `cc/sitio-t185` todavía tiene los commits de la página además de
+T185; al rebasarla sobre `origin/main` se descartan solos (mismo contenido).
+La segunda mitad de T185 (`attach_evidence`) sigue sin empezar.

@@ -11,6 +11,10 @@
     "./response": {
       "types": "./dist/response.d.ts",
       "import": "./dist/response.js"
+    },
+    "./evidence": {
+      "types": "./dist/evidence.d.ts",
+      "import": "./dist/evidence.js"
     }
   },
   "main": "./dist/index.js",

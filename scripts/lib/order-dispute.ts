@@ -46,3 +46,37 @@ export async function readOrderDispute(order: string, fetchImpl: typeof fetch = 
   }
   return parsed.data;
 }
+
+/** Hands a claim to the store that keeps the order (T184): the store keeps it once it hashes to the escrow's `claim_hash`. */
+export async function sendClaimToStore(order: string, claimJws: string, fetchImpl: typeof fetch = fetch): Promise<void> {
+  const url = new URL(`${orderDisputeUrl(order).pathname}/claim`, orderDisputeUrl(order).origin);
+  const res = await fetchImpl(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ claim_jws: claimJws }), signal: AbortSignal.timeout(20_000) }).catch((error: unknown) => {
+    throw new AgentPassError("NetworkError", "could not reach the store", { cause: error, details: { url: url.toString() } });
+  });
+  if (!res.ok) throw new AgentPassError("ResolveClaimInvalid", "the store did not keep the claim", { details: { url: url.toString(), status: res.status, body: (await res.text()).slice(0, 300) } });
+}
+
+/** Uploads one of the claim's files (T184). The store keeps it only if the claim it holds names this file. */
+export async function sendEvidenceToStore(order: string, bytes: Uint8Array, mediaType: string, fetchImpl: typeof fetch = fetch): Promise<void> {
+  const base = orderDisputeUrl(order);
+  const url = new URL(`${base.pathname}/evidence`, base.origin);
+  const res = await fetchImpl(url, { method: "POST", headers: { "content-type": mediaType }, body: Buffer.from(bytes), signal: AbortSignal.timeout(60_000) }).catch((error: unknown) => {
+    throw new AgentPassError("NetworkError", "could not reach the store", { cause: error, details: { url: url.toString() } });
+  });
+  if (!res.ok) throw new AgentPassError("ResolveClaimInvalid", "the store did not keep the file", { details: { url: url.toString(), status: res.status, body: (await res.text()).slice(0, 300) } });
+}
+
+/**
+ * Reads one of the claim's files on a link the reader signs (T184). `null` when the store does not have it. The caller
+ * hashes what comes back: the store is not trusted for the bytes.
+ */
+export async function readEvidenceFromStore(order: string, query: URLSearchParams, sha256: string, fetchImpl: typeof fetch = fetch): Promise<Buffer | null> {
+  const base = orderDisputeUrl(order);
+  const url = new URL(`${base.pathname}/evidence/${sha256}?${query.toString()}`, base.origin);
+  const res = await fetchImpl(url, { signal: AbortSignal.timeout(60_000) }).catch((error: unknown) => {
+    throw new AgentPassError("NetworkError", "could not reach the store", { cause: error, details: { url: `${base.origin}${base.pathname}/evidence/${sha256}` } });
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new AgentPassError("ResolveClaimInvalid", "the store refused to hand over the file", { details: { sha256, status: res.status } });
+  return Buffer.from(await res.arrayBuffer());
+}

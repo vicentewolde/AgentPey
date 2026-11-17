@@ -71,6 +71,8 @@ En el `<head>`, antes de los estilos propios de la página:
 (`/tiendas`), GitHub, el botón Conectar wallet en las páginas de firma y el selector de idioma, siempre al final
 (`.ap-bar`). En una fila a todo ancho: bajo 560 px los enlaces con `.ap-hide-sm` se esconden y el pie los repite. El
 recibo usa los mismos enlaces absolutos a `https://agentpey.com`; el portal y el panel de Vitrinee conservan su marca.
+Desde el 11-nov la raíz de agentpey.com es la página de comercios: la marca lleva a `/`, y los enlaces «AgentPey» de
+las apps del piloto (RealOps, SignalDesk), que son parte de la demo de Stellar, llevan a `/stellar`.
 El favicon de todas las páginas es `/brand/agentpey-favicon.svg` (la marca en blanco sobre `#176bff`, visible en pestañas
 claras y oscuras). Los comandos para copiar van en `<pre class="ap-cmd">`: una línea que se desplaza, nunca cortada.
 
@@ -87,12 +89,13 @@ gateway de Vitrinee sirve el mismo archivo en `/brand/agentpey.css`, `/brand/age
 del MCP (`mcp.agentpey.com`) la lleva en línea, porque su CSP solo permite estilos en línea y ninguna fuente externa: ahí se ve con
 la fuente del sistema.
 
-## 4. Las páginas (13)
+## 4. Las páginas (14)
 
 | Página | Dónde | Tema |
 |---|---|---|
-| Portada `landing.html` | agentpey.com | Siempre oscura, estilo keynote |
-| Tiendas `tiendas.html`, En vivo `en-vivo.html` | agentpey.com | Sistema |
+| Portada del Instaward `landing.html` | agentpey.com/stellar (y `/landing`) | Siempre oscura, estilo keynote |
+| Comercios (Start-Up Chile) `comercios.html` | agentpey.com/ (y `/comercios`) | Siempre oscura; la agregó la sesión de Start-Up Chile el 11-nov, después de T207 |
+| Tiendas `tiendas.html`, En vivo `en-vivo.html` | agentpey.com/tiendas, /en-vivo | Sistema |
 | Responder un reclamo `resolve/responder.html` | agentpey.com | Sistema |
 | Firmar un Mandato `consent.html`, Revocar `revocar.html` | agentpey.com | Sistema |
 | Laboratorio de wallets `wallet-lab.html` | solo local | Sistema |

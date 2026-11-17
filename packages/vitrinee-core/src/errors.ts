@@ -35,6 +35,7 @@ export const ERROR_CODES = [
   "StoreCredentialsRejected",
   "SigningKeyNotFunded",
   "DisputeRefused",
+  "EvidenceReadDenied",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -68,6 +69,8 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   SigningKeyNotFunded: 502,
   // A dispute document that does not match the escrow, or arrives outside its window (T163).
   DisputeRefused: 409,
+  // A dispute file asked for without a valid read link from someone in the dispute (T184).
+  EvidenceReadDenied: 401,
 };
 
 export interface VitrineeErrorOptions {

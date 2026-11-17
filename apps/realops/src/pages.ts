@@ -184,7 +184,7 @@ const STYLE = `
 `;
 
 /** Where the other two apps of the pilot live, for the top bar. */
-const PILOT_LINKS = { agentpey: "https://agentpey.com", signalDesk: "https://signaldesk.agentpey.com" } as const;
+const PILOT_LINKS = { agentpey: "https://agentpey.com/stellar", signalDesk: "https://signaldesk.agentpey.com" } as const;
 
 const ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g fill="none" stroke="#171A1F" stroke-width="60">' +

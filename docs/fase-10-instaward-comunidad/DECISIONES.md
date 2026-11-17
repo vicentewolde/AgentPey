@@ -87,3 +87,31 @@ guarda eventos unos pocos días; la página pública de compras de Tapline (T195
 suma `confirmed_at: u64` (0 si no se confirmó) y el esquema de almacenamiento pasa a 2. El lector TypeScript lo trata como opcional, así
 que el escrow v1 de `agentcommerce` se sigue leyendo igual. **Alternativas descartadas:** un estado nuevo `Confirmed` (obliga a cambiar
 cada lector del estado: tienda, MCP, página en vivo); depender del evento (se pierde).
+
+### Y-9 · El contrato de Tapline se despliega al darla de alta (T191); T183 prueba el v2 en el escrow de ensayo · `Vigente` (11-nov)
+
+**Contexto.** `deploy:purchase-escrow --store` lee la cuenta firmante (`operator`) y la de cobro (`payee`) del perfil UCP
+vivo de la tienda (`X-4`). Tapline todavía no está en Vitrinee: su cuenta firmante la crea el alta (`onboarding.ts`), que es
+T191.
+
+**Decisión.** T183 despliega el v2 en el escrow de ensayo (el v1 queda en `retiredPurchaseEscrows`), lo agrega a la lista
+de hashes permitidos y hace allí el ensayo de liberación por confirmación y por vencimiento. El contrato de Tapline se
+despliega en T191, recién dada de alta, con el mismo wasm, el cobro en `GBNELM66…F2UAT` (dado por el usuario el 11-nov)
+y los plazos de `agentcommerce`: 600 s para liberar, 900 para responder y 3600 para el árbitro.
+
+**Motivo.** Escribir a mano el `operator` rompería `X-4`, y crear la llave de Tapline fuera del alta la dejaría fuera de la
+base sellada de la plataforma. **Alternativa descartada:** un `--operator` manual en el script.
+
+### Y-10 · Una foto llega al reclamo como un código de evidencia; el archivo nunca pasa por el chat · `Vigente` (13-nov, aprobada por el usuario)
+
+**Contexto.** El reclamo sella la huella de cada archivo al firmarse (`Y-3`), así que la huella tiene que existir antes de
+abrirlo. El modelo no puede pasar los bytes de una foto a una herramienta sin riesgo de alterarlos, y la tienda solo guarda
+un archivo que el reclamo sellado nombra (T184).
+
+**Decisión.** `attach_evidence` entrega un enlace a `agentpey.com/resolve/evidencia`. Ahí el navegador de la persona achica
+la foto a un JPEG de hasta 2 MB (sin sus metadatos, ubicación incluida), calcula su sha256 y muestra un código
+`ap-evidence:v1:<sha256>:<tipo>:<bytes>:<nombre>`. La persona lo pega en el chat, `open_claim` lo convierte en la entrada
+del archivo y lo sella; un código que no se lee se rechaza antes de firmar. Con el reclamo abierto, la misma página envía el
+archivo a la tienda, que lo acepta solo si calza con la huella. No cambian la tienda ni el contrato.
+**Alternativa descartada: que la tienda guarde la foto antes del reclamo.** Ahorraba copiar un código, pero rompía la regla
+de T184 y obligaba a firmar la subida con la wallet.

@@ -15,6 +15,7 @@ import {
   isSignatureRefused,
   paymentKey,
   purchaseKey,
+  railPrincipal,
   sameHold,
   type EscrowPurchase,
   type EscrowReader,
@@ -424,5 +425,44 @@ describe("the merchant's respond, built for a wallet and read back before sendin
     expect(escrowContractError(late)).toBe(13);
     const missing = new EscrowClient({ contractId: ESCROW, rpcUrl: "https://rpc.test", networkPassphrase: PASSPHRASE, server: { getAccount: () => Promise.reject(new Error("not found")) } as unknown as EscrowRpc });
     await expect(missing.prepareRespond({ orderRef: "ord_1", responseHash: RECEIPT }, payee.publicKey())).rejects.toMatchObject({ details: { stage: "prepare" } });
+  });
+});
+
+describe("railPrincipal, the wallet a rail answers to (T185, Y-1)", () => {
+  const RAIL = "CB4WVTJ4LVB6GUWSTJE4FQ2MH364Q2HW3FHXGSZF4KJ55SGEBIFGRQ6L";
+  const principal = Keypair.random().publicKey();
+  /** The rail's instance entry as the RPC returns it, with `storage` holding these items. */
+  const instanceWith = (storage: xdr.ScMapEntry[]) => ({
+    entries: [
+      {
+        val: xdr.LedgerEntryData.contractData(
+          new xdr.ContractDataEntry({
+            ext: xdr.ExtensionPoint.v0(),
+            contract: new Contract(RAIL).address().toScAddress(),
+            key: xdr.ScVal.scvLedgerKeyContractInstance(),
+            durability: xdr.ContractDataDurability.persistent,
+            val: xdr.ScVal.scvContractInstance(new xdr.ScContractInstance({ executable: xdr.ContractExecutable.contractExecutableStellarAsset(), storage })),
+          }),
+        ),
+      },
+    ],
+  });
+  const config = (fields: Record<string, xdr.ScVal>) =>
+    new xdr.ScMapEntry({
+      key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Config")]),
+      val: xdr.ScVal.scvMap(Object.entries(fields).map(([k, v]) => new xdr.ScMapEntry({ key: xdr.ScVal.scvSymbol(k), val: v }))),
+    });
+
+  it("reads principal from the rail's stored Config", async () => {
+    const server = { getLedgerEntries: async () => instanceWith([config({ agent: new Address(Keypair.random().publicKey()).toScVal(), principal: new Address(principal).toScVal() })]) };
+    expect(await railPrincipal(server as never, RAIL)).toBe(principal);
+  });
+
+  it("refuses a contract that is no rail: no Config, or no principal in it", async () => {
+    for (const storage of [[], [config({ agent: new Address(principal).toScVal() })]]) {
+      const server = { getLedgerEntries: async () => instanceWith(storage) };
+      await expect(railPrincipal(server as never, RAIL)).rejects.toMatchObject({ code: "EscrowError" });
+    }
+    await expect(railPrincipal({ getLedgerEntries: async () => ({ entries: [] }) } as never, RAIL)).rejects.toMatchObject({ code: "EscrowError" });
   });
 });

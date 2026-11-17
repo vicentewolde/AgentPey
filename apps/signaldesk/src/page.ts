@@ -224,7 +224,7 @@ export function renderCatalogPage(input: PageInput): string {
   <div class="top">
     <a class="mark" href="/">${ICON_SVG.replace("<svg ", '<svg class="logo" aria-hidden="true" ')}<span>SignalDesk</span><span class="tagline">${tr("x402 merchant", "Comercio x402")}</span></a>
     <div class="utils">
-      <nav class="apps" aria-label="Pilot apps"><a href="https://agentpey.com">AgentPey</a><a href="https://realops.agentpey.com">RealOps</a></nav>
+      <nav class="apps" aria-label="Pilot apps"><a href="https://agentpey.com/stellar">AgentPey</a><a href="https://realops.agentpey.com">RealOps</a></nav>
       <div class="lang"><button type="button" data-set-lang="en" aria-pressed="true">EN</button><span aria-hidden="true">/</span><button type="button" data-set-lang="es" aria-pressed="false">ES</button></div>
       <a class="gh" href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">${GITHUB_ICON}<span>GitHub</span></a>
     </div>

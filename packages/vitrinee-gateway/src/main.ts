@@ -13,7 +13,7 @@ import { seedComercioFromEnv, type Comercio } from "./platform/comercios.js";
 import { loadPlatformSettings, unknownBrakeSlugs, type PlatformSettings } from "./platform/config.js";
 import { storeCatalogueReader } from "./platform/onboarding.js";
 import { createPlatformApp } from "./platform/platform-app.js";
-import { PostgresCheckoutSessions, PostgresComercioStore, PostgresOrderPersistence, createVitrineePool, migrate } from "./platform/postgres.js";
+import { PostgresCheckoutSessions, PostgresComercioStore, PostgresEvidenceStore, PostgresOrderPersistence, createVitrineePool, migrate } from "./platform/postgres.js";
 import { createSecretBox, deriveKey } from "./platform/secret-box.js";
 import { testnet } from "./platform/stellar-network.js";
 import { StorefrontPool } from "./platform/storefronts.js";
@@ -141,6 +141,7 @@ async function runPlatform(settings: PlatformSettings): Promise<void> {
     env: process.env,
     ordersFor,
     sessionsFor: (comercio) => new PostgresCheckoutSessions(pool, comercio.id),
+    evidenceFor: (comercio) => new PostgresEvidenceStore(pool, comercio.id),
     escrowArbiters: escrowArbiters(),
     log,
   });

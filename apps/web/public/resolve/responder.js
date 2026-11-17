@@ -135,8 +135,17 @@ function crc16(bytes) {
 
 /** The 32 raw bytes of a `G...` address, or `null` if it is not a valid one (checksum included). */
 export function publicKeyBytes(address) {
+  return strkeyBytes(address, "G", ED25519_PUBLIC_KEY_VERSION);
+}
+
+/** The 32 raw bytes of a `C...` contract id, or `null` if it is not a valid one (checksum included). */
+export function contractIdBytes(address) {
+  return strkeyBytes(address, "C", 2 << 3);
+}
+
+function strkeyBytes(address, letter, version) {
   const text = String(address);
-  if (!/^G[A-Z2-7]{55}$/.test(text)) return null;
+  if (!new RegExp("^" + letter + "[A-Z2-7]{55}$").test(text)) return null;
   let bits = 0;
   let value = 0;
   const out = [];
@@ -149,7 +158,7 @@ export function publicKeyBytes(address) {
     }
   }
   const bytes = Uint8Array.from(out);
-  if (bytes.length !== 35 || bytes[0] !== ED25519_PUBLIC_KEY_VERSION) return null;
+  if (bytes.length !== 35 || bytes[0] !== version) return null;
   const expected = crc16(bytes.subarray(0, 33));
   if (bytes[33] !== (expected & 0xff) || bytes[34] !== expected >> 8) return null;
   return bytes.slice(1, 33);
