@@ -15,6 +15,10 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { fileURLToPath } from "node:url";
 
 import { handleMcp } from "./agente.js";
+import { claudeEngine, geminiEngine, type Engine } from "./diagnostico.js";
+import { createFetcher } from "./http.js";
+import { quickErrorPage, quickFormPage, quickResultPage, quickWaitPage } from "./panel-rapido.js";
+import { assertPublicHost, BadUrl, normalizeUrl, openAiEngine, QuickLimits, quickDiagnosis, type QuickResult } from "./rapido.js";
 import pg from "pg";
 
 import { openDb } from "./db.js";
@@ -26,7 +30,7 @@ import { indexPage, panel, sellerPage } from "./panel.js";
 import type { Policy } from "./politicas.js";
 import { rankForPromotion } from "./promover.js";
 import { readiness } from "./readiness.js";
-import { pgStore, sqliteStore, type PanelStore } from "./store.js";
+import { migrate, pgStore, sqliteStore, type PanelStore } from "./store.js";
 import { STORES as ALL_STORES } from "./stores.js";
 import { reply, searchProducts, trackedLink, type Turn } from "./vender.js";
 
@@ -37,7 +41,7 @@ try {
 }
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
-function openPostgres(url: string): PanelStore {
+async function openPostgres(url: string): Promise<PanelStore> {
   const pool = new pg.Pool({
     connectionString: url,
     // Same as SignalDesk and Vitrinee: the pooler requires TLS, and Node's default CA bundle does not carry Supabase's chain.
@@ -46,11 +50,13 @@ function openPostgres(url: string): PanelStore {
   });
   // An idle client the server drops is emitted here; unlistened, it crashes the process.
   pool.on("error", (error) => console.error(`comercios: idle Postgres client failed: ${error.message}`));
+  // The role owns its schema: new tables (the quick diagnoses) are created here, without the admin.
+  await migrate(pool);
   return pgStore(pool);
 }
 const data: PanelStore = DATABASE_URL === ""
   ? sqliteStore(openDb(process.env.DB_PATH ?? fileURLToPath(new URL("../data/comercios.db", import.meta.url))))
-  : openPostgres(DATABASE_URL);
+  : await openPostgres(DATABASE_URL);
 const CSS = readFileSync(fileURLToPath(new URL("../../web/public/brand/agentpey.css", import.meta.url)), "utf8");
 /**
  * PUBLIC=1 is the hosted mode: only the stores listed in PUBLIC_STORES are
@@ -92,6 +98,52 @@ function clientIp(req: IncomingMessage): string {
  * server is restarted after that, so they are read once at start-up. The MCP
  * handler needs them synchronously.
  */
+/** The quick diagnosis asks every assistant whose key is present; Claude always. */
+const engines: Engine[] = [claudeEngine(llm)];
+if ((process.env.OPENAI_API_KEY ?? "") !== "") engines.push(openAiEngine(process.env.OPENAI_API_KEY!));
+if ((process.env.GEMINI_API_KEY ?? "") !== "") engines.push(geminiEngine(process.env.GEMINI_API_KEY!));
+const quickLimits = new QuickLimits(Number(process.env.DIAG_PER_IP_PER_DAY ?? 3), Number(process.env.DIAG_PER_DAY ?? 20));
+const quickJobs = new Map<string, { estado: "corriendo" | "error"; paso: string; error?: string }>();
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i;
+
+async function startQuick(ip: string, body: { url?: unknown; rubro?: unknown; email?: unknown }): Promise<{ status: number; body: unknown }> {
+  const rubro = typeof body.rubro === "string" ? body.rubro.trim().slice(0, 120) : "";
+  const email = typeof body.email === "string" && body.email.trim() !== "" ? body.email.trim() : undefined;
+  if (rubro === "") return { status: 400, body: { error: "Cuéntanos qué vendes" } };
+  if (email !== undefined && !EMAIL.test(email)) return { status: 400, body: { error: "Ese correo no es válido" } };
+  let url: URL;
+  try {
+    url = normalizeUrl(typeof body.url === "string" ? body.url : "");
+    await assertPublicHost(url.hostname);
+  } catch (error) {
+    if (error instanceof BadUrl) return { status: 400, body: { error: error.message } };
+    throw error;
+  }
+  const domain = url.hostname.replace(/^www\./, "");
+  const recent = await data.recentQuick(domain, new Date(Date.now() - 86_400_000).toISOString());
+  if (recent !== undefined) return { status: 200, body: { id: recent.id } };
+  const refused = quickLimits.take(ip);
+  if (refused !== undefined) return { status: 429, body: { error: refused } };
+  const id = randomBytes(8).toString("hex");
+  const job = { estado: "corriendo" as const, paso: "Leyendo tu tienda…" };
+  quickJobs.set(id, job);
+  const fetcher = createFetcher({ delayMs: 300, timeoutMs: 10_000, maxRetries: 1 });
+  void (async () => {
+    try {
+      const result: QuickResult = await quickDiagnosis({ llm, engines, fetcher, log: (l) => {
+        console.error(`diagnóstico ${id}: ${l}`);
+        job.paso = l.includes("preguntas") ? "Preguntándole a las IAs…" : "Leyendo tu catálogo…";
+      } }, id, url, rubro);
+      await data.saveQuick(result, email);
+      quickJobs.delete(id);
+    } catch (error) {
+      console.error(`diagnóstico ${id} falló: ${(error as Error).message}`);
+      quickJobs.set(id, { estado: "error", paso: "", error: "Algo falló al consultar las IAs. Intenta de nuevo en un rato." });
+    }
+  })();
+  return { status: 202, body: { id } };
+}
+
 const productCache = new Map(await Promise.all(STORES.map(async (s) => [s.id, await data.products(s.id)] as const)));
 const products = (id: string) => productCache.get(id) ?? [];
 
@@ -159,7 +211,25 @@ const server = createServer(async (req, res) => {
       }));
       return send(res, 200, "text/html; charset=utf-8", indexPage(rows));
     }
-    let m = /^\/tienda\/([a-z0-9-]+)$/.exec(path);
+    if (req.method === "GET" && path === "/diagnostico") return send(res, 200, "text/html; charset=utf-8", quickFormPage(engines.map((e) => e.name)));
+    if (req.method === "POST" && path === "/api/diagnostico") {
+      const out = await startQuick(clientIp(req), (await readBody(req, 4_000)) as Record<string, unknown>);
+      return json(res, out.status, out.body);
+    }
+    let m = /^\/(api\/)?diagnostico\/([a-f0-9]{16})$/.exec(path);
+    if (req.method === "GET" && m) {
+      const id = m[2]!;
+      const job = quickJobs.get(id);
+      const result = job === undefined ? await data.quick(id) : undefined;
+      if (m[1] !== undefined) {
+        if (job !== undefined) return json(res, 200, job);
+        return result === undefined ? json(res, 404, { error: "No existe ese diagnóstico" }) : json(res, 200, { estado: "listo" });
+      }
+      if (job?.estado === "corriendo") return send(res, 200, "text/html; charset=utf-8", quickWaitPage(id, job.paso));
+      if (job?.estado === "error") return send(res, 200, "text/html; charset=utf-8", quickErrorPage(job.error ?? "Algo falló"));
+      return result === undefined ? send(res, 404, "text/plain; charset=utf-8", "No existe ese diagnóstico") : send(res, 200, "text/html; charset=utf-8", quickResultPage(result));
+    }
+    m = /^\/tienda\/([a-z0-9-]+)$/.exec(path);
     if (req.method === "GET" && m) {
       const html = await storePanel(req, m[1]!);
       return html === undefined ? send(res, 404, "text/plain; charset=utf-8", "No existe esa tienda") : send(res, 200, "text/html; charset=utf-8", html);

@@ -31,7 +31,7 @@ beforeAll(async () => {
   await migrate(q);
 });
 beforeEach(async () => {
-  await q.query("truncate comercios.products, comercios.analyses, comercios.policies, comercios.answers, comercios.events, comercios.clicks, comercios.ingest_runs");
+  await q.query("truncate comercios.products, comercios.analyses, comercios.policies, comercios.answers, comercios.events, comercios.clicks, comercios.ingest_runs, comercios.diagnosticos");
 });
 afterAll(async () => {
   await pglite.close();
@@ -127,6 +127,18 @@ describe("Postgres store", () => {
       expect(rows).toEqual([{ owner: "panel" }]);
     } finally {
       await pg.close();
+    }
+  }, 20_000);
+
+  it("keeps quick diagnoses and finds the latest recent one by domain", async () => {
+    const result = (id: string, at: string) => ({ id, domain: "tienda.cl", name: "Tienda", rubro: "x", at, platform: "shopify" as const, products: 0, method: "", score: undefined, checks: [], engines: ["claude"], questions: [], instead: [] });
+    for (const s of [pgStore(q), sqliteStore(localDb())] as PanelStore[]) {
+      await s.saveQuick(result("aaaa000000000001", "2026-11-17T10:00:00.000Z"), "dueno@tienda.cl");
+      await s.saveQuick(result("aaaa000000000002", "2026-11-17T12:00:00.000Z"), undefined);
+      expect((await s.quick("aaaa000000000001"))?.at).toBe("2026-11-17T10:00:00.000Z");
+      expect((await s.recentQuick("tienda.cl", "2026-11-17T09:00:00.000Z"))?.id).toBe("aaaa000000000002");
+      expect(await s.recentQuick("tienda.cl", "2026-11-18T00:00:00.000Z")).toBeUndefined();
+      expect(await s.quick("ffff000000000000")).toBeUndefined();
     }
   });
 
