@@ -12,6 +12,7 @@ export const STORES: readonly Store[] = [
   { id: "pethome", name: "PetHome", origin: "https://pethome.cl", platform: "shopify", rubro: "mascotas", source: "piloto", sellsOnline: true },
   { id: "homemobili", name: "Home Mobili", origin: "https://homemobili.cl", platform: "shopify", rubro: "muebles", source: "piloto", sellsOnline: true },
   { id: "felinus", name: "Felinus", origin: "https://felinus.cl", platform: "prestashop", rubro: "gatos", source: "piloto", sellsOnline: true },
+  { id: "tapline", name: "Tapline", origin: "https://tapline.agentpey.com", platform: "shopify", rubro: "accesorios para festivales y NFC", source: "propia", sellsOnline: true },
   { id: "luminova", name: "Luminova", origin: "https://luminova.cl", platform: "propia", rubro: "iluminación LED arquitectónica", source: "piloto", sellsOnline: false },
 
   { id: "bpets", name: "B-Pets", origin: "https://www.bpets.cl", platform: "vtex", rubro: "mascotas", source: "black-friday", sellsOnline: true },
