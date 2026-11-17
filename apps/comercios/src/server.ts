@@ -1,0 +1,266 @@
+/**
+ * Local demo server for AgentPey comercios: the store panels, the AI seller,
+ * the measurement beacon and snippet, the feeds, the agent (MCP) endpoint and
+ * the click redirect. Binds to 127.0.0.1 unless HOST says otherwise.
+ *
+ *   PORT=3100 npx tsx src/server.ts
+ *
+ * Data: with DATABASE_URL it reads and writes the `comercios` schema in
+ * Postgres (the hosted mode, filled by scripts/setup-postgres.ts); without it,
+ * the local SQLite file (DB_PATH or data/comercios.db) the CLI fills.
+ */
+import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { fileURLToPath } from "node:url";
+
+import { handleMcp } from "./agente.js";
+import pg from "pg";
+
+import { openDb } from "./db.js";
+import type { Analysis } from "./entender.js";
+import { llmsTxt, openAiFeed } from "./feeds.js";
+import { createLlm } from "./llm.js";
+import { AI_SOURCES, snippet, summarize, type MeasureEvent, type Source } from "./medir.js";
+import { indexPage, panel, sellerPage } from "./panel.js";
+import type { Policy } from "./politicas.js";
+import { rankForPromotion } from "./promover.js";
+import { readiness } from "./readiness.js";
+import { pgStore, sqliteStore, type PanelStore } from "./store.js";
+import { STORES as ALL_STORES } from "./stores.js";
+import { reply, searchProducts, trackedLink, type Turn } from "./vender.js";
+
+try {
+  process.loadEnvFile(fileURLToPath(new URL("../.env.local", import.meta.url)));
+} catch {
+  /* no .env.local */
+}
+
+const DATABASE_URL = process.env.DATABASE_URL ?? "";
+function openPostgres(url: string): PanelStore {
+  const pool = new pg.Pool({
+    connectionString: url,
+    // Same as SignalDesk and Vitrinee: the pooler requires TLS, and Node's default CA bundle does not carry Supabase's chain.
+    ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false },
+    max: 5,
+  });
+  // An idle client the server drops is emitted here; unlistened, it crashes the process.
+  pool.on("error", (error) => console.error(`comercios: idle Postgres client failed: ${error.message}`));
+  return pgStore(pool);
+}
+const data: PanelStore = DATABASE_URL === ""
+  ? sqliteStore(openDb(process.env.DB_PATH ?? fileURLToPath(new URL("../data/comercios.db", import.meta.url))))
+  : openPostgres(DATABASE_URL);
+const CSS = readFileSync(fileURLToPath(new URL("../../web/public/brand/agentpey.css", import.meta.url)), "utf8");
+/**
+ * PUBLIC=1 is the hosted mode: only the stores listed in PUBLIC_STORES are
+ * visible (Black Friday stores and any pilot without a written OK stay out),
+ * the AI seller always uses the paid API (the subscription cannot serve the
+ * public), and the seller endpoint is rate-limited per IP.
+ */
+const PUBLIC = process.env.PUBLIC === "1";
+const STORES = PUBLIC
+  ? ALL_STORES.filter((s) => (process.env.PUBLIC_STORES ?? "").split(",").map((x) => x.trim()).includes(s.id))
+  : ALL_STORES;
+// Render wipes local files on every deploy: hosted, the data must live in Postgres.
+if (PUBLIC && DATABASE_URL === "") throw new Error("PUBLIC=1 necesita DATABASE_URL");
+if (PUBLIC && (process.env.ANTHROPIC_API_KEY ?? "") === "") throw new Error("PUBLIC=1 necesita ANTHROPIC_API_KEY");
+if (PUBLIC && STORES.length === 0) throw new Error("PUBLIC=1 necesita PUBLIC_STORES con al menos una tienda");
+const llm = createLlm(PUBLIC ? "api" : undefined);
+const PORT = Number(process.env.PORT ?? 3100);
+const HOST = process.env.HOST ?? "127.0.0.1";
+
+const SELLER_LIMIT = Number(process.env.SELLER_LIMIT_PER_HOUR ?? 30);
+const hits = new Map<string, number[]>();
+/** True when this IP has used up its seller questions for the last hour. */
+function limited(ip: string, now = Date.now()): boolean {
+  if (!PUBLIC) return false;
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < 3_600_000);
+  if (recent.length >= SELLER_LIMIT) {
+    hits.set(ip, recent);
+    return true;
+  }
+  hits.set(ip, [...recent, now]);
+  return false;
+}
+function clientIp(req: IncomingMessage): string {
+  const fwd = req.headers["x-forwarded-for"];
+  return (typeof fwd === "string" ? fwd.split(",")[0]!.trim() : undefined) ?? req.socket.remoteAddress ?? "?";
+}
+/**
+ * Catalogues change only when the CLI or the setup script loads them, and the
+ * server is restarted after that, so they are read once at start-up. The MCP
+ * handler needs them synchronously.
+ */
+const productCache = new Map(await Promise.all(STORES.map(async (s) => [s.id, await data.products(s.id)] as const)));
+const products = (id: string) => productCache.get(id) ?? [];
+
+function send(res: ServerResponse, status: number, type: string, body: string, headers: Record<string, string> = {}) {
+  res.writeHead(status, { "content-type": type, "cache-control": "no-store", ...headers });
+  res.end(body);
+}
+const json = (res: ServerResponse, status: number, body: unknown) => send(res, status, "application/json; charset=utf-8", JSON.stringify(body));
+
+async function readBody(req: IncomingMessage, limit = 64_000): Promise<unknown> {
+  let raw = "";
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > limit) throw new Error("demasiado grande");
+  }
+  return raw === "" ? {} : JSON.parse(raw);
+}
+
+function origin(req: IncomingMessage): string {
+  const proto = req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+  return `${proto}://${req.headers.host ?? `${HOST}:${PORT}`}`;
+}
+
+/**
+ * An AgentPey link for a product: records the click, then /ir/<id> redirects
+ * to the store. Returns at once (the MCP handler is synchronous); the save goes
+ * into `pending`, which the caller awaits before answering, so a link is never
+ * handed out before its click exists.
+ */
+function link(pending: Promise<void>[], base: string, storeId: string, productId: string, url: string, channel: string): string {
+  const id = randomBytes(6).toString("hex");
+  pending.push(data.saveClick({ id, storeId, productId, url, channel }));
+  return `${base}/ir/${id}`;
+}
+
+async function policyOf(storeId: string): Promise<Policy | undefined> {
+  return (await data.policy(storeId))?.data as Policy | undefined;
+}
+
+async function storePanel(req: IncomingMessage, storeId: string): Promise<string | undefined> {
+  const store = STORES.find((s) => s.id === storeId);
+  if (store === undefined) return undefined;
+  const ps = products(store.id);
+  const [rawAnalyses, answers, pol, events] = await Promise.all([data.analyses(store.id), data.answers(store.id), data.policy(store.id), data.events(store.id)]);
+  const analyses = rawAnalyses.map((a) => ({ productId: a.productId, data: a.data as Analysis }));
+  const missed = answers.filter((a) => !a.mentioned).flatMap((a) => a.question.split(/\s+/));
+  return panel({
+    store, products: ps, readiness: readiness(store, ps), analyses,
+    policy: pol === undefined ? undefined : { data: pol.data as Policy, pages: pol.pages, status: pol.status },
+    answers, measure: summarize(store.id, events),
+    promote: rankForPromotion({ products: ps, listingScore: new Map(analyses.map((a) => [a.productId, a.data.puntaje])), missedDemand: missed }),
+    snippetUrl: `${origin(req)}/m/snippet.js?tienda=${store.id}`, mcpUrl: `${origin(req)}/mcp`,
+  });
+}
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url ?? "/", origin(req));
+  const path = url.pathname;
+  try {
+    if (req.method === "GET" && path === "/brand/agentpey.css") return send(res, 200, "text/css; charset=utf-8", CSS);
+    if (req.method === "GET" && path === "/") {
+      const rows = await Promise.all(STORES.map(async (store) => {
+        const answers = await data.answers(store.id);
+        return { store, products: products(store.id).length, score: readiness(store, products(store.id)).score, appear: answers.length === 0 ? "—" : `${answers.filter((a) => a.mentioned).length}/${answers.length}` };
+      }));
+      return send(res, 200, "text/html; charset=utf-8", indexPage(rows));
+    }
+    let m = /^\/tienda\/([a-z0-9-]+)$/.exec(path);
+    if (req.method === "GET" && m) {
+      const html = await storePanel(req, m[1]!);
+      return html === undefined ? send(res, 404, "text/plain; charset=utf-8", "No existe esa tienda") : send(res, 200, "text/html; charset=utf-8", html);
+    }
+    m = /^\/tienda\/([a-z0-9-]+)\/vendedor$/.exec(path);
+    if (req.method === "GET" && m) {
+      const store = STORES.find((s) => s.id === m![1]);
+      return store === undefined ? send(res, 404, "text/plain; charset=utf-8", "No existe esa tienda") : send(res, 200, "text/html; charset=utf-8", sellerPage(store));
+    }
+    m = /^\/api\/vender\/([a-z0-9-]+)$/.exec(path);
+    if (req.method === "POST" && m) {
+      const store = STORES.find((s) => s.id === m![1]);
+      if (store === undefined) return json(res, 404, { error: "No existe esa tienda" });
+      if (limited(clientIp(req))) return json(res, 429, { error: "Demasiadas preguntas seguidas; prueba de nuevo en un rato" });
+      const body = (await readBody(req)) as { pregunta?: unknown; historial?: unknown };
+      const pregunta = typeof body.pregunta === "string" ? body.pregunta.trim().slice(0, 500) : "";
+      if (pregunta === "") return json(res, 400, { error: "Falta la pregunta" });
+      const history = (Array.isArray(body.historial) ? body.historial : [])
+        .filter((t): t is Turn => typeof t === "object" && t !== null && ((t as Turn).role === "cliente" || (t as Turn).role === "vendedor") && typeof (t as Turn).text === "string")
+        .slice(-6);
+      const context = [...history.filter((t) => t.role === "cliente").map((t) => t.text), pregunta].join(" ");
+      const candidates = searchProducts(products(store.id), context, 10);
+      const out = await reply(llm, store, await policyOf(store.id), candidates, history, pregunta);
+      if (out === undefined) return json(res, 502, { error: "El vendedor no pudo responder" });
+      const byId = new Map(candidates.map((p) => [p.id, p]));
+      const pending: Promise<void>[] = [];
+      const productos = out.recomendados.map((r) => {
+        const p = byId.get(r.id)!;
+        return { titulo: p.title, precio: p.price === undefined ? "precio no publicado" : `$${p.price.toLocaleString("es-CL")}`, por_que: r.por_que, enlace: link(pending, origin(req), store.id, p.id, p.url, "vendedor") };
+      });
+      await Promise.all(pending);
+      return json(res, 200, { respuesta: out.respuesta, no_se: out.no_se, productos });
+    }
+    m = /^\/ir\/([a-f0-9]{12})$/.exec(path);
+    if (req.method === "GET" && m) {
+      const click = await data.click(m[1]!);
+      if (click === undefined) return send(res, 404, "text/plain; charset=utf-8", "Enlace desconocido");
+      await data.saveEvent({ storeId: click.storeId, kind: "visita", source: "agentpey", at: new Date().toISOString(), productIds: [click.productId] });
+      res.writeHead(302, { location: trackedLink(click.url, m[1]!) });
+      return res.end();
+    }
+    if (req.method === "POST" && path === "/mcp") {
+      const body = await readBody(req);
+      const policies = new Map(await Promise.all(STORES.map(async (s) => [s.id, await policyOf(s.id)] as const)));
+      const pending: Promise<void>[] = [];
+      const deps = {
+        stores: STORES, products,
+        policySummary: (id: string) => {
+          const p = policies.get(id);
+          return p === undefined ? undefined : `Despacho: ${p.despacho.cobertura}. Costo: ${p.despacho.costo}. Cambios: ${p.cambios_y_devoluciones.acepta}${p.cambios_y_devoluciones.plazo_dias ? ` (${p.cambios_y_devoluciones.plazo_dias} días)` : ""}. Garantía: ${p.garantia}. Pago: ${p.medios_de_pago.join(", ")}. ${p.cuotas}`;
+        },
+        link: (storeId: string, productId: string, u: string) => link(pending, origin(req), storeId, productId, u, "mcp"),
+      };
+      const msgs = Array.isArray(body) ? body : [body];
+      const answers = msgs.map((msg) => handleMcp(deps, msg as Record<string, unknown>)).filter((a) => a !== undefined);
+      await Promise.all(pending);
+      if (answers.length === 0) {
+        res.writeHead(202);
+        return res.end();
+      }
+      return json(res, 200, Array.isArray(body) ? answers : answers[0]);
+    }
+    if (req.method === "GET" && path === "/m/snippet.js") {
+      const tienda = url.searchParams.get("tienda") ?? "";
+      if (!STORES.some((s) => s.id === tienda)) return send(res, 404, "text/plain; charset=utf-8", "tienda desconocida");
+      return send(res, 200, "application/javascript; charset=utf-8", snippet(tienda, `${origin(req)}/m`), { "access-control-allow-origin": "*" });
+    }
+    if (req.method === "POST" && path === "/m") {
+      const b = (await readBody(req, 8_000)) as Record<string, unknown>;
+      const store = STORES.find((s) => s.id === b.tienda);
+      const source = String(b.fuente ?? "") as Source;
+      if (store === undefined || !(source === "sin_ia" || (AI_SOURCES as readonly string[]).includes(source)) || (b.tipo !== "visita" && b.tipo !== "compra")) {
+        res.writeHead(400, { "access-control-allow-origin": "*" });
+        return res.end();
+      }
+      const event: MeasureEvent = {
+        storeId: store.id, kind: b.tipo, source, at: new Date().toISOString(),
+        ...(b.tipo === "compra" ? { total: Math.max(0, Math.round(Number(b.total) || 0)), orderId: String(b.pedido ?? "").slice(0, 64) } : {}),
+        productIds: Array.isArray(b.productos) ? b.productos.slice(0, 50).map((x) => String(x).slice(0, 64)) : [],
+      };
+      await data.saveEvent(event);
+      res.writeHead(204, { "access-control-allow-origin": "*" });
+      return res.end();
+    }
+    m = /^\/feeds\/([a-z0-9-]+)\.jsonl$/.exec(path);
+    if (req.method === "GET" && m) {
+      const store = STORES.find((s) => s.id === m![1]);
+      if (store === undefined) return send(res, 404, "text/plain; charset=utf-8", "No existe esa tienda");
+      return send(res, 200, "application/x-ndjson; charset=utf-8", openAiFeed(store, products(store.id)).jsonl);
+    }
+    m = /^\/feeds\/([a-z0-9-]+)\/llms\.txt$/.exec(path);
+    if (req.method === "GET" && m) {
+      const store = STORES.find((s) => s.id === m![1]);
+      if (store === undefined) return send(res, 404, "text/plain; charset=utf-8", "No existe esa tienda");
+      return send(res, 200, "text/plain; charset=utf-8", llmsTxt(store, products(store.id), `${origin(req)}/feeds/${store.id}.jsonl`));
+    }
+    return send(res, 404, "text/plain; charset=utf-8", "No encontrado");
+  } catch (error) {
+    console.error(`${req.method} ${path}:`, (error as Error).message);
+    if (!res.headersSent) json(res, 500, { error: "Error interno" });
+  }
+});
+
+server.listen(PORT, HOST, () => console.log(`AgentPey comercios en http://${HOST}:${PORT} (IA: ${llm.name})`));
