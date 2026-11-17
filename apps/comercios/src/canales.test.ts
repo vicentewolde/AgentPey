@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { handleMcp, type AgentDeps } from "./agente.js";
 import type { Product, Store } from "./model.js";
 import { rankForPromotion } from "./promover.js";
-import { priceCeiling, searchProducts, trackedLink } from "./vender.js";
+import { priceCeiling, scoreProducts, searchProducts, SMALL_CATALOG, trackedLink } from "./vender.js";
 
 const p = (id: string, title: string, price: number, extra: Partial<Product> = {}): Product => ({
   storeId: "t", id, title, description: "", url: `https://t.cl/products/${id}`, images: [], price, compareAtPrice: undefined, available: true,
@@ -21,15 +21,32 @@ describe("the AI seller's search", () => {
     ["hasta $900 mil", 900000], ["menos de 50.000", 50000], ["bajo 1,2 millones", 1200000], ["presupuesto de 30 lucas", 30000], ["un rascador lindo", undefined],
   ])("reads the price ceiling in %s", (q, n) => expect(priceCeiling(q)).toBe(n));
 
-  it("finds matching products under the ceiling, in stock first", () => {
-    const found = searchProducts(catalog, "rascador torre hasta 50 mil");
-    expect(found.map((x) => x.id)).toEqual(["1"]);
-    expect(searchProducts(catalog, "notebook gamer")).toEqual([]);
+  const strict = (ps: typeof catalog, q: string) => scoreProducts(ps, q).map((x) => x.p.id);
+  const filler = Array.from({ length: SMALL_CATALOG }, (_, i) => p(`f${i}`, `Juguete de goma ${i}`, 3990));
+
+  it("scores matching products under the ceiling", () => {
+    expect(strict(catalog, "rascador torre hasta 50 mil")).toEqual(["1"]);
+    expect(strict(catalog, "notebook gamer")).toEqual([]);
   });
 
   it("ignores the price words and does not match short words inside longer ones", () => {
     const withNoise = [...catalog, p("5", "Mouse gamer", 44990, { description: "Ideal para toda la familia, 50 botones" })];
-    expect(searchProducts(withNoise, "rascador torre hasta 50 mil").map((x) => x.id)).toEqual(["1"]);
+    expect(strict(withNoise, "rascador torre hasta 50 mil")).toEqual(["1"]);
+  });
+
+  it("hands a small catalogue whole to the seller, best matches first, without what is over budget or sold out", () => {
+    const found = searchProducts(catalog, "rascador torre hasta 50 mil").map((x) => x.id);
+    expect(found[0]).toBe("1");
+    expect(found).not.toContain("4");
+    expect(found).not.toContain("2");
+    expect(searchProducts(catalog, "voy a un festival, ¿qué me recomiendas llevar?").length).toBe(3);
+  });
+
+  it("in a big catalogue, keeps the strict matches and falls back to any word for a conversational question", () => {
+    const big = [...catalog, ...filler];
+    expect(searchProducts(big, "rascador torre hasta 50 mil").map((x) => x.id)).toEqual(["1"]);
+    expect(searchProducts(big, "mi gato rompe todo y quiero algo para que se entretenga, ¿un rascador?").map((x) => x.id)[0]).toBe("1");
+    expect(searchProducts(big, "notebook gamer")).toEqual([]);
   });
 
   it("marks links with the click id", () => {
