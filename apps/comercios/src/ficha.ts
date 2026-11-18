@@ -35,7 +35,7 @@ export const engineName = (e: string) => (e === "chatgpt" ? "ChatGPT" : e === "c
 /** The two or three most valuable fixes, in plain words: the catalogue's weakest checks first, then what the answers show. */
 export function improvements(r: StoreResult): string[] {
   const out = r.weakest.filter((w) => w.pass < 0.8).map((w) => `${FIX[w.key] ?? w.label} Hoy lo cumple el ${Math.round(w.pass * 100)}% de tus productos.`);
-  if (r.products === 0) out.unshift("Tu catálogo no se pudo leer de forma automática, y si un programa no lo lee, una IA tampoco. Hay que publicarlo en un formato que los asistentes entiendan (un feed de productos).");
+  if (r.products === 0) out.unshift("No encontramos en tu sitio datos de producto legibles por máquina (nombre, precio, stock). Los asistentes de IA usan esos datos para recomendar productos: hay que publicarlos (datos estructurados en cada ficha, o un feed de productos).");
   if (r.answers > 0 && r.mentioned < r.answers / 2) {
     if (r.sources.length > 0) out.push(`Estar en los sitios que la IA usó como fuente en tu rubro: ${r.sources.slice(0, 3).map((x) => x.domain).join(", ")}.`);
     out.push("Enviar tu catálogo a ChatGPT como feed de productos (OpenAI ya recibe feeds de tiendas) para que pueda mostrar tus productos con precio y stock.");
@@ -62,7 +62,9 @@ export function fichaHtml(r: StoreResult, t: Tienda, run: Run, period: string): 
   const fixes = improvements(r);
   const engines = Object.entries(r.byEngine).map(([e, v]) => `${esc(engineName(e))}: ${v.mentioned} de ${v.answers}`).join(" · ");
   const row = (k: string, v: string) => `<tr><td style="padding:6px 0;color:#666;font-size:13px">${k}</td><td style="padding:6px 0;text-align:right;font-weight:600;font-size:15px">${v}</td></tr>`;
-  const readNote = run === undefined || run.count === 0
+  const readNote = run === undefined
+    ? "No alcanzamos a leer tu catálogo público en esta muestra."
+    : run.count === 0
     ? `No se pudo leer el catálogo público${run?.notes[0] ? ` (${esc(run.notes[0].slice(0, 120))})` : ""}.`
     : `Leímos ${run.count} productos de tu sitio el ${esc(run.at.slice(0, 10))}.`;
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(r.name)} · cómo te ven las IAs</title></head>
@@ -158,11 +160,11 @@ export function resumenMd(results: readonly StoreResult[], tiendas: readonly Tie
     const compete = new Map<string, number>();
     for (const r of rs) for (const i of r.instead) compete.set(i.domain, (compete.get(i.domain) ?? 0) + i.count);
     const top = [...compete.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([d, c]) => `${d} (${c})`).join(", ");
-    lines.push(`### ${rubro}`, ``, `${rs.length} tiendas · puntaje promedio ${avg ?? "sin datos"} · nombradas en ${men} de ${ans} respuestas · dominios que aparecen en su lugar: ${top || "—"}`, ``);
+    lines.push(`### ${rubro}`, ``, `${rs.length} tiendas · puntaje promedio ${avg ?? "sin datos"} · recomendadas con su sitio en ${men} de ${ans} respuestas · dominios que aparecen en su lugar: ${top || "—"}`, ``);
     lines.push(`| Tienda | Plataforma | Productos | Puntaje | Aparece |`, `|---|---|---|---|---|`);
     for (const r of [...rs].sort((a, b) => (b.score ?? -1) - (a.score ?? -1))) lines.push(`| ${r.name} | ${r.platform} | ${r.products} | ${r.score ?? "sin leer"} | ${r.answers ? `${r.mentioned}/${r.answers}` : "sin diagnóstico"} |`);
     lines.push(``);
-    if (ans > 0 && men === 0) opp.push(`**${rubro}**: nadie del rubro aparece (0 de ${ans} respuestas). Territorio abierto.`);
+    if (ans >= 20 && men === 0) opp.push(`**${rubro}**: nadie del rubro aparece (0 de ${ans} respuestas). Territorio abierto.`);
     const big = [...compete.entries()].filter(([d]) => isBigMarket(d)).reduce((a, [, c]) => a + c, 0);
     const all = [...compete.values()].reduce((a, b) => a + b, 0);
     if (all >= 5 && big / all >= 0.5) opp.push(`**${rubro}**: ${Math.round((100 * big) / all)}% de lo que aparece en su lugar son grandes tiendas y marketplaces.`);
@@ -171,8 +173,10 @@ export function resumenMd(results: readonly StoreResult[], tiendas: readonly Tie
   if (good.length > 0) opp.push(`Buen catálogo (70+) que igual no aparece: ${good.map((r) => `${r.name} (${r.score})`).join(", ")}.`);
   const bad = diag.filter((r) => r.score !== undefined && r.score < 50 && r.mentioned > 0);
   if (bad.length > 0) opp.push(`Catálogo flojo (<50) pero que sí aparece: ${bad.map((r) => `${r.name} (${r.score}, ${r.mentioned}/${r.answers})`).join(", ")}.`);
-  const unread = results.filter((r) => r.products === 0);
-  if (unread.length > 0) opp.push(`Catálogo ilegible para un robot (${unread.length}): ${unread.map((r) => r.name).join(", ")}.`);
+  const failedRead = results.filter((r) => r.products === 0 && runs.get(r.id) !== undefined);
+  const notYet = results.filter((r) => runs.get(r.id) === undefined);
+  if (failedRead.length > 0) opp.push(`Sin datos de producto legibles por máquina (${failedRead.length}): ${failedRead.map((r) => r.name).join(", ")}.`);
+  if (notYet.length > 0) opp.push(`Catálogo aún no leído (${notYet.length}).`);
   const corr = diag.filter((r) => r.score !== undefined);
   if (corr.length >= 8) {
     const hi = corr.filter((r) => r.score! >= 60), lo = corr.filter((r) => r.score! < 60);
@@ -184,6 +188,5 @@ export function resumenMd(results: readonly StoreResult[], tiendas: readonly Tie
   lines.push(`## Patrones y oportunidades`, ``, ...opp.map((o) => `- ${o}`), ``, `## Plataformas`, ``, [...plat.entries()].sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p}: ${n}`).join(" · "), ``);
   const failed = results.filter((r) => r.failed > 0);
   if (failed.length > 0) lines.push(`## Preguntas que un motor no pudo responder`, ``, failed.map((r) => `${r.name}: ${r.failed}`).join(" · "), ``);
-  void runs;
   return lines.join("\n");
 }
