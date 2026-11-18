@@ -27,11 +27,19 @@ const FIX: Record<string, string> = {
   titulo: "Reescribir títulos de 20 a 150 caracteres, con marca, modelo y característica clave.",
 };
 
-/** The two or three most valuable fixes, in plain words, with how many products they touch. */
+export const engineName = (e: string) => (e === "chatgpt" ? "ChatGPT" : e === "claude" ? "Claude" : e);
+
+/** The two or three most valuable fixes, in plain words: the catalogue's weakest checks first, then what the answers show. */
 export function improvements(r: StoreResult): string[] {
-  const out = r.weakest.map((w) => `${FIX[w.key] ?? w.label} (hoy lo cumple ${Math.round(w.pass * 100)}% de tus productos)`);
-  if (r.products === 0) out.push("Tu catálogo no se pudo leer de forma automática: sin eso, una IA no puede ver tus productos. Hay que publicarlo en un formato que los asistentes entiendan.");
-  if (r.answers > 0 && r.mentioned === 0) out.push("Aparecer en las respuestas pide, además del catálogo, páginas de producto que respondan preguntas concretas (despacho, garantía, cuotas) y se puedan citar.");
+  const out = r.weakest.filter((w) => w.pass < 0.8).map((w) => `${FIX[w.key] ?? w.label} Hoy lo cumple el ${Math.round(w.pass * 100)}% de tus productos.`);
+  if (r.products === 0) out.unshift("Tu catálogo no se pudo leer de forma automática, y si un programa no lo lee, una IA tampoco. Hay que publicarlo en un formato que los asistentes entiendan (un feed de productos).");
+  if (r.answers > 0 && r.mentioned < r.answers / 2) {
+    if (r.sources.length > 0) out.push(`Estar en los sitios que la IA usó como fuente en tu rubro: ${r.sources.slice(0, 3).map((x) => x.domain).join(", ")}.`);
+    out.push("Enviar tu catálogo a ChatGPT como feed de productos (OpenAI ya recibe feeds de tiendas) para que pueda mostrar tus productos con precio y stock.");
+    out.push("Páginas de producto que respondan lo que pregunta el comprador (despacho a regiones, garantía, cuotas), que la IA pueda citar.");
+  }
+  if (r.brandOnly > 0) out.unshift(`La IA conoce tu marca, pero en ${r.brandOnly} respuestas mandó a comprarla a otro sitio: tu tienda propia necesita fichas de producto que la IA pueda leer y citar con precio, stock y despacho.`);
+  if (out.length < 2) out.push("Medir esto cada semana: las respuestas cambian, y lo que no se mide no se puede mejorar.");
   return out.slice(0, 3);
 }
 
@@ -39,8 +47,9 @@ const pct = (a: number, b: number) => (b === 0 ? "—" : `${a} de ${b}`);
 
 function facts(r: StoreResult): { rubroLine: string; scoreLine: string; verdict: string } {
   const scoreLine = r.score === undefined ? "No pudimos leer el catálogo" : `${r.score} / 100`;
-  const rubroLine = r.rubroAvgScore === undefined ? "Aún sin datos comparables en el rubro." : `Promedio del rubro (${r.rubroStores} tiendas): ${r.rubroAvgScore}. Mejor del rubro: ${r.rubroBest ? `${r.rubroBest.name}, ${r.rubroBest.score}` : "—"}.`;
-  const verdict = r.answers === 0 ? "No pudimos obtener respuestas de las IAs para esta tienda en esta muestra." : r.mentioned === 0 ? `La IA no nombró tu tienda en ninguna de ${r.answers} respuestas.` : `La IA nombró tu tienda en ${r.mentioned} de ${r.answers} respuestas.`;
+  const best = r.rubroBest === undefined ? "" : r.rubroBest.name === r.name ? " Tienes el mejor puntaje del rubro." : ` Mejor del rubro: ${r.rubroBest.name}, ${r.rubroBest.score}.`;
+  const rubroLine = r.rubroAvgScore === undefined ? "Aún sin datos comparables en el rubro." : `Promedio de ${r.rubro} (${r.rubroScored} tiendas leídas): ${r.rubroAvgScore}.${best}`;
+  const verdict = r.answers === 0 ? "No pudimos obtener respuestas de las IAs para esta tienda en esta muestra." : r.mentioned === 0 ? `La IA no recomendó tu sitio en ninguna de ${r.answers} respuestas.` : `La IA recomendó tu sitio en ${r.mentioned} de ${r.answers} respuestas.`;
   return { rubroLine, scoreLine, verdict };
 }
 
@@ -48,7 +57,7 @@ export function fichaHtml(r: StoreResult, t: Tienda, run: Run, period: string): 
   const { rubroLine, scoreLine, verdict } = facts(r);
   const instead = r.instead.slice(0, 5);
   const fixes = improvements(r);
-  const engines = Object.entries(r.byEngine).map(([e, v]) => `${esc(e)}: ${v.mentioned} de ${v.answers}`).join(" · ");
+  const engines = Object.entries(r.byEngine).map(([e, v]) => `${esc(engineName(e))}: ${v.mentioned} de ${v.answers}`).join(" · ");
   const row = (k: string, v: string) => `<tr><td style="padding:6px 0;color:#666;font-size:13px">${k}</td><td style="padding:6px 0;text-align:right;font-weight:600;font-size:15px">${v}</td></tr>`;
   const readNote = run === undefined || run.count === 0
     ? `No se pudo leer el catálogo público${run?.notes[0] ? ` (${esc(run.notes[0].slice(0, 120))})` : ""}.`
@@ -66,12 +75,13 @@ export function fichaHtml(r: StoreResult, t: Tienda, run: Run, period: string): 
 <div style="font-size:12px;color:#555">${esc(rubroLine)}</div>
 </div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;border-bottom:1px solid #eee;margin-bottom:12px">
-${row("Te nombran", esc(pct(r.mentioned, r.answers)) + " respuestas")}
+${row("Te recomiendan con tu sitio", esc(pct(r.mentioned, r.answers)) + " respuestas")}
+${r.brandOnly > 0 ? row("Nombran tu marca, pero mandan a comprar a otro sitio", esc(pct(r.brandOnly, r.answers))) : ""}
 ${row("Usan tu sitio como fuente", esc(pct(r.cited, r.answers)))}
 </table>
 <div style="font-size:14px;margin-bottom:6px"><b>${esc(verdict)}</b>${engines ? ` <span style="color:#777;font-size:12px">(${engines})</span>` : ""}</div>
 ${instead.length > 0 ? `<div style="font-size:13px;color:#444;margin-bottom:12px">En tu lugar aparecieron: ${instead.map((i) => `${esc(i.domain)} (${i.count})`).join(", ")}.</div>` : ""}
-${r.example ? `<div style="font-size:13px;color:#444;background:#fafaf7;border-left:3px solid #c9c4b5;padding:8px 10px;margin-bottom:12px">Ejemplo: a la pregunta <i>“${esc(r.example.question.slice(0, 180))}”</i>, ${esc(r.example.engine)} recomendó ${r.example.instead.map(esc).join(", ")}.</div>` : ""}
+${r.example ? `<div style="font-size:13px;color:#444;background:#fafaf7;border-left:3px solid #c9c4b5;padding:8px 10px;margin-bottom:12px">Ejemplo: a la pregunta <i>“${esc(r.example.question.slice(0, 180))}”</i>, ${esc(engineName(r.example.engine))} recomendó ${r.example.instead.map(esc).join(", ")}.</div>` : ""}
 <div style="font-size:14px;font-weight:700;margin:6px 0">Lo primero que arreglaría</div>
 <ol style="margin:0 0 12px 18px;padding:0;font-size:13px;line-height:1.45">${fixes.map((f) => `<li style="margin-bottom:4px">${esc(f)}</li>`).join("") || "<li>Tu catálogo cumple lo básico; el siguiente paso es medirlo cada semana.</li>"}</ol>
 <div style="font-size:11px;color:#888;line-height:1.4;border-top:1px solid #eee;padding-top:8px">${esc(readNote)} Muestra de ${r.answers} respuestas de IA (${esc(period)}). Las respuestas de la IA cambian de una vez a otra: esto es una muestra con fecha, no un ranking. AgentPey · vicente@agentpey.com</div>
@@ -81,14 +91,17 @@ ${r.example ? `<div style="font-size:13px;color:#444;background:#fafaf7;border-l
 /** Draft only. The first line comes from this store's real sample; with none, it says so instead of inventing one. */
 export function correoTexto(r: StoreResult, t: Tienda, period: string): string {
   const to = mailableEmail(t.emails, t.domain);
-  const opening = r.example
-    ? `Le hice a ${r.example.engine === "chatgpt" ? "ChatGPT" : "Claude"} esta pregunta de compra: "${r.example.question}". Recomendó ${r.example.instead.join(", ")}. ${r.name} no apareció.`
+  const engine = r.example ? engineName(r.example.engine) : "ChatGPT";
+  const opening = r.brandOnly > 0 && r.mentioned === 0 && r.brandExample
+    ? `Le pregunté a ${engineName(r.brandExample.engine)}: "${r.brandExample.question}". Nombró ${r.name}, pero mandó a comprar a ${r.brandExample.instead.join(", ")}, no a ${r.domain}.`
+    : r.example
+    ? `Le hice a ${engine} esta pregunta de compra: "${r.example.question}". Recomendó ${r.example.instead.join(", ")}. ${r.name} no apareció.`
     : r.answers > 0 && r.mentioned > 0
       ? `Les hice preguntas de compra de ${r.rubro} a ChatGPT y a Claude: ${r.name} apareció en ${r.mentioned} de ${r.answers} respuestas.`
       : `Revisé cómo ven las IAs de compra (ChatGPT, Claude) a ${r.name}.`;
   const score = r.score === undefined ? "" : ` Tu catálogo público saca ${r.score} de 100 en legibilidad para una IA${r.rubroAvgScore === undefined ? "" : ` (promedio de ${r.rubro}: ${r.rubroAvgScore})`}.`;
   return `PARA: ${to ? `${to.email}  (fuente: ${to.page})` : "(sin correo público de la tienda: no enviar)"}
-ASUNTO: ¿ChatGPT recomienda ${r.name}?
+ASUNTO: ${r.example ? `¿${engine} recomienda ${r.name}?` : `¿Las IAs recomiendan ${r.name}?`}
 ESTADO: BORRADOR, no enviado. Vicente debe aprobar texto y lista.
 
 Hola, equipo de ${r.name}:

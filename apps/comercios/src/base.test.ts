@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compare, cyberRubro, findEmails, mailableEmail, parseBlackFriday, parseCyber, segmentOf, type StoreInput, type Tienda } from "./base.js";
+import { compare, cyberRubro, findEmails, mailableEmail, parseBlackFriday, parseCyber, presence, segmentOf, type StoreInput, type Tienda } from "./base.js";
 import { correoTexto, csvIndex, fichaHtml, improvements, resumenMd } from "./ficha.js";
 import { cliError, UsageLimitError } from "./llm.js";
 import { readiness } from "./readiness.js";
@@ -121,5 +121,15 @@ describe("the plan's usage limit", () => {
   it("is told apart from any other failed run", () => {
     expect(cliError({ subtype: "success", result: "You've hit your limit · resets 2:10am" })).toBeInstanceOf(UsageLimitError);
     expect(cliError({ subtype: "error_max_turns", result: "" })).not.toBeInstanceOf(UsageLimitError);
+  });
+});
+
+describe("a store that is also a product brand", () => {
+  it("counts as recommended only when the answer sends the buyer to its own site", () => {
+    const store = { id: "osoji", name: "Osoji", origin: "https://osoji.cl", platform: "shopify" as const, rubro: "Hogar", source: "black-friday" as const, sellsOnline: true };
+    const elsewhere = presence(store, { engine: "claude", text: "El Osoji Mix OM6 está en Ripley", urls: ["https://simple.ripley.cl/robot-osoji"] });
+    expect(elsewhere).toMatchObject({ mentioned: false, brandOnly: true, cited: false });
+    const own = presence(store, { engine: "chatgpt", text: "Cómpralo en osoji.cl", urls: [] });
+    expect(own).toMatchObject({ mentioned: true, brandOnly: false });
   });
 });

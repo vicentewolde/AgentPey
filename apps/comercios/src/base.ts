@@ -268,21 +268,30 @@ export interface StoreResult {
   readonly products: number;
   readonly score: number | undefined;
   readonly answers: number;
+  /** Answers that send the buyer to the store's own site (domain written or a page linked). */
   readonly mentioned: number;
+  /** Answers that name the store or brand but send the buyer somewhere else. */
+  readonly brandOnly: number;
   readonly cited: number;
   readonly failed: number;
   readonly byEngine: Readonly<Record<string, { answers: number; mentioned: number }>>;
   /** Other sites in this store's answers, by number of answers they appear in. */
   readonly instead: readonly { domain: string; count: number }[];
+  /** Sites that are not stores (reviews, press, comparison sites) the answers relied on. */
+  readonly sources: readonly { domain: string; count: number }[];
   /** In every answer of the rubro (all its stores' questions), how often each store of the rubro is named. */
   readonly rubroShare: readonly { id: string; name: string; mentioned: number }[];
   readonly rubroAnswers: number;
   readonly rubroAvgScore: number | undefined;
   readonly rubroBest: { name: string; score: number } | undefined;
   readonly rubroStores: number;
+  /** Stores of the rubro whose catalogue could be read. */
+  readonly rubroScored: number;
   readonly rubroAvgMentionRate: number | undefined;
   readonly weakest: readonly { key: string; label: string; pass: number }[];
   readonly example?: { engine: string; question: string; instead: readonly string[] };
+  /** An answer that named the brand but linked other sites for it. */
+  readonly brandExample?: { engine: string; question: string; instead: readonly string[] };
 }
 
 const BIG_MARKETS = /(^|\.)(mercadolibre\.cl|falabella\.com|paris\.cl|ripley\.cl|lider\.cl|sodimac\.cl|easy\.cl|jumbo\.cl|pcfactory\.cl|amazon\.com|aliexpress\.com|temu\.com|hites\.com|abcdin\.cl|abc\.cl|tottus\.cl|santaisabel\.cl|unimarc\.cl|mercadolibre\.com)$/;
@@ -292,11 +301,29 @@ function storeLike(h: string): boolean {
   return !/(^|\.)(gob\.cl|cl\.linkedin\.com|wikipedia\.org|reddit\.com|youtube\.com|chatgpt\.com|openai\.com|claude\.ai|anthropic\.com|google\.com|google\.cl|bing\.com|blogspot\.com|wordpress\.com|tripadvisor\.cl|tripadvisor\.com|biobiochile\.cl|emol\.com|latercera\.com|cooperativa\.cl|df\.cl|t13\.cl|24horas\.cl|lun\.com|elmostrador\.cl|xataka\.com|xataka\.cl|rtings\.com|notebookcheck\.net|gsmarena\.com|reclamos\.cl|sernac\.cl|solotodo\.cl|knasta\.cl|blackfriday\.cl|cyber\.cl|cyberday\.cl)$/.test(h);
 }
 
+const ENGINE_SITES = /(^|\.)(chatgpt\.com|openai\.com|claude\.ai|anthropic\.com|google\.com|google\.cl|bing\.com|gob\.cl)$/;
+
 export function isBigMarket(h: string): boolean {
   return BIG_MARKETS.test(h);
 }
 
 const sameHost = (h: string, domain: string) => h === domain || h.endsWith(`.${domain}`);
+
+const foldText = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/**
+ * The base counts a store as recommended only when the answer sends the buyer
+ * to its own site: its domain is written in the answer or one of its pages is
+ * linked. A store that is also a product brand (Osoji, Bebesit…) is often
+ * named while the answer sends the buyer to buy it elsewhere: that is counted
+ * apart, as "brand only".
+ */
+export function presence(store: Store, a: { engine: string; text: string; urls: readonly string[] }): { mentioned: boolean; brandOnly: boolean; cited: boolean; others: string[] } {
+  const v = judge(store, { engine: a.engine, text: a.text, urls: [...a.urls] } as EngineAnswer);
+  const domain = hostOf(store.origin) ?? "";
+  const site = v.cited || foldText(a.text).includes(domain);
+  return { mentioned: site, brandOnly: v.mentioned && !site, cited: v.cited, others: [...v.others] };
+}
 
 /** Per store: its own answers, then the rubro's averages, best score and who gets named across the rubro's answers. */
 export function compare(inputs: readonly StoreInput[]): StoreResult[] {
@@ -304,7 +331,7 @@ export function compare(inputs: readonly StoreInput[]): StoreResult[] {
   for (const i of inputs) byRubro.set(i.tienda.rubro, [...(byRubro.get(i.tienda.rubro) ?? []), i]);
   return inputs.map((i) => {
     const domain = i.tienda.domain ?? hostOf(i.store.origin) ?? "";
-    const verdicts = i.answers.map((a) => ({ a, v: judge(i.store, { engine: a.engine, text: a.text, urls: a.urls } as EngineAnswer) }));
+    const verdicts = i.answers.map((a) => ({ a, v: presence(i.store, a) }));
     const instead = new Map<string, number>();
     for (const { v } of verdicts) for (const h of new Set(v.others.filter(storeLike))) if (!sameHost(h, domain)) instead.set(h, (instead.get(h) ?? 0) + 1);
     const byEngine: Record<string, { answers: number; mentioned: number }> = {};
@@ -317,28 +344,38 @@ export function compare(inputs: readonly StoreInput[]): StoreResult[] {
     const rubroAnswers = peers.flatMap((p) => p.answers);
     const rubroShare = peers.map((p) => ({
       id: p.tienda.id, name: p.tienda.name,
-      mentioned: rubroAnswers.filter((a) => judge(p.store, { engine: a.engine, text: a.text, urls: a.urls }).mentioned).length,
+      mentioned: rubroAnswers.filter((a) => presence(p.store, a).mentioned).length,
     })).sort((a, b) => b.mentioned - a.mentioned);
     const scored = peers.filter((p) => p.readiness !== undefined && p.products > 0);
     const best = [...scored].sort((a, b) => b.readiness!.score - a.readiness!.score)[0];
-    const rates = peers.filter((p) => p.answers.length > 0).map((p) => p.answers.filter((a) => judge(p.store, { engine: a.engine, text: a.text, urls: a.urls }).mentioned).length / p.answers.length);
-    const firstMissing = verdicts.find(({ v }) => !v.mentioned && v.others.filter(storeLike).length >= 2);
+    const rates = peers.filter((p) => p.answers.length > 0).map((p) => p.answers.filter((a) => presence(p.store, a).mentioned).length / p.answers.length);
+    // The example for the sheet and the email: ChatGPT's when there is one (it is the assistant most buyers use).
+    const missing = verdicts.filter(({ v }) => !v.mentioned && v.others.filter(storeLike).length >= 2);
+    const firstMissing = missing.find(({ a }) => a.engine === "chatgpt") ?? missing[0];
+    const brandHits = verdicts.filter(({ v }) => v.brandOnly && v.others.filter(storeLike).length >= 1);
+    const brandHit = brandHits.find(({ a }) => a.engine === "chatgpt") ?? brandHits[0];
+    const sources = new Map<string, number>();
+    for (const { v } of verdicts) for (const h of new Set(v.others.filter((x) => !storeLike(x) && !ENGINE_SITES.test(x)))) sources.set(h, (sources.get(h) ?? 0) + 1);
     return {
       id: i.tienda.id, name: i.tienda.name, domain, rubro: i.tienda.rubro, platform: i.tienda.platform ?? "?", products: i.products,
       score: i.products > 0 ? i.readiness?.score : undefined,
       answers: i.answers.length,
       mentioned: verdicts.filter(({ v }) => v.mentioned).length,
+      brandOnly: verdicts.filter(({ v }) => v.brandOnly).length,
       cited: verdicts.filter(({ v }) => v.cited).length,
       failed: i.failed,
       byEngine,
+      sources: [...sources.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([d, count]) => ({ domain: d, count })),
       instead: [...instead.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([d, count]) => ({ domain: d, count })),
       rubroShare, rubroAnswers: rubroAnswers.length,
       rubroAvgScore: scored.length === 0 ? undefined : Math.round(scored.reduce((a, p) => a + p.readiness!.score, 0) / scored.length),
       rubroBest: best === undefined ? undefined : { name: best.tienda.name, score: best.readiness!.score },
       rubroStores: peers.length,
+      rubroScored: scored.length,
       rubroAvgMentionRate: rates.length === 0 ? undefined : rates.reduce((a, b) => a + b, 0) / rates.length,
       weakest: (i.products > 0 ? i.readiness?.checks ?? [] : []).filter((c) => c.notVisible !== true && c.pass < 0.9)
         .sort((a, b) => b.weight * (1 - b.pass) - a.weight * (1 - a.pass)).slice(0, 3).map((c) => ({ key: c.key, label: c.label, pass: c.pass })),
+      ...(brandHit ? { brandExample: { engine: brandHit.a.engine, question: brandHit.a.question, instead: brandHit.v.others.filter(storeLike).slice(0, 3) } } : {}),
       ...(firstMissing ? { example: { engine: firstMissing.a.engine, question: firstMissing.a.question, instead: firstMissing.v.others.filter(storeLike).slice(0, 3) } } : {}),
     };
   });
