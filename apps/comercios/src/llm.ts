@@ -73,6 +73,25 @@ function apiLlm(client: Anthropic): Llm {
   };
 }
 
+/**
+ * The plan's usage limit was reached (claude -p or Codex). Callers stop the
+ * run and keep what is saved instead of retrying in a loop.
+ */
+export class UsageLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UsageLimitError";
+  }
+}
+
+export const LIMIT_TEXT = /usage limit|hit your limit|limit reached|rate limit|limit will reset|resets? (at|in)|quota|out of (extra )?usage|límite de uso/i;
+
+/** The error to raise for a failed `claude -p` run: the CLI's own message, and a UsageLimitError when it is the plan's limit. */
+export function cliError(r: { subtype?: string; result?: string }): Error {
+  const message = `claude -p: ${(r.result ?? "").trim().slice(0, 300) || r.subtype || "error"}`;
+  return LIMIT_TEXT.test(r.result ?? "") ? new UsageLimitError(message) : new Error(message);
+}
+
 interface CliResult {
   is_error?: boolean;
   subtype?: string;
@@ -85,7 +104,9 @@ function runCli(args: string[], prompt: string, timeoutMs = 300_000): Promise<Cl
   return new Promise((resolve, reject) => {
     const env = { ...process.env };
     delete env.ANTHROPIC_API_KEY;
-    const child = spawn("claude", ["-p", "--output-format", "json", "--no-session-persistence", "--model", CLI_MODEL, ...args], { env, stdio: ["pipe", "pipe", "pipe"] });
+    // No MCP servers, skills or dynamic sections: without these flags every call carried the whole local setup
+    // (hundreds of thousands of tokens of tool definitions) and used up the plan many times faster.
+    const child = spawn("claude", ["-p", "--output-format", "json", "--no-session-persistence", "--model", CLI_MODEL, "--strict-mcp-config", "--disable-slash-commands", "--exclude-dynamic-system-prompt-sections", ...args], { env, stdio: ["pipe", "pipe", "pipe"] });
     let out = "";
     let err = "";
     const timer = setTimeout(() => child.kill("SIGTERM"), timeoutMs);
@@ -97,7 +118,8 @@ function runCli(args: string[], prompt: string, timeoutMs = 300_000): Promise<Cl
       try {
         resolve(JSON.parse(out) as CliResult);
       } catch {
-        reject(new Error(`claude -p terminó con ${code}: ${err.slice(0, 300) || out.slice(0, 300)}`));
+        const detail = err.slice(0, 300) || out.slice(0, 300);
+        reject(LIMIT_TEXT.test(detail) ? new UsageLimitError(`claude -p: ${detail}`) : new Error(`claude -p terminó con ${code}: ${detail}`));
       }
     });
     child.stdin.end(prompt);
@@ -111,13 +133,15 @@ function cliLlm(): Llm {
       const { $schema: _drop, ...plain } = z.toJSONSchema(schema) as Record<string, unknown>;
       const jsonSchema = JSON.stringify(plain);
       const r = await runCli(["--tools", "", "--system-prompt", system, "--json-schema", jsonSchema], user);
-      if (r.is_error === true || r.structured_output === undefined) return undefined;
+      // A failed run (the plan's limit, most often) used to come back as "no answer", which hid the reason.
+      if (r.is_error === true) throw cliError(r);
+      if (r.structured_output === undefined) return undefined;
       const parsed = schema.safeParse(r.structured_output);
       return parsed.success ? parsed.data : undefined;
     },
     async searchAnswer(system, question) {
       const r = await runCli(["--tools", "WebSearch", "--allowedTools", "WebSearch", "--system-prompt", system], question);
-      if (r.is_error === true) throw new Error(`claude -p: ${r.subtype ?? "error"}`);
+      if (r.is_error === true) throw cliError(r);
       const text = r.result ?? "";
       // The CLI returns the final text only; the URLs are the links written in it.
       const urls = [...new Set([...text.matchAll(/https?:\/\/[^\s)\]>"']+/g)].map((m) => m[0].replace(/[.,;]+$/, "")))];

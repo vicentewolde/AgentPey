@@ -9,6 +9,7 @@
  *   demo-medicion <storeId|piloto>       load labelled sample measurement data for the panel
  *   informe <storeId|piloto>              write data/informes/<id>.html and .pdf for the store
  *   report                           readiness per store; writes data/feeds/<id>.jsonl and <id>.llms.txt
+ *   base <lista|contacto|ingest|diagnostico|comparar|fichas>   the base of Black Friday stores (see base-cli.ts)
  */
 import { fileURLToPath } from "node:url";
 
@@ -30,6 +31,7 @@ import { readiness } from "./readiness.js";
 import { createFetcher } from "./http.js";
 import { ingestStore } from "./ingest/index.js";
 import { findStore, STORES } from "./stores.js";
+import { baseCommand } from "./base-cli.js";
 
 // Keys live in apps/comercios/.env.local (not in git). Missing file is fine.
 try {
@@ -63,6 +65,10 @@ async function main(argv: string[]): Promise<void> {
           console.log(`${store.id}: falló (${(error as Error).message})`);
         }
       }
+      return;
+    }
+    if (command === "base") {
+      await baseCommand(db, target, rest);
       return;
     }
     if (command === "summary") {

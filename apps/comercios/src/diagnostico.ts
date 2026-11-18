@@ -10,7 +10,7 @@
  */
 import { z } from "zod";
 
-import type { Llm } from "./llm.js";
+import { LIMIT_TEXT, UsageLimitError, type Llm } from "./llm.js";
 import type { Product, Store } from "./model.js";
 
 export interface EngineAnswer {
@@ -117,6 +117,7 @@ export function chatgptEngine(timeoutMs = 300_000): Engine {
           child.on("close", (code) => {
             clearTimeout(timer);
             if (code === 0) resolve();
+            else if (LIMIT_TEXT.test(err.slice(-2000))) reject(new UsageLimitError(`codex exec: ${err.slice(-300)}`));
             else reject(new Error(`codex exec terminó con ${code}: ${err.slice(-300)}`));
           });
         });
