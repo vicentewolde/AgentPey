@@ -190,3 +190,71 @@ export function resumenMd(results: readonly StoreResult[], tiendas: readonly Tie
   if (failed.length > 0) lines.push(`## Preguntas que un motor no pudo responder`, ``, failed.map((r) => `${r.name}: ${r.failed}`).join(" · "), ``);
   return lines.join("\n");
 }
+
+// ---------------------------------------------------------------------------
+// The one-page A4 report: for a meeting, or as a PDF attachment. Same data as the sheet, more of it.
+
+const BAR_COLORS = { own: "#d9480f", avg: "#9a948a", best: "#2b2a27" };
+
+function bars(rows: readonly { label: string; value: number; max: number; text: string; color: string }[]): string {
+  return rows.map((b) => `<div class="bar"><span class="bl">${esc(b.label)}</span><span class="bt"><span style="width:${Math.max(2, Math.round((100 * b.value) / (b.max || 1)))}%;background:${b.color}"></span></span><span class="bv">${esc(b.text)}</span></div>`).join("");
+}
+
+const passColor = (p: number) => (p >= 0.9 ? "#2f7d32" : p >= 0.6 ? "#b7791f" : "#c0392b");
+
+export function informeHtml(r: StoreResult, t: Tienda, run: Run, period: string): string {
+  const rate = (x: number | undefined) => (x === undefined ? "—" : `${Math.round(100 * x)}%`);
+  const instead = r.instead.slice(0, 5);
+  const maxInstead = instead[0]?.count ?? 1;
+  const headline = r.answers === 0
+    ? `Aún no tenemos respuestas de IA para ${r.name} en esta muestra.`
+    : r.mentioned === 0
+      ? `Hicimos ${r.answers} preguntas de compra de ${r.rubro.toLowerCase()} a la IA. Ninguna respuesta envió al comprador a ${r.domain}.`
+      : `Hicimos ${r.answers} preguntas de compra de ${r.rubro.toLowerCase()} a la IA. ${r.mentioned} ${r.mentioned === 1 ? "respuesta envió" : "respuestas enviaron"} al comprador a ${r.domain}.`;
+  const insteadLine = instead.length === 0 ? "" : ` En su lugar aparecieron ${instead.slice(0, 3).map((i) => i.domain).join(", ")}.`;
+  const brandLine = r.brandOnly > 0 ? ` En ${r.brandOnly} la IA nombró tu marca, pero mandó a comprarla a otro sitio.` : "";
+  const scorePanel = r.score === undefined
+    ? `<p class="muted">${run === undefined ? "No alcanzamos a leer tu catálogo público." : `No encontramos datos de producto legibles por máquina en tu sitio${run.notes[0] ? ` (${esc(cut(run.notes[0], 110))})` : ""}.`} Sin esos datos, una IA tiene poco para recomendar tus productos.</p>`
+    : bars([
+      { label: r.name, value: r.score, max: 100, text: String(r.score), color: BAR_COLORS.own },
+      ...(r.rubroAvgScore === undefined ? [] : [{ label: "Promedio del rubro", value: r.rubroAvgScore, max: 100, text: String(r.rubroAvgScore), color: BAR_COLORS.avg }]),
+      ...(r.rubroBest === undefined || r.rubroBest.name === r.name ? [] : [{ label: `Mejor: ${r.rubroBest.name}`, value: r.rubroBest.score, max: 100, text: String(r.rubroBest.score), color: BAR_COLORS.best }]),
+    ]) + `<p class="muted">${r.rubroRank === undefined ? "" : `Puesto ${r.rubroRank} de ${r.rubroScored} tiendas del rubro con catálogo leído. `}${run && run.count > 0 ? `Leímos ${run.count} productos el ${esc(run.at.slice(0, 10))}.` : ""}</p>`;
+  const maxRate = Math.max(r.mentionRate ?? 0, r.rubroAvgMentionRate ?? 0, r.rubroBestRate?.rate ?? 0, 0.01);
+  const recPanel = r.answers === 0 ? `<p class="muted">Sin respuestas en esta muestra.</p>` : bars([
+    { label: r.name, value: r.mentionRate ?? 0, max: maxRate, text: `${r.mentioned} de ${r.answers}`, color: BAR_COLORS.own },
+    ...(r.rubroAvgMentionRate === undefined ? [] : [{ label: "Promedio del rubro", value: r.rubroAvgMentionRate, max: maxRate, text: rate(r.rubroAvgMentionRate), color: BAR_COLORS.avg }]),
+    ...(r.rubroBestRate === undefined || r.rubroBestRate.name === r.name ? [] : [{ label: `Mejor: ${r.rubroBestRate.name}`, value: r.rubroBestRate.rate, max: maxRate, text: rate(r.rubroBestRate.rate), color: BAR_COLORS.best }]),
+  ]) + `<p class="muted">Respuestas que mandaron al comprador a tu sitio. ${Object.entries(r.byEngine).map(([e, v]) => `${engineName(e)}: ${v.mentioned} de ${v.answers}`).join(" · ")}</p>`;
+  const checks = r.checks.filter((c) => c.notVisible !== true);
+  const fixes = improvements(r);
+  const ex = r.mentioned === 0 && r.brandExample ? r.brandExample : r.example;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(r.name)} · visibilidad en IA · AgentPey</title><style>
+@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;font:11.5px/1.45 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:#1d1d1b;background:#fff}
+.page{max-width:186mm;margin:0 auto}header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1d1d1b;padding-bottom:6px;margin-bottom:10px}
+.brand{font-weight:800;letter-spacing:.02em}.brand span{color:${BAR_COLORS.own}}.date{color:#777;font-size:10.5px;text-align:right}
+h1{font-size:24px;margin:0;line-height:1.1}.sub{color:#666;font-size:11px;margin-top:2px}.lead{font-size:14px;line-height:1.4;margin:8px 0 12px;font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.box{border:1px solid #e3e0d8;border-radius:8px;padding:9px 11px}.box h2{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#666;margin:0 0 6px}
+.big{font-size:30px;font-weight:800;line-height:1}.bar{display:grid;grid-template-columns:38% 1fr 52px;align-items:center;gap:6px;margin:3px 0}.bl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt{background:#f1efe9;border-radius:3px;height:10px;display:block}.bt span{display:block;height:10px;border-radius:3px}.bv{text-align:right;font-weight:600}.muted{color:#777;font-size:10.5px;margin:5px 0 0}
+.quote{background:#faf8f3;border-left:3px solid ${BAR_COLORS.own};padding:7px 10px;margin:10px 0;font-size:11px}table{width:100%;border-collapse:collapse}td{padding:2.5px 0;border-bottom:1px solid #f0eee8}
+td.p{width:46px;text-align:right;font-weight:600}ol{margin:4px 0 0 16px;padding:0}li{margin-bottom:4px}.cta{background:#1d1d1b;color:#fff;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.cta b{font-size:13px}.cta a{color:#fff}footer{color:#888;font-size:9.5px;margin-top:8px;line-height:1.35}
+</style></head><body><div class="page">
+<header><div><div class="brand">Agent<span>Pey</span> · Visibilidad en asistentes de IA</div></div><div class="date">Muestra del ${esc(period)}<br>${esc(r.domain)}</div></header>
+<h1>${esc(r.name)}</h1><div class="sub">${esc(r.rubro)} · ${esc(r.platform)}</div>
+<p class="lead">${esc(headline + insteadLine + brandLine)}</p>
+<div class="grid">
+<div class="box"><h2>Tu catálogo, legible para una IA</h2><div class="big">${r.score === undefined ? "—" : `${r.score}<span style="font-size:14px;color:#888"> / 100</span>`}</div>${scorePanel}</div>
+<div class="box"><h2>¿La IA te recomienda?</h2><div class="big">${r.answers === 0 ? "—" : `${r.mentioned}<span style="font-size:14px;color:#888"> de ${r.answers}</span>`}</div>${recPanel}</div>
+</div>
+${ex ? `<div class="quote"><b>Una respuesta real.</b> Pregunta: “${esc(cut(ex.question, 230))}” ${esc(engineName(ex.engine))} recomendó: ${ex.instead.map(esc).join(", ")}.</div>` : ""}
+<div class="grid">
+<div class="box"><h2>Quién aparece en tu lugar</h2>${instead.length === 0 ? `<p class="muted">Sin datos en esta muestra.</p>` : bars(instead.map((x) => ({ label: x.domain, value: x.count, max: maxInstead, text: `${x.count} resp.`, color: BAR_COLORS.avg })))}${r.sources.length > 0 ? `<p class="muted">Sitios que la IA usó como fuente: ${r.sources.slice(0, 4).map((x) => esc(x.domain)).join(", ")}.</p>` : ""}</div>
+<div class="box"><h2>Tu catálogo, punto por punto</h2>${checks.length === 0 ? `<p class="muted">Sin catálogo leído.</p>` : `<table>${checks.map((c) => `<tr><td>${esc(c.label)}</td><td class="p" style="color:${passColor(c.pass)}">${Math.round(100 * c.pass)}%</td></tr>`).join("")}</table><p class="muted">% de tus productos que cumple cada punto.</p>`}</div>
+</div>
+<div class="box" style="margin-top:10px"><h2>Lo primero que arreglaría</h2><ol>${fixes.map((f) => `<li>${esc(f)}</li>`).join("")}</ol></div>
+<div class="cta"><div><b>¿Lo revisamos juntos en 15 minutos?</b><br>Te mostramos las respuestas completas, medimos cada semana y corregimos el catálogo contigo.</div><div style="text-align:right;white-space:nowrap">Vicente Wolde<br><a href="mailto:vicente@agentpey.com">vicente@agentpey.com</a><br>agentpey.com</div></div>
+<footer>Cómo lo medimos: preguntas de compra que haría un comprador chileno de este rubro, hechas a asistentes de IA con búsqueda web (${Object.keys(r.byEngine).map(engineName).join(" y ") || "—"}) el ${esc(period)}. "Te recomienda" = la respuesta escribe tu dominio o enlaza una página de tu sitio. El puntaje del catálogo revisa tus productos públicos en 10 puntos. Las respuestas de la IA cambian de una vez a otra: es una muestra con fecha, no un ranking.${r.repeated > 0 ? ` Repetimos ${r.repeated} preguntas a otra hora: en ${r.changed} cambió el resultado.` : ""} Datos públicos de tu sitio; no usamos información privada.</footer>
+</div></body></html>`;
+}

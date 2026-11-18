@@ -145,3 +145,16 @@ describe("a repeated sample", () => {
     expect(r).toMatchObject({ repeated: 1, changed: 1, answers: 3, mentioned: 1 });
   });
 });
+
+describe("the one-page report", () => {
+  it("fits the store's numbers, the rubro comparison and a way to talk, without making up a score", async () => {
+    const { informeHtml } = await import("./ficha.js");
+    const t = tienda("a", "Alfa Mascotas", "alfa.cl");
+    const [r] = compare([input(t, [], [{ engine: "claude", text: "En falabella.com y lider.cl", urls: ["https://falabella.com/x", "https://lider.cl/y"] }])]);
+    const html = informeHtml(r!, t, undefined, "2026-11-18");
+    expect(html).toContain("@page{size:A4");
+    expect(html).toContain("Ninguna respuesta envió al comprador a alfa.cl");
+    expect(html).toContain("No alcanzamos a leer tu catálogo");
+    expect(html).toContain("vicente@agentpey.com");
+  });
+});

@@ -23,7 +23,7 @@ import { compare, contactLinks, cyberRubro, isBigMarket, mailableEmail, parseCyb
 import type { Db } from "./db.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, hostOf, judge, type Engine } from "./diagnostico.js";
 import { pool } from "./entender.js";
-import { fichaHtml, correoTexto, resumenMd, csvIndex } from "./ficha.js";
+import { fichaHtml, correoTexto, resumenMd, csvIndex, informeHtml } from "./ficha.js";
 import { createFetcher, type Fetcher } from "./http.js";
 import type { Platform } from "./model.js";
 import { ingestStore } from "./ingest/index.js";
@@ -356,8 +356,23 @@ function comparar(db: Db, rest: string[], fichas: boolean): void {
     const html = fichaHtml(r, t, run, period);
     writeFileSync(`${dir}${r.id}.html`, html);
     writeFileSync(`${dir}${r.id}-correo.txt`, correoTexto(r, t, period));
+    writeFileSync(`${dir}${r.id}-informe.html`, informeHtml(r, t, run, period));
     rows.push([r.name, r.domain, r.rubro, r.platform, String(r.products), r.score === undefined ? "sin leer" : String(r.score), r.answers === 0 ? "sin diagnóstico" : `${r.mentioned}/${r.answers}`, String(r.cited), mailableEmail(t.emails, t.domain)?.email ?? "", mailableEmail(t.emails, t.domain)?.page ?? "", `fichas-bf/${r.id}.html`]);
   }
   writeFileSync(`${dir}indice.csv`, csvIndex(["tienda", "dominio", "rubro", "plataforma", "productos_leidos", "puntaje", "aparece", "citada_como_fuente", "correo_contacto", "correo_fuente", "ficha"], rows));
   console.log(`${dir}: ${results.length} fichas e indice.csv`);
+  // Every brand looked at, for finding the right person later (Apollo or by hand): the target ones first.
+  const all = loadTiendas(db).sort((a, b) => Number(b.segment === "pyme") - Number(a.segment === "pyme") || a.rubro.localeCompare(b.rubro));
+  const byId = new Map(results.map((r) => [r.id, r]));
+  writeFileSync(`${BASE}lista-empresas.csv`, csvIndex(
+    ["empresa", "dominio", "rubro", "segmento", "fuente", "plataforma", "puntaje", "recomendada_con_su_sitio", "marca_sin_sitio", "correo_publico", "correo_fuente", "otros_correos_vistos"],
+    all.map((t) => {
+      const r = byId.get(t.id);
+      const mail = mailableEmail(t.emails, t.domain);
+      return [t.name, t.domain ?? "", t.rubro, t.segment, (t.sources ?? ["blackfriday"]).join("+"), t.platform ?? "",
+        r?.score === undefined ? "" : String(r.score), r === undefined || r.answers === 0 ? "" : `${r.mentioned}/${r.answers}`, r?.brandOnly ? String(r.brandOnly) : "",
+        mail?.email ?? "", mail?.page ?? "", (t.emails ?? []).map((e) => e.email).filter((e) => e !== mail?.email).join(" ")];
+    }),
+  ));
+  console.log(`${BASE}lista-empresas.csv: ${all.length} empresas`);
 }

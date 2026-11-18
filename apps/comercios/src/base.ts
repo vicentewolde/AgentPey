@@ -292,6 +292,13 @@ export interface StoreResult {
   readonly rubroScored: number;
   readonly rubroAvgMentionRate: number | undefined;
   readonly weakest: readonly { key: string; label: string; pass: number }[];
+  /** Every catalogue check, with the share of products that pass it (empty when the catalogue was not read). */
+  readonly checks: readonly { key: string; label: string; pass: number; notVisible?: boolean }[];
+  /** Position by catalogue score among the rubro's stores whose catalogue was read (1 = best). */
+  readonly rubroRank: number | undefined;
+  /** Share of the store's answers that recommended its site, and the best in the rubro (with at least 4 answers). */
+  readonly mentionRate: number | undefined;
+  readonly rubroBestRate: { name: string; rate: number } | undefined;
   readonly example?: { engine: string; question: string; instead: readonly string[] };
   /** An answer that named the brand but linked other sites for it. */
   readonly brandExample?: { engine: string; question: string; instead: readonly string[] };
@@ -332,6 +339,19 @@ export function presence(store: Store, a: { engine: string; text: string; urls: 
 export function compare(inputs: readonly StoreInput[]): StoreResult[] {
   const byRubro = new Map<string, StoreInput[]>();
   for (const i of inputs) byRubro.set(i.tienda.rubro, [...(byRubro.get(i.tienda.rubro) ?? []), i]);
+  // Per rubro, computed once: every store's name is checked against every answer of the rubro.
+  const cache = new Map<string, { rubroAnswers: StoredAnswer[]; rubroShare: { id: string; name: string; mentioned: number }[]; rated: { name: string; rate: number }[]; rates: number[] }>();
+  const rubroStats = (rubro: string, peers: readonly StoreInput[]) => {
+    const hit = cache.get(rubro);
+    if (hit !== undefined) return hit;
+    const rubroAnswers = peers.flatMap((p) => p.answers);
+    const rubroShare = peers.map((p) => ({ id: p.tienda.id, name: p.tienda.name, mentioned: rubroAnswers.filter((a) => presence(p.store, a).mentioned).length }))
+      .sort((a, b) => b.mentioned - a.mentioned);
+    const own = peers.filter((p) => p.answers.length > 0).map((p) => ({ name: p.tienda.name, n: p.answers.length, rate: p.answers.filter((a) => presence(p.store, a).mentioned).length / p.answers.length }));
+    const out = { rubroAnswers, rubroShare, rated: own.filter((x) => x.n >= 4).map(({ name, rate }) => ({ name, rate })).sort((a, b) => b.rate - a.rate), rates: own.map((x) => x.rate) };
+    cache.set(rubro, out);
+    return out;
+  };
   return inputs.map((i) => {
     const domain = i.tienda.domain ?? hostOf(i.store.origin) ?? "";
     const verdicts = i.answers.map((a) => ({ a, v: presence(i.store, a) }));
@@ -344,14 +364,10 @@ export function compare(inputs: readonly StoreInput[]): StoreResult[] {
       if (v.mentioned) e.mentioned++;
     }
     const peers = byRubro.get(i.tienda.rubro) ?? [i];
-    const rubroAnswers = peers.flatMap((p) => p.answers);
-    const rubroShare = peers.map((p) => ({
-      id: p.tienda.id, name: p.tienda.name,
-      mentioned: rubroAnswers.filter((a) => presence(p.store, a).mentioned).length,
-    })).sort((a, b) => b.mentioned - a.mentioned);
+    const { rubroAnswers, rubroShare, rated, rates } = rubroStats(i.tienda.rubro, peers);
     const scored = peers.filter((p) => p.readiness !== undefined && p.products > 0);
     const best = [...scored].sort((a, b) => b.readiness!.score - a.readiness!.score)[0];
-    const rates = peers.filter((p) => p.answers.length > 0).map((p) => p.answers.filter((a) => presence(p.store, a).mentioned).length / p.answers.length);
+    const bestRate = rated[0];
     // The example for the sheet and the email: ChatGPT's when there is one (it is the assistant most buyers use).
     const missing = verdicts.filter(({ v }) => !v.mentioned && v.others.filter(storeLike).length >= 2);
     const firstMissing = missing.find(({ a }) => a.engine === "chatgpt") ?? missing[0];
@@ -382,6 +398,10 @@ export function compare(inputs: readonly StoreInput[]): StoreResult[] {
       rubroStores: peers.length,
       rubroScored: scored.length,
       rubroAvgMentionRate: rates.length === 0 ? undefined : rates.reduce((a, b) => a + b, 0) / rates.length,
+      checks: i.products > 0 ? (i.readiness?.checks ?? []).map((c) => ({ key: c.key, label: c.label, pass: c.pass, ...(c.notVisible ? { notVisible: true } : {}) })) : [],
+      rubroRank: i.products > 0 && i.readiness !== undefined ? [...scored].sort((a, b) => b.readiness!.score - a.readiness!.score).findIndex((p) => p.tienda.id === i.tienda.id) + 1 : undefined,
+      mentionRate: i.answers.length === 0 ? undefined : verdicts.filter(({ v }) => v.mentioned).length / i.answers.length,
+      rubroBestRate: bestRate,
       weakest: (i.products > 0 ? i.readiness?.checks ?? [] : []).filter((c) => c.notVisible !== true && c.pass < 0.9)
         .sort((a, b) => b.weight * (1 - b.pass) - a.weight * (1 - a.pass)).slice(0, 3).map((c) => ({ key: c.key, label: c.label, pass: c.pass })),
       ...(brandHit ? { brandExample: { engine: brandHit.a.engine, question: brandHit.a.question, instead: brandHit.v.others.filter(storeLike).slice(0, 3) } } : {}),
