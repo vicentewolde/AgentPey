@@ -5,6 +5,7 @@
  *   ingest [--todas] [--max N] [--paralelo N]   read the public catalogues (skips stores already read)
  *   diagnostico [--n 4] [--motores claude,chatgpt] [--desde YYYY-MM-DD] [--limite N] [--paralelo N]
  *                               buyer questions per store; skips stores already answered since --desde
+ *                               --leidas: only stores whose catalogue reading has finished
  *                               --repetir <ISO>: ask again the questions answered between <ISO> and --desde
  *   cyber                       add cyber.cl's (CyberDay) brands: same rubros, a store on both lists is kept once
  *   ajustar                     apply data/base/ajustes.json's segments to the stores already in the base
@@ -280,7 +281,7 @@ async function diagnostico(db: Db, rest: string[]): Promise<void> {
   const repeat = flag(rest, "--repetir");
   // Stores with a readable catalogue first, bigger catalogues first; then the rest.
   const targets = loadTiendas(db)
-    .filter((t) => t.segment === "pyme" && t.origin !== undefined && (only === undefined || only.includes(t.id)) && answeredSince(db, t.id, since) === 0)
+    .filter((t) => t.segment === "pyme" && t.origin !== undefined && (only === undefined || only.includes(t.id)) && (!rest.includes("--leidas") || db.lastRun(t.id) !== undefined) && answeredSince(db, t.id, since) === 0)
     .map((t) => ({ t, count: db.lastRun(t.id)?.count ?? 0 }))
     .sort((a, b) => Number(b.count > 0) - Number(a.count > 0) || a.t.rubro.localeCompare(b.t.rubro))
     .slice(0, limit);
