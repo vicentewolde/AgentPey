@@ -9,6 +9,7 @@
  *                               --leidas: only stores whose catalogue reading has finished
  *                               --repetir <ISO>: ask again the questions answered between <ISO> and --desde
  *   cyber                       add cyber.cl's (CyberDay) brands: same rubros, a store on both lists is kept once
+ *   rubros [--n 15] [--desde ISO]   general buyer questions per rubro (no store in mind): who the AI recommends in each rubro
  *   ajustar                     apply data/base/ajustes.json's segments to the stores already in the base
  *   piloto                      add the pilot stores (stores.ts, source "piloto") to the base, in their rubro
  *   comparar [--desde YYYY-MM-DD]   per store and per rubro: data/base/comparacion.json and resumen.md
@@ -19,7 +20,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { compare, contactLinks, cyberRubro, isBigMarket, mailableEmail, parseCyber, findEmails, isAffiliate, mainRubro, parseBlackFriday, rankEmails, segmentOf, toStore, type Segment, type StoreInput, type Tienda } from "./base.js";
+import { compare, contactLinks, cyberRubro, isBigMarket, mailableEmail, parseCyber, findEmails, isAffiliate, mainRubro, parseBlackFriday, rankEmails, segmentOf, toStore, type Segment, type StoredAnswer, type StoreInput, type Tienda } from "./base.js";
 import type { Db } from "./db.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, hostOf, judge, type Engine } from "./diagnostico.js";
 import { pool } from "./entender.js";
@@ -43,6 +44,7 @@ function flag(args: readonly string[], name: string): string | undefined {
 function tables(db: Db): void {
   db.raw.exec(`
     create table if not exists tiendas (id text primary key, domain text, data text not null, at text not null);
+    create table if not exists rubro_answers (rubro text not null, engine text not null, question text not null, text text not null, urls text not null, at text not null);
     create table if not exists answer_errors (store_id text not null, engine text not null, question text not null, error text not null, at text not null);
   `);
 }
@@ -69,6 +71,7 @@ export async function baseCommand(db: Db, sub: string | undefined, rest: string[
   if (sub === "piloto") return piloto(db);
   if (sub === "cyber") return cyber(db, fetcher);
   if (sub === "ajustar") return ajustar(db);
+  if (sub === "rubros") return rubros(db, rest);
   if (sub === "comparar" || sub === "fichas") return comparar(db, rest, sub === "fichas");
   console.error("uso: cli base lista | contacto | ingest | diagnostico | comparar | fichas");
   process.exitCode = 2;
@@ -183,6 +186,62 @@ async function cyber(db: Db, fetcher: Fetcher): Promise<void> {
   });
   console.log(`\ncyber.cl: ${entries.length} marcas · ${added} nuevas en la base · ${merged} ya estaban (Black Friday)`);
   writeFileSync(`${BASE}tiendas.json`, JSON.stringify(loadTiendas(db), null, 2));
+}
+
+export function rubroAnswers(db: Db, since: string): Map<string, StoredAnswer[]> {
+  tables(db);
+  const out = new Map<string, StoredAnswer[]>();
+  for (const r of db.raw.prepare("select rubro, engine, question, text, urls, at from rubro_answers where at >= ?").all(since)) {
+    const a = { engine: String(r.engine), question: String(r.question), text: String(r.text), urls: JSON.parse(String(r.urls)) as string[], at: String(r.at) };
+    out.set(String(r.rubro), [...(out.get(String(r.rubro)) ?? []), a]);
+  }
+  return out;
+}
+
+/**
+ * Questions about the rubro, not about one store: the same for every store of
+ * the rubro, so they show who the AI recommends when nobody is named. The
+ * questions are written from products of several stores of the rubro.
+ */
+async function rubros(db: Db, rest: string[]): Promise<void> {
+  const n = Number(flag(rest, "--n") ?? 15);
+  const since = flag(rest, "--desde") ?? today();
+  const llm = createLlm("cuenta");
+  const engine = claudeEngine(llm);
+  const tiendas = loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined);
+  const done = rubroAnswers(db, since);
+  const names = [...new Set(tiendas.map((t) => t.rubro))].filter((r) => tiendas.filter((t) => t.rubro === r).length >= 3 && (done.get(r)?.length ?? 0) === 0);
+  console.log(`${names.length} rubros por preguntar (${n} preguntas cada uno)`);
+  let stopped: string | undefined;
+  for (const rubro of names) {
+    if (stopped !== undefined) break;
+    const sample = tiendas.filter((t) => t.rubro === rubro).flatMap((t) => db.products(t.id).slice(0, 6)).sort(() => Math.random() - 0.5).slice(0, 40);
+    let questions: string[];
+    try {
+      questions = await buyerQuestions(llm, { id: "rubro", name: rubro, origin: "https://rubro.invalid", platform: "propia", rubro: `${rubro} (tiendas online chilenas)`, source: "black-friday", sellsOnline: true }, sample, n);
+    } catch (error) {
+      if (error instanceof UsageLimitError) stopped = error.message;
+      console.log(`${rubro}: no se pudieron escribir las preguntas (${(error as Error).message.slice(0, 160)})`);
+      continue;
+    }
+    let ok = 0;
+    await pool(questions, 5, async (q) => {
+      if (stopped !== undefined) return;
+      try {
+        const a = await engine.ask(q);
+        db.raw.prepare("insert into rubro_answers (rubro, engine, question, text, urls, at) values (?, ?, ?, ?, ?, ?)").run(rubro, engine.name, q, a.text, JSON.stringify(a.urls), new Date().toISOString());
+        ok++;
+      } catch (error) {
+        if (error instanceof UsageLimitError) stopped = (error as Error).message;
+        console.error(`${rubro} · ${(error as Error).message.slice(0, 160)}`);
+      }
+    });
+    console.log(`${rubro}: ${ok}/${questions.length} respuestas`);
+  }
+  if (stopped !== undefined) {
+    console.log(`\nSe detuvo por el límite de uso: ${stopped}`);
+    process.exitCode = 3;
+  }
 }
 
 function ajustar(db: Db): void {
@@ -339,7 +398,7 @@ function comparar(db: Db, rest: string[], fichas: boolean): void {
     const failed = Number(db.raw.prepare("select count(*) n from answer_errors where store_id = ? and at >= ?").get(t.id, since)?.n ?? 0);
     return { tienda: t, store: { ...store, rubro: t.rubro }, readiness: products.length > 0 ? readiness(store, products) : undefined, products: products.length, answers, failed };
   });
-  const results = compare(inputs);
+  const results = compare(inputs, rubroAnswers(db, since));
   const runs = new Map(tiendas.map((t) => [t.id, db.lastRun(t.id)]));
   const dates = inputs.flatMap((i) => i.answers.map((a) => a.at.slice(0, 10))).sort();
   const period = dates.length === 0 ? "sin respuestas" : dates[0] === dates.at(-1) ? dates[0]! : `${dates[0]} a ${dates.at(-1)}`;

@@ -292,6 +292,8 @@ export interface StoreResult {
   readonly rubroScored: number;
   readonly rubroAvgMentionRate: number | undefined;
   readonly weakest: readonly { key: string; label: string; pass: number }[];
+  /** The rubro's general questions (no store in mind): how many, how many sent buyers to this store, and the sites they sent buyers to most. */
+  readonly general: { answers: number; mentioned: number; top: readonly { domain: string; count: number }[] };
   /** Every catalogue check, with the share of products that pass it (empty when the catalogue was not read). */
   readonly checks: readonly { key: string; label: string; pass: number; notVisible?: boolean }[];
   /** Position by catalogue score among the rubro's stores whose catalogue was read (1 = best). */
@@ -336,7 +338,17 @@ export function presence(store: Store, a: { engine: string; text: string; urls: 
 }
 
 /** Per store: its own answers, then the rubro's averages, best score and who gets named across the rubro's answers. */
-export function compare(inputs: readonly StoreInput[]): StoreResult[] {
+export function compare(inputs: readonly StoreInput[], general: ReadonlyMap<string, readonly StoredAnswer[]> = new Map()): StoreResult[] {
+  // General questions of each rubro (no store in mind): which sites the AI sends buyers to.
+  const generalTop = new Map<string, { domain: string; count: number }[]>();
+  for (const [rubro, answers] of general) {
+    const counts = new Map<string, number>();
+    for (const a of answers) {
+      const hosts = new Set([...a.urls].map(hostOf).filter((h): h is string => h !== undefined).map((h) => h.replace(/^www\./, "")).filter((h) => storeLike(h) && !ENGINE_SITES.test(h)));
+      for (const h of hosts) counts.set(h, (counts.get(h) ?? 0) + 1);
+    }
+    generalTop.set(rubro, [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([domain, count]) => ({ domain, count })));
+  }
   const byRubro = new Map<string, StoreInput[]>();
   for (const i of inputs) byRubro.set(i.tienda.rubro, [...(byRubro.get(i.tienda.rubro) ?? []), i]);
   // Per rubro, computed once: every store's name is checked against every answer of the rubro.
@@ -398,6 +410,11 @@ export function compare(inputs: readonly StoreInput[]): StoreResult[] {
       rubroStores: peers.length,
       rubroScored: scored.length,
       rubroAvgMentionRate: rates.length === 0 ? undefined : rates.reduce((a, b) => a + b, 0) / rates.length,
+      general: {
+        answers: general.get(i.tienda.rubro)?.length ?? 0,
+        mentioned: (general.get(i.tienda.rubro) ?? []).filter((a) => presence(i.store, a).mentioned).length,
+        top: generalTop.get(i.tienda.rubro) ?? [],
+      },
       checks: i.products > 0 ? (i.readiness?.checks ?? []).map((c) => ({ key: c.key, label: c.label, pass: c.pass, ...(c.notVisible ? { notVisible: true } : {}) })) : [],
       rubroRank: i.products > 0 && i.readiness !== undefined ? [...scored].sort((a, b) => b.readiness!.score - a.readiness!.score).findIndex((p) => p.tienda.id === i.tienda.id) + 1 : undefined,
       mentionRate: i.answers.length === 0 ? undefined : verdicts.filter(({ v }) => v.mentioned).length / i.answers.length,

@@ -158,3 +158,15 @@ describe("the one-page report", () => {
     expect(html).toContain("vicente@agentpey.com");
   });
 });
+
+describe("the rubro's general questions", () => {
+  it("rank the sites the AI sends buyers to and count the store's own", () => {
+    const t = tienda("a", "Alfa Mascotas", "alfa.cl");
+    const general = new Map([["Mascotas", [
+      { engine: "claude", question: "¿Dónde compro alimento?", text: "x", urls: ["https://www.falabella.com/a", "https://alfa.cl/p"], at: "2026-11-18" },
+      { engine: "claude", question: "¿Arena para gato?", text: "x", urls: ["https://falabella.com/b", "https://www.google.com/s"], at: "2026-11-18" },
+    ]]]);
+    const [r] = compare([input(t, [], [])], general);
+    expect(r!.general).toEqual({ answers: 2, mentioned: 1, top: [{ domain: "falabella.com", count: 2 }, { domain: "alfa.cl", count: 1 }] });
+  });
+});

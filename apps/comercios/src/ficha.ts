@@ -161,6 +161,11 @@ export function resumenMd(results: readonly StoreResult[], tiendas: readonly Tie
     for (const r of rs) for (const i of r.instead) compete.set(i.domain, (compete.get(i.domain) ?? 0) + i.count);
     const top = [...compete.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([d, c]) => `${d} (${c})`).join(", ");
     lines.push(`### ${rubro}`, ``, `${rs.length} tiendas · puntaje promedio ${avg ?? "sin datos"} · recomendadas con su sitio en ${men} de ${ans} respuestas · dominios que aparecen en su lugar: ${top || "—"}`, ``);
+    const g = rs[0]?.general;
+    if (g !== undefined && g.answers > 0) {
+      const ours = rs.filter((r) => r.general.mentioned > 0).map((r) => `${r.name} (${r.general.mentioned})`);
+      lines.push(`Preguntas generales del rubro (${g.answers}, sin nombrar tiendas): la IA mandó a ${g.top.slice(0, 8).map((x) => `${x.domain} (${x.count})`).join(", ")}. Pymes de la base que aparecieron: ${ours.join(", ") || "ninguna"}.`, ``);
+    }
     lines.push(`| Tienda | Plataforma | Productos | Puntaje | Aparece |`, `|---|---|---|---|---|`);
     for (const r of [...rs].sort((a, b) => (b.score ?? -1) - (a.score ?? -1))) lines.push(`| ${r.name} | ${r.platform} | ${r.products} | ${r.score ?? "sin leer"} | ${r.answers ? `${r.mentioned}/${r.answers}` : "sin diagnóstico"} |`);
     lines.push(``);
@@ -250,7 +255,7 @@ td.p{width:46px;text-align:right;font-weight:600}ol{margin:4px 0 0 16px;padding:
 </div>
 ${ex ? `<div class="quote"><b>Una respuesta real.</b> Pregunta: “${esc(cut(ex.question, 230))}” ${esc(engineName(ex.engine))} recomendó: ${ex.instead.map(esc).join(", ")}.</div>` : ""}
 <div class="grid">
-<div class="box"><h2>Quién aparece en tu lugar</h2>${instead.length === 0 ? `<p class="muted">Sin datos en esta muestra.</p>` : bars(instead.map((x) => ({ label: x.domain, value: x.count, max: maxInstead, text: `${x.count} resp.`, color: BAR_COLORS.avg })))}${r.sources.length > 0 ? `<p class="muted">Sitios que la IA usó como fuente: ${r.sources.slice(0, 4).map((x) => esc(x.domain)).join(", ")}.</p>` : ""}</div>
+<div class="box"><h2>Quién aparece en tu lugar</h2>${instead.length === 0 ? `<p class="muted">Sin datos en esta muestra.</p>` : bars(instead.map((x) => ({ label: x.domain, value: x.count, max: maxInstead, text: `${x.count} resp.`, color: BAR_COLORS.avg })))}${r.general.answers > 0 ? `<p class="muted" style="color:#1d1d1b"><b>Preguntas generales de ${esc(r.rubro.toLowerCase())}</b> (sin pensar en ninguna tienda): ${r.general.mentioned === 0 ? `tu sitio no apareció en ninguna de ${r.general.answers}` : `tu sitio apareció en ${r.general.mentioned} de ${r.general.answers}`}. Los más recomendados: ${r.general.top.slice(0, 5).map((x) => `${esc(x.domain)} (${x.count})`).join(", ")}.</p>` : ""}${r.sources.length > 0 ? `<p class="muted">Sitios que la IA usó como fuente: ${r.sources.slice(0, 4).map((x) => esc(x.domain)).join(", ")}.</p>` : ""}</div>
 <div class="box"><h2>Tu catálogo, punto por punto</h2>${checks.length === 0 ? `<p class="muted">Sin catálogo leído.</p>` : `<table>${checks.map((c) => `<tr><td>${esc(c.label)}</td><td class="p" style="color:${passColor(c.pass)}">${Math.round(100 * c.pass)}%</td></tr>`).join("")}</table><p class="muted">% de tus productos que cumple cada punto.</p>`}</div>
 </div>
 <div class="box" style="margin-top:10px"><h2>Lo primero que arreglaría</h2><ol>${fixes.map((f) => `<li>${esc(f)}</li>`).join("")}</ol></div>
