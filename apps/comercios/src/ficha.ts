@@ -27,6 +27,9 @@ const FIX: Record<string, string> = {
   titulo: "Reescribir títulos de 20 a 150 caracteres, con marca, modelo y característica clave.",
 };
 
+/** Shortens at a word boundary, with an ellipsis. */
+export const cut = (s: string, max: number) => (s.length <= max ? s : `${s.slice(0, s.lastIndexOf(" ", max))}…`);
+
 export const engineName = (e: string) => (e === "chatgpt" ? "ChatGPT" : e === "claude" ? "Claude" : e);
 
 /** The two or three most valuable fixes, in plain words: the catalogue's weakest checks first, then what the answers show. */
@@ -81,10 +84,10 @@ ${row("Usan tu sitio como fuente", esc(pct(r.cited, r.answers)))}
 </table>
 <div style="font-size:14px;margin-bottom:6px"><b>${esc(verdict)}</b>${engines ? ` <span style="color:#777;font-size:12px">(${engines})</span>` : ""}</div>
 ${instead.length > 0 ? `<div style="font-size:13px;color:#444;margin-bottom:12px">En tu lugar aparecieron: ${instead.map((i) => `${esc(i.domain)} (${i.count})`).join(", ")}.</div>` : ""}
-${r.example ? `<div style="font-size:13px;color:#444;background:#fafaf7;border-left:3px solid #c9c4b5;padding:8px 10px;margin-bottom:12px">Ejemplo: a la pregunta <i>“${esc(r.example.question.slice(0, 180))}”</i>, ${esc(engineName(r.example.engine))} recomendó ${r.example.instead.map(esc).join(", ")}.</div>` : ""}
+${r.example ? `<div style="font-size:13px;color:#444;background:#fafaf7;border-left:3px solid #c9c4b5;padding:8px 10px;margin-bottom:12px">Ejemplo: a la pregunta <i>“${esc(cut(r.example.question, 220))}”</i>, ${esc(engineName(r.example.engine))} recomendó ${r.example.instead.map(esc).join(", ")}.</div>` : ""}
 <div style="font-size:14px;font-weight:700;margin:6px 0">Lo primero que arreglaría</div>
 <ol style="margin:0 0 12px 18px;padding:0;font-size:13px;line-height:1.45">${fixes.map((f) => `<li style="margin-bottom:4px">${esc(f)}</li>`).join("") || "<li>Tu catálogo cumple lo básico; el siguiente paso es medirlo cada semana.</li>"}</ol>
-<div style="font-size:11px;color:#888;line-height:1.4;border-top:1px solid #eee;padding-top:8px">${esc(readNote)} Muestra de ${r.answers} respuestas de IA (${esc(period)}). Las respuestas de la IA cambian de una vez a otra: esto es una muestra con fecha, no un ranking. AgentPey · vicente@agentpey.com</div>
+<div style="font-size:11px;color:#888;line-height:1.4;border-top:1px solid #eee;padding-top:8px">${esc(readNote)} Muestra de ${r.answers} respuestas de IA (${esc(period)}). Las respuestas de la IA cambian de una vez a otra: esto es una muestra con fecha, no un ranking. ChatGPT: modelo de OpenAI con búsqueda web (vía Codex), no la app; Claude: con búsqueda web. AgentPey · vicente@agentpey.com</div>
 </td></tr></table></td></tr></table></body></html>`;
 }
 
@@ -99,6 +102,7 @@ export function correoTexto(r: StoreResult, t: Tienda, period: string): string {
     : r.answers > 0 && r.mentioned > 0
       ? `Les hice preguntas de compra de ${r.rubro} a ChatGPT y a Claude: ${r.name} apareció en ${r.mentioned} de ${r.answers} respuestas.`
       : `Revisé cómo ven las IAs de compra (ChatGPT, Claude) a ${r.name}.`;
+  const brand = r.brandOnly > 0 && !(r.mentioned === 0 && r.brandExample) ? ` En otras ${r.brandOnly} respuestas nombró tu marca, pero mandó a comprarla a otro sitio.` : "";
   const score = r.score === undefined ? "" : ` Tu catálogo público saca ${r.score} de 100 en legibilidad para una IA${r.rubroAvgScore === undefined ? "" : ` (promedio de ${r.rubro}: ${r.rubroAvgScore})`}.`;
   return `PARA: ${to ? `${to.email}  (fuente: ${to.page})` : "(sin correo público de la tienda: no enviar)"}
 ASUNTO: ${r.example ? `¿${engine} recomienda ${r.name}?` : `¿Las IAs recomiendan ${r.name}?`}
@@ -106,7 +110,7 @@ ESTADO: BORRADOR, no enviado. Vicente debe aprobar texto y lista.
 
 Hola, equipo de ${r.name}:
 
-${opening}${score}
+${opening}${brand}${score}
 
 Armé una ficha de una pantalla con la comparación frente a tu rubro, quién aparece en tu lugar y las mejoras más importantes. Son respuestas de una muestra del ${period}; cambian de una vez a otra, así que no son un ranking.
 
