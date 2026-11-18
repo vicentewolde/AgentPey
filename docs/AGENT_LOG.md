@@ -9530,3 +9530,13 @@ Por qué: el usuario la aprobó pantalla por pantalla y pidió publicarla.
 Pendiente: `cc/sitio-t185` todavía tiene los commits de la página además de
 T185; al rebasarla sobre `origin/main` se descartan solos (mismo contenido).
 La segunda mitad de T185 (`attach_evidence`) sigue sin empezar.
+
+## 2026-11-18 — cc/bf-base-datos
+
+Agente: Claude Code
+
+Qué: base propia de tiendas chilenas en `apps/comercios` (`cli base …`): listas públicas de blackfriday.cl y cyber.cl, lectura de catálogos con puntaje, preguntas de compra por tienda y generales por rubro (Claude por la suscripción; Codex hasta agotar su cupo), comparación por rubro, ficha para celular, informe A4 de una plana y borrador de correo por tienda. "Recomendada" cuenta solo si la respuesta manda al sitio de la tienda; "marca sin sitio" va aparte. Corregido: `claude -p` fallido se veía como "sin preguntas"; ahora el límite de uso detiene la corrida.
+
+Por qué: pedido de Vicente para Start-Up Chile y Black Friday: datos propios para vender.
+
+Pendiente: PR sin merge (esperar OK). Datos, fichas y correos solo en `apps/comercios/data/` (ignorada, repo público). Resumen y hallazgos en `~/agentes/proyecto-vida/BASE-DATOS-TIENDAS.md`. Nada enviado.
