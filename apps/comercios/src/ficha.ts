@@ -87,7 +87,7 @@ ${instead.length > 0 ? `<div style="font-size:13px;color:#444;margin-bottom:12px
 ${r.example ? `<div style="font-size:13px;color:#444;background:#fafaf7;border-left:3px solid #c9c4b5;padding:8px 10px;margin-bottom:12px">Ejemplo: a la pregunta <i>“${esc(cut(r.example.question, 220))}”</i>, ${esc(engineName(r.example.engine))} recomendó ${r.example.instead.map(esc).join(", ")}.</div>` : ""}
 <div style="font-size:14px;font-weight:700;margin:6px 0">Lo primero que arreglaría</div>
 <ol style="margin:0 0 12px 18px;padding:0;font-size:13px;line-height:1.45">${fixes.map((f) => `<li style="margin-bottom:4px">${esc(f)}</li>`).join("") || "<li>Tu catálogo cumple lo básico; el siguiente paso es medirlo cada semana.</li>"}</ol>
-<div style="font-size:11px;color:#888;line-height:1.4;border-top:1px solid #eee;padding-top:8px">${esc(readNote)} Muestra de ${r.answers} respuestas de IA (${esc(period)}). Las respuestas de la IA cambian de una vez a otra: esto es una muestra con fecha, no un ranking. ChatGPT: modelo de OpenAI con búsqueda web (vía Codex), no la app; Claude: con búsqueda web. AgentPey · vicente@agentpey.com</div>
+<div style="font-size:11px;color:#888;line-height:1.4;border-top:1px solid #eee;padding-top:8px">${esc(readNote)} Muestra de ${r.answers} respuestas de IA (${esc(period)}).${r.repeated > 0 ? ` Repetimos ${r.repeated} preguntas a otra hora: en ${r.changed} cambió el resultado.` : ""} Las respuestas de la IA cambian de una vez a otra: esto es una muestra con fecha, no un ranking. ChatGPT: modelo de OpenAI con búsqueda web (vía Codex), no la app; Claude: con búsqueda web. AgentPey · vicente@agentpey.com</div>
 </td></tr></table></td></tr></table></body></html>`;
 }
 
@@ -136,10 +136,15 @@ export function resumenMd(results: readonly StoreResult[], tiendas: readonly Tie
   lines.push(`- Tiendas pyme con dominio en la base: ${results.length}`, `- Con catálogo leído: ${read.length}`, `- Con diagnóstico: ${diag.length}`, `- Con correo público: ${tiendas.filter((t) => (t.emails?.length ?? 0) > 0).length}`, ``);
   const totalAnswers = diag.reduce((a, r) => a + r.answers, 0);
   const totalMentioned = diag.reduce((a, r) => a + r.mentioned, 0);
-  lines.push(`En total: ${totalMentioned} de ${totalAnswers} respuestas nombraron a la tienda por la que se preguntó (${totalAnswers ? Math.round((100 * totalMentioned) / totalAnswers) : 0}%).`, ``);
+  lines.push(`En total: ${totalMentioned} de ${totalAnswers} respuestas recomendaron el sitio de la tienda por la que se preguntó (${totalAnswers ? Math.round((100 * totalMentioned) / totalAnswers) : 0}%).`, ``);
   const byEngine = new Map<string, { a: number; m: number }>();
   for (const r of diag) for (const [e, v] of Object.entries(r.byEngine)) { const x = byEngine.get(e) ?? { a: 0, m: 0 }; x.a += v.answers; x.m += v.mentioned; byEngine.set(e, x); }
-  for (const [e, v] of byEngine) lines.push(`- ${e}: nombra a la tienda en ${v.m} de ${v.a} respuestas`);
+  for (const [e, v] of byEngine) lines.push(`- ${engineName(e)}: recomienda el sitio de la tienda en ${v.m} de ${v.a} respuestas`);
+  const brandOnly = diag.reduce((a, r) => a + r.brandOnly, 0);
+  lines.push(`- Además, en ${brandOnly} respuestas la IA nombró la tienda o su marca pero mandó a comprar a otro sitio.`);
+  const repeated = diag.reduce((a, r) => a + r.repeated, 0);
+  const changed = diag.reduce((a, r) => a + r.changed, 0);
+  if (repeated > 0) lines.push(`- Estabilidad: de ${repeated} preguntas hechas dos veces al mismo motor (a horas distintas), en ${changed} (${Math.round((100 * changed) / repeated)}%) cambió si la tienda aparecía o no.`);
   lines.push(``);
   const rubros = [...new Set(results.map((r) => r.rubro))].sort();
   lines.push(`## Por rubro`, ``);

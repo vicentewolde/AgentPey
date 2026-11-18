@@ -272,6 +272,9 @@ export interface StoreResult {
   readonly mentioned: number;
   /** Answers that name the store or brand but send the buyer somewhere else. */
   readonly brandOnly: number;
+  /** Questions asked again to the same engine in a later sample, and how many of them changed verdict. */
+  readonly repeated: number;
+  readonly changed: number;
   readonly cited: number;
   readonly failed: number;
   readonly byEngine: Readonly<Record<string, { answers: number; mentioned: number }>>;
@@ -352,6 +355,10 @@ export function compare(inputs: readonly StoreInput[]): StoreResult[] {
     // The example for the sheet and the email: ChatGPT's when there is one (it is the assistant most buyers use).
     const missing = verdicts.filter(({ v }) => !v.mentioned && v.others.filter(storeLike).length >= 2);
     const firstMissing = missing.find(({ a }) => a.engine === "chatgpt") ?? missing[0];
+    // Same engine, same question, asked more than once: did the verdict change between samples?
+    const runsOf = new Map<string, boolean[]>();
+    for (const { a, v } of verdicts) runsOf.set(`${a.engine}\u0000${a.question}`, [...(runsOf.get(`${a.engine}\u0000${a.question}`) ?? []), v.mentioned]);
+    const repeatedRuns = [...runsOf.values()].filter((xs) => xs.length >= 2);
     const brandHits = verdicts.filter(({ v }) => v.brandOnly && v.others.filter(storeLike).length >= 1);
     const brandHit = brandHits.find(({ a }) => a.engine === "chatgpt") ?? brandHits[0];
     const sources = new Map<string, number>();
@@ -362,6 +369,8 @@ export function compare(inputs: readonly StoreInput[]): StoreResult[] {
       answers: i.answers.length,
       mentioned: verdicts.filter(({ v }) => v.mentioned).length,
       brandOnly: verdicts.filter(({ v }) => v.brandOnly).length,
+      repeated: repeatedRuns.length,
+      changed: repeatedRuns.filter((xs) => xs.some((x) => x !== xs[0])).length,
       cited: verdicts.filter(({ v }) => v.cited).length,
       failed: i.failed,
       byEngine,

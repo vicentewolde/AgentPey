@@ -133,3 +133,15 @@ describe("a store that is also a product brand", () => {
     expect(own).toMatchObject({ mentioned: true, brandOnly: false });
   });
 });
+
+describe("a repeated sample", () => {
+  it("counts the questions asked twice to the same engine and how many changed verdict", () => {
+    const t = tienda("a", "Alfa Mascotas", "alfa.cl");
+    const [r] = compare([input(t, [], [
+      { engine: "chatgpt", text: "en alfa.cl", urls: [] },
+      { engine: "chatgpt", text: "en otro lado", urls: [] },
+      { engine: "claude", text: "en otro lado", urls: [] },
+    ])]);
+    expect(r).toMatchObject({ repeated: 1, changed: 1, answers: 3, mentioned: 1 });
+  });
+});
