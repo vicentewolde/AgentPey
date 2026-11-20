@@ -37,3 +37,11 @@ Pasos:
 
 ## Costo por abusos
 Cada pregunta al vendedor es una llamada paga. Con 30 por hora por IP el gasto está acotado, pero conviene poner un tope de gasto mensual en la consola de Anthropic.
+
+## Guías públicas (20-nov)
+`panel.agentpey.com/guias/<rubro>`: guías de tiendas por rubro hechas con los catálogos que la base ya leyó. Se sirven desde la tabla `comercios.guias` de Postgres, no desde el repositorio.
+1. `npx tsx src/cli.ts base guia`: arma las guías en la base local y deja una vista previa en `data/guias/`.
+2. Lo corre Vicente: `npx tsx scripts/setup-postgres.ts --env ~/agentes/AgentPay/.env.local --solo-importar --guias`. No cambia la contraseña del rol ni imprime secretos.
+3. Probar: `/guias`, `/guias/salud-y-belleza`, `/robots.txt` y `/sitemap.xml`.
+
+El servidor crea la tabla `guias` solo al partir. Sin guías importadas, `/guias` muestra una lista vacía y `/guias/<rubro>` responde 404.

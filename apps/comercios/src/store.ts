@@ -14,6 +14,7 @@
  * events are replaced; real measurement events and clicks are never touched.
  */
 import type { Db } from "./db.js";
+import { GuideSchema, type Guide } from "./guia.js";
 import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
 import type { QuickResult } from "./rapido.js";
@@ -49,6 +50,8 @@ export interface PanelStore {
   quick(id: string): Promise<QuickResult | undefined>;
   /** The latest quick diagnosis of a domain since a time, so a repeat does not spend again. */
   recentQuick(domain: string, since: string): Promise<QuickResult | undefined>;
+  /** The public guides (guia.ts), as the CLI computed them; checked against their schema on the way out. */
+  guides(): Promise<Guide[]>;
 }
 
 /** Locally the quick diagnoses live in memory: the SQLite file is the CLI's, and they are only a demo there. */
@@ -66,6 +69,7 @@ export function sqliteStore(db: Db): PanelStore {
     saveEvent: async (e) => db.saveEvent(e),
     saveClick: async (c) => db.saveClick(c),
     click: async (id) => db.click(id),
+    guides: async () => db.guides().map((g) => GuideSchema.parse(g.data)),
   };
 }
 
@@ -105,6 +109,8 @@ export const SCHEMA_SQL: readonly string[] = [
   `create table if not exists ${SCHEMA}.diagnosticos (
      id text primary key, domain text not null, email text, data jsonb not null, at timestamptz not null)`,
   `create index if not exists diagnosticos_domain on ${SCHEMA}.diagnosticos (domain, at)`,
+  `create table if not exists ${SCHEMA}.guias (
+     slug text primary key, data jsonb not null, at timestamptz not null)`,
   `create table if not exists ${SCHEMA}.ingest_runs (
      seq bigserial primary key, store_id text not null, at timestamptz not null, method text not null,
      count integer not null, notes jsonb not null)`,
@@ -169,6 +175,10 @@ export function pgStore(q: Queryable): PanelStore {
     async recentQuick(domain, since) {
       const { rows } = await q.query(`select data from ${SCHEMA}.diagnosticos where domain = $1 and at >= $2 order by at desc limit 1`, [domain, since]);
       return rows[0]?.data as QuickResult | undefined;
+    },
+    async guides() {
+      const { rows } = await q.query(`select data from ${SCHEMA}.guias order by slug`);
+      return rows.map((r) => GuideSchema.parse(r.data));
     },
     async click(id) {
       const { rows } = await q.query(`select store_id, product_id, url, channel from ${SCHEMA}.clicks where id = $1`, [id]);
@@ -248,4 +258,23 @@ export async function importStores(q: Queryable, source: Db, storeIds: readonly 
     counts.push({ storeId, products: products.length, analyses: analyses.length, policy: policy !== undefined, answers: answers.length, demoEvents: demo.length });
   }
   return counts;
+}
+
+/**
+ * Replaces every public guide in Postgres with the ones in the local file, in
+ * one transaction (same single-connection rule as `importStores`). A guide is
+ * aggregates and public facts only: no catalogue rows travel.
+ */
+export async function importGuides(q: Queryable, source: Db): Promise<string[]> {
+  const guides = source.guides().map((g) => GuideSchema.parse(g.data));
+  await q.query("begin");
+  try {
+    await q.query(`delete from ${SCHEMA}.guias`);
+    await insertMany(q, "guias", { slug: "text", data: "jsonb", at: "timestamptz" }, guides.map((g) => [g.slug, g, new Date().toISOString()]));
+    await q.query("commit");
+  } catch (error) {
+    await q.query("rollback");
+    throw error;
+  }
+  return guides.map((g) => g.slug);
 }

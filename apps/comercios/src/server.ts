@@ -24,6 +24,7 @@ import pg from "pg";
 import { openDb } from "./db.js";
 import type { Analysis } from "./entender.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
+import { GUIDE_RUBROS, guideHtml, guidesIndexHtml, robotsTxt, sitemapXml } from "./guia.js";
 import { createLlm } from "./llm.js";
 import { AI_SOURCES, snippet, summarize, type MeasureEvent, type Source } from "./medir.js";
 import { indexPage, panel, sellerPage } from "./panel.js";
@@ -203,6 +204,23 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", origin(req));
   const path = url.pathname;
   try {
+    // Public pages for crawlers: some check with HEAD first (Node sends no body for HEAD).
+    const read = req.method === "GET" || req.method === "HEAD";
+    const publicPage = { "cache-control": "public, max-age=3600" };
+    if (read && path === "/robots.txt") return send(res, 200, "text/plain; charset=utf-8", robotsTxt(origin(req)), publicPage);
+    if (read && path === "/sitemap.xml") return send(res, 200, "application/xml; charset=utf-8", sitemapXml(origin(req), await data.guides()), publicPage);
+    if (read && (path === "/guias" || path === "/guias/")) {
+      const guides = await data.guides();
+      return send(res, 200, "text/html; charset=utf-8", guidesIndexHtml(guides.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length })), origin(req)), publicPage);
+    }
+    const g = /^\/guias\/([a-z0-9-]+)\/?$/.exec(path);
+    if (read && g) {
+      const guides = await data.guides();
+      const guide = guides.find((x) => x.slug === g![1]);
+      if (guide === undefined) return send(res, 404, "text/plain; charset=utf-8", "No existe esa guía");
+      const others = GUIDE_RUBROS.filter((r) => guides.some((x) => x.slug === r.slug));
+      return send(res, 200, "text/html; charset=utf-8", guideHtml(guide, origin(req), others), publicPage);
+    }
     if (req.method === "GET" && path === "/brand/agentpey.css") return send(res, 200, "text/css; charset=utf-8", CSS);
     if (req.method === "GET" && path === "/") {
       const rows = await Promise.all(STORES.map(async (store) => {

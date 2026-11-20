@@ -64,6 +64,45 @@ npx tsx src/cli.ts base fichas --desde 2026-11-18
 - `fichas` writes `data/base/comparacion.json`, `data/base/resumen.md`,
   `data/fichas-bf/<id>.html`, `<id>-correo.txt` and `indice.csv`.
 
+## Public guides
+
+"Online stores of <rubro> in Chile" pages for Vestuario y Calzado, Hogar y
+Decoración and Salud y Belleza, built only from the catalogues the base has
+already read: no catalogue is fetched and no AI is asked. Stores are ordered by
+products with a published price (a public rule, written on the page), pilot-only
+stores are left out, and there are no scores. Each guide is saved in the local
+base (table `guias`) and previewed in `data/guias/<slug>.html`:
+
+```bash
+npx tsx src/cli.ts base guia
+```
+
+Publishing copies the guides to the panel's Postgres (only aggregates and public
+facts travel, no catalogue rows); the server then serves `/guias`,
+`/guias/<slug>`, `/robots.txt` and `/sitemap.xml`:
+
+```bash
+npx tsx scripts/setup-postgres.ts --env ~/agentes/AgentPay/.env.local --solo-importar --guias
+```
+
+The guide is an experiment, measured before and after publishing with the same
+general questions of each rubro. `medir-guia` prints, per guide rubro, how many
+answers cite agentpey.com (any subdomain) and which domains the answers link.
+The repeat asks Claude exactly the questions answered from 2026-11-18 on, never
+new ones, so the numbers compare (one repeat is 41 questions):
+
+```bash
+npx tsx src/cli.ts base medir-guia --desde 2026-11-18 --hasta 2026-11-19
+```
+
+```bash
+npx tsx src/cli.ts base rubros --repetir 2026-11-18 --desde 2026-12-07 --solo "Vestuario y Calzado,Hogar y Decoración,Salud y Belleza"
+```
+
+```bash
+npx tsx src/cli.ts base medir-guia --desde 2026-12-07
+```
+
 Tests (no network):
 
 ```bash

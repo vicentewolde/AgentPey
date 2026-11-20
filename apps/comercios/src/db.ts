@@ -78,6 +78,11 @@ export function openDb(path: string) {
       count      integer not null,
       notes      text not null
     );
+    create table if not exists guias (
+      slug text primary key,
+      data text not null,
+      at   text not null
+    );
   `);
   return {
     raw: db,
@@ -168,6 +173,13 @@ export function openDb(path: string) {
     click(id: string): { storeId: string; productId: string; url: string; channel: string } | undefined {
       const r = db.prepare("select store_id, product_id, url, channel from clicks where id = ?").get(id);
       return r === undefined ? undefined : { storeId: String(r.store_id), productId: String(r.product_id), url: String(r.url), channel: String(r.channel) };
+    },
+    /** A public guide (guia.ts), stored as computed; replaced on every `base guia`. */
+    saveGuide(slug: string, data: unknown): void {
+      db.prepare("insert or replace into guias (slug, data, at) values (?, ?, ?)").run(slug, JSON.stringify(data), new Date().toISOString());
+    },
+    guides(): { slug: string; data: unknown }[] {
+      return db.prepare("select slug, data from guias order by slug").all().map((r) => ({ slug: String(r.slug), data: JSON.parse(String(r.data)) as unknown }));
     },
     close(): void {
       db.close();

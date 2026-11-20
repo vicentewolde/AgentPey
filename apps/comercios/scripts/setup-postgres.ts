@@ -3,7 +3,7 @@
  * the chosen stores into it from the local SQLite file. Run by the user: it
  * prints a secret (the role's connection string) for Render.
  *
- *   npx tsx scripts/setup-postgres.ts --env <path/.env.local> [--check | --solo-importar] <tienda> [<tienda> ...]
+ *   npx tsx scripts/setup-postgres.ts --env <path/.env.local> [--check | --solo-importar] [--guias] [<tienda> ...]
  *
  * In order, stopping at the first problem:
  *
@@ -21,6 +21,9 @@
  * `--check` changes nothing and prints no secret: it checks the admin
  * connection, and that every store has data in the local file.
  *
+ * `--guias` also replaces the public guides (`cli base guia`, guia.ts) with
+ * the ones in the local file. Guides alone need no store: `--solo-importar --guias`.
+ *
  * `--solo-importar` only does step 4, for stores added later: it keeps the
  * role's password (nothing to change in Render) and prints no secret. The
  * admin acts as the role (`set role`), so the role still owns every row.
@@ -37,7 +40,7 @@ import { parseEnv } from "node:util";
 import pg from "pg";
 
 import { openDb } from "../src/db.js";
-import { SCHEMA, importStores, migrate } from "../src/store.js";
+import { SCHEMA, importGuides, importStores, migrate } from "../src/store.js";
 
 const ROLE = "comercios";
 const out = (line = ""): void => void process.stdout.write(`${line}\n`);
@@ -49,11 +52,12 @@ const die = (message: string): never => {
 const args = process.argv.slice(2);
 const check = args.includes("--check");
 const importOnly = args.includes("--solo-importar");
+const withGuides = args.includes("--guias");
 const envIndex = args.indexOf("--env");
 const envPath = envIndex === -1 ? undefined : args[envIndex + 1];
 const stores = args.filter((a, i) => !a.startsWith("--") && i !== envIndex + 1);
 if (envPath === undefined) die("falta --env <ruta al .env.local con DATABASE_URL>");
-if (stores.length === 0) die("faltan las tiendas a cargar");
+if (stores.length === 0 && !withGuides) die("faltan las tiendas a cargar (o --guias)");
 for (const s of stores) if (!/^[a-z0-9-]+$/.test(s)) die(`nombre de tienda inválido: ${s}`);
 
 /**
@@ -120,6 +124,11 @@ async function main(): Promise<void> {
     if (n === 0) die(`la tienda ${s} no tiene productos en la base local`);
     out(`✓ ${s}: ${n} productos en la base local`);
   }
+  if (withGuides) {
+    const guides = source.guides();
+    if (guides.length === 0) die("no hay guías en la base local: corre antes `npx tsx src/cli.ts base guia`");
+    out(`✓ ${guides.length} guías en la base local: ${guides.map((g) => g.slug).join(", ")}`);
+  }
 
   const admin = pool(adminUrl);
   try {
@@ -152,6 +161,7 @@ async function main(): Promise<void> {
         for (const c of await importStores(client, source, stores)) {
           out(`✓ ${c.storeId}: ${c.products} productos, ${c.analyses} revisiones, política ${c.policy ? "sí" : "no"}, ${c.answers} respuestas de IA, ${c.demoEvents} eventos de demostración`);
         }
+        if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
         await client.query("reset role");
       } finally {
         client.release();
@@ -197,6 +207,7 @@ async function main(): Promise<void> {
         for (const c of await importStores(client, source, stores)) {
           out(`✓ ${c.storeId}: ${c.products} productos, ${c.analyses} revisiones, política ${c.policy ? "sí" : "no"}, ${c.answers} respuestas de IA, ${c.demoEvents} eventos de demostración`);
         }
+        if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
       } finally {
         client.release();
       }

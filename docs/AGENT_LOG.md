@@ -9540,3 +9540,13 @@ Qué: base propia de tiendas chilenas en `apps/comercios` (`cli base …`): list
 Por qué: pedido de Vicente para Start-Up Chile y Black Friday: datos propios para vender.
 
 Pendiente: PR sin merge (esperar OK). Datos, fichas y correos solo en `apps/comercios/data/` (ignorada, repo público). Resumen y hallazgos en `~/agentes/proyecto-vida/BASE-DATOS-TIENDAS.md`. Nada enviado.
+
+## 2026-11-20 — cc/guia-publica
+
+Agente: Claude Code
+
+Qué: guías públicas de tiendas por rubro en `apps/comercios` (`guia.ts`, `cli base guia`): Vestuario y Calzado, Hogar y Decoración, Salud y Belleza. Solo hechos de los catálogos que la base ya leyó (qué vende, marcas, rango de precios, productos, fecha de lectura). Orden público por productos con precio, aviso visible, sin puntajes, sin tiendas que solo están en el piloto. HTML sin JavaScript con ItemList de schema.org; el panel sirve `/guias`, `/guias/<rubro>`, `/robots.txt` (abre la guía a los robots de IA y deja fuera `/ir/` y `/api/`) y `/sitemap.xml` desde la tabla `comercios.guias`, que llena `setup-postgres --solo-importar --guias`.
+
+Por qué: pedido de Vicente el 20-nov (`proyecto-vida/PROMESA-PRUEBA-Y-SERVICIOS.md`, punto 4), como experimento medido: que las IAs citen la guía y que sirva de vitrina.
+
+Pendiente: PR sobre `cc/bf-base-datos`, sin merge (lo revisa Vicente o el agente principal). Publicar = merge + `setup-postgres --solo-importar --guias`. Medición inicial y plan de semanas 2, 4 y 6 en `proyecto-vida/GUIA-PUBLICA.md`. Despacho, cambios y medios de pago no están en la base para estos rubros y no aparecen en la guía.

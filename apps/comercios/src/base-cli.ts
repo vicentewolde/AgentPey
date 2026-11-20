@@ -10,10 +10,15 @@
  *                               --repetir <ISO>: ask again the questions answered between <ISO> and --desde
  *   cyber                       add cyber.cl's (CyberDay) brands: same rubros, a store on both lists is kept once
  *   rubros [--n 15] [--desde ISO]   general buyer questions per rubro (no store in mind): who the AI recommends in each rubro
+ *                               --repetir <ISO>: ask again the questions answered between <ISO> and --desde
+ *                               --solo "Rubro A,Rubro B": only these rubros
+ *   medir-guia [--desde ISO] [--hasta ISO]   per guide rubro: answers, how many cite agentpey.com, domains cited
  *   ajustar                     apply data/base/ajustes.json's segments to the stores already in the base
  *   piloto                      add the pilot stores (stores.ts, source "piloto") to the base, in their rubro
  *   comparar [--desde YYYY-MM-DD]   per store and per rubro: data/base/comparacion.json and resumen.md
  *   fichas [--desde YYYY-MM-DD]     data/fichas-bf/<id>.html, <id>-correo.txt and indice.csv
+ *   guia [--rubros slug,slug]   the public guides (guia.ts) from the catalogues already read: saved in the
+ *                               local base (table guias) for setup-postgres, and a preview in data/guias/<slug>.html
  *
  * Everything it reads or writes is in data/ (git-ignored). Stops at the plan's usage limit.
  */
@@ -25,6 +30,7 @@ import type { Db } from "./db.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, hostOf, judge, type Engine } from "./diagnostico.js";
 import { pool } from "./entender.js";
 import { fichaHtml, correoTexto, resumenMd, csvIndex, informeHtml } from "./ficha.js";
+import { buildGuide, citations, GUIDE_RUBROS, guideHtml, guidesIndexHtml } from "./guia.js";
 import { createFetcher, type Fetcher } from "./http.js";
 import type { Platform } from "./model.js";
 import { ingestStore } from "./ingest/index.js";
@@ -73,7 +79,9 @@ export async function baseCommand(db: Db, sub: string | undefined, rest: string[
   if (sub === "ajustar") return ajustar(db);
   if (sub === "rubros") return rubros(db, rest);
   if (sub === "comparar" || sub === "fichas") return comparar(db, rest, sub === "fichas");
-  console.error("uso: cli base lista | contacto | ingest | diagnostico | comparar | fichas");
+  if (sub === "guia") return guia(db, rest);
+  if (sub === "medir-guia") return medirGuia(db, rest);
+  console.error("uso: cli base lista | contacto | ingest | diagnostico | comparar | fichas | guia");
   process.exitCode = 2;
 }
 
@@ -210,7 +218,19 @@ async function rubros(db: Db, rest: string[]): Promise<void> {
   const engine = claudeEngine(llm);
   const tiendas = loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined);
   const done = rubroAnswers(db, since);
-  const names = [...new Set(tiendas.map((t) => t.rubro))].filter((r) => tiendas.filter((t) => t.rubro === r).length >= 3 && (done.get(r)?.length ?? 0) === 0);
+  const repeat = flag(rest, "--repetir");
+  const only = flag(rest, "--solo")?.split(",").map((x) => x.trim());
+  // A repeat asks the very same questions again (the guide's before/after), never new ones.
+  const earlier = new Map<string, string[]>();
+  if (repeat !== undefined) {
+    for (const r of db.raw.prepare("select rubro, question from rubro_answers where at >= ? and at < ? order by at").all(repeat, since)) {
+      const list = earlier.get(String(r.rubro)) ?? [];
+      if (!list.includes(String(r.question))) list.push(String(r.question));
+      earlier.set(String(r.rubro), list);
+    }
+  }
+  const names = [...new Set(tiendas.map((t) => t.rubro))].filter((r) => tiendas.filter((t) => t.rubro === r).length >= 3 && (done.get(r)?.length ?? 0) === 0
+    && (only === undefined || only.includes(r)) && (repeat === undefined || (earlier.get(r)?.length ?? 0) > 0));
   console.log(`${names.length} rubros por preguntar (${n} preguntas cada uno)`);
   let stopped: string | undefined;
   for (const rubro of names) {
@@ -218,7 +238,7 @@ async function rubros(db: Db, rest: string[]): Promise<void> {
     const sample = tiendas.filter((t) => t.rubro === rubro).flatMap((t) => db.products(t.id).slice(0, 6)).sort(() => Math.random() - 0.5).slice(0, 40);
     let questions: string[];
     try {
-      questions = await buyerQuestions(llm, { id: "rubro", name: rubro, origin: "https://rubro.invalid", platform: "propia", rubro: `${rubro} (tiendas online chilenas)`, source: "black-friday", sellsOnline: true }, sample, n);
+      questions = repeat !== undefined ? earlier.get(rubro)! : await buyerQuestions(llm, { id: "rubro", name: rubro, origin: "https://rubro.invalid", platform: "propia", rubro: `${rubro} (tiendas online chilenas)`, source: "black-friday", sellsOnline: true }, sample, n);
     } catch (error) {
       if (error instanceof UsageLimitError) stopped = error.message;
       console.log(`${rubro}: no se pudieron escribir las preguntas (${(error as Error).message.slice(0, 160)})`);
@@ -434,4 +454,47 @@ function comparar(db: Db, rest: string[], fichas: boolean): void {
     }),
   ));
   console.log(`${BASE}lista-empresas.csv: ${all.length} empresas`);
+}
+
+/**
+ * The public guides, from what the base already has: no catalogue is read and
+ * no AI is asked. Each guide is saved in the local base, where setup-postgres
+ * picks it up for the panel, and as a preview page in data/guias/.
+ */
+function guia(db: Db, rest: string[]): void {
+  const wanted = flag(rest, "--rubros")?.split(",");
+  const metas = GUIDE_RUBROS.filter((r) => wanted === undefined || wanted.includes(r.slug));
+  if (metas.length === 0) {
+    console.error(`rubros conocidos: ${GUIDE_RUBROS.map((r) => r.slug).join(", ")}`);
+    process.exitCode = 2;
+    return;
+  }
+  const dir = `${DATA}guias/`;
+  mkdirSync(dir, { recursive: true });
+  const tiendas = loadTiendas(db);
+  const built = metas.map((meta) => {
+    const inputs = tiendas.filter((t) => t.rubro === meta.rubro).map((t) => ({ tienda: t, products: db.products(t.id), readAt: db.lastRun(t.id)?.at }));
+    const g = buildGuide(meta, inputs, today());
+    db.saveGuide(g.slug, g);
+    console.log(`${g.slug}: ${g.stores.length} tiendas de ${inputs.length} del rubro, ${g.brands.length} marcas en dos o más tiendas, catálogos leídos ${g.readFrom} a ${g.readTo}`);
+    return g;
+  });
+  const origin = "https://panel.agentpey.com";
+  for (const g of built) writeFileSync(`${dir}${g.slug}.html`, guideHtml(g, origin, GUIDE_RUBROS));
+  writeFileSync(`${dir}index.html`, guidesIndexHtml(built.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length })), origin));
+  console.log(`${dir}: vista previa de ${built.length} guías. Para publicarlas: scripts/setup-postgres.ts --solo-importar --guias`);
+}
+
+/** The guide experiment's measure: for each guide rubro, the general answers in a window, and whether any cites agentpey.com. */
+function medirGuia(db: Db, rest: string[]): void {
+  const since = flag(rest, "--desde") ?? "2026-11-18";
+  const until = flag(rest, "--hasta") ?? "9999";
+  const answers = rubroAnswers(db, since);
+  for (const meta of GUIDE_RUBROS) {
+    const window = (answers.get(meta.rubro) ?? []).filter((a) => a.at < until);
+    const c = citations(window);
+    const at = window.map((a) => a.at.slice(0, 10)).sort();
+    console.log(`\n${meta.rubro}: ${c.answers} respuestas (${at[0] ?? "-"} a ${at.at(-1) ?? "-"}), agentpey.com en ${c.agentpey}`);
+    console.log(`  ${c.domains.slice(0, 15).map((d) => `${d.domain} ${d.count}`).join(" · ")}`);
+  }
 }
