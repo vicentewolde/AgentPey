@@ -2,7 +2,7 @@
 /**
  * Asks production whether it is up, and prints one line per surface (T172).
  *
- * Strictly read-only and without secrets: plain GETs, plus the MCP's unauthenticated answer. Run it before opening a
+ * Strictly read-only and without secrets: plain GETs, one catalog search, plus the MCP's unauthenticated answer. Run it before opening a
  * pull request and again right after anything reaches `main` (every push there deploys to Render), so that what a
  * visitor, a judge or a connected agent would see never breaks unnoticed. Exits 1 if any surface is wrong.
  *
@@ -19,6 +19,8 @@ interface Probe {
   status: number;
   /** Extra proof that it is the right thing and not just any page. */
   check?: (body: string) => string | undefined;
+  /** A read that is a POST (a catalog search); GET when absent. */
+  post?: { body: unknown; headers: Record<string, string> };
 }
 
 const json = (body: string): unknown => {
@@ -29,7 +31,11 @@ const json = (body: string): unknown => {
   }
 };
 
-const STORES = ["agentcommerce", "bazar-cordillera", "mycokit"];
+/**
+ * The stores in Vitrinee's directory. Bazar Cordillera and MycoKit sold through Jumpseller and were taken out of the
+ * directory on 2026-11-20, when the user stopped paying Jumpseller: their comercios are `disabled`, not deleted.
+ */
+const STORES = ["agentcommerce"];
 
 const probes: Probe[] = [
   { name: "web", url: `https://${hostOf("")}/`, status: 200 },
@@ -45,7 +51,7 @@ const probes: Probe[] = [
     },
   },
   { name: "realops", url: `https://${hostOf("realops")}/`, status: 200 },
-  { name: "signaldesk", url: `https://${hostOf("signaldesk")}/`, status: 200 },
+  // SignalDesk's public domain was removed from Render on 17-nov (PR #116): no longer a surface.
   ...STORES.map((slug) => ({
     name: `store ${slug}`,
     url: `https://${slug}.${hostOf("vitrinee")}/.well-known/ucp`,
@@ -53,6 +59,18 @@ const probes: Probe[] = [
     check: (body: string) => {
       const profile = json(body) as { ucp?: { version?: string; services?: unknown } } | undefined;
       return typeof profile?.ucp?.version === "string" && profile.ucp.services !== undefined ? undefined : "not a UCP profile";
+    },
+  })),
+  // A profile answering is not a catalog working: a store whose platform blocked it still serves its profile (MycoKit,
+  // Nov 2026). Each store must also find products.
+  ...STORES.map((slug) => ({
+    name: `catalog ${slug}`,
+    url: `https://${slug}.${hostOf("vitrinee")}/ucp/v1/catalog/search`,
+    status: 200,
+    post: { body: { query: "a" }, headers: { "content-type": "application/json", "UCP-Agent": 'profile="https://agentpey.com/ucp/platform/agentpey.json"' } },
+    check: (body: string) => {
+      const found = json(body) as { products?: unknown[] } | undefined;
+      return Array.isArray(found?.products) && found.products.length > 0 ? undefined : "no products";
     },
   })),
   {
@@ -67,7 +85,11 @@ const probes: Probe[] = [
 async function run(probe: Probe): Promise<{ probe: Probe; ok: boolean; note: string; ms: number }> {
   const started = Date.now();
   try {
-    const res = await fetch(probe.url, { signal: AbortSignal.timeout(TIMEOUT_MS), redirect: "manual" });
+    const res = await fetch(probe.url, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      redirect: "manual",
+      ...(probe.post === undefined ? {} : { method: "POST", headers: probe.post.headers, body: JSON.stringify(probe.post.body) }),
+    });
     const ms = Date.now() - started;
     if (res.status !== probe.status) return { probe, ok: false, note: `answered ${res.status}, expected ${probe.status}`, ms };
     const problem = probe.check?.(await res.text());
