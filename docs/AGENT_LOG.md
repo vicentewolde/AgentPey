@@ -9599,3 +9599,9 @@ Agente: Claude Code
 Qué: T190. `evidencia/T190.md` junta lo prometido en el entregable 1 con su prueba en la red (contrato `CDSCZJEM…`, 43 tests del escrow, `confirm` `fe6b2eba…`, `release` `40246f05…`, reclamo sellado `16b19e33…`, sobre el tope `3f81fe8f…`, todos releídos en Horizon). Fuera del repo, para Passport: PDF de una página en inglés, hilo para X y guion del video (scratchpad `semana-1/`).
 Por qué: el usuario quiere cerrar la semana 1 (video, archivo y un hilo en X el domingo 22-nov). Tellus respondió el 20-nov que AgentPey sigue en revisión de la SDF.
 Pendiente: merge de la pila T186→T190 y de `cc/sin-jumpseller` con OK del usuario; copiar `MCP_AGENT_MNEMONIC` a Render.
+
+## 2026-11-20 — cc/sin-jumpseller
+Agente: Claude Code
+Qué: el usuario dejó de pagar Jumpseller (plan Basic, $10.710 CLP/mes, tarjeta ****3199, cobros 22-sep y 22-oct). Las dos tiendas Jumpseller de Vitrinee (`bazar-cordillera`, catálogo en `vitrinee.jumpseller.com`; `mycokit`, prueba vencida y bloqueada con 402) quedaron `disabled` en `vitrinee.comercios` (el usuario corrió el `update` en el Shell de Render con `VITRINEE_DATABASE_URL`; reversible volviendo a `active`, pedidos intactos). Luego se eliminó la tienda `vitrinee.jumpseller.com` (permanente; Jumpseller: "no se realizarán más cargos", borra datos en hasta 7 días). `prod:check` ahora revisa solo `agentcommerce` y que su catálogo tenga productos (antes MycoKit pasaba en verde roto), sin SignalDesk (dominio retirado el 17-nov): 9/9 tras el cambio.
+Por qué: pedido del usuario: dejar de pagar Jumpseller sin que AgentPey deje de funcionar.
+Pendiente: mergear `cc/sin-jumpseller` (solo `prod:check` y este log) cuando el usuario lo pida. Las compras viejas de esas dos tiendas ya no cuentan en `/en-vivo`; sus recibos siguen verificables en Stellar.
