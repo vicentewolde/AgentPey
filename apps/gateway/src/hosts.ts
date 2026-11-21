@@ -337,11 +337,12 @@ export function isStoreSubdomain(host: string, vitrineeHost: string): boolean {
  * The public store guides (`apps/comercios/src/guia.ts`) are served by the
  * comercios panel but published on the main domain, `agentpey.com/chile/...`:
  * the address search engines and AI assistants weigh most. The one rule that
- * routes by path, and as narrow as it can be: `/chile`, `/chile/<slug>` and
- * `/chile/sitemap.xml`, whole path compared, no dots or encoded characters
+ * routes by path, and as narrow as it can be: `/chile`, `/chile/<slug>`,
+ * `/chile/marcas`, `/chile/marcas/<slug>`, `/chile/sitemap.xml` and the IndexNow key file, whole path compared, no `..` or encoded characters
  * (so no `/chile/../api`). Anything else on the main domain stays with the web app.
  */
-const GUIDE_PATH = /^\/chile(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|sitemap\.xml))?\/?$/;
+const SLUG = "[a-z0-9]+(?:-[a-z0-9]+)*";
+const GUIDE_PATH = new RegExp(`^/chile(?:/(?:${SLUG}|sitemap\\.xml|[a-f0-9]{32}\\.txt|marcas(?:/${SLUG})?))?/?$`);
 
 export function isGuidePath(url: string | undefined): boolean {
   if (url === undefined) return false;

@@ -24,7 +24,8 @@ import pg from "pg";
 import { openDb } from "./db.js";
 import type { Analysis } from "./entender.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
-import { GUIDE_ORIGIN, GUIDE_PATH, GUIDE_RUBROS, guideHtml, guidesIndexHtml, robotsTxt, sitemapXml } from "./guia.js";
+import { GUIDE_ORIGIN, GUIDE_PATH, GUIDE_RUBROS, guideHtml, guidesIndexHtml, INDEXNOW_KEY, robotsTxt, sitemapXml } from "./guia.js";
+import { brandHtml, brandsIndexHtml } from "./marcas.js";
 import { createLlm } from "./llm.js";
 import { AI_SOURCES, snippet, summarize, type MeasureEvent, type Source } from "./medir.js";
 import { indexPage, panel, sellerPage } from "./panel.js";
@@ -222,10 +223,19 @@ const server = createServer(async (req, res) => {
       res.writeHead(301, { location: `${GUIDE_ORIGIN}${path}`, ...publicPage });
       return void res.end();
     }
-    if (read && path === `${GUIDE_PATH}/sitemap.xml`) return send(res, 200, "application/xml; charset=utf-8", sitemapXml(await data.guides()), publicPage);
+    if (read && path === `${GUIDE_PATH}/sitemap.xml`) return send(res, 200, "application/xml; charset=utf-8", sitemapXml(await data.guides(), await data.brandSummaries()), publicPage);
+    if (read && path === `${GUIDE_PATH}/${INDEXNOW_KEY}.txt`) return send(res, 200, "text/plain; charset=utf-8", INDEXNOW_KEY, publicPage);
+    if (read && (path === `${GUIDE_PATH}/marcas` || path === `${GUIDE_PATH}/marcas/`)) return send(res, 200, "text/html; charset=utf-8", brandsIndexHtml(await data.brandSummaries()), publicPage);
+    const brandMatch = new RegExp(`^${GUIDE_PATH}/marcas/([a-z0-9-]+)/?$`).exec(path);
+    if (read && brandMatch) {
+      const page = await data.brandPage(brandMatch[1]!);
+      if (page === undefined) return send(res, 404, "text/plain; charset=utf-8", "No tenemos esa marca");
+      const guides = await data.guides();
+      return send(res, 200, "text/html; charset=utf-8", brandHtml(page, GUIDE_RUBROS.filter((r) => guides.some((x) => x.slug === r.slug))), publicPage);
+    }
     if (read && (path === GUIDE_PATH || path === `${GUIDE_PATH}/`)) {
       const guides = await data.guides();
-      return send(res, 200, "text/html; charset=utf-8", guidesIndexHtml(guides.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length }))), publicPage);
+      return send(res, 200, "text/html; charset=utf-8", guidesIndexHtml(guides.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length })), (await data.brandSummaries()).length), publicPage);
     }
     const g = new RegExp(`^${GUIDE_PATH}/([a-z0-9-]+)/?$`).exec(path);
     if (read && g) {
@@ -233,7 +243,8 @@ const server = createServer(async (req, res) => {
       const guide = guides.find((x) => x.slug === g![1]);
       if (guide === undefined) return send(res, 404, "text/plain; charset=utf-8", "No existe esa guía");
       const others = GUIDE_RUBROS.filter((r) => guides.some((x) => x.slug === r.slug));
-      return send(res, 200, "text/html; charset=utf-8", guideHtml(guide, others), publicPage);
+      const brandSlugs = new Set((await data.brandSummaries()).map((b) => b.slug));
+      return send(res, 200, "text/html; charset=utf-8", guideHtml(guide, others, brandSlugs), publicPage);
     }
     if (req.method === "GET" && path === "/brand/agentpey.css") return send(res, 200, "text/css; charset=utf-8", CSS);
     if (req.method === "GET" && path === "/") {
