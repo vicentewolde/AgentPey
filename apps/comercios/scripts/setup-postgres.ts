@@ -21,8 +21,8 @@
  * `--check` changes nothing and prints no secret: it checks the admin
  * connection, and that every store has data in the local file.
  *
- * `--guias` also replaces the public guides (`cli base guia`, guia.ts) with
- * the ones in the local file. Guides alone need no store: `--solo-importar --guias`.
+ * `--guias` also replaces the public guides (`cli base guia`, guia.ts) and the
+ * brand pages (marcas.ts) with the ones in the local file. Guides alone need no store: `--solo-importar --guias`.
  *
  * `--solo-importar` only does step 4, for stores added later: it keeps the
  * role's password (nothing to change in Render) and prints no secret. The
@@ -40,7 +40,7 @@ import { parseEnv } from "node:util";
 import pg from "pg";
 
 import { openDb } from "../src/db.js";
-import { SCHEMA, importGuides, importStores, migrate } from "../src/store.js";
+import { SCHEMA, importBrandPages, importGuides, importStores, migrate } from "../src/store.js";
 
 const ROLE = "comercios";
 const out = (line = ""): void => void process.stdout.write(`${line}\n`);
@@ -162,6 +162,7 @@ async function main(): Promise<void> {
           out(`✓ ${c.storeId}: ${c.products} productos, ${c.analyses} revisiones, política ${c.policy ? "sí" : "no"}, ${c.answers} respuestas de IA, ${c.demoEvents} eventos de demostración`);
         }
         if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
+        if (withGuides) out(`✓ páginas de marcas publicadas: ${await importBrandPages(client, source)}`);
         await client.query("reset role");
       } finally {
         client.release();
@@ -208,6 +209,7 @@ async function main(): Promise<void> {
           out(`✓ ${c.storeId}: ${c.products} productos, ${c.analyses} revisiones, política ${c.policy ? "sí" : "no"}, ${c.answers} respuestas de IA, ${c.demoEvents} eventos de demostración`);
         }
         if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
+        if (withGuides) out(`✓ páginas de marcas publicadas: ${await importBrandPages(client, source)}`);
       } finally {
         client.release();
       }

@@ -15,6 +15,7 @@
  */
 import type { Db } from "./db.js";
 import { GuideSchema, type Guide } from "./guia.js";
+import { BrandPageSchema, summarize, type BrandPage, type BrandSummary } from "./marcas.js";
 import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
 import type { QuickResult } from "./rapido.js";
@@ -52,6 +53,9 @@ export interface PanelStore {
   recentQuick(domain: string, since: string): Promise<QuickResult | undefined>;
   /** The public guides (guia.ts), as the CLI computed them; checked against their schema on the way out. */
   guides(): Promise<Guide[]>;
+  /** The brand pages (marcas.ts): the index without the offers, and one page with them. */
+  brandSummaries(): Promise<BrandSummary[]>;
+  brandPage(slug: string): Promise<BrandPage | undefined>;
 }
 
 /** Locally the quick diagnoses live in memory: the SQLite file is the CLI's, and they are only a demo there. */
@@ -70,6 +74,11 @@ export function sqliteStore(db: Db): PanelStore {
     saveClick: async (c) => db.saveClick(c),
     click: async (id) => db.click(id),
     guides: async () => db.guides().map((g) => GuideSchema.parse(g.data)),
+    brandSummaries: async () => db.brandSummaries(),
+    brandPage: async (slug) => {
+      const data = db.brandPage(slug);
+      return data === undefined ? undefined : BrandPageSchema.parse(data);
+    },
   };
 }
 
@@ -111,6 +120,9 @@ export const SCHEMA_SQL: readonly string[] = [
   `create index if not exists diagnosticos_domain on ${SCHEMA}.diagnosticos (domain, at)`,
   `create table if not exists ${SCHEMA}.guias (
      slug text primary key, data jsonb not null, at timestamptz not null)`,
+  `create table if not exists ${SCHEMA}.marcas (
+     slug text primary key, brand text not null, stores integer not null, price_min integer not null,
+     updated text not null, data jsonb not null)`,
   `create table if not exists ${SCHEMA}.ingest_runs (
      seq bigserial primary key, store_id text not null, at timestamptz not null, method text not null,
      count integer not null, notes jsonb not null)`,
@@ -179,6 +191,14 @@ export function pgStore(q: Queryable): PanelStore {
     async guides() {
       const { rows } = await q.query(`select data from ${SCHEMA}.guias order by slug`);
       return rows.map((r) => GuideSchema.parse(r.data));
+    },
+    async brandSummaries() {
+      const { rows } = await q.query(`select slug, brand, stores, price_min, updated from ${SCHEMA}.marcas order by slug`);
+      return rows.map((r) => ({ slug: String(r.slug), brand: String(r.brand), stores: Number(r.stores), priceMin: Number(r.price_min), updatedAt: String(r.updated) }));
+    },
+    async brandPage(slug) {
+      const { rows } = await q.query(`select data from ${SCHEMA}.marcas where slug = $1`, [slug]);
+      return rows[0] === undefined ? undefined : BrandPageSchema.parse(rows[0].data);
     },
     async click(id) {
       const { rows } = await q.query(`select store_id, product_id, url, channel from ${SCHEMA}.clicks where id = $1`, [id]);
@@ -277,4 +297,29 @@ export async function importGuides(q: Queryable, source: Db): Promise<string[]> 
     throw error;
   }
   return guides.map((g) => g.slug);
+}
+
+/**
+ * Replaces every brand page in Postgres with the ones in the local file, in one
+ * transaction. Like the guides, only public facts travel: each store's cheapest
+ * listings of the brand, with their price and date.
+ */
+export async function importBrandPages(q: Queryable, source: Db): Promise<number> {
+  const pages = source.brandPages().map((p) => BrandPageSchema.parse(p));
+  await q.query("begin");
+  try {
+    await q.query(`delete from ${SCHEMA}.marcas`);
+    for (let i = 0; i < pages.length; i += 200) {
+      await insertMany(q, "marcas", { slug: "text", brand: "text", stores: "integer", price_min: "integer", updated: "text", data: "jsonb" },
+        pages.slice(i, i + 200).map((p) => {
+          const s = summarize(p);
+          return [s.slug, s.brand, s.stores, s.priceMin, s.updatedAt, p];
+        }));
+    }
+    await q.query("commit");
+  } catch (error) {
+    await q.query("rollback");
+    throw error;
+  }
+  return pages.length;
 }

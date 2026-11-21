@@ -84,10 +84,10 @@ export interface GuideInput {
   readonly readAt: string | undefined;
 }
 
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+export const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /** Labels that say who it is for, or that it is on sale, not what it is. */
-const GENERIC = /^(hombres?|mujer(es)?|nin[oa]s?|kids|unisex|bebes?|vestuario|ropa|productos?|todos?|todo|inicio|home|catalogo|tienda|shop|sale|ofertas?|outlet|nuevos?|new|newarrivals|novedades|lomasvendido|masvendidos|remate(final)?|avancetemporada|ultimastallas|ventadirecta|descuentos?.*|cyber.*|blackfriday.*|regalo.*|tarjetasderegalo|muestras|agotados|productoregular|materialpromocional|preventa|especiales|hogar|para.*|nuevo.*|.*giftcard.*|servicios?|servicio.*|default.*|varios|otros|general|joyas|hotsale.*|liquidacion.*|ultimasunidades|coleccion.*|temporada.*|destacados?|promociones?|promo.*|ofertashot)$/;
+const GENERIC = /^(hombres?|mujer(es)?|nin[oa]s?|kids|unisex|bebes?|vestuario|ropa|productos?|todos?|todo|inicio|home|catalogo|tienda|shop|sale|ofertas?|outlet|nuevos?|new|newarrivals|novedades|lomasvendido|masvendidos|remate(final)?|avancetemporada|ultimastallas|ventadirecta|descuentos?.*|cyber.*|blackfriday.*|regalo.*|tarjetasderegalo|muestras|agotados|productoregular|materialpromocional|preventa|especiales|hogar|para.*|nuevo.*|.*giftcard.*|servicios?|servicio.*|default.*|varios|otros|general|joyas|hotsale.*|liquidacion.*|ultimasunidades|coleccion.*|temporada.*|destacados?|promociones?|promo.*|ofertashot|generic[oa]s?|sinmarca|nomarca|otramarca|marcagenerica|otras?|importad[oa]s?)$/;
 
 /** A SKU-like code ("PACKCASMARA001", "MS-0000-150"), not a name. */
 const looksLikeCode = (s: string) => /\d/.test(s) && !/\s/.test(s.trim());
@@ -172,12 +172,13 @@ export function byPublicOrder(a: GuideStore, b: GuideStore): number {
 }
 
 /**
- * The guide of one rubro. Stores outside the target segment, only in the
- * pilot, or with too little catalogue are left out; a store listed twice
- * (blackfriday.cl and cyber.cl under two ids) is kept once, with its larger reading.
+ * The stores that may be named in public, once each: pymes, not only in the
+ * pilot, with enough catalogue to describe (`guideStore`). A store listed
+ * twice (the same domain, or the same name on two domains, like kallfu.cl and
+ * tiendakallfu.cl) is kept once, with its larger reading. In the public order.
  */
-export function buildGuide(meta: (typeof GUIDE_RUBROS)[number], inputs: readonly GuideInput[], today: string): Guide {
-  const eligible = inputs.filter((i) => i.tienda.rubro === meta.rubro && i.tienda.segment === "pyme" && (i.tienda.sources ?? ["blackfriday"]).some((s) => s !== "piloto"));
+export function keptStores(inputs: readonly GuideInput[]): { store: GuideStore; input: GuideInput }[] {
+  const eligible = inputs.filter((i) => i.tienda.segment === "pyme" && (i.tienda.sources ?? ["blackfriday"]).some((s) => s !== "piloto"));
   // One entry per store: the same domain, or the same name on two domains (kallfu.cl and tiendakallfu.cl).
   const byDomain = new Map<string, { store: GuideStore; input: GuideInput }>();
   for (const input of eligible) {
@@ -191,7 +192,16 @@ export function buildGuide(meta: (typeof GUIDE_RUBROS)[number], inputs: readonly
       prev.store = { ...prev.store, lists: [...new Set([...prev.store.lists, ...store.lists])].sort() };
     }
   }
-  const kept = [...byDomain.values()].sort((a, b) => byPublicOrder(a.store, b.store));
+  return [...byDomain.values()].sort((a, b) => byPublicOrder(a.store, b.store));
+}
+
+/**
+ * The guide of one rubro. Stores outside the target segment, only in the
+ * pilot, or with too little catalogue are left out; a store listed twice
+ * (blackfriday.cl and cyber.cl under two ids) is kept once, with its larger reading.
+ */
+export function buildGuide(meta: (typeof GUIDE_RUBROS)[number], inputs: readonly GuideInput[], today: string): Guide {
+  const kept = keptStores(inputs.filter((i) => i.tienda.rubro === meta.rubro));
   // Brands across stores: a buyer asking "where do I buy <brand> in Chile" gets every store that sells it.
   const brandStores = new Map<string, { names: Map<string, number>; stores: { id: string; name: string; products: number }[] }>();
   for (const { store, input } of kept) {
@@ -255,6 +265,9 @@ export function citations(answers: readonly { text: string; urls: readonly strin
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
+/** Same rule as marcas.ts `brandSlug` (kept here so guia.ts imports nothing from it). */
+export const brandSlugOf = (label: string) => label.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " y ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
 /** "2026-11-18" → "18 de noviembre de 2026". */
 export function longDate(iso: string): string {
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
@@ -265,15 +278,15 @@ function dateSpan(from: string, to: string): string {
   return from === to ? `el ${longDate(from)}` : `entre el ${longDate(from)} y el ${longDate(to)}`;
 }
 
-const clp = (n: number) => `$${n.toLocaleString("es-CL")}`;
-const num = (n: number) => n.toLocaleString("es-CL");
+export const clp = (n: number) => `$${n.toLocaleString("es-CL")}`;
+export const num = (n: number) => n.toLocaleString("es-CL");
 
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 /** JSON inside <script>: "</" would close the tag early. */
-const scriptJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
+export const scriptJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
 function joinEs(xs: readonly string[]): string {
   return xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} y ${xs.at(-1)}`;
@@ -290,6 +303,14 @@ const LIST_NAMES: Record<"blackfriday" | "cyber", string> = { blackfriday: "blac
 export const GUIDE_ORIGIN = "https://agentpey.com";
 export const GUIDE_PATH = "/chile";
 export const guideUrl = (slug?: string): string => `${GUIDE_ORIGIN}${GUIDE_PATH}${slug === undefined ? "" : `/${slug}`}`;
+
+/**
+ * IndexNow (Bing, Yandex, Seznam, Naver...): tells search engines at once that
+ * a page changed. The key is public by design, published at its own address
+ * under /chile/, which lets it announce exactly the pages under /chile/.
+ */
+export const INDEXNOW_KEY = "8a17a2a4c5ea7883fd8b38300e5db3e0";
+export const indexNowKeyUrl = () => guideUrl(`${INDEXNOW_KEY}.txt`);
 
 export const DISCLOSURE = "AgentPey trabaja o puede trabajar con algunas de estas tiendas. El orden no depende de eso.";
 export const ORDER_RULE = "Ordenamos las tiendas por la cantidad de productos con precio publicado que leímos en su catálogo, de más a menos. Las que tienen 1.500 o más quedan empatadas, y los empates van por orden alfabético. El orden es el mismo para todas y no cambia si una tienda trabaja con AgentPey.";
@@ -334,7 +355,7 @@ function jsonLd(g: Guide, pageUrl: string): unknown {
   };
 }
 
-const STYLE = `
+export const STYLE = `
 :root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#5d5b55;--line:#e3e0d8;--card:#fff;--accent:#2f5d50;--note:#fff6dc;--note-line:#e8d48f}
 @media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#ecebe6;--muted:#a9a69d;--line:#33322e;--card:#1c1c1a;--accent:#8fc5b2;--note:#2b2617;--note-line:#5e5225}}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
@@ -354,7 +375,7 @@ table{width:100%;border-collapse:collapse;font-size:.95rem}th,td{text-align:left
 `;
 
 /** The page of one guide: plain HTML, readable with no JavaScript, with schema.org ItemList data. */
-export function guideHtml(g: Guide, others: readonly { slug: string; shortTitle: string }[] = []): string {
+export function guideHtml(g: Guide, others: readonly { slug: string; shortTitle: string }[] = [], brandSlugs: ReadonlySet<string> = new Set()): string {
   const pageUrl = guideUrl(g.slug);
   const total = g.stores.reduce((a, s) => a + s.products, 0);
   const anyCapped = g.stores.some((s) => s.capped);
@@ -371,7 +392,8 @@ export function guideHtml(g: Guide, others: readonly { slug: string; shortTitle:
     ].filter((x) => x !== "").join("");
     return `<li id="${escapeHtml(s.id)}"><h3><a href="${escapeHtml(s.url)}">${escapeHtml(s.name)}</a> <span class="muted">${escapeHtml(s.domain)}</span></h3><ul class="facts">${facts}</ul></li>`;
   }).join("\n");
-  const brandRows = g.brands.map((b) => `<tr><td>${escapeHtml(b.brand)}</td><td>${b.stores.map((s) => `<a href="#${escapeHtml(s.id)}">${escapeHtml(s.name)}</a> (${num(s.products)})`).join(", ")}</td></tr>`).join("");
+  const brandCell = (name: string) => { const slug = brandSlugOf(name); return brandSlugs.has(slug) ? `<a href="${escapeHtml(guideUrl(`marcas/${slug}`))}">${escapeHtml(name)}</a>` : escapeHtml(name); };
+  const brandRows = g.brands.map((b) => `<tr><td>${brandCell(b.brand)}</td><td>${b.stores.map((s) => `<a href="#${escapeHtml(s.id)}">${escapeHtml(s.name)}</a> (${num(s.products)})`).join(", ")}</td></tr>`).join("");
   const otherLinks = others.filter((o) => o.slug !== g.slug).map((o) => `<a href="${escapeHtml(guideUrl(o.slug))}">${escapeHtml(o.shortTitle)}</a>`).join(" · ");
   return `<!doctype html>
 <html lang="es-CL">
@@ -405,7 +427,7 @@ ${items}
 </ol>
 
 ${g.brands.length > 0 ? `<h2>Dónde encontrar cada marca</h2>
-<p>Marcas que venden al menos dos de estas tiendas, con cuántos productos de esa marca tenía cada una en su catálogo.</p>
+<p>Marcas que venden al menos dos de estas tiendas, con cuántos productos de esa marca tenía cada una en su catálogo. ${brandSlugs.size > 0 ? `Los precios de cada marca, tienda por tienda, están en <a href="${escapeHtml(guideUrl("marcas"))}">Marcas</a>.` : ""}</p>
 <div class="table-wrap"><table><thead><tr><th>Marca</th><th>Tiendas (productos)</th></tr></thead><tbody>${brandRows}</tbody></table></div>` : ""}
 
 <h2 id="metodologia">Metodología</h2>
@@ -429,7 +451,7 @@ ${otherLinks === "" ? "" : `<p>Otras guías: ${otherLinks}</p>`}
 `;
 }
 
-export function guidesIndexHtml(guides: readonly { slug: string; title: string; updatedAt: string; stores: number }[]): string {
+export function guidesIndexHtml(guides: readonly { slug: string; title: string; updatedAt: string; stores: number }[], brands = 0): string {
   const rows = guides.map((g) => `<li><a href="${escapeHtml(guideUrl(g.slug))}">${escapeHtml(g.title)}</a> <span class="muted">${g.stores} tiendas · actualizada el ${longDate(g.updatedAt)}</span></li>`).join("\n");
   return `<!doctype html>
 <html lang="es-CL">
@@ -450,6 +472,7 @@ export function guidesIndexHtml(guides: readonly { slug: string; title: string; 
 <ul>
 ${rows}
 </ul>
+${brands > 0 ? `<p><a href="${escapeHtml(guideUrl("marcas"))}">${num(brands)} marcas</a>: dónde comprar cada una y a qué precio, tienda por tienda.</p>` : ""}
 <footer><p>Hecha por <a href="https://agentpey.com">AgentPey</a> con datos públicos.</p></footer>
 </main>
 </body>
@@ -483,10 +506,13 @@ export function robotsTxt(): string {
 }
 
 /** The guides' sitemap, served at agentpey.com/chile/sitemap.xml: the index and each guide, with its date. */
-export function sitemapXml(guides: readonly { slug: string; updatedAt: string }[]): string {
+export function sitemapXml(guides: readonly { slug: string; updatedAt: string }[], brands: readonly { slug: string; updatedAt: string }[] = []): string {
+  const brandsDate = [...brands].map((b) => b.updatedAt).sort().at(-1);
   const urls = [
     `<url><loc>${escapeHtml(guideUrl())}</loc>${guides.length > 0 ? `<lastmod>${[...guides].map((g) => g.updatedAt).sort().at(-1)}</lastmod>` : ""}</url>`,
     ...guides.map((g) => `<url><loc>${escapeHtml(guideUrl(g.slug))}</loc><lastmod>${g.updatedAt}</lastmod></url>`),
+    ...(brands.length === 0 ? [] : [`<url><loc>${escapeHtml(guideUrl("marcas"))}</loc><lastmod>${brandsDate}</lastmod></url>`]),
+    ...brands.map((b) => `<url><loc>${escapeHtml(guideUrl(`marcas/${b.slug}`))}</loc><lastmod>${b.updatedAt}</lastmod></url>`),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }

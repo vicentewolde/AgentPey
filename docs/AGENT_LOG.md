@@ -9558,3 +9558,24 @@ Actualización (20-nov, noche): Vicente pidió una dirección genérica y fácil
 - `base guia` borra de la base local las guías que cambiaron de nombre.
 - Segunda muestra de las 41 preguntas: agentpey.com otra vez en 0 de 41.
 - Pendiente: el despliegue toca el gateway de producción, así que hay que correr `pnpm run prod:check` antes y después.
+
+## 2026-11-20 (noche) — cc/precios-marcas
+
+Agente: Claude Code
+
+Qué:
+- Las guías se publicaron en `agentpey.com/chile`, con autorización explícita de Vicente: PR #121 y #122 fusionados a `main`, y `setup-postgres --solo-importar --guias`.
+- `agentpey.com` quedó verificado en Google Search Console (TXT en Cloudflare). Se envió el sitemap y se pidió la indexación de las 4 páginas.
+- `agentpey.com` quedó registrado en Bing Webmaster Tools, importado desde Search Console, con el sitemap enviado.
+- Rama nueva con las páginas de marcas (`marcas.ts`): `agentpey.com/chile/marcas/<marca>` muestra, por tienda, los productos con stock más baratos, con su precio y fecha.
+  - Hay una página por marca que venden 2 o más tiendas públicas; son 1.028.
+  - Cuando dos tiendas comparten código de barras, el mismo producto aparece lado a lado.
+- Se agregó IndexNow (`base indexnow`). Su clave es pública y se sirve en `/chile/<clave>.txt`.
+- El gateway ahora deja pasar `/chile/marcas(/<slug>)` y el archivo de la clave.
+
+Por qué: la meta de Vicente es que AgentPey sea la fuente de precios que consultan las IAs. Con datos públicos, "dónde comprar X y a qué precio" es lo más cercano y lo más citable.
+
+Pendiente:
+- Pocas tiendas publican código de barras (Shopify y WooCommerce no lo exponen), así que la comparación exacta es escasa. Comparar por nombre y tamaño queda para después, con cuidado de no equivocarse.
+- Releer catálogos cada semana.
+- Agregar al MCP una herramienta de consulta de precios.
