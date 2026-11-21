@@ -44,7 +44,7 @@ import pg from "pg";
 import { localDataDir, openDb } from "../src/db.js";
 import { GuideSchema } from "../src/guia.js";
 import { publishDrop } from "../src/semanal.js";
-import { SCHEMA, importBrandPages, importGuides, importStores, migrate, publishedTotals } from "../src/store.js";
+import { SCHEMA, importBrandPages, importGuides, importPrices, importStores, migrate, publishedTotals } from "../src/store.js";
 
 const ROLE = "comercios";
 const out = (line = ""): void => void process.stdout.write(`${line}\n`);
@@ -170,13 +170,14 @@ async function main(): Promise<void> {
         }
         if (withGuides && maxDrop !== undefined) {
           const before = await publishedTotals(client);
-          const after = { guideStores: source.guides().reduce((n, g) => n + GuideSchema.parse(g.data).stores.length, 0), brands: source.brandSummaries().length };
+          const after = { guideStores: source.guides().reduce((n, g) => n + GuideSchema.parse(g.data).stores.length, 0), brands: source.brandSummaries().length, prices: source.priceRows().length };
           const drop = publishDrop(before, after, maxDrop);
           if (drop !== undefined) die(`no se publica: ${drop}. Revisa la lectura; para publicar igual, corre sin --max-caida`);
-          out(`✓ publicadas antes: ${before.guideStores} tiendas en las guías y ${before.brands} marcas; ahora ${after.guideStores} y ${after.brands}`);
+          out(`✓ publicadas antes: ${before.guideStores} tiendas en las guías, ${before.brands} marcas y ${before.prices} precios; ahora ${after.guideStores}, ${after.brands} y ${after.prices}`);
         }
         if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
         if (withGuides) out(`✓ páginas de marcas publicadas: ${await importBrandPages(client, source)}`);
+        if (withGuides) out(`✓ precios del buscador publicados: ${await importPrices(client, source)}`);
         await client.query("reset role");
       } finally {
         client.release();

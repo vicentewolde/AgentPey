@@ -13,7 +13,7 @@
 import { z } from "zod";
 
 import {
-  brandLabel, brandSlugOf, clp, DISCLOSURE, escapeHtml, fold, FRESHNESS_RULE, guideUrl, keptStores, longDate, num, scriptJson, STYLE,
+  brandLabel, brandSlugOf, clp, DISCLOSURE, escapeHtml, fold, FRESHNESS_RULE, guideUrl, keptStores, longDate, num, scriptJson, searchForm, STYLE,
   type GuideInput,
 } from "./guia.js";
 
@@ -292,6 +292,7 @@ export function brandsIndexHtml(brands: readonly BrandSummary[]): string {
 <h1>Marcas en tiendas online de Chile</h1>
 <p class="lead">${num(brands.length)} marcas que venden dos o más tiendas online chilenas con sitio propio. En cada una: qué tiendas la venden, sus precios y el mismo producto comparado entre tiendas.</p>
 <p class="note">${escapeHtml(DISCLOSURE)}</p>
+${searchForm()}
 ${body}
 <footer><p>Hecha por <a href="https://agentpey.com">AgentPey</a> con datos públicos.</p></footer>
 </main>

@@ -99,6 +99,22 @@ the live sitemap:
 npx tsx src/cli.ts base indexnow
 ```
 
+### Price search
+
+`agentpey.com/chile/buscar?q=<words>` lists every in-stock product with a price
+of the public stores (the same ones the guides may name) whose name or brand has
+every word at the start of a word ("50ml" does not find "150ml"), cheapest
+first, with its store and the date it was read
+(`precios.ts`). Accents, capitals and "100 ml" against "100ml" do not matter, and
+a product named only as a reference ("inspirado en Khamrah") is not a match.
+`&formato=json` gives the same results to programs. Result pages ask not to be
+indexed; the empty page is in the sitemap. `base guia` builds its rows and
+`setup-postgres --guias` publishes them with the pages:
+
+```bash
+curl "https://agentpey.com/chile/buscar?q=khamrah%20100ml&formato=json"
+```
+
 ### Weekly refresh
 
 Every Sunday night a systemd user timer re-reads every public catalogue,
@@ -109,8 +125,8 @@ more products, the previous reading and its date stay; the same smaller size
 two weeks running is taken as the store's real size. Pages are built only with
 readings up to 14 days old, so a page left up for a week never shows one older
 than the 21 days every page promises (`freshReadAt` in `guia.ts`). Publishing
-is refused when the stores across the guides or the brand pages would drop by
-more than 30% (`setup-postgres.ts --max-caida 30`). It uses no AI model.
+is refused when the stores across the guides, the brand pages or the search
+rows would drop by more than 30% (`setup-postgres.ts --max-caida 30`). It uses no AI model.
 
 The job runs whatever is on `origin/main` with the admin connection of
 `.env.local`, so a change to `apps/comercios` runs there the next Sunday. A

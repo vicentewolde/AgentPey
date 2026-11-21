@@ -16,6 +16,7 @@
 import type { Db } from "./db.js";
 import { GuideSchema, type Guide } from "./guia.js";
 import { BrandPageSchema, summarize, type BrandPage, type BrandSummary } from "./marcas.js";
+import { cleanTerms, COUNT_CAP, PriceRowSchema, type PriceRow } from "./precios.js";
 import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
 import type { QuickResult } from "./rapido.js";
@@ -56,6 +57,8 @@ export interface PanelStore {
   /** The brand pages (marcas.ts): the index without the offers, and one page with them. */
   brandSummaries(): Promise<BrandSummary[]>;
   brandPage(slug: string): Promise<BrandPage | undefined>;
+  /** The price search (precios.ts): rows containing every term, cheapest first, and how many there are in all. */
+  searchPrices(terms: readonly string[], limit: number): Promise<{ total: number; rows: PriceRow[] }>;
 }
 
 /** Locally the quick diagnoses live in memory: the SQLite file is the CLI's, and they are only a demo there. */
@@ -78,6 +81,10 @@ export function sqliteStore(db: Db): PanelStore {
     brandPage: async (slug) => {
       const data = db.brandPage(slug);
       return data === undefined ? undefined : BrandPageSchema.parse(data);
+    },
+    searchPrices: async (terms, limit) => {
+      const r = db.searchPrices(cleanTerms(terms), limit, COUNT_CAP);
+      return { total: r.total, rows: r.rows.map((x) => PriceRowSchema.parse(x)) };
     },
   };
 }
@@ -123,6 +130,8 @@ export const SCHEMA_SQL: readonly string[] = [
   `create table if not exists ${SCHEMA}.marcas (
      slug text primary key, brand text not null, stores integer not null, price_min integer not null,
      updated text not null, data jsonb not null)`,
+  `create table if not exists ${SCHEMA}.precios (
+     seq bigserial primary key, store_id text not null, text text not null, price integer not null, data jsonb not null)`,
   `create table if not exists ${SCHEMA}.ingest_runs (
      seq bigserial primary key, store_id text not null, at timestamptz not null, method text not null,
      count integer not null, notes jsonb not null)`,
@@ -199,6 +208,21 @@ export function pgStore(q: Queryable): PanelStore {
     async brandPage(slug) {
       const { rows } = await q.query(`select data from ${SCHEMA}.marcas where slug = $1`, [slug]);
       return rows[0] === undefined ? undefined : BrandPageSchema.parse(rows[0].data);
+    },
+    async searchPrices(raw, limit) {
+      const terms = cleanTerms(raw);
+      if (terms.length === 0) return { total: 0, rows: [] };
+      // Letters and digits only (cleanTerms): LIKE sees no wildcard. Each term at the start of a word.
+      const where = terms.map((_, i) => `(' ' || text) like $${i + 1}`).join(" and ");
+      const args = terms.map((t) => `% ${t}%`);
+      const n = terms.length;
+      // The count stops at COUNT_CAP + 1, and the jsonb is read only for the rows shown: a broad word stays cheap.
+      const counted = await q.query(`select count(*)::int as n from (select 1 from ${SCHEMA}.precios where ${where} limit $${n + 1}) m`, [...args, COUNT_CAP + 1]);
+      const { rows } = await q.query(
+        `select p.data from (select seq, price from ${SCHEMA}.precios where ${where} order by price, seq limit $${n + 1}) top join ${SCHEMA}.precios p using (seq) order by top.price, top.seq`,
+        [...args, limit],
+      );
+      return { total: Number((counted.rows[0] as { n: number }).n), rows: rows.map((r) => PriceRowSchema.parse(r.data)) };
     },
     async click(id) {
       const { rows } = await q.query(`select store_id, product_id, url, channel from ${SCHEMA}.clicks where id = $1`, [id]);
@@ -280,11 +304,33 @@ export async function importStores(q: Queryable, source: Db, storeIds: readonly 
   return counts;
 }
 
+/**
+ * Replaces every row of the price search in Postgres with the local ones, in
+ * one transaction. Public facts only: title, brand, price, address and date of
+ * in-stock products the stores publish themselves.
+ */
+export async function importPrices(q: Queryable, source: Db): Promise<number> {
+  const rows = source.priceRows().map((r) => ({ ...r, data: PriceRowSchema.parse(r.data) }));
+  await q.query("begin");
+  try {
+    await q.query(`delete from ${SCHEMA}.precios`);
+    for (let i = 0; i < rows.length; i += 1000) {
+      await insertMany(q, "precios", { store_id: "text", text: "text", price: "integer", data: "jsonb" }, rows.slice(i, i + 1000).map((r) => [r.storeId, r.text, r.price, r.data]));
+    }
+    await q.query("commit");
+  } catch (error) {
+    await q.query("rollback");
+    throw error;
+  }
+  return rows.length;
+}
+
 /** What the /chile pages publish now: stores across the guides and brand pages (before a replace, to refuse a sharp drop). */
-export async function publishedTotals(q: Queryable): Promise<{ guideStores: number; brands: number }> {
+export async function publishedTotals(q: Queryable): Promise<{ guideStores: number; brands: number; prices: number }> {
   const g = await q.query(`select coalesce(sum(jsonb_array_length(data->'stores')), 0)::int as n from ${SCHEMA}.guias`);
   const m = await q.query(`select count(*)::int as n from ${SCHEMA}.marcas`);
-  return { guideStores: Number((g.rows[0] as { n: number }).n), brands: Number((m.rows[0] as { n: number }).n) };
+  const p = await q.query(`select count(*)::int as n from ${SCHEMA}.precios`);
+  return { guideStores: Number((g.rows[0] as { n: number }).n), brands: Number((m.rows[0] as { n: number }).n), prices: Number((p.rows[0] as { n: number }).n) };
 }
 
 /**

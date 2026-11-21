@@ -26,6 +26,7 @@ import type { Analysis } from "./entender.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { GUIDE_ORIGIN, GUIDE_PATH, GUIDE_RUBROS, guideHtml, guidesIndexHtml, INDEXNOW_KEY, robotsTxt, sitemapXml } from "./guia.js";
 import { brandHtml, brandsIndexHtml } from "./marcas.js";
+import { SEARCH_LIMIT, searchHtml, searchJson, searchTerms, type PriceRow } from "./precios.js";
 import { createLlm } from "./llm.js";
 import { AI_SOURCES, snippet, summarize, type MeasureEvent, type Source } from "./medir.js";
 import { indexPage, panel, sellerPage } from "./panel.js";
@@ -81,6 +82,22 @@ const HOST = process.env.HOST ?? "127.0.0.1";
 const SELLER_LIMIT = Number(process.env.SELLER_LIMIT_PER_HOUR ?? 30);
 const hits = new Map<string, number[]>();
 /** True when this IP has used up its seller questions for the last hour. */
+/** The public price search: searches per IP and hour, and the last results kept (the pages change once a week). */
+const SEARCHES_PER_HOUR = 300;
+const searchHits = new Map<string, number[]>();
+function searchLimited(ip: string, now = Date.now()): boolean {
+  if (!PUBLIC) return false;
+  const recent = (searchHits.get(ip) ?? []).filter((t) => now - t < 3_600_000);
+  if (searchHits.size > 10_000) searchHits.clear();
+  searchHits.set(ip, recent.length >= SEARCHES_PER_HOUR ? recent : [...recent, now]);
+  return recent.length >= SEARCHES_PER_HOUR;
+}
+const searchCache = new Map<string, { total: number; rows: PriceRow[] }>();
+function rememberSearch(key: string, found: { total: number; rows: PriceRow[] }): void {
+  if (searchCache.size >= 500) searchCache.delete(searchCache.keys().next().value!);
+  searchCache.set(key, found);
+}
+
 function limited(ip: string, now = Date.now()): boolean {
   if (!PUBLIC) return false;
   const recent = (hits.get(ip) ?? []).filter((t) => now - t < 3_600_000);
@@ -236,6 +253,25 @@ const server = createServer(async (req, res) => {
     if (read && (path === GUIDE_PATH || path === `${GUIDE_PATH}/`)) {
       const guides = await data.guides();
       return send(res, 200, "text/html; charset=utf-8", guidesIndexHtml(guides.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length })), (await data.brandSummaries()).length), publicPage);
+    }
+    // Before the guide slugs: "buscar" would read as one.
+    if (read && (path === `${GUIDE_PATH}/buscar` || path === `${GUIDE_PATH}/buscar/`)) {
+      const q = (url.searchParams.get("q") ?? "").trim().slice(0, 200);
+      const asJson = url.searchParams.get("formato") === "json";
+      const terms = searchTerms(q);
+      const results = { ...publicPage, "x-robots-tag": "noindex", ...(asJson ? { "access-control-allow-origin": "*" } : {}) };
+      if (terms.length > 0 && searchLimited(clientIp(req))) {
+        return send(res, 429, asJson ? "application/json; charset=utf-8" : "text/plain; charset=utf-8", asJson ? JSON.stringify({ error: "Demasiadas búsquedas seguidas; prueba de nuevo en un rato" }) : "Demasiadas búsquedas seguidas; prueba de nuevo en un rato", { "retry-after": "600" });
+      }
+      const key = terms.join(" ");
+      let found = terms.length === 0 ? { total: 0, rows: [] } : searchCache.get(key);
+      if (found === undefined) {
+        found = await data.searchPrices(terms, SEARCH_LIMIT);
+        rememberSearch(key, found);
+      }
+      const result = { query: q, terms, ...found };
+      if (asJson) return send(res, 200, "application/json; charset=utf-8", JSON.stringify(searchJson(result)), results);
+      return send(res, 200, "text/html; charset=utf-8", searchHtml(q === "" ? undefined : result), q === "" ? publicPage : results);
     }
     const g = new RegExp(`^${GUIDE_PATH}/([a-z0-9-]+)/?$`).exec(path);
     if (read && g) {

@@ -9645,3 +9645,24 @@ Qué:
 Por qué: un precio viejo citado por una IA rompe la confianza en "el precio más bajo seguro", que es la meta de Vicente.
 
 Pendiente: dejar el worktree `~/agentes/AgentPay-worktrees/semanal` y el timer instalados después del merge; revisar el primer log en `~/agentes/datos-comercios/semanal/`.
+
+## 2026-11-21 (tarde) — cc/buscador-precios
+
+Agente: Claude Code
+
+Qué:
+- `cc/precios-semanales` (PR #125) fusionado con OK explícito de Vicente; `prod:check` 9/9 antes y después. Timer `agentpey-semanal` instalado en el Dell y primera corrida lanzada a mano el 21-nov 18:09.
+- Buscador público de precios en `agentpey.com/chile/buscar?q=…` (`precios.ts`): productos con stock de las tiendas públicas que tienen todas las palabras, del más barato al más caro, con tienda y fecha. `&formato=json` para programas y IAs. Sin JavaScript; las páginas de resultados piden no indexarse.
+- No cuenta lo que un nombre solo menciona como referencia ("inspirado en Khamrah"): sin esto, buscar Khamrah listaba primero imitaciones.
+- 130.506 filas con datos reales; cada búsqueda local toma unos 0,1 s. Supabase usaba 56 MB de 500.
+- Se publica con las guías (`setup-postgres --guias`), y entra al tope de caída de 30% del job semanal.
+- Revisión del subagente `revisor`: sin bloqueantes. Quedaron arreglados:
+  - "inspirado en" ya no corta nombres reales ("Cable tipo C", "Cama tipo sofá");
+  - cada palabra tiene que calzar al comienzo de una palabra: "50ml" ya no encuentra "150ml";
+  - el conteo para en 1.000 y el jsonb solo se lee para las filas que se muestran;
+  - hay un límite de 300 búsquedas por IP y hora, una caché de 500 resultados y `x-robots-tag: noindex`;
+  - queda una fila por dirección, con su precio más bajo, y el esquema solo acepta http(s).
+
+Por qué: es el primer paso de la meta de Vicente de que las IAs consulten a AgentPey por el precio más bajo. Es público y de solo lectura, fuera del servidor MCP de compras (que maneja pagos y tiene trabajo en curso de la Fase 10).
+
+Pendiente: un servidor MCP público de solo lectura que use esta búsqueda; comparar el mismo producto por nombre y tamaño.

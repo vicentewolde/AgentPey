@@ -93,6 +93,12 @@ export function openDb(path: string) {
       data text not null,
       at   text not null
     );
+    create table if not exists precios (
+      store_id text not null,
+      text     text not null,
+      price    integer not null,
+      data     text not null
+    );
     create table if not exists marcas (
       slug      text primary key,
       brand     text not null,
@@ -223,6 +229,34 @@ export function openDb(path: string) {
         db.exec("rollback");
         throw error;
       }
+    },
+    /** Replaces every row of the price search (precios.ts) at once, like the brand pages. */
+    replacePrices(rows: readonly { storeId: string; text: string; price: number; data: unknown }[]): void {
+      db.exec("begin");
+      try {
+        db.exec("delete from precios");
+        const ins = db.prepare("insert into precios (store_id, text, price, data) values (?, ?, ?, ?)");
+        for (const r of rows) ins.run(r.storeId, r.text, r.price, JSON.stringify(r.data));
+        db.exec("commit");
+      } catch (error) {
+        db.exec("rollback");
+        throw error;
+      }
+    },
+    /** Rows with every term (cleanTerms) at the start of a word, cheapest first; the total counted up to countCap + 1. */
+    searchPrices(terms: readonly string[], limit: number, countCap: number): { total: number; rows: unknown[] } {
+      if (terms.length === 0) return { total: 0, rows: [] };
+      // Each term at the start of a word: "50ml" must not find "150ml".
+      const where = terms.map(() => "(' ' || text) like ?").join(" and ");
+      const args = terms.map((t) => `% ${t}%`);
+      const total = Number(db.prepare(`select count(*) n from (select 1 from precios where ${where} limit ?)`).get(...args, countCap + 1)?.n ?? 0);
+      const rows = db.prepare(`select data from precios where ${where} order by price, rowid limit ?`).all(...args, limit).map((r) => JSON.parse(String(r.data)) as unknown);
+      return { total, rows };
+    },
+    /** Every price row, for setup-postgres; in insertion order. */
+    priceRows(): { storeId: string; text: string; price: number; data: unknown }[] {
+      return db.prepare("select store_id, text, price, data from precios order by rowid").all()
+        .map((r) => ({ storeId: String(r.store_id), text: String(r.text), price: Number(r.price), data: JSON.parse(String(r.data)) as unknown }));
     },
     brandSummaries(): { slug: string; brand: string; stores: number; priceMin: number; updatedAt: string }[] {
       return db.prepare("select slug, brand, stores, price_min, updated from marcas order by slug").all()

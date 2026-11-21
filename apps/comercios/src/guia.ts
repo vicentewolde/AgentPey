@@ -385,7 +385,8 @@ ol.stores>li h3::before{content:counter(s) ". ";color:var(--muted)}
 .facts{margin:.5em 0 0;padding:0;list-style:none}.facts li{margin:.15em 0}
 table{width:100%;border-collapse:collapse;font-size:.95rem}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .table-wrap{overflow-x:auto}footer{margin-top:3em;font-size:.9rem;color:var(--muted)}
-`;
+
+.search{margin:1.25rem 0}.search label{display:block;font-weight:600;margin-bottom:.35rem}.search div{display:flex;gap:.5rem}.search input{flex:1;min-width:0;font:inherit;padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}.search button{font:inherit;padding:.55rem 1rem;border:0;border-radius:8px;background:var(--accent);color:var(--bg);font-weight:600;cursor:pointer}.price{font-weight:600;white-space:nowrap}`;
 
 /** The page of one guide: plain HTML, readable with no JavaScript, with schema.org ItemList data. */
 export function guideHtml(g: Guide, others: readonly { slug: string; shortTitle: string }[] = [], brandSlugs: ReadonlySet<string> = new Set()): string {
@@ -482,6 +483,7 @@ export function guidesIndexHtml(guides: readonly { slug: string; title: string; 
 <h1>Tiendas online en Chile, por rubro</h1>
 <p class="lead">Tiendas con sitio propio que no son grandes tiendas ni marketplaces, con lo que vende cada una y sus precios, sacado de sus catálogos públicos.</p>
 <p class="note">${escapeHtml(DISCLOSURE)}</p>
+${searchForm()}
 <ul>
 ${rows}
 </ul>
@@ -526,6 +528,19 @@ export function sitemapXml(guides: readonly { slug: string; updatedAt: string }[
     ...guides.map((g) => `<url><loc>${escapeHtml(guideUrl(g.slug))}</loc><lastmod>${g.updatedAt}</lastmod></url>`),
     ...(brands.length === 0 ? [] : [`<url><loc>${escapeHtml(guideUrl("marcas"))}</loc><lastmod>${brandsDate}</lastmod></url>`]),
     ...brands.map((b) => `<url><loc>${escapeHtml(guideUrl(`marcas/${b.slug}`))}</loc><lastmod>${b.updatedAt}</lastmod></url>`),
+    ...(brands.length === 0 ? [] : [`<url><loc>${escapeHtml(searchUrl())}</loc><lastmod>${brandsDate}</lastmod></url>`]),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+}
+
+/** Address of the price search (precios.ts); with a query, its results page, or their JSON. */
+export function searchUrl(q?: string, json = false): string {
+  const base = guideUrl("buscar");
+  if (q === undefined) return base;
+  return `${base}?q=${encodeURIComponent(q)}${json ? "&formato=json" : ""}`;
+}
+
+/** The search box, a plain GET form: works with no JavaScript. */
+export function searchForm(q = ""): string {
+  return `<form class="search" action="${escapeHtml(searchUrl())}" method="get" role="search"><label for="q">Buscar un producto y comparar precios</label><div><input id="q" name="q" type="search" value="${escapeHtml(q)}" placeholder="Ej.: khamrah 100ml" maxlength="200"><button type="submit">Buscar</button></div></form>`;
 }

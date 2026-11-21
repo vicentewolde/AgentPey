@@ -40,6 +40,7 @@ import { ingestStore } from "./ingest/index.js";
 import { createLlm, UsageLimitError } from "./llm.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
+import { buildPriceRows } from "./precios.js";
 import { rereadVerdict } from "./semanal.js";
 import { STORES } from "./stores.js";
 
@@ -510,6 +511,9 @@ function guia(db: Db, rest: string[]): void {
   mkdirSync(`${dir}marcas/`, { recursive: true });
   writeFileSync(`${dir}marcas/index.html`, brandsIndexHtml(pages.map(summarize)));
   for (const p of pages.filter((x) => x.stores.length >= 10)) writeFileSync(`${dir}marcas/${p.slug}.html`, brandHtml(p, GUIDE_RUBROS));
+  const prices = buildPriceRows(all);
+  db.replacePrices(prices.map((p) => ({ storeId: p.row.storeId, text: p.text, price: p.row.price, data: p.row })));
+  console.log(`buscador: ${prices.length} productos con stock y precio`);
   console.log(`marcas: ${pages.length} páginas (${pages.filter((p) => p.same.length > 0).length} con el mismo producto en varias tiendas)`);
   console.log(`${dir}: vista previa de ${built.length} guías y de las marcas con 10 o más tiendas. Para publicarlas: scripts/setup-postgres.ts --solo-importar --guias`);
 }

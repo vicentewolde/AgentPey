@@ -70,7 +70,7 @@ describe("resolveTarget", () => {
 
   describe("the public guides on the main domain (agentpey.com/chile)", () => {
     it("sends exactly the guide paths of the main domain to comercios", () => {
-      for (const url of ["/chile", "/chile/", "/chile/hogar-y-decoracion", "/chile/ropa-y-calzado/", "/chile/sitemap.xml", "/chile/salud-y-belleza?utm=x", "/chile#a", "/chile/marcas", "/chile/marcas/", "/chile/marcas/dolce-y-gabbana", "/chile/8a17a2a4c5ea7883fd8b38300e5db3e0.txt"]) {
+      for (const url of ["/chile", "/chile/", "/chile/hogar-y-decoracion", "/chile/ropa-y-calzado/", "/chile/sitemap.xml", "/chile/salud-y-belleza?utm=x", "/chile#a", "/chile/marcas", "/chile/marcas/", "/chile/marcas/dolce-y-gabbana", "/chile/8a17a2a4c5ea7883fd8b38300e5db3e0.txt", "/chile/buscar", "/chile/buscar?q=khamrah%20100ml&formato=json"]) {
         expect(resolveTarget(hostMap, "agentpey.com", undefined, url), url).toBe(COMERCIOS_TARGET);
       }
     });

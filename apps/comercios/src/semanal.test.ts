@@ -71,17 +71,18 @@ describe("how old a reading may be", () => {
 
 describe("publishing the week's pages", () => {
   it("refuses a publish that drops the stores or the brand pages by more than the limit", () => {
-    expect(publishDrop({ guideStores: 133, brands: 1028 }, { guideStores: 130, brands: 1000 }, 30)).toBeUndefined();
-    expect(publishDrop({ guideStores: 133, brands: 1028 }, { guideStores: 0, brands: 0 }, 30)).toBe("tiendas en las guías: 0, antes 133 (cae más de 30%)");
-    expect(publishDrop({ guideStores: 133, brands: 1028 }, { guideStores: 133, brands: 600 }, 30)).toMatch(/^páginas de marcas/);
-    expect(publishDrop({ guideStores: 0, brands: 0 }, { guideStores: 5, brands: 2 }, 30)).toBeUndefined();
+    expect(publishDrop({ guideStores: 133, brands: 1028, prices: 160000 }, { guideStores: 130, brands: 1000, prices: 150000 }, 30)).toBeUndefined();
+    expect(publishDrop({ guideStores: 133, brands: 1028, prices: 160000 }, { guideStores: 0, brands: 0, prices: 0 }, 30)).toBe("tiendas en las guías: 0, antes 133 (cae más de 30%)");
+    expect(publishDrop({ guideStores: 133, brands: 1028, prices: 160000 }, { guideStores: 133, brands: 600, prices: 160000 }, 30)).toMatch(/^páginas de marcas/);
+    expect(publishDrop({ guideStores: 0, brands: 0, prices: 0 }, { guideStores: 5, brands: 2, prices: 9 }, 30)).toBeUndefined();
+    expect(publishDrop({ guideStores: 133, brands: 1028, prices: 160000 }, { guideStores: 133, brands: 1028, prices: 1000 }, 30)).toMatch(/^precios del buscador/);
   });
 
   it("reads what Postgres publishes now", async () => {
     const pglite = new PGlite();
     const q = pglite as unknown as Queryable;
     await migrate(q);
-    expect(await publishedTotals(q)).toEqual({ guideStores: 0, brands: 0 });
+    expect(await publishedTotals(q)).toEqual({ guideStores: 0, brands: 0, prices: 0 });
     const t = (id: string) => ({
       id, name: id, domain: `${id}.cl`, origin: `https://www.${id}.cl`, rubro: "Salud y Belleza", categories: ["Salud y Belleza"],
       platform: "shopify" as const, segment: "pyme" as const, bfSlug: id, bfLink: `https://${id}.cl`, checkedAt: "2026-11-18T03:00:00.000Z",
@@ -93,7 +94,7 @@ describe("publishing the week's pages", () => {
     local.replaceBrandPages(buildBrandPages(inputs, "2026-11-20").map((p) => ({ slug: p.slug, brand: p.brand, stores: p.stores.length, priceMin: p.stores[0]!.priceMin, updatedAt: p.updatedAt, data: p })));
     await importGuides(q, local);
     await importBrandPages(q, local);
-    expect(await publishedTotals(q)).toEqual({ guideStores: 2, brands: 1 });
+    expect(await publishedTotals(q)).toEqual({ guideStores: 2, brands: 1, prices: 0 });
     await pglite.close();
   }, 30_000);
 });

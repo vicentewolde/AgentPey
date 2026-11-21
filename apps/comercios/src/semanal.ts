@@ -31,12 +31,12 @@ export function rereadVerdict(previous: number, now: number | undefined, lastKep
   return { replace: true };
 }
 
-/** Published totals of the /chile pages: stores across the guides, and brand pages. */
-export interface PublishedTotals { readonly guideStores: number; readonly brands: number }
+/** Published totals of the /chile pages: stores across the guides, brand pages, and rows of the price search. */
+export interface PublishedTotals { readonly guideStores: number; readonly brands: number; readonly prices: number }
 
 /** A publish shrinking either total by more than `maxDropPct`% is refused: a bug or a blocked night must not empty the pages. */
 export function publishDrop(before: PublishedTotals, after: PublishedTotals, maxDropPct: number): string | undefined {
-  for (const [name, b, a] of [["tiendas en las guías", before.guideStores, after.guideStores], ["páginas de marcas", before.brands, after.brands]] as const) {
+  for (const [name, b, a] of [["tiendas en las guías", before.guideStores, after.guideStores], ["páginas de marcas", before.brands, after.brands], ["precios del buscador", before.prices, after.prices]] as const) {
     if (b > 0 && a < b * (1 - maxDropPct / 100)) return `${name}: ${a}, antes ${b} (cae más de ${maxDropPct}%)`;
   }
   return undefined;
