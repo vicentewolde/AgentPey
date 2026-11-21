@@ -101,6 +101,8 @@ export interface OrderEventsDeps {
   escrowWatchIntervalMs?: number;
   /** Opens the escrow's release window when an order paid into it ships in full, and releases at its end (T164). */
   releases?: Pick<EscrowReleases, "afterShipment" | "afterDispute" | "resume" | "stop" | "idle">;
+  /** Whether an order is delivered by download (T188): its snapshot says so. */
+  isDigital?: (record: OrderRecord) => boolean;
 }
 
 /** What a delivery's outcome means for it: done, try again later, wait for the budget, or never again. */
@@ -403,7 +405,7 @@ export class OrderEvents {
     const lookup: DisputeLookup = event === "created" ? { kind: "none" } : await this.deps.disputes(current);
     const now = this.deps.now();
     // The tracking goes to the platform that bought, and only there: the public order shows the country alone (T127, T147 review).
-    const body = JSON.stringify(ucpOrder({ ...current, ucpCheckoutId: current.ucpCheckoutId }, current.webhook.origin, lookup, current.webhook.version, { tracking: true, escrow }));
+    const body = JSON.stringify(ucpOrder({ ...current, ucpCheckoutId: current.ucpCheckoutId }, current.webhook.origin, lookup, current.webhook.version, { tracking: true, escrow, digital: this.deps.isDigital?.(current) === true }));
     return { id: randomUUID(), timestamp: Math.floor(now.getTime() / 1000), event, body, status: "pending", attempts: 0, nextAttemptAt: now.toISOString() };
   }
 

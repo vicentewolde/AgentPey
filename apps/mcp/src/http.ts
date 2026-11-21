@@ -15,6 +15,7 @@ import { createMcpHandler, type AuthInfo, type McpHttpHandler } from "@modelcont
 import type { Express, NextFunction, Request, Response } from "express";
 
 import { MCP_SCOPE, type OAuthServer } from "./oauth/server.js";
+import type { ShopperDirectory } from "./runtime.js";
 import type { Shopper } from "./shopper.js";
 import { createAgentPeyMcpServer } from "./tools.js";
 
@@ -29,7 +30,11 @@ export interface McpAuth {
 }
 
 export interface McpAppOptions {
-  readonly shopper: Shopper;
+  /**
+   * Who spends. A directory (T187): each signed-in request uses the shopper of the wallet its token names, so one
+   * person's chat never spends from another's account. One shopper: every request uses it (tests, and the contract test).
+   */
+  readonly shopper: Shopper | ShopperDirectory;
   /**
    * OAuth in front of `/mcp` (`R-2`). Not optional: a server that pays has to
    * say out loud that it runs without it, and only tests do.
@@ -40,12 +45,40 @@ export interface McpAppOptions {
   readonly log?: (message: string, fields?: Record<string, unknown>) => void;
 }
 
+function isDirectory(shopper: Shopper | ShopperDirectory): shopper is ShopperDirectory {
+  return typeof (shopper as Partial<ShopperDirectory>).forWallet === "function";
+}
+
 export function createMcpApp(options: McpAppOptions): Express {
-  const handler = createMcpHandler(() => createAgentPeyMcpServer(options.shopper, options.log));
+  // One MCP handler per shopper, made the first time that person calls.
+  const handlers = new Map<Shopper, McpHttpHandler>();
+  const handlerFor = (shopper: Shopper): McpHttpHandler => {
+    let handler = handlers.get(shopper);
+    if (handler === undefined) {
+      handler = createMcpHandler(() => createAgentPeyMcpServer(shopper, options.log));
+      handlers.set(shopper, handler);
+    }
+    return handler;
+  };
+  const source = options.shopper;
+  /** The shopper for this request, or undefined when its wallet is not served: never a fallback to someone else's. */
+  const shopperFor = (auth: AuthInfo | undefined): Shopper | undefined => {
+    if (!isDirectory(source)) return source;
+    const wallet = auth?.extra?.["wallet"];
+    return typeof wallet === "string" ? source.forWallet(wallet) : undefined;
+  };
+  const serve = (req: Request, res: Response): void => {
+    const shopper = shopperFor((req as Request & { auth?: AuthInfo }).auth);
+    if (shopper === undefined) {
+      res.status(401).set("Cache-Control", "no-store").json({ error: "invalid_token", error_description: "this wallet has no spending account here" });
+      return;
+    }
+    void bridge(handlerFor(shopper), req, res, options.log);
+  };
   const app = createMcpExpressApp(options.allowedHosts === undefined ? {} : { host: "0.0.0.0", allowedHosts: [...options.allowedHosts] });
   app.disable("x-powered-by");
   if (options.auth === "none-for-tests") {
-    app.all(MCP_PATH, (req, res) => void bridge(handler, req, res, options.log));
+    app.all(MCP_PATH, serve);
     app.use(jsonErrors(options.log));
     return app;
   }
@@ -62,7 +95,7 @@ export function createMcpApp(options: McpAppOptions): Express {
   );
   app.use(oauth.router);
   const bearer = requireBearerAuth({ verifier: oauth.verifier, requiredScopes: [MCP_SCOPE], resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl) });
-  app.all(MCP_PATH, bearer, (req, res) => void bridge(handler, req, res, options.log));
+  app.all(MCP_PATH, bearer, serve);
   app.use(jsonErrors(options.log));
   return app;
 }

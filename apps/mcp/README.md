@@ -171,6 +171,42 @@ wallet. The server refuses to start unless, on chain, the rail is owned by
 pnpm run mcp:setup -- --principal G... --reissue
 ```
 
+## One spending account per person
+
+Each person on the closed list gets their own `policy_rail` (their wallet as
+principal, their own limits) owned by an agent key derived for them alone from
+`MCP_AGENT_MNEMONIC`. The list is `apps/mcp/wallets.testnet.json`; it holds no
+secrets. Show what would be deployed:
+
+```bash
+pnpm run buyer:onboard -- --principal G... --per-tx 3 --per-day 5
+```
+
+Deploy it on testnet and add the person to the list:
+
+```bash
+pnpm run buyer:onboard -- --principal G... --per-tx 3 --per-day 5 --yes
+```
+
+The first time, add `--init-mnemonic` to create `MCP_AGENT_MNEMONIC` in
+`.env.local`, then copy it to Render. Never regenerate it: every derived key
+would change. The command moves no money; it prints the `rail:topup` command
+that funds the rail from AgentPey's testnet reserve.
+
+Then issue the person's credential and Mandate (anchored on testnet, with their
+rail's limits, written to their entry in the list):
+
+```bash
+pnpm run mcp:setup -- --principal G... --agent-index <n>
+```
+
+The server serves `MCP_ALLOWED_WALLET` and every listed person whose account
+checks out on chain at startup; each signed-in wallet spends only from its own
+rail. A listed person that does not check out is logged as `listed wallet
+disabled` with the reason, and the others keep working. Without
+`MCP_AGENT_MNEMONIC` (in `.env.local` and on Render) only `MCP_ALLOWED_WALLET`
+is served.
+
 ## Cut access
 
 Sign everyone out at once: put a new `MCP_OAUTH_SECRET` in Render (any 48+
@@ -196,6 +232,14 @@ set -a; source .env.local; set +a; MCP_PUBLIC_URL=http://localhost:3010 pnpm --f
 
 ```bash
 pnpm run ucp:probe-per-tx -- --store https://agentcommerce.vitrinee.agentpey.com --product 67624503640370 --quantity 2 --rail mcp
+```
+
+Or have the network refuse one on chain, from a per-person rail on the list
+(it sends a payment over `per_tx` and leaves a failed transaction; no USDC
+moves). Without `--yes` it only simulates:
+
+```bash
+pnpm run rail:over-limit -- --rail C... --yes
 ```
 
 ## Tests

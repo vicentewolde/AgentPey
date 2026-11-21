@@ -115,3 +115,30 @@ del archivo y lo sella; un código que no se lee se rechaza antes de firmar. Con
 archivo a la tienda, que lo acepta solo si calza con la huella. No cambian la tienda ni el contrato.
 **Alternativa descartada: que la tienda guarde la foto antes del reclamo.** Ahorraba copiar un código, pero rompía la regla
 de T184 y obligaba a firmar la subida con la wallet.
+
+### Y-11 · La descarga de un producto digital la firma quien pagó; el archivo lo trae la tienda desde donde el comercio lo guarda · `Vigente` (15-nov, aplicada en T188; aprobada por el usuario el 15-nov)
+
+**Contexto.** `Y-5` dice que un pedido digital recibe un enlace de descarga único y que la primera descarga marca la entrega.
+Al implementarlo apareció que la página del pedido es pública (cualquiera con el recibo la lee, y muestra el `checkout_id`),
+y que la sesión de checkout no tiene control de acceso: un enlace secreto puesto ahí se filtraría. Shopify, sin apps de pago
+(`Y-5`), no entrega archivos por sí solo.
+
+**Decisión.**
+1. **Qué es digital:** la tienda lo declara, producto por producto, con el archivo de cada uno (`DIGITAL_PRODUCTS`, o
+   `COMERCIO_DIGITAL_PRODUCTS` por slug en la plataforma). Solo un pedido hecho entero de productos digitales se entrega por
+   descarga; uno mixto sigue el camino físico, como antes.
+2. **Quién descarga:** el enlace lo firma quien pagó, con su propia llave de Stellar, y vence en minutos (como los enlaces de
+   lectura de evidencia, `Y-3`): la cuenta clásica que pagó, o, si pagó un `policy_rail`, su dueño (el agente) o su principal
+   (la wallet de la persona), leídos de la red. El MCP firma uno nuevo cada vez que la persona lo pide (`get_order` →
+   `download`). La página pública del pedido solo dice que es digital; nunca muestra un enlace.
+3. **Dónde vive el archivo:** donde el comercio lo guarda (por ejemplo, en Archivos de Shopify), en una URL https que la
+   tienda lee del lado del servidor y entrega al comprador, que nunca la ve. Tope de 25 MB.
+4. **Entrega:** se registra cuando el archivo salió de la tienda; abre la ventana del escrow igual que un paquete despachado.
+   Las descargas siguientes entregan el archivo de nuevo y no cambian nada.
+
+**Alternativas descartadas.** (a) **Un enlace con un secreto, mostrado en el pedido o en el checkout:** ambos son legibles
+por terceros. (b) **Guardar los archivos en Postgres de la plataforma:** más código y almacenamiento para algo que el comercio
+ya tiene en Shopify. (c) **Un enlace de un solo uso:** quien pierde el archivo no podría volver a bajarlo; la entrega igual se
+registra una sola vez. **Riesgo que queda:** la URL donde el comercio guarda el archivo es pública si alguien la conoce; la
+tienda nunca la muestra, pero no la protege. Para la credencial del evento en testnet basta; para un archivo de valor haría
+falta un almacenamiento privado.

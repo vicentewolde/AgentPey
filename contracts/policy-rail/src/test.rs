@@ -761,3 +761,89 @@ fn the_owner_cannot_rotate_itself_by_authorising_as_someone_else() {
     );
     assert_eq!(f.client().owner(), f.owner);
 }
+
+// ------------------------------------------- one rail per person (T186, `Y-4`)
+
+/// A second person's rail on the same asset, in the same ledger: its own owner key and its own principal.
+fn second_rail(f: &Fixture, owner_key: &SigningKey) -> (Address, Address) {
+    let principal = Address::generate(&f.env);
+    let rail = f.env.register(
+        PolicyRail,
+        (
+            public_key_bytes(&f.env, owner_key),
+            principal.clone(),
+            f.asset.clone(),
+            f.per_tx,
+            f.per_day,
+            f.valid_until,
+        ),
+    );
+    f.env.mock_all_auths();
+    StellarAssetClient::new(&f.env, &f.asset).mint(&rail, &300_0000000);
+    f.env.set_auths(&[]);
+    (rail, principal)
+}
+
+/// `asset.transfer(from, to, amount)` as an auth context, with `from` any rail.
+fn transfer_from(f: &Fixture, from: &Address, to: &Address, amount: i128) -> Vec<Context> {
+    let args: Vec<Val> = vec![&f.env, from.into_val(&f.env), to.into_val(&f.env), amount.into_val(&f.env)];
+    vec![
+        &f.env,
+        Context::Contract(ContractContext { contract: f.asset.clone(), fn_name: symbol_short!("transfer"), args }),
+    ]
+}
+
+#[test]
+fn one_person_s_agent_key_cannot_spend_from_another_person_s_rail() {
+    // Two people, two rails on the same USDC, each owned by its own derived agent key. Person A's key, signing a
+    // genuine authorisation, is a stranger to B's rail: B's money does not move on A's word, whatever A asks for.
+    let f = Fixture::setup();
+    f.fund(300_0000000);
+    let b_key = generate_key();
+    let (b_rail, _) = second_rail(&f, &b_key);
+    let to = Address::generate(&f.env);
+    let payload = payload_bytes(&f.env, 7);
+    let a_signature = f.signature_val(&payload); // A's owner key, a real signature over the payload
+
+    let on_b = f.env.try_invoke_contract_check_auth::<Error>(&b_rail, &payload, a_signature, &transfer_from(&f, &b_rail, &to, 10_0000000));
+
+    assert_eq!(on_b, Err(Ok(Error::UnknownSigner)));
+    assert_eq!(f.balance_of(&b_rail), 300_0000000);
+}
+
+#[test]
+fn a_person_s_own_rail_will_not_approve_moving_another_person_s_funds() {
+    // The other way round: A's rail, with A's own valid signature, asked to approve a transfer whose source is B's
+    // rail. A rail only ever approves moving its own balance, so A cannot borrow B's money through A's own account.
+    let f = Fixture::setup();
+    let (b_rail, _) = second_rail(&f, &generate_key());
+    let to = Address::generate(&f.env);
+    let payload = payload_bytes(&f.env, 8);
+    let a_signature = f.signature_val(&payload);
+
+    let on_a = f.check_auth(&payload, a_signature, transfer_from(&f, &b_rail, &to, 10_0000000));
+
+    assert_eq!(on_a, Err(Ok(Error::UnexpectedInvocation)));
+    assert_eq!(f.balance_of(&b_rail), 300_0000000);
+    assert_eq!(f.spent_today(), 0, "a refused approval spends nothing from A's own day either");
+}
+
+#[test]
+fn each_person_s_limits_are_counted_on_their_own_rail() {
+    // A spends up to A's daily limit; B's day is untouched and B can still spend. One person's purchases never use
+    // up another's allowance.
+    let f = Fixture::with_limits(100_0000000, 100_0000000);
+    f.fund(300_0000000);
+    let b_key = generate_key();
+    let (b_rail, _) = second_rail(&f, &b_key);
+    let to = Address::generate(&f.env);
+
+    assert_eq!(f.authorise(&to, 100_0000000, 1), Ok(()));
+    assert_eq!(f.authorise(&to, 1, 2), Err(Ok(Error::PerDayExceeded)));
+
+    let payload = payload_bytes(&f.env, 3);
+    let b_signature = BytesN::from_array(&f.env, &b_key.sign(&payload.to_array()).to_bytes());
+    let b_sig_val = f.signature_val_from(&public_key_bytes(&f.env, &b_key), &b_signature);
+    let on_b = f.env.try_invoke_contract_check_auth::<Error>(&b_rail, &payload, b_sig_val, &transfer_from(&f, &b_rail, &to, 100_0000000));
+    assert_eq!(on_b, Ok(()));
+}

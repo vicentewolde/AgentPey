@@ -21,7 +21,7 @@ import { createMandate } from "../../packages/mandate/src/index.js";
 import { escrowOpenMessage, evidenceCode, fileEvidenceFor, verifyClaim } from "../../packages/resolve/src/index.js";
 import { MOCK_CATALOG, MockStoreAdapter } from "../../packages/vitrinee-adapters/src/index.js";
 import { verifyReceipt, type EscrowDisputeOpenerFactory, type EscrowPurchase, type OpenInput } from "../../packages/vitrinee-anchor/src/index.js";
-import { USDC_TESTNET } from "../../packages/vitrinee-core/src/index.js";
+import { USDC_TESTNET, verifyDownloadLink } from "../../packages/vitrinee-core/src/index.js";
 import { createApp, type VitrineeApp } from "../../packages/vitrinee-gateway/src/app.js";
 import { FAKE_PAYER, fakeFacilitator, type FakeFacilitator } from "../../packages/vitrinee-gateway/src/test/fake-facilitator.js";
 import { ARBITER, ESCROW_ID, MERCHANT, escrowConfig, fakeEscrow, fakeRegistry, testConfig, fakePlatformProfiles } from "../../packages/vitrinee-gateway/src/test/fixtures.js";
@@ -916,3 +916,41 @@ describe("the MCP server never repeats a secret (T128)", () => {
     }
   });
 });
+
+describe("a digital order's download, signed by the agent that paid (T188, Y-5)", () => {
+  /** The store's public order page, as a store with a digital product writes it: it says digital, and prints no link. */
+  const orderView = (method: string) => ({ id: "ord_digital", checkout_id: "cs_1", currency: "CLP", totals: [{ type: "total", amount: 950 }], fulfillment: { expectations: [{ id: "exp_1", method_type: method }] } });
+  const serving = (method: string): typeof fetch => async (input) =>
+    String(input).endsWith("/ucp/v1/orders/ord_digital") ? new Response(JSON.stringify(orderView(method)), { headers: { "content-type": "application/json" } }) : new Response("{}", { status: 404 });
+
+  it("hands the person a link only this agent's key could sign, for this store and order, for ten minutes", async () => {
+    const now = new Date("2026-11-15T21:00:00.000Z");
+    const mcp = await startMcp({ fetchImpl: serving("digital"), now: () => now });
+    try {
+      const read = await mcp.call("get_order", { store: storeName(), order_id: "ord_digital" });
+      expect(read.isError).toBeFalsy();
+      const download = read.structuredContent!["download"] as { url: string; expires_at: string; note: string };
+      const url = new URL(download.url);
+      expect(url.pathname).toBe("/orders/ord_digital/download");
+      expect(url.host).toBe(storeName());
+      const exp = Number(url.searchParams.get("exp"));
+      expect(exp).toBe(Math.floor(now.getTime() / 1000) + 600);
+      expect(download.expires_at).toBe(new Date(exp * 1000).toISOString());
+      expect(url.searchParams.get("reader")).toBe(agent.publicKey());
+      expect(verifyDownloadLink({ store: storeName(), orderId: "ord_digital", reader: agent.publicKey(), expiresAt: exp }, url.searchParams.get("sig")!)).toBe(true);
+    } finally {
+      await mcp.close();
+    }
+  });
+
+  it("gives no download for an order that ships as a parcel", async () => {
+    const mcp = await startMcp({ fetchImpl: serving("shipping") });
+    try {
+      const read = await mcp.call("get_order", { store: storeName(), order_id: "ord_digital" });
+      expect(read.structuredContent!["download"]).toBeNull();
+    } finally {
+      await mcp.close();
+    }
+  });
+});
+

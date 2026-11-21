@@ -29,6 +29,15 @@ export const mcpEnvSchema = z.object({
   MCP_ALLOWED_WALLET: account,
   MCP_OAUTH_SECRET: z.string().min(MIN_SECRET_BYTES, `at least ${MIN_SECRET_BYTES} characters`),
   AGENT_REGISTRY_CONTRACT_ID: contract,
+  /**
+   * The phrase each listed person's agent key derives from (T187, `R-33`, SEP-0005). Optional: without it the server
+   * serves only `MCP_ALLOWED_WALLET`, as before the list, and says so in its log.
+   */
+  MCP_AGENT_MNEMONIC: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value === "" ? undefined : value)),
 });
 
 export type McpEnv = z.infer<typeof mcpEnvSchema>;

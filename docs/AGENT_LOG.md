@@ -9558,3 +9558,50 @@ Actualización (20-nov, noche): Vicente pidió una dirección genérica y fácil
 - `base guia` borra de la base local las guías que cambiaron de nombre.
 - Segunda muestra de las 41 preguntas: agentpey.com otra vez en 0 de 41.
 - Pendiente: el despliegue toca el gateway de producción, así que hay que correr `pnpm run prod:check` antes y después.
+
+## 2026-11-13 — cc/t186-cuenta-por-persona
+Agente: Claude Code
+Qué: T186. `pnpm run buyer:onboard` deriva la llave de agente de una persona (`MCP_AGENT_MNEMONIC`, SEP-0005), despliega su `policy_rail` con sus topes (solo con `--yes`), lo relee de la red y la anota en `apps/mcp/wallets.testnet.json` (esquema en `apps/mcp/src/wallets.ts`). Tres pruebas nuevas del contrato: la llave de una persona no gasta del rail de otra. `MCP_AGENT_MNEMONIC` ya está en `.env.local` del Dell (creada con `--init-mnemonic`), no en Render.
+Por qué: `Y-4`/`R-33`; T187, T189, T191 y T192 dependen de esto.
+Pendiente: desplegar el primer rail por persona en testnet y fondearlo (OK del usuario); merge; T187. T185 sigue esperando la prueba en vivo: el conector de claude.ai no conecta (falla la comprobación de todo conector propio, probado en Chrome).
+
+## 2026-11-15 — cc/t186-cuenta-por-persona
+Agente: Claude Code
+Qué: con OK del usuario, primer rail por persona en testnet: comprador de prueba `GBLXRJYX…UXT5A` (llave en `.env.local` como `T186_TEST_BUYER_SECRET_KEY`), índice 1, rail `CBWBQVI5…GI374` con 1/2 USDC, fondeado con 2 USDC (tx `8b7a3950…`). `apps/mcp/wallets.testnet.json` creado.
+Por qué: cerrar T186 y dejar un rail para T189 (pago sobre el tope).
+Pendiente: merge (OK del usuario); T187.
+
+## 2026-11-15 — cc/t189-sobre-el-tope
+Agente: Claude Code
+Qué: T189. `pnpm run rail:over-limit` envía a la red un pago sobre el `per_tx` de un rail por persona (huella y nonce del pago válido, `scripts/lib/over-limit.ts`), con control y lectura del motivo antes de enviar. Corrida: 1,5 USDC contra `per_tx` 1 en `CBWBQVI5…GI374`, tx fallida `3f81fe8f…`, saldo sin cambio.
+Por qué: evidencia de D1 (T190): el tope lo aplica la red.
+Pendiente: merge de T186 y T189 cuando el usuario lo pida (pidió acumular); T187, T188, T190.
+
+## 2026-11-15 — cc/t187-mcp-por-wallet
+Agente: Claude Code
+Qué: T187. OAuth con `allowedWallets` (el token lleva la wallet a las herramientas), un `Shopper` por cuenta (`createShoppers`, `planListedAccounts`), cada petición con la cuenta de su wallet, `mcp:setup --agent-index` (credencial y Mandato por persona en la lista), `MCP_AGENT_MNEMONIC` opcional y pasado por el gateway. Credencial y Mandato del comprador de prueba anclados. En local: 2 wallets servidas, el comprador de prueba cotiza desde su rail.
+Por qué: `R-33`/`Y-4`; base de T191 y T192.
+Pendiente: compra pagada por el comprador de prueba (OK del usuario); tras el merge, copiar `MCP_AGENT_MNEMONIC` a Render y probar que la wallet original sigue comprando. `scripts/_t187-e2e.mts` es temporal y no se commitea.
+
+## 2026-11-15 — cc/t187-mcp-por-wallet (cierre local)
+Agente: Claude Code
+Qué: revisión independiente de T186/T187/T189 sin hallazgos graves; tres observaciones corregidas (`195b53c`). Con OK del usuario, el comprador de prueba pagó el imán desde su rail en el servidor local: `ord_mwi71o5s46dbef233d`, tx `81db5b00…128c`, retenido en el escrow de `agentcommerce`.
+Pendiente: merge de las tres ramas apiladas (cuando el usuario lo pida); copiar `MCP_AGENT_MNEMONIC` a Render y probar en producción que la wallet original sigue comprando. Siguiente tarea: T188.
+
+## 2026-11-15 — cc/t188-entrega-digital
+Agente: Claude Code
+Qué: T188. Productos digitales por tienda (`DIGITAL_PRODUCTS` / `COMERCIO_DIGITAL_PRODUCTS`), `GET /orders/:id/download` con enlace firmado por quien pagó (`@vitrinee/core` download links, `railKeys` en anchor), la primera descarga registra la entrega (`recordShipment` origen `download`) y abre la ventana del escrow; la página UCP dice `digital` sin enlace; `get_order` del MCP da `download`. Decisión `Y-11` aprobada por el usuario (15-nov).
+Por qué: `Y-5`; Tapline vende la credencial digital del evento.
+Pendiente: corrida en vivo con T193; merge de la pila T186→T188 cuando el usuario lo pida.
+
+## 2026-11-21 — cc/t190-evidencia-d1
+Agente: Claude Code
+Qué: T190. `evidencia/T190.md` junta lo prometido en el entregable 1 con su prueba en la red (contrato `CDSCZJEM…`, 43 tests del escrow, `confirm` `fe6b2eba…`, `release` `40246f05…`, reclamo sellado `16b19e33…`, sobre el tope `3f81fe8f…`, todos releídos en Horizon). Fuera del repo, para Passport: PDF de una página en inglés, hilo para X y guion del video (scratchpad `semana-1/`).
+Por qué: el usuario quiere cerrar la semana 1 (video, archivo y un hilo en X el domingo 22-nov). Tellus respondió el 20-nov que AgentPey sigue en revisión de la SDF.
+Pendiente: merge de la pila T186→T190 y de `cc/sin-jumpseller` con OK del usuario; copiar `MCP_AGENT_MNEMONIC` a Render.
+
+## 2026-11-20 — cc/sin-jumpseller
+Agente: Claude Code
+Qué: el usuario dejó de pagar Jumpseller (plan Basic, $10.710 CLP/mes, tarjeta ****3199, cobros 22-sep y 22-oct). Las dos tiendas Jumpseller de Vitrinee (`bazar-cordillera`, catálogo en `vitrinee.jumpseller.com`; `mycokit`, prueba vencida y bloqueada con 402) quedaron `disabled` en `vitrinee.comercios` (el usuario corrió el `update` en el Shell de Render con `VITRINEE_DATABASE_URL`; reversible volviendo a `active`, pedidos intactos). Luego se eliminó la tienda `vitrinee.jumpseller.com` (permanente; Jumpseller: "no se realizarán más cargos", borra datos en hasta 7 días). `prod:check` ahora revisa solo `agentcommerce` y que su catálogo tenga productos (antes MycoKit pasaba en verde roto), sin SignalDesk (dominio retirado el 17-nov): 9/9 tras el cambio.
+Por qué: pedido del usuario: dejar de pagar Jumpseller sin que AgentPey deje de funcionar.
+Pendiente: mergear `cc/sin-jumpseller` (solo `prod:check` y este log) cuando el usuario lo pida. Las compras viejas de esas dos tiendas ya no cuentan en `/en-vivo`; sus recibos siguen verificables en Stellar.

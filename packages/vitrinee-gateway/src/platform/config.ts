@@ -14,6 +14,8 @@
 import { VitrineeError, stellarContractIdSchema } from "@vitrinee/core";
 import { z } from "zod";
 
+import { parseDigitalProducts } from "../digital.js";
+
 import { loadConfig, type GatewayConfig } from "../config.js";
 import type { Comercio, ComercioSecrets } from "./comercios.js";
 import { parseBlockedPayers, parsePayerLimit } from "../payer-guard.js";
@@ -57,6 +59,35 @@ export function parseComercioEscrows(value: string | undefined): Map<string, str
     escrows.set(slug, contract);
   }
   return escrows;
+}
+
+/**
+ * `COMERCIO_DIGITAL_PRODUCTS` (T188, Y-5): a JSON object from a store's slug to its `DIGITAL_PRODUCTS` object, for
+ * example `{"tapline":{"<product id>":{"url":"https://cdn.shopify.com/…","name":"credencial.pdf"}}}`. Each store's
+ * entry is checked as its own `DIGITAL_PRODUCTS` would be, so a malformed one stops the platform at startup.
+ *
+ * @returns each slug's entry as the JSON its store reads
+ * @throws VitrineeError `ConfigError` on JSON that does not parse, a bad slug, or a store entry that is not valid
+ */
+export function parseComercioDigitalProducts(value: string | undefined): Map<string, string> {
+  const bySlug = new Map<string, string>();
+  if (value === undefined || value.trim() === "") return bySlug;
+  let json: unknown;
+  try {
+    json = JSON.parse(value);
+  } catch {
+    throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_DIGITAL_PRODUCTS is not JSON");
+  }
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_DIGITAL_PRODUCTS: expected an object by store slug");
+  }
+  for (const [slug, products] of Object.entries(json)) {
+    if (!isComercioSlug(slug)) throw new VitrineeError("ConfigError", "invalid platform environment: COMERCIO_DIGITAL_PRODUCTS: not a store slug", { details: { slug } });
+    const entry = JSON.stringify(products);
+    parseDigitalProducts(entry);
+    bySlug.set(slug, entry);
+  }
+  return bySlug;
 }
 
 /**
@@ -152,6 +183,7 @@ const settingsSchema = z.object({
   PUBLIC_BASE_URL: z.url().optional(),
   ROOT_COMERCIO: z.string().refine(isComercioSlug, "a comercio slug").optional(),
   COMERCIO_ESCROWS: z.string().optional(),
+  COMERCIO_DIGITAL_PRODUCTS: z.string().optional(),
   COMERCIO_BLOCKED_PAYERS: z.string().optional(),
   COMERCIO_PAYER_LIMITS: z.string().optional(),
   COMERCIO_ALLOWED_PLATFORMS: z.string().optional(),
@@ -181,6 +213,8 @@ const MERCHANT_KEYS = [
   "PAYER_LIMIT",
   "ALLOWED_PLATFORMS",
   "REQUIRE_AP2",
+  // One store's digital products (T188): only through COMERCIO_DIGITAL_PRODUCTS, by its slug.
+  "DIGITAL_PRODUCTS",
   "ORDERS_FILE",
   "MOCK_ORDERS_FILE",
   "DATABASE_URL",
@@ -232,7 +266,8 @@ export function unknownBrakeSlugs(env: NodeJS.ProcessEnv, known: readonly string
 }
 
 /** Both lists are read once at startup so that a malformed value stops the platform there, not at a store's first purchase. */
-function validatePayerGuardEnv(e: { COMERCIO_BLOCKED_PAYERS?: string | undefined; COMERCIO_PAYER_LIMITS?: string | undefined; COMERCIO_ALLOWED_PLATFORMS?: string | undefined; COMERCIO_REQUIRE_AP2?: string | undefined }): void {
+function validatePayerGuardEnv(e: { COMERCIO_BLOCKED_PAYERS?: string | undefined; COMERCIO_PAYER_LIMITS?: string | undefined; COMERCIO_ALLOWED_PLATFORMS?: string | undefined; COMERCIO_REQUIRE_AP2?: string | undefined; COMERCIO_DIGITAL_PRODUCTS?: string | undefined }): void {
+  parseComercioDigitalProducts(e.COMERCIO_DIGITAL_PRODUCTS);
   parseComercioBlockedPayers(e.COMERCIO_BLOCKED_PAYERS);
   parseComercioPayerLimits(e.COMERCIO_PAYER_LIMITS);
   parseComercioAllowedPlatforms(e.COMERCIO_ALLOWED_PLATFORMS);
@@ -271,6 +306,9 @@ export function comercioConfig(env: NodeJS.ProcessEnv, comercio: Comercio, secre
   if (platforms !== undefined && platforms.length > 0) merchant["ALLOWED_PLATFORMS"] = platforms.join(",");
   const requireAp2 = parseComercioRequireAp2(env["COMERCIO_REQUIRE_AP2"]);
   if (requireAp2.all || requireAp2.slugs.has(comercio.slug)) merchant["REQUIRE_AP2"] = "true";
+  // Its digital products (T188): its own entry of the platform's list, never another store's.
+  const digital = parseComercioDigitalProducts(env["COMERCIO_DIGITAL_PRODUCTS"]).get(comercio.slug);
+  if (digital !== undefined) merchant["DIGITAL_PRODUCTS"] = digital;
   if (secrets.credentials.kind === "jumpseller-api") {
     merchant["JUMPSELLER_LOGIN"] = secrets.credentials.login;
     merchant["JUMPSELLER_AUTHTOKEN"] = secrets.credentials.authtoken;
