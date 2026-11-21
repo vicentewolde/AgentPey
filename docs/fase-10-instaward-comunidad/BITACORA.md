@@ -28,7 +28,8 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T189 Un pago sobre el tope, rechazado por la red | 👀 hecho en testnet: 1,5 USDC contra un `per_tx` de 1, transacción fallida [`3f81fe8f…`](https://stellar.expert/explorer/testnet/tx/3f81fe8f407106876e6ef44bab327a8bb69d452717c12e0fe8a7a1ca76717c3f) ([evidencia](evidencia/T189.md)); en `cc/t189-sobre-el-tope`, sin mergear |
 | T187 El MCP elige el rail según la wallet | 👀 código y pruebas en `cc/t187-mcp-por-wallet`; corrida local: el comprador de prueba inició sesión y pagó el imán desde su propio rail (`ord_mwi71o5s46dbef233d`, [tx](https://stellar.expert/explorer/testnet/tx/81db5b000787e89f7be1a7dc74f9856c109e5407b5ac9553c7a4f14f7a64128c)) ([evidencia](evidencia/T187.md)); revisión independiente sin hallazgos graves; falta probar la wallet original en producción tras el merge |
 | T188 La entrega de un producto digital | 👀 código y pruebas en `cc/t188-entrega-digital` ([evidencia](evidencia/T188.md), `Y-11` aprobada); la corrida en vivo va con el catálogo de Tapline (T193) |
-| T190 a T206 | ⏳ pendientes (T201 es un extra) |
+| T190 Corrida de D1 y evidencia | 👀 [evidencia](evidencia/T190.md): contrato, tests y los cuatro hashes prometidos, releídos en Horizon el 21-nov; abiertos para la semana 2: confirmar con wallet desde el chat y la entrega digital en vivo |
+| T191 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
 
@@ -125,4 +126,13 @@ ventana del escrow igual que un paquete despachado, y desde ahí la persona conf
 nada. Las compras físicas siguen igual. Probado con la app entera y un escrow falso; la corrida en vivo necesita un producto
 digital real en Shopify, que llega con el catálogo de Tapline (T193). Cómo se resolvió quién descarga y dónde vive el
 archivo quedó como `Y-11`, aprobada por el usuario el 15-nov.
+
+## 2026-11-21 · T190
+
+**T190.** La semana 1 tiene su evidencia completa en un solo lugar: el contrato del escrow con sus tests, una compra
+liberada cuando el comprador confirmó, una liberada al cerrar la ventana, un reclamo con una foto sellada en la red y un
+pago sobre el tope que la red rechazó, cada uno con su enlace a Stellar Expert y releído en Horizon. Además, la cuenta de
+gasto por persona (con una compra pagada desde ella) y las dos acciones nuevas del asistente. Quedan para la semana 2, con
+Tapline, confirmar desde el chat con una wallet real (el escrow de `agentcommerce` no tiene `confirm`) y la entrega
+digital en vivo. Para Passport se armó un resumen de una página en inglés, el hilo para X y el guion del video.
 

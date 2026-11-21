@@ -9593,3 +9593,9 @@ Agente: Claude Code
 Qué: T188. Productos digitales por tienda (`DIGITAL_PRODUCTS` / `COMERCIO_DIGITAL_PRODUCTS`), `GET /orders/:id/download` con enlace firmado por quien pagó (`@vitrinee/core` download links, `railKeys` en anchor), la primera descarga registra la entrega (`recordShipment` origen `download`) y abre la ventana del escrow; la página UCP dice `digital` sin enlace; `get_order` del MCP da `download`. Decisión `Y-11` aprobada por el usuario (15-nov).
 Por qué: `Y-5`; Tapline vende la credencial digital del evento.
 Pendiente: corrida en vivo con T193; merge de la pila T186→T188 cuando el usuario lo pida.
+
+## 2026-11-21 — cc/t190-evidencia-d1
+Agente: Claude Code
+Qué: T190. `evidencia/T190.md` junta lo prometido en el entregable 1 con su prueba en la red (contrato `CDSCZJEM…`, 43 tests del escrow, `confirm` `fe6b2eba…`, `release` `40246f05…`, reclamo sellado `16b19e33…`, sobre el tope `3f81fe8f…`, todos releídos en Horizon). Fuera del repo, para Passport: PDF de una página en inglés, hilo para X y guion del video (scratchpad `semana-1/`).
+Por qué: el usuario quiere cerrar la semana 1 (video, archivo y un hilo en X el domingo 22-nov). Tellus respondió el 20-nov que AgentPey sigue en revisión de la SDF.
+Pendiente: merge de la pila T186→T190 y de `cc/sin-jumpseller` con OK del usuario; copiar `MCP_AGENT_MNEMONIC` a Render.
