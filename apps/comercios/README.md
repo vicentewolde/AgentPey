@@ -78,8 +78,11 @@ npx tsx src/cli.ts base guia
 ```
 
 Publishing copies the guides to the panel's Postgres (only aggregates and public
-facts travel, no catalogue rows); the server then serves `/guias`,
-`/guias/<slug>`, `/robots.txt` and `/sitemap.xml`:
+facts travel, no catalogue rows). They are published on the main domain, one
+folder per country: `agentpey.com/chile`, `agentpey.com/chile/<slug>` and
+`agentpey.com/chile/sitemap.xml`. The gateway sends exactly those paths to this
+app (`isGuidePath` in `apps/gateway/src/hosts.ts`); on `panel.agentpey.com` the
+same paths redirect (301) to the main domain, so there is one address per page:
 
 ```bash
 npx tsx scripts/setup-postgres.ts --env ~/agentes/AgentPay/.env.local --solo-importar --guias

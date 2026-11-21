@@ -10,6 +10,7 @@ import {
   VITRINEE_TARGET,
   WEB_TARGET,
   buildHostMap,
+  isGuidePath,
   missingEnv,
   normaliseHost,
   resolveTarget,
@@ -65,6 +66,27 @@ describe("resolveTarget", () => {
   it("refuses a host that only starts with a configured one", () => {
     expect(resolveTarget(hostMap, "realops.agentpey.com.attacker.example")).toBeUndefined();
     expect(resolveTarget(hostMap, "notrealops.agentpey.com")).toBeUndefined();
+  });
+
+  describe("the public guides on the main domain (agentpey.com/chile)", () => {
+    it("sends exactly the guide paths of the main domain to comercios", () => {
+      for (const url of ["/chile", "/chile/", "/chile/hogar-y-decoracion", "/chile/ropa-y-calzado/", "/chile/sitemap.xml", "/chile/salud-y-belleza?utm=x", "/chile#a"]) {
+        expect(resolveTarget(hostMap, "agentpey.com", undefined, url), url).toBe(COMERCIOS_TARGET);
+      }
+    });
+
+    it("leaves every other path of the main domain with the web app", () => {
+      for (const url of ["/", "/api/x", "/chilena", "/chile.html", "/chile/a/b", "/chile/../api/x", "/chile/%2e%2e/api", "/chile/Hogar", "/chile/-x", "/x/chile", "//chile", undefined]) {
+        expect(resolveTarget(hostMap, "agentpey.com", undefined, url), String(url)).toBe(WEB_TARGET);
+      }
+    });
+
+    it("routes by path only on the main domain", () => {
+      expect(resolveTarget(hostMap, "realops.agentpey.com", undefined, "/chile")).toBe(REALOPS_TARGET);
+      expect(resolveTarget(hostMap, "attacker.example", undefined, "/chile")).toBeUndefined();
+      expect(isGuidePath("/chile/sitemap.xml")).toBe(true);
+      expect(isGuidePath("/chile/sitemap.xml.bak")).toBe(false);
+    });
   });
 
   describe("a store of the Vitrinee platform (T103, C-142)", () => {

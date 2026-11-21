@@ -99,14 +99,15 @@ describe("what each store's entry says", () => {
 
 describe("the page", () => {
   const g = buildGuide(SALUD, [input(tienda("uno", { name: "Uno <b>&" }), 40), input(tienda("dos"), 30)], "2026-11-20");
-  const html = guideHtml(g, "https://panel.agentpey.com", GUIDE_RUBROS);
+  const html = guideHtml(g, GUIDE_RUBROS);
 
   it("shows the disclosure, the order rule, the update date and the method in the HTML itself", () => {
     expect(html).toContain(DISCLOSURE);
     expect(html).toContain("Cómo están ordenadas");
     expect(html).toContain('<time datetime="2026-11-20">20 de noviembre de 2026</time>');
     expect(html).toContain('id="metodologia"');
-    expect(html).toContain('<link rel="canonical" href="https://panel.agentpey.com/guias/salud-y-belleza">');
+    expect(html).toContain('<link rel="canonical" href="https://agentpey.com/chile/salud-y-belleza">');
+    expect(html).toContain('<a href="https://agentpey.com/chile/ropa-y-calzado">Ropa y calzado</a>');
   });
 
   it("needs no JavaScript: the only script is the structured data", () => {
@@ -130,18 +131,19 @@ describe("the page", () => {
 
 describe("robots.txt and the sitemap", () => {
   it("names every AI crawler, opens the guides and keeps click redirects out", () => {
-    const txt = robotsTxt("https://panel.agentpey.com");
+    const txt = robotsTxt();
     for (const ua of ["OAI-SearchBot", "ClaudeBot", "Google-Extended", "PerplexityBot"]) expect(AI_CRAWLERS).toContain(ua);
     for (const ua of AI_CRAWLERS) expect(txt).toContain(`User-agent: ${ua}\n`);
-    expect(txt).toContain("Allow: /guias/");
+    expect(txt).toContain("Allow: /\n");
     expect(txt).toContain("Disallow: /ir/");
     expect(txt).not.toMatch(/Disallow: \/\s*$/m);
-    expect(txt).toContain("Sitemap: https://panel.agentpey.com/sitemap.xml");
+    expect(txt).toContain("Sitemap: https://agentpey.com/chile/sitemap.xml");
   });
 
   it("lists each guide with its date", () => {
-    expect(sitemapXml("https://panel.agentpey.com", [{ slug: "salud-y-belleza", updatedAt: "2026-11-20" }]))
-      .toContain("<loc>https://panel.agentpey.com/guias/salud-y-belleza</loc><lastmod>2026-11-20</lastmod>");
+    const xml = sitemapXml([{ slug: "salud-y-belleza", updatedAt: "2026-11-20" }]);
+    expect(xml).toContain("<loc>https://agentpey.com/chile</loc><lastmod>2026-11-20</lastmod>");
+    expect(xml).toContain("<loc>https://agentpey.com/chile/salud-y-belleza</loc><lastmod>2026-11-20</lastmod>");
   });
 });
 
@@ -172,18 +174,26 @@ describe("from the local base to the panel's Postgres", () => {
     await expect(sqliteStore(local).guides()).rejects.toThrow();
     expect(() => GuideSchema.parse({ slug: "rota" })).toThrow();
   });
+
+  it("drops a renamed guide from the local base, so it is not published again", () => {
+    const local = openDb(":memory:");
+    for (const slug of ["vestuario-y-calzado", "ropa-y-calzado"]) local.saveGuide(slug, {});
+    expect(local.dropGuidesExcept(GUIDE_RUBROS.map((r) => r.slug))).toEqual(["vestuario-y-calzado"]);
+    expect(local.guides().map((x) => x.slug)).toEqual(["ropa-y-calzado"]);
+  });
 });
 
 describe("measuring the guide", () => {
   it("counts answers that cite agentpey.com, on any subdomain or written out, and the domains cited", () => {
     const c = citations([
       { text: "Mira falabella", urls: ["https://www.falabella.com/x", "https://falabella.com/y"] },
-      { text: "Según la guía", urls: ["https://panel.agentpey.com/guias/salud-y-belleza"] },
+      { text: "Según la guía", urls: ["https://agentpey.com/chile/salud-y-belleza"] },
       { text: "Revisa agentpey.com", urls: [] },
+      { text: "Otra", urls: ["https://panel.agentpey.com/x"] },
       { text: "agentpeyx.com no cuenta", urls: ["https://notagentpey.com/"] },
     ]);
-    expect(c.agentpey).toBe(2);
-    expect(c.domains[0]).toEqual({ domain: "falabella.com", count: 1 });
-    expect(c.domains.map((d) => d.domain)).toContain("panel.agentpey.com");
+    expect(c.agentpey).toBe(3);
+    expect(c.domains).toContainEqual({ domain: "falabella.com", count: 1 });
+    expect(c.domains.map((d) => d.domain)).toEqual(expect.arrayContaining(["agentpey.com", "panel.agentpey.com"]));
   });
 });

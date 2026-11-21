@@ -9550,3 +9550,11 @@ Qué: guías públicas de tiendas por rubro en `apps/comercios` (`guia.ts`, `cli
 Por qué: pedido de Vicente el 20-nov (`proyecto-vida/PROMESA-PRUEBA-Y-SERVICIOS.md`, punto 4), como experimento medido: que las IAs citen la guía y que sirva de vitrina.
 
 Pendiente: PR sobre `cc/bf-base-datos`, sin merge (lo revisa Vicente o el agente principal). Publicar = merge + `setup-postgres --solo-importar --guias`. Medición inicial y plan de semanas 2, 4 y 6 en `proyecto-vida/GUIA-PUBLICA.md`. Despacho, cambios y medios de pago no están en la base para estos rubros y no aparecen en la guía.
+
+Actualización (20-nov, noche): Vicente pidió una dirección genérica y fácil de encontrar. Su meta es que AgentPey sea la fuente de datos que consultan las IAs: primero Chile, luego Latinoamérica.
+- Las guías pasan a `agentpey.com/chile/<rubro>`; "vestuario-y-calzado" ahora es `ropa-y-calzado`.
+- El gateway manda a comercios solo `/chile`, `/chile/<slug>` y `/chile/sitemap.xml` del dominio principal (`isGuidePath`, con una regla estricta: sin `..` ni caracteres codificados). El resto de `agentpey.com` sigue en la web.
+- En `panel.agentpey.com`, `/chile...` redirige (301) a `agentpey.com`.
+- `base guia` borra de la base local las guías que cambiaron de nombre.
+- Segunda muestra de las 41 preguntas: agentpey.com otra vez en 0 de 41.
+- Pendiente: el despliegue toca el gateway de producción, así que hay que correr `pnpm run prod:check` antes y después.

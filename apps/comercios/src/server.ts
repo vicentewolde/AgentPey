@@ -24,7 +24,7 @@ import pg from "pg";
 import { openDb } from "./db.js";
 import type { Analysis } from "./entender.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
-import { GUIDE_RUBROS, guideHtml, guidesIndexHtml, robotsTxt, sitemapXml } from "./guia.js";
+import { GUIDE_ORIGIN, GUIDE_PATH, GUIDE_RUBROS, guideHtml, guidesIndexHtml, robotsTxt, sitemapXml } from "./guia.js";
 import { createLlm } from "./llm.js";
 import { AI_SOURCES, snippet, summarize, type MeasureEvent, type Source } from "./medir.js";
 import { indexPage, panel, sellerPage } from "./panel.js";
@@ -163,6 +163,13 @@ async function readBody(req: IncomingMessage, limit = 64_000): Promise<unknown> 
   return raw === "" ? {} : JSON.parse(raw);
 }
 
+/** A subdomain of the guides' host (panel.agentpey.com), not the host itself: those redirect to it. */
+function isAgentpeySubdomain(host: string | undefined): boolean {
+  const name = (host ?? "").split(":")[0]!.toLowerCase();
+  const main = new URL(GUIDE_ORIGIN).hostname;
+  return name.endsWith(`.${main}`);
+}
+
 function origin(req: IncomingMessage): string {
   const proto = req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
   return `${proto}://${req.headers.host ?? `${HOST}:${PORT}`}`;
@@ -207,19 +214,26 @@ const server = createServer(async (req, res) => {
     // Public pages for crawlers: some check with HEAD first (Node sends no body for HEAD).
     const read = req.method === "GET" || req.method === "HEAD";
     const publicPage = { "cache-control": "public, max-age=3600" };
-    if (read && path === "/robots.txt") return send(res, 200, "text/plain; charset=utf-8", robotsTxt(origin(req)), publicPage);
-    if (read && path === "/sitemap.xml") return send(res, 200, "application/xml; charset=utf-8", sitemapXml(origin(req), await data.guides()), publicPage);
-    if (read && (path === "/guias" || path === "/guias/")) {
-      const guides = await data.guides();
-      return send(res, 200, "text/html; charset=utf-8", guidesIndexHtml(guides.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length })), origin(req)), publicPage);
+    if (read && path === "/robots.txt") return send(res, 200, "text/plain; charset=utf-8", robotsTxt(), publicPage);
+    // The guides: published at agentpey.com/chile (the gateway routes those paths here, GUIDE_ORIGIN).
+    const guidePath = path === GUIDE_PATH || path.startsWith(`${GUIDE_PATH}/`);
+    if (read && guidePath && isAgentpeySubdomain(req.headers.host)) {
+      // Same pages on panel.agentpey.com would split them in two for search engines: one address only.
+      res.writeHead(301, { location: `${GUIDE_ORIGIN}${path}`, ...publicPage });
+      return void res.end();
     }
-    const g = /^\/guias\/([a-z0-9-]+)\/?$/.exec(path);
+    if (read && path === `${GUIDE_PATH}/sitemap.xml`) return send(res, 200, "application/xml; charset=utf-8", sitemapXml(await data.guides()), publicPage);
+    if (read && (path === GUIDE_PATH || path === `${GUIDE_PATH}/`)) {
+      const guides = await data.guides();
+      return send(res, 200, "text/html; charset=utf-8", guidesIndexHtml(guides.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length }))), publicPage);
+    }
+    const g = new RegExp(`^${GUIDE_PATH}/([a-z0-9-]+)/?$`).exec(path);
     if (read && g) {
       const guides = await data.guides();
       const guide = guides.find((x) => x.slug === g![1]);
       if (guide === undefined) return send(res, 404, "text/plain; charset=utf-8", "No existe esa guía");
       const others = GUIDE_RUBROS.filter((r) => guides.some((x) => x.slug === r.slug));
-      return send(res, 200, "text/html; charset=utf-8", guideHtml(guide, origin(req), others), publicPage);
+      return send(res, 200, "text/html; charset=utf-8", guideHtml(guide, others), publicPage);
     }
     if (req.method === "GET" && path === "/brand/agentpey.css") return send(res, 200, "text/css; charset=utf-8", CSS);
     if (req.method === "GET" && path === "/") {

@@ -334,16 +334,33 @@ export function isStoreSubdomain(host: string, vitrineeHost: string): boolean {
 }
 
 /**
+ * The public store guides (`apps/comercios/src/guia.ts`) are served by the
+ * comercios panel but published on the main domain, `agentpey.com/chile/...`:
+ * the address search engines and AI assistants weigh most. The one rule that
+ * routes by path, and as narrow as it can be: `/chile`, `/chile/<slug>` and
+ * `/chile/sitemap.xml`, whole path compared, no dots or encoded characters
+ * (so no `/chile/../api`). Anything else on the main domain stays with the web app.
+ */
+const GUIDE_PATH = /^\/chile(?:\/(?:[a-z0-9]+(?:-[a-z0-9]+)*|sitemap\.xml))?\/?$/;
+
+export function isGuidePath(url: string | undefined): boolean {
+  if (url === undefined) return false;
+  return GUIDE_PATH.test(url.split(/[?#]/, 1)[0] ?? "");
+}
+
+/**
  * `undefined` for a `Host` header this map does not recognise — the caller's job to turn that into a 404, not a guess.
  *
  * @param vitrineeHost When given, `<slug>.<vitrineeHost>` also resolves to
  * Vitrinee (C-142). The one exception to exact matching, and as narrow as it
  * can be: one label, whole-suffix comparison, never a prefix.
+ * @param url The request's path: on the main domain, the guide paths go to comercios (`isGuidePath`).
  */
-export function resolveTarget(hostMap: HostMap, hostHeader: string | undefined, vitrineeHost?: string): AppTarget | undefined {
+export function resolveTarget(hostMap: HostMap, hostHeader: string | undefined, vitrineeHost?: string, url?: string): AppTarget | undefined {
   const host = normaliseHost(hostHeader);
   if (host === undefined) return undefined;
   const exact = hostMap.get(host);
+  if (exact === WEB_TARGET && isGuidePath(url)) return COMERCIOS_TARGET;
   if (exact !== undefined) return exact;
   return vitrineeHost !== undefined && isStoreSubdomain(host, vitrineeHost) ? VITRINEE_TARGET : undefined;
 }

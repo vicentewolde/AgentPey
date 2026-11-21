@@ -180,7 +180,7 @@ await Promise.all(
 process.stdout.write(`gateway: up: ${[...running].join(", ")}\n`);
 
 server = createServer((req, res) => {
-  const target = resolveTarget(hostMap, req.headers.host, vitrineeHost);
+  const target = resolveTarget(hostMap, req.headers.host, vitrineeHost, req.url);
   if (target === undefined) {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     res.end(`no app is configured for host "${req.headers.host ?? ""}"\n`);

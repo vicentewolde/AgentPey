@@ -178,6 +178,12 @@ export function openDb(path: string) {
     saveGuide(slug: string, data: unknown): void {
       db.prepare("insert or replace into guias (slug, data, at) values (?, ?, ?)").run(slug, JSON.stringify(data), new Date().toISOString());
     },
+    /** Drops guides whose slug is no longer one of `keep` (a renamed or retired guide must not be published again). */
+    dropGuidesExcept(keep: readonly string[]): string[] {
+      const gone = (db.prepare("select slug from guias").all() as { slug: string }[]).map((r) => String(r.slug)).filter((s) => !keep.includes(s));
+      for (const slug of gone) db.prepare("delete from guias where slug = ?").run(slug);
+      return gone;
+    },
     guides(): { slug: string; data: unknown }[] {
       return db.prepare("select slug, data from guias order by slug").all().map((r) => ({ slug: String(r.slug), data: JSON.parse(String(r.data)) as unknown }));
     },

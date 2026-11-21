@@ -24,7 +24,7 @@ import type { Product } from "./model.js";
 
 /** The rubros with a guide, in blackfriday.cl's names, and the address of each. */
 export const GUIDE_RUBROS: readonly { slug: string; rubro: string; title: string; shortTitle: string }[] = [
-  { slug: "vestuario-y-calzado", rubro: "Vestuario y Calzado", title: "Tiendas online de vestuario y calzado en Chile", shortTitle: "Vestuario y calzado" },
+  { slug: "ropa-y-calzado", rubro: "Vestuario y Calzado", title: "Tiendas online de ropa y calzado en Chile", shortTitle: "Ropa y calzado" },
   { slug: "hogar-y-decoracion", rubro: "Hogar y Decoración", title: "Tiendas online de hogar y decoración en Chile", shortTitle: "Hogar y decoración" },
   { slug: "salud-y-belleza", rubro: "Salud y Belleza", title: "Tiendas online de salud y belleza en Chile", shortTitle: "Salud y belleza" },
 ];
@@ -281,6 +281,16 @@ function joinEs(xs: readonly string[]): string {
 
 const LIST_NAMES: Record<"blackfriday" | "cyber", string> = { blackfriday: "blackfriday.cl", cyber: "cyber.cl" };
 
+/**
+ * Where the guides are published: the main domain, one folder per country
+ * (`/chile`, later others), the address search engines and AI assistants weigh
+ * most. The gateway sends exactly these paths to this app (apps/gateway, hosts.ts
+ * `isGuidePath`); every link and canonical points here, whichever host served the page.
+ */
+export const GUIDE_ORIGIN = "https://agentpey.com";
+export const GUIDE_PATH = "/chile";
+export const guideUrl = (slug?: string): string => `${GUIDE_ORIGIN}${GUIDE_PATH}${slug === undefined ? "" : `/${slug}`}`;
+
 export const DISCLOSURE = "AgentPey trabaja o puede trabajar con algunas de estas tiendas. El orden no depende de eso.";
 export const ORDER_RULE = "Ordenamos las tiendas por la cantidad de productos con precio publicado que leímos en su catálogo, de más a menos. Las que tienen 1.500 o más quedan empatadas, y los empates van por orden alfabético. El orden es el mismo para todas y no cambia si una tienda trabaja con AgentPey.";
 
@@ -289,7 +299,7 @@ function storeDescription(s: GuideStore): string {
   return parts.filter((p) => p !== "").join(" ");
 }
 
-function jsonLd(g: Guide, pageUrl: string, origin: string): unknown {
+function jsonLd(g: Guide, pageUrl: string): unknown {
   return {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -301,7 +311,7 @@ function jsonLd(g: Guide, pageUrl: string, origin: string): unknown {
     dateModified: g.updatedAt,
     description: `${g.stores.length} tiendas online de ${g.shortTitle.toLowerCase()} en Chile con sitio propio: qué vende cada una, marcas y rango de precios, según sus catálogos públicos.`,
     publisher: { "@type": "Organization", name: "AgentPey", url: "https://agentpey.com" },
-    isPartOf: { "@type": "WebSite", name: "Guías AgentPey", url: `${origin}/guias` },
+    isPartOf: { "@type": "WebSite", name: "Guías AgentPey", url: guideUrl() },
     mainEntity: {
       "@type": "ItemList",
       name: g.title,
@@ -344,8 +354,8 @@ table{width:100%;border-collapse:collapse;font-size:.95rem}th,td{text-align:left
 `;
 
 /** The page of one guide: plain HTML, readable with no JavaScript, with schema.org ItemList data. */
-export function guideHtml(g: Guide, origin: string, others: readonly { slug: string; shortTitle: string }[] = []): string {
-  const pageUrl = `${origin}/guias/${g.slug}`;
+export function guideHtml(g: Guide, others: readonly { slug: string; shortTitle: string }[] = []): string {
+  const pageUrl = guideUrl(g.slug);
   const total = g.stores.reduce((a, s) => a + s.products, 0);
   const anyCapped = g.stores.some((s) => s.capped);
   const description = `${g.stores.length} tiendas online de ${g.shortTitle.toLowerCase()} con sitio propio en Chile: qué vende cada una, sus marcas y sus precios, sacado de sus catálogos públicos. Actualizada el ${longDate(g.updatedAt)}.`;
@@ -362,7 +372,7 @@ export function guideHtml(g: Guide, origin: string, others: readonly { slug: str
     return `<li id="${escapeHtml(s.id)}"><h3><a href="${escapeHtml(s.url)}">${escapeHtml(s.name)}</a> <span class="muted">${escapeHtml(s.domain)}</span></h3><ul class="facts">${facts}</ul></li>`;
   }).join("\n");
   const brandRows = g.brands.map((b) => `<tr><td>${escapeHtml(b.brand)}</td><td>${b.stores.map((s) => `<a href="#${escapeHtml(s.id)}">${escapeHtml(s.name)}</a> (${num(s.products)})`).join(", ")}</td></tr>`).join("");
-  const otherLinks = others.filter((o) => o.slug !== g.slug).map((o) => `<a href="/guias/${o.slug}">${escapeHtml(o.shortTitle)}</a>`).join(" · ");
+  const otherLinks = others.filter((o) => o.slug !== g.slug).map((o) => `<a href="${escapeHtml(guideUrl(o.slug))}">${escapeHtml(o.shortTitle)}</a>`).join(" · ");
   return `<!doctype html>
 <html lang="es-CL">
 <head>
@@ -377,7 +387,7 @@ export function guideHtml(g: Guide, origin: string, others: readonly { slug: str
 <meta property="og:description" content="${escapeHtml(description)}">
 <meta property="og:url" content="${escapeHtml(pageUrl)}">
 <meta property="article:modified_time" content="${g.updatedAt}">
-<script type="application/ld+json">${scriptJson(jsonLd(g, pageUrl, origin))}</script>
+<script type="application/ld+json">${scriptJson(jsonLd(g, pageUrl))}</script>
 <style>${STYLE}</style>
 </head>
 <body>
@@ -419,8 +429,8 @@ ${otherLinks === "" ? "" : `<p>Otras guías: ${otherLinks}</p>`}
 `;
 }
 
-export function guidesIndexHtml(guides: readonly { slug: string; title: string; updatedAt: string; stores: number }[], origin: string): string {
-  const rows = guides.map((g) => `<li><a href="/guias/${g.slug}">${escapeHtml(g.title)}</a> <span class="muted">${g.stores} tiendas · actualizada el ${longDate(g.updatedAt)}</span></li>`).join("\n");
+export function guidesIndexHtml(guides: readonly { slug: string; title: string; updatedAt: string; stores: number }[]): string {
+  const rows = guides.map((g) => `<li><a href="${escapeHtml(guideUrl(g.slug))}">${escapeHtml(g.title)}</a> <span class="muted">${g.stores} tiendas · actualizada el ${longDate(g.updatedAt)}</span></li>`).join("\n");
   return `<!doctype html>
 <html lang="es-CL">
 <head>
@@ -428,7 +438,7 @@ export function guidesIndexHtml(guides: readonly { slug: string; title: string; 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Guías de tiendas online en Chile · AgentPey</title>
 <meta name="description" content="Guías de tiendas online chilenas con sitio propio, por rubro, hechas con sus catálogos públicos.">
-<link rel="canonical" href="${escapeHtml(`${origin}/guias`)}">
+<link rel="canonical" href="${escapeHtml(guideUrl())}">
 <style>${STYLE}</style>
 </head>
 <body>
@@ -451,27 +461,32 @@ ${rows}
 export const AI_CRAWLERS = ["OAI-SearchBot", "ChatGPT-User", "GPTBot", "ClaudeBot", "Claude-SearchBot", "Claude-User", "PerplexityBot", "Perplexity-User", "Google-Extended", "Googlebot", "Bingbot"] as const;
 
 /**
- * Everyone may read the panel's public pages. Click redirects (/ir/), the API,
- * the measurement script and single diagnosis results stay out: a crawler
- * following /ir/ would count as a visit to the store.
+ * The panel's own robots.txt (panel.agentpey.com). Everyone may read its public
+ * pages; click redirects (/ir/), the API, the measurement script and single
+ * diagnosis results stay out: a crawler following /ir/ would count as a visit
+ * to the store. The guides live on the main domain, so it points there.
  */
-export function robotsTxt(origin: string): string {
-  const rules = ["Allow: /", "Allow: /guias/", "Disallow: /api/", "Disallow: /ir/", "Disallow: /m/", "Disallow: /diagnostico/"];
+export function robotsTxt(): string {
   return [
-    "# AgentPey comercios. The guides under /guias/ are open to search engines and AI assistants.",
+    `# AgentPey comercios. The public store guides are at ${guideUrl()}, open to search engines and AI assistants.`,
     ...AI_CRAWLERS.map((ua) => `User-agent: ${ua}`),
     "User-agent: *",
-    ...rules,
+    "Allow: /",
+    "Disallow: /api/",
+    "Disallow: /ir/",
+    "Disallow: /m/",
+    "Disallow: /diagnostico/",
     "",
-    `Sitemap: ${origin}/sitemap.xml`,
+    `Sitemap: ${guideUrl("sitemap.xml")}`,
     "",
   ].join("\n");
 }
 
-export function sitemapXml(origin: string, guides: readonly { slug: string; updatedAt: string }[]): string {
+/** The guides' sitemap, served at agentpey.com/chile/sitemap.xml: the index and each guide, with its date. */
+export function sitemapXml(guides: readonly { slug: string; updatedAt: string }[]): string {
   const urls = [
-    `<url><loc>${escapeHtml(`${origin}/guias`)}</loc>${guides.length > 0 ? `<lastmod>${[...guides].map((g) => g.updatedAt).sort().at(-1)}</lastmod>` : ""}</url>`,
-    ...guides.map((g) => `<url><loc>${escapeHtml(`${origin}/guias/${g.slug}`)}</loc><lastmod>${g.updatedAt}</lastmod></url>`),
+    `<url><loc>${escapeHtml(guideUrl())}</loc>${guides.length > 0 ? `<lastmod>${[...guides].map((g) => g.updatedAt).sort().at(-1)}</lastmod>` : ""}</url>`,
+    ...guides.map((g) => `<url><loc>${escapeHtml(guideUrl(g.slug))}</loc><lastmod>${g.updatedAt}</lastmod></url>`),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }

@@ -469,6 +469,7 @@ function guia(db: Db, rest: string[]): void {
     process.exitCode = 2;
     return;
   }
+  for (const slug of db.dropGuidesExcept(GUIDE_RUBROS.map((r) => r.slug))) console.log(`${slug}: ya no es una guía, borrada de la base local`);
   const dir = `${DATA}guias/`;
   mkdirSync(dir, { recursive: true });
   const tiendas = loadTiendas(db);
@@ -479,9 +480,8 @@ function guia(db: Db, rest: string[]): void {
     console.log(`${g.slug}: ${g.stores.length} tiendas de ${inputs.length} del rubro, ${g.brands.length} marcas en dos o más tiendas, catálogos leídos ${g.readFrom} a ${g.readTo}`);
     return g;
   });
-  const origin = "https://panel.agentpey.com";
-  for (const g of built) writeFileSync(`${dir}${g.slug}.html`, guideHtml(g, origin, GUIDE_RUBROS));
-  writeFileSync(`${dir}index.html`, guidesIndexHtml(built.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length })), origin));
+  for (const g of built) writeFileSync(`${dir}${g.slug}.html`, guideHtml(g, GUIDE_RUBROS));
+  writeFileSync(`${dir}index.html`, guidesIndexHtml(built.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length }))));
   console.log(`${dir}: vista previa de ${built.length} guías. Para publicarlas: scripts/setup-postgres.ts --solo-importar --guias`);
 }
 
