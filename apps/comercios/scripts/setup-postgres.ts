@@ -21,6 +21,9 @@
  * `--check` changes nothing and prints no secret: it checks the admin
  * connection, and that every store has data in the local file.
  *
+ * `--max-caida <pct>` (the weekly job) refuses to replace them when the stores
+ * across the guides or the brand pages would drop by more than that percentage.
+ *
  * `--guias` also replaces the public guides (`cli base guia`, guia.ts) and the
  * brand pages (marcas.ts) with the ones in the local file. Guides alone need no store: `--solo-importar --guias`.
  *
@@ -34,13 +37,14 @@
  */
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 
 import pg from "pg";
 
-import { openDb } from "../src/db.js";
-import { SCHEMA, importBrandPages, importGuides, importStores, migrate } from "../src/store.js";
+import { localDataDir, openDb } from "../src/db.js";
+import { GuideSchema } from "../src/guia.js";
+import { publishDrop } from "../src/semanal.js";
+import { SCHEMA, importBrandPages, importGuides, importStores, migrate, publishedTotals } from "../src/store.js";
 
 const ROLE = "comercios";
 const out = (line = ""): void => void process.stdout.write(`${line}\n`);
@@ -55,10 +59,13 @@ const importOnly = args.includes("--solo-importar");
 const withGuides = args.includes("--guias");
 const envIndex = args.indexOf("--env");
 const envPath = envIndex === -1 ? undefined : args[envIndex + 1];
-const stores = args.filter((a, i) => !a.startsWith("--") && i !== envIndex + 1);
+const dropIndex = args.indexOf("--max-caida");
+const maxDrop = dropIndex === -1 ? undefined : Number(args[dropIndex + 1]);
+const stores = args.filter((a, i) => !a.startsWith("--") && i !== envIndex + 1 && (dropIndex === -1 || i !== dropIndex + 1));
 if (envPath === undefined) die("falta --env <ruta al .env.local con DATABASE_URL>");
 if (stores.length === 0 && !withGuides) die("faltan las tiendas a cargar (o --guias)");
 for (const s of stores) if (!/^[a-z0-9-]+$/.test(s)) die(`nombre de tienda inválido: ${s}`);
+if (maxDrop !== undefined && !(maxDrop > 0 && maxDrop < 100)) die("--max-caida es un porcentaje entre 1 y 99");
 
 /**
  * The connection string for the role, built from the admin one. Supabase's
@@ -118,7 +125,7 @@ async function main(): Promise<void> {
   const adminUrl = parseEnv(readFileSync(envPath!, "utf8")).DATABASE_URL;
   if (adminUrl === undefined || adminUrl === "") return die(`${envPath} no tiene DATABASE_URL`);
 
-  const source = openDb(fileURLToPath(new URL("../data/comercios.db", import.meta.url)));
+  const source = openDb(`${localDataDir()}comercios.db`);
   for (const s of stores) {
     const n = source.products(s).length;
     if (n === 0) die(`la tienda ${s} no tiene productos en la base local`);
@@ -160,6 +167,13 @@ async function main(): Promise<void> {
         await migrate(client);
         for (const c of await importStores(client, source, stores)) {
           out(`✓ ${c.storeId}: ${c.products} productos, ${c.analyses} revisiones, política ${c.policy ? "sí" : "no"}, ${c.answers} respuestas de IA, ${c.demoEvents} eventos de demostración`);
+        }
+        if (withGuides && maxDrop !== undefined) {
+          const before = await publishedTotals(client);
+          const after = { guideStores: source.guides().reduce((n, g) => n + GuideSchema.parse(g.data).stores.length, 0), brands: source.brandSummaries().length };
+          const drop = publishDrop(before, after, maxDrop);
+          if (drop !== undefined) die(`no se publica: ${drop}. Revisa la lectura; para publicar igual, corre sin --max-caida`);
+          out(`✓ publicadas antes: ${before.guideStores} tiendas en las guías y ${before.brands} marcas; ahora ${after.guideStores} y ${after.brands}`);
         }
         if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
         if (withGuides) out(`✓ páginas de marcas publicadas: ${await importBrandPages(client, source)}`);
@@ -207,6 +221,13 @@ async function main(): Promise<void> {
       try {
         for (const c of await importStores(client, source, stores)) {
           out(`✓ ${c.storeId}: ${c.products} productos, ${c.analyses} revisiones, política ${c.policy ? "sí" : "no"}, ${c.answers} respuestas de IA, ${c.demoEvents} eventos de demostración`);
+        }
+        if (withGuides && maxDrop !== undefined) {
+          const before = await publishedTotals(client);
+          const after = { guideStores: source.guides().reduce((n, g) => n + GuideSchema.parse(g.data).stores.length, 0), brands: source.brandSummaries().length };
+          const drop = publishDrop(before, after, maxDrop);
+          if (drop !== undefined) die(`no se publica: ${drop}. Revisa la lectura; para publicar igual, corre sin --max-caida`);
+          out(`✓ publicadas antes: ${before.guideStores} tiendas en las guías y ${before.brands} marcas; ahora ${after.guideStores} y ${after.brands}`);
         }
         if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
         if (withGuides) out(`✓ páginas de marcas publicadas: ${await importBrandPages(client, source)}`);

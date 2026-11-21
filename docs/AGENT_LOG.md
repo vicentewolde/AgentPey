@@ -9626,3 +9626,22 @@ Pendiente:
 - Pocas tiendas publican código de barras (Shopify y WooCommerce no lo exponen), así que la comparación exacta es escasa. Comparar por nombre y tamaño queda para después, con cuidado de no equivocarse.
 - Releer catálogos cada semana.
 - Agregar al MCP una herramienta de consulta de precios.
+
+## 2026-11-21 — cc/precios-semanales
+
+Agente: Claude Code
+
+Qué:
+- PR #123 (páginas de marcas) fusionado y en producción con OK explícito de Vicente. `prod:check` 9/9 antes y después; IndexNow aceptó las 1.033 direcciones.
+- Actualización semanal de `agentpey.com/chile` (`apps/comercios/scripts/semanal.sh` y un timer de systemd del usuario, domingo 02:00 hora de Chile): relee los catálogos, rehace guías y marcas, las publica en Postgres y avisa por IndexNow. No usa modelos de IA.
+- Una relectura que falla o lee menos de la mitad (con 20 productos o más antes) conserva la lectura anterior y su fecha (`semanal.ts`, `recordKeptRun`, `lastGoodRun`).
+- La misma lectura más chica dos semanas seguidas se toma como el tamaño real de la tienda.
+- Las páginas se arman solo con lecturas de hasta 14 días, para que una página publicada una semana nunca muestre una de más de 21 días, como promete su metodología (`freshReadAt`).
+- `setup-postgres --max-caida 30`: el job no publica si las tiendas de las guías o las páginas de marcas caen más de 30%.
+- Ojo: el job corre lo que esté en `origin/main` con la conexión de administrador; un merge que toque `apps/comercios` corre el domingo siguiente.
+- Revisión del subagente `revisor`: sin bloqueantes; sus cuatro hallazgos importantes quedaron resueltos.
+- Los datos locales viven fuera de toda carpeta de trabajo: `~/agentes/datos-comercios` (`COMERCIOS_DATA`). Se copiaron desde el worktree `guia-publica` con `vacuum into`.
+
+Por qué: un precio viejo citado por una IA rompe la confianza en "el precio más bajo seguro", que es la meta de Vicente.
+
+Pendiente: dejar el worktree `~/agentes/AgentPay-worktrees/semanal` y el timer instalados después del merge; revisar el primer log en `~/agentes/datos-comercios/semanal/`.

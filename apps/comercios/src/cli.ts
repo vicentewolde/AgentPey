@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import { mkdirSync, writeFileSync } from "node:fs";
 
-import { openDb } from "./db.js";
+import { localDataDir, openDb } from "./db.js";
 import { analyzeProduct, pool, sampleProducts } from "./entender.js";
 import { createLlm } from "./llm.js";
 import { demoEvents } from "./medir.js";
@@ -40,7 +40,7 @@ try {
   /* no .env.local */
 }
 
-const DB_PATH = fileURLToPath(new URL("../data/comercios.db", import.meta.url));
+const DB_PATH = `${localDataDir()}comercios.db`;
 
 function flag(args: string[], name: string): string | undefined {
   const i = args.indexOf(name);

@@ -5,12 +5,22 @@
  */
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
 import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
 
 export type Db = ReturnType<typeof openDb>;
+
+/** The local data folder (git-ignored), ending in "/": COMERCIOS_DATA when set (the weekly job keeps it outside any checkout), else this app's data/. */
+export function localDataDir(): string {
+  const dir = process.env.COMERCIOS_DATA;
+  return dir === undefined || dir === "" ? fileURLToPath(new URL("../data/", import.meta.url)) : `${dir.replace(/\/$/, "")}/`;
+}
+
+/** Methods of runs that left the previous catalogue in place: "falló" is also a first reading that read nothing. */
+export const KEPT_METHODS = ["falló", "conservado"] as const;
 
 export function openDb(path: string) {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
@@ -115,6 +125,15 @@ export function openDb(path: string) {
     lastRun(storeId: string): { at: string; method: string; count: number; notes: string[] } | undefined {
       const r = db.prepare("select at, method, count, notes from ingest_runs where store_id = ? order by rowid desc limit 1").get(storeId);
       return r === undefined ? undefined : { at: String(r.at), method: String(r.method), count: Number(r.count), notes: JSON.parse(String(r.notes)) as string[] };
+    },
+    /** The last reading that replaced the catalogue: a failed or kept re-read (KEPT_METHODS) does not date it. */
+    lastGoodRun(storeId: string): { at: string; method: string; count: number } | undefined {
+      const r = db.prepare(`select at, method, count from ingest_runs where store_id = ? and method not in (${KEPT_METHODS.map(() => "?").join(", ")}) order by rowid desc limit 1`).get(storeId, ...KEPT_METHODS);
+      return r === undefined ? undefined : { at: String(r.at), method: String(r.method), count: Number(r.count) };
+    },
+    /** Records a re-read that did not replace the catalogue (it failed, or read far less than before): the previous one stays. */
+    recordKeptRun(storeId: string, method: (typeof KEPT_METHODS)[number], count: number, notes: readonly string[]): void {
+      db.prepare("insert into ingest_runs (store_id, at, method, count, notes) values (?, ?, ?, ?, ?)").run(storeId, new Date().toISOString(), method, count, JSON.stringify(notes));
     },
     saveAnalysis(storeId: string, productId: string, model: string, data: unknown): void {
       db.prepare("insert or replace into analyses (store_id, product_id, model, data, status, at) values (?, ?, ?, ?, 'propuesta', ?)").run(

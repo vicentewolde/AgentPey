@@ -280,6 +280,13 @@ export async function importStores(q: Queryable, source: Db, storeIds: readonly 
   return counts;
 }
 
+/** What the /chile pages publish now: stores across the guides and brand pages (before a replace, to refuse a sharp drop). */
+export async function publishedTotals(q: Queryable): Promise<{ guideStores: number; brands: number }> {
+  const g = await q.query(`select coalesce(sum(jsonb_array_length(data->'stores')), 0)::int as n from ${SCHEMA}.guias`);
+  const m = await q.query(`select count(*)::int as n from ${SCHEMA}.marcas`);
+  return { guideStores: Number((g.rows[0] as { n: number }).n), brands: Number((m.rows[0] as { n: number }).n) };
+}
+
 /**
  * Replaces every public guide in Postgres with the ones in the local file, in
  * one transaction (same single-connection rule as `importStores`). A guide is

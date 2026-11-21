@@ -13,7 +13,7 @@
 import { z } from "zod";
 
 import {
-  brandLabel, brandSlugOf, clp, DISCLOSURE, escapeHtml, fold, guideUrl, keptStores, longDate, num, scriptJson, STYLE,
+  brandLabel, brandSlugOf, clp, DISCLOSURE, escapeHtml, fold, FRESHNESS_RULE, guideUrl, keptStores, longDate, num, scriptJson, STYLE,
   type GuideInput,
 } from "./guia.js";
 
@@ -258,7 +258,7 @@ ${stores}
 <h2 id="metodologia">Metodología</h2>
 <ul>
 <li><strong>Qué tiendas entran.</strong> Tiendas online chilenas con sitio propio de las listas públicas de participantes de blackfriday.cl y cyber.cl, sin grandes tiendas, multitiendas ni marketplaces, que tenían productos de ${escapeHtml(p.brand)} con precio.</li>
-<li><strong>De dónde salen los datos.</strong> Del catálogo público de cada tienda, leído ${dateSpan(p.readFrom, p.readTo)}, respetando su robots.txt. La marca es la que la propia tienda le pone a cada producto.</li>
+<li><strong>De dónde salen los datos.</strong> Del catálogo público de cada tienda, leído ${dateSpan(p.readFrom, p.readTo)}, respetando su robots.txt. La marca es la que la propia tienda le pone a cada producto. ${escapeHtml(FRESHNESS_RULE)}</li>
 <li><strong>Precios.</strong> En pesos chilenos, el precio más bajo de cada producto ese día. No contamos los productos que la tienda mostraba agotados. "Antes" es el precio tachado que mostraba la tienda. "El mismo producto" compara solo productos con el mismo código de barras (GTIN).</li>
 <li><strong>Orden.</strong> ${escapeHtml(BRAND_ORDER_RULE)}</li>
 <li><strong>Relación con AgentPey.</strong> ${escapeHtml(DISCLOSURE)} Nadie paga por aparecer.</li>

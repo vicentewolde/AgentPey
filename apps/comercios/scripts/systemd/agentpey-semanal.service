@@ -1,0 +1,13 @@
+# Copy to ~/.config/systemd/user/ (see apps/comercios/README.md, "Weekly refresh").
+[Unit]
+Description=AgentPey: weekly re-read of the public store catalogues and the agentpey.com/chile pages
+
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/node/bin:%h/.local/npm-global/bin:/usr/local/bin:/usr/bin:/bin
+Environment=COMERCIOS_DATA=%h/agentes/datos-comercios
+Environment=AGENTPEY_ENV=%h/agentes/AgentPay/.env.local
+ExecStart=%h/agentes/AgentPay-worktrees/semanal/apps/comercios/scripts/semanal.sh
+Nice=10
+TimeoutStartSec=8h

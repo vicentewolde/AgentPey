@@ -1,0 +1,11 @@
+# Copy to ~/.config/systemd/user/ and: systemctl --user enable --now agentpey-semanal.timer
+[Unit]
+Description=AgentPey: weekly refresh of agentpey.com/chile, Sunday night
+
+[Timer]
+OnCalendar=Sun *-*-* 02:00:00 America/Santiago
+Persistent=true
+RandomizedDelaySec=20min
+
+[Install]
+WantedBy=timers.target

@@ -33,6 +33,19 @@ export const GUIDE_RUBROS: readonly { slug: string; rubro: string; title: string
 export const MIN_PRICED = 5;
 /** The catalogue reader stops at this many products: a store at the cap has at least this many. */
 export const READ_CAP = 1500;
+/** Catalogues are read again every week; a store not read for longer than this leaves the pages until it is read again. */
+export const MAX_READ_AGE_DAYS = 21;
+export const FRESHNESS_RULE = `Leemos los catálogos de nuevo cada semana. Si no pudimos leer una tienda en los últimos ${MAX_READ_AGE_DAYS} días, sale de estas páginas hasta la próxima lectura.`;
+
+/** A built page stays published until next week's run: building with a week less keeps MAX_READ_AGE_DAYS true every day. */
+export const BUILD_READ_AGE_DAYS = MAX_READ_AGE_DAYS - 7;
+
+/** `readAt` when it is at most BUILD_READ_AGE_DAYS before `today` (YYYY-MM-DD), else undefined: an old price is left out, not shown. */
+export function freshReadAt(readAt: string | undefined, today: string): string | undefined {
+  if (readAt === undefined) return undefined;
+  const age = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${readAt.slice(0, 10)}T00:00:00Z`)) / 86_400_000;
+  return age <= BUILD_READ_AGE_DAYS ? readAt : undefined;
+}
 
 export const GuideStoreSchema = z.object({
   id: z.string(),
@@ -433,7 +446,7 @@ ${g.brands.length > 0 ? `<h2>Dónde encontrar cada marca</h2>
 <h2 id="metodologia">Metodología</h2>
 <ul>
 <li><strong>Qué tiendas entran.</strong> Las de ${escapeHtml(g.shortTitle.toLowerCase())} que aparecen en las listas públicas de participantes de ${escapeHtml(joinEs(lists))}, leídas ${dateSpan(g.listsReadFrom, g.listsReadTo)}. Quedan fuera las grandes tiendas, las multitiendas y los marketplaces. También quedan fuera las tiendas cuyo catálogo no pudimos leer o que tenían menos de ${MIN_PRICED} productos con precio.</li>
-<li><strong>De dónde salen los datos.</strong> Del catálogo público de cada tienda (la lista de productos que su propio sitio publica), leído ${dateSpan(g.readFrom, g.readTo)}. Leímos hasta ${num(READ_CAP)} productos por tienda, respetando su robots.txt. En total, ${num(total)} productos${anyCapped ? " (más, en las tiendas que llegaron al tope)" : ""}.</li>
+<li><strong>De dónde salen los datos.</strong> Del catálogo público de cada tienda (la lista de productos que su propio sitio publica), leído ${dateSpan(g.readFrom, g.readTo)}. Leímos hasta ${num(READ_CAP)} productos por tienda, respetando su robots.txt. En total, ${num(total)} productos${anyCapped ? " (más, en las tiendas que llegaron al tope)" : ""}. ${escapeHtml(FRESHNESS_RULE)}</li>
 <li><strong>Qué vende y marcas.</strong> Son las categorías y marcas que más se repiten en sus productos, tal como la tienda las escribe. No incluimos las que solo dicen para quién es (hombre, mujer), ofertas ni el nombre de la propia tienda.</li>
 <li><strong>Precios.</strong> En pesos chilenos, el precio más bajo de cada producto el día de la lectura. "8 de cada 10 productos cuestan entre A y B" deja fuera el 10% más barato y el 10% más caro. "Precio rebajado" cuenta los productos que mostraban un precio anterior tachado ese día.</li>
 <li><strong>Qué no medimos.</strong> No ponemos notas ni puntajes, ni opiniones de clientes. Despacho, cambios y medios de pago tampoco están todavía.</li>

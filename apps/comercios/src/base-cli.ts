@@ -2,7 +2,8 @@
  * pnpm --filter @agentpey/comercios cli base <subcommand>
  *   lista                       read blackfriday.cl's participants; platform and name from each home page
  *   contacto [--todas]          public contact address from each store's own home and contact pages
- *   ingest [--todas] [--max N] [--paralelo N]   read the public catalogues (skips stores already read)
+ *   ingest [--todas] [--max N] [--paralelo N]   read the public catalogues (skips stores already read);
+ *                               a re-read that fails or reads under half keeps the previous one (semanal.ts)
  *   diagnostico [--n 4] [--motores claude,chatgpt] [--desde YYYY-MM-DD] [--limite N] [--paralelo N]
  *                               buyer questions per store; skips stores already answered since --desde
  *                               --fuente cyber,piloto: only stores first listed there (on both lists = blackfriday)
@@ -22,17 +23,16 @@
  *                               also every brand two or more public stores sell (marcas.ts, table marcas)
  *   indexnow                    tell Bing and the other IndexNow engines every URL of the live sitemap (after publishing)
  *
- * Everything it reads or writes is in data/ (git-ignored). Stops at the plan's usage limit.
+ * Everything it reads or writes is in data/ (git-ignored), or in COMERCIOS_DATA when set (the weekly job, scripts/semanal.sh). Stops at the plan's usage limit.
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 
 import { compare, contactLinks, cyberRubro, isBigMarket, mailableEmail, parseCyber, findEmails, isAffiliate, mainRubro, parseBlackFriday, rankEmails, segmentOf, toStore, type Segment, type StoredAnswer, type StoreInput, type Tienda } from "./base.js";
-import type { Db } from "./db.js";
+import { localDataDir, type Db } from "./db.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, hostOf, judge, type Engine } from "./diagnostico.js";
 import { pool } from "./entender.js";
 import { fichaHtml, correoTexto, resumenMd, csvIndex, informeHtml } from "./ficha.js";
-import { buildGuide, citations, GUIDE_ORIGIN, GUIDE_RUBROS, guideHtml, guideUrl, guidesIndexHtml, INDEXNOW_KEY, indexNowKeyUrl } from "./guia.js";
+import { buildGuide, citations, freshReadAt, GUIDE_ORIGIN, GUIDE_RUBROS, guideHtml, guideUrl, guidesIndexHtml, INDEXNOW_KEY, indexNowKeyUrl } from "./guia.js";
 import { brandHtml, brandsIndexHtml, buildBrandPages, summarize } from "./marcas.js";
 import { createFetcher, type Fetcher } from "./http.js";
 import type { Platform } from "./model.js";
@@ -40,9 +40,10 @@ import { ingestStore } from "./ingest/index.js";
 import { createLlm, UsageLimitError } from "./llm.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
+import { rereadVerdict } from "./semanal.js";
 import { STORES } from "./stores.js";
 
-const DATA = fileURLToPath(new URL("../data/", import.meta.url));
+const DATA = localDataDir();
 const BASE = `${DATA}base/`;
 
 function flag(args: readonly string[], name: string): string | undefined {
@@ -335,17 +336,33 @@ async function ingest(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> {
   const only = flag(rest, "--solo")?.split(",");
   const targets = loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined && (only === undefined ? rest.includes("--todas") || db.lastRun(t.id) === undefined : only.includes(t.id)));
   console.log(`${targets.length} catálogos por leer`);
+  const tally = { leidas: 0, conservadas: [] as string[], fallidas: 0 };
   await pool(targets, Number(flag(rest, "--paralelo") ?? 6), async (t) => {
     const started = Date.now();
+    const previous = db.lastGoodRun(t.id) === undefined ? 0 : db.products(t.id).length;
     try {
       const result = await ingestStore(toStore(t), fetcher, { maxProducts: max, maxPages: pages });
+      const last = db.lastRun(t.id);
+      const verdict = rereadVerdict(previous, result.products.length, last?.method === "conservado" ? last.count : undefined);
+      if (!verdict.replace) {
+        db.recordKeptRun(t.id, "conservado", result.products.length, [verdict.reason, ...result.notes]);
+        console.log(`${t.id}: se conserva la lectura anterior (${verdict.reason})`);
+        tally.conservadas.push(t.id);
+        return;
+      }
       db.replaceCatalogue(t.id, result.products, result.method, result.notes);
+      tally.leidas += 1;
       console.log(`${t.id}: ${result.products.length} productos por ${result.method} en ${Math.round((Date.now() - started) / 1000)} s${result.notes.length ? ` · ${result.notes.slice(0, 3).join(" · ")}` : ""}`);
     } catch (error) {
-      db.replaceCatalogue(t.id, [], "falló", [(error as Error).message.slice(0, 200)]);
-      console.log(`${t.id}: falló (${(error as Error).message.slice(0, 200)})`);
+      const message = (error as Error).message.slice(0, 200);
+      if (rereadVerdict(previous, undefined).replace) db.replaceCatalogue(t.id, [], "falló", [message]);
+      else db.recordKeptRun(t.id, "falló", 0, [message]);
+      console.log(`${t.id}: falló (${message})${previous > 0 ? ", se conserva la lectura anterior" : ""}`);
+      if (previous > 0) tally.conservadas.push(t.id);
+      else tally.fallidas += 1;
     }
   });
+  console.log(`resumen: ${tally.leidas} leídas, ${tally.conservadas.length} con la lectura anterior${tally.conservadas.length ? ` (${tally.conservadas.sort().join(", ")})` : ""}, ${tally.fallidas} sin leer`);
 }
 
 function answeredSince(db: Db, id: string, since: string): number {
@@ -367,7 +384,7 @@ async function diagnostico(db: Db, rest: string[]): Promise<void> {
   // Stores with a readable catalogue first, bigger catalogues first; then the rest.
   const targets = loadTiendas(db)
     .filter((t) => t.segment === "pyme" && t.origin !== undefined && (only === undefined || only.includes(t.id)) && (fuentes === undefined || fuentes.includes((t.sources ?? ["blackfriday"])[0]!)) && (!rest.includes("--leidas") || db.lastRun(t.id) !== undefined) && answeredSince(db, t.id, since) === 0)
-    .map((t) => ({ t, count: db.lastRun(t.id)?.count ?? 0 }))
+    .map((t) => ({ t, count: db.lastGoodRun(t.id)?.count ?? 0 }))
     .sort((a, b) => Number(b.count > 0) - Number(a.count > 0) || a.t.rubro.localeCompare(b.t.rubro))
     .slice(0, limit);
   console.log(`${targets.length} tiendas por diagnosticar (${n} preguntas × ${engines.map((e) => e.name).join("+")}), desde ${since}`);
@@ -423,7 +440,7 @@ function comparar(db: Db, rest: string[], fichas: boolean): void {
     return { tienda: t, store: { ...store, rubro: t.rubro }, readiness: products.length > 0 ? readiness(store, products) : undefined, products: products.length, answers, failed };
   });
   const results = compare(inputs, rubroAnswers(db, since));
-  const runs = new Map(tiendas.map((t) => [t.id, db.lastRun(t.id)]));
+  const runs = new Map(tiendas.map((t) => [t.id, db.lastGoodRun(t.id)]));
   const dates = inputs.flatMap((i) => i.answers.map((a) => a.at.slice(0, 10))).sort();
   const period = dates.length === 0 ? "sin respuestas" : dates[0] === dates.at(-1) ? dates[0]! : `${dates[0]} a ${dates.at(-1)}`;
   writeFileSync(`${BASE}comparacion.json`, JSON.stringify({ desde: since, periodo: period, tiendas: results, lectura: Object.fromEntries(runs) }, null, 2));
@@ -478,7 +495,7 @@ function guia(db: Db, rest: string[]): void {
   mkdirSync(dir, { recursive: true });
   const tiendas = loadTiendas(db);
   const built = metas.map((meta) => {
-    const inputs = tiendas.filter((t) => t.rubro === meta.rubro).map((t) => ({ tienda: t, products: db.products(t.id), readAt: db.lastRun(t.id)?.at }));
+    const inputs = tiendas.filter((t) => t.rubro === meta.rubro).map((t) => ({ tienda: t, products: db.products(t.id), readAt: freshReadAt(db.lastGoodRun(t.id)?.at, today()) }));
     const g = buildGuide(meta, inputs, today());
     db.saveGuide(g.slug, g);
     console.log(`${g.slug}: ${g.stores.length} tiendas de ${inputs.length} del rubro, ${g.brands.length} marcas en dos o más tiendas, catálogos leídos ${g.readFrom} a ${g.readTo}`);
@@ -487,7 +504,7 @@ function guia(db: Db, rest: string[]): void {
   for (const g of built) writeFileSync(`${dir}${g.slug}.html`, guideHtml(g, GUIDE_RUBROS));
   writeFileSync(`${dir}index.html`, guidesIndexHtml(built.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length }))));
   // Brands across every public store, not only the guide rubros: "where do I buy <brand>" has no rubro.
-  const all = tiendas.map((t) => ({ tienda: t, products: db.products(t.id), readAt: db.lastRun(t.id)?.at }));
+  const all = tiendas.map((t) => ({ tienda: t, products: db.products(t.id), readAt: freshReadAt(db.lastGoodRun(t.id)?.at, today()) }));
   const pages = buildBrandPages(all, today());
   db.replaceBrandPages(pages.map((p) => ({ ...summarize(p), data: p })));
   mkdirSync(`${dir}marcas/`, { recursive: true });
