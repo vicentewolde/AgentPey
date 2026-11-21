@@ -9605,3 +9605,24 @@ Agente: Claude Code
 Qué: el usuario dejó de pagar Jumpseller (plan Basic, $10.710 CLP/mes, tarjeta ****3199, cobros 22-sep y 22-oct). Las dos tiendas Jumpseller de Vitrinee (`bazar-cordillera`, catálogo en `vitrinee.jumpseller.com`; `mycokit`, prueba vencida y bloqueada con 402) quedaron `disabled` en `vitrinee.comercios` (el usuario corrió el `update` en el Shell de Render con `VITRINEE_DATABASE_URL`; reversible volviendo a `active`, pedidos intactos). Luego se eliminó la tienda `vitrinee.jumpseller.com` (permanente; Jumpseller: "no se realizarán más cargos", borra datos en hasta 7 días). `prod:check` ahora revisa solo `agentcommerce` y que su catálogo tenga productos (antes MycoKit pasaba en verde roto), sin SignalDesk (dominio retirado el 17-nov): 9/9 tras el cambio.
 Por qué: pedido del usuario: dejar de pagar Jumpseller sin que AgentPey deje de funcionar.
 Pendiente: mergear `cc/sin-jumpseller` (solo `prod:check` y este log) cuando el usuario lo pida. Las compras viejas de esas dos tiendas ya no cuentan en `/en-vivo`; sus recibos siguen verificables en Stellar.
+
+## 2026-11-20 (noche) — cc/precios-marcas
+
+Agente: Claude Code
+
+Qué:
+- Las guías se publicaron en `agentpey.com/chile`, con autorización explícita de Vicente: PR #121 y #122 fusionados a `main`, y `setup-postgres --solo-importar --guias`.
+- `agentpey.com` quedó verificado en Google Search Console (TXT en Cloudflare). Se envió el sitemap y se pidió la indexación de las 4 páginas.
+- `agentpey.com` quedó registrado en Bing Webmaster Tools, importado desde Search Console, con el sitemap enviado.
+- Rama nueva con las páginas de marcas (`marcas.ts`): `agentpey.com/chile/marcas/<marca>` muestra, por tienda, los productos con stock más baratos, con su precio y fecha.
+  - Hay una página por marca que venden 2 o más tiendas públicas; son 1.028.
+  - Cuando dos tiendas comparten código de barras, el mismo producto aparece lado a lado.
+- Se agregó IndexNow (`base indexnow`). Su clave es pública y se sirve en `/chile/<clave>.txt`.
+- El gateway ahora deja pasar `/chile/marcas(/<slug>)` y el archivo de la clave.
+
+Por qué: la meta de Vicente es que AgentPey sea la fuente de precios que consultan las IAs. Con datos públicos, "dónde comprar X y a qué precio" es lo más cercano y lo más citable.
+
+Pendiente:
+- Pocas tiendas publican código de barras (Shopify y WooCommerce no lo exponen), así que la comparación exacta es escasa. Comparar por nombre y tamaño queda para después, con cuidado de no equivocarse.
+- Releer catálogos cada semana.
+- Agregar al MCP una herramienta de consulta de precios.

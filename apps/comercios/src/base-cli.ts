@@ -18,7 +18,9 @@
  *   comparar [--desde YYYY-MM-DD]   per store and per rubro: data/base/comparacion.json and resumen.md
  *   fichas [--desde YYYY-MM-DD]     data/fichas-bf/<id>.html, <id>-correo.txt and indice.csv
  *   guia [--rubros slug,slug]   the public guides (guia.ts) from the catalogues already read: saved in the
- *                               local base (table guias) for setup-postgres, and a preview in data/guias/<slug>.html
+ *                               local base (table guias) for setup-postgres, and a preview in data/guias/<slug>.html;
+ *                               also every brand two or more public stores sell (marcas.ts, table marcas)
+ *   indexnow                    tell Bing and the other IndexNow engines every URL of the live sitemap (after publishing)
  *
  * Everything it reads or writes is in data/ (git-ignored). Stops at the plan's usage limit.
  */
@@ -30,7 +32,8 @@ import type { Db } from "./db.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, hostOf, judge, type Engine } from "./diagnostico.js";
 import { pool } from "./entender.js";
 import { fichaHtml, correoTexto, resumenMd, csvIndex, informeHtml } from "./ficha.js";
-import { buildGuide, citations, GUIDE_RUBROS, guideHtml, guidesIndexHtml } from "./guia.js";
+import { buildGuide, citations, GUIDE_ORIGIN, GUIDE_RUBROS, guideHtml, guideUrl, guidesIndexHtml, INDEXNOW_KEY, indexNowKeyUrl } from "./guia.js";
+import { brandHtml, brandsIndexHtml, buildBrandPages, summarize } from "./marcas.js";
 import { createFetcher, type Fetcher } from "./http.js";
 import type { Platform } from "./model.js";
 import { ingestStore } from "./ingest/index.js";
@@ -81,7 +84,8 @@ export async function baseCommand(db: Db, sub: string | undefined, rest: string[
   if (sub === "comparar" || sub === "fichas") return comparar(db, rest, sub === "fichas");
   if (sub === "guia") return guia(db, rest);
   if (sub === "medir-guia") return medirGuia(db, rest);
-  console.error("uso: cli base lista | contacto | ingest | diagnostico | comparar | fichas | guia");
+  if (sub === "indexnow") return indexNow();
+  console.error("uso: cli base lista | contacto | ingest | diagnostico | comparar | fichas | guia | medir-guia | indexnow");
   process.exitCode = 2;
 }
 
@@ -482,7 +486,40 @@ function guia(db: Db, rest: string[]): void {
   });
   for (const g of built) writeFileSync(`${dir}${g.slug}.html`, guideHtml(g, GUIDE_RUBROS));
   writeFileSync(`${dir}index.html`, guidesIndexHtml(built.map((g) => ({ slug: g.slug, title: g.title, updatedAt: g.updatedAt, stores: g.stores.length }))));
-  console.log(`${dir}: vista previa de ${built.length} guías. Para publicarlas: scripts/setup-postgres.ts --solo-importar --guias`);
+  // Brands across every public store, not only the guide rubros: "where do I buy <brand>" has no rubro.
+  const all = tiendas.map((t) => ({ tienda: t, products: db.products(t.id), readAt: db.lastRun(t.id)?.at }));
+  const pages = buildBrandPages(all, today());
+  db.replaceBrandPages(pages.map((p) => ({ ...summarize(p), data: p })));
+  mkdirSync(`${dir}marcas/`, { recursive: true });
+  writeFileSync(`${dir}marcas/index.html`, brandsIndexHtml(pages.map(summarize)));
+  for (const p of pages.filter((x) => x.stores.length >= 10)) writeFileSync(`${dir}marcas/${p.slug}.html`, brandHtml(p, GUIDE_RUBROS));
+  console.log(`marcas: ${pages.length} páginas (${pages.filter((p) => p.same.length > 0).length} con el mismo producto en varias tiendas)`);
+  console.log(`${dir}: vista previa de ${built.length} guías y de las marcas con 10 o más tiendas. Para publicarlas: scripts/setup-postgres.ts --solo-importar --guias`);
+}
+
+/**
+ * IndexNow: announces every URL of the live sitemap to Bing, Yandex, Seznam and
+ * Naver at once (they share what they receive). Run after publishing; the key
+ * file must already answer, or the engines reject the call.
+ */
+async function indexNow(): Promise<void> {
+  const keyFile = await fetch(indexNowKeyUrl());
+  if (!keyFile.ok || (await keyFile.text()).trim() !== INDEXNOW_KEY) {
+    console.error(`${indexNowKeyUrl()} no responde la clave: publica antes (setup-postgres y el despliegue)`);
+    process.exitCode = 1;
+    return;
+  }
+  const sitemap = await (await fetch(guideUrl("sitemap.xml"))).text();
+  const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
+  for (let i = 0; i < urls.length; i += 10_000) {
+    const res = await fetch("https://api.indexnow.org/indexnow", {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ host: new URL(GUIDE_ORIGIN).host, key: INDEXNOW_KEY, keyLocation: indexNowKeyUrl(), urlList: urls.slice(i, i + 10_000) }),
+    });
+    console.log(`IndexNow: ${urls.slice(i, i + 10_000).length} direcciones, respuesta ${res.status} ${res.statusText}`);
+    if (!res.ok) process.exitCode = 1;
+  }
 }
 
 /** The guide experiment's measure: for each guide rubro, the general answers in a window, and whether any cites agentpey.com. */

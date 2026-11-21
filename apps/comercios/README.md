@@ -88,6 +88,17 @@ same paths redirect (301) to the main domain, so there is one address per page:
 npx tsx scripts/setup-postgres.ts --env ~/agentes/AgentPay/.env.local --solo-importar --guias
 ```
 
+`base guia` also builds one page per brand that two or more public stores sell
+(`agentpey.com/chile/marcas/<brand>`, `marcas.ts`): each store's cheapest
+in-stock products of the brand with their price and date, ordered by lowest
+price, and the same product side by side when two stores share its barcode.
+After publishing, tell Bing and the other IndexNow engines about every page of
+the live sitemap:
+
+```bash
+npx tsx src/cli.ts base indexnow
+```
+
 The guide is an experiment, measured before and after publishing with the same
 general questions of each rubro. `medir-guia` prints, per guide rubro, how many
 answers cite agentpey.com (any subdomain) and which domains the answers link.

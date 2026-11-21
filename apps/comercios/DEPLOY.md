@@ -46,4 +46,6 @@ Cada pregunta al vendedor es una llamada paga. Con 30 por hora por IP el gasto e
 4. Probar: `agentpey.com/chile`, `agentpey.com/chile/salud-y-belleza`, `agentpey.com/chile/sitemap.xml`, que `agentpey.com/` siga igual, y que `panel.agentpey.com/chile` redirija.
 5. En Google Search Console y Bing Webmaster Tools (cuenta de Vicente): verificar `agentpey.com` y enviar `https://agentpey.com/chile/sitemap.xml`.
 
+**Marcas (20-nov):** `agentpey.com/chile/marcas` y `agentpey.com/chile/marcas/<marca>`, una página por marca que venden dos o más tiendas, con los productos más baratos con stock de cada tienda. Salen del mismo `base guia` y suben con el mismo `--guias` (tabla `comercios.marcas`). Después de publicar: `npx tsx src/cli.ts base indexnow` avisa a Bing y a los demás buscadores de IndexNow; la clave es pública y se sirve en `agentpey.com/chile/<clave>.txt`.
+
 El servidor crea la tabla `guias` solo al partir. Sin guías importadas, `/chile` muestra una lista vacía y `/chile/<rubro>` responde 404.

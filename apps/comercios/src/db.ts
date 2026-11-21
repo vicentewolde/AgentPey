@@ -83,6 +83,14 @@ export function openDb(path: string) {
       data text not null,
       at   text not null
     );
+    create table if not exists marcas (
+      slug      text primary key,
+      brand     text not null,
+      stores    integer not null,
+      price_min integer not null,
+      updated   text not null,
+      data      text not null
+    );
   `);
   return {
     raw: db,
@@ -183,6 +191,30 @@ export function openDb(path: string) {
       const gone = (db.prepare("select slug from guias").all() as { slug: string }[]).map((r) => String(r.slug)).filter((s) => !keep.includes(s));
       for (const slug of gone) db.prepare("delete from guias where slug = ?").run(slug);
       return gone;
+    },
+    /** Replaces every brand page (marcas.ts) at once: a brand that left the list must not stay published. */
+    replaceBrandPages(pages: readonly { slug: string; brand: string; stores: number; priceMin: number; updatedAt: string; data: unknown }[]): void {
+      db.exec("begin");
+      try {
+        db.exec("delete from marcas");
+        const ins = db.prepare("insert into marcas (slug, brand, stores, price_min, updated, data) values (?, ?, ?, ?, ?, ?)");
+        for (const p of pages) ins.run(p.slug, p.brand, p.stores, p.priceMin, p.updatedAt, JSON.stringify(p.data));
+        db.exec("commit");
+      } catch (error) {
+        db.exec("rollback");
+        throw error;
+      }
+    },
+    brandSummaries(): { slug: string; brand: string; stores: number; priceMin: number; updatedAt: string }[] {
+      return db.prepare("select slug, brand, stores, price_min, updated from marcas order by slug").all()
+        .map((r) => ({ slug: String(r.slug), brand: String(r.brand), stores: Number(r.stores), priceMin: Number(r.price_min), updatedAt: String(r.updated) }));
+    },
+    brandPage(slug: string): unknown {
+      const r = db.prepare("select data from marcas where slug = ?").get(slug);
+      return r === undefined ? undefined : (JSON.parse(String(r.data)) as unknown);
+    },
+    brandPages(): unknown[] {
+      return db.prepare("select data from marcas order by slug").all().map((r) => JSON.parse(String(r.data)) as unknown);
     },
     guides(): { slug: string; data: unknown }[] {
       return db.prepare("select slug, data from guias order by slug").all().map((r) => ({ slug: String(r.slug), data: JSON.parse(String(r.data)) as unknown }));
