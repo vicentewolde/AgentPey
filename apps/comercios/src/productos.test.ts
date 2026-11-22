@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DISCLOSURE } from "./guia.js";
 import type { PriceRow } from "./precios.js";
-import { MATCH_RULE, matchProducts, productHtml, productKey, productName, productsIndexHtml } from "./productos.js";
+import { BIG_RULE, MATCH_RULE, matchProducts, productHtml, productKey, productName, productsIndexHtml } from "./productos.js";
 
 let n = 0;
 const row = (store: string, title: string, price: number, brand?: string): PriceRow => ({
@@ -61,5 +61,19 @@ describe("the groups", () => {
     expect(html).not.toMatch(/<script(?! type="application\/ld\+json")/);
     expect(html).not.toMatch(/—/);
     expect(productsIndexHtml(groups, "2026-11-22")).toContain('href="https://agentpey.com/chile/productos/lattafa-khamrah-edp-100ml"');
+  });
+
+  it("show big stores apart, only on products the pyme stores already make a page for, outside their order", () => {
+    const big = [row("gr-paris", "Perfume Lattafa Khamrah 100 ml", 24000), row("gr-paris", "Lattafa Khamrah EDP 100 ML", 25000), row("gr-lider", "Lattafa Khamrah EDP 100ML", 29990), row("gr-lider", "Lattafa Yara EDP 100 ML", 20000)];
+    const withBig = matchProducts(rows, 3, big);
+    expect(withBig.map((g) => g.slug)).toEqual(["lattafa-khamrah-edp-100ml"]);
+    expect(withBig[0]!.offers.map((o) => o.storeId)).toEqual(["b", "a", "c"]);
+    expect(withBig[0]!.reference.map((o) => [o.storeId, o.price])).toEqual([["gr-paris", 24000], ["gr-lider", 29990]]);
+    const html = productHtml(withBig[0]!, "2026-11-22");
+    expect(html).toContain("En tiendas grandes, para comparar");
+    expect(html).toContain("$2.000 menos que la tienda con sitio propio más barata");
+    expect(html).toContain(BIG_RULE.slice(0, 40));
+    expect(html).toContain('"offerCount":3');
+    expect(productHtml(groups[0]!, "2026-11-22")).not.toContain("En tiendas grandes");
   });
 });

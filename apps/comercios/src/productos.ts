@@ -65,6 +65,8 @@ export const ProductGroupSchema = z.object({
   key: z.object({ house: z.string(), name: z.string(), concentration: z.string(), ml: z.number().int().positive() }),
   /** One offer per store, its lowest price for that product, cheapest first. */
   offers: z.array(PriceRowSchema).min(1),
+  /** The same product at big stores (multitiendas, pharmacies...), one per store, cheapest first: shown for comparison, outside the pyme order. */
+  reference: z.array(PriceRowSchema).default([]),
 });
 export type ProductGroup = z.infer<typeof ProductGroupSchema>;
 
@@ -75,7 +77,7 @@ const slugOf = (k: ProductKey) => [k.house, k.name, k.concentration, `${k.ml}ml`
  * the group of the same name and size only when that name has a single
  * concentration: "Khamrah 100ml" is the EDP when no store sells another.
  */
-export function matchProducts(rows: readonly PriceRow[], minStores = 3): ProductGroup[] {
+export function matchProducts(rows: readonly PriceRow[], minStores = 3, bigRows: readonly PriceRow[] = []): ProductGroup[] {
   const keyed = rows.map((row) => ({ row, key: productKey(row) })).filter((x): x is { row: PriceRow; key: ProductKey } => x.key !== undefined);
   const base = (k: ProductKey) => `${k.house}|${k.name}|${k.ml}`;
   const concentrations = new Map<string, Set<string>>();
@@ -94,9 +96,26 @@ export function matchProducts(rows: readonly PriceRow[], minStores = 3): Product
     if (prev === undefined || row.price < prev.price) g.byStore.set(row.storeId, row);
     groups.set(id, g);
   }
+  // Big stores only join a product the pyme stores already make a page for, by the same key and the same concentration rule.
+  const reference = new Map<string, Map<string, PriceRow>>();
+  for (const row of bigRows) {
+    let k = productKey(row);
+    if (k === undefined) continue;
+    if (k.concentration === "") {
+      const known = concentrations.get(base(k));
+      if (known === undefined || known.size !== 1) continue;
+      k = { ...k, concentration: [...known][0]! };
+    }
+    const id = slugOf(k);
+    const byStore = reference.get(id) ?? new Map<string, PriceRow>();
+    const prev = byStore.get(row.storeId);
+    if (prev === undefined || row.price < prev.price) byStore.set(row.storeId, row);
+    reference.set(id, byStore);
+  }
+  const cheapestFirst = (a: PriceRow, b: PriceRow) => a.price - b.price || a.store.localeCompare(b.store);
   return [...groups]
     .filter(([, g]) => g.byStore.size >= minStores)
-    .map(([slug, g]) => ({ slug, key: g.key, offers: [...g.byStore.values()].sort((a, b) => a.price - b.price || a.store.localeCompare(b.store)) }))
+    .map(([slug, g]) => ({ slug, key: g.key, offers: [...g.byStore.values()].sort(cheapestFirst), reference: [...(reference.get(slug)?.values() ?? [])].sort(cheapestFirst) }))
     .sort((a, b) => b.offers.length - a.offers.length || a.slug.localeCompare(b.slug));
 }
 
@@ -132,6 +151,17 @@ const median = (xs: readonly number[]) => {
 export const PRODUCT_ORDER_RULE = "Ordenadas del precio más bajo al más alto; a igual precio, por nombre de la tienda. El orden no depende de ninguna relación con las tiendas.";
 export const MATCH_RULE = "Contamos como el mismo producto los que tienen el mismo nombre, la misma concentración (EDP, EDT, Extrait) y el mismo tamaño, sin importar cómo lo escribe cada tienda. No contamos decants, testers, sets ni body mists, ni los perfumes que el nombre solo menciona como referencia (\"inspirado en…\").";
 
+export const BIG_RULE = "Las tiendas grandes (multitiendas y cadenas de farmacias y perfumerías) van aparte, solo para comparar: leemos las páginas de estos perfumes en su sitemap público, respetando su robots.txt, y las que nos bloquean no aparecen.";
+
+/** One line comparing the cheapest pyme store with the cheapest big store. */
+function bigSummary(pymeLow: number, big: PriceRow): string {
+  const d = big.price - pymeLow;
+  if (d === 0) return `La más barata, ${escapeHtml(big.store)}, lo tiene al mismo precio que la tienda con sitio propio más barata.`;
+  return d > 0
+    ? `La más barata, ${escapeHtml(big.store)}, lo vende a ${clp(big.price)}: ${clp(d)} más que la tienda con sitio propio más barata.`
+    : `La más barata, ${escapeHtml(big.store)}, lo vende a ${clp(big.price)}: ${clp(-d)} menos que la tienda con sitio propio más barata.`;
+}
+
 /** The page of one product across stores: plain HTML, schema.org Product with an AggregateOffer. */
 /** The newest reading among a product's offers: the date the page shows as its update. */
 export const productUpdated = (g: ProductGroup): string => g.offers.map((o) => o.readAt).sort().at(-1)!;
@@ -156,7 +186,11 @@ export function productHtml(g: ProductGroup, today = productUpdated(g)): string 
     },
   };
   const rows = g.offers.map((o, i) => `<tr><td><a href="${escapeHtml(o.url)}">${escapeHtml(o.store)}</a>${i === 0 ? ' <span class="best">más barato</span>' : ""}<br><span class="muted">${escapeHtml(o.domain)}</span></td><td class="price">${clp(o.price)}${o.before === undefined ? "" : `<br><span class="muted"><s>${clp(o.before)}</s></span>`}</td><td><time datetime="${o.readAt}">${longDate(o.readAt)}</time></td></tr>`).join("");
-  const titles = g.offers.map((o) => `<li>${escapeHtml(o.store)}: ${escapeHtml(o.title)}</li>`).join("");
+  const titles = [...g.offers, ...g.reference].map((o) => `<li>${escapeHtml(o.store)}: ${escapeHtml(o.title)}</li>`).join("");
+  const bigRows = g.reference.map((o) => `<tr><td><a href="${escapeHtml(o.url)}">${escapeHtml(o.store)}</a><br><span class="muted">${escapeHtml(o.domain)}</span></td><td class="price">${clp(o.price)}${o.before === undefined ? "" : `<br><span class="muted"><s>${clp(o.before)}</s></span>`}</td><td><time datetime="${o.readAt}">${longDate(o.readAt)}</time></td></tr>`).join("");
+  const big = g.reference.length === 0 ? "" : `<h2 id="tiendas-grandes">En tiendas grandes, para comparar</h2>
+<p>${g.reference.length === 1 ? "Una tienda grande lo vende" : `${g.reference.length} tiendas grandes lo venden`} con stock. ${bigSummary(low, g.reference[0]!)} No entran al orden de arriba, que es solo de tiendas con sitio propio.</p>
+<div class="table-wrap"><table><thead><tr><th>Tienda grande</th><th>Precio</th><th>Leído el</th></tr></thead><tbody>${bigRows}</tbody></table></div>`;
   return `${pageHead(`${name}: precio en ${g.offers.length} tiendas de Chile (${today.slice(0, 4)}) · AgentPey`, description, pageUrl, jsonLd)}
 <body>
 <main>
@@ -166,11 +200,12 @@ export function productHtml(g: ProductGroup, today = productUpdated(g)): string 
 <p class="note">${escapeHtml(DISCLOSURE)}</p>
 <div class="table-wrap"><table><thead><tr><th>Tienda</th><th>Precio</th><th>Leído el</th></tr></thead><tbody>${rows}</tbody></table></div>
 <p><strong>Cómo están ordenadas.</strong> ${escapeHtml(PRODUCT_ORDER_RULE)}</p>
+${big}
 <p class="muted">Son los precios que cada tienda publicaba el día que leímos su catálogo. Pueden haber cambiado: confírmalos en la tienda antes de comprar. Despacho y medios de pago no están incluidos.</p>
 ${searchForm()}
 <h2 id="metodologia">Metodología</h2>
 <ul>
-<li><strong>Qué tiendas entran.</strong> Tiendas online chilenas con sitio propio de las listas públicas de participantes de blackfriday.cl y cyber.cl, actuales y de ediciones anteriores, sin grandes tiendas, multitiendas ni marketplaces.</li>
+<li><strong>Qué tiendas entran.</strong> Tiendas online chilenas con sitio propio de las listas públicas de participantes de blackfriday.cl y cyber.cl, actuales y de ediciones anteriores, sin grandes tiendas, multitiendas ni marketplaces. ${escapeHtml(BIG_RULE)}</li>
 <li><strong>El mismo producto.</strong> ${escapeHtml(MATCH_RULE)} Así lo nombra cada tienda:<ul>${titles}</ul></li>
 <li><strong>Precios.</strong> En pesos chilenos, el más bajo de cada tienda para este producto el día de la lectura. No contamos productos agotados. "Antes" es el precio tachado que mostraba la tienda. ${escapeHtml(FRESHNESS_RULE)}</li>
 <li><strong>Relación con AgentPey.</strong> ${escapeHtml(DISCLOSURE)} Nadie paga por aparecer.</li>
