@@ -151,7 +151,7 @@ const median = (xs: readonly number[]) => {
 export const PRODUCT_ORDER_RULE = "Ordenadas del precio más bajo al más alto; a igual precio, por nombre de la tienda. El orden no depende de ninguna relación con las tiendas.";
 export const MATCH_RULE = "Contamos como el mismo producto los que tienen el mismo nombre, la misma concentración (EDP, EDT, Extrait) y el mismo tamaño, sin importar cómo lo escribe cada tienda. No contamos decants, testers, sets ni body mists, ni los perfumes que el nombre solo menciona como referencia (\"inspirado en…\").";
 
-export const BIG_RULE = "Las tiendas grandes (multitiendas y cadenas de farmacias y perfumerías) van aparte, solo para comparar: leemos las páginas de estos perfumes en su sitemap público, respetando su robots.txt, y las que nos bloquean no aparecen.";
+export const BIG_RULE = "Las tiendas grandes (multitiendas y cadenas de farmacias y perfumerías) van aparte, solo para comparar: leemos las páginas de estos perfumes en su sitemap público, respetando su robots.txt, y las que nos bloquean no aparecen. En algunas de ellas el vendedor puede ser un tercero que vende en su sitio.";
 
 /** One line comparing the cheapest pyme store with the cheapest big store. */
 function bigSummary(pymeLow: number, big: PriceRow): string {
