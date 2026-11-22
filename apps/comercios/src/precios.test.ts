@@ -6,7 +6,7 @@ import { openDb } from "./db.js";
 import { DISCLOSURE, guidesIndexHtml, sitemapXml } from "./guia.js";
 import { brandsIndexHtml } from "./marcas.js";
 import type { Product } from "./model.js";
-import { buildPriceRows, COUNT_CAP, MAX_TERMS, ownName, PriceRowSchema, SEARCH_ORDER_RULE, searchHtml, searchJson, searchTerms, searchText, searchUrl } from "./precios.js";
+import { buildPriceRows, COUNT_CAP, MAX_PRICE_CLP, MAX_TERMS, ownName, plausiblePrice, PriceRowSchema, SEARCH_ORDER_RULE, searchHtml, searchJson, searchTerms, searchText, searchUrl } from "./precios.js";
 import { importPrices, migrate, pgStore, sqliteStore, type Queryable } from "./store.js";
 
 const tienda = (id: string, over: Partial<Tienda> = {}): Tienda => ({
@@ -36,6 +36,8 @@ const inputs = [
     { title: "Perfume Khamrah 100ml", brand: "Lattafa", price: 21990, url: "https://dos.cl/p/100" },
     { title: "Yara 150ml", brand: "Lattafa", price: 30000 },
     { title: "Mal enlace", price: 50, url: "javascript:alert(1)" },
+    { title: "Khamrah mal leído", price: 9_999_999_000_000 },
+    { title: "Khamrah consultar", price: 9_999_999 },
   ]),
   input(tienda("piloto", { sources: ["piloto"] }), [{ title: "Khamrah 100 ml", price: 1000 }]),
   input(tienda("grande", { segment: "grande" }), [{ title: "Khamrah 100 ml", price: 900 }]),
@@ -49,6 +51,8 @@ describe("what the price search holds", () => {
     expect(rows.some((r) => r.row.storeId === "piloto" || r.row.storeId === "grande")).toBe(false);
     expect(k.find((r) => r.row.price === 25990)!.row).toMatchObject({ before: 32990, readAt: "2026-11-18", domain: "uno.cl" });
     expect(rows.some((r) => r.row.url.startsWith("javascript"))).toBe(false);
+    expect(rows.some((r) => r.row.price > MAX_PRICE_CLP || r.row.price === 9_999_999)).toBe(false);
+    expect(plausiblePrice(53_990_000)).toBe(true);
     expect(() => PriceRowSchema.parse({ ...k[0]!.row, url: "javascript:alert(1)" })).toThrow();
   });
 

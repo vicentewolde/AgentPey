@@ -18,6 +18,15 @@ export const MAX_TERMS = 6;
 export const SEARCH_ORDER_RULE = "Ordenados del precio más bajo al más alto; a igual precio, en el orden de las guías. El orden no depende de ninguna relación con las tiendas.";
 /** Matches are counted up to this many: past it the page says "más de". */
 export const COUNT_CAP = 1000;
+/**
+ * Prices the search believes: above this (CLP) a reading is a misread, not a
+ * price (one store came back a million times too high), and a row of nines is
+ * a placeholder some stores use for "ask us".
+ */
+export const MAX_PRICE_CLP = 500_000_000;
+export function plausiblePrice(price: number): boolean {
+  return price > 0 && price <= MAX_PRICE_CLP && !/^9{6,}$/.test(String(Math.round(price)));
+}
 
 export const PriceRowSchema = z.object({
   storeId: z.string(),
@@ -70,7 +79,7 @@ export function buildPriceRows(inputs: readonly GuideInput[]): { row: PriceRow; 
     // One row per address, at its lowest price: the page promises "el precio más bajo de cada producto".
     const cheapest = new Map<string, (typeof input.products)[number]>();
     for (const p of input.products) {
-      if (p.price === undefined || !(p.price > 0) || p.available === false || !/^https?:\/\//.test(p.url)) continue;
+      if (p.price === undefined || !plausiblePrice(p.price) || p.available === false || !/^https?:\/\//.test(p.url)) continue;
       const prev = cheapest.get(p.url);
       if (prev === undefined || p.price < prev.price!) cheapest.set(p.url, p);
     }
