@@ -201,7 +201,7 @@ function brandJsonLd(p: BrandPage, pageUrl: string): unknown {
   };
 }
 
-function head(title: string, description: string, canonical: string, jsonLd?: unknown): string {
+export function pageHead(title: string, description: string, canonical: string, jsonLd?: unknown): string {
   return `<!doctype html>
 <html lang="es-CL">
 <head>
@@ -233,7 +233,7 @@ export function brandHtml(p: BrandPage, guides: readonly { slug: string; shortTi
 <ul class="facts">${s.offers.map((o) => `<li><a href="${escapeHtml(o.url)}">${escapeHtml(o.title)}</a>: <span class="price">${clp(o.price)}</span>${o.before === undefined ? "" : ` <span class="muted">(antes ${clp(o.before)})</span>`}</li>`).join("")}</ul>
 <p class="muted">Catálogo leído el <time datetime="${s.readAt}">${longDate(s.readAt)}</time>.</p></li>`).join("\n");
   const guideLinks = guides.map((g) => `<a href="${escapeHtml(guideUrl(g.slug))}">${escapeHtml(g.shortTitle)}</a>`).join(" · ");
-  return `${head(`${p.brand} en Chile: dónde comprar y precios por tienda (${p.updatedAt.slice(0, 4)}) · AgentPey`, description, pageUrl, brandJsonLd(p, pageUrl))}
+  return `${pageHead(`${p.brand} en Chile: dónde comprar y precios por tienda (${p.updatedAt.slice(0, 4)}) · AgentPey`, description, pageUrl, brandJsonLd(p, pageUrl))}
 <body>
 <main>
 <p class="eyebrow"><a href="${escapeHtml(brandUrl())}">Marcas</a> · actualizada el <time datetime="${p.updatedAt}">${longDate(p.updatedAt)}</time></p>
@@ -285,7 +285,7 @@ export function brandsIndexHtml(brands: readonly BrandSummary[]): string {
   const updated = sorted.map((b) => b.updatedAt).sort().at(-1);
   const body = [...groups.entries()].map(([letter, bs]) => `<h2 id="${letter === "#" ? "num" : letter}">${letter}</h2>
 <ul>${bs.map((b) => `<li><a href="${escapeHtml(brandUrl(b.slug))}">${escapeHtml(b.brand)}</a> <span class="muted">${b.stores} tiendas · desde ${clp(b.priceMin)}</span></li>`).join("")}</ul>`).join("\n");
-  return `${head("Marcas en tiendas online de Chile: dónde comprar y a qué precio · AgentPey", `${num(brands.length)} marcas que venden dos o más tiendas online chilenas, con el precio de cada tienda, de sus catálogos públicos.`, brandUrl())}
+  return `${pageHead("Marcas en tiendas online de Chile: dónde comprar y a qué precio · AgentPey", `${num(brands.length)} marcas que venden dos o más tiendas online chilenas, con el precio de cada tienda, de sus catálogos públicos.`, brandUrl())}
 <body>
 <main>
 <p class="eyebrow"><a href="${escapeHtml(guideUrl())}">Guías AgentPey</a>${updated === undefined ? "" : ` · actualizada el <time datetime="${updated}">${longDate(updated)}</time>`}</p>
