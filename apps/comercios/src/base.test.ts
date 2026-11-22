@@ -120,6 +120,7 @@ describe("the comparison by rubro and the sheet", () => {
 describe("the plan's usage limit", () => {
   it("is told apart from any other failed run", () => {
     expect(cliError({ subtype: "success", result: "You've hit your limit · resets 2:10am" })).toBeInstanceOf(UsageLimitError);
+    expect(cliError({ subtype: "success", result: "You've hit your 5-hour limit · resets 3:10am (America/Santiago)" })).toBeInstanceOf(UsageLimitError);
     expect(cliError({ subtype: "error_max_turns", result: "" })).not.toBeInstanceOf(UsageLimitError);
   });
 });

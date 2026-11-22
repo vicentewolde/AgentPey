@@ -84,7 +84,7 @@ export class UsageLimitError extends Error {
   }
 }
 
-export const LIMIT_TEXT = /usage limit|hit your limit|limit reached|rate limit|limit will reset|resets? (at|in)|quota|out of (extra )?usage|límite de uso/i;
+export const LIMIT_TEXT = /usage limit|hit your (\S+ )?limit|limit reached|rate limit|limit will reset|resets? (at|in|\d)|quota|out of (extra )?usage|límite de uso/i;
 
 /** The error to raise for a failed `claude -p` run: the CLI's own message, and a UsageLimitError when it is the plan's limit. */
 export function cliError(r: { subtype?: string; result?: string }): Error {

@@ -9707,3 +9707,14 @@ Qué:
 Por qué: es el primer paso de la meta de Vicente de que las IAs consulten a AgentPey por el precio más bajo. Es público y de solo lectura, fuera del servidor MCP de compras (que maneja pagos y tiene trabajo en curso de la Fase 10).
 
 Pendiente: un servidor MCP público de solo lectura que use esta búsqueda; comparar el mismo producto por nombre y tamaño.
+
+---
+
+## 2026-11-22 — cc/turno-noche
+Agente: Claude Code
+
+Qué: turno de noche (`apps/comercios/scripts/noche.sh`, timer `agentpey-noche`, sin activar) que usa el cupo libre del plan con `claude -p`; su primera tarea es `base politicas`: despacho, cambios, garantía y medios de pago de cada tienda pública, con una cita por dato, guardados como "propuesta" (no se publica nada). Registra cada tienda probada en `policy_attempts` y termina el log con minutos, consultas por hora y motivo de término.
+
+Por qué: Vicente quiere aprovechar el cupo que no usa para alimentar la base; leer catálogos no usa Claude (lo hace el job semanal), las políticas sí. Coordinado con la sesión guia-publica: ella se queda con fuentes nuevas de tiendas y con emparejar productos (rama `cc/visitas-robots`); este turno no toma `semanal.lock` durante la corrida porque el semanal se saltaría, espera si el semanal está corriendo.
+
+Pendiente: la primera corrida, sin tope hasta agotar la ventana de 5 h, cuando Vicente avise, para estimar cuánto rinde una ventana; después fijar el tope y activar el timer desde `origin/main`. Decidir si las políticas se muestran en las guías públicas ("según su sitio, revisado el <fecha>"). `tsc` de `apps/comercios` ya fallaba en main (`base-cli.ts`, `informeHtml` con `lastGoodRun`), no es de esta rama.
