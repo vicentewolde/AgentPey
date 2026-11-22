@@ -26,6 +26,7 @@ import type { Analysis } from "./entender.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { GUIDE_ORIGIN, GUIDE_PATH, GUIDE_RUBROS, guideHtml, guidesIndexHtml, INDEXNOW_KEY, robotsTxt, sitemapXml } from "./guia.js";
 import { brandHtml, brandsIndexHtml } from "./marcas.js";
+import { handlePublicMcp, PUBLIC_MCP_PATH, siteLlmsTxt } from "./ias.js";
 import { SEARCH_LIMIT, searchHtml, searchJson, searchTerms, type PriceRow } from "./precios.js";
 import { createLlm } from "./llm.js";
 import { AI_SOURCES, snippet, summarize, type MeasureEvent, type Source } from "./medir.js";
@@ -93,6 +94,14 @@ function searchLimited(ip: string, now = Date.now()): boolean {
   return recent.length >= SEARCHES_PER_HOUR;
 }
 const searchCache = new Map<string, { total: number; rows: PriceRow[] }>();
+async function cachedSearch(terms: readonly string[]): Promise<{ total: number; rows: PriceRow[] }> {
+  const key = terms.join(" ");
+  const kept = searchCache.get(key);
+  if (kept !== undefined) return kept;
+  const found = await data.searchPrices(terms, SEARCH_LIMIT);
+  rememberSearch(key, found);
+  return found;
+}
 function rememberSearch(key: string, found: { total: number; rows: PriceRow[] }): void {
   if (searchCache.size >= 500) searchCache.delete(searchCache.keys().next().value!);
   searchCache.set(key, found);
@@ -233,6 +242,45 @@ const server = createServer(async (req, res) => {
     const read = req.method === "GET" || req.method === "HEAD";
     const publicPage = { "cache-control": "public, max-age=3600" };
     if (read && path === "/robots.txt") return send(res, 200, "text/plain; charset=utf-8", robotsTxt(), publicPage);
+    if (read && path === "/llms.txt") {
+      const guides = await data.guides();
+      return send(res, 200, "text/plain; charset=utf-8", siteLlmsTxt(guides.map((g) => ({ slug: g.slug, title: g.title, stores: g.stores.length })), (await data.brandSummaries()).length), publicPage);
+    }
+    // The public MCP server (ias.ts): read-only, no account, answers from any origin.
+    if (path === PUBLIC_MCP_PATH) {
+      const cors = { "access-control-allow-origin": "*", "access-control-allow-methods": "POST, OPTIONS", "access-control-allow-headers": "content-type, accept, mcp-protocol-version, mcp-session-id", "access-control-expose-headers": "mcp-session-id" };
+      if (req.method === "OPTIONS") {
+        res.writeHead(204, { ...cors, "access-control-max-age": "86400" });
+        return res.end();
+      }
+      // No server-to-client stream: GET is not offered (the spec's answer is 405).
+      if (req.method !== "POST") return send(res, 405, "text/plain; charset=utf-8", `Servidor MCP (Streamable HTTP): envía JSON-RPC por POST a ${GUIDE_ORIGIN}${PUBLIC_MCP_PATH}`, { ...cors, allow: "POST, OPTIONS" });
+      let body: unknown;
+      try {
+        body = await readBody(req, 16_000);
+      } catch {
+        return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "JSON inválido" } }), cors);
+      }
+      const ip = clientIp(req);
+      let limitedNow = false;
+      const deps = {
+        search: async (terms: readonly string[]) => {
+          if (searchLimited(ip)) {
+            limitedNow = true;
+            return { total: 0, rows: [] };
+          }
+          return cachedSearch(terms);
+        },
+      };
+      const msgs = (Array.isArray(body) ? body : [body]).slice(0, 10);
+      const answers = (await Promise.all(msgs.map((m) => handlePublicMcp(deps, m)))).filter((a) => a !== undefined);
+      if (limitedNow) return send(res, 429, "application/json; charset=utf-8", JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32000, message: "Demasiadas búsquedas seguidas; prueba de nuevo en un rato" } }), { ...cors, "retry-after": "600" });
+      if (answers.length === 0) {
+        res.writeHead(202, cors);
+        return res.end();
+      }
+      return send(res, 200, "application/json; charset=utf-8", JSON.stringify(Array.isArray(body) ? answers : answers[0]), cors);
+    }
     // The guides: published at agentpey.com/chile (the gateway routes those paths here, GUIDE_ORIGIN).
     const guidePath = path === GUIDE_PATH || path.startsWith(`${GUIDE_PATH}/`);
     if (read && guidePath && isAgentpeySubdomain(req.headers.host)) {
@@ -263,12 +311,7 @@ const server = createServer(async (req, res) => {
       if (terms.length > 0 && searchLimited(clientIp(req))) {
         return send(res, 429, asJson ? "application/json; charset=utf-8" : "text/plain; charset=utf-8", asJson ? JSON.stringify({ error: "Demasiadas búsquedas seguidas; prueba de nuevo en un rato" }) : "Demasiadas búsquedas seguidas; prueba de nuevo en un rato", { "retry-after": "600" });
       }
-      const key = terms.join(" ");
-      let found = terms.length === 0 ? { total: 0, rows: [] } : searchCache.get(key);
-      if (found === undefined) {
-        found = await data.searchPrices(terms, SEARCH_LIMIT);
-        rememberSearch(key, found);
-      }
+      const found = terms.length === 0 ? { total: 0, rows: [] } : await cachedSearch(terms);
       const result = { query: q, terms, ...found };
       if (asJson) return send(res, 200, "application/json; charset=utf-8", JSON.stringify(searchJson(result)), results);
       return send(res, 200, "text/html; charset=utf-8", searchHtml(q === "" ? undefined : result), q === "" ? publicPage : results);

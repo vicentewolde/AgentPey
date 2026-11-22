@@ -115,6 +115,21 @@ indexed; the empty page is in the sitemap. `base guia` builds its rows and
 curl "https://agentpey.com/chile/buscar?q=khamrah%20100ml&formato=json"
 ```
 
+### For AI assistants: llms.txt and a public MCP server
+
+`agentpey.com/llms.txt` lists the guides, the brand pages, the price search and
+its JSON, with the rules every page follows; `agentpey.com/robots.txt` points
+crawlers to the guides' sitemap (the gateway sends both paths here). The price
+search is also a public MCP server at `agentpey.com/chile/mcp` (`ias.ts`):
+read-only, no account, stateless Streamable HTTP answering plain JSON, one tool,
+`buscar_precios`. It is not AgentPey's paying MCP server (`apps/mcp`): it holds no
+keys, records no clicks and links straight to each store. It shares the search's
+limit of 300 searches per IP and hour.
+
+```bash
+curl -s -X POST https://agentpey.com/chile/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buscar_precios","arguments":{"consulta":"khamrah 100 ml","max":5}}}'
+```
+
 ### Weekly refresh
 
 Every Sunday night a systemd user timer re-reads every public catalogue,

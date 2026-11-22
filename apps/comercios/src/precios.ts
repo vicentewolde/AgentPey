@@ -145,7 +145,7 @@ ${body}
 <li><strong>Búsqueda.</strong> Un producto aparece si su nombre o su marca contiene todas las palabras buscadas, sin importar tildes ni mayúsculas. Cada palabra tiene que estar al comienzo de una palabra del nombre: "50ml" no encuentra "150ml". No cuenta lo que el nombre solo menciona como referencia ("inspirado en…").</li>
 <li><strong>Orden.</strong> ${escapeHtml(SEARCH_ORDER_RULE)}</li>
 <li><strong>Relación con AgentPey.</strong> ${escapeHtml(DISCLOSURE)} Nadie paga por aparecer.</li>
-<li><strong>Para programas.</strong> Agrega <code>&amp;formato=json</code> a la dirección para recibir los mismos resultados en JSON.</li>
+<li><strong>Para programas.</strong> Agrega <code>&amp;formato=json</code> a la dirección para recibir los mismos resultados en JSON. Para asistentes de IA hay un servidor MCP público, solo lectura y sin cuenta, en <code>${escapeHtml(guideUrl("mcp"))}</code> (herramienta <code>buscar_precios</code>).</li>
 </ul>
 <footer><p>Hecha por <a href="https://agentpey.com">AgentPey</a> con datos públicos.</p></footer>
 </main>

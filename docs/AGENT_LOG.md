@@ -9646,6 +9646,22 @@ Por qué: un precio viejo citado por una IA rompe la confianza en "el precio má
 
 Pendiente: dejar el worktree `~/agentes/AgentPay-worktrees/semanal` y el timer instalados después del merge; revisar el primer log en `~/agentes/datos-comercios/semanal/`.
 
+## 2026-11-21 (noche) — cc/mcp-precios
+
+Agente: Claude Code
+
+Qué:
+- `cc/buscador-precios` (PR #126) fusionado con OK explícito de Vicente; `prod:check` 9/9 antes y después. Al cargarlo, una tienda (cy-prune) traía precios un millón de veces más altos y desbordó la columna: el buscador ahora deja fuera precios sobre $500 millones y los "9999999" (commit `794ca5c`). 131.315 filas publicadas; IndexNow 200.
+- Primera corrida del job semanal OK: 333 tiendas leídas, 1 con la lectura anterior, 8 sin leer, 2 h 12 min.
+- Vicente pidió que el objetivo sea que las IAs recomienden el sitio solas (búsqueda dentro de la IA), no que la gente conecte un MCP.
+- `agentpey.com/robots.txt` y `agentpey.com/llms.txt` daban 404: el gateway ahora manda esas dos rutas a comercios, que sirve el robots.txt con el sitemap y un llms.txt del sitio (`ias.ts`).
+- Servidor MCP público en `agentpey.com/chile/mcp` (`ias.ts`): solo lectura, sin cuenta, Streamable HTTP en modo JSON, herramienta `buscar_precios`. Separado del MCP que paga (`apps/mcp`): sin claves ni clics.
+
+Pendiente:
+- Lo que más pesa para que las IAs citen el sitio: páginas indexables por producto ("precio de X en Chile, en N tiendas"), que necesitan reconocer el mismo producto entre tiendas.
+- Revisar por qué cy-prune se lee mal.
+- Directorios de MCP: requieren cuenta; queda para Vicente.
+
 ## 2026-11-21 (tarde) — cc/buscador-precios
 
 Agente: Claude Code

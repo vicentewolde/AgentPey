@@ -342,14 +342,17 @@ export function isStoreSubdomain(host: string, vitrineeHost: string): boolean {
  * the address search engines and AI assistants weigh most. The one rule that
  * routes by path, and as narrow as it can be: `/chile`, `/chile/<slug>`,
  * `/chile/marcas`, `/chile/marcas/<slug>`, `/chile/sitemap.xml` and the IndexNow key file, whole path compared, no `..` or encoded characters
- * (so no `/chile/../api`). Anything else on the main domain stays with the web app.
+ * (so no `/chile/../api`). `/chile/buscar` and the public MCP server `/chile/mcp` are slugs too.
+ * Plus the domain's `/robots.txt` and `/llms.txt`, which crawlers and AI assistants read first:
+ * they point to the guides and their sitemap. Anything else on the main domain stays with the web app.
  */
 const SLUG = "[a-z0-9]+(?:-[a-z0-9]+)*";
 const GUIDE_PATH = new RegExp(`^/chile(?:/(?:${SLUG}|sitemap\\.xml|[a-f0-9]{32}\\.txt|marcas(?:/${SLUG})?))?/?$`);
 
 export function isGuidePath(url: string | undefined): boolean {
   if (url === undefined) return false;
-  return GUIDE_PATH.test(url.split(/[?#]/, 1)[0] ?? "");
+  const path = url.split(/[?#]/, 1)[0] ?? "";
+  return path === "/robots.txt" || path === "/llms.txt" || GUIDE_PATH.test(path);
 }
 
 /**

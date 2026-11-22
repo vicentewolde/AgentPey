@@ -86,6 +86,11 @@ describe("resolveTarget", () => {
       expect(resolveTarget(hostMap, "attacker.example", undefined, "/chile")).toBeUndefined();
       expect(isGuidePath("/chile/sitemap.xml")).toBe(true);
       expect(isGuidePath("/chile/sitemap.xml.bak")).toBe(false);
+      expect(isGuidePath("/robots.txt")).toBe(true);
+      expect(isGuidePath("/llms.txt")).toBe(true);
+      expect(isGuidePath("/chile/mcp")).toBe(true);
+      expect(isGuidePath("/robots.txt/x")).toBe(false);
+      expect(isGuidePath("/llms-full.txt")).toBe(false);
     });
   });
 
