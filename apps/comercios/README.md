@@ -130,6 +130,26 @@ limit of 300 searches per IP and hour.
 curl -s -X POST https://agentpey.com/chile/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buscar_precios","arguments":{"consulta":"khamrah 100 ml","max":5}}}'
 ```
 
+### The same product across stores (pilot: Arabic perfumes)
+
+`agentpey.com/chile/productos/<slug>` shows one perfume, concentration and size
+with every public store's price, cheapest first (`productos.ts`). Titles match
+only when their name words are identical once store filler is left out, so
+Khamrah, Khamrah Qahwa and Khamrah Dukhan stay apart; decants, testers, sets
+and body mists are out; a page needs three stores. `base guia` builds them and
+`setup-postgres --guias` publishes them.
+
+### Stores from past editions of cyber.cl
+
+The Internet Archive keeps cyber.cl's participant lists of past events. Save a
+copy (`http://web.archive.org/web/<timestamp>id_/https://cyber.cl/`) and add
+its stores, marked `cyber-anterior` (the guides say "ediciones anteriores de
+cyber.cl"):
+
+```bash
+npx tsx src/cli.ts base cyber --archivo cyber-20241106233741.html cyber-20260606111449.html
+```
+
 ### Who reads the guides
 
 Each public page (`/chile...`, `/robots.txt`, `/llms.txt`) counts, per day,

@@ -9657,6 +9657,11 @@ Qué:
 - Revisión del subagente `revisor`: un bloqueante, arreglado: solo se cuentan páginas servidas (200 o 304), con segmentos de hasta 80 caracteres, así nadie puede inventar rutas para llenar memoria y tabla. También: `cf-connecting-ip` solo en modo PUBLIC (Render), cierre con tope de 5 s, cada guardado en una sola sentencia.
 - Límite por IP: con un `x-forwarded-for` falso distinto en cada pedido, 305 búsquedas pasaron sin 429; sin él, el 429 llegó en la 300. Render sirve por Cloudflare: ahora se usa `cf-connecting-ip` (solo con PUBLIC=1), y si falta, la última entrada de `x-forwarded-for`.
 
+- Vicente pidió publicar guías de todos los rubros, seguir con la prueba de productos y las fuentes, y un solo merge al final. 10 rubros nuevos (133 → 284 tiendas en 13 guías), publicados tras el job semanal del 22-nov con el código de esta rama (producción las sirve igual: lee las guías de la base).
+- Páginas por producto, piloto de perfumes árabes (`productos.ts`): 200 perfumes en 3+ tiendas, en `/chile/productos`.
+- Fuentes nuevas: cyber.cl archivado en el Internet Archive (CyberDay y CyberMonday 2024–2026): 577 dominios que no estaban. blackfriday.cl y PymeDay archivados no traen la lista en el HTML (la cargan con JavaScript). Las tiendas se marcan `cyber-anterior`.
+- Coordinado con la sesión startup-chile (bf-base-datos): no escribe tiendas ni catálogos; su turno de noche (`cc/turno-noche`) escribe políticas con estado "propuesta" y reintenta en SQLITE_BUSY. Avisó que las políticas "propuesta" del piloto ya se sirven en el `/mcp` del panel sin filtrar por estado (preexistente; lo va a ver con Vicente).
+
 Pendiente:
 - Después del despliegue: repetir la prueba de la cabecera falsa (esperar una hora sin buscar, porque mi IP quedó en el límite) y leer el primer informe de visitas.
 - Prueba de páginas por producto para perfumes árabes.
