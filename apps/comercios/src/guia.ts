@@ -77,7 +77,7 @@ export const GuideStoreSchema = z.object({
   onSale: z.number().int().nonnegative(),
   categories: z.array(z.string()),
   brands: z.array(z.string()),
-  lists: z.array(z.enum(["blackfriday", "cyber"])),
+  lists: z.array(z.enum(["blackfriday", "cyber", "cyber-anterior"])),
 });
 export type GuideStore = z.infer<typeof GuideStoreSchema>;
 
@@ -175,7 +175,9 @@ export function guideStore(input: GuideInput): GuideStore | undefined {
   if (readAt === undefined || t.origin === undefined || t.domain === undefined) return undefined;
   const prices = products.map((p) => p.price).filter((x): x is number => x !== undefined && x > 0).sort((a, b) => a - b);
   if (prices.length < MIN_PRICED) return undefined;
-  const lists = (t.sources ?? ["blackfriday"]).filter((s): s is "blackfriday" | "cyber" => s === "blackfriday" || s === "cyber");
+  const named = (t.sources ?? ["blackfriday"]).filter((s): s is GuideList => s === "blackfriday" || s === "cyber" || s === "cyber-anterior");
+  // On this year's cyber.cl list, a past edition adds nothing to say.
+  const lists = named.includes("cyber") ? named.filter((s) => s !== "cyber-anterior") : named;
   const min = products.length >= 40 ? 2 : 1;
   return {
     id: t.id, name: t.name.trim(), url: `${t.origin}/`, domain: t.domain.replace(/^www\./, ""),
@@ -315,7 +317,8 @@ function joinEs(xs: readonly string[]): string {
   return xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} y ${xs.at(-1)}`;
 }
 
-const LIST_NAMES: Record<"blackfriday" | "cyber", string> = { blackfriday: "blackfriday.cl", cyber: "cyber.cl" };
+type GuideList = GuideStore["lists"][number];
+const LIST_NAMES: Record<GuideList, string> = { blackfriday: "blackfriday.cl", cyber: "cyber.cl", "cyber-anterior": "ediciones anteriores de cyber.cl" };
 
 /**
  * Where the guides are published: the main domain, one folder per country

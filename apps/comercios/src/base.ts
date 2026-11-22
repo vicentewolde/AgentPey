@@ -170,7 +170,8 @@ export interface Tienda {
   readonly bfSlug: string;
   readonly bfLink: string;
   /** Where the store came from: blackfriday.cl (the default), cyber.cl or the pilot. */
-  readonly sources?: readonly ("blackfriday" | "cyber" | "piloto")[];
+  /** "cyber-anterior": a past edition's list of cyber.cl, read from the Internet Archive's public copy. */
+  readonly sources?: readonly ("blackfriday" | "cyber" | "cyber-anterior" | "piloto")[];
   /** Public contact addresses found on the store's own pages, with the page each came from. */
   readonly emails?: readonly { email: string; page: string }[];
   readonly checkedAt?: string;

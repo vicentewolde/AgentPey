@@ -80,7 +80,7 @@ export async function baseCommand(db: Db, sub: string | undefined, rest: string[
   if (sub === "ingest") return ingest(db, fetcher, rest);
   if (sub === "diagnostico") return diagnostico(db, rest);
   if (sub === "piloto") return piloto(db);
-  if (sub === "cyber") return cyber(db, fetcher);
+  if (sub === "cyber") return cyber(db, fetcher, rest);
   if (sub === "ajustar") return ajustar(db);
   if (sub === "rubros") return rubros(db, rest);
   if (sub === "comparar" || sub === "fichas") return comparar(db, rest, sub === "fichas");
@@ -168,37 +168,60 @@ async function homeInfo(fetcher: Fetcher, domain: string): Promise<{ origin?: st
   return { notes };
 }
 
-async function cyber(db: Db, fetcher: Fetcher): Promise<void> {
-  const page = await fetcher.text("https://www.cyber.cl/");
-  if (page.status !== 200) throw new Error(`cyber.cl respondió ${page.status}`);
-  writeFileSync(`${BASE}cyber-${today()}.html`, page.body);
-  const entries = parseCyber(page.body);
+/**
+ * cyber.cl's brands into the base. With `--archivo <file.html> ...`, past
+ * editions' lists from the Internet Archive's copies of cyber.cl instead
+ * (http://web.archive.org/web/<timestamp>id_/https://cyber.cl/), marked
+ * "cyber-anterior": the guides say so, they never pass them as this year's.
+ */
+async function cyber(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> {
+  const files = rest.includes("--archivo") ? rest.slice(rest.indexOf("--archivo") + 1).filter((f) => !f.startsWith("--")) : [];
+  const source = files.length > 0 ? ("cyber-anterior" as const) : ("cyber" as const);
+  let entries: ReturnType<typeof parseCyber>;
+  if (files.length > 0) {
+    const seen = new Set<string>();
+    entries = files.flatMap((f) => parseCyber(readFileSync(f, "utf8"))).filter((e) => {
+      const d = hostOf(e.url.replace(/\\u0026/g, "&"));
+      if (d === undefined || seen.has(d)) return false;
+      seen.add(d);
+      return true;
+    });
+  } else {
+    const page = await fetcher.text("https://www.cyber.cl/");
+    if (page.status !== 200) throw new Error(`cyber.cl respondió ${page.status}`);
+    writeFileSync(`${BASE}cyber-${today()}.html`, page.body);
+    entries = parseCyber(page.body);
+  }
   const adj = ajustes();
   const known = loadTiendas(db);
-  let added = 0;
+  const added = new Set<string>();
   let merged = 0;
   await pool(entries, 6, async (e) => {
     const domain = hostOf(e.url.replace(/\\u0026/g, "&"));
     if (domain === undefined) return;
     const same = known.find((t) => t.domain !== undefined && t.domain.replace(/^www\./, "") === domain);
     if (same !== undefined) {
-      saveTienda(db, { ...same, sources: [...new Set([...(same.sources ?? ["blackfriday"]), "cyber" as const])] });
+      saveTienda(db, { ...same, sources: [...new Set([...(same.sources ?? ["blackfriday"]), source])] });
       merged++;
       return;
     }
-    const slug = `cy-${fold(e.name).slice(0, 30) || e.id}`;
+    // A new store never takes the id of another one with the same name.
+    const base = `cy-${fold(e.name).slice(0, 30) || e.id}`;
+    const taken = (id: string) => known.some((t) => t.id === id) || added.has(id);
+    let slug = base;
+    for (let i = 2; taken(slug); i++) slug = `${base}-${i}`;
+    added.add(slug);
     const r = cyberRubro(e.category);
     const segment: Segment = adj.segmento[slug] ?? (isBigMarket(domain) ? "grande" : r.segment);
     const info = segment === "pyme" ? await homeInfo(fetcher, domain) : { notes: [] as string[] };
     const t: Tienda = {
       id: slug, domain, origin: info.origin ?? `https://${domain}`, name: e.name, rubro: r.rubro, categories: [e.category],
-      platform: info.platform, segment, bfSlug: "", bfLink: e.url, sources: ["cyber"], checkedAt: new Date().toISOString(), notes: info.notes,
+      platform: info.platform, segment, bfSlug: "", bfLink: e.url, sources: [source], checkedAt: new Date().toISOString(), notes: info.notes,
     };
     saveTienda(db, t);
-    added++;
     console.log(`${slug.padEnd(28)} ${segment.padEnd(10)} ${(t.platform ?? "-").padEnd(12)} ${domain} · ${t.rubro}`);
   });
-  console.log(`\ncyber.cl: ${entries.length} marcas · ${added} nuevas en la base · ${merged} ya estaban (Black Friday)`);
+  console.log(`\ncyber.cl${files.length > 0 ? ` (${files.length} copias de ediciones anteriores)` : ""}: ${entries.length} marcas · ${added.size} nuevas en la base · ${merged} ya estaban`);
   writeFileSync(`${BASE}tiendas.json`, JSON.stringify(loadTiendas(db), null, 2));
 }
 

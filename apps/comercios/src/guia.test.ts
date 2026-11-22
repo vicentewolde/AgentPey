@@ -197,3 +197,15 @@ describe("measuring the guide", () => {
     expect(c.domains.map((d) => d.domain)).toEqual(expect.arrayContaining(["agentpey.com", "panel.agentpey.com"]));
   });
 });
+
+describe("a store from a past edition of cyber.cl", () => {
+  it("says so, and says nothing more when it is also on this year's list", () => {
+    const g = buildGuide(SALUD, [
+      input(tienda("antes", { sources: ["cyber-anterior"] }), 20),
+      input(tienda("ahora", { sources: ["cyber", "cyber-anterior"] }), 20),
+    ], "2026-11-22");
+    expect(g.stores.find((s) => s.id === "antes")!.lists).toEqual(["cyber-anterior"]);
+    expect(g.stores.find((s) => s.id === "ahora")!.lists).toEqual(["cyber"]);
+    expect(guideHtml(g, GUIDE_RUBROS)).toContain("Aparece en ediciones anteriores de cyber.cl.");
+  });
+});
