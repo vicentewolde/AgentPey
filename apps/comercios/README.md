@@ -170,7 +170,7 @@ npx tsx scripts/visitas.ts --env ~/agentes/AgentPay/.env.local --desde 2026-11-2
 
 Work that needs Claude runs at night with the subscription's spare usage
 (`claude -p`, never the paid API): `scripts/noche.sh`, from the same checkout
-as the weekly job, by the `agentpey-noche` user timer (00:30). Today its queue
+as the weekly job, by the `agentpey-noche` user timer (04:00 Santiago, stopping at 09:00). Today its queue
 has one task, `base politicas`: each public store's shipping, returns,
 warranty and payment pages, structured by Claude with a quote for every claim
 and saved as "propuesta" (nothing is published). Each store tried is recorded
@@ -181,7 +181,7 @@ night), at `NOCHE_HASTA` (HH:MM) or after `NOCHE_MAX` stores, and ends its log
 (`$COMERCIOS_DATA/noche/<day>.log`) with how long it ran, how many Claude
 calls it made per hour and why it stopped. Every session of the account shares
 the plan's limit: while it runs, and until the window resets, other sessions
-may hit the limit too. It does not start on Sunday before 06:00, and started
+may hit the limit too. It does not start on Sunday before 02:30 (on Sunday at 04:00 it waits for the weekly job), and started
 on a Saturday afternoon it stops at 23:50: the weekly job rewrites the price
 table in one long transaction. It waits for a running weekly job instead of
 starting next to it, does not hold `semanal.lock` itself (the weekly job would

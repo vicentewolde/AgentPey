@@ -6,7 +6,7 @@ Description=AgentPey: night shift, Claude work with the plan's spare usage (stor
 Type=oneshot
 Environment=PATH=%h/.local/bin:%h/.local/node/bin:%h/.local/npm-global/bin:/usr/local/bin:/usr/bin:/bin
 Environment=COMERCIOS_DATA=%h/agentes/datos-comercios
-Environment=NOCHE_HASTA=06:30
+Environment=NOCHE_HASTA=09:00
 ExecStart=%h/agentes/AgentPay-worktrees/semanal/apps/comercios/scripts/noche.sh
 Nice=10
 TimeoutStartSec=8h

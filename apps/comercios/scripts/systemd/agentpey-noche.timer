@@ -1,8 +1,8 @@
 [Unit]
-Description=AgentPey: night shift every night at 00:30
+Description=AgentPey: night shift every night at 04:00 (Santiago)
 
 [Timer]
-OnCalendar=*-*-* 00:30:00
+OnCalendar=*-*-* 04:00:00 America/Santiago
 Persistent=false
 
 [Install]

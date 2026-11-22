@@ -38,11 +38,12 @@ main() {
   trap 'echo "== $(date -Is) FALLÓ en la línea $LINENO"' ERR
   echo "== $(date -Is) turno de noche"
 
-  # Not on Sunday before 06:00: the weekly job (02:07) rewrites the price table in one long transaction.
+  # Not on Sunday before 02:30: the weekly job (02:07) may not hold its lock yet, and it rewrites the
+  # price table in one long transaction. From 02:30 on, the wait for semanal.lock below covers it.
   # Started on a Saturday afternoon or evening, it stops before midnight.
   # NOCHE_FORZAR=1 starts anyway (by hand, with Vicente's OK): its writes retry while the database is busy.
-  if [ "${NOCHE_FORZAR:-}" != "1" ] && [ "$(date +%u)" = 7 ] && [ "$(date +%-H)" -lt 6 ]; then
-    echo "domingo antes de las 06:00: es el turno de la actualización semanal, no parto"
+  if [ "${NOCHE_FORZAR:-}" != "1" ] && [ "$(date +%u)" = 7 ] && [ "$(date +%-H%M)" -lt 230 ]; then
+    echo "domingo antes de las 02:30: es el turno de la actualización semanal, no parto"
     exit 0
   fi
   if [ "$(date +%u)" = 6 ] && [ "$(date +%-H)" -ge 12 ]; then
