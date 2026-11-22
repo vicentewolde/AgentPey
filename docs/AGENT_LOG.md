@@ -9744,3 +9744,10 @@ Qué: turno de noche (`apps/comercios/scripts/noche.sh`, timer `agentpey-noche`,
 Por qué: Vicente quiere aprovechar el cupo que no usa para alimentar la base; leer catálogos no usa Claude (lo hace el job semanal), las políticas sí. Coordinado con la sesión guia-publica: ella se queda con fuentes nuevas de tiendas y con emparejar productos (rama `cc/visitas-robots`); este turno no toma `semanal.lock` durante la corrida porque el semanal se saltaría, espera si el semanal está corriendo.
 
 Pendiente: la primera corrida, sin tope hasta agotar la ventana de 5 h, cuando Vicente avise, para estimar cuánto rinde una ventana; después fijar el tope y activar el timer desde `origin/main`. Decidir si las políticas se muestran en las guías públicas ("según su sitio, revisado el <fecha>"). `tsc` de `apps/comercios` ya fallaba en main (`base-cli.ts`, `informeHtml` con `lastGoodRun`), no es de esta rama.
+
+## 2026-11-22 — cc/turno-noche (merged, PR #129)
+
+- First night run (00:37 → 01:47, 70 min): 342 stores tried, 300 policies saved as "propuesta", 38 without policy pages, ~304 `claude -p` calls. The weekly job ran alongside (finished 04:17) with no busy errors.
+- Bug fixed: `LIMIT_TEXT` did not match "You've hit your 5-hour limit", so 4 stores were counted as errors instead of stopping; their `policy_attempts` rows were deleted so they retry.
+- Schedule, at Vicente's request: timer at 04:00 America/Santiago, `NOCHE_HASTA=09:00`; the Sunday rule is now "not before 02:30" (at 04:00 it waits on `semanal.lock`). Timer installed and enabled from the `semanal` checkout.
+- Pending: more work for the night queue (policies are nearly done); Vicente's decision on showing policies on the public guides; the pilot MCP serving "propuesta" policies unfiltered (pre-existing).
