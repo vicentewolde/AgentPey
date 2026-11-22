@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DISCLOSURE, FRESHNESS_RULE, guideUrl } from "./guia.js";
-import { handlePublicMcp, MCP_VERSIONS, publicMcpUrl, siteLlmsTxt } from "./ias.js";
+import { handlePublicMcp, LIMITED, MAX_BATCH, MCP_VERSIONS, publicMcpHttp, publicMcpUrl, siteLlmsTxt } from "./ias.js";
 import { COUNT_CAP, SEARCH_ORDER_RULE, type PriceRow } from "./precios.js";
 
 const row = (title: string, price: number, over: Partial<PriceRow> = {}): PriceRow => ({
@@ -71,6 +71,45 @@ describe("the public MCP server", () => {
     expect(await handlePublicMcp(d, { id: 6, method: "ping" })).toMatchObject({ error: { code: -32600 } });
     expect(await handlePublicMcp(d, "hola")).toMatchObject({ id: null, error: { code: -32600 } });
     expect(await handlePublicMcp(d, { jsonrpc: "2.0", id: 7, method: "ping" })).toEqual({ jsonrpc: "2.0", id: 7, result: {} });
+  });
+});
+
+describe("the public MCP server over HTTP", () => {
+  const post = (body: unknown) => publicMcpHttp(fake().deps, "POST", JSON.stringify(body));
+  const ping = (id: number) => ({ jsonrpc: "2.0", id, method: "ping" });
+
+  it("answers a request with JSON and CORS, a notification with 202, and a batch with an array", async () => {
+    const one = await post(ping(1));
+    expect(one).toMatchObject({ status: 200, headers: { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" } });
+    expect(JSON.parse(one.body!)).toEqual({ jsonrpc: "2.0", id: 1, result: {} });
+    const note = await post({ jsonrpc: "2.0", method: "notifications/initialized" });
+    expect([note.status, note.body]).toEqual([202, undefined]);
+    expect(await post({ jsonrpc: "2.0", id: 9, result: {} })).toMatchObject({ status: 202 });
+    const batch = await post([ping(1), { jsonrpc: "2.0", method: "notifications/initialized" }, ping(2)]);
+    expect(JSON.parse(batch.body!).map((a: { id: number }) => a.id)).toEqual([1, 2]);
+  });
+
+  it("refuses what is not JSON-RPC, empty or oversized batches, and big bodies, with the HTTP status that says so", async () => {
+    expect((await publicMcpHttp(fake().deps, "POST", "{no")).status).toBe(400);
+    expect((await post({})).status).toBe(400);
+    expect((await post([])).status).toBe(400);
+    expect((await post(Array.from({ length: MAX_BATCH + 1 }, (_, i) => ping(i)))).status).toBe(400);
+    expect((await post(Array.from({ length: MAX_BATCH }, (_, i) => ping(i)))).status).toBe(200);
+    expect((await publicMcpHttp(fake().deps, "POST", undefined)).status).toBe(413);
+  });
+
+  it("offers POST only: 405 for GET, 204 with CORS for a preflight", async () => {
+    expect(await publicMcpHttp(fake().deps, "GET", undefined)).toMatchObject({ status: 405, headers: { allow: "POST, OPTIONS" } });
+    expect(await publicMcpHttp(fake().deps, "OPTIONS", undefined)).toMatchObject({ status: 204, headers: { "access-control-allow-headers": expect.stringContaining("mcp-protocol-version") } });
+  });
+
+  it("over the limit, or when the search fails, the call answers a tool error the assistant can relay", async () => {
+    const limited = await publicMcpHttp({ search: async () => LIMITED }, "POST", JSON.stringify(call({ consulta: "khamrah" })));
+    expect(limited.status).toBe(200);
+    expect(JSON.parse(limited.body!)).toMatchObject({ id: 3, result: { isError: true, content: [{ text: expect.stringContaining("Demasiadas búsquedas") }] } });
+    const broken = await publicMcpHttp({ search: async () => { throw new Error("db down"); } }, "POST", JSON.stringify(call({ consulta: "khamrah" })));
+    expect(JSON.parse(broken.body!)).toMatchObject({ id: 3, result: { isError: true } });
+    expect(broken.body).not.toContain("db down");
   });
 });
 

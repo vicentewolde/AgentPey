@@ -506,7 +506,7 @@ export const AI_CRAWLERS = ["OAI-SearchBot", "ChatGPT-User", "GPTBot", "ClaudeBo
  */
 export function robotsTxt(): string {
   return [
-    `# AgentPey comercios. The public store guides are at ${guideUrl()}, open to search engines and AI assistants.`,
+    `# AgentPey. The public store guides are at ${guideUrl()}, open to search engines and AI assistants.`,
     ...AI_CRAWLERS.map((ua) => `User-agent: ${ua}`),
     "User-agent: *",
     "Allow: /",

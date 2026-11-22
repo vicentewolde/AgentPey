@@ -9661,6 +9661,8 @@ Pendiente:
 - Lo que más pesa para que las IAs citen el sitio: páginas indexables por producto ("precio de X en Chile, en N tiendas"), que necesitan reconocer el mismo producto entre tiendas.
 - Revisar por qué cy-prune se lee mal.
 - Directorios de MCP: requieren cuenta; queda para Vicente.
+- `clientIp` toma el primer valor de `x-forwarded-for` (ya era así): confirmar en vivo si Render lo sobrescribe o lo agrega, porque el límite de 300 por hora depende de eso.
+- Revisión del subagente `revisor`: sin bloqueantes. Arreglado: el límite y los fallos de búsqueda responden un error de herramienta (no un 429 o 500 que el cliente no lee), zod en el borde, parte HTTP probada (202, 405, 204, 413, lotes de 1 a 10), `/chile/mcp/` con barra.
 
 ## 2026-11-21 (tarde) — cc/buscador-precios
 
