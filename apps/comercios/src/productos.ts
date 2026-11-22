@@ -13,7 +13,9 @@
  */
 import { clp, DISCLOSURE, escapeHtml, FRESHNESS_RULE, guideUrl, longDate, num, searchForm } from "./guia.js";
 import { brandUrl, pageHead } from "./marcas.js";
-import { ownName, searchText, type PriceRow } from "./precios.js";
+import { z } from "zod";
+
+import { ownName, PriceRowSchema, searchText, type PriceRow } from "./precios.js";
 
 /** Arabic perfume houses sold in Chile, as their names read once searchText-ed. */
 export const PILOT_HOUSES = [
@@ -58,13 +60,13 @@ export function productKey(row: Pick<PriceRow, "title" | "brand">): ProductKey |
   return { house, name: words.join(" "), concentration, ml };
 }
 
-export interface ProductOffer { readonly row: PriceRow }
-export interface ProductGroup {
-  readonly slug: string;
-  readonly key: ProductKey;
-  /** One offer per store, its lowest price for that product. */
-  readonly offers: readonly PriceRow[];
-}
+export const ProductGroupSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  key: z.object({ house: z.string(), name: z.string(), concentration: z.string(), ml: z.number().int().positive() }),
+  /** One offer per store, its lowest price for that product, cheapest first. */
+  offers: z.array(PriceRowSchema).min(1),
+});
+export type ProductGroup = z.infer<typeof ProductGroupSchema>;
 
 const slugOf = (k: ProductKey) => [k.house, k.name, k.concentration, `${k.ml}ml`].filter((x) => x !== "").join(" ").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -131,7 +133,10 @@ export const PRODUCT_ORDER_RULE = "Ordenadas del precio más bajo al más alto; 
 export const MATCH_RULE = "Contamos como el mismo producto los que tienen el mismo nombre, la misma concentración (EDP, EDT, Extrait) y el mismo tamaño, sin importar cómo lo escribe cada tienda. No contamos decants, testers, sets ni body mists, ni los perfumes que el nombre solo menciona como referencia (\"inspirado en…\").";
 
 /** The page of one product across stores: plain HTML, schema.org Product with an AggregateOffer. */
-export function productHtml(g: ProductGroup, today: string): string {
+/** The newest reading among a product's offers: the date the page shows as its update. */
+export const productUpdated = (g: ProductGroup): string => g.offers.map((o) => o.readAt).sort().at(-1)!;
+
+export function productHtml(g: ProductGroup, today = productUpdated(g)): string {
   const name = productName(g);
   const pageUrl = productUrl(g.slug);
   const prices = g.offers.map((o) => o.price);
@@ -181,7 +186,7 @@ ${searchForm()}
 }
 
 /** Every product page, by house, with its store count and lowest price. */
-export function productsIndexHtml(groups: readonly ProductGroup[], today: string): string {
+export function productsIndexHtml(groups: readonly ProductGroup[], today = groups.map(productUpdated).sort().at(-1) ?? ""): string {
   const byHouse = new Map<string, ProductGroup[]>();
   for (const g of groups) byHouse.set(g.key.house, [...(byHouse.get(g.key.house) ?? []), g]);
   const body = [...byHouse].sort((a, b) => a[0].localeCompare(b[0])).map(([house, gs]) => `<h2>${escapeHtml(house.split(" ").map(titleCase).join(" "))}</h2>

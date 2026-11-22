@@ -41,6 +41,7 @@ import { createLlm, UsageLimitError } from "./llm.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
 import { buildPriceRows } from "./precios.js";
+import { matchProducts } from "./productos.js";
 import { rereadVerdict } from "./semanal.js";
 import { STORES } from "./stores.js";
 
@@ -537,6 +538,9 @@ function guia(db: Db, rest: string[]): void {
   const prices = buildPriceRows(all);
   db.replacePrices(prices.map((p) => ({ storeId: p.row.storeId, text: p.text, price: p.row.price, data: p.row })));
   console.log(`buscador: ${prices.length} productos con stock y precio`);
+  const groups = matchProducts(prices.map((p) => p.row));
+  db.replaceProducts(groups);
+  console.log(`productos: ${groups.length} páginas del mismo perfume en tres o más tiendas`);
   console.log(`marcas: ${pages.length} páginas (${pages.filter((p) => p.same.length > 0).length} con el mismo producto en varias tiendas)`);
   console.log(`${dir}: vista previa de ${built.length} guías y de las marcas con 10 o más tiendas. Para publicarlas: scripts/setup-postgres.ts --solo-importar --guias`);
 }

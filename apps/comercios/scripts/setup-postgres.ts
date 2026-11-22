@@ -44,7 +44,7 @@ import pg from "pg";
 import { localDataDir, openDb } from "../src/db.js";
 import { GuideSchema } from "../src/guia.js";
 import { publishDrop } from "../src/semanal.js";
-import { SCHEMA, importBrandPages, importGuides, importPrices, importStores, migrate, publishedTotals } from "../src/store.js";
+import { SCHEMA, importBrandPages, importGuides, importPrices, importProducts, importStores, migrate, publishedTotals } from "../src/store.js";
 
 const ROLE = "comercios";
 const out = (line = ""): void => void process.stdout.write(`${line}\n`);
@@ -178,6 +178,7 @@ async function main(): Promise<void> {
         if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
         if (withGuides) out(`✓ páginas de marcas publicadas: ${await importBrandPages(client, source)}`);
         if (withGuides) out(`✓ precios del buscador publicados: ${await importPrices(client, source)}`);
+        if (withGuides) out(`✓ páginas de productos publicadas: ${await importProducts(client, source)}`);
         await client.query("reset role");
       } finally {
         client.release();

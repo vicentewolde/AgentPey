@@ -107,6 +107,10 @@ export function openDb(path: string) {
       price    integer not null,
       data     text not null
     );
+    create table if not exists productos (
+      slug text primary key,
+      data text not null
+    );
     create table if not exists marcas (
       slug      text primary key,
       brand     text not null,
@@ -224,6 +228,22 @@ export function openDb(path: string) {
       const gone = (db.prepare("select slug from guias").all() as { slug: string }[]).map((r) => String(r.slug)).filter((s) => !keep.includes(s));
       for (const slug of gone) db.prepare("delete from guias where slug = ?").run(slug);
       return gone;
+    },
+    /** Replaces every product page (productos.ts) at once, like the brand pages. */
+    replaceProducts(groups: readonly { slug: string }[]): void {
+      db.exec("begin");
+      try {
+        db.exec("delete from productos");
+        const ins = db.prepare("insert into productos (slug, data) values (?, ?)");
+        for (const g of groups) ins.run(g.slug, JSON.stringify(g));
+        db.exec("commit");
+      } catch (error) {
+        db.exec("rollback");
+        throw error;
+      }
+    },
+    productGroups(): unknown[] {
+      return db.prepare("select data from productos order by slug").all().map((r) => JSON.parse(String(r.data)) as unknown);
     },
     /** Replaces every brand page (marcas.ts) at once: a brand that left the list must not stay published. */
     replaceBrandPages(pages: readonly { slug: string; brand: string; stores: number; priceMin: number; updatedAt: string; data: unknown }[]): void {

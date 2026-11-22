@@ -17,6 +17,7 @@ import type { Db } from "./db.js";
 import { GuideSchema, type Guide } from "./guia.js";
 import { BrandPageSchema, summarize, type BrandPage, type BrandSummary } from "./marcas.js";
 import { cleanTerms, COUNT_CAP, PriceRowSchema, type PriceRow } from "./precios.js";
+import { ProductGroupSchema, type ProductGroup } from "./productos.js";
 import { VisitRowSchema, type VisitRow } from "./visitas.js";
 import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
@@ -62,6 +63,8 @@ export interface PanelStore {
   searchPrices(terms: readonly string[], limit: number): Promise<{ total: number; rows: PriceRow[] }>;
   /** Visits of crawlers and assistants (visitas.ts): added to the day's counts; read back from a day on. */
   addVisits(rows: readonly VisitRow[]): Promise<void>;
+  /** The product pages (productos.ts): the same product across stores. */
+  productGroups(): Promise<ProductGroup[]>;
   visits(since: string): Promise<VisitRow[]>;
 }
 
@@ -87,6 +90,7 @@ export function sqliteStore(db: Db): PanelStore {
       return data === undefined ? undefined : BrandPageSchema.parse(data);
     },
     addVisits: async (rows) => db.addVisits(rows),
+    productGroups: async () => db.productGroups().map((g) => ProductGroupSchema.parse(g)),
     visits: async (since) => db.visits(since).map((r) => VisitRowSchema.parse(r)),
     searchPrices: async (terms, limit) => {
       const r = db.searchPrices(cleanTerms(terms), limit, COUNT_CAP);
@@ -138,6 +142,7 @@ export const SCHEMA_SQL: readonly string[] = [
      updated text not null, data jsonb not null)`,
   `create table if not exists ${SCHEMA}.precios (
      seq bigserial primary key, store_id text not null, text text not null, price integer not null, data jsonb not null)`,
+  `create table if not exists ${SCHEMA}.productos (slug text primary key, data jsonb not null)`,
   `create table if not exists ${SCHEMA}.visitas (
      day date not null, agent text not null, kind text not null, path text not null, n integer not null,
      primary key (day, agent, path))`,
@@ -201,6 +206,10 @@ export function pgStore(q: Queryable): PanelStore {
          on conflict (day, agent, path) do update set n = ${SCHEMA}.visitas.n + excluded.n`,
         [rows.map((r) => r.day), rows.map((r) => r.agent), rows.map((r) => r.kind), rows.map((r) => r.path), rows.map((r) => r.n)],
       );
+    },
+    async productGroups() {
+      const { rows } = await q.query(`select data from ${SCHEMA}.productos order by slug`);
+      return rows.map((r) => ProductGroupSchema.parse(r.data));
     },
     async visits(since) {
       const { rows } = await q.query(`select to_char(day, 'YYYY-MM-DD') as day, agent, kind, path, n from ${SCHEMA}.visitas where day >= $1 order by day, agent, path`, [since]);
@@ -346,6 +355,21 @@ export async function importPrices(q: Queryable, source: Db): Promise<number> {
     throw error;
   }
   return rows.length;
+}
+
+/** Replaces every product page in Postgres with the local ones, in one transaction. */
+export async function importProducts(q: Queryable, source: Db): Promise<number> {
+  const groups = source.productGroups().map((g) => ProductGroupSchema.parse(g));
+  await q.query("begin");
+  try {
+    await q.query(`delete from ${SCHEMA}.productos`);
+    if (groups.length > 0) await insertMany(q, "productos", { slug: "text", data: "jsonb" }, groups.map((g) => [g.slug, g]));
+    await q.query("commit");
+  } catch (error) {
+    await q.query("rollback");
+    throw error;
+  }
+  return groups.length;
 }
 
 /** What the /chile pages publish now: stores across the guides and brand pages (before a replace, to refuse a sharp drop). */

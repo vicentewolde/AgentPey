@@ -534,7 +534,8 @@ export function robotsTxt(): string {
 }
 
 /** The guides' sitemap, served at agentpey.com/chile/sitemap.xml: the index and each guide, with its date. */
-export function sitemapXml(guides: readonly { slug: string; updatedAt: string }[], brands: readonly { slug: string; updatedAt: string }[] = []): string {
+export function sitemapXml(guides: readonly { slug: string; updatedAt: string }[], brands: readonly { slug: string; updatedAt: string }[] = [], products: readonly { slug: string; updatedAt: string }[] = []): string {
+  const productsDate = [...products].map((p) => p.updatedAt).sort().at(-1);
   const brandsDate = [...brands].map((b) => b.updatedAt).sort().at(-1);
   const urls = [
     `<url><loc>${escapeHtml(guideUrl())}</loc>${guides.length > 0 ? `<lastmod>${[...guides].map((g) => g.updatedAt).sort().at(-1)}</lastmod>` : ""}</url>`,
@@ -542,6 +543,8 @@ export function sitemapXml(guides: readonly { slug: string; updatedAt: string }[
     ...(brands.length === 0 ? [] : [`<url><loc>${escapeHtml(guideUrl("marcas"))}</loc><lastmod>${brandsDate}</lastmod></url>`]),
     ...brands.map((b) => `<url><loc>${escapeHtml(guideUrl(`marcas/${b.slug}`))}</loc><lastmod>${b.updatedAt}</lastmod></url>`),
     ...(brands.length === 0 ? [] : [`<url><loc>${escapeHtml(searchUrl())}</loc><lastmod>${brandsDate}</lastmod></url>`]),
+    ...(products.length === 0 ? [] : [`<url><loc>${escapeHtml(guideUrl("productos"))}</loc><lastmod>${productsDate}</lastmod></url>`]),
+    ...products.map((p) => `<url><loc>${escapeHtml(guideUrl(`productos/${p.slug}`))}</loc><lastmod>${p.updatedAt}</lastmod></url>`),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }

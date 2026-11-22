@@ -27,6 +27,7 @@ import { llmsTxt, openAiFeed } from "./feeds.js";
 import { GUIDE_ORIGIN, GUIDE_PATH, GUIDE_RUBROS, guideHtml, guidesIndexHtml, INDEXNOW_KEY, robotsTxt, sitemapXml } from "./guia.js";
 import { brandHtml, brandsIndexHtml } from "./marcas.js";
 import { countedPath, requestIp, VisitCounter, visitor } from "./visitas.js";
+import { productHtml, productsIndexHtml, productUpdated } from "./productos.js";
 import { LIMITED, MAX_BODY, PUBLIC_MCP_PATH, publicMcpHttp, siteLlmsTxt } from "./ias.js";
 import { SEARCH_LIMIT, searchHtml, searchJson, searchTerms, type PriceRow } from "./precios.js";
 import { createLlm } from "./llm.js";
@@ -279,7 +280,22 @@ const server = createServer(async (req, res) => {
       res.writeHead(301, { location: `${GUIDE_ORIGIN}${path}`, ...publicPage });
       return void res.end();
     }
-    if (read && path === `${GUIDE_PATH}/sitemap.xml`) return send(res, 200, "application/xml; charset=utf-8", sitemapXml(await data.guides(), await data.brandSummaries()), publicPage);
+    if (read && path === `${GUIDE_PATH}/sitemap.xml`) {
+      const products = (await data.productGroups()).map((g) => ({ slug: g.slug, updatedAt: productUpdated(g) }));
+      return send(res, 200, "application/xml; charset=utf-8", sitemapXml(await data.guides(), await data.brandSummaries(), products), publicPage);
+    }
+    // The same product across stores (productos.ts).
+    if (read && (path === `${GUIDE_PATH}/productos` || path === `${GUIDE_PATH}/productos/`)) {
+      const groups = await data.productGroups();
+      if (groups.length === 0) return send(res, 404, "text/plain; charset=utf-8", "Todavía no hay páginas de productos");
+      return send(res, 200, "text/html; charset=utf-8", productsIndexHtml(groups), publicPage);
+    }
+    const pm = new RegExp(`^${GUIDE_PATH}/productos/([a-z0-9-]+)/?$`).exec(path);
+    if (read && pm) {
+      const g = (await data.productGroups()).find((x) => x.slug === pm[1]);
+      if (g === undefined) return send(res, 404, "text/plain; charset=utf-8", "No existe esa página de producto");
+      return send(res, 200, "text/html; charset=utf-8", productHtml(g), publicPage);
+    }
     if (read && path === `${GUIDE_PATH}/${INDEXNOW_KEY}.txt`) return send(res, 200, "text/plain; charset=utf-8", INDEXNOW_KEY, publicPage);
     if (read && (path === `${GUIDE_PATH}/marcas` || path === `${GUIDE_PATH}/marcas/`)) return send(res, 200, "text/html; charset=utf-8", brandsIndexHtml(await data.brandSummaries()), publicPage);
     const brandMatch = new RegExp(`^${GUIDE_PATH}/marcas/([a-z0-9-]+)/?$`).exec(path);
