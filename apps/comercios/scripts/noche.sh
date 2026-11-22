@@ -13,7 +13,8 @@
 # may hit the limit too. It does not take semanal.lock for the whole run,
 # because the weekly job skips its run when that lock is held; it waits for a
 # running weekly job to finish first, and its own writes are small (one row
-# per store), with SQLite's busy timeout. NOCHE_NO_UPDATE=1 skips the move to
+# per store), with SQLite's busy timeout. NOCHE_FORZAR=1 skips the Sunday-morning
+# rule. NOCHE_NO_UPDATE=1 skips the move to
 # origin/main (to try a branch).
 set -Eeuo pipefail
 
@@ -39,7 +40,8 @@ main() {
 
   # Not on Sunday before 06:00: the weekly job (02:07) rewrites the price table in one long transaction.
   # Started on a Saturday afternoon or evening, it stops before midnight.
-  if [ "$(date +%u)" = 7 ] && [ "$(date +%-H)" -lt 6 ]; then
+  # NOCHE_FORZAR=1 starts anyway (by hand, with Vicente's OK): its writes retry while the database is busy.
+  if [ "${NOCHE_FORZAR:-}" != "1" ] && [ "$(date +%u)" = 7 ] && [ "$(date +%-H)" -lt 6 ]; then
     echo "domingo antes de las 06:00: es el turno de la actualización semanal, no parto"
     exit 0
   fi
