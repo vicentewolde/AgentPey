@@ -26,6 +26,7 @@ import type { Analysis } from "./entender.js";
 import { llmsTxt, openAiFeed } from "./feeds.js";
 import { GUIDE_ORIGIN, GUIDE_PATH, GUIDE_RUBROS, guideHtml, guidesIndexHtml, INDEXNOW_KEY, robotsTxt, sitemapXml } from "./guia.js";
 import { brandHtml, brandsIndexHtml } from "./marcas.js";
+import { countedPath, requestIp, VisitCounter, visitor } from "./visitas.js";
 import { LIMITED, MAX_BODY, PUBLIC_MCP_PATH, publicMcpHttp, siteLlmsTxt } from "./ias.js";
 import { SEARCH_LIMIT, searchHtml, searchJson, searchTerms, type PriceRow } from "./precios.js";
 import { createLlm } from "./llm.js";
@@ -93,6 +94,7 @@ function searchLimited(ip: string, now = Date.now()): boolean {
   searchHits.set(ip, recent.length >= SEARCHES_PER_HOUR ? recent : [...recent, now]);
   return recent.length >= SEARCHES_PER_HOUR;
 }
+const visitCounter = new VisitCounter();
 const searchCache = new Map<string, { total: number; rows: PriceRow[] }>();
 async function cachedSearch(terms: readonly string[]): Promise<{ total: number; rows: PriceRow[] }> {
   const key = terms.join(" ");
@@ -118,8 +120,7 @@ function limited(ip: string, now = Date.now()): boolean {
   return false;
 }
 function clientIp(req: IncomingMessage): string {
-  const fwd = req.headers["x-forwarded-for"];
-  return (typeof fwd === "string" ? fwd.split(",")[0]!.trim() : undefined) ?? req.socket.remoteAddress ?? "?";
+  return requestIp(req.headers, req.socket.remoteAddress, PUBLIC);
 }
 /**
  * Catalogues change only when the CLI or the setup script loads them, and the
@@ -251,6 +252,13 @@ const server = createServer(async (req, res) => {
     // Public pages for crawlers: some check with HEAD first (Node sends no body for HEAD).
     const read = req.method === "GET" || req.method === "HEAD";
     const publicPage = { "cache-control": "public, max-age=3600" };
+    // Who reads the public pages (visitas.ts): crawlers, assistants and people sent by them; nobody else is counted.
+    const counted = countedPath(path);
+    if (counted !== undefined && (read || path === PUBLIC_MCP_PATH)) {
+      const who = visitor(req.headers["user-agent"], req.headers.referer, url.searchParams.get("utm_source"));
+      // Counted once served: a 404 or a refusal adds nothing, so nobody can invent paths to fill the table.
+      if (who !== undefined) res.once("finish", () => (res.statusCode === 200 || res.statusCode === 304 ? visitCounter.hit(who, counted) : undefined));
+    }
     if (read && path === "/robots.txt") return send(res, 200, "text/plain; charset=utf-8", robotsTxt(), publicPage);
     if (read && path === "/llms.txt") {
       const guides = await data.guides();
@@ -436,6 +444,22 @@ const server = createServer(async (req, res) => {
     console.error(`${req.method} ${path}:`, (error as Error).message);
     if (!res.headersSent) json(res, 500, { error: "Error interno" });
   }
+});
+
+/** Written every two minutes and on SIGTERM (the gateway may exit first): a lost count is at most two minutes of visits. */
+async function flushVisits(): Promise<void> {
+  const rows = visitCounter.drain();
+  if (rows.length === 0) return;
+  try {
+    await data.addVisits(rows);
+  } catch (error) {
+    console.error(`comercios: could not store ${rows.length} visit counts: ${(error as Error).message}`);
+  }
+}
+setInterval(() => void flushVisits(), 2 * 60_000).unref();
+process.once("SIGTERM", () => {
+  // At most five seconds: a database that does not answer must not keep the process up.
+  void Promise.race([flushVisits(), new Promise((r) => setTimeout(r, 5_000).unref())]).finally(() => process.exit(0));
 });
 
 server.listen(PORT, HOST, () => console.log(`AgentPey comercios en http://${HOST}:${PORT} (IA: ${llm.name})`));

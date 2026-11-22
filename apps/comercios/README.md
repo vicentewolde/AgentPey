@@ -130,6 +130,22 @@ limit of 300 searches per IP and hour.
 curl -s -X POST https://agentpey.com/chile/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buscar_precios","arguments":{"consulta":"khamrah 100 ml","max":5}}}'
 ```
 
+### Who reads the guides
+
+Each public page (`/chile...`, `/robots.txt`, `/llms.txt`) counts, per day,
+the crawlers and assistants that read it and the people who arrive from an
+assistant's answer (`visitas.ts`): "indexa" (OAI-SearchBot, Claude-SearchBot,
+PerplexityBot, Bingbot, Googlebot), "entrena" (GPTBot, ClaudeBot…), "lee para
+una persona" (ChatGPT-User, Claude-User, Perplexity-User: an assistant opened
+the page to answer someone) and "persona desde una IA" (referrer or
+`utm_source` from chatgpt.com, perplexity.ai, claude.ai, gemini…). No IP, no
+user-agent string, no search words; counts by what each request says it is,
+not verified. The server writes them every two minutes:
+
+```bash
+npx tsx scripts/visitas.ts --env ~/agentes/AgentPay/.env.local --desde 2026-11-22
+```
+
 ### Weekly refresh
 
 Every Sunday night a systemd user timer re-reads every public catalogue,

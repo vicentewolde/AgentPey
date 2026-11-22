@@ -93,6 +93,14 @@ export function openDb(path: string) {
       data text not null,
       at   text not null
     );
+    create table if not exists visitas (
+      day   text not null,
+      agent text not null,
+      kind  text not null,
+      path  text not null,
+      n     integer not null,
+      primary key (day, agent, path)
+    );
     create table if not exists precios (
       store_id text not null,
       text     text not null,
@@ -229,6 +237,21 @@ export function openDb(path: string) {
         db.exec("rollback");
         throw error;
       }
+    },
+    /** Adds counts of visits (visitas.ts) to the day's, in one transaction. */
+    addVisits(rows: readonly { day: string; agent: string; kind: string; path: string; n: number }[]): void {
+      const up = db.prepare("insert into visitas (day, agent, kind, path, n) values (?, ?, ?, ?, ?) on conflict (day, agent, path) do update set n = n + excluded.n");
+      db.exec("begin");
+      try {
+        for (const r of rows) up.run(r.day, r.agent, r.kind, r.path, r.n);
+        db.exec("commit");
+      } catch (error) {
+        db.exec("rollback");
+        throw error;
+      }
+    },
+    visits(since: string): unknown[] {
+      return db.prepare("select day, agent, kind, path, n from visitas where day >= ? order by day, agent, path").all(since).map((r) => ({ ...r }));
     },
     /** Replaces every row of the price search (precios.ts) at once, like the brand pages. */
     replacePrices(rows: readonly { storeId: string; text: string; price: number; data: unknown }[]): void {

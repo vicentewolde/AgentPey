@@ -17,6 +17,7 @@ import type { Db } from "./db.js";
 import { GuideSchema, type Guide } from "./guia.js";
 import { BrandPageSchema, summarize, type BrandPage, type BrandSummary } from "./marcas.js";
 import { cleanTerms, COUNT_CAP, PriceRowSchema, type PriceRow } from "./precios.js";
+import { VisitRowSchema, type VisitRow } from "./visitas.js";
 import type { MeasureEvent, Source } from "./medir.js";
 import type { Product } from "./model.js";
 import type { QuickResult } from "./rapido.js";
@@ -59,6 +60,9 @@ export interface PanelStore {
   brandPage(slug: string): Promise<BrandPage | undefined>;
   /** The price search (precios.ts): rows containing every term, cheapest first, and how many there are in all. */
   searchPrices(terms: readonly string[], limit: number): Promise<{ total: number; rows: PriceRow[] }>;
+  /** Visits of crawlers and assistants (visitas.ts): added to the day's counts; read back from a day on. */
+  addVisits(rows: readonly VisitRow[]): Promise<void>;
+  visits(since: string): Promise<VisitRow[]>;
 }
 
 /** Locally the quick diagnoses live in memory: the SQLite file is the CLI's, and they are only a demo there. */
@@ -82,6 +86,8 @@ export function sqliteStore(db: Db): PanelStore {
       const data = db.brandPage(slug);
       return data === undefined ? undefined : BrandPageSchema.parse(data);
     },
+    addVisits: async (rows) => db.addVisits(rows),
+    visits: async (since) => db.visits(since).map((r) => VisitRowSchema.parse(r)),
     searchPrices: async (terms, limit) => {
       const r = db.searchPrices(cleanTerms(terms), limit, COUNT_CAP);
       return { total: r.total, rows: r.rows.map((x) => PriceRowSchema.parse(x)) };
@@ -132,6 +138,9 @@ export const SCHEMA_SQL: readonly string[] = [
      updated text not null, data jsonb not null)`,
   `create table if not exists ${SCHEMA}.precios (
      seq bigserial primary key, store_id text not null, text text not null, price integer not null, data jsonb not null)`,
+  `create table if not exists ${SCHEMA}.visitas (
+     day date not null, agent text not null, kind text not null, path text not null, n integer not null,
+     primary key (day, agent, path))`,
   `create table if not exists ${SCHEMA}.ingest_runs (
      seq bigserial primary key, store_id text not null, at timestamptz not null, method text not null,
      count integer not null, notes jsonb not null)`,
@@ -182,6 +191,20 @@ export function pgStore(q: Queryable): PanelStore {
         `insert into ${SCHEMA}.events (store_id, kind, source, at, total, order_id, products, demo) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [e.storeId, e.kind, e.source, e.at, e.total ?? null, e.orderId ?? null, JSON.stringify(e.productIds ?? []), e.demo === true],
       );
+    },
+    async addVisits(rows) {
+      if (rows.length === 0) return;
+      // One statement for the whole flush: all of it is added, or none.
+      await q.query(
+        `insert into ${SCHEMA}.visitas (day, agent, kind, path, n)
+         select * from unnest($1::date[], $2::text[], $3::text[], $4::text[], $5::int[])
+         on conflict (day, agent, path) do update set n = ${SCHEMA}.visitas.n + excluded.n`,
+        [rows.map((r) => r.day), rows.map((r) => r.agent), rows.map((r) => r.kind), rows.map((r) => r.path), rows.map((r) => r.n)],
+      );
+    },
+    async visits(since) {
+      const { rows } = await q.query(`select to_char(day, 'YYYY-MM-DD') as day, agent, kind, path, n from ${SCHEMA}.visitas where day >= $1 order by day, agent, path`, [since]);
+      return rows.map((r) => VisitRowSchema.parse(r));
     },
     async saveClick(c) {
       await q.query(`insert into ${SCHEMA}.clicks (id, store_id, product_id, url, channel) values ($1, $2, $3, $4, $5)`, [c.id, c.storeId, c.productId, c.url, c.channel]);

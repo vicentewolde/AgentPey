@@ -9646,6 +9646,21 @@ Por qué: un precio viejo citado por una IA rompe la confianza en "el precio má
 
 Pendiente: dejar el worktree `~/agentes/AgentPay-worktrees/semanal` y el timer instalados después del merge; revisar el primer log en `~/agentes/datos-comercios/semanal/`.
 
+## 2026-11-22 — cc/visitas-robots
+
+Agente: Claude Code
+
+Qué:
+- `cc/mcp-precios` (PR #127) fusionado con OK de Vicente: `llms.txt`, `robots.txt` y el MCP público en vivo; `prod:check` 9/9 antes y después; IndexNow 200.
+- Vicente preguntó cómo sé qué hace que las IAs nos citen. Respuesta honesta: no lo sé con certeza. Dato propio: en las 82 respuestas de Claude guardadas (18 y 21-nov), de 537 enlaces citados, 57% son fichas de producto, 17% categorías y 2% artículos o guías; agentpey.com 0 de 82. No separa tipo de página de autoridad del dominio. Acordado: medir primero (este contador), después una prueba chica de páginas por producto (perfumes árabes), y seguir las mediciones del 4-dic, 18-dic y 1-ene.
+- Contador de visitas por página pública (`visitas.ts`, tabla `comercios.visitas`): robots que indexan o entrenan, asistentes que abren la página para una persona (ChatGPT-User, Claude-User…) y personas que llegan desde una respuesta de IA. Sin IP ni texto de búsqueda. Informe: `scripts/visitas.ts`.
+- Revisión del subagente `revisor`: un bloqueante, arreglado: solo se cuentan páginas servidas (200 o 304), con segmentos de hasta 80 caracteres, así nadie puede inventar rutas para llenar memoria y tabla. También: `cf-connecting-ip` solo en modo PUBLIC (Render), cierre con tope de 5 s, cada guardado en una sola sentencia.
+- Límite por IP: con un `x-forwarded-for` falso distinto en cada pedido, 305 búsquedas pasaron sin 429; sin él, el 429 llegó en la 300. Render sirve por Cloudflare: ahora se usa `cf-connecting-ip` (solo con PUBLIC=1), y si falta, la última entrada de `x-forwarded-for`.
+
+Pendiente:
+- Después del despliegue: repetir la prueba de la cabecera falsa (esperar una hora sin buscar, porque mi IP quedó en el límite) y leer el primer informe de visitas.
+- Prueba de páginas por producto para perfumes árabes.
+
 ## 2026-11-21 (noche) — cc/mcp-precios
 
 Agente: Claude Code
