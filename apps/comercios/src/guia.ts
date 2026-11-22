@@ -27,6 +27,16 @@ export const GUIDE_RUBROS: readonly { slug: string; rubro: string; title: string
   { slug: "ropa-y-calzado", rubro: "Vestuario y Calzado", title: "Tiendas online de ropa y calzado en Chile", shortTitle: "Ropa y calzado" },
   { slug: "hogar-y-decoracion", rubro: "Hogar y Decoración", title: "Tiendas online de hogar y decoración en Chile", shortTitle: "Hogar y decoración" },
   { slug: "salud-y-belleza", rubro: "Salud y Belleza", title: "Tiendas online de salud y belleza en Chile", shortTitle: "Salud y belleza" },
+  { slug: "moda-y-accesorios", rubro: "Moda y Accesorios", title: "Tiendas online de moda y accesorios en Chile", shortTitle: "Moda y accesorios" },
+  { slug: "deportes-y-outdoor", rubro: "Deportes y Outdoor", title: "Tiendas online de deportes y outdoor en Chile", shortTitle: "Deportes y outdoor" },
+  { slug: "tecnologia-y-gaming", rubro: "Tecnología y Gaming", title: "Tiendas online de tecnología y gaming en Chile", shortTitle: "Tecnología y gaming" },
+  { slug: "ferreteria", rubro: "Ferretería", title: "Tiendas online de ferretería en Chile", shortTitle: "Ferretería" },
+  { slug: "automotriz", rubro: "Automotriz", title: "Tiendas online del rubro automotriz en Chile", shortTitle: "Automotriz" },
+  { slug: "infantil-y-jugueteria", rubro: "Infantil y Juguetería", title: "Tiendas online infantiles y jugueterías en Chile", shortTitle: "Infantil y juguetería" },
+  { slug: "mascotas", rubro: "Mascotas", title: "Tiendas online para mascotas en Chile", shortTitle: "Mascotas" },
+  { slug: "alimentos-y-bebidas", rubro: "Alimentos y Bebidas", title: "Tiendas online de alimentos y bebidas en Chile", shortTitle: "Alimentos y bebidas" },
+  { slug: "entretencion-y-cultura", rubro: "Entretención y Cultura", title: "Tiendas online de entretención y cultura en Chile", shortTitle: "Entretención y cultura" },
+  { slug: "musica-y-audio", rubro: "Música y Audio", title: "Tiendas online de música y audio en Chile", shortTitle: "Música y audio" },
 ];
 
 /** Stores with fewer products with a price than this are left out: too little to describe. */
