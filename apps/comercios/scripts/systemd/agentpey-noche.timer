@@ -1,0 +1,9 @@
+[Unit]
+Description=AgentPey: night shift every night at 00:30
+
+[Timer]
+OnCalendar=*-*-* 00:30:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

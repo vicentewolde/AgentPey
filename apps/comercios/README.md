@@ -166,6 +166,37 @@ not verified. The server writes them every two minutes:
 npx tsx scripts/visitas.ts --env ~/agentes/AgentPay/.env.local --desde 2026-11-22
 ```
 
+### Night shift
+
+Work that needs Claude runs at night with the subscription's spare usage
+(`claude -p`, never the paid API): `scripts/noche.sh`, from the same checkout
+as the weekly job, by the `agentpey-noche` user timer (00:30). Today its queue
+has one task, `base politicas`: each public store's shipping, returns,
+warranty and payment pages, structured by Claude with a quote for every claim
+and saved as "propuesta" (nothing is published). Each store tried is recorded
+in `policy_attempts`, so it is not retried for 30 days whatever the result.
+
+It stops at the plan's usage limit (exit code 3: the rest waits for the next
+night), at `NOCHE_HASTA` (HH:MM) or after `NOCHE_MAX` stores, and ends its log
+(`$COMERCIOS_DATA/noche/<day>.log`) with how long it ran, how many Claude
+calls it made per hour and why it stopped. Every session of the account shares
+the plan's limit: while it runs, and until the window resets, other sessions
+may hit the limit too. It waits for a running weekly job instead of starting
+next to it, and does not hold `semanal.lock` itself, so the weekly job is
+never skipped because of it.
+
+A first run by hand, with no stop hour, from a branch:
+
+```bash
+COMERCIOS_DATA=$HOME/agentes/datos-comercios NOCHE_NO_UPDATE=1 scripts/noche.sh
+```
+
+Every night, once on `origin/main`:
+
+```bash
+cp ~/agentes/AgentPay-worktrees/semanal/apps/comercios/scripts/systemd/agentpey-noche.* ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable --now agentpey-noche.timer
+```
+
 ### Weekly refresh
 
 Every Sunday night a systemd user timer re-reads every public catalogue,

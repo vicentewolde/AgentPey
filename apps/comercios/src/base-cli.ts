@@ -21,6 +21,11 @@
  *   guia [--rubros slug,slug]   the public guides (guia.ts) from the catalogues already read: saved in the
  *                               local base (table guias) for setup-postgres, and a preview in data/guias/<slug>.html;
  *                               also every brand two or more public stores sell (marcas.ts, table marcas)
+ *   politicas [--max N] [--paralelo 3] [--hasta HH:MM] [--dias 30] [--solo id,id]
+ *                               each public store's shipping, returns, warranty and payment pages, structured
+ *                               by Claude with a quote per claim (politicas.ts); saved as "propuesta", never
+ *                               published by this. Skips stores tried in the last --dias days; the night shift
+ *                               (scripts/noche.sh) runs it until the plan's limit, --hasta or --max
  *   indexnow                    tell Bing and the other IndexNow engines every URL of the live sitemap (after publishing)
  *
  * Everything it reads or writes is in data/ (git-ignored), or in COMERCIOS_DATA when set (the weekly job, scripts/semanal.sh). Stops at the plan's usage limit.
@@ -38,6 +43,8 @@ import { createFetcher, type Fetcher } from "./http.js";
 import type { Platform } from "./model.js";
 import { ingestStore } from "./ingest/index.js";
 import { createLlm, UsageLimitError } from "./llm.js";
+import { deadline, nightSummary, policyTargets, type StopReason } from "./noche.js";
+import { extractPolicy, readPolicyPages } from "./politicas.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
 import { buildPriceRows } from "./precios.js";
@@ -58,6 +65,7 @@ function tables(db: Db): void {
     create table if not exists tiendas (id text primary key, domain text, data text not null, at text not null);
     create table if not exists rubro_answers (rubro text not null, engine text not null, question text not null, text text not null, urls text not null, at text not null);
     create table if not exists answer_errors (store_id text not null, engine text not null, question text not null, error text not null, at text not null);
+    create table if not exists policy_attempts (store_id text primary key, result text not null, detail text, at text not null);
   `);
 }
 
@@ -88,6 +96,7 @@ export async function baseCommand(db: Db, sub: string | undefined, rest: string[
   if (sub === "guia") return guia(db, rest);
   if (sub === "medir-guia") return medirGuia(db, rest);
   if (sub === "indexnow") return indexNow();
+  if (sub === "politicas") return politicas(db, fetcher, rest);
   console.error("uso: cli base lista | contacto | ingest | diagnostico | comparar | fichas | guia | medir-guia | indexnow");
   process.exitCode = 2;
 }
@@ -452,6 +461,73 @@ async function diagnostico(db: Db, rest: string[]): Promise<void> {
     console.log(`\nSe detuvo por el límite de uso: ${stopped}\nLo respondido quedó guardado; se retoma con el mismo comando.`);
     process.exitCode = 3;
   }
+}
+
+async function politicas(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> {
+  const start = new Date();
+  const hasta = flag(rest, "--hasta");
+  const stopAt = hasta === undefined ? undefined : deadline(start, hasta);
+  if (hasta !== undefined && stopAt === undefined) {
+    console.error(`--hasta ${hasta}: se espera HH:MM`);
+    process.exitCode = 2;
+    return;
+  }
+  const only = flag(rest, "--solo")?.split(",");
+  const max = flag(rest, "--max") === undefined ? Infinity : Number(flag(rest, "--max"));
+  const tried = new Map(db.raw.prepare("select store_id, at from policy_attempts").all().map((r) => [String(r.store_id), String(r.at)]));
+  const tiendas = new Map(loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined && (only === undefined || only.includes(t.id))).map((t) => [t.id, t]));
+  const targets = policyTargets([...tiendas.values()].map((t) => ({ id: t.id, products: db.lastGoodRun(t.id)?.count ?? 0, triedAt: tried.get(t.id) })), start, Number(flag(rest, "--dias") ?? 30), max);
+  const llm = createLlm("cuenta");
+  console.log(`${targets.length} tiendas por leer políticas (${llm.name})${stopAt === undefined ? "" : `, hasta ${stopAt.toLocaleString("es-CL")}`}`);
+  const attempt = db.raw.prepare("insert or replace into policy_attempts (store_id, result, detail, at) values (?, ?, ?, ?)");
+  const n = { tried: 0, saved: 0, empty: 0, failed: 0, calls: 0 };
+  let reason: StopReason | undefined;
+  let detail: string | undefined;
+  await pool(targets, Number(flag(rest, "--paralelo") ?? 3), async ({ id }) => {
+    if (reason !== undefined) return;
+    if (stopAt !== undefined && Date.now() >= stopAt.getTime()) {
+      reason = "hora de término";
+      return;
+    }
+    const store = toStore(tiendas.get(id)!);
+    n.tried++;
+    try {
+      const pages = await readPolicyPages(store, fetcher);
+      if (pages.length === 0) {
+        n.empty++;
+        attempt.run(id, "sin-paginas", null, new Date().toISOString());
+        console.log(`${id}: sin páginas de políticas`);
+        return;
+      }
+      n.calls++;
+      const policy = await extractPolicy(llm, store, pages);
+      if (policy === undefined) {
+        n.failed++;
+        attempt.run(id, "sin-estructura", null, new Date().toISOString());
+        console.log(`${id}: no se pudo estructurar`);
+        return;
+      }
+      db.savePolicy(id, llm.name, pages.map((p) => p.url), policy);
+      attempt.run(id, "guardada", null, new Date().toISOString());
+      n.saved++;
+      console.log(`${id}: ${pages.length} páginas · devoluciones ${policy.cambios_y_devoluciones.acepta} · medios de pago ${policy.medios_de_pago.length} · falta ${policy.falta.length}`);
+    } catch (error) {
+      const message = (error as Error).message;
+      if (error instanceof UsageLimitError) {
+        // Not recorded as tried: the store goes again in the next window.
+        reason = "límite del plan";
+        detail = message;
+        n.tried--;
+        return;
+      }
+      n.failed++;
+      attempt.run(id, "error", message.slice(0, 300), new Date().toISOString());
+      console.log(`${id}: falló (${message.slice(0, 200)})`);
+    }
+  });
+  reason ??= targets.length >= max ? "tope de tiendas" : "terminó la lista";
+  console.log(`\n${nightSummary({ start, end: new Date(), ...n, reason, detail })}`);
+  if (reason === "límite del plan") process.exitCode = 3;
 }
 
 function comparar(db: Db, rest: string[], fichas: boolean): void {
