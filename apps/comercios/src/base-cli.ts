@@ -43,7 +43,7 @@ import { createFetcher, type Fetcher } from "./http.js";
 import type { Platform } from "./model.js";
 import { ingestStore } from "./ingest/index.js";
 import { createLlm, UsageLimitError } from "./llm.js";
-import { deadline, nightSummary, policyTargets, type StopReason } from "./noche.js";
+import { deadline, nightSummary, policyTargets, retryBusy, type StopReason } from "./noche.js";
 import { extractPolicy, readPolicyPages } from "./politicas.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
@@ -475,11 +475,13 @@ async function politicas(db: Db, fetcher: Fetcher, rest: string[]): Promise<void
   const only = flag(rest, "--solo")?.split(",");
   const max = flag(rest, "--max") === undefined ? Infinity : Number(flag(rest, "--max"));
   const tried = new Map(db.raw.prepare("select store_id, at from policy_attempts").all().map((r) => [String(r.store_id), String(r.at)]));
-  const tiendas = new Map(loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined && (only === undefined || only.includes(t.id))).map((t) => [t.id, t]));
+  // Pilot stores are left out: their policy is served by the panel's MCP once imported, and a new reading would replace the one shown.
+  const tiendas = new Map(loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined && !(t.sources ?? []).includes("piloto") && (only === undefined || only.includes(t.id))).map((t) => [t.id, t]));
   const targets = policyTargets([...tiendas.values()].map((t) => ({ id: t.id, products: db.lastGoodRun(t.id)?.count ?? 0, triedAt: tried.get(t.id) })), start, Number(flag(rest, "--dias") ?? 30), max);
   const llm = createLlm("cuenta");
   console.log(`${targets.length} tiendas por leer políticas (${llm.name})${stopAt === undefined ? "" : `, hasta ${stopAt.toLocaleString("es-CL")}`}`);
-  const attempt = db.raw.prepare("insert or replace into policy_attempts (store_id, result, detail, at) values (?, ?, ?, ?)");
+  const insert = db.raw.prepare("insert or replace into policy_attempts (store_id, result, detail, at) values (?, ?, ?, ?)");
+  const attempt = { run: (id: string, result: string, why: string | null, at: string) => retryBusy(() => insert.run(id, result, why, at)) };
   const n = { tried: 0, saved: 0, empty: 0, failed: 0, calls: 0 };
   let reason: StopReason | undefined;
   let detail: string | undefined;
@@ -495,7 +497,7 @@ async function politicas(db: Db, fetcher: Fetcher, rest: string[]): Promise<void
       const pages = await readPolicyPages(store, fetcher);
       if (pages.length === 0) {
         n.empty++;
-        attempt.run(id, "sin-paginas", null, new Date().toISOString());
+        await attempt.run(id, "sin-paginas", null, new Date().toISOString());
         console.log(`${id}: sin páginas de políticas`);
         return;
       }
@@ -503,12 +505,12 @@ async function politicas(db: Db, fetcher: Fetcher, rest: string[]): Promise<void
       const policy = await extractPolicy(llm, store, pages);
       if (policy === undefined) {
         n.failed++;
-        attempt.run(id, "sin-estructura", null, new Date().toISOString());
+        await attempt.run(id, "sin-estructura", null, new Date().toISOString());
         console.log(`${id}: no se pudo estructurar`);
         return;
       }
-      db.savePolicy(id, llm.name, pages.map((p) => p.url), policy);
-      attempt.run(id, "guardada", null, new Date().toISOString());
+      await retryBusy(() => db.savePolicy(id, llm.name, pages.map((p) => p.url), policy));
+      await attempt.run(id, "guardada", null, new Date().toISOString());
       n.saved++;
       console.log(`${id}: ${pages.length} páginas · devoluciones ${policy.cambios_y_devoluciones.acepta} · medios de pago ${policy.medios_de_pago.length} · falta ${policy.falta.length}`);
     } catch (error) {
@@ -521,7 +523,7 @@ async function politicas(db: Db, fetcher: Fetcher, rest: string[]): Promise<void
         return;
       }
       n.failed++;
-      attempt.run(id, "error", message.slice(0, 300), new Date().toISOString());
+      await attempt.run(id, "error", message.slice(0, 300), new Date().toISOString()).catch(() => undefined);
       console.log(`${id}: falló (${message.slice(0, 200)})`);
     }
   });

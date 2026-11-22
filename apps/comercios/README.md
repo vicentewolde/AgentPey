@@ -181,9 +181,12 @@ night), at `NOCHE_HASTA` (HH:MM) or after `NOCHE_MAX` stores, and ends its log
 (`$COMERCIOS_DATA/noche/<day>.log`) with how long it ran, how many Claude
 calls it made per hour and why it stopped. Every session of the account shares
 the plan's limit: while it runs, and until the window resets, other sessions
-may hit the limit too. It waits for a running weekly job instead of starting
-next to it, and does not hold `semanal.lock` itself, so the weekly job is
-never skipped because of it.
+may hit the limit too. It does not start on Sunday before 06:00, and started
+on a Saturday afternoon it stops at 23:50: the weekly job rewrites the price
+table in one long transaction. It waits for a running weekly job instead of
+starting next to it, does not hold `semanal.lock` itself (the weekly job would
+skip its run), and retries a write while the database is busy. Pilot stores
+are left out: their policy is served by the panel's MCP.
 
 A first run by hand, with no stop hour, from a branch:
 

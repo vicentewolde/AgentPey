@@ -37,6 +37,17 @@ main() {
   trap 'echo "== $(date -Is) FALLÓ en la línea $LINENO"' ERR
   echo "== $(date -Is) turno de noche"
 
+  # Not on Sunday before 06:00: the weekly job (02:07) rewrites the price table in one long transaction.
+  # Started on a Saturday afternoon or evening, it stops before midnight.
+  if [ "$(date +%u)" = 7 ] && [ "$(date +%-H)" -lt 6 ]; then
+    echo "domingo antes de las 06:00: es el turno de la actualización semanal, no parto"
+    exit 0
+  fi
+  if [ "$(date +%u)" = 6 ] && [ "$(date +%-H)" -ge 12 ]; then
+    NOCHE_HASTA=23:50
+    echo "sábado: corto a las 23:50, antes de la actualización semanal"
+  fi
+
   # If the weekly job is running, wait for it (up to 4 h), then let the lock go at once.
   if ! flock -w 14400 "$COMERCIOS_DATA/semanal.lock" true; then
     echo "la actualización semanal sigue corriendo después de 4 h: no parto"

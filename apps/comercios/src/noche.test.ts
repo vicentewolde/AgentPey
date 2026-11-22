@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deadline, nightSummary, policyTargets } from "./noche.js";
+import { deadline, nightSummary, policyTargets, retryBusy } from "./noche.js";
 
 describe("the night shift's store list", () => {
   const now = new Date("2026-11-22T04:00:00Z");
@@ -42,5 +42,26 @@ describe("the night's summary", () => {
     expect(s).toContain("40 con política guardada");
     expect(s).toContain("21.0 por hora");
     expect(s).toContain("se detuvo por: límite del plan (claude -p: You've hit your limit)");
+  });
+});
+
+describe("a write while the database is busy", () => {
+  it("waits and tries again, then gives up after the last try", async () => {
+    let calls = 0;
+    const waits: number[] = [];
+    const sleep = async (ms: number) => void waits.push(ms);
+    const out = await retryBusy(() => {
+      if (++calls < 3) throw new Error("database is locked");
+      return "ok";
+    }, 5, 100, sleep);
+    expect(out).toBe("ok");
+    expect(waits).toEqual([100, 100]);
+    await expect(retryBusy(() => { throw new Error("SQLITE_BUSY"); }, 2, 1, sleep)).rejects.toThrow("SQLITE_BUSY");
+  });
+
+  it("does not retry any other error", async () => {
+    let calls = 0;
+    await expect(retryBusy(() => { calls++; throw new Error("no such table"); }, 5, 1, async () => {})).rejects.toThrow("no such table");
+    expect(calls).toBe(1);
   });
 });

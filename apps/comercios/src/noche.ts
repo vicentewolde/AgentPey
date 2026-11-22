@@ -38,6 +38,21 @@ export function deadline(start: Date, hhmm: string): Date | undefined {
   return d;
 }
 
+/** SQLite's "database is locked" (the weekly job may hold a long write transaction). */
+export const isBusy = (error: unknown): boolean => /SQLITE_BUSY|database is locked/i.test(String((error as { message?: unknown })?.message ?? error));
+
+/** Run a database write, waiting and trying again while the database is busy, instead of counting the store as failed. */
+export async function retryBusy<T>(write: () => T, tries = 8, waitMs = 15_000, sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return write();
+    } catch (error) {
+      if (!isBusy(error) || i >= tries) throw error;
+      await sleep(waitMs);
+    }
+  }
+}
+
 export type StopReason = "límite del plan" | "hora de término" | "tope de tiendas" | "terminó la lista";
 
 /** One line for the night's log: what was done, how long it took and why it stopped, to estimate how much a plan window holds. */
