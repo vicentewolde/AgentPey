@@ -9662,9 +9662,12 @@ Qué:
 - Fuentes nuevas: cyber.cl archivado en el Internet Archive (CyberDay y CyberMonday 2024–2026): 577 dominios que no estaban. blackfriday.cl y PymeDay archivados no traen la lista en el HTML (la cargan con JavaScript). Las tiendas se marcan `cyber-anterior`.
 - Coordinado con la sesión startup-chile (bf-base-datos): no escribe tiendas ni catálogos; su turno de noche (`cc/turno-noche`) escribe políticas con estado "propuesta" y reintenta en SQLITE_BUSY. Avisó que las políticas "propuesta" del piloto ya se sirven en el `/mcp` del panel sin filtrar por estado (preexistente; lo va a ver con Vicente).
 
+- Noche del 22-nov: job semanal OK (334 leídas, 7 sin leer, IndexNow 200). Luego, con esta rama: 13 guías, 1.026 marcas, 132.096 precios y 198 páginas de productos publicadas; IndexNow 1.042 direcciones. Después: 577 tiendas de cyber.cl archivado en la base y 513 catálogos nuevos leídos (4 sin leer).
+- Revisión final del `revisor` sin bloqueantes. Arreglado: `setup-postgres --max-caida` se niega a borrar las páginas de producto publicadas si la lectura no armó ninguna; la metodología de producto menciona las ediciones anteriores; un `as Error` menos. Orden obligado: desplegar el código antes de publicar guías con tiendas `cyber-anterior` (el código anterior no las lee).
+
 Pendiente:
 - Después del despliegue: repetir la prueba de la cabecera falsa (esperar una hora sin buscar, porque mi IP quedó en el límite) y leer el primer informe de visitas.
-- Prueba de páginas por producto para perfumes árabes.
+- Las páginas de producto leen la tabla entera por visita (unos 200 jsonb): pasar a consulta por slug si crecen.
 
 ## 2026-11-21 (noche) — cc/mcp-precios
 

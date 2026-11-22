@@ -178,6 +178,11 @@ async function main(): Promise<void> {
         if (withGuides) out(`✓ guías publicadas: ${(await importGuides(client, source)).join(", ")}`);
         if (withGuides) out(`✓ páginas de marcas publicadas: ${await importBrandPages(client, source)}`);
         if (withGuides) out(`✓ precios del buscador publicados: ${await importPrices(client, source)}`);
+        if (withGuides && maxDrop !== undefined && source.productGroups().length === 0) {
+          // The drop guard above does not see the product pages: an empty match would wipe every published one.
+          const { rows } = await client.query<{ n: string }>(`select count(*) as n from ${SCHEMA}.productos`);
+          if (Number(rows[0]?.n ?? 0) > 0) die(`no se publica: la lectura no armó ninguna página de producto y hay ${rows[0]?.n} publicadas. Revisa la lectura; para publicar igual, corre sin --max-caida`);
+        }
         if (withGuides) out(`✓ páginas de productos publicadas: ${await importProducts(client, source)}`);
         await client.query("reset role");
       } finally {

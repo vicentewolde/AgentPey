@@ -469,7 +469,7 @@ async function flushVisits(): Promise<void> {
   try {
     await data.addVisits(rows);
   } catch (error) {
-    console.error(`comercios: could not store ${rows.length} visit counts: ${(error as Error).message}`);
+    console.error(`comercios: could not store ${rows.length} visit counts: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 setInterval(() => void flushVisits(), 2 * 60_000).unref();

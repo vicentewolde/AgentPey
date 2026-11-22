@@ -171,6 +171,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Notas de la última sesión
 
+- 2026-11-22: guía pública de comercios (fuera de la fase, a pedido del usuario, igual que #125–#127): `cc/visitas-robots` agrega el contador de visitas de robots y asistentes de IA, guías para 13 rubros, páginas del mismo perfume en varias tiendas (`/chile/productos`) y tiendas de ediciones anteriores de cyber.cl. Orden obligado: primero se despliega el código y después se publica con `--guias`; el código anterior no lee las guías con tiendas `cyber-anterior`.
 - 2026-11-04: el usuario pidió completar la Fase 9 entera. T163 con código listo. Deuda nueva: `apps/web/src/tenant-rail.test.ts` sale a la RPC pública de Soroban y se pasa de 5 s cuando la RPC está lenta (hoy `getHealth` 4,2 s): `pnpm test` no debería tocar la red.
 
 - 2026-10-27: T162 mergeada con OK del usuario ([PR #95](https://github.com/vicentewolde/AgentPey/pull/95), CI 4/4, fast-forward `2b79a8f..a432878` a las 03:24 UTC). `prod:check` 11/11 antes y 11/11 a las 03:30, recorrido de producción 28/28. Desde aquí no se ve el commit que corre Render (el navegador integrado no tiene sesión en Render y Render dejó de informar deploys a GitHub en septiembre): confirmar «Deployed» en el panel antes de grabar.

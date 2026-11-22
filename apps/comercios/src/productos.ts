@@ -170,7 +170,7 @@ export function productHtml(g: ProductGroup, today = productUpdated(g)): string 
 ${searchForm()}
 <h2 id="metodologia">Metodología</h2>
 <ul>
-<li><strong>Qué tiendas entran.</strong> Tiendas online chilenas con sitio propio de las listas públicas de participantes de blackfriday.cl y cyber.cl, sin grandes tiendas, multitiendas ni marketplaces.</li>
+<li><strong>Qué tiendas entran.</strong> Tiendas online chilenas con sitio propio de las listas públicas de participantes de blackfriday.cl y cyber.cl, actuales y de ediciones anteriores, sin grandes tiendas, multitiendas ni marketplaces.</li>
 <li><strong>El mismo producto.</strong> ${escapeHtml(MATCH_RULE)} Así lo nombra cada tienda:<ul>${titles}</ul></li>
 <li><strong>Precios.</strong> En pesos chilenos, el más bajo de cada tienda para este producto el día de la lectura. No contamos productos agotados. "Antes" es el precio tachado que mostraba la tienda. ${escapeHtml(FRESHNESS_RULE)}</li>
 <li><strong>Relación con AgentPey.</strong> ${escapeHtml(DISCLOSURE)} Nadie paga por aparecer.</li>
