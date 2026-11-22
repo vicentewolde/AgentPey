@@ -30,6 +30,8 @@
  *
  * Everything it reads or writes is in data/ (git-ignored), or in COMERCIOS_DATA when set (the weekly job, scripts/semanal.sh). Stops at the plan's usage limit.
  */
+import { z } from "zod";
+
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 
 import { compare, contactLinks, cyberRubro, isBigMarket, mailableEmail, parseCyber, findEmails, isAffiliate, mainRubro, parseBlackFriday, rankEmails, segmentOf, toStore, type Segment, type StoredAnswer, type StoreInput, type Tienda } from "./base.js";
@@ -591,16 +593,24 @@ function comparar(db: Db, rest: string[], fichas: boolean): void {
  * product keeps the previous one.
  */
 async function grandes(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> {
-  const pick = flag(rest, "--tiendas")?.split(",");
-  const max = Number(flag(rest, "--max") ?? 1500);
+  const pick = z.array(z.enum(BIG_STORES.map((s) => s.id) as [string, ...string[]])).optional().safeParse(flag(rest, "--tiendas")?.split(","));
+  const max = z.coerce.number().int().positive().max(5000).safeParse(flag(rest, "--max") ?? 600);
+  if (!pick.success || !max.success) {
+    console.error(`uso: base grandes [--tiendas ${BIG_STORES.map((s) => s.id).join(",")}] [--max N]`);
+    process.exitCode = 2;
+    return;
+  }
   // Only addresses that may be a product the pyme stores already make a page for: run `base guia` first.
   const wanted = mayBeOneOf(db.productGroups().map((g) => ProductGroupSchema.parse(g).key));
-  for (const store of BIG_STORES.filter((s) => pick === undefined || pick.includes(s.id))) {
+  for (const store of BIG_STORES.filter((s) => pick.data === undefined || pick.data.includes(s.id))) {
     const started = Date.now();
-    const r = await readBigStore(store, fetcher, { maxPages: max, wanted, log: (l) => process.stderr.write(`${l}\n`) });
+    const r = await readBigStore(store, fetcher, { maxPages: max.data, wanted, log: (l) => process.stderr.write(`${l}\n`) });
     const method = "sitemap de productos de casas árabes + datos estructurados";
-    if (r.products.length > 0) db.replaceCatalogue(store.id, r.products, method, r.notes);
-    console.log(`${store.id}: ${r.products.length} productos de ${r.opened} páginas abiertas (${r.urls} en el sitemap) en ${Math.round((Date.now() - started) / 1000)} s${r.products.length === 0 ? " · se mantiene la lectura anterior" : ""}${r.notes.length > 0 ? ` · ${r.notes.join(" · ")}` : ""}`);
+    // Like the pyme stores: a reading with nothing, or far less than the last one, keeps the last one.
+    const before = db.lastGoodRun(store.id)?.count ?? 0;
+    const keep = r.products.length === 0 || r.products.length < before * 0.5;
+    if (!keep) db.replaceCatalogue(store.id, r.products, method, r.notes);
+    console.log(`${store.id}: ${r.products.length} productos de ${r.opened} páginas abiertas (${r.urls} en el sitemap) en ${Math.round((Date.now() - started) / 1000)} s${keep ? ` · se mantiene la lectura anterior (${before} productos)` : ""}${r.notes.length > 0 ? ` · ${r.notes.join(" · ")}` : ""}`);
   }
 }
 

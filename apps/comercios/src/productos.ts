@@ -102,9 +102,10 @@ export function matchProducts(rows: readonly PriceRow[], minStores = 3, bigRows:
     let k = productKey(row);
     if (k === undefined) continue;
     if (k.concentration === "") {
+      // The same rule as the pyme stores': ambiguous is left out, a single known concentration fills it, none keeps it empty.
       const known = concentrations.get(base(k));
-      if (known === undefined || known.size !== 1) continue;
-      k = { ...k, concentration: [...known][0]! };
+      if (known !== undefined && known.size > 1) continue;
+      if (known !== undefined) k = { ...k, concentration: [...known][0]! };
     }
     const id = slugOf(k);
     const byStore = reference.get(id) ?? new Map<string, PriceRow>();
@@ -196,7 +197,7 @@ export function productHtml(g: ProductGroup, today = productUpdated(g)): string 
 <main>
 <p class="eyebrow"><a href="${escapeHtml(productUrl())}">Productos</a> · actualizada el <time datetime="${today}">${longDate(today)}</time></p>
 <h1>${escapeHtml(name)}: precio en Chile</h1>
-<p class="lead">${g.offers.length} tiendas online chilenas con sitio propio lo venden con stock. El precio más bajo que encontramos es <span class="price">${clp(low)}</span> en ${escapeHtml(g.offers[0]!.store)}; el más alto, <span class="price">${clp(high)}</span>. La mitad lo vende a ${clp(median(prices))} o menos. Entre la tienda más barata y la más cara hay ${clp(high - low)} de diferencia.</p>
+<p class="lead">${g.offers.length} tiendas online chilenas con sitio propio lo venden con stock. El precio más bajo entre ellas es <span class="price">${clp(low)}</span> en ${escapeHtml(g.offers[0]!.store)}; el más alto, <span class="price">${clp(high)}</span>. La mitad lo vende a ${clp(median(prices))} o menos. Entre la tienda más barata y la más cara hay ${clp(high - low)} de diferencia.</p>
 <p class="note">${escapeHtml(DISCLOSURE)}</p>
 <div class="table-wrap"><table><thead><tr><th>Tienda</th><th>Precio</th><th>Leído el</th></tr></thead><tbody>${rows}</tbody></table></div>
 <p><strong>Cómo están ordenadas.</strong> ${escapeHtml(PRODUCT_ORDER_RULE)}</p>

@@ -45,9 +45,8 @@ export function namesPilotHouse(url: string): boolean {
   return HOUSE_SLUGS.some((h) => new RegExp(`(^|[^a-z0-9])${h.replace(/-/g, "[-_ ]")}([^a-z0-9]|$)`).test(path));
 }
 
-export interface BigRead { readonly products: Product[]; readonly urls: number; readonly opened: number; readonly notes: string[] }
+export interface BigRead { readonly products: Product[]; readonly urls: number; readonly opened: number; readonly failed: number; readonly notes: string[] }
 
-/** The pilot products one big store sells: matching addresses from its product sitemaps, then each page's structured data. */
 /**
  * Whether an address may be one of these products: it names the house, every
  * name word and the size. The page's own title decides afterwards; this only
@@ -68,13 +67,14 @@ export function mayBeOneOf(keys: readonly { house: string; name: string; ml: num
   };
 }
 
+/** The pilot products one big store sells: matching addresses from its product sitemaps (at most 60), then each page's structured data. */
 export async function readBigStore(store: BigStore, fetcher: Fetcher, options: { maxPages?: number; wanted?: (url: string) => boolean; log?: (line: string) => void } = {}): Promise<BigRead> {
-  const maxPages = options.maxPages ?? 1500;
+  const maxPages = options.maxPages ?? 600;
   const log = options.log ?? (() => {});
   const notes: string[] = [];
   const index = await fetcher.text(store.sitemap).catch((error: unknown) => ({ status: error instanceof BlockedByRobots ? 403 : 0, body: "", url: store.sitemap }));
-  if (index.status !== 200) return { products: [], urls: 0, opened: 0, notes: [`índice de sitemaps: HTTP ${index.status}`] };
-  const maps = sitemapLocs(index.body).filter((l) => /product/i.test(l) && (store.skip === undefined || !store.skip.test(l)));
+  if (index.status !== 200) return { products: [], urls: 0, opened: 0, failed: 0, notes: [`índice de sitemaps: HTTP ${index.status}`] };
+  const maps = sitemapLocs(index.body).filter((l) => /product/i.test(l) && (store.skip === undefined || !store.skip.test(l))).slice(0, 60);
   const urls = new Set<string>();
   for (const map of maps) {
     const res = await fetcher.text(map).catch(() => undefined);
@@ -87,16 +87,21 @@ export async function readBigStore(store: BigStore, fetcher: Fetcher, options: {
   }
   const products: Product[] = [];
   let opened = 0;
+  let failed = 0;
   for (const u of [...urls].slice(0, maxPages)) {
     opened++;
     const res = await fetcher.text(u).catch(() => undefined);
-    if (res === undefined || res.status !== 200) continue;
+    if (res === undefined || res.status !== 200) {
+      failed++;
+      continue;
+    }
     const p = fromProductPage(store.id, u, res.body);
     if (p !== undefined) products.push(p);
     if (opened % 100 === 0) log(`${store.id}: ${opened} páginas abiertas, ${products.length} productos`);
   }
   if (urls.size > maxPages) notes.push(`Se abrieron ${maxPages} de ${urls.size} páginas`);
-  return { products, urls: urls.size, opened, notes };
+  if (failed > 0) notes.push(`${failed} páginas no respondieron`);
+  return { products, urls: urls.size, opened, failed, notes };
 }
 
 /** A big store's products as price rows: in stock, with a plausible price, cheapest per address; `readAt` undefined (too old or never read) gives none. */

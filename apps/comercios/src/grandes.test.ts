@@ -49,3 +49,18 @@ describe("which big-store pages are worth opening", () => {
     expect(may("https://www.paris.cl/al-haramain-amber-oud-gold-edition-edp-60ml-MK5.html")).toBe(true);
   });
 });
+
+describe("what a big store's reading leaves out", () => {
+  const store = BIG_STORES[0]!;
+  const product = (over: object) => ({ storeId: store.id, id: "1", title: "Lattafa Khamrah EDP 100 ml", description: "", url: "https://www.paris.cl/p1", images: [], price: 25990, compareAtPrice: undefined, available: true, brand: "Lattafa", sku: undefined, gtin: undefined, category: undefined, tags: [], attributes: {}, variants: [], ...over });
+
+  it("an index it cannot read gives nothing, with a note", async () => {
+    const fetcher: Fetcher = { text: async (url) => ({ status: 403, body: "", url }), json: async (url) => ({ status: 403, body: undefined, url }) };
+    expect(await readBigStore(store, fetcher)).toMatchObject({ products: [], opened: 0, notes: ["índice de sitemaps: HTTP 403"] });
+  });
+
+  it("out of stock, implausible prices and addresses that are not web pages", () => {
+    const rows = bigPriceRows(store, [product({ available: false }), product({ price: 9_999_999 }), product({ url: "javascript:alert(1)" }), product({ id: "2", url: "https://www.paris.cl/p2", price: 1000 })], "2026-11-22");
+    expect(rows.map((r) => r.url)).toEqual(["https://www.paris.cl/p2"]);
+  });
+});

@@ -76,4 +76,11 @@ describe("the groups", () => {
     expect(html).toContain('"offerCount":3');
     expect(productHtml(groups[0]!, "2026-11-22")).not.toContain("En tiendas grandes");
   });
+
+  it("leave out a big store's title with no concentration when the name has two, and escape what other sites write", () => {
+    const two = [...rows, row("f", "Lattafa Khamrah EDP 100 ML", 31000), row("b", "Lattafa Khamrah EDT 100 ML", 1), row("c", "Lattafa Khamrah EDT 100 ML", 1), row("d", "Lattafa Khamrah EDT 100 ML", 1)];
+    const g = matchProducts(two, 3, [row("gr-x", "Lattafa Khamrah 100 ml", 1000), { ...row("gr-y", "Lattafa Khamrah EDP 100 ML", 2000), store: "<script>x</script>" }]).find((x) => x.slug === "lattafa-khamrah-edp-100ml")!;
+    expect(g.reference.map((o) => o.storeId)).toEqual(["gr-y"]);
+    expect(productHtml(g, "2026-11-22")).not.toContain("<script>x");
+  });
 });
