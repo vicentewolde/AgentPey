@@ -22,6 +22,25 @@ Por qué: <motivo>
 Pendiente: <qué queda para la próxima sesión>
 ```
 
+## 2026-11-24 (tarde) — cc/fuentes-tiendas
+
+Agente: Claude Code (fork de guia-publica)
+
+Qué: fuente nueva de tiendas, las ediciones anteriores de blackfriday.cl (2022–2026). Su portada y sus páginas de
+cyber tenían una galería de logos con el enlace y los rubros de cada marca; el Internet Archive guarda 63 copias
+mensuales. `base blackfriday-anterior --archivo <copias>` las importa marcadas `blackfriday-anterior` (las guías dicen
+"ediciones anteriores de blackfriday.cl"). Resultado en la base local: 533 marcas, 295 nuevas (254 pymes, 36 sin
+catálogo, 5 grandes), 238 ya estaban. `base ingest` leyó 253 de las 254 pymes nuevas: 166 con productos, 44.066
+productos nuevos. `bfa-laginoteca` quedó colgada y sin leer.
+Por qué: el usuario pide la base más grande de tiendas online chilenas; esta fuente es la que más tiendas nuevas trajo.
+Otras evaluadas: CyberDay/CyberMonday antes de 2024 en el Archive (la lista no está en el HTML, 0 útiles), la página
+"participantes 2023" viva de blackfriday.cl (hoy muestra la lista actual), la vitrina de Jumpseller (~30 tiendas de
+varios países, no incorporada).
+Pendiente: **desplegar antes de publicar**: el servidor actual no tiene nombre para la lista `blackfriday-anterior` y
+escribiría "undefined" en las guías. Merge solo con el OK del usuario. Releer `bfa-laginoteca`. En este worktree falla
+1 prueba de Vitrinee (`portal.test.ts`, wallet-kit T143, 500 en vez de 200), ajena a este cambio, que solo toca
+`apps/comercios`.
+
 ## 2026-11-24 — cc/t195-compras-publicas
 
 Agente: Claude Code
