@@ -116,6 +116,7 @@ export function bigPriceRows(store: BigStore, products: readonly Product[], read
       storeId: store.id, store: store.name, domain: store.domain, title: p.title.trim().slice(0, 200), price, url: p.url, readAt: readAt.slice(0, 10),
       ...(p.brand === undefined || p.brand.trim() === "" ? {} : { brand: p.brand.trim() }),
       ...(before === undefined ? {} : { before }),
+      ...(p.gtin === undefined ? {} : { gtin: p.gtin }),
     };
     const prev = cheapest.get(p.url);
     if (prev === undefined || row.price < prev.price) cheapest.set(p.url, row);

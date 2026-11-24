@@ -60,15 +60,23 @@ export function productKey(row: Pick<PriceRow, "title" | "brand">): ProductKey |
   return { house, name: words.join(" "), concentration, ml };
 }
 
+const PerfumeKeySchema = z.object({ house: z.string(), name: z.string(), concentration: z.string(), ml: z.number().int().positive() });
+/** A product of any kind known by its barcode (GTIN-14, zero-padded) and the name its stores give it. */
+const CodeKeySchema = z.object({ gtin: z.string().regex(/^\d{14}$/), brand: z.string(), name: z.string() });
+export type CodeKey = z.infer<typeof CodeKeySchema>;
+
 export const ProductGroupSchema = z.object({
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  key: z.object({ house: z.string(), name: z.string(), concentration: z.string(), ml: z.number().int().positive() }),
+  key: z.union([CodeKeySchema, PerfumeKeySchema]),
   /** One offer per store, its lowest price for that product, cheapest first. */
   offers: z.array(PriceRowSchema).min(1),
   /** The same product at big stores (multitiendas, pharmacies...), one per store, cheapest first: shown for comparison, outside the pyme order. */
   reference: z.array(PriceRowSchema).default([]),
 });
 export type ProductGroup = z.infer<typeof ProductGroupSchema>;
+
+/** Whether a group is matched by barcode rather than by perfume name. */
+export const isCodeKey = (k: ProductGroup["key"]): k is CodeKey => "gtin" in k;
 
 const slugOf = (k: ProductKey) => [k.house, k.name, k.concentration, `${k.ml}ml`].filter((x) => x !== "").join(" ").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -120,6 +128,59 @@ export function matchProducts(rows: readonly PriceRow[], minStores = 3, bigRows:
     .sort((a, b) => b.offers.length - a.offers.length || a.slug.localeCompare(b.slug));
 }
 
+/** A valid GTIN-8/12/13/14 as 14 digits, or undefined (wrong length, all zeros or a bad check digit: often a SKU in the wrong field). */
+export function normalGtin(raw: string | undefined): string | undefined {
+  const g = (raw ?? "").trim();
+  if (!/^(\d{8}|\d{12,14})$/.test(g) || /^0+$/.test(g)) return undefined;
+  const d = g.padStart(14, "0").split("").map(Number);
+  let sum = 0;
+  for (let i = 0; i < 13; i++) sum += d[i]! * (i % 2 === 0 ? 3 : 1);
+  return (10 - (sum % 10)) % 10 === d[13] ? g.padStart(14, "0") : undefined;
+}
+
+/** Prices for one barcode further apart than this are taken as a wrongly loaded code, and the page is not made. */
+export const CODE_MAX_SPREAD = 3;
+
+const mostCommon = (xs: readonly string[]): string | undefined => {
+  const n = new Map<string, number>();
+  for (const x of xs) n.set(x, (n.get(x) ?? 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length || a[0].localeCompare(b[0]))[0]?.[0];
+};
+
+/**
+ * Products of any rubro that `minStores` or more pyme stores sell under the
+ * same valid barcode. Pilot perfumes are left to `matchProducts` (one page per
+ * product). Big stores join a page by the same barcode, for comparison only.
+ */
+export function matchByCode(rows: readonly PriceRow[], minStores = 2, bigRows: readonly PriceRow[] = []): ProductGroup[] {
+  const byCode = new Map<string, Map<string, PriceRow>>();
+  const add = (into: Map<string, Map<string, PriceRow>>, row: PriceRow) => {
+    const gtin = normalGtin(row.gtin);
+    if (gtin === undefined) return;
+    const byStore = into.get(gtin) ?? new Map<string, PriceRow>();
+    const prev = byStore.get(row.storeId);
+    if (prev === undefined || row.price < prev.price) byStore.set(row.storeId, row);
+    into.set(gtin, byStore);
+  };
+  for (const row of rows) if (productKey(row) === undefined) add(byCode, row);
+  const reference = new Map<string, Map<string, PriceRow>>();
+  for (const row of bigRows) add(reference, row);
+  const cheapestFirst = (a: PriceRow, b: PriceRow) => a.price - b.price || a.store.localeCompare(b.store);
+  const out: ProductGroup[] = [];
+  for (const [gtin, byStore] of byCode) {
+    if (byStore.size < minStores) continue;
+    const offers = [...byStore.values()].sort(cheapestFirst);
+    if (offers.at(-1)!.price > offers[0]!.price * CODE_MAX_SPREAD) continue;
+    const brand = mostCommon(offers.flatMap((o) => (o.brand === undefined ? [] : [o.brand.trim()]))) ?? "";
+    const name = [...offers].map((o) => o.title.trim()).sort((a, b) => a.length - b.length || a.localeCompare(b))[0]!;
+    const words = `${searchText(name).includes(searchText(brand)) ? "" : brand} ${name}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70).replace(/-+$/, "");
+    const slug = `${words === "" ? "producto" : words}-${gtin.replace(/^0+/, "")}`;
+    const ref = [...(reference.get(gtin)?.values() ?? [])].filter((r) => !byStore.has(r.storeId)).sort(cheapestFirst);
+    out.push({ slug, key: { gtin, brand, name }, offers, reference: ref });
+  }
+  return out.sort((a, b) => b.offers.length - a.offers.length || a.slug.localeCompare(b.slug));
+}
+
 // ---------------------------------------------------------------------------
 // Rendering
 
@@ -131,6 +192,7 @@ const titleCase = (w: string) => (w.length <= 2 && CONNECTORS.has(w) ? w : w.cha
 
 /** "Lattafa Khamrah EDP 100 ml": the house as stores write it most, the name words in the order of the shortest title. */
 export function productName(g: ProductGroup): string {
+  if (isCodeKey(g.key)) return g.key.brand === "" || searchText(g.key.name).includes(searchText(g.key.brand)) ? g.key.name : `${g.key.brand} ${g.key.name}`;
   const houses = new Map<string, number>();
   for (const o of g.offers) if (o.brand !== undefined && searchText(o.brand) === g.key.house) houses.set(o.brand, (houses.get(o.brand) ?? 0) + 1);
   const houseLabel = [...houses].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -151,6 +213,9 @@ const median = (xs: readonly number[]) => {
 
 export const PRODUCT_ORDER_RULE = "Ordenadas del precio más bajo al más alto; a igual precio, por nombre de la tienda. El orden no depende de ninguna relación con las tiendas.";
 export const MATCH_RULE = "Contamos como el mismo producto los que tienen el mismo nombre, la misma concentración (EDP, EDT, Extrait) y el mismo tamaño, sin importar cómo lo escribe cada tienda. No contamos decants, testers, sets ni body mists, ni los perfumes que el nombre solo menciona como referencia (\"inspirado en…\").";
+
+export const CODE_RULE = `Contamos como el mismo producto los que llevan el mismo código de barras (GTIN o EAN) en los datos de la página de cada tienda. Si entre tiendas el precio de un mismo código difiere más de ${CODE_MAX_SPREAD} veces, no hacemos la página: suele ser un código mal cargado.`;
+export const CODE_BIG_RULE = "Las tiendas grandes y las tiendas de las propias marcas van aparte, solo para comparar: leemos su catálogo público respetando su robots.txt, y las que nos bloquean no aparecen. En algunas de ellas el vendedor puede ser un tercero que vende en su sitio.";
 
 export const BIG_RULE = "Las tiendas grandes (multitiendas y cadenas de farmacias y perfumerías) van aparte, solo para comparar: leemos las páginas de estos perfumes en su sitemap público, respetando su robots.txt, y las que nos bloquean no aparecen. En algunas de ellas el vendedor puede ser un tercero que vende en su sitio.";
 
@@ -179,7 +244,8 @@ export function productHtml(g: ProductGroup, today = productUpdated(g)): string 
     "@type": "Product",
     "@id": pageUrl,
     name,
-    brand: { "@type": "Brand", name: name.split(" ").slice(0, g.key.house.split(" ").length).join(" ") },
+    brand: { "@type": "Brand", name: isCodeKey(g.key) ? g.key.brand || name : name.split(" ").slice(0, g.key.house.split(" ").length).join(" ") },
+    ...(isCodeKey(g.key) ? { gtin: g.key.gtin } : {}),
     url: pageUrl,
     offers: {
       "@type": "AggregateOffer", priceCurrency: "CLP", lowPrice: low, highPrice: high, offerCount: g.offers.length,
@@ -206,8 +272,8 @@ ${big}
 ${searchForm()}
 <h2 id="metodologia">Metodología</h2>
 <ul>
-<li><strong>Qué tiendas entran.</strong> Tiendas online chilenas con sitio propio de las listas públicas de participantes de blackfriday.cl y cyber.cl, actuales y de ediciones anteriores, sin grandes tiendas, multitiendas ni marketplaces. ${escapeHtml(BIG_RULE)}</li>
-<li><strong>El mismo producto.</strong> ${escapeHtml(MATCH_RULE)} Así lo nombra cada tienda:<ul>${titles}</ul></li>
+<li><strong>Qué tiendas entran.</strong> Tiendas online chilenas con sitio propio de las listas públicas de participantes de blackfriday.cl y cyber.cl, actuales y de ediciones anteriores, sin grandes tiendas, multitiendas ni marketplaces. ${escapeHtml(isCodeKey(g.key) ? CODE_BIG_RULE : BIG_RULE)}</li>
+<li><strong>El mismo producto.</strong> ${escapeHtml(isCodeKey(g.key) ? CODE_RULE : MATCH_RULE)}${isCodeKey(g.key) ? ` Código: ${g.key.gtin.replace(/^0+(?=\d{13}$)/, "")}.` : ""} Así lo nombra cada tienda:<ul>${titles}</ul></li>
 <li><strong>Precios.</strong> En pesos chilenos, el más bajo de cada tienda para este producto el día de la lectura. No contamos productos agotados. "Antes" es el precio tachado que mostraba la tienda. ${escapeHtml(FRESHNESS_RULE)}</li>
 <li><strong>Relación con AgentPey.</strong> ${escapeHtml(DISCLOSURE)} Nadie paga por aparecer.</li>
 </ul>
@@ -221,21 +287,31 @@ ${searchForm()}
 `;
 }
 
-/** Every product page, by house, with its store count and lowest price. */
+/** Every product page: the perfumes by house, then the products matched by barcode by brand, each with its store count and lowest price. */
 export function productsIndexHtml(groups: readonly ProductGroup[], today = groups.map(productUpdated).sort().at(-1) ?? ""): string {
-  const byHouse = new Map<string, ProductGroup[]>();
-  for (const g of groups) byHouse.set(g.key.house, [...(byHouse.get(g.key.house) ?? []), g]);
-  const body = [...byHouse].sort((a, b) => a[0].localeCompare(b[0])).map(([house, gs]) => `<h2>${escapeHtml(house.split(" ").map(titleCase).join(" "))}</h2>
-<ul>${[...gs].sort((a, b) => a.slug.localeCompare(b.slug)).map((g) => `<li><a href="${escapeHtml(productUrl(g.slug))}">${escapeHtml(productName(g))}</a> <span class="muted">${g.offers.length} tiendas · desde ${clp(g.offers[0]!.price)}</span></li>`).join("")}</ul>`).join("\n");
-  return `${pageHead("Perfumes árabes en Chile: el mismo perfume comparado entre tiendas · AgentPey", `${num(groups.length)} perfumes árabes que venden tres o más tiendas online chilenas, con el precio de cada tienda.`, productUrl())}
+  const perfumes = groups.filter((g) => !isCodeKey(g.key));
+  const coded = groups.filter((g) => isCodeKey(g.key));
+  const section = (gs: readonly ProductGroup[], label: (g: ProductGroup) => string) => {
+    const by = new Map<string, ProductGroup[]>();
+    for (const g of gs) by.set(label(g), [...(by.get(label(g)) ?? []), g]);
+    return [...by].sort((a, b) => a[0].localeCompare(b[0], "es")).map(([h, list]) => `<h3>${escapeHtml(h)}</h3>
+<ul>${[...list].sort((a, b) => a.slug.localeCompare(b.slug)).map((g) => `<li><a href="${escapeHtml(productUrl(g.slug))}">${escapeHtml(productName(g))}</a> <span class="muted">${g.offers.length} tiendas · desde ${clp(g.offers[0]!.price)}</span></li>`).join("")}</ul>`).join("\n");
+  };
+  const houseOf = (g: ProductGroup) => (isCodeKey(g.key) ? "" : g.key.house.split(" ").map(titleCase).join(" "));
+  const brandOf = (g: ProductGroup) => (isCodeKey(g.key) && g.key.brand !== "" ? g.key.brand : "Otras marcas");
+  return `${pageHead("Productos en Chile: el mismo producto comparado entre tiendas · AgentPey", `${num(groups.length)} productos que venden varias tiendas online chilenas, con el precio de cada tienda.`, productUrl())}
 <body>
 <main>
 <p class="eyebrow"><a href="${escapeHtml(guideUrl())}">Guías AgentPey</a> · actualizada el <time datetime="${today}">${longDate(today)}</time></p>
-<h1>Perfumes árabes en Chile: precio por tienda</h1>
-<p class="lead">${num(groups.length)} perfumes de casas árabes que venden tres o más tiendas online chilenas con sitio propio. En cada uno, el precio de cada tienda, del más barato al más caro.</p>
+<h1>El mismo producto, precio por tienda en Chile</h1>
+<p class="lead">${num(groups.length)} productos que venden varias tiendas online chilenas con sitio propio. En cada uno, el precio de cada tienda, del más barato al más caro.</p>
 <p class="note">${escapeHtml(DISCLOSURE)}</p>
-<p class="muted">${escapeHtml(MATCH_RULE)}</p>
-${body}
+<h2 id="perfumes">Perfumes árabes (${num(perfumes.length)})</h2>
+<p class="muted">Tres o más tiendas. ${escapeHtml(MATCH_RULE)}</p>
+${section(perfumes, houseOf)}
+${coded.length === 0 ? "" : `<h2 id="por-codigo">Por código de barras (${num(coded.length)})</h2>
+<p class="muted">Dos o más tiendas. ${escapeHtml(CODE_RULE)}</p>
+${section(coded, brandOf)}`}
 <footer><p>Hecha por <a href="https://agentpey.com">AgentPey</a> con datos públicos.</p></footer>
 </main>
 </body>

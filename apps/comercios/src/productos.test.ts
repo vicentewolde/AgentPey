@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DISCLOSURE } from "./guia.js";
 import type { PriceRow } from "./precios.js";
-import { BIG_RULE, MATCH_RULE, matchProducts, productHtml, productKey, productName, productsIndexHtml } from "./productos.js";
+import { BIG_RULE, CODE_MAX_SPREAD, CODE_RULE, MATCH_RULE, matchByCode, matchProducts, normalGtin, productHtml, productKey, productName, productsIndexHtml } from "./productos.js";
 
 let n = 0;
 const row = (store: string, title: string, price: number, brand?: string): PriceRow => ({
@@ -82,5 +82,50 @@ describe("the groups", () => {
     const g = matchProducts(two, 3, [row("gr-x", "Lattafa Khamrah 100 ml", 1000), { ...row("gr-y", "Lattafa Khamrah EDP 100 ML", 2000), store: "<script>x</script>" }]).find((x) => x.slug === "lattafa-khamrah-edp-100ml")!;
     expect(g.reference.map((o) => o.storeId)).toEqual(["gr-y"]);
     expect(productHtml(g, "2026-11-22")).not.toContain("<script>x");
+  });
+});
+
+describe("products matched by barcode", () => {
+  const coded = (store: string, title: string, price: number, gtin: string, brand?: string): PriceRow => ({ ...row(store, title, price, brand), gtin });
+
+  it("accepts only valid GTINs, as 14 digits", () => {
+    expect(normalGtin("7805580300013")).toBe("07805580300013");
+    expect(normalGtin("193177563239")).toBe("00193177563239");
+    expect(normalGtin("7805580300014")).toBeUndefined(); // bad check digit
+    expect(normalGtin("0000000000000")).toBeUndefined();
+    expect(normalGtin("SKU-123")).toBeUndefined();
+    expect(normalGtin(undefined)).toBeUndefined();
+  });
+
+  it("makes one page per code in two or more stores, cheapest first, with big stores apart", () => {
+    const rows = [
+      coded("a", "Frague Blanco de 1 Kilo", 1490, "7805580300013", "Bekron"), coded("b", "Frague 1 Kilo Bekron", 1390, "07805580300013"),
+      coded("a", "Solo en una tienda", 5000, "193177563239"),
+    ];
+    const big = [coded("easy", "Frague Bekron 1 kg", 1590, "7805580300013")];
+    const groups = matchByCode(rows, 2, big);
+    expect(groups).toHaveLength(1);
+    const g = groups[0]!;
+    expect(g.key).toEqual({ gtin: "07805580300013", brand: "Bekron", name: "Frague 1 Kilo Bekron" });
+    expect(g.slug).toBe("frague-1-kilo-bekron-7805580300013");
+    expect(g.offers.map((o) => o.price)).toEqual([1390, 1490]);
+    expect(g.reference.map((o) => o.storeId)).toEqual(["easy"]);
+    const html = productHtml(g);
+    expect(html).toContain("Frague 1 Kilo Bekron: precio en Chile");
+    expect(html).toContain(CODE_RULE);
+    expect(html).toContain('"gtin":"07805580300013"');
+    expect(html).toContain("En tiendas grandes, para comparar");
+  });
+
+  it("leaves out a code whose prices are too far apart, and the pilot perfumes", () => {
+    expect(matchByCode([coded("a", "Cosa", 1000, "7805580300013"), coded("b", "Cosa", 1000 * CODE_MAX_SPREAD + 1, "7805580300013")])).toEqual([]);
+    expect(matchByCode([coded("a", "Lattafa Khamrah EDP 100 ML", 30000, "7805580300013"), coded("b", "Lattafa Khamrah EDP 100 ML", 31000, "7805580300013")])).toEqual([]);
+  });
+
+  it("lists both kinds on the index", () => {
+    const g = matchByCode([coded("a", "Frague Blanco", 1490, "7805580300013", "Bekron"), coded("b", "Frague Blanco", 1390, "7805580300013", "Bekron")]);
+    const html = productsIndexHtml(g);
+    expect(html).toContain("Por código de barras (1)");
+    expect(html).toContain("<h3>Bekron</h3>");
   });
 });

@@ -139,6 +139,24 @@ Khamrah, Khamrah Qahwa and Khamrah Dukhan stay apart; decants, testers, sets
 and body mists are out; a page needs three stores. `base guia` builds them and
 `setup-postgres --guias` publishes them.
 
+### Products by barcode, any rubro
+
+Besides the perfume pages, `base guia` makes a page for every product that two
+or more pyme stores sell under the same valid barcode (GTIN-8/12/13/14, check
+digit verified). A code whose prices differ more than 3 times between stores is
+left out (usually a wrongly loaded code). Big stores and brands' own stores
+(segment `grande`) join a page by the same code, in their own table, for
+comparison only; they never enter the guides, the brands or the search.
+
+Read the big stores' and brands' catalogues (skips the ones already read):
+
+```bash
+cd apps/comercios && COMERCIOS_DATA=~/agentes/datos-comercios npx tsx src/cli.ts base ingest --segmento grande --paralelo 6 --max 3000
+```
+
+Deploy the code before publishing these pages: the code running today rejects a
+product page without a perfume key.
+
 ### Big stores, for comparison (perfume pages only)
 
 Each perfume page also shows, in its own table, the price at big stores
