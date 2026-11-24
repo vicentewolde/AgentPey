@@ -100,14 +100,63 @@ async function readPages(store: Store, fetcher: Fetcher, urls: string[], limit: 
   return out;
 }
 
-/** Breadth-first from the home page over same-site links, product-looking links first. */
+/**
+ * How likely a same-site link leads to products: 0 a product page, 1 a listing
+ * (category, collection, catalogue) that links to products, 2 anything else.
+ * A link with a query string is a filtered or sorted copy of a page: last.
+ */
+export function linkTier(url: string): 0 | 1 | 2 | 3 {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return 3;
+  }
+  if (u.search !== "") return 3;
+  const path = u.pathname.toLowerCase();
+  if (/\/(products?|producto|productos\/[^/]+\/[^/]+|item|articulo|ficha|detalle|p)\/[^/]+|\.html?$|\/p$/.test(path)) return 0;
+  if (/\/(collections?|coleccion(es)?|categor(y|ia|ias|ies)|catalogo|catalog|tienda|shop|departamento|linea|marca|brand)s?(\/|$)|\/\d+-[a-z]/.test(path)) return 1;
+  return 2;
+}
+
+/** The queue of a crawl: product pages first, then listings, then the rest; one visit per address. */
+export class CrawlQueue {
+  private readonly tiers: [string[], string[], string[], string[]] = [[], [], [], []];
+  private readonly known = new Set<string>();
+
+  push(url: string): void {
+    if (this.known.has(url)) return;
+    this.known.add(url);
+    this.tiers[linkTier(url)].push(url);
+  }
+
+  shift(): string | undefined {
+    for (const t of this.tiers) if (t.length > 0) return t.shift();
+    return undefined;
+  }
+
+  get size(): number {
+    return this.tiers.reduce((n, t) => n + t.length, 0);
+  }
+}
+
+/** Pages a crawl opens without finding a single product before it gives up: the site does not mark its products up. */
+export const FRUITLESS_PAGES = 120;
+
+/** From the home page over same-site links: product pages first, then listings, then the rest. */
 async function crawl(store: Store, fetcher: Fetcher, limit: number, notes: string[], log: (l: string) => void): Promise<Product[]> {
   const out: Product[] = [];
   const seen = new Set<string>();
-  const queue: string[] = [store.origin + "/"];
+  const queue = new CrawlQueue();
+  queue.push(store.origin + "/");
   let opened = 0;
+  let site = store.origin;
   const maxOpen = limit * 3;
-  while (queue.length > 0 && out.length < limit && opened < maxOpen) {
+  while (queue.size > 0 && out.length < limit && opened < maxOpen) {
+    if (out.length === 0 && opened >= FRUITLESS_PAGES) {
+      notes.push(`Ningún producto en las primeras ${FRUITLESS_PAGES} páginas: se deja de recorrer`);
+      break;
+    }
     const url = queue.shift()!;
     if (seen.has(url)) continue;
     seen.add(url);
@@ -122,9 +171,14 @@ async function crawl(store: Store, fetcher: Fetcher, limit: number, notes: strin
     } catch {
       continue;
     }
+    // A home page that moves to another host (a renamed store, a "tienda." subdomain) is read there.
+    if (opened === 1 && !sameSite(finalUrl, site)) {
+      site = new URL(finalUrl).origin;
+      notes.push(`La portada lleva a ${site}`);
+    }
     const product = fromProductPage(store.id, finalUrl, body);
     if (product !== undefined && product.title !== "") out.push(product);
-    const links = [...body.matchAll(/href=["']([^"'#]+)["']/gi)]
+    const links = [...body.matchAll(/href=["']([^"']+)["']/gi)]
       .map((m) => {
         try {
           return new URL(m[1]!, finalUrl).toString().split("#")[0]!;
@@ -132,10 +186,8 @@ async function crawl(store: Store, fetcher: Fetcher, limit: number, notes: strin
           return "";
         }
       })
-      .filter((l) => l !== "" && sameSite(l, store.origin) && !seen.has(l) && !/\.(jpg|jpeg|png|webp|gif|pdf|css|js|svg|ico)(\?|$)|\/(cart|carrito|checkout|login|account|mi-cuenta|my-account|wp-admin|contacto|contact)|[?&](add|order|sort|orderby|filter|q)=/i.test(l));
-    const productLike = (u: string) => /\/(products?|producto|p)\/|\.html$|\/\d+-/i.test(u);
-    for (const l of links.filter(productLike)) if (!queue.includes(l)) queue.unshift(l);
-    for (const l of links.filter((u) => !productLike(u))) if (!queue.includes(l)) queue.push(l);
+      .filter((l) => l !== "" && sameSite(l, site) && !seen.has(l) && !/\.(jpg|jpeg|png|webp|gif|pdf|css|js|svg|ico|xml|zip)(\?|$)|\/(cart|carrito|checkout|login|account|mi-cuenta|my-account|wp-admin|contacto|contact|inicio-sesion|registro|wishlist|blog|noticias)(\/|$)|[?&](add|order|sort|orderby|filter|q)=/i.test(l));
+    for (const l of links) queue.push(l);
     if (opened % 25 === 0) log(`${store.id}: ${opened} páginas, ${out.length} productos`);
   }
   notes.push(`Recorrido: ${opened} páginas abiertas`);
@@ -180,8 +232,8 @@ async function productUrlsFromSitemaps(store: Store, fetcher: Fetcher, notes: st
   }
   if (pages.size === 0) notes.push("No se encontró un sitemap con páginas");
   const all = [...pages].filter((u) => !/\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(u));
-  const productLike = (u: string) => /\/(products?|producto|p)\/|\/p$|\.html$|-\d+\.html|\/\d+-/i.test(u);
-  return [...all.filter(productLike), ...all.filter((u) => !productLike(u))];
+  // Product pages first, then listings, then the rest; a stable sort keeps the sitemap's own order within each.
+  return all.map((u, i) => ({ u, i, t: linkTier(u) })).sort((a, b) => a.t - b.t || a.i - b.i).map((x) => x.u);
 }
 
 function sameSite(url: string, origin: string): boolean {

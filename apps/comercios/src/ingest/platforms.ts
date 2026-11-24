@@ -172,7 +172,7 @@ export function fromProductPage(storeId: string, url: string, html: string): Pro
   if (product === undefined) {
     const ogType = meta(html, "og:type");
     const amount = meta(html, "product:price:amount");
-    if (ogType !== "product" && amount === undefined) return undefined;
+    if (ogType !== "product" && amount === undefined) return fromMicrodata(storeId, url, html);
     const title = meta(html, "og:title");
     if (title === undefined) return undefined;
     const image = meta(html, "og:image");
@@ -225,6 +225,41 @@ export function fromProductPage(storeId: string, url: string, html: string): Pro
     tags: [],
     attributes,
     variants: variantNodes.map((v) => ({ id: str(v.sku) ?? str(v.productID) ?? "", title: str(v.name) ?? "", price: toClp(obj(Array.isArray(v.offers) ? v.offers[0] : v.offers).price), available: undefined, sku: str(v.sku) })),
+  };
+}
+
+/** An `itemprop` value: its `content` attribute, else the element's text. */
+function itemprop(html: string, prop: string): string | undefined {
+  const tag = new RegExp(`<([a-z0-9]+)\\b[^>]*\\bitemprop=["']${prop}["'][^>]*>`, "i").exec(html);
+  if (tag === null) return undefined;
+  const content = /\bcontent=["']([^"']*)["']/i.exec(tag[0])?.[1];
+  if (content !== undefined && content.trim() !== "") return decodeEntities(content.trim());
+  const rest = html.slice(tag.index + tag[0].length);
+  const text = rest.slice(0, rest.search(new RegExp(`</${tag[1]}>`, "i")));
+  const clean = decodeEntities(text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
+  return clean === "" ? undefined : clean;
+}
+
+/**
+ * A product marked up with schema.org microdata (`itemtype=".../Product"` and
+ * `itemprop` name and price), as some own platforms and older themes do. Needs
+ * both a name and a price; undefined otherwise.
+ */
+export function fromMicrodata(storeId: string, url: string, html: string): Product | undefined {
+  const start = html.search(/itemtype=["']https?:\/\/schema\.org\/Product["']/i);
+  if (start < 0) return undefined;
+  const scope = html.slice(start);
+  const title = itemprop(scope, "name");
+  const price = toClp(itemprop(scope, "price") ?? itemprop(scope, "lowPrice"));
+  if (title === undefined || price === undefined) return undefined;
+  const availability = itemprop(scope, "availability")?.toLowerCase();
+  const image = itemprop(scope, "image") ?? meta(html, "og:image");
+  return {
+    storeId, id: itemprop(scope, "sku") ?? new URL(url).pathname, title, description: htmlToText(itemprop(scope, "description") ?? meta(html, "og:description")), url,
+    images: image === undefined ? [] : [image], price, compareAtPrice: undefined,
+    available: availability === undefined ? undefined : availability.includes("instock") ? true : availability.includes("outofstock") ? false : undefined,
+    brand: itemprop(scope, "brand"), sku: itemprop(scope, "sku"), gtin: itemprop(scope, "gtin13") ?? itemprop(scope, "gtin"),
+    category: undefined, tags: [], attributes: {}, variants: [],
   };
 }
 
