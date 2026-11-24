@@ -45,9 +45,20 @@ export const PolicySchema = z.object({
     retiro_en_tienda: z.string(),
   }),
   cambios_y_devoluciones: z.object({
-    acepta: z.enum(["si", "no", "no_dice"]),
-    plazo_dias: z.number().int().nullable(),
+    acepta: z.enum(["si", "no", "no_dice"]).describe("Si acepta cambios o devoluciones de algún tipo."),
+    plazo_dias: z.number().int().nullable().describe("Plazo para devolver el producto y recibir el dinero de vuelta; null si solo hay cambio o no lo dice."),
     condiciones: z.string(),
+    cambio: z.object({
+      plazo_dias: z.number().int().nullable().describe("Plazo para cambiar por otro producto; null si no lo dice."),
+      solo_por_falla: z.boolean().describe("true si el cambio vale solo para productos fallados o que no corresponden."),
+    }),
+    devolucion_dinero: z.object({
+      acepta: z.enum(["si", "no", "no_dice"]).describe("Si devuelve el dinero (incluido el retracto, si la tienda lo menciona)."),
+      plazo_dias: z.number().int().nullable(),
+      solo_por_falla: z.boolean().describe("true si la devolución del dinero vale solo para productos fallados o que no corresponden."),
+    }),
+    plazo_desde: z.enum(["recepcion", "compra", "no_dice"]).describe("Desde cuándo se cuentan los plazos."),
+    tipo_de_dias: z.enum(["corridos", "habiles", "no_dice"]),
   }),
   garantia: z.string(),
   medios_de_pago: z.array(z.string()),
@@ -59,11 +70,17 @@ export const PolicySchema = z.object({
 
 export type Policy = z.infer<typeof PolicySchema>;
 
+/** A saved policy read before cambio and devolución were told apart: the night shift reads it again. */
+export const policyOutdated = (data: unknown): boolean =>
+  typeof data !== "object" || data === null || !("devolucion_dinero" in ((data as { cambios_y_devoluciones?: object }).cambios_y_devoluciones ?? {}));
+
 const SYSTEM = `Extraes las políticas de una tienda online chilena desde el texto de sus páginas, para que un asistente de compras con IA responda bien y no prometa nada que la tienda no ofrezca.
 Reglas:
 - Solo lo que dice el texto. Si no lo dice, deja el campo vacío, usa "no_dice" o null, y anótalo en "falta".
 - Cada dato que afirmes debe tener una cita textual en "citas", con la URL de donde salió.
 - No inventes plazos, costos ni coberturas. No completes con lo que "suelen" hacer las tiendas.
+- Cambio (por otro producto) y devolución del dinero son cosas distintas, con plazos que pueden ser distintos: no pongas el plazo de cambio como plazo de devolución. Marca "solo_por_falla" cuando el plazo vale solo para productos fallados o que no corresponden.
+- Los campos describen a la tienda para un comprador: no escribas en ellos notas sobre el texto ("el texto no dice", "aparece cortado", "según el banner"). Lo que falta va en "falta".
 - Español de Chile, frases cortas.`;
 
 export async function extractPolicy(llm: Llm, store: Store, pages: { url: string; text: string }[]): Promise<Policy | undefined> {
