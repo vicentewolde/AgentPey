@@ -1188,6 +1188,9 @@ async function serveStatic(pathname: string, res: ServerResponse, host: string |
           // mandate id is read client-side from the path.
           pathname.startsWith("/revocar/")
           ? "/revocar.html"
+          : // Vicente's personal profile page (shared with Avalanche Team1).
+          pathname === "/vicente"
+          ? "/vicente.html"
           : // T141: the stores an agent can buy from; `/stores` is the English alias.
           pathname === "/tiendas" || pathname === "/stores"
           ? "/tiendas.html"
