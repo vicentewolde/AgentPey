@@ -171,6 +171,7 @@ Leyenda: ⏳ pendiente · 🔨 en curso · 👀 en revisión · ✅ terminada ·
 
 ## Notas de la última sesión
 
+- 2026-11-22 (tarde): `cc/tiendas-grandes` (sin mergear): las páginas de perfume muestran aparte, para comparar, el precio en Paris, Lider y Hites (307 de 351 páginas). Ripley y Falabella bloquean a nuestro robot y quedan fuera. Comando `base grandes`, después de `base guia`.
 - 2026-11-22: guía pública de comercios (fuera de la fase, a pedido del usuario, igual que #125–#127): `cc/visitas-robots` agrega el contador de visitas de robots y asistentes de IA, guías para 13 rubros, páginas del mismo perfume en varias tiendas (`/chile/productos`) y tiendas de ediciones anteriores de cyber.cl. Orden obligado: primero se despliega el código y después se publica con `--guias`; el código anterior no lee las guías con tiendas `cyber-anterior`.
 - 2026-11-04: el usuario pidió completar la Fase 9 entera. T163 con código listo. Deuda nueva: `apps/web/src/tenant-rail.test.ts` sale a la RPC pública de Soroban y se pasa de 5 s cuando la RPC está lenta (hoy `getHealth` 4,2 s): `pnpm test` no debería tocar la red.
 

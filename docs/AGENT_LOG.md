@@ -9672,6 +9672,22 @@ Por qué: un precio viejo citado por una IA rompe la confianza en "el precio má
 
 Pendiente: dejar el worktree `~/agentes/AgentPay-worktrees/semanal` y el timer instalados después del merge; revisar el primer log en `~/agentes/datos-comercios/semanal/`.
 
+## 2026-11-22 (tarde) — cc/tiendas-grandes
+
+Agente: Claude Code
+
+Qué:
+- `cc/visitas-robots` (PR #128) fusionado con el OK de Vicente ("al final, merge"); `prod:check` 9/9 antes y después. Publicado con el código nuevo: 421 tiendas en 13 guías, 1.757 marcas, 256.219 precios, 351 páginas de perfume; IndexNow 2.125. Prueba de la cabecera falsa repetida: el 429 llega en la búsqueda 301.
+- Vicente pidió la base más grande y fidedigna posible, todas las ediciones antiguas de Cyber y las tiendas online relevantes, para comparar con otras páginas de venta. Internet Archive: 15 copias de cyber.cl con lista (2024–2026); antes de 2024 la página no trae la lista. 30 tiendas nuevas (1.087 ya estaban).
+- Tiendas grandes para comparar (`grandes.ts`): Paris 1.500, Lider 794, Hites 199 perfumes leídos desde sus sitemaps; 307 de 351 páginas con su precio aparte. En 261 una pyme es más barata. Ripley (403 en el índice) y Falabella (403) quedan fuera; Cruz Verde sin coincidencias.
+- Revisión del `revisor` sin bloqueantes. Arreglado: misma regla de concentración que las pymes, una lectura con menos de la mitad mantiene la anterior, banderas con zod, tope de 60 sitemaps y 600 páginas, frase "el más bajo entre ellas", README y tests de bordes.
+- Ojo: `pnpm typecheck` de la raíz no cubre `apps/comercios/src/base-cli.ts` (faltaba el import de zod y pasó); `npx tsc --noEmit -p apps/comercios` sí lo ve, con 3 errores previos en `base-cli.ts` (tipos de `Run`).
+
+Pendiente:
+- OK de Vicente para fusionar `cc/tiendas-grandes`; luego `base guia`, `setup-postgres --solo-importar --guias --max-caida 30` e IndexNow.
+- Paris tiene 1.687 páginas más por leer: correr `base grandes --tiendas gr-paris` de nuevo.
+- Sumar las grandes al job semanal si Vicente lo aprueba.
+
 ## 2026-11-22 — cc/visitas-robots
 
 Agente: Claude Code

@@ -139,6 +139,28 @@ Khamrah, Khamrah Qahwa and Khamrah Dukhan stay apart; decants, testers, sets
 and body mists are out; a page needs three stores. `base guia` builds them and
 `setup-postgres --guias` publishes them.
 
+### Big stores, for comparison (perfume pages only)
+
+Each perfume page also shows, in its own table, the price at big stores
+(Paris, Lider, Hites; Ripley and Cruz Verde are listed but give nothing today,
+and Falabella answers 403 to our agent). They never enter the pyme order, the
+guides, the brand pages, the search or the page's JSON-LD offers. They are read
+from their public product sitemaps, only the addresses that name the house,
+every name word and the size of a perfume that already has a page, so run
+`base guia` first:
+
+```bash
+COMERCIOS_DATA=~/agentes/datos-comercios/ npx tsx src/cli.ts base grandes
+```
+
+```bash
+COMERCIOS_DATA=~/agentes/datos-comercios/ npx tsx src/cli.ts base grandes --tiendas gr-paris,gr-lider --max 300
+```
+
+`--max` caps the pages opened per store (600 by default). A reading with no
+product, or with less than half the last one, keeps the last one. Then
+`base guia` and `setup-postgres --solo-importar --guias` publish them.
+
 ### Stores from past editions of cyber.cl
 
 The Internet Archive keeps cyber.cl's participant lists of past events. Save a
