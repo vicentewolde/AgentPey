@@ -136,3 +136,17 @@ gasto por persona (con una compra pagada desde ella) y las dos acciones nuevas d
 Tapline, confirmar desde el chat con una wallet real (el escrow de `agentcommerce` no tiene `confirm`) y la entrega
 digital en vivo. Para Passport se armó un resumen de una página en inglés, el hilo para X y el guion del video.
 
+## 2026-11-24 · Entregables de la semana 1 enviados
+
+La semana 1 quedó entregada en Stellar Passport (los tres entregables, en revisión del capítulo): el video en YouTube
+([`youtu.be/mkmN0WOEWf4`](https://youtu.be/mkmN0WOEWf4), 3:55, voz del usuario en español con subtítulos en inglés), el
+resumen en PDF en Drive y el hilo de X de @agentpeyai
+([`x.com/agentpeyai/status/2125107244341817704`](https://x.com/agentpeyai/status/2125107244341817704), con un corte de
+2:06 del video). El video se grabó en vivo desde ChatGPT Free, que con el conector de AgentPey compra, cotiza y paga:
+el imán quedó retenido en el escrow de `agentcommerce` (`ord_mwu6jhbk031ff97dba`), seis imanes fueron rechazados por el
+tope de 3 USDC, el reclamo llevó una foto sellada, la tienda respondió firmando con su wallet y el árbitro (Claude Opus
+5.5) decidió un reembolso parcial de 0,2578947 USDC, que el escrow pagó con el OK del usuario
+([`ddcae9ad…`](https://stellar.expert/explorer/testnet/tx/ddcae9ad54196c324965e8ee80390877f3ac0107c8287aad051f6915beac9be0)).
+Dos hallazgos del ensayo: ChatGPT no ve herramientas nuevas hasta apretar «Refresh tools» en el plugin, y solo en chats
+nuevos; y las páginas de evidencia y de confirmar mostraban los dos idiomas a la vez, corregido en el PR #131.
+

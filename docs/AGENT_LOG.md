@@ -22,6 +22,19 @@ Por qué: <motivo>
 Pendiente: <qué queda para la próxima sesión>
 ```
 
+## 2026-11-24 — cc/resolve-idioma, cc/semana1-cierre
+
+Agente: Claude Code
+
+Qué: entregables de la semana 1 del Instaward enviados en Passport (video en YouTube, PDF, hilo de X); las páginas
+`resolve/evidencia` y `resolve/confirmar` muestran un solo idioma (PR #131); registro en la bitácora de la Fase 10.
+
+Por qué: cerrar la semana 1 antes de empezar la semana 2.
+
+Pendiente: semana 2 (T191, Tapline). El conector de ChatGPT necesita «Refresh tools» cuando el MCP suma herramientas.
+
+---
+
 ## 2026-09-07 — codex/sdk-config-tests
 
 Agente: Codex
