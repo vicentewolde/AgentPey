@@ -86,6 +86,20 @@
       "schemaVersion": 1,
       "deployedAt": "2026-10-14T19:09:03.377Z",
       "protocolVersion": 29
+    },
+    "tapline": {
+      "contractId": "CASIEUGB4WAFWWJI3BGDBG4ZWX3AZS42RMN2DPPV3DKI6C7SZ43CZF3V",
+      "wasmHash": "cdd8260a606528392202fa1ade6686c9aef2d962a396ece34541ef21d2e81e10",
+      "operator": "GARPRSW3SMTIC3JBZUY32Z4M5HBKIX3E6DLU6D3XEBT3NSMX4HN6IVIA",
+      "payee": "GBNELM664N52NDAUFMNVTQIK2K2G7UYBQC3APHKJIJ52XW76DFRF2UAT",
+      "arbiter": "GAEB2EG3CSMEHLCYKHPPOMBRVISQOTBRS7T4K2D2EMNOA2AMUSJ32VV6",
+      "token": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      "releaseWindowSeconds": 600,
+      "responseWindowSeconds": 900,
+      "resolveWindowSeconds": 3600,
+      "schemaVersion": 2,
+      "deployedAt": "2026-11-24T18:16:45.205Z",
+      "protocolVersion": 30
     }
   },
   "retiredPurchaseEscrows": [

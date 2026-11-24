@@ -24,10 +24,10 @@ describe("parseTopupArgs", () => {
   });
 
   it("refuses amounts that are not plain decimals, zero, or above the cap", () => {
-    for (const bad of ["diez", "-5", "1e3", "0", "0.00", "10.12345678", `${String(MAX_TOPUP_USDC + 1)}`, "100"]) {
+    for (const bad of ["diez", "-5", "1e3", "0", "0.00", "10.12345678", `${String(MAX_TOPUP_USDC + 1)}`, "500"]) {
       expect(() => parseTopupArgs([RAIL, bad])).toThrow();
     }
-    expect(parseTopupArgs([RAIL, String(MAX_TOPUP_USDC)]).amount).toBe("20");
+    expect(parseTopupArgs([RAIL, String(MAX_TOPUP_USDC)]).amount).toBe("100");
   });
 
   it("refuses missing, extra and unknown arguments", () => {

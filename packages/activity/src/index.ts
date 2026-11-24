@@ -142,18 +142,22 @@ export function recentRefusals(records: readonly VaultRecord[], limit = 20): rea
  */
 /**
  * 3 USDC since 2026-09-23 (`C-131`): 1 USDC (`C-80`) was less than the cheapest
- * real product a Vitrinee store sells (1.0421053 USDC). A rail already funded
+ * real product a Vitrinee store sells (1.0421053 USDC). 25 USDC since 2026-11-24
+ * (T192, at the user's request): Tapline prices run up to 13.7 USDC and the
+ * community purchases should feel real. A rail already funded
  * keeps what it got; only rails deployed from now on start with this.
  */
-export const SPONSORED_FUNDING_PER_TENANT = "3.0000000";
+export const SPONSORED_FUNDING_PER_TENANT = "25.0000000";
 /**
  * 20 at launch (`C-80`: "twenty testers is a pilot, an uncapped faucet is a
  * way to wake up with an empty reserve"). Raised to 40 on 2026-09-28, at the
  * user's request, after a day of end-to-end testing alone used up all 20 —
- * see `C-159`. A rail already funded is unaffected either way; the reserve
+ * see `C-159`. Raised to 150 on 2026-11-24 for the community purchases (T192):
+ * 150 × 25 USDC stays under the 8430 USDC the reserve held that day. A rail
+ * already funded is unaffected either way; the reserve
  * itself was topped up separately, by the user, outside this change.
  */
-export const MAX_SPONSORED_RAILS = 40;
+export const MAX_SPONSORED_RAILS = 150;
 /** Warn while there is still credit for this many more tenants, not at exhaustion. */
 export const SPONSORED_RAILS_WARNING_HEADROOM = 5;
 

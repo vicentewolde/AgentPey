@@ -6,12 +6,12 @@ import { MAX_PER_DAY_USDC, parseBuyerOnboardArgs } from "./buyer-onboard-args.js
 const wallet = Keypair.random().publicKey();
 
 describe("buyer:onboard arguments", () => {
-  it("defaults to the MCP's limits today, the next free index, and a dry run", () => {
+  it("defaults to limits that cover any Tapline product, the next free index, and a dry run", () => {
     expect(parseBuyerOnboardArgs(["--", "--principal", wallet])).toEqual({
       principal: wallet,
       agentIndex: undefined,
-      perTx: "3",
-      perDay: "5",
+      perTx: "20",
+      perDay: "50",
       confirmed: false,
       initMnemonic: false,
     });
@@ -31,7 +31,7 @@ describe("buyer:onboard arguments", () => {
     [["--principal", wallet, "--per-tx", "0"], "positive"],
     [["--principal", wallet, "--per-tx", "1.12345678"], "seven decimals"],
     [["--principal", wallet, "--per-tx", "6", "--per-day", "5"], "above --per-day"],
-    [["--principal", wallet, "--per-day", "50.0000001"], `above ${MAX_PER_DAY_USDC}`],
+    [["--principal", wallet, "--per-day", "200.0000001"], `above ${MAX_PER_DAY_USDC}`],
     [["--principal=" + wallet], "with a space"],
     [["--principal", wallet, "--principal", wallet], "twice"],
     [["--principal", wallet, "--fund"], "unknown"],
@@ -40,6 +40,6 @@ describe("buyer:onboard arguments", () => {
   });
 
   it("accepts a daily limit of exactly the cap", () => {
-    expect(parseBuyerOnboardArgs(["--principal", wallet, "--per-tx", "50", "--per-day", MAX_PER_DAY_USDC]).perDay).toBe("50");
+    expect(parseBuyerOnboardArgs(["--principal", wallet, "--per-tx", "50", "--per-day", MAX_PER_DAY_USDC]).perDay).toBe("200");
   });
 });

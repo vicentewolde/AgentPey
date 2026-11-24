@@ -75,7 +75,7 @@ const FRIENDBOT_URL = "https://friendbot.stellar.org";
  * migrated; a tenant that must buy something dearer needs a new rail.
  */
 const PER_TX = "25.0000000";
-const PER_DAY = "25.0000000";
+const PER_DAY = "50.0000000";
 const VALID_DAYS = 365;
 
 /**

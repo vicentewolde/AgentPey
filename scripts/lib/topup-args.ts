@@ -10,7 +10,7 @@ import { StrKey } from "@stellar/stellar-sdk";
  * (`C-80`); a top-up typed with one digit too many should not be able to empty
  * it. Raise it by editing this line, on purpose.
  */
-export const MAX_TOPUP_USDC = 20;
+export const MAX_TOPUP_USDC = 100;
 
 export interface TopupArgs {
   readonly rail: string;
