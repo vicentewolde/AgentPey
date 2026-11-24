@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vicente Wolde</title>
+<meta name="description" content="Vicente Wolde · Ingeniero civil industrial (U. de Chile), profesor de blockchain y builder de pagos y comercio con agentes de IA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Person","name":"Vicente Wolde Cepeda","jobTitle":"Builder y profesor de blockchain","alumniOf":"Universidad de Chile","email":"mailto:vicente@agentpey.com","url":"https://vicente.agentpey.com","sameAs":["https://www.linkedin.com/in/vicente-wolde-cepeda","https://github.com/vicentewolde","https://x.com/vicentewolde"]}
+</script>
+<style>
+:root{--bg:#fbfbfd;--card:#fff;--ink:#1d1d1f;--muted:#5f6470;--line:#e6e8ee;--accent:#176bff;--accent2:#14b8a6;--chip:#eef4ff;--chipink:#0f4fcc}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0d12;--card:#141821;--ink:#f2f3f5;--muted:#a1a7b3;--line:#262b36;--chip:#16233d;--chipink:#8db4ff}}
+:root[data-theme="dark"]{--bg:#0b0d12;--card:#141821;--ink:#f2f3f5;--muted:#a1a7b3;--line:#262b36;--chip:#16233d;--chipink:#8db4ff}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.w{max-width:880px;margin:0 auto;padding:24px 16px 56px}
+.top{display:flex;justify-content:flex-end;gap:8px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:500 13px Inter,sans-serif;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+header{display:flex;gap:24px;align-items:center;margin:28px 0 8px;flex-wrap:wrap}
+header img{width:112px;height:112px;border-radius:50%;object-fit:cover;border:3px solid var(--card);box-shadow:0 0 0 2px var(--accent)}
+h1{font:700 clamp(30px,6vw,44px)/1.1 "Inter Tight",Inter,sans-serif;margin:0;letter-spacing:-.02em}
+.role{font-size:18px;color:var(--muted);margin:6px 0 0;max-width:560px}
+.grad{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.links{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 8px}
+.links a{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-weight:500;font-size:14px;color:var(--ink)}
+h2{font:600 13px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:40px 0 12px}
+.lead{font-size:18px;max-width:720px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.card h3{font:600 18px "Inter Tight",Inter,sans-serif;margin:0 0 4px}
+.card p{margin:6px 0 0;color:var(--muted);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{background:var(--chip);color:var(--chipink);border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:500}
+.tag{display:inline-block;font-size:12px;font-weight:600;color:var(--accent2);margin-bottom:6px}
+ul.tl{list-style:none;margin:0;padding:0}
+ul.tl li{border-left:2px solid var(--line);padding:0 0 16px 16px;position:relative}
+ul.tl li:before{content:"";position:absolute;left:-6px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+ul.tl b{display:block}
+ul.tl span{color:var(--muted);font-size:15px}
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+[data-l="en"]{display:none}
+html[lang="en"] [data-l="es"]{display:none}
+html[lang="en"] [data-l="en"]{display:revert}
+</style>
+</head>
+<body>
+<div class="w">
+  <div class="top">
+    <button class="btn" id="es" aria-pressed="true">ES</button>
+    <button class="btn" id="en" aria-pressed="false">EN</button>
+  </div>
+
+  <header>
+    <img src="https://github.com/vicentewolde.png?size=240" alt="Vicente Wolde" width="112" height="112">
+    <div>
+      <h1>Vicente <span class="grad">Wolde</span></h1>
+      <p class="role" data-l="es">Ingeniero civil industrial · Profesor de blockchain · Construyo pagos y comercio para agentes de IA</p>
+      <p class="role" data-l="en">Industrial engineer · Blockchain lecturer · I build payments and commerce for AI agents</p>
+    </div>
+  </header>
+
+  <nav class="links">
+    <a href="mailto:vicente@agentpey.com">vicente@agentpey.com</a>
+    <a href="https://www.linkedin.com/in/vicente-wolde-cepeda">LinkedIn</a>
+    <a href="https://github.com/vicentewolde">GitHub</a>
+    <a href="https://x.com/vicentewolde">X</a>
+    <a href="https://agentpey.com">agentpey.com</a>
+  </nav>
+
+  <h2 data-l="es">Sobre mí</h2><h2 data-l="en">About</h2>
+  <p class="lead" data-l="es">Soy de Santiago de Chile. Estudié Ingeniería Civil Industrial en la Universidad de Chile y trabajé en las áreas de pagos de Banco de Chile y BCI. Hoy hago clases de blockchain en dos universidades y construyo productos donde se cruzan las cadenas de bloques, los pagos y los agentes de IA.</p>
+  <p class="lead" data-l="en">I'm based in Santiago, Chile. I studied Industrial Engineering at Universidad de Chile and worked in the payments teams of Banco de Chile and BCI. Today I teach blockchain at two universities and build products where blockchains, payments and AI agents meet.</p>
+
+  <h2 data-l="es">Docencia</h2><h2 data-l="en">Teaching</h2>
+  <div class="grid">
+    <div class="card">
+      <span class="tag">Universidad de Chile</span>
+      <h3 data-l="es">Blockchain: aplicaciones y criptomonedas</h3>
+      <h3 data-l="en">Blockchain: applications and cryptocurrencies</h3>
+    </div>
+    <div class="card">
+      <span class="tag">Universidad Diego Portales</span>
+      <h3 data-l="es">Blockchain y algoritmos descentralizados</h3>
+      <h3 data-l="en">Blockchain and decentralized algorithms</h3>
+    </div>
+    <div class="card">
+      <span class="tag" data-l="es">Taller práctico</span><span class="tag" data-l="en">Hands-on workshop</span>
+      <h3>DeFi en vivo</h3>
+      <p data-l="es">Clase práctica de finanzas descentralizadas en Solana (Orca), con una wallet real en mainnet.</p>
+      <p data-l="en">Live DeFi class on Solana (Orca), using a real wallet on mainnet.</p>
+    </div>
+  </div>
+
+  <h2 data-l="es">Proyectos</h2><h2 data-l="en">Projects</h2>
+  <div class="grid">
+    <div class="card">
+      <span class="tag" data-l="es">Grant US$4.000 · Stellar Instawards, nov-2026</span>
+      <span class="tag" data-l="en">US$4,000 grant · Stellar Instawards, Nov 2026</span>
+      <h3>AgentPey · pagos agénticos</h3>
+      <p data-l="es">Agentes de IA que compran en tiendas online y pagan en USDC, con límites de gasto, recibos anclados on-chain y reembolsos en disputas. Servidor MCP y SDK en npm.</p>
+      <p data-l="en">AI agents that buy from online stores and pay in USDC, with spending limits, on-chain receipts and dispute refunds. MCP server and npm SDK.</p>
+      <div class="chips"><span class="chip">Stellar testnet</span><span class="chip">USDC</span><span class="chip">x402</span><span class="chip">AP2</span><span class="chip">UCP</span><span class="chip">MCP</span></div>
+    </div>
+    <div class="card">
+      <span class="tag" data-l="es">Cofundador · en producción</span><span class="tag" data-l="en">Co-founder · in production</span>
+      <h3><a href="https://certilink.co">CertiLink</a></h3>
+      <p data-l="es">Certificados académicos verificables: la huella SHA-256 de cada certificado queda anclada en la red Stellar.</p>
+      <p data-l="en">Verifiable academic certificates: each certificate's SHA-256 fingerprint is anchored on the Stellar network.</p>
+      <div class="chips"><span class="chip">Stellar mainnet</span><span class="chip">SHA-256</span></div>
+    </div>
+    <div class="card">
+      <span class="tag" data-l="es">Con un socio · en pruebas</span><span class="tag" data-l="en">With a partner · in staging</span>
+      <h3>ENS Chile</h3>
+      <p data-l="es">Plataforma para emitir subnombres ENS (por ejemplo, nombre.enschile.eth) a una comunidad.</p>
+      <p data-l="en">Platform to issue ENS subnames (e.g. name.enschile.eth) to a community.</p>
+      <div class="chips"><span class="chip">Ethereum</span><span class="chip">ENS</span><span class="chip">Sepolia</span></div>
+    </div>
+    <div class="card">
+      <span class="tag" data-l="es">Comercio con IA · Chile</span><span class="tag" data-l="en">AI commerce · Chile</span>
+      <h3><a href="https://agentpey.com/chile">AgentPey para tiendas</a></h3>
+      <p data-l="es">Mide si ChatGPT y Claude recomiendan a las tiendas pyme chilenas. Leímos 297 catálogos y clasificamos 1.750 respuestas de IA (nov-2026).</p>
+      <p data-l="en">Measures whether ChatGPT and Claude recommend Chilean small online stores. We read 297 catalogues and classified 1,750 AI answers (Nov 2026).</p>
+      <div class="chips"><span class="chip">TypeScript</span><span class="chip">LLMs</span><span class="chip">Open data</span></div>
+    </div>
+  </div>
+
+  <h2 data-l="es">Trayectoria</h2><h2 data-l="en">Experience</h2>
+  <ul class="tl">
+    <li><b data-l="es">Fundador de AgentPey y cofundador de CertiLink</b><b data-l="en">Founder of AgentPey, co-founder of CertiLink</b>
+      <span data-l="es">Pagos con agentes de IA en Stellar, comercio con IA para pymes y certificados en blockchain.</span>
+      <span data-l="en">AI-agent payments on Stellar, AI commerce for small businesses and blockchain certificates.</span></li>
+    <li><b data-l="es">Profesor universitario</b><b data-l="en">University lecturer</b>
+      <span>Universidad de Chile · Universidad Diego Portales</span></li>
+    <li><b data-l="es">Cofundador y CEO de Ultrain</b><b data-l="en">Co-founder and CEO, Ultrain</b>
+      <span data-l="es">Análisis del comportamiento de clientes en redes sociales. Dos clientes pagados en un piloto.</span>
+      <span data-l="en">Social-media customer behaviour analytics. Two paying clients in a pilot.</span></li>
+    <li><b>Banco de Chile · BCI</b>
+      <span data-l="es">Áreas de pagos: reportería y procesos de pago.</span>
+      <span data-l="en">Payments teams: reporting and payment processes.</span></li>
+    <li><b data-l="es">Ingeniería Civil Industrial</b><b data-l="en">Industrial Engineering</b>
+      <span>Universidad de Chile</span></li>
+  </ul>
+
+  <h2 data-l="es">Idiomas</h2><h2 data-l="en">Languages</h2>
+  <p data-l="es">Español (nativo) · Inglés (avanzado)</p>
+  <p data-l="en">Spanish (native) · English (advanced)</p>
+
+  <footer>Vicente Wolde Cepeda · Santiago, Chile · <a href="mailto:vicente@agentpey.com">vicente@agentpey.com</a></footer>
+</div>
+<script>
+(function(){
+  var h=document.documentElement,es=document.getElementById('es'),en=document.getElementById('en');
+  function set(l){h.lang=l;es.setAttribute('aria-pressed',l==='es');en.setAttribute('aria-pressed',l==='en');try{localStorage.setItem('lang',l)}catch(e){}}
+  es.onclick=function(){set('es')};en.onclick=function(){set('en')};
+  var s=null;try{s=localStorage.getItem('lang')}catch(e){}
+  if(s==='en'||s==='es')set(s);else if(location.hash==='#en')set('en');
+})();
+</script>
+</body>
+</html>
