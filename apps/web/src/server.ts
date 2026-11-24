@@ -119,7 +119,7 @@ import { drainWebhooks, resolveHostAddresses } from "./webhook-drain.js";
 import { readTenantActivity } from "./tenant-activity.js";
 import { createStoresDirectory, type StoresPage } from "./stores-directory.js";
 import { createLiveActivity, type LivePage } from "./live-activity.js";
-import { createLedgerReader } from "./ledger-reader.js";
+import { createEscrowEntryReader, createLedgerReader } from "./ledger-reader.js";
 import { ucpPublicPath } from "./ucp-public.js";
 import { isWalletIconPath, serveWalletIcon, serveWalletKit } from "./wallet-kit-route.js";
 import { isLocalHost, routeWalletLab } from "./wallet-lab.js";
@@ -1194,6 +1194,9 @@ async function serveStatic(pathname: string, res: ServerResponse, host: string |
           : // T151: live activity; `/live` is the English alias.
             pathname === "/en-vivo" || pathname === "/live"
             ? "/en-vivo.html"
+            : // T195: each purchase at a store and how it ended, read from Stellar; `/purchases` is the English alias.
+            pathname === "/compras" || pathname === "/purchases"
+            ? "/compras.html"
             : // T126: where a merchant answers an AgentResolve claim. Static: the
             // claim is loaded and the answer signed and downloaded in the page.
             pathname === "/resolve/responder"
@@ -1306,6 +1309,7 @@ async function readLive(): Promise<LivePage> {
       registryId,
       resolveId,
       readLedger: createLedgerReader({ rpcUrl: "https://soroban-testnet.stellar.org", networkPassphrase: Networks.TESTNET, registryId, resolveId }),
+      readEscrow: createEscrowEntryReader({ rpcUrl: "https://soroban-testnet.stellar.org", networkPassphrase: Networks.TESTNET }),
     });
   }
   return liveActivity.read();

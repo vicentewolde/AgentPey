@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en" data-title-en="AgentPey · purchases" data-title-es="AgentPey · compras">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentPey · purchases</title>
+<meta name="description" content="Every purchase made with an AI assistant at a store protected by AgentPey, and how it ended: held, confirmed by the buyer, released, or refunded after a claim. Read from Stellar testnet." />
+<link rel="icon" type="image/svg+xml" href="/brand/agentpey-favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/brand/agentpey.css">
+<script>
+  /* Language before paint: English unless the visitor chose Spanish. The cookie is shared by the agentpey.com subdomains. */
+  (function () {
+    var lang = "en";
+    try {
+      var match = document.cookie.match(/(?:^|;\s*)agentpey_lang=(en|es)/);
+      if (match) lang = match[1];
+      else if (localStorage.getItem("agentpay-lang") === "es") lang = "es";
+    } catch (e) {}
+    document.documentElement.lang = lang;
+  })();
+</script>
+<style>
+  /* Page layout only, with the --ap-* tokens of /brand/agentpey.css. */
+  html[lang="en"] [data-tr="es"], html[lang="es"] [data-tr="en"] { display: none; }
+
+
+  .hero { padding-block: clamp(8px, 3vw, 32px) 0; display: grid; gap: 18px; justify-items: center; text-align: center; }
+  .hero h1 { max-width: 18ch; }
+  .hero .ap-sub { max-width: 40em; font-size: clamp(1.05rem, 1.8vw, 1.25rem); }
+  .ap-live-dot { animation: pulse 1.6s ease-out infinite; }
+  .ap-live.ap-down .ap-live-dot { animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ap-ok) 55%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: clamp(12px, 2vw, 20px); }
+  .stat { display: grid; gap: 6px; align-content: start; }
+  .stat b { font-family: var(--ap-display); font-weight: 600; font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1; letter-spacing: -0.028em; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 0.875rem; color: var(--ap-ink-2); }
+  .refresh { font-size: 0.8125rem; color: var(--ap-ink-2); margin-top: -12px; min-height: 1.4em; }
+
+  .feed { list-style: none; margin: 0; padding: 0; background: var(--ap-surface); border-radius: var(--ap-radius); overflow: hidden; }
+  .row { padding: 18px clamp(16px, 3vw, 28px); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: start; min-width: 0; }
+  .row + .row { border-top: 1px solid var(--ap-hair); }
+  .row.new { animation: arrive 2.4s ease-out; }
+  @keyframes arrive { 0% { background: var(--ap-accent-soft); } 100% { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .row.new, .ap-live-dot { animation: none; } }
+  .what { font-weight: 600; overflow-wrap: anywhere; }
+  .meta { margin-top: 6px; font-size: 0.875rem; color: var(--ap-ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+  .store { font-weight: 500; color: var(--ap-ink); }
+  .amount { font-family: var(--ap-display); font-weight: 600; font-size: 1.5rem; line-height: 1.1; letter-spacing: -0.02em; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .amount small { font-family: var(--ap-text); font-weight: 500; font-size: 0.8125rem; letter-spacing: 0; color: var(--ap-ink-2); }
+  .links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 0.8125rem; }
+  .state { padding: 22px clamp(16px, 3vw, 28px); color: var(--ap-ink-2); }
+  .feed:empty { display: none; }
+  .source { font-size: 0.8125rem; color: var(--ap-ink-2); max-width: 60em; }
+  .ap .source a { color: var(--ap-ink-2); text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 560px) { .row { grid-template-columns: minmax(0, 1fr); } .amount { text-align: left; } }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .tabs a { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--ap-hair); color: var(--ap-ink); text-decoration: none; font-size: 0.875rem; }
+  .tabs a[aria-current="page"] { background: var(--ap-ink); color: var(--ap-bg); border-color: var(--ap-ink); }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); }
+</style>
+</head>
+<body class="ap">
+
+<header class="ap-header"><div class="ap-wrap">
+  <a class="ap-brand" href="/">
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><mask id="ap-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="#fff"/><path d="M378 112l54 54" stroke="#000" stroke-width="60"/></mask></defs><g mask="url(#ap-cut)" fill="none" stroke="currentColor" stroke-width="60"><path d="M72 416 196 96h86v320"/><path d="M136 282h146"/><path d="M282 112h96"/><path d="M432 166v84l-48 48H282"/></g></svg>
+    AgentPey</a>
+  <div class="ap-bar">
+    <nav class="ap-nav" aria-label="AgentPey"><a class="ap-hide-sm" href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a><a class="ap-hide-sm" href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a><a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a></nav>
+    <div class="ap-lang lang" role="group" aria-label="Language">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+    </div>
+  </div>
+</div></header>
+
+<main class="ap-wrap ap-main">
+  <header class="hero">
+    <p class="ap-live" id="live-state"><span class="ap-live-dot" id="dot" aria-hidden="true"></span><span class="ap-when-up"><span data-tr="en">Stellar Testnet · read from the network</span><span data-tr="es">Stellar Testnet · leído de la red</span></span><span class="ap-when-down"><span data-tr="en">Stellar Testnet · unavailable now</span><span data-tr="es">Stellar Testnet · sin datos ahora</span></span></p>
+    <h1>
+      <span data-tr="en">Every purchase, and <span class="ap-grad">how it ended</span>.</span>
+      <span data-tr="es">Cada compra, y <span class="ap-grad">cómo terminó</span>.</span>
+    </h1>
+    <p class="ap-sub">
+      <span data-tr="en">People bought with their AI assistant and the payment waited in the store's escrow on Stellar: released when they confirmed or when the window closed, or refunded after a claim. Each state below is read from the escrow contract, with no personal data.</span>
+      <span data-tr="es">Personas compraron con su asistente de IA y el pago esperó en el escrow de la tienda en Stellar: se liberó cuando confirmaron o cuando cerró el plazo, o se reembolsó tras un reclamo. Cada estado se lee del contrato de escrow, sin datos personales.</span>
+    </p>
+    <nav class="tabs" id="tabs" aria-label="Stores"></nav>
+  </header>
+
+  <div class="stats" aria-live="polite">
+    <div class="stat ap-card"><b id="s-total">·</b><span data-tr="en">purchases</span><span data-tr="es">compras</span></div>
+    <div class="stat ap-card"><b id="s-held">·</b><span data-tr="en">held in escrow</span><span data-tr="es">retenidas</span></div>
+    <div class="stat ap-card"><b id="s-confirmed">·</b><span data-tr="en">confirmed by the buyer</span><span data-tr="es">confirmadas por quien compró</span></div>
+    <div class="stat ap-card"><b id="s-released">·</b><span data-tr="en">released when the window closed</span><span data-tr="es">liberadas al cerrar el plazo</span></div>
+    <div class="stat ap-card"><b id="s-refunded">·</b><span data-tr="en">refunded after a claim</span><span data-tr="es">reembolsadas tras un reclamo</span></div>
+  </div>
+  <p class="refresh" id="refresh"></p>
+
+  <p class="ap-note ap-warn" id="feed-down" role="status" hidden></p>
+  <ul class="feed" id="feed" aria-live="polite">
+    <li class="state"><span data-tr="en">Reading the network…</span><span data-tr="es">Leyendo la red…</span></li>
+  </ul>
+
+  <p class="source" id="source" hidden></p>
+</main>
+
+<footer class="ap-footer"><div class="ap-wrap">
+  <span><span data-tr="en">AgentPey · agentic payments on Stellar. Santiago, Chile.</span><span data-tr="es">AgentPey · pagos agénticos en Stellar. Santiago, Chile.</span></span>
+  <span class="ap-row">
+    <a href="/en-vivo"><span data-tr="en">Live</span><span data-tr="es">En vivo</span></a>
+    <a href="/tiendas"><span data-tr="en">Stores</span><span data-tr="es">Tiendas</span></a>
+    <a href="https://github.com/vicentewolde/AgentPey" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.npmjs.com/package/@agentpey/ucp-stellar" target="_blank" rel="noopener">npm</a>
+    <a href="https://realops.agentpey.com">RealOps</a>
+    <a href="/compras"><span data-tr="en">Purchases</span><span data-tr="es">Compras</span></a>
+    <a href="/api/live">/api/live</a>
+  </span>
+</div></footer>
+
+<script>
+  /* Purchases at one store, from /api/live. Every value is set with textContent or a checked https URL, never as HTML. */
+  (function () {
+    var root = document.documentElement;
+    var POLL_MS = 15000;
+    var DEFAULT_STORE = "tapline";
+    var data = null;
+    var failedAt = null;
+    var params = new URLSearchParams(location.search);
+    var wanted = (params.get("tienda") || params.get("store") || DEFAULT_STORE).toLowerCase();
+
+    var T = {
+      en: {
+        order: "Order", receipt: "Receipt", payment: "Payment", escrow: "Escrow contract",
+        held: "Held in escrow", confirmed: "Confirmed by the buyer", released: "Released", claim: "Claim open",
+        refunded: "Refunded {r} USDC", partly_refunded: "Partly refunded: {r} USDC", unknown: "Paid directly, no escrow",
+        productsUnknown: "a purchase", none: "No purchases at this store yet.", missing: "This store is not on AgentPey yet. Pick another one above.",
+        error: "The network could not be read right now; showing the last answer.",
+        down: "The purchases could not be loaded right now. Try again in a minute.",
+        refresh: "Updated {ago}. Refreshes every 15 s. The {n} most recent purchases across all stores are read.",
+        source: "Sources: each purchase, from its receipt anchored in {reg} and signed by the store; where its money stands, from the store's escrow contract, read by order. "
+      },
+      es: {
+        order: "Orden", receipt: "Recibo", payment: "Pago", escrow: "Contrato de escrow",
+        held: "Retenida en el escrow", confirmed: "Confirmada por quien compró", released: "Liberada", claim: "Reclamo abierto",
+        refunded: "Reembolsada: {r} USDC", partly_refunded: "Reembolso parcial: {r} USDC", unknown: "Pagada directo, sin escrow",
+        productsUnknown: "una compra", none: "Todavía no hay compras en esta tienda.", missing: "Esta tienda todavía no está en AgentPey. Elige otra arriba.",
+        error: "No se pudo leer la red ahora; se muestra la última respuesta.",
+        down: "No se pudieron cargar las compras ahora. Prueba de nuevo en un minuto.",
+        refresh: "Actualizado {ago}. Se refresca cada 15 s. Se leen las {n} compras más recientes de todas las tiendas.",
+        source: "Fuentes: cada compra, de su recibo anclado en {reg} y firmado por la tienda; dónde está su dinero, del contrato de escrow de la tienda, leído por orden. "
+      }
+    };
+    function lang() { return root.lang === "es" ? "es" : "en"; }
+    function t(k) { return T[lang()][k]; }
+    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+    function safeUrl(v) { try { var u = new URL(v); return u.protocol === "https:" ? u.href : null; } catch (e) { return null; } }
+    function link(href, text) { var u = safeUrl(href); if (!u) return el("span", "", text); var a = el("a", "", text); a.href = u; a.target = "_blank"; a.rel = "noopener"; return a; }
+    function short(h) { return h.slice(0, 8) + "…" + h.slice(-4); }
+    function num(v) { return Number(v).toLocaleString(lang() === "es" ? "es-CL" : "en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
+    function host(url) { try { return new URL(url).host; } catch (e) { return ""; } }
+    function ago(iso) {
+      var s = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+      var v, u;
+      if (s < 60) { v = s; u = " s"; }
+      else if (s < 3600) { v = Math.floor(s / 60); u = " min"; }
+      else if (s < 86400) { v = Math.floor(s / 3600); u = " h"; }
+      else { v = Math.floor(s / 86400); u = lang() === "es" ? (v === 1 ? " día" : " días") : (v === 1 ? " day" : " days"); }
+      return lang() === "es" ? "hace " + v + u : v + u + " ago";
+    }
+    var PILL = { held: " ap-warn", claim: " ap-warn", confirmed: " ap-ok", released: " ap-ok", refunded: " ap-ok", partly_refunded: " ap-ok" };
+    function outcomeLabel(e) {
+      if (!e) return t("unknown");
+      return t(e.outcome).replace("{r}", num(e.refund_usdc));
+    }
+
+    function row(p) {
+      var li = el("li", "row");
+      var left = el("div");
+      var items = p.items && p.items.length ? p.items.map(function (i) { return (i.quantity > 1 ? i.quantity + " × " : "") + i.title; }).join(" + ") : t("productsUnknown");
+      left.appendChild(el("div", "what", items));
+      var meta = el("div", "meta");
+      meta.appendChild(el("span", "ap-pill" + (p.escrow ? PILL[p.escrow.outcome] || "" : ""), outcomeLabel(p.escrow)));
+      meta.appendChild(el("span", "", ago(p.at)));
+      meta.appendChild(el("span", "ap-hash", t("order") + " " + p.order_ref));
+      left.appendChild(meta);
+      li.appendChild(left);
+      var amount = el("div", "amount", num(p.amount_usdc));
+      amount.appendChild(el("small", "", " USDC"));
+      li.appendChild(amount);
+      var links = el("div", "links");
+      links.appendChild(link(p.verify_url, t("receipt") + " " + short(p.hash)));
+      if (p.payment_url) links.appendChild(link(p.payment_url, t("payment") + " " + short(p.payment_tx)));
+      if (p.escrow) links.appendChild(link(p.escrow.contract_url, t("escrow") + " " + short(p.escrow.contract)));
+      li.appendChild(links);
+      return li;
+    }
+
+    function setStat(id, v) { document.getElementById(id).textContent = v; }
+
+    function render() {
+      var feed = document.getElementById("feed");
+      var down = document.getElementById("feed-down");
+      document.getElementById("live-state").classList.toggle("ap-down", Boolean(failedAt));
+      down.hidden = !(failedAt && !data);
+      down.textContent = failedAt && !data ? t("down") : "";
+      if (!data) {
+        if (failedAt) { feed.replaceChildren(); ["s-total", "s-held", "s-confirmed", "s-released", "s-refunded"].forEach(function (id) { setStat(id, "n/a"); }); }
+        return;
+      }
+      var stores = Array.isArray(data.stores) ? data.stores : [];
+      var tabs = document.getElementById("tabs");
+      tabs.replaceChildren.apply(tabs, stores.map(function (s) {
+        var a = el("a", "", s.name);
+        a.href = "/compras?tienda=" + encodeURIComponent(s.slug);
+        if (s.slug === wanted) a.setAttribute("aria-current", "page");
+        return a;
+      }));
+      var store = stores.filter(function (s) { return s.slug === wanted; })[0];
+      var list = store ? data.purchases.filter(function (p) { return p.store === host(store.url); }) : [];
+      var count = { held: 0, confirmed: 0, released: 0, refunded: 0 };
+      list.forEach(function (p) {
+        var o = p.escrow ? p.escrow.outcome : null;
+        if (o === "held" || o === "claim") count.held += 1;
+        else if (o === "confirmed") count.confirmed += 1;
+        else if (o === "released") count.released += 1;
+        else if (o === "refunded" || o === "partly_refunded") count.refunded += 1;
+      });
+      setStat("s-total", String(list.length));
+      setStat("s-held", String(count.held));
+      setStat("s-confirmed", String(count.confirmed));
+      setStat("s-released", String(count.released));
+      setStat("s-refunded", String(count.refunded));
+      if (!store) feed.replaceChildren(el("li", "state", t("missing")));
+      else if (list.length === 0) feed.replaceChildren(el("li", "state", t("none")));
+      else feed.replaceChildren.apply(feed, list.map(row));
+      var shown = data.purchases.length + (Array.isArray(data.incomplete) ? data.incomplete.length : 0);
+      document.getElementById("refresh").textContent = (failedAt ? t("error") + " " : "") + t("refresh").replace("{ago}", ago(data.generated_at)).replace("{n}", String(shown));
+      var source = document.getElementById("source");
+      source.replaceChildren();
+      t("source").split(/(\{reg\})/).forEach(function (part) {
+        if (part === "{reg}") source.appendChild(link("https://stellar.expert/explorer/testnet/contract/" + data.registry, "receipt-registry"));
+        else source.appendChild(document.createTextNode(part));
+      });
+      source.hidden = false;
+    }
+
+    function poll() {
+      fetch("/api/live", { headers: { accept: "application/json" }, cache: "no-store" })
+        .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error(String(res.status))); })
+        .then(function (body) {
+          if (!body || !Array.isArray(body.purchases)) throw new Error("bad body");
+          data = body;
+          failedAt = null;
+          render();
+        })
+        .catch(function () { failedAt = new Date().toISOString(); render(); });
+    }
+
+    document.addEventListener("agentpey:lang", render);
+    poll();
+    setInterval(poll, POLL_MS);
+  })();
+</script>
+
+<script>
+  /* EN/ES switch, as on the landing. */
+  (function () {
+    var root = document.documentElement;
+    function apply(lang) {
+      root.lang = lang;
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) document.title = title;
+      var buttons = document.querySelectorAll("[data-set-lang]");
+      for (var i = 0; i < buttons.length; i++) buttons[i].setAttribute("aria-pressed", String(buttons[i].getAttribute("data-set-lang") === lang));
+      document.dispatchEvent(new CustomEvent("agentpey:lang", { detail: lang }));
+    }
+    var buttons = document.querySelectorAll("[data-set-lang]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function () {
+        var lang = this.getAttribute("data-set-lang");
+        var domain = /(^|\.)agentpey\.com$/.test(location.hostname) ? "; domain=agentpey.com" : "";
+        try { document.cookie = "agentpey_lang=" + lang + "; path=/; max-age=31536000; samesite=lax" + domain; } catch (e) {}
+        try { localStorage.setItem("agentpay-lang", lang); } catch (e) {}
+        apply(lang);
+      });
+    }
+    apply(root.lang === "es" ? "es" : "en");
+  })();
+</script>
+
+</body>
+</html>

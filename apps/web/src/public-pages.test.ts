@@ -14,7 +14,7 @@ const PUBLIC_DIR = resolve(fileURLToPath(new URL("../public", import.meta.url)))
  * that break a page without any test noticing.
  */
 describe("the static pages", () => {
-  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "resolve/confirmar.html", "resolve/evidencia.html", "tiendas.html", "en-vivo.html"]) {
+  for (const name of ["landing.html", "consent.html", "revocar.html", "resolve/responder.html", "resolve/confirmar.html", "resolve/evidencia.html", "tiendas.html", "en-vivo.html", "compras.html"]) {
     it(`${name} never combines timeZoneName with dateStyle or timeStyle`, async () => {
       const html = await readFile(resolve(PUBLIC_DIR, name), "utf8");
       const combined = /\{[^}]*(dateStyle|timeStyle)[^}]*timeZoneName[^}]*\}|\{[^}]*timeZoneName[^}]*(dateStyle|timeStyle)[^}]*\}/;
@@ -130,6 +130,16 @@ describe("the static pages", () => {
   it("en-vivo.html polls /api/live and never writes what it reads as HTML", async () => {
     const html = await readFile(resolve(PUBLIC_DIR, "en-vivo.html"), "utf8");
     expect(html).toContain('fetch("/api/live"');
+    expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+    expect(html).not.toContain("\u2014");
+  });
+
+  // T195: the public purchases page reads the same feed, says each escrow ending, and writes nothing it reads as HTML.
+  it("compras.html polls /api/live, shows each escrow ending, and never writes what it reads as HTML", async () => {
+    const html = await readFile(resolve(PUBLIC_DIR, "compras.html"), "utf8");
+    expect(html).toContain('fetch("/api/live"');
+    for (const outcome of ["held", "confirmed", "released", "claim", "refunded", "partly_refunded"]) expect(html).toContain(`${outcome}:`);
+    expect(html).toContain('href="/brand/agentpey.css"');
     expect(html).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
     expect(html).not.toContain("\u2014");
   });
