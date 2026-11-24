@@ -190,6 +190,27 @@ cyber.cl"):
 npx tsx src/cli.ts base cyber --archivo cyber-20241106233741.html cyber-20260606111449.html
 ```
 
+### Stores from past editions of blackfriday.cl
+
+blackfriday.cl's home and cyber pages of 2022–2026 carry a brand gallery: each
+logo links to the brand's site and names its categories. Save the Internet
+Archive's copies (`http://web.archive.org/web/<timestamp>id_/https://www.blackfriday.cl/`,
+also `/ofertascyber/`, `/cyber/`, `/blacksale/`) and add their stores, marked
+`blackfriday-anterior` (the guides say "ediciones anteriores de
+blackfriday.cl"). Logos behind an affiliate redirect are left out; a store
+already in the base only gains the mark. Then read only the new catalogues:
+
+```bash
+npx tsx src/cli.ts base blackfriday-anterior --archivo blackfriday.cl_-20221201124819.html blackfriday.cl_-20251223233539.html
+```
+
+```bash
+npx tsx src/cli.ts base ingest --paralelo 4
+```
+
+The live server must run this code before guides with `blackfriday-anterior`
+are published: older code does not know the mark.
+
 ### Who reads the guides
 
 Each public page (`/chile...`, `/robots.txt`, `/llms.txt`) counts, per day,

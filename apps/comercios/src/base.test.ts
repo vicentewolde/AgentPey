@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compare, cyberRubro, findEmails, mailableEmail, parseBlackFriday, parseCyber, presence, segmentOf, type StoreInput, type Tienda } from "./base.js";
+import { compare, cyberRubro, findEmails, galleryName, mailableEmail, parseBlackFriday, parseBlackFridayGallery, parseCyber, presence, segmentOf, type StoreInput, type Tienda } from "./base.js";
 import { correoTexto, csvIndex, fichaHtml, improvements, resumenMd } from "./ficha.js";
 import { cliError, UsageLimitError } from "./llm.js";
 import { readiness } from "./readiness.js";
@@ -35,6 +35,44 @@ describe("the store lists", () => {
     const e = { slug: "x", name: "X", link: "https://x.cl", categories: ["Viajes y Turismo"] };
     expect(segmentOf(e, "x.cl")).toBe("no-tienda");
     expect(segmentOf({ ...e, categories: ["Mascotas"] }, "x.cl", { x: "grande" })).toBe("grande");
+  });
+});
+
+describe("past editions of blackfriday.cl (the brand gallery)", () => {
+  const item = (classes: string, href: string, alt: string, title: string) =>
+    `<div class="modula-item modula-simple-link ${classes}" >\n<div class="modula-item-content"><a data-image-id="1" class="modula-simple-link" href="${href}" target="_blank"></a>\n<img loading="lazy" class="pic" alt="${alt}" data-full="x.webp" title="${title}" src="x.webp" /></div></div>`;
+  const page = [
+    item("jtg-filter-all jtg-filter-salud-y-belleza", "https://mycocos.cl/", "Ofertas BlackSale en My Cocos", "MyCOCOS en Black Sale"),
+    item("jtg-filter-all jtg-filter-hogar-y-decoracion", "https://www.bekoko.cl/?utm_source=bf&amp;x=1", "BEKOKO en black friday 2022", "BEKOKO en black friday 2022"),
+    item("jtg-filter-all jtg-filter-infantil", "https://www.bekoko.cl/", "", "logo-bekoko"),
+    item("jtg-filter-all jtg-filter-marketplaces-y-grandes-tiendas", "https://ad.soicos.com/abc", "Ofertas Blackfriday en abcdin", "abcdin en Black Friday"),
+    item("jtg-filter-all jtg-filter-", "https://www.blackfriday.cl/marcas/serta/", "Serta blackfriday", "Serta"),
+    item("jtg-filter-all jtg-filter-inmobiliaria jtg-filter-nueva-cosa", "https://club.cl/", "Black Friday en Club Casas", "x"),
+    item("other-item", "https://notabrand.cl/", "x", "y"),
+  ].join("\n");
+
+  it("keeps each brand once, with its site, name and categories, and leaves out affiliate links and blackfriday.cl's own pages", () => {
+    const got = parseBlackFridayGallery(page);
+    expect(got.map((e) => e.slug)).toEqual(["mycocos.cl", "bekoko.cl", "club.cl"]);
+    expect(got[0]).toEqual({ slug: "mycocos.cl", name: "My Cocos", link: "https://mycocos.cl/", categories: ["Salud y Belleza"] });
+    expect(got[1]!.name).toBe("BEKOKO");
+    expect(got[1]!.link).toBe("https://www.bekoko.cl/?utm_source=bf&x=1");
+    expect(got[1]!.categories).toEqual(["Hogar y Decoración", "Infantil y Juguetería"]);
+    expect(got[2]!.categories).toEqual(["Inmobiliarias"]);
+    expect(segmentOf(got[2]!, "club.cl")).toBe("no-tienda");
+  });
+
+  it("reads the brand's name from the logo's alt or title, and gives none when they only name a file", () => {
+    expect(galleryName("Ofertas Blackfriday en Café d&#039;Lara", "")).toBe("Café d'Lara");
+    expect(galleryName("", "Barocco Café Blackfriday 2022")).toBe("Barocco Café");
+    expect(galleryName("Black Friday en Amayra", "")).toBe("Amayra");
+    expect(galleryName("Biostream - BlackFriday 2022", "")).toBe("Biostream");
+    expect(galleryName("", "Logo_aresti")).toBe("");
+    expect(galleryName("", "Logo My Cocos en Black Sale")).toBe("My Cocos");
+  });
+
+  it("finds nothing on a page without the gallery", () => {
+    expect(parseBlackFridayGallery("<html><body>sin galería</body></html>")).toEqual([]);
   });
 });
 
