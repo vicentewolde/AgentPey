@@ -22,6 +22,8 @@
   })();
 </script>
 <style>
+  /* Only the chosen language shows; the en-vivo page carries the same rule. */
+  html[lang="en"] [data-tr="es"], html[lang="es"] [data-tr="en"] { display: none; }
   .step { margin-top: 18px; }
   .step h2 { margin: 6px 0 8px; font-size: 1.25rem; }
   .ap-dl { margin: 12px 0 0; }
