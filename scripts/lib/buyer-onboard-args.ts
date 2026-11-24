@@ -10,10 +10,10 @@ import { StrKey } from "@stellar/stellar-sdk";
  * (T192); a limit typed with one digit too many should not be able to ask for more than a demo ever spends. Raise it by
  * editing this line, on purpose.
  */
-export const MAX_PER_DAY_USDC = "50";
-/** What a rail gets when no limits are given: what the MCP's single rail has today (`R-9`). */
-export const DEFAULT_PER_TX_USDC = "3";
-export const DEFAULT_PER_DAY_USDC = "5";
+export const MAX_PER_DAY_USDC = "200";
+/** What a rail gets when no limits are given (T192, 24-nov: enough for any Tapline product, up to 13.7 USDC). */
+export const DEFAULT_PER_TX_USDC = "20";
+export const DEFAULT_PER_DAY_USDC = "50";
 
 export interface BuyerOnboardArgs {
   /** The person's wallet: the rail's principal, the one that withdraws, and the account that signs in. */

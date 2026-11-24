@@ -188,9 +188,9 @@ describe("readRailBalances", () => {
 describe("readSponsoredCreditStatus", () => {
   it("reports what is left against both the cap and the balance, whichever binds first", async () => {
     const directory = { countFundedRails: async () => 4 };
-    const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => "1000.0000000");
-    // The cap binds: 36 tenants left of 40, even though the balance affords 333.
-    expect(status).toMatchObject({ funded: 4, cap: 40, remaining: 36, nearExhaustion: false });
+    const status = await readSponsoredCreditStatus(directory, "GAK6E5E7L63ZYFZZZFXDTYVG6MVAKILSHI5FITGH5U4ORACEZQ4GFP2K", async () => "10000.0000000");
+    // The cap binds: 146 tenants left of 150, even though the balance affords 400.
+    expect(status).toMatchObject({ funded: 4, cap: 150, remaining: 146, nearExhaustion: false });
   });
 
   it("reports the balance as the binding constraint when it is the smaller one", async () => {
