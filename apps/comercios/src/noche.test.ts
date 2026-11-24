@@ -65,3 +65,12 @@ describe("a write while the database is busy", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("a policy saved before cambio and devolución were told apart", () => {
+  it("is read again; one in the current format is not", async () => {
+    const { policyOutdated } = await import("./politicas.js");
+    expect(policyOutdated({ cambios_y_devoluciones: { acepta: "si", plazo_dias: 30, condiciones: "" } })).toBe(true);
+    expect(policyOutdated({ cambios_y_devoluciones: { acepta: "si", plazo_dias: 10, condiciones: "", devolucion_dinero: { acepta: "si", plazo_dias: 10, solo_por_falla: false } } })).toBe(false);
+    expect(policyOutdated(null)).toBe(true);
+  });
+});

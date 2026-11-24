@@ -44,7 +44,7 @@ import type { Platform } from "./model.js";
 import { ingestStore } from "./ingest/index.js";
 import { createLlm, UsageLimitError } from "./llm.js";
 import { deadline, nightSummary, policyTargets, retryBusy, type StopReason } from "./noche.js";
-import { extractPolicy, readPolicyPages } from "./politicas.js";
+import { extractPolicy, policyOutdated, readPolicyPages } from "./politicas.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
 import { buildPriceRows } from "./precios.js";
@@ -475,6 +475,8 @@ async function politicas(db: Db, fetcher: Fetcher, rest: string[]): Promise<void
   const only = flag(rest, "--solo")?.split(",");
   const max = flag(rest, "--max") === undefined ? Infinity : Number(flag(rest, "--max"));
   const tried = new Map(db.raw.prepare("select store_id, at from policy_attempts").all().map((r) => [String(r.store_id), String(r.at)]));
+  // A policy saved in an older format is due again, whenever it was read.
+  for (const r of db.raw.prepare("select store_id, data from policies").all()) if (policyOutdated(JSON.parse(String(r.data)))) tried.delete(String(r.store_id));
   // Pilot stores are left out: their policy is served by the panel's MCP once imported, and a new reading would replace the one shown.
   const tiendas = new Map(loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined && !(t.sources ?? []).includes("piloto") && (only === undefined || only.includes(t.id))).map((t) => [t.id, t]));
   const targets = policyTargets([...tiendas.values()].map((t) => ({ id: t.id, products: db.lastGoodRun(t.id)?.count ?? 0, triedAt: tried.get(t.id) })), start, Number(flag(rest, "--dias") ?? 30), max);
