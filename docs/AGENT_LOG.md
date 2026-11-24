@@ -9751,3 +9751,11 @@ Pendiente: la primera corrida, sin tope hasta agotar la ventana de 5 h, cuando V
 - Bug fixed: `LIMIT_TEXT` did not match "You've hit your 5-hour limit", so 4 stores were counted as errors instead of stopping; their `policy_attempts` rows were deleted so they retry.
 - Schedule, at Vicente's request: timer at 04:00 America/Santiago, `NOCHE_HASTA=09:00`; the Sunday rule is now "not before 02:30" (at 04:00 it waits on `semanal.lock`). Timer installed and enabled from the `semanal` checkout.
 - Pending: more work for the night queue (policies are nearly done); Vicente's decision on showing policies on the public guides; the pilot MCP serving "propuesta" policies unfiltered (pre-existing).
+
+## 2026-11-24 — cc/politicas-devoluciones
+
+- Review of 30 first-night policies: 940/940 quotes found verbatim on the live pages; 305 shipping and instalment figures supported. But "returns in N days" mixed the exchange deadline with the refund one in ~10 of 26 stores, and with defective-only returns.
+- Schema now has `cambio` and `devolucion_dinero` (each with `solo_por_falla`), `plazo_desde` and `tipo_de_dias`; field text may not carry notes about the page. Policies in the older format are due again (`policyOutdated`).
+- Night of 24-nov (03:58, transient unit from this branch): 386 re-read, 0 errors, stopped at the plan's limit after 388 calls in 90 min; 256 left for the next night.
+- Second review (30 re-read): exchange vs refund right in most; 2 clear errors (cy-productosdelujo: refund "si" though the page says no refunds; cy-retailcl: exchange marked defective-only), 1-2 conservative omissions; 0/30 with page notes. One `plazo_desde` for both deadlines is a simplification.
+- Pending: nothing about policies is public yet; next step proposed is the public MCP/JSON with date, link and quote, after Vicente's OK.
