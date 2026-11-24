@@ -22,6 +22,19 @@ Por qué: <motivo>
 Pendiente: <qué queda para la próxima sesión>
 ```
 
+## 2026-11-24 — cc/t195-compras-publicas
+
+Agente: Claude Code
+
+Qué: T195, la página pública `agentpey.com/compras`: cada compra de una tienda y su resultado (retenida, confirmada,
+liberada, reclamo, reembolsada), leído del `purchase-escrow` que nombra el recibo firmado; `/api/live` suma `escrow`.
+
+Por qué: entregable 2 del Instaward (semana 2); no depende de las credenciales de Tapline.
+
+Pendiente: T191 necesita del usuario la app de Shopify de Tapline y el alta en el portal con su wallet.
+
+---
+
 ## 2026-11-24 — cc/resolve-idioma, cc/semana1-cierre
 
 Agente: Claude Code

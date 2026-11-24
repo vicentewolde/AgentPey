@@ -18,6 +18,11 @@
  * has an anchor but no proof of payment: it is listed apart under `incomplete`
  * and is in none of the totals. Nothing anchored is deleted or hidden.
  *
+ * **Where the money stands (T195).** When the signed receipt names the store's
+ * `purchase-escrow`, the purchase is read from that contract by its order: held,
+ * confirmed by the buyer, released, under a claim, or refunded. A purchase that
+ * is over never changes again, so it is read once; an open one, on every refresh.
+ *
  * It only **shows** disputes. Nothing here opens, answers or resolves one, and
  * nothing connects a dispute to a chat, a payment, a dispatch or a webhook.
  *
@@ -25,7 +30,7 @@
  * refresh, not one per receipt: the page polls, and so does every viewer.
  */
 import { AgentPassError } from "@agentpass/core";
-import { checkReceiptSignature, stellarExpertTxUrl } from "@vitrinee/core";
+import { checkReceiptSignature, stellarExpertContractUrl, stellarExpertTxUrl } from "@vitrinee/core";
 import { z } from "zod";
 
 import { formatUsdc, listAnchors, readDirectory, withTimeout, within, type DirectoryStore } from "./stores-directory.js";
@@ -48,6 +53,42 @@ export interface DisputeEntry {
   readonly verdictHash: string | null;
 }
 
+/** A purchase as the store's `purchase-escrow` holds it (`@vitrinee/anchor`'s `EscrowPurchase`, the fields shown). */
+export interface EscrowEntry {
+  readonly status: "held" | "shipped" | "released" | "disputed" | "responded" | "resolved" | "expired";
+  readonly amountAtomic: bigint;
+  readonly refundAtomic: bigint;
+  /** Unix seconds; `null` unless the buyer confirmed it (escrow v2, T182). */
+  readonly confirmedAt: number | null;
+  /** Unix seconds; `null` while the purchase is open. */
+  readonly closedAt: number | null;
+}
+
+/**
+ * What the public page says happened (T195): `held` until the buyer confirms or the window closes, `claim` while a
+ * dispute is open, and at the end `confirmed`, `released` (the window closed, or a claim was turned down), `refunded`
+ * or `partly_refunded`.
+ */
+export type EscrowOutcome = "held" | "confirmed" | "released" | "claim" | "refunded" | "partly_refunded";
+
+/** The outcome an escrow record stands for. An expired dispute refunds in full (`expire`, T181). */
+export function escrowOutcome(entry: EscrowEntry): EscrowOutcome {
+  switch (entry.status) {
+    case "held":
+    case "shipped":
+      return "held";
+    case "released":
+      return entry.confirmedAt !== null ? "confirmed" : "released";
+    case "disputed":
+    case "responded":
+      return "claim";
+    case "expired":
+      return "refunded";
+    case "resolved":
+      return entry.refundAtomic <= 0n ? "released" : entry.refundAtomic >= entry.amountAtomic ? "refunded" : "partly_refunded";
+  }
+}
+
 export interface LiveDeps {
   readonly fetchImpl: typeof fetch;
   readonly directoryUrl: string;
@@ -56,6 +97,8 @@ export interface LiveDeps {
   readonly resolveId: string;
   /** Every receipt and dispute for these hashes, in one read; a hash with no entry is absent from the map. */
   readonly readLedger: (hashes: readonly string[]) => Promise<{ receipts: Map<string, ReceiptEntry>; disputes: Map<string, DisputeEntry> }>;
+  /** A purchase in a store's escrow by its order, `null` if the contract holds none (T195). Without it, no escrow is read. */
+  readonly readEscrow?: (contractId: string, orderRef: string) => Promise<EscrowEntry | null>;
   readonly now?: () => number;
   readonly ttlMs?: number;
   readonly timeoutMs?: number;
@@ -77,6 +120,15 @@ export interface LiveDispute {
   readonly verdict_hash: string | null;
 }
 
+export interface LiveEscrow {
+  readonly contract: string;
+  readonly contract_url: string;
+  readonly outcome: EscrowOutcome;
+  readonly refund_usdc: string;
+  readonly confirmed_at: string | null;
+  readonly closed_at: string | null;
+}
+
 export interface LivePurchase {
   readonly store: string;
   readonly store_name: string;
@@ -94,6 +146,8 @@ export interface LivePurchase {
   readonly anchor_url: string;
   readonly verify_url: string;
   readonly dispute: LiveDispute | null;
+  /** Where the payment stands in the store's escrow, read from the contract; `null` if paid directly or not read. */
+  readonly escrow: LiveEscrow | null;
 }
 
 export interface LivePage {
@@ -129,6 +183,8 @@ const orderSchema = z.looseObject({ receipt: z.looseObject({ jws: z.string().max
 interface ReceiptFacts {
   readonly items: LiveItem[];
   readonly paymentTx: string;
+  /** The `purchase-escrow` the signed receipt says the payment went into, or `null` (paid directly). */
+  readonly escrow: string | null;
 }
 
 /** Seconds since the epoch, as the ledger stores them, to an ISO date. */
@@ -174,6 +230,7 @@ export async function readReceiptFacts(
     return {
       items: checked.claims.items.map((item) => ({ title: item.name, quantity: item.quantity })),
       paymentTx: checked.claims.settlementTxHash,
+      escrow: checked.claims.escrow?.contract ?? null,
     };
   } catch {
     return null;
@@ -191,6 +248,8 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
   const factsCache = new Map<string, ReceiptFacts>();
   /** When a receipt that could not be read may be tried again. */
   const missedUntil = new Map<string, number>();
+  /** Escrow records that are over, by receipt hash: a closed purchase never changes, so it is not read again. */
+  const closedEscrow = new Map<string, EscrowEntry>();
   let cached: { at: number; page: LivePage } | undefined;
   let inFlight: Promise<LivePage> | undefined;
 
@@ -240,9 +299,35 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
         }),
     );
 
+    const escrows = new Map<string, EscrowEntry>();
+    const readEscrow = deps.readEscrow;
+    if (readEscrow !== undefined) {
+      await Promise.all(
+        shown.map(async (c) => {
+          const contract = factsCache.get(c.hash)?.escrow ?? null;
+          if (contract === null) return;
+          const known = closedEscrow.get(c.hash);
+          if (known !== undefined) {
+            escrows.set(c.hash, known);
+            return;
+          }
+          try {
+            const entry = await within(readEscrow(contract, c.receipt.orderRef), timeoutMs, "escrow read");
+            if (entry === null) return;
+            escrows.set(c.hash, entry);
+            if (entry.closedAt !== null) closedEscrow.set(c.hash, entry);
+            while (closedEscrow.size > MAX_FACTS) closedEscrow.delete(closedEscrow.keys().next().value as string);
+          } catch {
+            // Shown without its escrow state this time; the next refresh tries again.
+          }
+        }),
+      );
+    }
+
     const all: LivePurchase[] = shown.map((c) => {
       const d = ledger.disputes.get(c.hash);
       const facts = factsCache.get(c.hash);
+      const e = escrows.get(c.hash);
       return {
         store: new URL(c.base).host,
         store_name: c.store.name,
@@ -266,6 +351,17 @@ export function createLiveActivity(deps: LiveDeps): { read(): Promise<LivePage> 
                 opened_at: isoFromSeconds(d.openedAt),
                 resolved_at: d.resolvedAt === null ? null : isoFromSeconds(d.resolvedAt),
                 verdict_hash: d.verdictHash,
+              },
+        escrow:
+          e === undefined || facts?.escrow == null
+            ? null
+            : {
+                contract: facts.escrow,
+                contract_url: stellarExpertContractUrl(facts.escrow),
+                outcome: escrowOutcome(e),
+                refund_usdc: formatUsdc(e.refundAtomic),
+                confirmed_at: e.confirmedAt === null ? null : isoFromSeconds(e.confirmedAt),
+                closed_at: e.closedAt === null ? null : isoFromSeconds(e.closedAt),
               },
       };
     });

@@ -2,7 +2,7 @@ import { Address, Keypair, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { signReceipt, USDC_TESTNET } from "@vitrinee/core";
 import { describe, expect, it, vi } from "vitest";
 
-import { createLiveActivity, type DisputeEntry, type LiveDeps, type ReceiptEntry } from "./live-activity.js";
+import { createLiveActivity, escrowOutcome, type DisputeEntry, type EscrowEntry, type LiveDeps, type ReceiptEntry } from "./live-activity.js";
 
 const REGISTRY = "CADILO6QYG3CT2PXEWIKOYLUACPXEP4P645L5HF6WVI2K7BSVN23ZTM5";
 const RESOLVE = "CCYMGX56FJ65EVXUY2M4BTVBCCOBXBTAMGSCWN5X4TQLQTCCEAHDCD3F";
@@ -13,7 +13,7 @@ const B = signerB.publicKey();
 const tx = (c: string) => c.repeat(64);
 
 /** A real receipt, signed by the store's key: its hash is what the registry anchors. */
-function signed(signer: Keypair, orderId: string, items: Array<[string, number, string, string]>, paymentTx: string) {
+function signed(signer: Keypair, orderId: string, items: Array<[string, number, string, string]>, paymentTx: string, escrow?: string) {
   const total = items.reduce((sum, [, q, , atomic]) => sum + BigInt(atomic) * BigInt(q), 0n);
   return signReceipt(
     {
@@ -32,6 +32,7 @@ function signed(signer: Keypair, orderId: string, items: Array<[string, number, 
       items: items.map(([name, quantity, decimal, atomic], i) => ({ productId: `p${i}`, sku: `s${i}`, name, quantity, unitPriceUSDC: decimal, unitPriceUSDCAtomic: atomic })),
       issuedAt: "2026-10-08T12:00:00.000Z",
       refundWindowEndsAt: "2026-10-18T12:00:00.000Z",
+      ...(escrow === undefined ? {} : { escrow: { contract: escrow } }),
     } as Parameters<typeof signReceipt>[0],
     signer.secret(),
   );
@@ -299,3 +300,82 @@ describe("createLiveActivity (T151)", () => {
   });
 });
 
+
+describe("where the money stands in the store's escrow (T195)", () => {
+  const ESCROW = "CDSCZJEM6QR6ZZKGRTLAX36GVN6UVFRISDDW7MGMGCWKZO5JVF6E3UML";
+  const RE = signed(signerA, "ord_alpha1", [["Tapline NFC card", 1, "1.5684211", "15684211"]], tx("7"), ESCROW);
+  const entry = (over: Partial<EscrowEntry>): EscrowEntry => ({ status: "held", amountAtomic: 15_684_211n, refundAtomic: 0n, confirmedAt: null, closedAt: null, ...over });
+
+  function escrowDeps(readEscrow: LiveDeps["readEscrow"]): LiveDeps {
+    return {
+      ...deps({ receipts: new Map([[RE.hash, receipt(A, "ord_alpha1", 15_684_211n, 1_791_400_000)]]) }),
+      fetchImpl: fetchFor({
+        [DIR]: directory,
+        [`${HORIZON}/accounts/${A}/operations`]: { _embedded: { records: [anchorOp(RE.hash, tx("1"), A)] } },
+        [`${HORIZON}/accounts/${B}/operations`]: { _embedded: { records: [] } },
+        "https://alpha.vitrinee.agentpey.com/ucp/v1/orders/ord_alpha1": { id: "ord_alpha1", receipt: { jws: RE.jws } },
+      }),
+      ...(readEscrow === undefined ? {} : { readEscrow }),
+    };
+  }
+
+  it("reads the escrow the signed receipt names, by the order, and says how the purchase ended", async () => {
+    const readEscrow = vi.fn(async () => entry({ status: "released", confirmedAt: 1_791_400_600, closedAt: 1_791_400_600 }));
+    const page = await createLiveActivity(escrowDeps(readEscrow)).read();
+    expect(readEscrow).toHaveBeenCalledWith(ESCROW, "ord_alpha1");
+    expect(page.purchases[0]?.escrow).toEqual({
+      contract: ESCROW,
+      contract_url: `https://stellar.expert/explorer/testnet/contract/${ESCROW}`,
+      outcome: "confirmed",
+      refund_usdc: "0.0000000",
+      confirmed_at: new Date(1_791_400_600 * 1000).toISOString(),
+      closed_at: new Date(1_791_400_600 * 1000).toISOString(),
+    });
+  });
+
+  it("reads an open purchase on every refresh, and a closed one only once", async () => {
+    let now = 0;
+    const states = [entry({}), entry({ status: "expired", refundAtomic: 15_684_211n, closedAt: 1_791_404_000 })];
+    const readEscrow = vi.fn(async () => states.shift() ?? entry({ status: "held" }));
+    const live = createLiveActivity({ ...escrowDeps(readEscrow), ttlMs: 1, now: () => now });
+    // Past its window the last page is served at once and the next one builds behind it: wait for that build.
+    const settle = () => new Promise((done) => setTimeout(done, 0));
+    expect((await live.read()).purchases[0]?.escrow?.outcome).toBe("held");
+    now = 10;
+    await live.read();
+    await settle();
+    now = 20;
+    expect((await live.read()).purchases[0]?.escrow?.outcome).toBe("refunded");
+    await settle();
+    now = 30;
+    expect((await live.read()).purchases[0]?.escrow?.outcome).toBe("refunded");
+    await settle();
+    expect(readEscrow).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the purchase without its escrow state when the contract cannot be read", async () => {
+    const page = await createLiveActivity(escrowDeps(vi.fn(async () => Promise.reject(new Error("rpc down"))))).read();
+    expect(page.purchases).toHaveLength(1);
+    expect(page.purchases[0]?.escrow).toBeNull();
+  });
+
+  it("reads no escrow for a receipt paid directly", async () => {
+    const readEscrow = vi.fn(async () => entry({}));
+    const page = await createLiveActivity({ ...allAnswer(deps()), readEscrow }).read();
+    expect(readEscrow).not.toHaveBeenCalled();
+    expect(page.purchases.every((p) => p.escrow === null)).toBe(true);
+  });
+
+  it("names each ending: held, claim, confirmed, released, refunded and partly refunded", () => {
+    expect(escrowOutcome(entry({ status: "held" }))).toBe("held");
+    expect(escrowOutcome(entry({ status: "shipped" }))).toBe("held");
+    expect(escrowOutcome(entry({ status: "disputed" }))).toBe("claim");
+    expect(escrowOutcome(entry({ status: "responded" }))).toBe("claim");
+    expect(escrowOutcome(entry({ status: "released", confirmedAt: 1 }))).toBe("confirmed");
+    expect(escrowOutcome(entry({ status: "released" }))).toBe("released");
+    expect(escrowOutcome(entry({ status: "resolved" }))).toBe("released");
+    expect(escrowOutcome(entry({ status: "resolved", refundAtomic: 15_684_211n }))).toBe("refunded");
+    expect(escrowOutcome(entry({ status: "resolved", refundAtomic: 7_842_105n }))).toBe("partly_refunded");
+    expect(escrowOutcome(entry({ status: "expired", refundAtomic: 15_684_211n }))).toBe("refunded");
+  });
+});

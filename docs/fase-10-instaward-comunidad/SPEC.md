@@ -228,7 +228,7 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 - **Estimación:** 8 h · **Depende de:** T191
 - **Archivos principales:** `apps/web/public/` (a partir de `en-vivo.html`)
 - **Hecho cuando:**
-  - [ ] una página pública lista cada compra y su resultado (retenida, confirmada, liberada, reembolsada), leído de Stellar y sin datos personales
+  - [ ] una página pública lista cada compra y su resultado (retenida, confirmada, liberada, reembolsada), leído de Stellar y sin datos personales · *24-nov: página y lectura del escrow hechas ([evidencia](evidencia/T195.md)); se marca con las compras de Tapline*
 
 ### Semanas 3 y 4 (25 nov – 10 dic) · D3 (semana 3: 25 nov–2 dic, T196 a T201; semana 4: 3–10 dic, T202 a T206)
 

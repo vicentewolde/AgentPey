@@ -29,7 +29,8 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T187 El MCP elige el rail según la wallet | 👀 código y pruebas en `cc/t187-mcp-por-wallet`; corrida local: el comprador de prueba inició sesión y pagó el imán desde su propio rail (`ord_mwi71o5s46dbef233d`, [tx](https://stellar.expert/explorer/testnet/tx/81db5b000787e89f7be1a7dc74f9856c109e5407b5ac9553c7a4f14f7a64128c)) ([evidencia](evidencia/T187.md)); revisión independiente sin hallazgos graves; falta probar la wallet original en producción tras el merge |
 | T188 La entrega de un producto digital | 👀 código y pruebas en `cc/t188-entrega-digital` ([evidencia](evidencia/T188.md), `Y-11` aprobada); la corrida en vivo va con el catálogo de Tapline (T193) |
 | T190 Corrida de D1 y evidencia | 👀 [evidencia](evidencia/T190.md): contrato, tests y los cuatro hashes prometidos, releídos en Horizon el 21-nov; abiertos para la semana 2: confirmar con wallet desde el chat y la entrega digital en vivo |
-| T191 a T206 | ⏳ pendientes (T201 es un extra) |
+| T195 La página pública de compras | 👀 `agentpey.com/compras`: cada compra y cómo terminó, leído del escrow ([evidencia](evidencia/T195.md)); las de Tapline aparecen con T191 |
+| T191 a T194, T196 a T206 | ⏳ pendientes (T201 es un extra) |
 
 ## Bitácora
 
@@ -150,3 +151,12 @@ tope de 3 USDC, el reclamo llevó una foto sellada, la tienda respondió firmand
 Dos hallazgos del ensayo: ChatGPT no ve herramientas nuevas hasta apretar «Refresh tools» en el plugin, y solo en chats
 nuevos; y las páginas de evidencia y de confirmar mostraban los dos idiomas a la vez, corregido en el PR #131.
 
+
+## 2026-11-24 · T195
+
+**T195.** Ya existe la página pública de compras, `agentpey.com/compras`. Muestra cada compra de una tienda y cómo terminó:
+retenida, confirmada por quien compró, liberada al cerrar el plazo, con un reclamo abierto o reembolsada. Cada estado se lee
+del contrato de escrow de la tienda, que es el que nombra el recibo firmado, y la página no muestra cuentas ni direcciones.
+Probada contra testnet con `agentcommerce`: la compra del video de la semana 1 sale con su reembolso parcial y el ensayo
+con su reembolso completo. Viene abierta en Tapline, que todavía no está en el directorio: sus compras aparecerán solas
+cuando entre (T191).
