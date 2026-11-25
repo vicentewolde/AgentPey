@@ -111,6 +111,12 @@ export function openDb(path: string) {
       slug text primary key,
       data text not null
     );
+    create table if not exists politicas_publicas (
+      store_id text primary key,
+      domain   text not null,
+      text     text not null,
+      data     text not null
+    );
     create table if not exists marcas (
       slug      text primary key,
       brand     text not null,
@@ -173,6 +179,39 @@ export function openDb(path: string) {
     policy(storeId: string): { pages: string[]; status: string; data: unknown } | undefined {
       const r = db.prepare("select pages, status, data from policies where store_id = ?").get(storeId);
       return r === undefined ? undefined : { pages: JSON.parse(String(r.pages)) as string[], status: String(r.status), data: JSON.parse(String(r.data)) as unknown };
+    },
+    /** Every saved policy with its date, for the public ones (politicas-publicas.ts). */
+    policies(): { storeId: string; pages: string[]; data: unknown; at: string }[] {
+      return db.prepare("select store_id, pages, data, at from policies order by store_id").all()
+        .map((r) => ({ storeId: String(r.store_id), pages: JSON.parse(String(r.pages)) as string[], data: JSON.parse(String(r.data)) as unknown, at: String(r.at) }));
+    },
+    /** Replaces every public policy at once, like the price search. */
+    replacePublicPolicies(rows: readonly { storeId: string; domain: string; text: string; data: unknown }[]): void {
+      db.exec("begin");
+      try {
+        db.exec("delete from politicas_publicas");
+        const ins = db.prepare("insert into politicas_publicas (store_id, domain, text, data) values (?, ?, ?, ?)");
+        for (const r of rows) ins.run(r.storeId, r.domain, r.text, JSON.stringify(r.data));
+        db.exec("commit");
+      } catch (error) {
+        db.exec("rollback");
+        throw error;
+      }
+    },
+    publicPolicies(): { storeId: string; domain: string; text: string; data: unknown }[] {
+      return db.prepare("select store_id, domain, text, data from politicas_publicas order by store_id").all()
+        .map((r) => ({ storeId: String(r.store_id), domain: String(r.domain), text: String(r.text), data: JSON.parse(String(r.data)) as unknown }));
+    },
+    /** Public policies of the store with that domain, or else of the stores whose name or domain has every term (cleanTerms) at the start of a word. */
+    findPublicPolicies(domain: string | undefined, terms: readonly string[], limit: number): unknown[] {
+      if (domain !== undefined) {
+        const r = db.prepare("select data from politicas_publicas where domain = ?").all(domain);
+        if (r.length > 0) return r.map((x) => JSON.parse(String(x.data)) as unknown);
+      }
+      if (terms.length === 0) return [];
+      const where = terms.map(() => "(' ' || text) like ?").join(" and ");
+      return db.prepare(`select data from politicas_publicas where ${where} order by length(text), store_id limit ?`).all(...terms.map((t) => `% ${t}%`), limit)
+        .map((x) => JSON.parse(String(x.data)) as unknown);
     },
     saveAnswer(storeId: string, a: { engine: string; question: string; text: string; urls: readonly string[]; mentioned: boolean; cited: boolean; others: readonly string[] }): void {
       db.prepare("insert into answers (store_id, engine, question, text, urls, mentioned, cited, others, at) values (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(

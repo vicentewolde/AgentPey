@@ -49,6 +49,7 @@ import { ingestStore } from "./ingest/index.js";
 import { createLlm, UsageLimitError } from "./llm.js";
 import { deadline, nightSummary, policyTargets, retryBusy, type StopReason } from "./noche.js";
 import { extractPolicy, policyOutdated, readPolicyPages } from "./politicas.js";
+import { buildPublicPolicies } from "./politicas-publicas.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
 import { buildPriceRows } from "./precios.js";
@@ -658,6 +659,9 @@ function guia(db: Db, rest: string[]): void {
   const prices = buildPriceRows(all);
   db.replacePrices(prices.map((p) => ({ storeId: p.row.storeId, text: p.text, price: p.row.price, data: p.row })));
   console.log(`buscador: ${prices.length} productos con stock y precio`);
+  const policies = buildPublicPolicies(all, new Map(db.policies().map((p) => [p.storeId, p])), today());
+  db.replacePublicPolicies(policies.map((p) => ({ storeId: p.policy.storeId, domain: p.policy.domain, text: p.text, data: p.policy })));
+  console.log(`políticas: ${policies.length} tiendas con políticas leídas de su sitio, con citas`);
   const big = BIG_STORES.flatMap((s) => bigPriceRows(s, db.products(s.id), freshReadAt(db.lastGoodRun(s.id)?.at, today())));
   // Big stores and brands' own stores from the lists (segment "grande"): comparison rows for the barcode pages only.
   const grandes = tiendas.filter((t) => t.segment === "grande" && t.domain !== undefined)

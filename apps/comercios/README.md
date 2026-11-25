@@ -121,13 +121,34 @@ curl "https://agentpey.com/chile/buscar?q=khamrah%20100ml&formato=json"
 its JSON, with the rules every page follows; `agentpey.com/robots.txt` points
 crawlers to the guides' sitemap (the gateway sends both paths here). The price
 search is also a public MCP server at `agentpey.com/chile/mcp` (`ias.ts`):
-read-only, no account, stateless Streamable HTTP answering plain JSON, one tool,
-`buscar_precios`. It is not AgentPey's paying MCP server (`apps/mcp`): it holds no
+read-only, no account, stateless Streamable HTTP answering plain JSON, with two
+tools, `buscar_precios` and `politicas_tienda` (below). It is not AgentPey's paying MCP server (`apps/mcp`): it holds no
 keys, records no clicks and links straight to each store. It shares the search's
 limit of 300 searches per IP and hour.
 
 ```bash
 curl -s -X POST https://agentpey.com/chile/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"buscar_precios","arguments":{"consulta":"khamrah 100 ml","max":5}}}'
+```
+
+### Store policies
+
+What each public store says on its own pages about shipping, exchanges and
+refunds, warranty, payment and instalments, as the night shift read it (`base
+politicas`), with a verbatim quote and its page for every claim
+(`politicas-publicas.ts`). Only the stores the guides may name, policies read in
+the last 60 days in the current format, and quotes from the store's own domain;
+the contact field is left out, since it may name a person. Every answer says it
+was summarised by AgentPey with AI, on which date, that the store did not
+review it, and to confirm it in the store. `base guia` builds them and
+`setup-postgres --guias` publishes them. By domain or by name, as JSON or with
+the MCP tool `politicas_tienda`:
+
+```bash
+curl "https://agentpey.com/chile/politicas?tienda=steward.cl"
+```
+
+```bash
+curl -s -X POST https://agentpey.com/chile/mcp -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"politicas_tienda","arguments":{"tienda":"steward.cl"}}}'
 ```
 
 ### The same product across stores (pilot: Arabic perfumes)

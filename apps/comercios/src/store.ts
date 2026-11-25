@@ -16,6 +16,7 @@
 import type { Db } from "./db.js";
 import { GuideSchema, type Guide } from "./guia.js";
 import { BrandPageSchema, summarize, type BrandPage, type BrandSummary } from "./marcas.js";
+import { PublicPolicySchema, type PublicPolicy } from "./politicas-publicas.js";
 import { cleanTerms, COUNT_CAP, PriceRowSchema, type PriceRow } from "./precios.js";
 import { ProductGroupSchema, type ProductGroup } from "./productos.js";
 import { VisitRowSchema, type VisitRow } from "./visitas.js";
@@ -61,6 +62,8 @@ export interface PanelStore {
   brandPage(slug: string): Promise<BrandPage | undefined>;
   /** The price search (precios.ts): rows containing every term, cheapest first, and how many there are in all. */
   searchPrices(terms: readonly string[], limit: number): Promise<{ total: number; rows: PriceRow[] }>;
+  /** Public store policies (politicas-publicas.ts): the store with that domain, or else the ones whose name or domain has every term. */
+  findPolicies(domain: string | undefined, terms: readonly string[], limit: number): Promise<PublicPolicy[]>;
   /** Visits of crawlers and assistants (visitas.ts): added to the day's counts; read back from a day on. */
   addVisits(rows: readonly VisitRow[]): Promise<void>;
   /** The product pages (productos.ts): the same product across stores. */
@@ -92,6 +95,7 @@ export function sqliteStore(db: Db): PanelStore {
     addVisits: async (rows) => db.addVisits(rows),
     productGroups: async () => db.productGroups().map((g) => ProductGroupSchema.parse(g)),
     visits: async (since) => db.visits(since).map((r) => VisitRowSchema.parse(r)),
+    findPolicies: async (domain, terms, limit) => db.findPublicPolicies(domain, cleanTerms(terms), limit).map((x) => PublicPolicySchema.parse(x)),
     searchPrices: async (terms, limit) => {
       const r = db.searchPrices(cleanTerms(terms), limit, COUNT_CAP);
       return { total: r.total, rows: r.rows.map((x) => PriceRowSchema.parse(x)) };
@@ -143,6 +147,7 @@ export const SCHEMA_SQL: readonly string[] = [
   `create table if not exists ${SCHEMA}.precios (
      seq bigserial primary key, store_id text not null, text text not null, price integer not null, data jsonb not null)`,
   `create table if not exists ${SCHEMA}.productos (slug text primary key, data jsonb not null)`,
+  `create table if not exists ${SCHEMA}.politicas (store_id text primary key, domain text not null, text text not null, data jsonb not null)`,
   `create table if not exists ${SCHEMA}.visitas (
      day date not null, agent text not null, kind text not null, path text not null, n integer not null,
      primary key (day, agent, path))`,
@@ -256,6 +261,18 @@ export function pgStore(q: Queryable): PanelStore {
       );
       return { total: Number((counted.rows[0] as { n: number }).n), rows: rows.map((r) => PriceRowSchema.parse(r.data)) };
     },
+    async findPolicies(domain, raw, limit) {
+      if (domain !== undefined) {
+        const { rows } = await q.query(`select data from ${SCHEMA}.politicas where domain = $1`, [domain]);
+        if (rows.length > 0) return rows.map((r) => PublicPolicySchema.parse(r.data));
+      }
+      const terms = cleanTerms(raw);
+      if (terms.length === 0) return [];
+      // Letters and digits only (cleanTerms): LIKE sees no wildcard. Each term at the start of a word.
+      const where = terms.map((_, i) => `(' ' || text) like $${i + 1}`).join(" and ");
+      const { rows } = await q.query(`select data from ${SCHEMA}.politicas where ${where} order by length(text), store_id limit $${terms.length + 1}`, [...terms.map((t) => `% ${t}%`), limit]);
+      return rows.map((r) => PublicPolicySchema.parse(r.data));
+    },
     async click(id) {
       const { rows } = await q.query(`select store_id, product_id, url, channel from ${SCHEMA}.clicks where id = $1`, [id]);
       const r = rows[0];
@@ -349,6 +366,25 @@ export async function importPrices(q: Queryable, source: Db): Promise<number> {
     for (let i = 0; i < rows.length; i += 1000) {
       await insertMany(q, "precios", { store_id: "text", text: "text", price: "integer", data: "jsonb" }, rows.slice(i, i + 1000).map((r) => [r.storeId, r.text, r.price, r.data]));
     }
+    await q.query("commit");
+  } catch (error) {
+    await q.query("rollback");
+    throw error;
+  }
+  return rows.length;
+}
+
+/**
+ * Replaces every public store policy in Postgres with the local ones, in one
+ * transaction. Only what the stores publish on their own pages, with quotes;
+ * no contact field (politicas-publicas.ts).
+ */
+export async function importPolicies(q: Queryable, source: Db): Promise<number> {
+  const rows = source.publicPolicies().map((r) => ({ ...r, data: PublicPolicySchema.parse(r.data) }));
+  await q.query("begin");
+  try {
+    await q.query(`delete from ${SCHEMA}.politicas`);
+    if (rows.length > 0) await insertMany(q, "politicas", { store_id: "text", domain: "text", text: "text", data: "jsonb" }, rows.map((r) => [r.storeId, r.domain, r.text, r.data]));
     await q.query("commit");
   } catch (error) {
     await q.query("rollback");
