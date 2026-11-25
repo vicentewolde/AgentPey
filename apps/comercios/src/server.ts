@@ -333,7 +333,7 @@ const server = createServer(async (req, res) => {
       const domain = asDomain(q);
       const terms = searchTerms(domain ?? q);
       const headers = { ...publicPage, "x-robots-tag": "noindex", "access-control-allow-origin": "*" };
-      if (domain === undefined && terms.length === 0) return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "Falta ?tienda=<dominio o nombre>, por ejemplo ?tienda=luminova.cl" }), headers);
+      if (domain === undefined && terms.length === 0) return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "Falta ?tienda=<dominio o nombre>, por ejemplo ?tienda=steward.cl" }), headers);
       if (searchLimited(clientIp(req))) return send(res, 429, "application/json; charset=utf-8", JSON.stringify({ error: "Demasiadas búsquedas seguidas; prueba de nuevo en un rato" }), { "retry-after": "600" });
       const found = await data.findPolicies(domain, terms, POLICY_LIMIT);
       return send(res, 200, "application/json; charset=utf-8", JSON.stringify(policiesJson(q, found)), headers);

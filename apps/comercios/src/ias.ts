@@ -72,7 +72,7 @@ const POLICY_TOOL = {
     "Devuelve lo que una tienda online chilena con sitio propio dice en sus páginas sobre despacho (cobertura, costo, plazos, retiro), cambios y devolución del dinero (plazos, desde cuándo, solo por falla), garantía, medios de pago y cuotas, " +
     "con una cita textual y el enlace de la página por cada dato, y la fecha en que se leyó. " +
     "Úsala cuando alguien pregunte si una tienda despacha a su zona, cuánto demora, si puede cambiar o devolver un producto, o cómo pagar. " +
-    "Escribe el dominio de la tienda (por ejemplo \"luminova.cl\") o su nombre.",
+    "Escribe el dominio de la tienda (por ejemplo \"steward.cl\") o su nombre.",
   inputSchema: {
     type: "object",
     properties: { tienda: { type: "string", description: "Dominio (\"tienda.cl\") o nombre de la tienda." } },
@@ -247,7 +247,7 @@ export function siteLlmsTxt(guides: readonly { slug: string; title: string; stor
     "",
     "## Políticas de cada tienda",
     "",
-    `- Despacho, cambios, devoluciones, garantía y medios de pago de una tienda, en JSON, con una cita de su sitio por dato: ${policiesUrl("luminova.cl")}`,
+    `- Despacho, cambios, devoluciones, garantía y medios de pago de una tienda, en JSON, con una cita de su sitio por dato: ${policiesUrl("steward.cl")}`,
     `- ${POLICY_NOTE}`,
     "",
     "## Más",
