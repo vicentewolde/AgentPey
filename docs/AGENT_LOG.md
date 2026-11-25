@@ -9775,3 +9775,11 @@ Pendiente: la primera corrida, sin tope hasta agotar la ventana de 5 h, cuando V
 - Night of 24-nov (03:58, transient unit from this branch): 386 re-read, 0 errors, stopped at the plan's limit after 388 calls in 90 min; 256 left for the next night.
 - Second review (30 re-read): exchange vs refund right in most; 2 clear errors (cy-productosdelujo: refund "si" though the page says no refunds; cy-retailcl: exchange marked defective-only), 1-2 conservative omissions; 0/30 with page notes. One `plazo_desde` for both deadlines is a simplification.
 - Pending: nothing about policies is public yet; next step proposed is the public MCP/JSON with date, link and quote, after Vicente's OK.
+
+## 2026-11-24 — cc/lectura-vacias
+
+- 263 pyme stores had an empty last reading. Diagnosis of their home pages: 145 answer 200; 60 do not answer (domain down or no DNS); 29 answer 403; 13 exclude us in robots.txt (all Bsale stores: `User-agent: *` → `Disallow: /`); the rest 4xx/5xx. Shopify stores rate-limit `products.json` (429) and VTEX ones answer 400 to the public catalogue and the sitemap: left out, no bypass.
+- Crawl fixes in `src/ingest/index.ts`: links with a `#fragment` were dropped entirely (every PrestaShop product link carries `#/color-…`); a priority queue (`linkTier`, `CrawlQueue`) opens product pages first, then listings, and filtered copies (`?feature=…`) last; a home page that moves to another host is read there; a crawl stops after `FRUITLESS_PAGES` (120) pages without a product. Sitemap pages use the same ranking (`/ficha/`, `/detalle/` count as products).
+- `fromMicrodata` in `src/ingest/platforms.ts`: schema.org Product marked up with `itemprop` (name and price required).
+- Sample before the real run (30 pages each, dry): 7 of 12 stores went from 0 to products (mingo, zappa, oviedo, ferreteria.cl, intersport, emotions, tecnobuy).
+- Pending: merging needs Vicente's OK; nothing published to Postgres.
