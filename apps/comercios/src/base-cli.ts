@@ -2,7 +2,8 @@
  * pnpm --filter @agentpey/comercios cli base <subcommand>
  *   lista                       read blackfriday.cl's participants; platform and name from each home page
  *   contacto [--todas]          public contact address from each store's own home and contact pages
- *   ingest [--todas] [--max N] [--paralelo N]   read the public catalogues (skips stores already read);
+ *   ingest [--todas] [--max N] [--paralelo N] [--segmento pyme|grande]   read the public catalogues (skips stores already read);
+ *                               --segmento grande: big stores and brands, kept as comparison data (never in guides, brands or search)
  *                               a re-read that fails or reads under half keeps the previous one (semanal.ts)
  *   diagnostico [--n 4] [--motores claude,chatgpt] [--desde YYYY-MM-DD] [--limite N] [--paralelo N]
  *                               buyer questions per store; skips stores already answered since --desde
@@ -51,7 +52,7 @@ import { extractPolicy, policyOutdated, readPolicyPages } from "./politicas.js";
 import { detectPlatform, siteName } from "./rapido.js";
 import { readiness } from "./readiness.js";
 import { buildPriceRows } from "./precios.js";
-import { matchProducts, ProductGroupSchema } from "./productos.js";
+import { isCodeKey, matchByCode, matchProducts, ProductGroupSchema } from "./productos.js";
 import { rereadVerdict } from "./semanal.js";
 import { STORES } from "./stores.js";
 
@@ -372,7 +373,14 @@ async function ingest(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> {
   const max = Number(flag(rest, "--max") ?? 1500);
   const pages = Number(flag(rest, "--paginas") ?? 200);
   const only = flag(rest, "--solo")?.split(",");
-  const targets = loadTiendas(db).filter((t) => t.segment === "pyme" && t.origin !== undefined && (only === undefined ? rest.includes("--todas") || db.lastRun(t.id) === undefined : only.includes(t.id)));
+  // Big stores' catalogues are read as comparison data only: guides, brands and the search keep to pymes.
+  const segment = z.enum(["pyme", "grande"]).safeParse(flag(rest, "--segmento") ?? "pyme");
+  if (!segment.success) {
+    console.error("uso: base ingest [--segmento pyme|grande] ...");
+    process.exitCode = 2;
+    return;
+  }
+  const targets = loadTiendas(db).filter((t) => t.segment === segment.data && t.origin !== undefined && (only === undefined ? rest.includes("--todas") || db.lastRun(t.id) === undefined : only.includes(t.id)));
   console.log(`${targets.length} catálogos por leer`);
   const tally = { leidas: 0, conservadas: [] as string[], fallidas: 0 };
   await pool(targets, Number(flag(rest, "--paralelo") ?? 6), async (t) => {
@@ -601,7 +609,7 @@ async function grandes(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> 
     return;
   }
   // Only addresses that may be a product the pyme stores already make a page for: run `base guia` first.
-  const wanted = mayBeOneOf(db.productGroups().map((g) => ProductGroupSchema.parse(g).key));
+  const wanted = mayBeOneOf(db.productGroups().map((g) => ProductGroupSchema.parse(g).key).flatMap((k) => (isCodeKey(k) ? [] : [k])));
   for (const store of BIG_STORES.filter((s) => pick.data === undefined || pick.data.includes(s.id))) {
     const started = Date.now();
     const r = await readBigStore(store, fetcher, { maxPages: max.data, wanted, log: (l) => process.stderr.write(`${l}\n`) });
@@ -651,9 +659,16 @@ function guia(db: Db, rest: string[]): void {
   db.replacePrices(prices.map((p) => ({ storeId: p.row.storeId, text: p.text, price: p.row.price, data: p.row })));
   console.log(`buscador: ${prices.length} productos con stock y precio`);
   const big = BIG_STORES.flatMap((s) => bigPriceRows(s, db.products(s.id), freshReadAt(db.lastGoodRun(s.id)?.at, today())));
-  const groups = matchProducts(prices.map((p) => p.row), 3, big);
+  // Big stores and brands' own stores from the lists (segment "grande"): comparison rows for the barcode pages only.
+  const grandes = tiendas.filter((t) => t.segment === "grande" && t.domain !== undefined)
+    .flatMap((t) => bigPriceRows({ id: t.id, name: t.name, domain: t.domain!, sitemap: "" }, db.products(t.id), freshReadAt(db.lastGoodRun(t.id)?.at, today())));
+  const perfumes = matchProducts(prices.map((p) => p.row), 3, big);
+  const coded = matchByCode(prices.map((p) => p.row), 2, [...big, ...grandes]);
+  const taken = new Set(perfumes.map((g) => g.slug));
+  const groups = [...perfumes, ...coded.filter((g) => !taken.has(g.slug))];
   db.replaceProducts(groups);
-  console.log(`productos: ${groups.length} páginas del mismo perfume en tres o más tiendas, ${groups.filter((g) => g.reference.length > 0).length} con precio de tiendas grandes para comparar`);
+  console.log(`productos: ${perfumes.length} páginas del mismo perfume en tres o más tiendas, ${perfumes.filter((g) => g.reference.length > 0).length} con precio de tiendas grandes para comparar`);
+  console.log(`productos por código de barras: ${coded.length} páginas en dos o más tiendas, ${coded.filter((g) => g.reference.length > 0).length} con precio de tiendas grandes o de la marca`);
   console.log(`marcas: ${pages.length} páginas (${pages.filter((p) => p.same.length > 0).length} con el mismo producto en varias tiendas)`);
   console.log(`${dir}: vista previa de ${built.length} guías y de las marcas con 10 o más tiendas. Para publicarlas: scripts/setup-postgres.ts --solo-importar --guias`);
 }
