@@ -30,7 +30,8 @@ Pendiente: que Tellus confirme la fecha por escrito. Antes del sprint y fuera de
 | T188 La entrega de un producto digital | 👀 código y pruebas en `cc/t188-entrega-digital` ([evidencia](evidencia/T188.md), `Y-11` aprobada); la corrida en vivo va con el catálogo de Tapline (T193) |
 | T190 Corrida de D1 y evidencia | 👀 [evidencia](evidencia/T190.md): contrato, tests y los cuatro hashes prometidos, releídos en Horizon el 21-nov; abiertos para la semana 2: confirmar con wallet desde el chat y la entrega digital en vivo |
 | T195 La página pública de compras | 👀 `agentpey.com/compras`: cada compra y cómo terminó, leído del escrow ([evidencia](evidencia/T195.md)); las de Tapline aparecen con T191 |
-| T191 a T194, T196 a T206 | ⏳ pendientes (T201 es un extra) |
+| T191 Tapline en Vitrinee con su escrow | ✅ en el directorio, cobra a su escrow `CASIEUGB…ZF3V`, `agentcommerce` igual, `prod:check` 9/9 ([evidencia](evidencia/T191.md)) |
+| T192 a T194, T196 a T206 | ⏳ pendientes (T201 es un extra); topes de compradores subidos a 20/50 USDC (PR #138) |
 
 ## Bitácora
 
@@ -160,3 +161,13 @@ del contrato de escrow de la tienda, que es el que nombra el recibo firmado, y l
 Probada contra testnet con `agentcommerce`: la compra del video de la semana 1 sale con su reembolso parcial y el ensayo
 con su reembolso completo. Viene abierta en Tapline, que todavía no está en el directorio: sus compras aparecerán solas
 cuando entre (T191).
+
+## 2026-11-24 · T191
+
+**T191.** Tapline ya está en Vitrinee. Se creó e instaló la app de Shopify, se les pusieron SKU a los 12 productos y el
+usuario dio de alta la tienda en el portal firmando con su wallet de cobro. Su escrow propio (`CASIEUGB…ZF3V`, mismo
+wasm v2 y mismos plazos que `agentcommerce`) quedó encendido en Render, y el perfil de la tienda ya cobra a ese contrato.
+`agentcommerce` sigue igual y `prod:check` da 9/9. Como los precios de Tapline llegan a 13,7 USDC, se subieron los topes:
+25 USDC por rail patrocinado nuevo (hasta 150), 20 por pago y 50 por día para cada comprador. El comprador de prueba tiene
+un rail nuevo de 20/50 con 50 USDC y una credencial que incluye Tapline. Falta `MCP_AGENT_MNEMONIC` en Render para que el
+MCP atienda a los compradores de la lista.
