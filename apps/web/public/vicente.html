@@ -46,9 +46,9 @@ ul.tl li:before{content:"";position:absolute;left:-6px;top:7px;width:10px;height
 ul.tl b{display:block}
 ul.tl span{color:var(--muted);font-size:15px}
 footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
-[data-l="es"]{display:none}
-html[lang="es"] [data-l="en"]{display:none}
-html[lang="es"] [data-l="es"]{display:revert}
+[data-l="es"]{display:none!important}
+html[lang="es"] [data-l="en"]{display:none!important}
+html[lang="es"] [data-l="es"]{display:revert!important}
 </style>
 </head>
 <body>
@@ -119,7 +119,7 @@ html[lang="es"] [data-l="es"]{display:revert}
     </div>
     <div class="card">
       <span class="tag" data-l="es">Comercio con IA · Chile</span><span class="tag" data-l="en">AI commerce · Chile</span>
-      <h3><a href="https://agentpey.com/chile">AgentPey para tiendas</a></h3>
+      <h3><a href="https://agentpey.com/chile" data-l="en">AgentPey for stores</a><a href="https://agentpey.com/chile" data-l="es">AgentPey para tiendas</a></h3>
       <p data-l="es">Mide si ChatGPT y Claude recomiendan a las tiendas pyme chilenas. Leímos 297 catálogos y clasificamos 1.750 respuestas de IA (nov-2026).</p>
       <p data-l="en">Measures whether ChatGPT and Claude recommend Chilean small online stores. We read 297 catalogues and classified 1,750 AI answers (Nov 2026).</p>
       <div class="chips"><span class="chip">TypeScript</span><span class="chip">LLMs</span><span class="chip">Open data</span></div>
