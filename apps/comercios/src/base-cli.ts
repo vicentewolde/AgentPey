@@ -11,6 +11,8 @@
  *                               --leidas: only stores whose catalogue reading has finished
  *                               --repetir <ISO>: ask again the questions answered between <ISO> and --desde
  *   cyber                       add cyber.cl's (CyberDay) brands: same rubros, a store on both lists is kept once
+ *   blackfriday-anterior --archivo <copia.html> ...   past editions' brands (2022–2026) from the Internet Archive's
+ *                               copies of blackfriday.cl's home and cyber pages; a store already in the base only gains the mark
  *   rubros [--n 15] [--desde ISO]   general buyer questions per rubro (no store in mind): who the AI recommends in each rubro
  *                               --repetir <ISO>: ask again the questions answered between <ISO> and --desde
  *                               --solo "Rubro A,Rubro B": only these rubros
@@ -35,7 +37,7 @@ import { z } from "zod";
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 
-import { compare, contactLinks, cyberRubro, isBigMarket, mailableEmail, parseCyber, findEmails, isAffiliate, mainRubro, parseBlackFriday, rankEmails, segmentOf, toStore, type Segment, type StoredAnswer, type StoreInput, type Tienda } from "./base.js";
+import { compare, contactLinks, cyberRubro, isBigMarket, mailableEmail, parseCyber, findEmails, isAffiliate, mainRubro, parseBlackFriday, parseBlackFridayGallery, rankEmails, segmentOf, toStore, type BfEntry, type Segment, type StoredAnswer, type StoreInput, type Tienda } from "./base.js";
 import { localDataDir, type Db } from "./db.js";
 import { buyerQuestions, chatgptEngine, claudeEngine, hostOf, judge, type Engine } from "./diagnostico.js";
 import { pool } from "./entender.js";
@@ -94,6 +96,7 @@ export async function baseCommand(db: Db, sub: string | undefined, rest: string[
   if (sub === "diagnostico") return diagnostico(db, rest);
   if (sub === "piloto") return piloto(db);
   if (sub === "cyber") return cyber(db, fetcher, rest);
+  if (sub === "blackfriday-anterior") return blackfridayAnterior(db, fetcher, rest);
   if (sub === "grandes") return grandes(db, fetcher, rest);
   if (sub === "ajustar") return ajustar(db);
   if (sub === "rubros") return rubros(db, rest);
@@ -163,19 +166,25 @@ async function lista(db: Db, fetcher: Fetcher): Promise<void> {
   });
   // A brand that left the list (or changed id) leaves the base; its catalogue and answers stay in their tables.
   const current = new Set(rows.map((t) => t.id));
-  for (const t of known.values()) if (!current.has(t.id) && t.bfSlug !== "" && !(t.sources ?? []).some((x) => x !== "blackfriday")) db.raw.prepare("delete from tiendas where id = ?").run(t.id);
+  // One also on another list stays, now as a past participant of blackfriday.cl.
+  for (const t of known.values()) {
+    if (current.has(t.id) || t.bfSlug === "") continue;
+    const sources = t.sources ?? ["blackfriday"];
+    if (!sources.some((x) => x !== "blackfriday")) db.raw.prepare("delete from tiendas where id = ?").run(t.id);
+    else if (sources.includes("blackfriday")) saveTienda(db, { ...t, sources: [...new Set(sources.map((x) => (x === "blackfriday" ? ("blackfriday-anterior" as const) : x)))] });
+  }
   const by = (s: Segment) => rows.filter((t) => t.segment === s).length;
   console.log(`\n${rows.length} marcas: ${by("pyme")} pymes con dominio, ${by("grande")} grandes, ${by("no-tienda")} sin catálogo (inmobiliarias, viajes, servicios), ${by("sin-dominio")} sin dominio`);
   writeFileSync(`${BASE}tiendas.json`, JSON.stringify(loadTiendas(db), null, 2));
 }
 
 /** Platform, final origin and notes from a store's home page (www and bare domain both tried). */
-async function homeInfo(fetcher: Fetcher, domain: string): Promise<{ origin?: string; platform?: Platform; notes: string[] }> {
+async function homeInfo(fetcher: Fetcher, domain: string): Promise<{ origin?: string; platform?: Platform; name?: string; notes: string[] }> {
   const notes: string[] = [];
   try {
     let home = await fetcher.text(`https://${domain}/`).catch(() => ({ status: 0, body: "", url: "" }));
     if (home.status !== 200 && !domain.startsWith("www.")) home = await fetcher.text(`https://www.${domain}/`);
-    if (home.status === 200) return { origin: new URL(home.url).origin, platform: detectPlatform(home.body), notes };
+    if (home.status === 200) return { origin: new URL(home.url).origin, platform: detectPlatform(home.body), name: siteName(home.body, domain), notes };
     notes.push(`portada: HTTP ${home.status}`);
   } catch (error) {
     notes.push(`portada: ${(error as Error).message.slice(0, 120)}`);
@@ -237,6 +246,58 @@ async function cyber(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> {
     console.log(`${slug.padEnd(28)} ${segment.padEnd(10)} ${(t.platform ?? "-").padEnd(12)} ${domain} · ${t.rubro}`);
   });
   console.log(`\ncyber.cl${files.length > 0 ? ` (${files.length} copias de ediciones anteriores)` : ""}: ${entries.length} marcas · ${added.size} nuevas en la base · ${merged} ya estaban`);
+  writeFileSync(`${BASE}tiendas.json`, JSON.stringify(loadTiendas(db), null, 2));
+}
+
+/**
+ * Past editions of blackfriday.cl (2022–2026): the brand gallery of the
+ * Internet Archive's copies of its home and cyber pages
+ * (http://web.archive.org/web/<timestamp>id_/https://www.blackfriday.cl/),
+ * marked "blackfriday-anterior". A brand already in the base only gains the
+ * mark; a new one comes in with the same segments as this year's list.
+ */
+async function blackfridayAnterior(db: Db, fetcher: Fetcher, rest: string[]): Promise<void> {
+  const files = rest.includes("--archivo") ? rest.slice(rest.indexOf("--archivo") + 1).filter((f) => !f.startsWith("--")) : [];
+  if (files.length === 0) {
+    console.error("uso: cli base blackfriday-anterior --archivo <copia.html> ...");
+    process.exitCode = 2;
+    return;
+  }
+  const byHost = new Map<string, BfEntry>();
+  for (const f of files) {
+    for (const e of parseBlackFridayGallery(readFileSync(f, "utf8"))) {
+      const prev = byHost.get(e.slug);
+      byHost.set(e.slug, prev === undefined ? e : { ...prev, name: prev.name || e.name, categories: [...new Set([...prev.categories, ...e.categories])].sort() });
+    }
+  }
+  const entries = [...byHost.values()];
+  const adj = ajustes();
+  const known = loadTiendas(db);
+  const added = new Set<string>();
+  let merged = 0;
+  await pool(entries, 6, async (e) => {
+    const domain = adj.dominio[e.slug] ?? e.slug;
+    const same = known.find((t) => t.domain !== undefined && t.domain.replace(/^www\./, "") === domain.replace(/^www\./, ""));
+    if (same !== undefined) {
+      saveTienda(db, { ...same, sources: [...new Set([...(same.sources ?? ["blackfriday"]), "blackfriday-anterior" as const])] });
+      merged++;
+      return;
+    }
+    const base = `bfa-${fold(e.name || domain.split(".")[0]!).slice(0, 30) || fold(domain)}`;
+    const taken = (id: string) => known.some((t) => t.id === id) || added.has(id);
+    let slug = base;
+    for (let i = 2; taken(slug); i++) slug = `${base}-${i}`;
+    added.add(slug);
+    const segment: Segment = adj.segmento[slug] ?? (isBigMarket(domain) ? "grande" : segmentOf({ ...e, slug }, domain));
+    const info = segment === "pyme" ? await homeInfo(fetcher, domain) : { notes: [] as string[] };
+    const t: Tienda = {
+      id: slug, domain, origin: info.origin ?? `https://${domain}`, name: e.name || info.name || domain, rubro: mainRubro(e.categories), categories: e.categories,
+      platform: info.platform, segment, bfSlug: "", bfLink: e.link, sources: ["blackfriday-anterior"], checkedAt: new Date().toISOString(), notes: info.notes,
+    };
+    saveTienda(db, t);
+    console.log(`${slug.padEnd(28)} ${segment.padEnd(10)} ${(t.platform ?? "-").padEnd(12)} ${domain} · ${t.rubro}`);
+  });
+  console.log(`\nblackfriday.cl (${files.length} copias de ediciones anteriores): ${entries.length} marcas · ${added.size} nuevas en la base · ${merged} ya estaban`);
   writeFileSync(`${BASE}tiendas.json`, JSON.stringify(loadTiendas(db), null, 2));
 }
 

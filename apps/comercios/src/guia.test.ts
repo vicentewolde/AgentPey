@@ -209,3 +209,17 @@ describe("a store from a past edition of cyber.cl", () => {
     expect(guideHtml(g, GUIDE_RUBROS)).toContain("Aparece en ediciones anteriores de cyber.cl.");
   });
 });
+
+describe("a store from a past edition of blackfriday.cl", () => {
+  it("says so, and says nothing more when it is also on this year's list", () => {
+    const g = buildGuide(SALUD, [
+      input(tienda("antes", { sources: ["blackfriday-anterior"] }), 20),
+      input(tienda("ahora", { sources: ["blackfriday", "blackfriday-anterior"] }), 20),
+      input(tienda("cy", { sources: ["cyber-anterior", "blackfriday-anterior"] }), 20),
+    ], "2026-11-22");
+    expect(g.stores.find((s) => s.id === "antes")!.lists).toEqual(["blackfriday-anterior"]);
+    expect(g.stores.find((s) => s.id === "ahora")!.lists).toEqual(["blackfriday"]);
+    expect(g.stores.find((s) => s.id === "cy")!.lists).toEqual(["cyber-anterior", "blackfriday-anterior"]);
+    expect(guideHtml(g, GUIDE_RUBROS)).toContain("Aparece en ediciones anteriores de blackfriday.cl.");
+  });
+});

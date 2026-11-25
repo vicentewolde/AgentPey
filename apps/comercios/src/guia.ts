@@ -77,7 +77,7 @@ export const GuideStoreSchema = z.object({
   onSale: z.number().int().nonnegative(),
   categories: z.array(z.string()),
   brands: z.array(z.string()),
-  lists: z.array(z.enum(["blackfriday", "cyber", "cyber-anterior"])),
+  lists: z.array(z.enum(["blackfriday", "blackfriday-anterior", "cyber", "cyber-anterior"])),
 });
 export type GuideStore = z.infer<typeof GuideStoreSchema>;
 
@@ -175,9 +175,9 @@ export function guideStore(input: GuideInput): GuideStore | undefined {
   if (readAt === undefined || t.origin === undefined || t.domain === undefined) return undefined;
   const prices = products.map((p) => p.price).filter((x): x is number => x !== undefined && x > 0).sort((a, b) => a - b);
   if (prices.length < MIN_PRICED) return undefined;
-  const named = (t.sources ?? ["blackfriday"]).filter((s): s is GuideList => s === "blackfriday" || s === "cyber" || s === "cyber-anterior");
-  // On this year's cyber.cl list, a past edition adds nothing to say.
-  const lists = named.includes("cyber") ? named.filter((s) => s !== "cyber-anterior") : named;
+  const named = (t.sources ?? ["blackfriday"]).filter((s): s is GuideList => s !== "piloto");
+  // On this year's list, a past edition of the same list adds nothing to say.
+  const lists = named.filter((s) => !(s === "cyber-anterior" && named.includes("cyber")) && !(s === "blackfriday-anterior" && named.includes("blackfriday")));
   const min = products.length >= 40 ? 2 : 1;
   return {
     id: t.id, name: t.name.trim(), url: `${t.origin}/`, domain: t.domain.replace(/^www\./, ""),
@@ -318,7 +318,7 @@ function joinEs(xs: readonly string[]): string {
 }
 
 type GuideList = GuideStore["lists"][number];
-const LIST_NAMES: Record<GuideList, string> = { blackfriday: "blackfriday.cl", cyber: "cyber.cl", "cyber-anterior": "ediciones anteriores de cyber.cl" };
+const LIST_NAMES: Record<GuideList, string> = { blackfriday: "blackfriday.cl", "blackfriday-anterior": "ediciones anteriores de blackfriday.cl", cyber: "cyber.cl", "cyber-anterior": "ediciones anteriores de cyber.cl" };
 
 /**
  * Where the guides are published: the main domain, one folder per country

@@ -7,6 +7,8 @@
  * Only code lives here. The list, catalogues, answers and contacts are written
  * to data/ (git-ignored): the repository is public.
  */
+import { z } from "zod";
+
 import { hostOf, judge, type EngineAnswer } from "./diagnostico.js";
 import type { Platform, Store } from "./model.js";
 import type { Readiness } from "./readiness.js";
@@ -114,6 +116,72 @@ export function segmentOf(e: BfEntry, domain: string | undefined, overrides: Rea
   return "pyme";
 }
 
+/** The gallery's filter slugs (2022–2026 editions) in the names blackfriday.cl's list uses today. */
+const GALLERY_CATEGORIES: Readonly<Record<string, string>> = {
+  "alimentos-y-bebidas": "Alimentos y Bebidas", "deportes-y-outdoor": "Deportes y Outdoor", "deporte-y-outdoor": "Deportes y Outdoor",
+  "entretencion-y-cultura": "Entretención y Cultura", entretencion: "Entretención y Cultura", ferreteria: "Ferretería",
+  "hogar-y-decoracion": "Hogar y Decoración", "infantil-y-jugueteria": "Infantil y Juguetería", infantil: "Infantil y Juguetería",
+  inmobiliaria: "Inmobiliarias", inmobiliarias: "Inmobiliarias", "marketplaces-y-grandes-tiendas": BIG, mascotas: "Mascotas",
+  "moda-y-accesorios": "Moda y Accesorios", "regalos-y-accesorios": "Moda y Accesorios", "musica-y-audio": "Música y Audio",
+  "salud-y-belleza": "Salud y Belleza", servicios: "Servicios", "tecnologia-y-gaming": "Tecnología y Gaming", tecnologia: "Tecnología y Gaming",
+  "vehiculos-y-accesorios": "Vehículos y Accesorios", "vestuario-y-calzado": "Vestuario y Calzado", "viajes-y-turismo": "Viajes y Turismo",
+  // Courses and foundations sell no catalogue: they count as services.
+  "educacion-y-cursos-online": "Servicios", "cursos-y-educacion": "Servicios", educacion: "Servicios", fundaciones: "Servicios",
+};
+
+const GalleryItem = z.object({ link: z.string().url(), host: z.string().min(3), name: z.string(), categories: z.array(z.string()) });
+
+const unescapeAttr = (s: string) => s.replace(/&amp;/g, "&").replace(/&#0?39;|&#8217;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&#8211;/g, "-").trim();
+
+/** The brand's name from the logo's alt or title ("Ofertas Blackfriday en Café d'Lara", "Bekoko en Black Friday 2022"), or "" when they only name a file. */
+export function galleryName(alt: string, title: string): string {
+  const clean = (name: string) => name.replace(/^logo[\s_-]+/i, "").trim();
+  const event = String.raw`(?:black\s*friday|blackfriday|black\s*sale|blacksale|cyber(?:\s*day|\s*monday)?)`;
+  for (const text of [alt, title].map(unescapeAttr)) {
+    const ofertas = new RegExp(String.raw`^ofertas(?:\s+${event})?\s+en\s+(.+)$`, "i").exec(text)?.[1];
+    if (ofertas) return clean(ofertas);
+    const before = new RegExp(String.raw`^(.+?)\s*(?:[-–]\s*|en\s+)?${event}(?:\s+\d{4})?$`, "i").exec(text)?.[1];
+    if (before && !/^ofertas$/i.test(before)) return clean(before);
+    const after = new RegExp(String.raw`^${event}(?:\s+\d{4})?\s+en\s+(.+)$`, "i").exec(text)?.[1];
+    if (after) return clean(after);
+  }
+  return "";
+}
+
+/**
+ * The brand gallery on blackfriday.cl's past home and cyber pages (2022–2026,
+ * read from the Internet Archive's copies): each logo links to the brand's site
+ * and carries its categories as filter classes. Logos that go through an
+ * affiliate redirect or back to blackfriday.cl say nothing about the domain and
+ * are left out; a brand in several copies is kept once, its categories joined.
+ */
+export function parseBlackFridayGallery(html: string): BfEntry[] {
+  const byHost = new Map<string, { link: string; name: string; categories: Set<string> }>();
+  const starts = [...html.matchAll(/<div class="modula-item ([^"]*)"\s*>/g)];
+  starts.forEach((m, i) => {
+    const classes = m[1]!.split(/\s+/);
+    if (!classes.includes("jtg-filter-all")) return;
+    const chunk = html.slice(m.index! + m[0].length, starts[i + 1]?.index ?? m.index! + 4000);
+    const href = /<a [^>]*href="([^"]+)"/.exec(chunk)?.[1];
+    if (href === undefined) return;
+    const link = unescapeAttr(href);
+    const host = hostOf(link);
+    if (host === undefined || isAffiliate(link) || /(^|\.)(blackfriday\.cl|mercadolibre\.cl|web\.archive\.org)$/.test(host)) return;
+    const img = /<img [^>]*>/.exec(chunk)?.[0] ?? "";
+    const name = galleryName(/\balt="([^"]*)"/.exec(img)?.[1] ?? "", /\btitle="([^"]*)"/.exec(img)?.[1] ?? "");
+    const cats = classes.filter((c) => c.startsWith("jtg-filter-") && c !== "jtg-filter-all").map((c) => GALLERY_CATEGORIES[c.slice("jtg-filter-".length)]).filter((c): c is string => c !== undefined);
+    const parsed = GalleryItem.safeParse({ link, host, name, categories: cats });
+    if (!parsed.success) return;
+    const prev = byHost.get(host);
+    if (prev === undefined) byHost.set(host, { link, name, categories: new Set(cats) });
+    else {
+      if (prev.name === "") prev.name = name;
+      for (const c of cats) prev.categories.add(c);
+    }
+  });
+  return [...byHost.entries()].map(([host, e]) => ({ slug: host, name: e.name, link: e.link, categories: [...e.categories].sort() }));
+}
+
 /** One brand as cyber.cl lists it (CyberDay, run by the Santiago Chamber of Commerce). */
 export interface CyberEntry {
   readonly id: number;
@@ -170,8 +238,8 @@ export interface Tienda {
   readonly bfSlug: string;
   readonly bfLink: string;
   /** Where the store came from: blackfriday.cl (the default), cyber.cl or the pilot. */
-  /** "cyber-anterior": a past edition's list of cyber.cl, read from the Internet Archive's public copy. */
-  readonly sources?: readonly ("blackfriday" | "cyber" | "cyber-anterior" | "piloto")[];
+  /** "cyber-anterior" / "blackfriday-anterior": a past edition's list, read from the Internet Archive's public copy. */
+  readonly sources?: readonly ("blackfriday" | "blackfriday-anterior" | "cyber" | "cyber-anterior" | "piloto")[];
   /** Public contact addresses found on the store's own pages, with the page each came from. */
   readonly emails?: readonly { email: string; page: string }[];
   readonly checkedAt?: string;
