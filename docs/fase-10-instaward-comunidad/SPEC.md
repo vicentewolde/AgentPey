@@ -203,8 +203,8 @@ despliegue en testnet y cada gasto necesitan el OK explícito del usuario. Las h
 - **Estimación:** 8 h · **Depende de:** T183 y el OK del usuario (cuentas y credenciales de Shopify)
 - **Archivos principales:** `packages/vitrinee-gateway/src/platform/`, Render
 - **Hecho cuando:**
-  - [ ] Tapline aparece en el directorio con su perfil UCP, cobra a su escrow y `prod:check` sigue en verde
-  - [ ] `agentcommerce` no cambia (prueba de que sus compras siguen igual)
+  - [x] Tapline aparece en el directorio con su perfil UCP, cobra a su escrow y `prod:check` sigue en verde ([evidencia](evidencia/T191.md))
+  - [x] `agentcommerce` no cambia (prueba de que sus compras siguen igual)
 
 #### T192 · Alta y fondeo de los cinco compradores
 - **Estimación:** 6 h · **Depende de:** T186, T187
