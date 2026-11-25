@@ -9802,3 +9802,10 @@ Pendiente: la primera corrida, sin tope hasta agotar la ventana de 5 h, cuando V
 - `fromMicrodata` in `src/ingest/platforms.ts`: schema.org Product marked up with `itemprop` (name and price required).
 - Sample before the real run (30 pages each, dry): 7 of 12 stores went from 0 to products (mingo, zappa, oviedo, ferreteria.cl, intersport, emotions, tecnobuy).
 - Pending: merging needs Vicente's OK; nothing published to Postgres.
+
+## 2026-11-25 — cc/politicas-publicas
+
+- Night of 25-nov: 00:36 run tried 465 stores (382 saved, 83 without policy pages, 0 errors) and stopped at the plan's limit after 385 calls in 79 min; the 04:00 run finished the list (46 stores, 8 min). 811 of 814 saved policies are in the current format.
+- Vicente asked to publish the night's work. New `src/politicas-publicas.ts`: the public stores' policies (the stores the guides may name, read in the last 60 days, current format, quotes only from the store's own domain, no contact field) built by `base guia` (663 stores, 17,127 quotes) and published by `setup-postgres --guias` (table `comercios.politicas`).
+- Served as JSON at `agentpey.com/chile/politicas?tienda=<dominio o nombre>` and as a second tool of the public MCP, `politicas_tienda`; listed in llms.txt. Every answer says it was summarised with AI from the store's pages, the reading date, that the store did not review it, and to confirm it in the store. Shares the search's limit per IP.
+- Known limits: the second review found ~2/30 wrong exchange/refund readings; pilot stores (luminova…) stay out, like in the guides. `tsc` errors in `base-cli.ts` (`lastGoodRun`) predate this branch.

@@ -25,7 +25,7 @@
  * across the guides or the brand pages would drop by more than that percentage.
  *
  * `--guias` also replaces the public guides (`cli base guia`, guia.ts) and the
- * brand pages (marcas.ts) with the ones in the local file. Guides alone need no store: `--solo-importar --guias`.
+ * brand pages (marcas.ts), and the public store policies (politicas-publicas.ts) with the ones in the local file. Guides alone need no store: `--solo-importar --guias`.
  *
  * `--solo-importar` only does step 4, for stores added later: it keeps the
  * role's password (nothing to change in Render) and prints no secret. The
@@ -44,7 +44,7 @@ import pg from "pg";
 import { localDataDir, openDb } from "../src/db.js";
 import { GuideSchema } from "../src/guia.js";
 import { publishDrop } from "../src/semanal.js";
-import { SCHEMA, importBrandPages, importGuides, importPrices, importProducts, importStores, migrate, publishedTotals } from "../src/store.js";
+import { SCHEMA, importBrandPages, importGuides, importPolicies, importPrices, importProducts, importStores, migrate, publishedTotals } from "../src/store.js";
 
 const ROLE = "comercios";
 const out = (line = ""): void => void process.stdout.write(`${line}\n`);
@@ -184,6 +184,7 @@ async function main(): Promise<void> {
           if (Number(rows[0]?.n ?? 0) > 0) die(`no se publica: la lectura no armó ninguna página de producto y hay ${rows[0]?.n} publicadas. Revisa la lectura; para publicar igual, corre sin --max-caida`);
         }
         if (withGuides) out(`✓ páginas de productos publicadas: ${await importProducts(client, source)}`);
+        if (withGuides) out(`✓ políticas de tiendas publicadas: ${await importPolicies(client, source)}`);
         await client.query("reset role");
       } finally {
         client.release();

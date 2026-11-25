@@ -30,6 +30,7 @@ import { countedPath, requestIp, VisitCounter, visitor } from "./visitas.js";
 import { productHtml, productsIndexHtml, productUpdated } from "./productos.js";
 import { LIMITED, MAX_BODY, PUBLIC_MCP_PATH, publicMcpHttp, siteLlmsTxt } from "./ias.js";
 import { SEARCH_LIMIT, searchHtml, searchJson, searchTerms, type PriceRow } from "./precios.js";
+import { asDomain, POLICY_LIMIT, policiesJson } from "./politicas-publicas.js";
 import { createLlm } from "./llm.js";
 import { AI_SOURCES, snippet, summarize, type MeasureEvent, type Source } from "./medir.js";
 import { indexPage, panel, sellerPage } from "./panel.js";
@@ -269,7 +270,10 @@ const server = createServer(async (req, res) => {
     if (path === PUBLIC_MCP_PATH || path === `${PUBLIC_MCP_PATH}/`) {
       const ip = clientIp(req);
       const body = req.method === "POST" ? await readRaw(req, MAX_BODY) : undefined;
-      const answer = await publicMcpHttp({ search: async (terms) => (searchLimited(ip) ? LIMITED : cachedSearch(terms)) }, req.method, body);
+      const answer = await publicMcpHttp({
+        search: async (terms) => (searchLimited(ip) ? LIMITED : cachedSearch(terms)),
+        policies: async (domain, terms) => (searchLimited(ip) ? LIMITED : data.findPolicies(domain, terms, POLICY_LIMIT)),
+      }, req.method, body);
       res.writeHead(answer.status, answer.headers);
       return res.end(answer.body);
     }
@@ -322,6 +326,17 @@ const server = createServer(async (req, res) => {
       const result = { query: q, terms, ...found };
       if (asJson) return send(res, 200, "application/json; charset=utf-8", JSON.stringify(searchJson(result)), results);
       return send(res, 200, "text/html; charset=utf-8", searchHtml(q === "" ? undefined : result), q === "" ? publicPage : results);
+    }
+    // A store's policies as JSON (politicas-publicas.ts), before the guide slugs like "buscar".
+    if (read && (path === `${GUIDE_PATH}/politicas` || path === `${GUIDE_PATH}/politicas/`)) {
+      const q = (url.searchParams.get("tienda") ?? "").trim().slice(0, 200);
+      const domain = asDomain(q);
+      const terms = searchTerms(domain ?? q);
+      const headers = { ...publicPage, "x-robots-tag": "noindex", "access-control-allow-origin": "*" };
+      if (domain === undefined && terms.length === 0) return send(res, 400, "application/json; charset=utf-8", JSON.stringify({ error: "Falta ?tienda=<dominio o nombre>, por ejemplo ?tienda=luminova.cl" }), headers);
+      if (searchLimited(clientIp(req))) return send(res, 429, "application/json; charset=utf-8", JSON.stringify({ error: "Demasiadas búsquedas seguidas; prueba de nuevo en un rato" }), { "retry-after": "600" });
+      const found = await data.findPolicies(domain, terms, POLICY_LIMIT);
+      return send(res, 200, "application/json; charset=utf-8", JSON.stringify(policiesJson(q, found)), headers);
     }
     const g = new RegExp(`^${GUIDE_PATH}/([a-z0-9-]+)/?$`).exec(path);
     if (read && g) {

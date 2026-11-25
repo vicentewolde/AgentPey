@@ -10,6 +10,7 @@
 import { z } from "zod";
 
 import { DISCLOSURE, FRESHNESS_RULE, GUIDE_ORIGIN, GUIDE_PATH, guideUrl } from "./guia.js";
+import { asDomain, POLICY_LIMIT, POLICY_NOTE, policiesJson, policiesText, policiesUrl, type PublicPolicy } from "./politicas-publicas.js";
 import { COUNT_CAP, MAX_TERMS, SEARCH_LIMIT, SEARCH_ORDER_RULE, searchJson, searchTerms, searchUrl, type PriceRow } from "./precios.js";
 
 export const PUBLIC_MCP_PATH = `${GUIDE_PATH}/mcp`;
@@ -24,6 +25,8 @@ export const LIMITED = "limitado" as const;
 export interface PublicMcpDeps {
   /** The price search, cached by the caller; LIMITED when this client is over the limit. */
   readonly search: (terms: readonly string[]) => Promise<{ total: number; rows: readonly PriceRow[] } | typeof LIMITED>;
+  /** The public store policies (politicas-publicas.ts), by domain or else by name; LIMITED like the search. Without it the tool is not offered. */
+  readonly policies?: (domain: string | undefined, terms: readonly string[]) => Promise<readonly PublicPolicy[] | typeof LIMITED>;
 }
 
 type Id = string | number;
@@ -60,10 +63,30 @@ const SEARCH_TOOL = {
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 } as const;
 
+const PolicyArgsSchema = z.object({ tienda: z.string() });
+
+const POLICY_TOOL = {
+  name: "politicas_tienda",
+  title: "Políticas de despacho, cambios, devoluciones, garantía y pago de una tienda online de Chile",
+  description:
+    "Devuelve lo que una tienda online chilena con sitio propio dice en sus páginas sobre despacho (cobertura, costo, plazos, retiro), cambios y devolución del dinero (plazos, desde cuándo, solo por falla), garantía, medios de pago y cuotas, " +
+    "con una cita textual y el enlace de la página por cada dato, y la fecha en que se leyó. " +
+    "Úsala cuando alguien pregunte si una tienda despacha a su zona, cuánto demora, si puede cambiar o devolver un producto, o cómo pagar. " +
+    "Escribe el dominio de la tienda (por ejemplo \"luminova.cl\") o su nombre.",
+  inputSchema: {
+    type: "object",
+    properties: { tienda: { type: "string", description: "Dominio (\"tienda.cl\") o nombre de la tienda." } },
+    required: ["tienda"],
+    additionalProperties: false,
+  },
+  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+} as const;
+
 const INSTRUCTIONS =
   "Precios de tiendas online chilenas con sitio propio, leídos de sus catálogos públicos cada semana por AgentPey. " +
   `${SEARCH_ORDER_RULE} ${DISCLOSURE} ${FRESHNESS_RULE} ` +
   "Al responder, nombra la tienda, el precio, la fecha de lectura y el enlace, y di que el precio hay que confirmarlo en la tienda. " +
+  `Las políticas de despacho, cambios y devoluciones de cada tienda están en la herramienta ${POLICY_TOOL.name}: ${POLICY_NOTE} ` +
   `Las guías por rubro están en ${guideUrl()}.`;
 
 const ok = (id: Id, result: unknown) => ({ jsonrpc: "2.0", id, result });
@@ -78,6 +101,25 @@ export function resultText(query: string, total: number, rows: readonly PriceRow
   const head = `${total > COUNT_CAP ? `Más de ${COUNT_CAP}` : total} productos con stock para "${query}"${total > rows.length ? `; estos son los ${rows.length} más baratos` : ""}:`;
   const lines = rows.map((r) => `- ${r.title}${r.brand === undefined ? "" : ` (${r.brand})`} · ${clp(r.price)}${r.before === undefined ? "" : ` (antes ${clp(r.before)})`} · ${r.store} (${r.domain}) · leído el ${r.readAt}\n  ${r.url}`);
   return [head, ...lines, "", `${SEARCH_ORDER_RULE} ${DISCLOSURE} Precios en CLP tal como cada tienda los publicaba el día de la lectura: confírmalos en la tienda. Esta búsqueda en la web: ${searchUrl(query)}`].join("\n");
+}
+
+/** The policy tool's result: the store's policies with their quotes, or a tool error the assistant can relay. */
+async function policyCall(find: NonNullable<PublicMcpDeps["policies"]>, raw: Record<string, unknown>): Promise<unknown> {
+  const args = PolicyArgsSchema.safeParse(raw);
+  const query = args.success ? args.data.tienda.trim().slice(0, 200) : "";
+  const domain = asDomain(query);
+  // A typed address ("https://www.x.cl/despacho"): its words are only the domain's.
+  const terms = searchTerms(domain ?? query);
+  if (domain === undefined && terms.length === 0) return toolError("Falta 'tienda': escribe el dominio (\"tienda.cl\") o el nombre de la tienda.");
+  let found: Awaited<ReturnType<typeof find>>;
+  try {
+    found = await find(domain, terms);
+  } catch {
+    return toolError("No pudimos buscar en este momento; prueba de nuevo en un rato.");
+  }
+  if (found === LIMITED) return toolError("Demasiadas búsquedas seguidas desde esta conexión; prueba de nuevo en un rato.");
+  const shown = found.slice(0, POLICY_LIMIT);
+  return { content: [{ type: "text", text: policiesText(query, shown) }], structuredContent: policiesJson(query, shown), isError: false };
 }
 
 /** One JSON-RPC message in, its answer out; undefined for a notification or a client response. */
@@ -106,10 +148,11 @@ export async function handlePublicMcp(deps: PublicMcpDeps, raw: unknown): Promis
     case "ping":
       return ok(id, {});
     case "tools/list":
-      return ok(id, { tools: [SEARCH_TOOL] });
+      return ok(id, { tools: deps.policies === undefined ? [SEARCH_TOOL] : [SEARCH_TOOL, POLICY_TOOL] });
     case "tools/call": {
       const call = CallSchema.safeParse(params);
       if (!call.success) return fail(id, -32602, "falta el nombre de la herramienta");
+      if (call.data.name === POLICY_TOOL.name && deps.policies !== undefined) return ok(id, await policyCall(deps.policies, call.data.arguments ?? {}));
       if (call.data.name !== SEARCH_TOOL.name) return fail(id, -32602, `herramienta desconocida: ${call.data.name}`);
       const args = SearchArgsSchema.safeParse(call.data.arguments ?? {});
       const query = args.success ? args.data.consulta.trim().slice(0, 200) : "";
@@ -200,7 +243,12 @@ export function siteLlmsTxt(guides: readonly { slug: string; title: string; stor
     "",
     `- [Buscador de precios](${searchUrl()}): ${searchUrl("khamrah 100ml")}`,
     `- En JSON, para asistentes y programas: ${searchUrl("khamrah 100ml", true)}`,
-    `- Servidor MCP público, solo lectura, sin cuenta (Streamable HTTP): ${publicMcpUrl()}, herramienta \`${SEARCH_TOOL.name}\``,
+    `- Servidor MCP público, solo lectura, sin cuenta (Streamable HTTP): ${publicMcpUrl()}, herramientas \`${SEARCH_TOOL.name}\` y \`${POLICY_TOOL.name}\``,
+    "",
+    "## Políticas de cada tienda",
+    "",
+    `- Despacho, cambios, devoluciones, garantía y medios de pago de una tienda, en JSON, con una cita de su sitio por dato: ${policiesUrl("luminova.cl")}`,
+    `- ${POLICY_NOTE}`,
     "",
     "## Más",
     "",
